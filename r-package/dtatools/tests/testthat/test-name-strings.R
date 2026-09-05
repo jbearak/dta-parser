@@ -1,5 +1,5 @@
 test_that("a runtime string names the target through `!!`", {
-    data <- data.frame(income = c(10, 20))
+    data <- reserve_columns(data.frame(income = c(10, 20)))
     target_name <- paste0("adj", "usted")
 
     gen(data, !!target_name, income + 5)
@@ -18,7 +18,7 @@ test_that("a runtime string names the target through `!!`", {
 })
 
 test_that("a string literal names the target", {
-    data <- data.frame(income = c(10, 20))
+    data <- reserve_columns(data.frame(income = c(10, 20)))
     gen(data, "adjusted", income + 5)
     expect_identical(names(data), c("income", "adjusted"))
     repl(data, "adjusted", 0)
@@ -85,7 +85,7 @@ test_that("invalid non-string targets still error as before", {
 })
 
 test_that("existing unquoted forms are untouched", {
-    data <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
+    data <- reserve_columns(data.frame(income = c(10, 20), eligible = c(TRUE, FALSE)))
     repl(data, income, income * 2, where = eligible)
     expect_equal(as.double(data$income), c(20, 20))
 
@@ -97,7 +97,7 @@ test_that("existing unquoted forms are untouched", {
 })
 
 test_that("the `.data` pronoun reaches a runtime name in values and where", {
-    data <- data.frame(cluster = c(1, 2), hh1 = c(5, NA))
+    data <- reserve_columns(data.frame(cluster = c(1, 2), hh1 = c(5, NA)))
     hh1_name <- "hh1"
 
     repl(data, cluster, .data[[hh1_name]])
@@ -163,7 +163,7 @@ test_that("`set_var_label()` accepts a runtime string name", {
 })
 
 test_that("a string target leaves a compact column unmaterialized", {
-    data <- data.frame(income = c(10, 20))
+    data <- reserve_columns(data.frame(income = c(10, 20)))
     gen(data, !!"compact", dta_float(income))
     expect_true(
         dtatools:::.is_unmaterialized_numeric_altrep(data$compact)
@@ -176,7 +176,7 @@ test_that("a string target leaves a compact column unmaterialized", {
 })
 
 test_that("`.()` names the target and reads columns at run time", {
-    data <- data.frame(income = c(10, 20), hh1 = c(5, 6))
+    data <- reserve_columns(data.frame(income = c(10, 20), hh1 = c(5, 6)))
     target <- "income"
     origin <- "hh1"
 

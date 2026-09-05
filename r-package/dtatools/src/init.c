@@ -5958,11 +5958,43 @@ SEXP C_dtatools_shared_columns(SEXP columns) {
     return result;
 }
 
-SEXP C_dtatools_column_capacity(SEXP x) {
-    if (TYPEOF(x) != VECSXP) Rf_error("`x` must be a list");
-    return Rf_ScalarReal(R_isResizable(x) ? (double) R_maxLength(x) : -1);
+/* Validate data.table's non-owning self-reference and names identity.
+   Pointer addresses are compared only, never dereferenced. A copied or
+   deserialized table, or a replaced names vector, requires assigned repair. */
+static int data_table_reference_valid(SEXP data) {
+    SEXP selfref = Rf_getAttrib(data, Rf_install(".internal.selfref"));
+    return TYPEOF(selfref) == EXTPTRSXP &&
+        R_ExternalPtrAddr(selfref) == R_NilValue &&
+        R_ExternalPtrTag(selfref) == Rf_getAttrib(data, R_NamesSymbol) &&
+        TYPEOF(R_ExternalPtrProtected(selfref)) == EXTPTRSXP &&
+        R_ExternalPtrAddr(R_ExternalPtrProtected(selfref)) == data;
 }
 
+/* Expose the read-only data.table identity check to R preflight code. */
+SEXP C_dtatools_data_table_reference_valid(SEXP data) {
+    return Rf_ScalarLogical(data_table_reference_valid(data));
+}
+
+/* Report the usable physical column allocation, or -1 if it cannot resize.
+   data.table must have capacity in both its list and names; the R wrapper
+   separately checks its self-reference before promising append readiness. */
+SEXP C_dtatools_column_capacity(SEXP x) {
+    if (TYPEOF(x) != VECSXP) Rf_error("`x` must be a list");
+    if (ALTREP(x) || !R_isResizable(x)) return Rf_ScalarReal(-1);
+    R_xlen_t capacity = R_maxLength(x);
+    if (Rf_inherits(x, "data.table")) {
+        SEXP names = Rf_getAttrib(x, R_NamesSymbol);
+        if (TYPEOF(names) != STRSXP || ALTREP(names) ||
+            !R_isResizable(names) || !data_table_reference_valid(x)) {
+            return Rf_ScalarReal(-1);
+        }
+        if (R_maxLength(names) < capacity) capacity = R_maxLength(names);
+    }
+    return Rf_ScalarReal((double) capacity);
+}
+
+/* Allocate an isolated resizable outer list, retaining the supplied columns.
+   R callers isolate column payloads before using this preparation primitive. */
 SEXP C_dtatools_reserve_column_capacity(SEXP x, SEXP capacity_value) {
     if (TYPEOF(x) != VECSXP) Rf_error("`x` must be a list");
     double requested = Rf_asReal(capacity_value);
@@ -6035,6 +6067,9 @@ SEXP C_dtatools_can_select_data_columns(SEXP data, SEXP length) {
     return Rf_ScalarLogical(can_resize);
 }
 
+/* Stage and commit a complete physical column selection on the supplied table.
+   Capacity and all values are validated first. Fresh names and data.table
+   self-reference wrappers keep separate outer copies' bookkeeping untouched. */
 SEXP C_dtatools_select_data_columns(
     SEXP data, SEXP columns, SEXP names, SEXP state,
     SEXP base_classes, SEXP reference_classes
@@ -6080,17 +6115,34 @@ SEXP C_dtatools_select_data_columns(
     int keep_state = state != R_NilValue;
     R_xlen_t installed_length = new_length;
     int protect_count = 2;
-    SEXP committed_names = current_names;
-    if (!is_data_table) {
-        committed_names = PROTECT(Rf_allocVector(
-            STRSXP, new_length
+    SEXP committed_names;
+    SEXP committed_selfref = R_NilValue;
+    SEXP selfref_symbol = Rf_install(".internal.selfref");
+    if (is_data_table) {
+        /* Never resize or rewrite names another outer table may share.
+           data.table's self-reference tag records its names vector and its
+           protected external pointer records the table without owning it.
+           Preserve that already-validated owner token in a fresh wrapper;
+           changing the old wrapper would change the copied table's state. */
+        SEXP selfref = Rf_getAttrib(data, selfref_symbol);
+        if (!data_table_reference_valid(data)) {
+            Rf_error("data.table column selection needs assigned reserve_columns() preparation");
+        }
+        R_xlen_t capacity = R_isResizable(data) ? R_maxLength(data) : new_length;
+        committed_names = PROTECT(R_allocResizableVector(STRSXP, capacity));
+        protect_count++;
+        R_resizeVector(committed_names, new_length);
+        committed_selfref = PROTECT(R_MakeExternalPtr(
+            R_ExternalPtrAddr(selfref), committed_names,
+            R_ExternalPtrProtected(selfref)
         ));
         protect_count++;
-        for (R_xlen_t index = 0; index < installed_length; index++) {
-            SET_STRING_ELT(
-                committed_names, index, STRING_ELT(planned_names, index)
-            );
-        }
+    } else {
+        committed_names = PROTECT(Rf_allocVector(STRSXP, new_length));
+        protect_count++;
+    }
+    for (R_xlen_t index = 0; index < installed_length; index++) {
+        SET_STRING_ELT(committed_names, index, STRING_ELT(planned_names, index));
     }
 
     /* Materialize an ALTREP list wrapper before any visible commit. Once this
@@ -6117,20 +6169,11 @@ SEXP C_dtatools_select_data_columns(
 
     if (new_length != old_length) {
         resize_reference_vector(data, new_length);
-        if (is_data_table) {
-            resize_reference_vector(current_names, new_length);
-        }
     }
     for (R_xlen_t index = 0; index < installed_length; index++) {
         SET_VECTOR_ELT(data, index, VECTOR_ELT(columns, index));
     }
-    if (is_data_table) {
-        for (R_xlen_t index = 0; index < installed_length; index++) {
-            SET_STRING_ELT(
-                current_names, index, STRING_ELT(planned_names, index)
-            );
-        }
-    }
+    if (is_data_table) Rf_setAttrib(data, selfref_symbol, committed_selfref);
     Rf_setAttrib(data, R_NamesSymbol, committed_names);
     UNPROTECT(protect_count);
     return data;
@@ -7506,6 +7549,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_reference_state_valid, 1},
     {"C_dtatools_shared_columns", (DL_FUNC) &C_dtatools_shared_columns, 1},
     {"C_dtatools_column_capacity", (DL_FUNC) &C_dtatools_column_capacity, 1},
+    {"C_dtatools_data_table_reference_valid",
+     (DL_FUNC) &C_dtatools_data_table_reference_valid, 1},
     {"C_dtatools_reserve_column_capacity",
      (DL_FUNC) &C_dtatools_reserve_column_capacity, 2},
     {"C_dtatools_append_data_column",

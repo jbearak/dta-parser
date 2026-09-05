@@ -30,7 +30,7 @@ test_that("reference mutation exports one coherent API", {
 
 test_that("matrix columns use data-frame row sizes", {
     make_frame <- function() {
-        data.frame(x = 1:3, matrix = I(matrix(1:6, nrow = 3)))
+        reserve_columns(data.frame(x = 1:3, matrix = I(matrix(1:6, nrow = 3))))
     }
 
     replaced <- make_frame()
@@ -50,14 +50,14 @@ test_that("matrix columns use data-frame row sizes", {
 })
 
 test_that("targets are bare names and support tidy injection", {
-    data <- data.frame(x = 1:2)
+    data <- reserve_columns(data.frame(x = 1:2))
     expect_error(replace_values(data, , 0), "unquoted")
     expect_error(replace_values(data, unknown, 0), "does not exist")
 
     # One string names a column, because `!!name` unquotes to one.
     expect_silent(replace_values(data, "x", 0L))
     expect_identical(data$x, c(0L, 0L))
-    expect_warning(gen(data, "quoted", 0), "reallocation")
+    expect_silent(gen(data, "quoted", 0))
     expect_identical(as.double(data$quoted), c(0, 0))
 
     target <- rlang::sym("x")
@@ -70,12 +70,12 @@ test_that("targets are bare names and support tidy injection", {
 })
 
 test_that("data masks, formulas, and alias calls use the right environments", {
-    data <- data.frame(
+    data <- reserve_columns(data.frame(
         x = c(1L, 2L, 3L),
         adjustment = c(2L, 3L, 4L),
         eligible = c(TRUE, FALSE, TRUE),
         constant = c(10L, 20L, 30L)
-    )
+    ))
     constant <- 100L
     value_rule <- ~ x * adjustment + .env$constant
     selection_rule <- ~ eligible
@@ -113,7 +113,7 @@ test_that("data masks, formulas, and alias calls use the right environments", {
 })
 
 test_that("values and selection see the unchanged dataset", {
-    data <- data.frame(x = 1:4, source = 11:14)
+    data <- reserve_columns(data.frame(x = 1:4, source = 11:14))
     replace_values(data, x, x + source, where = x <= 2)
     expect_identical(data$x, c(12L, 14L, 3L, 4L))
 
@@ -198,7 +198,7 @@ test_that("where has documented logical and position semantics", {
         )
         expect_identical(serialize(replace_target, NULL), replace_before)
 
-        generate_target <- data.frame(x = 1:4)
+        generate_target <- reserve_columns(data.frame(x = 1:4))
         generate_before <- serialize(generate_target, NULL)
         expect_error(
             gen(generate_target, y, 0L, where = shaped),
@@ -217,12 +217,12 @@ test_that("full-dataset values are gathered by selected row", {
     expect_identical(as.double(replaced$x), c(1, 12, 3, 4, 15))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(replaced$x))
 
-    generated <- data.frame(x = 1:5)
+    generated <- reserve_columns(data.frame(x = 1:5))
     gen(generated, y, values, where = rows)
     expect_identical(as.double(generated$y), c(NA, 12, NA, NA, 15))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(generated$y))
 
-    strings <- data.frame(x = 1:5)
+    strings <- reserve_columns(data.frame(x = 1:5))
     string_values <- structure(letters[1:5], label = "letters")
     gen(strings, y, string_values, where = dta_long(c(3, 1)))
     expect_identical(as.character(strings$y), c("a", "", "c", "", ""))
@@ -291,7 +291,7 @@ test_that("excluded full-dataset values do not affect validation", {
     expect_identical(serialize(zero_altrep, NULL), zero_altrep_before)
     expect_true(dtatools:::.is_altrep(zero_altrep$x))
 
-    generated <- data.frame(x = 1:3)
+    generated <- reserve_columns(data.frame(x = 1:3))
     declared <- structure(
         c("too wide", "z", "also too wide"),
         stata.string.storage = "str1"
@@ -358,7 +358,7 @@ test_that("gen rejects unsupported classed numeric results atomically", {
         integer64 = structure(as.double(1:3), class = "integer64")
     )
     for (name in names(cases)) {
-        data <- data.frame(x = 1:3)
+        data <- reserve_columns(data.frame(x = 1:3))
         before <- serialize(data, NULL)
         values <- cases[[name]]
         expect_error(
@@ -373,7 +373,7 @@ test_that("gen rejects unsupported classed numeric results atomically", {
 })
 
 test_that("evaluation interrupts leave the dataset unchanged", {
-    data <- data.frame(x = 1:3)
+    data <- reserve_columns(data.frame(x = 1:3))
     before <- serialize(data, NULL)
     condition <- rlang::catch_cnd(
         replace_values(data, x, rlang::interrupt())
@@ -620,7 +620,7 @@ test_that("native generation interrupts leave reference state unchanged", {
             load_package(package_path)
             interrupt_generation <- function(character, existing) {
                 size <- 20000000L
-                data <- data.frame(anchor = dta_byte(.size = size))
+                data <- reserve_columns(data.frame(anchor = dta_byte(.size = size)))
                 if (existing) gen(data, prior, 1)
                 values <- if (character) "x" else seq_len(size)
                 before <- serialize(data, NULL)
@@ -661,7 +661,7 @@ test_that("native generation interrupts leave reference state unchanged", {
                     source = rep(dictionary, length.out = size)
                 ), path)
                 source <- read_arrow(path)$source
-                data <- data.frame(anchor = dta_byte(.size = size))
+                data <- reserve_columns(data.frame(anchor = dta_byte(.size = size)))
                 before <- serialize(data, NULL)
                 cache_before <- dtatools:::.dictstring_cached_count(source)
                 parent <- Sys.getpid()
@@ -845,7 +845,7 @@ test_that("compact replacement updates the missing-value cache", {
     expect_false(anyNA(duplicate$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(duplicate$x))
 
-    generated <- data.frame(x = 1:3)
+    generated <- reserve_columns(data.frame(x = 1:3))
     gen(generated, y, dta_byte(1), where = 2)
     expect_true(anyNA(generated$y))
     replace_values(generated, y, 1, where = c(1, 3))
@@ -973,7 +973,7 @@ test_that("base numeric ALTREP columns remain internally consistent", {
 })
 
 test_that("gen appends one variable with Stata missing and storage rules", {
-    data <- tibble::tibble(x = c(1, 2, 3), eligible = c(TRUE, FALSE, TRUE))
+    data <- reserve_columns(tibble::tibble(x = c(1, 2, 3), eligible = c(TRUE, FALSE, TRUE)))
     data <- reserve_columns(data)
     alias <- data
     result <- withVisible(gen(data, generated, x * 2, where = eligible))
@@ -997,7 +997,7 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     datetimes <- as.POSIXct(
         "2020-01-01 00:00:01", tz = "UTC"
     ) + 0:2
-    temporal <- data.frame(x = 1:3)
+    temporal <- reserve_columns(data.frame(x = 1:3))
     gen(temporal, date, dates)
     gen(temporal, datetime, datetimes)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(temporal$date))
@@ -1011,14 +1011,14 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(dta_storage_type(temporal$date), "float")
     expect_identical(dta_storage_type(temporal$datetime), "double")
 
-    compact_source <- data.frame(x = dta_byte(1:3))
+    compact_source <- reserve_columns(data.frame(x = dta_byte(1:3)))
     gen(compact_source, y, x)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact_source$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact_source$y))
     expect_identical(dta_storage_type(compact_source$y), "byte")
     expect_identical(as.double(compact_source$y), c(1, 2, 3))
 
-    integer_source <- data.frame(x = 1:3)
+    integer_source <- reserve_columns(data.frame(x = 1:3))
     gen(integer_source, y, x)
     expect_identical(dtatools:::.metadata_proxy_depth(integer_source$y), 0L)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(integer_source$y))
@@ -1062,7 +1062,7 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(as.vector(data$string), c("a", "", "z"))
     expect_identical(attr(data$string, "stata.string.storage"), "str1")
 
-    strings <- data.frame(x = 1:3)
+    strings <- reserve_columns(data.frame(x = 1:3))
     authored_string <- structure(
         c("one", NA_character_, "three"),
         label = "Authored string",
@@ -1073,14 +1073,14 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(attr(strings$y, "label"), "Authored string")
     expect_identical(attr(strings$y, "stata.string.storage"), "str5")
 
-    full_strings <- data.frame(x = 1:3)
+    full_strings <- reserve_columns(data.frame(x = 1:3))
     gen(full_strings, y, c("one", "long", NA_character_))
     expect_identical(as.character(full_strings$y), c("one", "long", ""))
     expect_identical(
         attr(full_strings$y, "stata.string.storage"), "str4"
     )
 
-    duplicate <- data.frame(x = 1:3)
+    duplicate <- reserve_columns(data.frame(x = 1:3))
     invisible(dtatools:::.reference_row_reads(TRUE))
     gen(
         duplicate, y, c("overwritten", "x"),
@@ -1110,7 +1110,7 @@ test_that("gen preserves metadata on otherwise supported numeric classes", {
     for (kind in names(sources)) {
         source <- set_dta_note(sources[[kind]], 3L, "source note")
         source <- set_dta_characteristic(source, "source", kind)
-        data <- data.frame(anchor = 1:3)
+        data <- reserve_columns(data.frame(anchor = 1:3))
 
         gen(data, copied, .env$source)
 
@@ -1130,18 +1130,18 @@ test_that("gen preserves metadata on otherwise supported numeric classes", {
 })
 
 test_that("gen handles zero rows and evaluates before insertion", {
-    empty <- data.frame(x = integer())
+    empty <- reserve_columns(data.frame(x = integer()))
     gen(empty, y, x + 1L)
     expect_equal(dim(empty), c(0L, 2L))
     expect_identical(length(empty$y), 0L)
 
-    data <- data.frame(x = 1:2)
+    data <- reserve_columns(data.frame(x = 1:2))
     expect_error(gen(data, y, y + 1), "object 'y' not found")
     expect_identical(names(data), "x")
 })
 
 test_that("repeated gen appends ordered reference-state bindings", {
-    data <- data.frame(anchor = 1:2)
+    data <- reserve_columns(data.frame(anchor = 1:2))
     for (index in seq_len(100L)) {
         name <- rlang::sym(sprintf("generated_%03d", index))
         gen(data, !!name, anchor + .env$index)
@@ -1189,6 +1189,7 @@ test_that("copy_data isolates every mutable column backing", {
     replace_values(data, compact, 8, where = 3)
     expect_equal(as.double(isolated$compact)[[3]], 3)
 
+    data <- reserve_columns(data)
     gen(data, generated, compact + ordinary)
     generated_copy <- copy_data(data)
     replace_values(generated_copy, generated, 0, where = 1)
@@ -1308,6 +1309,7 @@ test_that("subsets, metadata proxies, and serialized data stay isolated", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(restored$x))
     expect_identical(as.double(source$x), c(1, 2, 3))
 
+    source <- reserve_columns(source)
     gen(source, generated, x + 1)
     generated_subset <- source[1:2, c("x", "generated")]
     replace_values(generated_subset, generated, 0, where = 1)
@@ -1485,7 +1487,7 @@ test_that("metadata copies remain isolated from later source patches", {
 
     generated_values <- read_arrow(wide_path)$text
     generated_cache <- dtatools:::.dictstring_cached_count(generated_values)
-    generated <- data.frame(anchor = 1:3)
+    generated <- reserve_columns(data.frame(anchor = 1:3))
     gen(generated, text, .env$generated_values)
     expect_identical(
         dtatools:::.dictstring_cached_count(generated_values),
@@ -1495,7 +1497,7 @@ test_that("metadata copies remain isolated from later source patches", {
 
     scalar_values <- read_arrow(wide_path, n_max = 1)$text
     scalar_cache <- dtatools:::.dictstring_cached_count(scalar_values)
-    scalar_generated <- data.frame(anchor = 1:3)
+    scalar_generated <- reserve_columns(data.frame(anchor = 1:3))
     gen(scalar_generated, text, .env$scalar_values)
     scalar_replaced <- data.frame(text = rep("", 3))
     replace_values(scalar_replaced, text, .env$scalar_values)
@@ -1691,7 +1693,7 @@ test_that("copy_data keeps Arrow dictionary strings independent and compact", {
 })
 
 test_that("generated variables participate in package writes", {
-    data <- data.frame(x = dta_byte(1:3))
+    data <- reserve_columns(data.frame(x = dta_byte(1:3)))
     gen(data, y, dta_int(x * 10))
     path <- tempfile(fileext = ".dta")
     arrow_path <- tempfile(fileext = ".arrow")
@@ -1714,6 +1716,7 @@ test_that("generated variables participate in package writes", {
 test_that("reference data preserves base and tibble access semantics", {
     frame <- data.frame(x = 1:3, y = 4:6, foobar = 7:9)
     row.names(frame) <- c("a", "b", "c")
+    frame <- reserve_columns(frame)
     gen(frame, z, x + y)
     expected_x <- data.frame(x = 1:3, row.names = c("a", "b", "c"))
     expect_identical(frame[1], expected_x)
@@ -1739,7 +1742,7 @@ test_that("reference data preserves base and tibble access semantics", {
     plain <- as.data.frame(frame)
     expect_equal(dim(rbind(plain, as.data.frame(frame))), c(6L, 4L))
 
-    tbl <- tibble::tibble(x = 1:3)
+    tbl <- reserve_columns(tibble::tibble(x = 1:3))
     gen(tbl, y, x * 2)
     expect_warning(tbl$missing, "Unknown or uninitialised column")
     expect_s3_class(tbl[, "x"], "tbl_df")
@@ -1799,7 +1802,7 @@ test_that("rowwise inputs fail before reference mutation", {
 })
 
 test_that(".n and .N describe the whole dataset without groups", {
-    data <- data.frame(x = c(5, 6, 7))
+    data <- reserve_columns(data.frame(x = c(5, 6, 7)))
     gen(data, row = .n)
     gen(data, count = .N)
     expect_identical(as.double(data$row), c(1, 2, 3))
@@ -1823,7 +1826,7 @@ test_that(".n and .N describe the whole dataset without groups", {
 })
 
 test_that("by evaluates where and values within each group", {
-    data <- data.frame(id = c(2, 1, 2, 1, 3), x = c(1, 2, 3, 4, 5))
+    data <- reserve_columns(data.frame(id = c(2, 1, 2, 1, 3), x = c(1, 2, 3, 4, 5)))
     gen(data, n = .n, by = id)
     gen(data, count = .N, by = id)
     expect_identical(as.double(data$n), c(1, 1, 2, 2, 1))
@@ -1851,9 +1854,9 @@ test_that("by evaluates where and values within each group", {
 })
 
 test_that("by accepts every column-name spelling", {
-    make <- function() data.frame(
+    make <- function() reserve_columns(data.frame(
         g1 = c(1, 1, 2, 2), g2 = c("a", "b", "a", "a"), x = 1:4
-    )
+    ))
     # (1,a) (1,b) (2,a) (2,a): the fourth row is the second of its group.
     expected_pair <- c(1, 1, 1, 2)
 
@@ -1896,7 +1899,7 @@ test_that("groups follow Stata's by order, not data.table's", {
     # `.n == .N` would mark the last *selected* row of each group. Stata
     # forms the group first: `.N` is the group's size and the row must be
     # the group's last row *and* pass the condition.
-    data <- data.frame(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5))
+    data <- reserve_columns(data.frame(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5)))
     gen(data, last = 0)
     repl(data, last = 1, where = .n == .N & v < 3, by = id)
     expect_identical(as.double(data$last), c(0, 1, 0, 0))
@@ -1910,13 +1913,13 @@ test_that("groups follow Stata's by order, not data.table's", {
     expect_false(identical(as.double(data$last), reference$last))
 
     # `.N` under a `where` is still the group's row count.
-    counts <- data.frame(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5))
+    counts <- reserve_columns(data.frame(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5)))
     gen(counts, n = .N, where = v < 3, by = id)
     expect_identical(as.double(counts$n), c(NA, 2, 2, NA))
 })
 
 test_that("per-group value sizes must be 1, the selection, or .N", {
-    data <- data.frame(id = c(1, 1, 2), x = 1:3)
+    data <- reserve_columns(data.frame(id = c(1, 1, 2), x = 1:3))
     expect_error(
         gen(data, y = 1:3, by = id),
         paste0(
@@ -1940,11 +1943,11 @@ test_that("per-group value sizes must be 1, the selection, or .N", {
     expect_identical(sparse$x, c(1, 2, 0, 0))
 
     # Within a group, a `.N`-length value is indexed by the selection.
-    pairs <- data.frame(id = c(1, 1, 2, 2), x = 1:4)
+    pairs <- reserve_columns(data.frame(id = c(1, 1, 2, 2), x = 1:4))
     gen(pairs, z = c(10, 20), where = .n == 2, by = id)
     expect_identical(as.double(pairs$z), c(NA, 20, NA, 20))
 
-    strings <- data.frame(id = c("a", "a", "b"), x = 1:3)
+    strings <- reserve_columns(data.frame(id = c("a", "a", "b"), x = 1:3))
     expect_error(gen(strings, y = 1:3, by = id), 'group id = "a"')
 })
 
@@ -1953,6 +1956,7 @@ test_that("missing values in a by column form their own groups", {
         id = dta_byte(c(1, NA, 1, NA, 2, NA)), x = dta_int(1:6)
     )
     data$id[4] <- tagged_missing("a")
+    data <- reserve_columns(data)
     gen(data, n = .N, by = id)
     # `.` and `.a` are distinct groups, as in Stata.
     expect_identical(as.double(data$n), c(2, 2, 2, 1, 1, 2))
@@ -1961,14 +1965,14 @@ test_that("missing values in a by column form their own groups", {
     # is the first group two values do not fit.
     expect_error(gen(data, y = 1:2, by = id), "group id = \\.a;")
 
-    plain <- data.frame(id = c(NA, 1, NA, 1), x = 1:4)
+    plain <- reserve_columns(data.frame(id = c(NA, 1, NA, 1), x = 1:4))
     gen(plain, n = .N, by = id)
     expect_identical(as.double(plain$n), c(2, 2, 2, 2))
     expect_error(gen(plain, y = 1:3, by = id), "group id = \\.;")
 })
 
 test_that("bysort sorts by reference and then groups", {
-    data <- data.frame(id = c(2, 1, 2, 1), t = c(1, 2, 2, 1), x = 1:4)
+    data <- reserve_columns(data.frame(id = c(2, 1, 2, 1), t = c(1, 2, 2, 1), x = 1:4))
     alias <- data
     repl(data, x = 0L, where = t == 1, bysort = c(id, t))
     expect_identical(data$id, c(1, 1, 2, 2))
@@ -1987,34 +1991,35 @@ test_that("bysort sorts by reference and then groups", {
         id = dta_byte(c(NA, 2, 1, NA)), x = dta_int(1:4)
     )
     compact$id[1] <- tagged_missing("a")
+    compact <- reserve_columns(compact)
     gen(compact, n = .n, bysort = id)
     expect_identical(as.double(compact$x), c(3, 2, 4, 1))
     expect_identical(as.double(compact$n), c(1, 1, 1, 1))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact$x))
 
     # An already sorted dataset is left alone, and `by` never sorts.
-    sorted <- data.frame(id = c(1, 1, 2), x = 1:3)
+    sorted <- reserve_columns(data.frame(id = c(1, 1, 2), x = 1:3))
     gen(sorted, n = .n, bysort = id)
     expect_identical(sorted$x, 1:3)
-    unsorted <- data.frame(id = c(2, 1), x = 1:2)
+    unsorted <- reserve_columns(data.frame(id = c(2, 1), x = 1:2))
     gen(unsorted, n = .n, by = id)
     expect_identical(unsorted$id, c(2, 1))
 
     name <- "id"
-    runtime <- data.frame(id = c(2, 1), x = 1:2)
+    runtime <- reserve_columns(data.frame(id = c(2, 1), x = 1:2))
     gen(runtime, n = .n, bysort = .(name))
     expect_identical(runtime$id, c(1, 2))
-    injected <- data.frame(id = c(2, 1), x = 1:2)
+    injected <- reserve_columns(data.frame(id = c(2, 1), x = 1:2))
     gen(injected, n = .n, bysort = !!name)
     expect_identical(injected$id, c(1, 2))
 })
 
 test_that("by and bysort are exclusive and reject a grouped input", {
-    data <- data.frame(id = c(1, 2), x = 1:2)
+    data <- reserve_columns(data.frame(id = c(1, 2), x = 1:2))
     expect_error(gen(data, y = 1, by = id, bysort = id), "not both")
     expect_error(repl(data, x = 1L, by = id, bysort = id), "not both")
 
-    grouped <- dplyr::group_by(tibble::tibble(id = c(1, 2), x = 1:2), id)
+    grouped <- reserve_columns(dplyr::group_by(tibble::tibble(id = c(1, 2), x = 1:2), id))
     before <- serialize(grouped, NULL)
     expect_error(
         gen(grouped, y = 1, by = id),
@@ -2025,9 +2030,9 @@ test_that("by and bysort are exclusive and reject a grouped input", {
 })
 
 test_that("a grouped tibble supplies the assignment groups", {
-    grouped <- dplyr::group_by(
+    grouped <- reserve_columns(dplyr::group_by(
         tibble::tibble(id = c(1, 2, 1, 3), x = c(1, 2, 3, 4)), id
-    )
+    ))
     gen(grouped, total = sum(x))
     gen(grouped, n = .n)
     expect_identical(as.double(grouped$total), c(4, 2, 4, 4))
@@ -2042,10 +2047,10 @@ test_that("a grouped tibble supplies the assignment groups", {
     )
 
     # `.drop = FALSE` may record empty groups; they contribute nothing.
-    factor_grouped <- dplyr::group_by(
+    factor_grouped <- reserve_columns(dplyr::group_by(
         tibble::tibble(f = factor(c("a", "a"), levels = c("a", "b")), x = 1:2),
         f, .drop = FALSE
-    )
+    ))
     gen(factor_grouped, n = .N)
     expect_identical(as.double(factor_grouped$n), c(2, 2))
 
@@ -2079,6 +2084,7 @@ test_that("compact targets stay compact under by", {
     expect_identical(as.double(widened$x), c(1e6, 9, 1e6, 9))
     expect_identical(dta_storage_type(widened$x), "long")
 
+    data <- reserve_columns(data)
     gen(data, y = dta_byte(.n), by = id)
     expect_identical(dta_storage_type(data$y), "byte")
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$y))
@@ -2108,7 +2114,7 @@ test_that("data.table containers support by and bysort", {
 
 test_that("the shadow check still fires inside grouped expressions", {
     x <- 5
-    data <- data.frame(id = c(1, 1, 2), x = 1:3)
+    data <- reserve_columns(data.frame(id = c(1, 1, 2), x = 1:3))
     expect_error(gen(data, y = x + 1, by = id), "both a column and an object")
     expect_error(repl(data, x = 0L, where = x > 1, by = id),
                  "both a column and an object")
@@ -2124,7 +2130,7 @@ test_that("the shadow check still fires inside grouped expressions", {
 })
 
 test_that("grouped gen keeps value attributes and string storage", {
-    data <- data.frame(id = c(1, 2, 1), x = c(1, 2, 3))
+    data <- reserve_columns(data.frame(id = c(1, 2, 1), x = c(1, 2, 3)))
     gen(data, labelled = structure(x, label = "L"), by = id)
     expect_identical(attr(data$labelled, "label"), "L")
 
@@ -2190,7 +2196,7 @@ test_that("sparse compact replacement and generation keep existing payloads", {
 })
 
 test_that("plain-expression evaluation matches tidy-eval semantics", {
-    data <- data.frame(x = dta_byte(c(1, 2, 3)), y = c(10, 20, 30))
+    data <- reserve_columns(data.frame(x = dta_byte(c(1, 2, 3)), y = c(10, 20, 30)))
 
     # A symbol that is both a column and a local is an error; the pronouns
     # pick one.
@@ -2230,7 +2236,7 @@ test_that("plain-expression evaluation matches tidy-eval semantics", {
 })
 
 test_that("plain expressions evaluate against reference-state columns", {
-    data <- data.frame(x = dta_byte(c(1, 2, 3)))
+    data <- reserve_columns(data.frame(x = dta_byte(c(1, 2, 3))))
     offset <- 5
     gen(data, seed_column, x)
     expect_false(is.null(attr(data, ".dtatools_ref_state", exact = TRUE)))
@@ -2474,8 +2480,8 @@ test_that("fused row-value errors roll back before the fallback error", {
 })
 
 test_that("targets and values arrive as one tagged pair", {
-    data <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
-    expect_warning(gen(data, adjusted = income + 5), "reallocation")
+    data <- reserve_columns(data.frame(income = c(10, 20), eligible = c(TRUE, FALSE)))
+    expect_silent(gen(data, adjusted = income + 5))
     expect_identical(as.double(data$adjusted), c(15, 25))
     expect_silent(repl(data, adjusted = 0, where = eligible))
     expect_identical(as.double(data$adjusted), c(0, 25))
@@ -2504,7 +2510,7 @@ test_that("targets and values arrive as one tagged pair", {
 })
 
 test_that("tagged pairs reach reference, data.table, and compact targets", {
-    referenced <- data.frame(x = 1:2)
+    referenced <- reserve_columns(data.frame(x = 1:2))
     gen(referenced, y = x * 2L)
     expect_silent(gen(referenced, z = y + 1L))
     expect_identical(as.double(referenced$z), c(3, 5))
@@ -2531,7 +2537,7 @@ test_that("tagged pairs reach reference, data.table, and compact targets", {
 })
 
 test_that("mutation dots must be one target pair and at most one where", {
-    data <- data.frame(x = 1:2, y = 3:4)
+    data <- reserve_columns(data.frame(x = 1:2, y = 3:4))
     shape <- "`...` must be `variable, values` or one `variable = values`"
     expect_error(gen(data), shape)
     expect_error(gen(data, x, y = 1), shape)
@@ -2553,7 +2559,7 @@ test_that("mutation dots must be one target pair and at most one where", {
 })
 
 test_that("a symbol bound as both column and object is an error", {
-    data <- data.frame(x = c(1, 2, 3), rows = c(0, 0, 0))
+    data <- reserve_columns(data.frame(x = c(1, 2, 3), rows = c(0, 0, 0)))
     rows <- c(TRUE, FALSE, TRUE)
     message <- "`rows` is both a column and an object"
 
@@ -2667,9 +2673,9 @@ test_that("a symbol bound as both column and object is an error", {
 })
 
 test_that("replacing a grouping column rebuilds the dplyr groups", {
-    grouped <- dplyr::group_by(
+    grouped <- reserve_columns(dplyr::group_by(
         tibble::tibble(id = c(1, 1, 2), x = 1:3), id
-    )
+    ))
     repl(grouped, id = 1)
     expect_identical(dplyr::group_vars(grouped), "id")
     groups <- attr(grouped, "groups", exact = TRUE)
@@ -2702,7 +2708,7 @@ test_that("an aliased grouping column is regrouped after replacement", {
 })
 
 test_that("row counters mask a column named .n or .N", {
-    data <- data.frame(.n = c(100, 200), .N = c(7, 7), x = 1:2)
+    data <- reserve_columns(data.frame(.n = c(100, 200), .N = c(7, 7), x = 1:2))
     gen(data, row = .n)
     gen(data, count = .N)
     expect_identical(as.double(data$row), c(1, 2))

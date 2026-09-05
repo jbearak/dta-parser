@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0030
+---
+
 # Reserve physical columns and rebind on reallocation
 
 Every successful structural operation leaves one complete physical table: `length(unclass(data)) == length(names(data)) == ncol(data)`. Generated and structural overlays hid columns from direct consumers and could crash `write.csv()`, so no operation creates them now. Legacy overlays remain readable for preparation.
@@ -9,3 +13,5 @@ We require R 4.6 and follow data.table's allocation model: reserve 5,000 spare c
 This supersedes ADR 0025's stronger structural alias claim when allocation changes. Old aliases retain an internally complete table. Base serialization discards resizability and can detach the reference state's recorded object from the returned object. After base `readRDS()` or `unserialize()`, users assign `reserve_columns()` before relying on dibble replacement aliases; the package's readers prepare their results already. User documentation describes these observable behaviors rather than the internal reference environment.
 
 [ADR 0029](0029-use-explicit-mutation-and-copy-rebind-replacement.md) supersedes the replacement-operator part of this decision: ordinary replacement always returns a copy. Assigned preparation now isolates columns and creates fresh bookkeeping instead of retaining an owning back-pointer; explicit mutation still follows this capacity policy until issue #179.
+
+[ADR 0030](0030-require-assigned-column-preparation.md) supersedes automatic growth and rebinding. Helpers now fail before capacity-sensitive evaluation; only assigned preparation rebuilds a table.

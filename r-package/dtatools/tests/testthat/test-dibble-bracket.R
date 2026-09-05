@@ -248,7 +248,7 @@ test_that("plain containers do not gain bracket assignment", {
     expect_identical(names(tbl), "x")
     # A base frame with reference state is not a dibble, but it carries
     # the class, so the method applies to it as well.
-    marked <- data.frame(x = c(1, 2))
+    marked <- reserve_columns(data.frame(x = c(1, 2)))
     gen(marked, y = x)
     marked[x > 1, z := 1]
     expect_identical(as.double(marked$z), c(NA, 1))
@@ -313,8 +313,8 @@ test_that("the autoprint skip does not outlive its top-level statement", {
     }
 })
 
-test_that("each bracket assignment rebinds before the next expression", {
-    withr::local_options(dtatools.alloccol = 0L)
+test_that("each prepared bracket assignment reaches aliases before the next expression", {
+    withr::local_options(dtatools.alloccol = 3L)
     targets <- list(quote(data), quote(box$data), quote(box[[index]]),
                     quote(get("data")), quote(get0("data")))
     for (target in targets) {
@@ -326,22 +326,22 @@ test_that("each bracket assignment rebinds before the next expression", {
         observe <- function() length(names(eval(target)))
         call <- substitute(TARGET[, `:=`(y = 1L, z = observe(), bad = stop("boom"))],
                            list(TARGET = target))
-        expect_error(suppressWarnings(eval(call)), "boom")
+        expect_error(eval(call), "boom")
         result <- eval(target)
         expect_identical(names(result), c("x", "y", "z"))
         expect_identical(as.integer(result$z), rep(2L, 2))
-        expect_identical(names(alias), "x")
+        expect_identical(names(alias), c("x", "y", "z"))
         expect_identical(as.integer(alias$x), 1:2)
         expect_identical(length(unclass(result)), 3L)
     }
 })
 
-test_that("bracket rebinding keeps its captured destination across assignments", {
-    withr::local_options(dtatools.alloccol = 0L)
+test_that("bracket assignments keep the supplied object when bindings change", {
+    withr::local_options(dtatools.alloccol = 2L)
     box <- list(data = dibble(x = 1:2), other = dibble(other = 3:4))
     index <- "data"
     values <- function() { index <<- "other"; 1L }
-    suppressWarnings(box[[index]][, `:=`(y = values(), z = y + 1L)])
+    expect_silent(box[[index]][, `:=`(y = values(), z = y + 1L)])
     expect_identical(names(box$data), c("x", "y", "z"))
     expect_identical(names(box$other), "other")
     expect_identical(as.integer(box$data$z), c(2L, 2L))
@@ -357,8 +357,9 @@ test_that("bracket rebinding keeps its captured destination across assignments",
             invokeRestart("muffleWarning")
         }
     )
-    expect_true(any(grepl("target changed", warnings)))
+    expect_identical(warnings, character())
     expect_identical(box, replacement)
-    expect_identical(names(box$data), "x")
+    expect_identical(names(box$data), c("x", "y", "z"))
+    expect_identical(rlang::obj_address(result), rlang::obj_address(original))
     expect_identical(names(result), c("x", "y", "z"))
 })

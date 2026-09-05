@@ -3,8 +3,8 @@
 #' `keep_vars()` retains selected columns and `drop_vars()` removes selected
 #' columns. Both functions mutate the supplied data frame or tibble by
 #' reference and return it invisibly. Other bindings to the same dataset see
-#' the structural change while capacity remains. Preparation may separate
-#' aliases; see [reserve_columns()]. Use `copy_data()` for isolation.
+#' the structural change. Assign [reserve_columns()] before calling these
+#' helpers on an unprepared table. Use `copy_data()` for isolation.
 #'
 #' Selections accept bare names, `first:last` ranges, `c()`, and
 #' `tidyselect::all_of()` for a character vector. Every requested name must
@@ -16,40 +16,37 @@
 #'
 #' Every surviving column stays physically present and keeps its vector,
 #' including Stata storage, tagged missing values, and labels.
-#' Serialized tables and legacy overlays are rebuilt when necessary.
-#' Reallocation warns and rebinds the supported target; see [reserve_columns()].
+#' Both helpers resolve and validate column selections before checking whether
+#' the supplied table can hold the result. Shrinking requires a resizable
+#' allocation; a validated keep-all selection needs no resize. Assign
+#' [reserve_columns()] after base serialization, copying, or subsetting when
+#' needed. Helpers never rebuild a table or rebind a function parameter.
 #'
 #' @param data An ungrouped data frame or tibble to mutate.
 #' @param ... Column names, name ranges, `c()`, or
 #'   `tidyselect::all_of()` character vectors to keep or drop.
 #' @return `data`, invisibly.
 #' @examples
-#' survey <- data.frame(id = 1:2, age = c(20, 30), temporary = 0)
+#' survey <- reserve_columns(data.frame(id = 1:2, age = c(20, 30), temporary = 0))
 #' gen(survey, age_next_year, age + 1)
 #' drop_vars(survey, temporary)
 #' keep_vars(survey, age_next_year, id)
 #' names(survey)
 #' @export
 keep_vars <- function(data, ...) {
-    target_expr <- substitute(data)
-    binding <- .capture_mutation_binding(target_expr, parent.frame())
-    if (!is.null(binding)) data <- binding$data
 
     dots <- rlang::enquos(...)
     result <- .select_vars_by_reference(data, dots, keep = TRUE)
-    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
+    invisible(result)
 }
 
 #' @rdname keep_vars
 #' @export
 drop_vars <- function(data, ...) {
-    target_expr <- substitute(data)
-    binding <- .capture_mutation_binding(target_expr, parent.frame())
-    if (!is.null(binding)) data <- binding$data
 
     dots <- rlang::enquos(...)
     result <- .select_vars_by_reference(data, dots, keep = FALSE)
-    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
+    invisible(result)
 }
 
 #' Reorder variables by reference
@@ -76,13 +73,10 @@ drop_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 order_vars <- function(data, ...) {
-    target_expr <- substitute(data)
-    binding <- .capture_mutation_binding(target_expr, parent.frame())
-    if (!is.null(binding)) data <- binding$data
 
     dots <- rlang::enquos(...)
     result <- .order_vars_by_reference(data, dots)
-    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
+    invisible(result)
 }
 
 #' Rename variables by reference
@@ -116,9 +110,9 @@ order_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 rename_vars <- function(data, ..., .names = NULL) {
-    target_expr <- substitute(data)
-    binding <- .capture_mutation_binding(target_expr, parent.frame())
-    if (!is.null(binding)) data <- binding$data
+    .reject_data_table_subclass(data)
+    .as_mutation_data(data)
+    .prepare_column_operation(data, length(data))
 
     dots <- rlang::enquos(...)
     if (!is.null(.names)) {
@@ -128,15 +122,16 @@ rename_vars <- function(data, ..., .names = NULL) {
             )
         }
         result <- .rename_all_vars_by_reference(data, .names)
-        return(.return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame()))
+        return(invisible(result))
     }
     result <- .rename_vars_by_reference(data, dots)
-    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
+    invisible(result)
 }
 
 .rename_all_vars_by_reference <- function(data, new_names) {
     .reject_data_table_subclass(data)
     original <- .as_mutation_data(data)
+    .prepare_column_operation(data, length(data))
     columns <- if (is.null(original$state)) {
         original$columns
     } else {
@@ -176,6 +171,7 @@ rename_vars <- function(data, ..., .names = NULL) {
         )
     }
     original <- .as_mutation_data(data)
+    .prepare_column_operation(data, length(data))
     columns <- if (is.null(original$state)) {
         original$columns
     } else {
@@ -381,6 +377,7 @@ rename_vars <- function(data, ..., .names = NULL) {
 .order_vars_by_reference <- function(data, selections) {
     .reject_data_table_subclass(data)
     original <- .as_mutation_data(data)
+    .prepare_column_operation(data, length(data))
     columns <- if (is.null(original$state)) {
         original$columns
     } else {
@@ -397,15 +394,15 @@ rename_vars <- function(data, ..., .names = NULL) {
 
 # Commits `retained_columns` as the table's complete column set, by
 # reference. The caller has already resolved which columns survive and
-# in which order; prepare or reallocate first if needed, then install one
-# complete physical list. Legacy overlays are only read during preparation.
+# in which order. Recheck capacity in case selection code changed it, then
+# install one complete physical list. Legacy overlays need assigned preparation.
 .install_column_selection <- function(
     data, original, retained_columns, source_names = names(retained_columns)
 ) {
     state <- original$state
     dibble_input <- is_dibble(data)
     source_classes <- setdiff(class(data), "dtatools_ref_data")
-    data <- .prepare_column_operation(data, length(retained_columns))
+    .prepare_column_operation(data, length(retained_columns))
     final_state <- NULL
     if (!is.null(state) || dibble_input) {
         planned <- retained_columns

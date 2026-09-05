@@ -53,3 +53,21 @@ reallocation warnings. A diagnostic using temporary migrated script copies
 reduced that to the same four pre-existing failures, with the same skips and no
 reallocation warnings. No downstream source or lockfile was changed. The required
 final installed-SHA suite and restore still follow all four merges.
+
+## Capacity acceptance at #179
+
+The public `column_capacity()` and `can_add_columns()` queries distinguish usable
+slots, requested additions, and dibble type. Explicit helpers never rebuild or
+rebind a mutation target. Generation and multi-column bracket assignment fail
+before values, selection, bysort, or a partial capacity commit. Keep/drop validate column selections before checking the resulting size and
+committing; a validated keep-all needs no resize. Same-size operations need no spare slots.
+Assigned `reserve_columns()` repairs copies and serialized tables in isolation;
+`copy_data()` returns prepared outputs across supported containers. Migration is
+to assign preparation before calling translated functions that add/drop columns.
+
+The #179 downstream diagnostic, using temporary migrated script copies and
+unchanged fertility tests, again ran 497 tests with only the four pre-existing
+integration-output failures, two skips, and zero column-reallocation warnings.
+The keep/drop validation tests pass on unprepared fixtures. The downstream source,
+worktree state, and lockfile remained unchanged. Final installed-SHA validation
+still follows all four merges.

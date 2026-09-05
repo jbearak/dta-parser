@@ -1,4 +1,3 @@
-column_capacity <- function(x) .Call(dtatools:::C_dtatools_column_capacity, x)
 expect_physical_table <- function(x, expected = names(x)) {
     expect_identical(length(unclass(x)), length(expected))
     expect_identical(ncol(x), length(expected))
@@ -22,146 +21,269 @@ legacy_column_table <- function(structural = FALSE) {
     }
 }
 
-test_that("capacity reserves spare pointers and validates the option", {
+test_that("public capacity separates type, preparation, and spare slots", {
     withr::local_options(dtatools.alloccol = NULL)
-    x <- dibble(x = 1:2)
-    expect_equal(column_capacity(x), 5001)
+    expect_equal(column_capacity(dibble(x = 1:2)), 5001)
     for (n in c(0, 1, 13)) {
         withr::local_options(dtatools.alloccol = n)
-        expect_equal(column_capacity(dibble(x = 1:2)), n + 1)
-        expect_equal(column_capacity(reserve_columns(data.frame(x = 1:2))), n + 1)
+        for (x in list(dibble(x = 1:2), reserve_columns(data.frame(x = 1:2)))) {
+            expect_equal(column_capacity(x), n + 1)
+            expect_true(can_add_columns(x, n))
+            expect_false(can_add_columns(x, n + 1))
+        }
     }
-    for (n in list(-1, Inf, NA_real_, NaN, 0.5, "5", TRUE, numeric(), c(1, 2), 2^52)) {
+    for (x in list(data.frame(x = 1:2), tibble::tibble(x = 1:2),
+                   unserialize(serialize(dibble(x = 1:2), NULL)))) {
+        expect_identical(column_capacity(x), NA_real_)
+        expect_true(can_add_columns(x, 0))
+        expect_false(can_add_columns(x))
+    }
+    x <- unserialize(serialize(dibble(x = 1:2), NULL))
+    expect_true(is_dibble(x))
+    expect_false(dtatools:::.reference_state_valid(x))
+    expect_false(can_add_columns(x))
+    for (n in list(-1, Inf, NA_real_, NaN, .5, "5", TRUE, numeric(), c(1, 2), 2^52)) {
         expect_error(reserve_columns(data.frame(x = 1), n), "whole number")
+        expect_error(can_add_columns(data.frame(x = 1), n), "whole number")
         withr::local_options(dtatools.alloccol = n)
         expect_error(dibble(x = 1), "whole number")
     }
+    expect_error(column_capacity(list(x = 1)), "data frame")
+    expect_error(can_add_columns(list(x = 1)), "data frame")
 })
 
 test_that("preparation preserves containers and isolates column values", {
-    for (x in list(data.frame(x = 1:100), tibble::tibble(x = 1:100), dibble(x = 1:100))) {
-        address <- rlang::obj_address(x$x)
+    constructors <- list(data.frame, tibble::tibble, dibble)
+    if (requireNamespace("data.table", quietly = TRUE)) {
+        constructors <- c(constructors, list(data.table::data.table))
+    }
+    for (make in constructors) {
+        x <- make(x = 1:100)
         y <- reserve_columns(x, 5)
         expect_identical(class(y), class(x))
         expect_identical(is_dibble(y), is_dibble(x))
-        expect_false(identical(rlang::obj_address(y$x), address))
+        expect_false(identical(rlang::obj_address(y$x), rlang::obj_address(x$x)))
         expect_identical(as.integer(y$x), as.integer(x$x))
         expect_false(identical(rlang::obj_address(y), rlang::obj_address(x)))
-        expect_equal(column_capacity(y), 6)
-        expect_physical_table(y)
+        expect_gte(column_capacity(y), 6)
+        expect_true(can_add_columns(y, 5))
+        gen(y, z = .data$x + 1L)
+        expect_physical_table(y, c("x", "z"))
+        expect_physical_table(x, "x")
     }
-    skip_if_not_installed("data.table")
-    x <- data.table::data.table(x = 1:100)
-    y <- reserve_columns(x, 5)
-    expect_identical(class(y), class(x))
-    expect_false(identical(rlang::obj_address(x$x), rlang::obj_address(y$x)))
-    expect_equal(column_capacity(y), 6)
-    gen(y, z = .data$x + 1L)
-    expect_physical_table(y, c("x", "z"))
-    expect_physical_table(x, "x")
 })
 
-test_that("append consumes capacity then rebinds without partial aliases", {
-    withr::local_options(dtatools.alloccol = 1L)
-    x <- dibble(x = 1:2)
-    old <- x
+test_that("capacity exhaustion fails before writes and assigned repair isolates aliases", {
+    x <- reserve_columns(dibble(x = 1:2), 1)
+    alias <- x
     address <- rlang::obj_address(x)
     expect_silent(gen(x, y = .data$x + 1L))
     expect_identical(rlang::obj_address(x), address)
-    expect_physical_table(old, c("x", "y"))
-    expect_warning(gen(x, z = .data$x + 2L), "reallocation")
-    expect_false(identical(rlang::obj_address(x), address))
-    expect_physical_table(x, c("x", "y", "z"))
-    expect_physical_table(old, c("x", "y"))
-    newer <- x
-    expect_silent(gen(x, w = .data$x + 3L))
-    expect_physical_table(newer, c("x", "y", "z", "w"))
-})
-
-test_that("all supported mutation targets are rebound", {
-    withr::local_options(dtatools.alloccol = 0L)
-    x <- data.frame(x = 1:2)
-    expect_warning(gen(x, y = .data$x + 1), "reallocation")
-    expect_physical_table(x, c("x", "y"))
-    box <- list(data = data.frame(x = 1:2))
-    expect_warning(gen(box$data, y = .data$x + 1), "reallocation")
-    expect_physical_table(box$data, c("x", "y"))
-    box <- list(data = data.frame(x = 1:2))
-    key <- "data"
-    expect_warning(gen(box[[key]], y = .data$x + 1), "reallocation")
-    expect_physical_table(box[[key]], c("x", "y"))
-    e <- new.env()
-    e$data <- data.frame(x = 1:2)
-    expect_warning(gen(e$data, y = .data$x + 1), "reallocation")
-    expect_physical_table(e$data, c("x", "y"))
-    for (getter in c("get", "get0")) {
-        e$data <- data.frame(x = 1:2)
-        call <- substitute(gen(FUN("data", envir = e), y = .data$x + 1), list(FUN = as.name(getter)))
-        expect_warning(eval(call), "reallocation")
-        expect_physical_table(e$data, c("x", "y"))
-    }
-    x <- data.frame(x = 1:2)
-    expect_warning(gen(get("x"), y = .data$x + 1), "reallocation")
-    expect_physical_table(x, c("x", "y"))
-})
-
-test_that("function parameter rebuilding is local and returned for assignment", {
-    x <- reserve_columns(data.frame(x = 1:2), 0)
-    alias <- x
-    f <- function(data) { gen(data, y = .data$x + 1); data }
-    expect_warning(result <- f(x), "reallocation")
-    expect_physical_table(x, "x")
-    expect_physical_table(alias, "x")
-    expect_physical_table(result, c("x", "y"))
-    prepared <- reserve_columns(x, 2)
-    expect_silent(f(prepared))
-    expect_physical_table(prepared, c("x", "y"))
-})
-
-test_that("serialized dibble preparation repairs explicit mutation aliases", {
-    x <- unserialize(serialize(dibble(x = 1:3), NULL))
-    expect_equal(column_capacity(x), -1)
+    before <- serialize(x, NULL)
+    expect_error(gen(x, z = stop("RHS ran")), "Assign.*reserve_columns")
+    expect_identical(serialize(alias, NULL), before)
     x <- reserve_columns(x, 2)
-    alias <- x
-    gen(x, y = 4:6)
+    expect_false(identical(rlang::obj_address(x), address))
+    newer <- x
+    expect_silent(gen(x, z = .data$x + 2L))
+    expect_physical_table(newer, c("x", "y", "z"))
     expect_physical_table(alias, c("x", "y"))
-    expect_identical(dta_storage_type(alias$y), "long")
-    repl(x, x = 9:11)
-    expect_identical(as.integer(alias$x), 9:11)
-    expect_true(dtatools:::.reference_state_valid(x))
-    expect_null(dtatools:::.reference_state(x)$object)
-    restored <- unserialize(serialize(dibble(x = 1:3), NULL))
-    expect_warning(gen(restored, y = .data$x + 1L), "reallocation")
-    expect_physical_table(restored, c("x", "y"))
 })
 
-test_that("all structural operations rebuild both kinds of legacy overlays", {
-    for (structural in c(FALSE, TRUE)) {
-        x <- legacy_column_table(structural)
-        y <- reserve_columns(x, 3)
-        expect_physical_table(y)
-        expect_identical(as.integer(y$y), c(6L, 2L, 4L))
-        operations <- list(
-            function(data) { gen(data, extra = .data$y + 1L); data },
-            function(data) { keep_vars(data, x); data },
-            function(data) { drop_vars(data, y); data },
-            function(data) { order_vars(data, x); data },
-            function(data) { rename_vars(data, renamed = y); data },
-            function(data) { reorder_dta_rows(data, c(2L, 3L, 1L)); data },
-            function(data) { gen(data, extra = .data$y + 1L, bysort = x); data },
-            function(data) { data[, extra := .data$y + 1L]; data }
-        )
-        for (op in operations) {
-            x <- legacy_column_table(structural)
-            expect_warning(y <- op(x), "reallocation")
-            expect_physical_table(y)
-            expect_false(dtatools:::.has_column_overlay(y))
+test_that("capacity contract is identical for all target expressions", {
+    for (prepared in c(FALSE, TRUE)) {
+        make <- function() {
+            x <- data.frame(x = 1:2)
+            if (prepared) reserve_columns(x, 1) else x
         }
-        for (replace in list(
-            function(data) { data$extra <- 1:3; data },
-            function(data) { data[["extra"]] <- 1:3; data },
-            function(data) { data["extra"] <- list(1:3); data }
-        )) {
+        run <- function(call, target) {
+            alias <- target
+            before <- serialize(alias, NULL)
+            if (prepared) {
+                expect_silent(eval(call, parent.frame()))
+                expect_physical_table(alias, c("x", "y"))
+            } else {
+                expect_error(eval(call, parent.frame()), "Assign.*reserve_columns")
+                expect_identical(serialize(alias, NULL), before)
+            }
+        }
+        x <- make(); run(quote(gen(x, y = .data$x + 1)), x)
+        box <- list(data = make()); run(quote(gen(box$data, y = 1)), box$data)
+        key <- "data"
+        box <- list(data = make()); run(quote(gen(box[[key]], y = 1)), box$data)
+        e <- new.env(); e$data <- make(); run(quote(gen(e$data, y = 1)), e$data)
+        for (getter in c("get", "get0")) {
+            e$data <- make()
+            run(substitute(gen(FUN("data", envir = e), y = 1),
+                           list(FUN = as.name(getter))), e$data)
+        }
+        x <- make(); run(quote(gen(get("x"), y = 1)), x)
+        x <- make(); f <- function(data) { gen(data, y = 1); invisible(NULL) }
+        run(quote(f(x)), x)
+        x <- make(); computed <- function() x
+        run(quote(gen(computed(), y = 1)), x)
+    }
+})
+
+test_that("getters run once and RHS target changes cannot redirect writes", {
+    for (getter in c("get", "get0")) {
+        a <- reserve_columns(data.frame(x = 1:2), 1)
+        b <- data.frame(z = 3:4)
+        calls <- 0L
+        name <- function() { calls <<- calls + 1L; c("a", "b")[[calls]] }
+        call <- substitute(gen(FUN(name()), y = 1), list(FUN = as.name(getter)))
+        expect_silent(eval(call))
+        expect_identical(calls, 1L)
+        expect_physical_table(a, c("x", "y"))
+        expect_physical_table(b, "z")
+    }
+    box <- list(a = reserve_columns(data.frame(x = 1:2), 1), b = data.frame(z = 3:4))
+    index <- "a"
+    values <- function() { index <<- "b"; 1L }
+    expect_silent(gen(box[[index]], y = values()))
+    expect_physical_table(box$a, c("x", "y"))
+    expect_physical_table(box$b, "z")
+    expect_identical(index, "b")
+    for (replacement in list(42L, list(data = data.frame(z = 3:4)))) {
+        box <- list(data = reserve_columns(data.frame(x = 1:2), 1))
+        original <- box$data
+        values <- function() { box <<- replacement; 1L }
+        result <- gen(box$data, y = values())
+        expect_identical(box, replacement)
+        expect_identical(rlang::obj_address(result), rlang::obj_address(original))
+        expect_physical_table(original, c("x", "y"))
+    }
+})
+
+test_that("growth rejects row selection and sorting before they run", {
+    for (make in list(data.frame, tibble::tibble, dibble)) {
+        for (operation in c("gen", "egen")) {
+            x <- reserve_columns(make(id = c(2L, 1L), x = 3:4), 0)
+            alias <- x
+            before <- serialize(x, NULL)
+            effects <- 0L
+            rhs <- function() { effects <<- effects + 1L; 1 }
+            call <- substitute(FUN(x, y = rhs(), where = { effects <<- effects + 1L; TRUE }, bysort = id),
+                               list(FUN = as.name(operation)))
+            expect_error(eval(call), "Assign.*reserve_columns")
+            expect_identical(effects, 0L)
+            expect_identical(serialize(alias, NULL), before)
+        }
+        for (operation in c("keep_vars", "drop_vars")) {
+            x <- unserialize(serialize(make(id = 1:2, x = 3:4), NULL))
+            alias <- x
+            before <- serialize(x, NULL)
+            effects <- 0L
+            selection <- function() { effects <<- effects + 1L; "id" }
+            call <- substitute(FUN(x, tidyselect::all_of(selection())), list(FUN = as.name(operation)))
+            expect_error(eval(call), "Assign.*reserve_columns")
+            expect_identical(effects, 1L)
+            expect_error(do.call(operation, list(x, quote(absent))), "does not exist")
+            expect_error(do.call(operation, list(x, quote(tidyselect::all_of(character())))), "at least one")
+            expect_identical(serialize(alias, NULL), before)
+        }
+    }
+})
+
+test_that("multi-assignment preflights all new names before its first write", {
+    x <- reserve_columns(dibble(id = c(2L, 1L), x = 3:4), 1)
+    alias <- x
+    before <- serialize(x, NULL)
+    expect_error(x[stop("selection ran"), `:=`(x = 0, y = 1, z = 2), bysort = id],
+                 "Assign.*reserve_columns")
+    expect_identical(serialize(alias, NULL), before)
+    expect_error(x[, c("y", "y") := list(stop("RHS ran"), 1L)], "names each column once")
+    expect_identical(serialize(alias, NULL), before)
+    expect_silent(x[, `:=`(x = .data$x + 1L, y = .data$x + 1L)])
+    expect_identical(as.integer(alias$y), 5:6)
+    expect_physical_table(alias, c("id", "x", "y"))
+    expect_error(x[, `:=`(y = 0L, x = stop("later RHS"))], "later RHS")
+    expect_identical(as.integer(alias$y), c(0L, 0L))
+    a <- reserve_columns(dibble(x = 1:2), 1)
+    calls <- 0L
+    name <- function() { calls <<- calls + 1L; "a" }
+    expect_silent(get(name())[, y := 1])
+    expect_identical(calls, 1L)
+    expect_physical_table(a, c("x", "y"))
+})
+
+test_that("same-size writes need no spare capacity but shrinking needs preparation", {
+    for (make in list(data.frame, tibble::tibble, dibble)) {
+        x <- unserialize(serialize(make(x = 1:3, y = 4:6), NULL))
+        expect_identical(column_capacity(x), NA_real_)
+        alias <- x
+        expect_silent(repl(x, x = 0L))
+        expect_silent(set_var_format(x, x, "%9.0g"))
+        expect_silent(rename_vars(x, renamed = x))
+        expect_silent(order_vars(x, y))
+        expect_silent(reorder_dta_rows(x, 3:1))
+        expect_physical_table(alias, c("y", "renamed"))
+        expect_identical(as.integer(alias$y), 6:4)
+        expect_error(drop_vars(x, y), "Assign.*reserve_columns")
+        x <- reserve_columns(x, 0)
+        newer <- x
+        expect_silent(drop_vars(x, y))
+        expect_physical_table(newer, "renamed")
+        expect_physical_table(alias, c("y", "renamed"))
+    }
+})
+
+test_that("copying, subsetting, and serialization have assigned preparation paths", {
+    for (make in list(data.frame, tibble::tibble, dibble)) {
+        original <- reserve_columns(make(x = 1:3, y = 4:6), 2)
+        copied <- copy_data(original)
+        expect_true(can_add_columns(copied))
+        expect_identical(class(copied), class(original))
+        for (copy in list(function(x) { attr(x, "notes") <- "note"; x },
+                         function(x) x[1:2, ], function(x) x["x"],
+                         function(x) unserialize(serialize(x, NULL)),
+                         function(x) { path <- tempfile(); on.exit(unlink(path)); saveRDS(x, path); readRDS(path) })) {
+            x <- copy(original)
+            before <- serialize(original, NULL)
+            prepared <- reserve_columns(x, 1)
+            alias <- prepared
+            expect_true(can_add_columns(prepared))
+            expect_identical(class(prepared), class(x))
+            expect_silent(gen(prepared, z = 1))
+            expect_physical_table(alias, c(names(x), "z"))
+            expect_identical(serialize(original, NULL), before)
+        }
+    }
+    original <- dibble(x = 1:3)
+    copied <- original; attr(copied, "notes") <- "copy"
+    pair <- unserialize(serialize(list(original, copied), NULL))
+    before <- serialize(pair, NULL)
+    fixed <- reserve_columns(pair[[2L]], 1)
+    gen(fixed, z = 1)
+    repl(fixed, x = 0L)
+    expect_true(dtatools:::.reference_state_valid(fixed))
+    expect_null(dtatools:::.reference_state(fixed)$object)
+    expect_identical(serialize(pair, NULL), before)
+})
+
+test_that("legacy overlays require assigned preparation even for no-op helpers", {
+    for (structural in c(FALSE, TRUE)) {
+        for (op in list(function(x) gen(x, extra = .data$y + 1L),
+                        function(x) keep_vars(x, tidyselect::all_of(names(x))),
+                        function(x) drop_vars(x, y), function(x) order_vars(x, x),
+                        function(x) rename_vars(x, .names = names(x)),
+                        function(x) rename_vars(x, y = y),
+                        function(x) reorder_dta_rows(x, c(2L, 3L, 1L)),
+                        function(x) gen(x, extra = .data$y + 1L, bysort = x),
+                        function(x) x[, extra := .data$y + 1L])) {
+            x <- legacy_column_table(structural)
+            before <- serialize(x, NULL)
+            expect_false(can_add_columns(x, 0))
+            expect_error(op(x), "Assign.*reserve_columns")
+            expect_identical(serialize(x, NULL), before)
+            x <- reserve_columns(x, 3)
+            expect_silent(op(x))
+            expect_physical_table(x)
+            expect_false(dtatools:::.has_column_overlay(x))
+        }
+        for (replace in list(function(x) { x$extra <- 1:3; x },
+                             function(x) { x[["extra"]] <- 1:3; x },
+                             function(x) { x["extra"] <- list(1:3); x })) {
             x <- legacy_column_table(structural)
             before <- serialize(x, NULL)
             expect_silent(y <- replace(x))
@@ -170,17 +292,27 @@ test_that("all structural operations rebuild both kinds of legacy overlays", {
             expect_identical(as.integer(y$extra), 1:3)
             expect_identical(serialize(x, NULL), before)
         }
-        x <- legacy_column_table(structural)
-        expect_warning(reorder_dta_rows(x, c(2L, 3L, 1L)), "reallocation")
-        expect_identical(as.integer(x$x), 1:3)
-        expect_identical(as.integer(x$y), c(2L, 4L, 6L))
     }
 })
 
-test_that("direct consumers retain columns and rows after reallocation", {
-    withr::local_options(dtatools.alloccol = 0L)
-    x <- dibble(x = c(3L, 1L, 2L))
-    expect_warning(gen(x, y = .data$x * 2L), "reallocation")
+test_that("zero-column tables can reserve and consume their first slot", {
+    for (make in list(data.frame, tibble::tibble, dibble)) {
+        x <- reserve_columns(make(), 0)
+        expect_identical(column_capacity(x), NA_real_)
+        expect_true(can_add_columns(x, 0))
+        expect_false(can_add_columns(x))
+        expect_error(gen(x, y = integer()), "Assign.*reserve_columns")
+        x <- reserve_columns(x, 1)
+        alias <- x
+        expect_silent(gen(x, y = integer()))
+        expect_physical_table(alias, "y")
+        expect_equal(nrow(alias), 0)
+    }
+})
+
+test_that("prepared physical columns remain visible to direct consumers", {
+    x <- reserve_columns(dibble(x = c(3L, 1L, 2L)), 1)
+    gen(x, y = .data$x * 2L)
     reorder_dta_rows(x, c(2L, 3L, 1L))
     expect_physical_table(x, c("x", "y"))
     expect_identical(names(dplyr::bind_rows(x, x)), c("x", "y"))
@@ -199,160 +331,176 @@ test_that("direct consumers retain columns and rows after reallocation", {
     expect_identical(csv$y, c(2L, 4L, 6L))
 })
 
-test_that("validation and warning interruptions leave the old object complete", {
-    withr::local_options(dtatools.alloccol = 0L)
-    x <- dibble(x = 1:3)
-    alias <- x
-    before <- serialize(x, NULL)
-    expect_error(gen(x, y = stop("bad values")), "bad values")
-    expect_identical(serialize(x, NULL), before)
-    expect_error(withCallingHandlers(gen(x, y = .data$x + 1), warning = function(w) stop("interrupted")), "interrupted")
-    expect_identical(serialize(alias, NULL), before)
-    expect_physical_table(x, "x")
-    expect_error(keep_vars(x, missing), "not found|Unknown|exist")
+test_that("data.table readiness requires valid self-reference and preserves lookups on failure", {
+    .datatable.aware <- TRUE
+    skip_if_not_installed("data.table")
+    for (damage in list(function(x) unserialize(serialize(x, NULL)),
+                         function(x) { data.table::setattr(x, ".internal.selfref", NULL); x })) {
+        x <- reserve_columns(data.table::data.table(id = c(2L, 1L), value = 3:4), 2)
+        data.table::setkeyv(x, "id")
+        data.table::setindexv(x, "value")
+        x <- damage(x)
+        alias <- x
+        before <- serialize(x, NULL)
+        expect_identical(column_capacity(x), NA_real_)
+        expect_false(can_add_columns(x))
+        expect_error(gen(x, extra = stop("RHS ran"), bysort = value), "Assign.*reserve_columns")
+        expect_error(drop_vars(x, value), "Assign.*reserve_columns")
+        expect_identical(serialize(alias, NULL), before)
+        expect_identical(data.table::key(alias), "id")
+        expect_identical(data.table::indices(alias), "value")
+        expect_identical(alias[data.table::data.table(id = 1L), on = "id"]$value, 4L)
+        x <- reserve_columns(x, 1)
+        expect_true(can_add_columns(x))
+        newer <- x
+        gen(x, extra = 1L)
+        expect_physical_table(newer, c("id", "value", "extra"))
+        expect_physical_table(alias, c("id", "value"))
+        expect_identical(x[data.table::data.table(value = 3L), on = "value"]$id, 2L)
+    }
+    empty <- reserve_columns(data.table::data.table(), 1)
+    expect_true(can_add_columns(empty))
+    alias <- empty
+    gen(empty, x = integer())
     expect_physical_table(alias, "x")
+    copied <- copy_data(data.table::data.table(x = 1:2))
+    expect_true(can_add_columns(copied))
 })
 
-test_that("replacement and bracket growth rebind at capacity boundaries", {
-    withr::local_options(dtatools.alloccol = 0L)
-    for (op in list(
-        function(data) { data$y <- 4:6; data },
-        function(data) { data[["y"]] <- 4:6; data },
-        function(data) { data["y"] <- list(4:6); data }
-    )) {
-        x <- dibble(x = 1:3)
-        expect_silent(y <- op(x))
-        expect_physical_table(x, "x")
-        expect_physical_table(y, c("x", "y"))
-        expect_true(is_dibble(y))
-        expect_identical(dta_storage_type(y$y), "long")
+test_that("assigned repair preserves identical column slots without sharing another table", {
+    for (make in list(data.frame, tibble::tibble, dibble)) {
+        x <- make(a = dta_long(1:3))
+        x[["b"]] <- x[["a"]]
+        # Explicitly install the same vector in both slots, independent of
+        # whether the container's ordinary replacement duplicates it.
+        .Call(dtatools:::C_dtatools_set_data_column, x, 2L, x[["a"]])
+        y <- reserve_columns(x, 1)
+        expect_identical(rlang::obj_address(y$a), rlang::obj_address(y$b))
+        alias <- y
+        repl(y, a = 0L)
+        expect_identical(as.integer(alias$b), rep(0L, 3))
+        expect_identical(as.integer(x$a), 1:3)
+        expect_identical(as.integer(x$b), 1:3)
     }
 })
 
-test_that("no-op selections still rebuild legacy overlays", {
-    for (structural in c(FALSE, TRUE)) {
-        for (op in list(
-            function(data) { keep_vars(data, tidyselect::all_of(names(data))); data },
-            function(data) { order_vars(data, tidyselect::all_of(names(data))); data },
-            function(data) { rename_vars(data, .names = names(data)); data },
-            function(data) { rename_vars(data, y = y); data }
-        )) {
-            x <- legacy_column_table(structural)
-            expect_warning(y <- op(x), "reallocation")
-            expect_physical_table(y)
+test_that("data.table structural commits isolate names shared by ordinary copies", {
+    .datatable.aware <- TRUE
+    skip_if_not_installed("data.table")
+    operations <- list(function(x) gen(x, z = 1L),
+                       function(x) egen(x, z = dta_mean(y)),
+                       function(x) rename_vars(x, renamed = x),
+                       function(x) order_vars(x, y),
+                       function(x) keep_vars(x, y),
+                       function(x) drop_vars(x, y))
+    for (operation in operations) {
+        for (direction in c("original", "copy")) {
+            original <- reserve_columns(data.table::data.table(x = 1:3, y = 4:6), 2)
+            data.table::setkeyv(original, "x")
+            data.table::setindexv(original, "y")
+            copy <- original
+            attr(copy, "note") <- "copy"
+            target <- if (direction == "original") original else copy
+            other <- if (direction == "original") copy else original
+            original_names <- names(other)
+            alias <- target
+            before <- serialize(other, NULL)
+            if (direction == "copy") {
+                expect_error(operation(target), "Assign.*reserve_columns")
+                expect_identical(serialize(other, NULL), before)
+                target <- reserve_columns(target, 2)
+                alias <- target
+            }
+            expect_silent(operation(target))
+            expect_identical(rlang::obj_address(alias), rlang::obj_address(target))
+            expect_physical_table(target)
+            expect_physical_table(other, c("x", "y"))
+            expect_identical(original_names, c("x", "y"))
+            expect_identical(serialize(other, NULL), before)
+            expect_identical(other[data.table::data.table(x = 2L), on = "x"]$y, 5L)
+            gc()
+            expect_silent(data.table::set(target, j = "later", value = rep(9L, 3)))
+            expect_identical(alias$later, rep(9L, 3))
+            expect_physical_table(other, c("x", "y"))
+            data.table::setnames(target, "later", "last")
+            expect_identical(alias$last, rep(9L, 3))
         }
     }
 })
 
-test_that("get and get0 destinations are evaluated only once", {
-    withr::local_options(dtatools.alloccol = 0L)
-    for (getter in c("get", "get0")) {
-        a <- data.frame(x = 1:2)
-        b <- data.frame(z = 3:4)
-        calls <- 0L
-        name <- function() { calls <<- calls + 1L; c("a", "b")[[calls]] }
-        call <- substitute(gen(FUN(name()), y = .data$x + 1L), list(FUN = as.name(getter)))
-        expect_warning(eval(call), "reallocation")
-        expect_identical(calls, 1L)
-        expect_physical_table(a, c("x", "y"))
-        expect_physical_table(b, "z")
-        e1 <- new.env(); e2 <- new.env()
-        e1$a <- data.frame(x = 1:2); e2$a <- data.frame(z = 3:4)
-        calls <- 0L
-        environment <- function() { calls <<- calls + 1L; if (calls == 1L) e1 else e2 }
-        call <- substitute(gen(FUN("a", envir = environment()), y = .data$x + 1L), list(FUN = as.name(getter)))
-        expect_warning(eval(call), "reallocation")
-        expect_identical(calls, 1L)
-        expect_physical_table(e1$a, c("x", "y"))
-        expect_physical_table(e2$a, "z")
+test_that("rename preflight runs before a computed names selection", {
+    skip_if_not_installed("data.table")
+    targets <- list(unserialize(serialize(data.table::data.table(x = 1:3), NULL)),
+                    legacy_column_table())
+    for (target in targets) {
+        before <- serialize(target, NULL)
+        expect_error(rename_vars(target, .names = stop("selection ran")),
+                     "Assign.*reserve_columns")
+        expect_identical(serialize(target, NULL), before)
     }
+    data <- data.frame(x = 1:3)
+    expect_silent(rename_vars(data, .names = toupper(names(data))))
+    expect_identical(names(data), "X")
 })
 
-test_that("captured extraction indices do not change when values run", {
-    withr::local_options(dtatools.alloccol = 0L)
-    box <- list(a = data.frame(x = 1:2), b = data.frame(z = 3:4))
-    index <- "a"
-    values <- function() { index <<- "b"; 1L }
-    expect_warning(gen(box[[index]], y = values()), "reallocation")
-    expect_physical_table(box$a, c("x", "y"))
-    expect_physical_table(box$b, "z")
-    expect_identical(index, "b")
-})
-
-test_that("a changed getter destination is never overwritten", {
-    withr::local_options(dtatools.alloccol = 0L)
-    a <- data.frame(x = 1:2)
-    values <- function() { a <<- data.frame(z = 3:4); 1L }
-    warnings <- character()
-    result <- withCallingHandlers(gen(get("a"), y = values()), warning = function(w) {
-        warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning")
-    })
-    expect_true(any(grepl("target changed", warnings)))
-    expect_physical_table(a, "z")
-    expect_physical_table(result, c("x", "y"))
-})
-
-test_that("bracket dispatch does not reevaluate computed getters", {
-    withr::local_options(dtatools.alloccol = 0L)
-    a <- dibble(x = 1:2)
-    b <- dibble(z = 3:4)
-    calls <- 0L
-    name <- function() { calls <<- calls + 1L; c("a", "b")[[calls]] }
-    expect_warning(result <- get(name())[, y := 1L], "reallocation")
-    expect_identical(calls, 1L)
-    expect_physical_table(a, "x")
-    expect_physical_table(b, "z")
-    expect_physical_table(result, c("x", "y"))
-})
-
-test_that("literal bracket getters rebind without rerunning their lookup", {
-    withr::local_options(dtatools.alloccol = 0L)
-    for (getter in c("get", "get0")) {
-        a <- dibble(x = 1:2)
-        alias <- a
-        call <- substitute(FUN("a")[, y := 1L], list(FUN = as.name(getter)))
-        expect_warning(eval(call), "reallocation")
-        expect_physical_table(a, c("x", "y"))
-        expect_physical_table(alias, "x")
-        e <- new.env(); e$a <- dibble(x = 1:2)
-        call <- substitute(FUN("a", envir = e)[, y := 1L], list(FUN = as.name(getter)))
-        expect_warning(eval(call), "reallocation")
-        expect_physical_table(e$a, c("x", "y"))
-    }
-})
-
-test_that("replaced extraction containers are never read or overwritten", {
-    withr::local_options(dtatools.alloccol = 0L)
-    for (extraction in c("$", "[[")) {
-        for (replacement in list(42L, list(data = data.frame(z = 3:4)))) {
-            box <- list(data = data.frame(x = 1:2))
-            original <- box$data
-            values <- function() { box <<- replacement; 1L }
-            target <- as.call(list(as.name(extraction), quote(box), "data"))
-            call <- substitute(gen(TARGET, y = values()), list(TARGET = target))
-            warnings <- character()
-            result <- withCallingHandlers(eval(call), warning = function(w) {
-                warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning")
-            })
-            expect_true(any(grepl("target changed", warnings)))
-            expect_identical(box, replacement)
-            expect_physical_table(original, "x")
-            expect_physical_table(result, c("x", "y"))
+test_that("unprepared keep-all is a validated no-op and invalid selectors keep their diagnostics", {
+    for (make in list(data.frame, tibble::tibble)) {
+        data <- make(a = 1L, b = 2L)
+        alias <- data
+        before <- serialize(data, NULL)
+        expect_silent(keep_vars(data, b, a))
+        expect_identical(serialize(alias, NULL), before)
+        for (operation in list(keep_vars, drop_vars)) {
+            expect_error(operation(data, absent), "does not exist")
+            expect_error(operation(data, tidyselect::all_of(character())), "at least one")
+            expect_identical(serialize(alias, NULL), before)
         }
-        # A new container holding the same original table is still a changed
-        # destination. Rebinding must not modify it behind the values' back.
-        box <- list(data = data.frame(x = 1:2))
-        original <- box$data
-        values <- function() { box <<- list(data = original, sibling = 99L); 1L }
-        target <- as.call(list(as.name(extraction), quote(box), "data"))
-        call <- substitute(gen(TARGET, y = values()), list(TARGET = target))
-        warnings <- character()
-        result <- withCallingHandlers(eval(call), warning = function(w) {
-            warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning")
-        })
-        expect_true(any(grepl("target changed", warnings)))
-        expect_physical_table(box$data, "x")
-        expect_identical(box$sibling, 99L)
-        expect_physical_table(result, c("x", "y"))
     }
+})
+
+test_that("an unsupported loaded data.table version is rejected before mutation", {
+    skip_if_not_installed("data.table", "1.18.2.1")
+    skip_if_not_installed("callr")
+    results <- callr::r(function() {
+        library(dtatools)
+        data <- data.table::data.table(x = 1:3, y = 4:6)
+        alias <- data
+        before <- serialize(data, NULL)
+        effects <- 0L
+        effect <- function(value) { effects <<- effects + 1L; value }
+        # Simulate an already-loaded unsupported version without replacing
+        # native code or touching an installed library. The real old release
+        # cannot compile on R 4.6; this tests only the version guard.
+        info <- get(".__NAMESPACE__.", envir = asNamespace("data.table"))
+        previous <- info$spec
+        on.exit(info$spec <- previous, add = TRUE)
+        info$spec[["version"]] <- "1.17.8"
+        stopifnot(as.character(getNamespaceVersion("data.table")) == "1.17.8")
+        calls <- list(
+            quote(gen(data, z = effect(1L))),
+            quote(egen(data, z = effect(1L))),
+            quote(repl(data, x = effect(1L))),
+            quote(keep_vars(data, tidyselect::all_of(effect("x")))),
+            quote(drop_vars(data, tidyselect::all_of(effect("x")))),
+            quote(order_vars(data, tidyselect::all_of(effect("x")))),
+            quote(rename_vars(data, .names = effect(c("a", "b")))),
+            quote(reorder_dta_rows(data, effect(3:1))),
+            quote(reserve_columns(data, n = effect(1L))),
+            quote(copy_data(data)),
+            quote(column_capacity(data)),
+            quote(can_add_columns(data, 0L)),
+            quote(set_var_format(data, x, "%9.0g")),
+            quote(as_dibble(data))
+        )
+        messages <- vapply(calls, function(call) {
+            tryCatch({ eval(call); "unexpected success" }, error = conditionMessage)
+        }, character(1))
+        list(messages = messages, effects = effects,
+             unchanged = identical(serialize(data, NULL), before) &&
+                         identical(serialize(alias, NULL), before))
+    }, libpath = .libPaths())
+    expect_true(all(grepl("Install or update data.table to version 1.18.2.1", results$messages,
+                          fixed = TRUE)), info = paste(results$messages, collapse = "\n"))
+    expect_identical(results$effects, 0L)
+    expect_true(results$unchanged)
 })

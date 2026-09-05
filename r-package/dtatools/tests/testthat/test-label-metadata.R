@@ -89,7 +89,7 @@ test_that("data-frame replacement syntax follows R copy semantics", {
     expect_null(var_label(alias$x))
     expect_null(val_labels(alias$x))
 
-    reference <- data.frame(x = c(0, 1))
+    reference <- reserve_columns(data.frame(x = c(0, 1)))
     gen(reference, y, x + 1)
     reference_alias <- reference
     var_label(reference) <- list(x = "X", y = "Y")
@@ -122,7 +122,7 @@ test_that("label replacement isolates metadata and later value writes", {
 })
 
 test_that("dataset-label replacement detaches reference state", {
-    data <- data.frame(x = dta_byte(1:3))
+    data <- reserve_columns(data.frame(x = dta_byte(1:3)))
     gen(data, y, x + 1)
     alias <- data
 
@@ -873,7 +873,7 @@ test_that("set_var_label requires one unquoted existing column", {
 })
 
 test_that("set_var_label labels a generated reference column", {
-    data <- data.frame(a = 1:3)
+    data <- reserve_columns(data.frame(a = 1:3))
     gen(data, doubled, a * 2)
 
     set_var_label(data, doubled, "Doubled")

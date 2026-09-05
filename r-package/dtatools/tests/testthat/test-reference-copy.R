@@ -119,7 +119,9 @@ test_that("legacy generated columns can be explicitly replaced after preparation
     data <- dibble(x = 1:3)
     dtatools:::.append_generated_column(dtatools:::.reference_state(data),
                                       "y", dta_long(4:6))
-    expect_warning(repl(data, y = 7L), "reallocation")
+    expect_error(repl(data, y = 7L), "Assign.*reserve_columns")
+    data <- reserve_columns(data)
+    expect_silent(repl(data, y = 7L))
     expect_identical(as.integer(data$y), rep(7L, 3))
     expect_identical(length(unclass(data)), 2L)
 })

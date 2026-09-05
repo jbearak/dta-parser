@@ -7,26 +7,30 @@
 #' columns stored outside their physical list are rebuilt into one complete
 #' list, and serialized dibbles get fresh current-object bookkeeping.
 #'
-#' Constructors and readers reserve 5,000 spare slots by default. Set
-#' `options(dtatools.alloccol = 5000L)` to change this default. Structural
-#' operations keep the outer object while capacity remains. When preparation
-#' or reallocation is needed, they warn, rebuild an isolated table, and rebind
-#' the mutation target. Other aliases retain the old complete table.
+#' Constructors, readers, and [copy_data()] reserve 5,000 spare slots by
+#' default. Set `options(dtatools.alloccol = 5000L)` to change this default.
+#' Explicit helpers preserve the supplied outer object. If it cannot hold
+#' the requested column count, they stop before evaluating values or sorting
+#' rows. Assign preparation before calling a function that adds or drops
+#' columns. The same rule applies to symbols, function parameters, extracted
+#' tables, and computed targets; helpers never rebind a caller's variable.
 #'
-#' Automatic rebinding supports a symbol, simple `$` or `[[` extraction,
-#' and `get()` or `get0()`. Destinations are captured before values run.
-#' Bracket `:=` receives an already-evaluated table: assign its result for
-#' computed getter expressions. Otherwise assign unsupported target results
-#' yourself.
-#' Rebinding a function parameter changes only that local parameter: return
-#' and assign the rebuilt table in the caller when capacity changes.
+#' Adding columns consumes spare slots. Dropping columns also requires a
+#' resizable allocation. `keep_vars()` and `drop_vars()` validate their column
+#' selections first, then check capacity before a commit. A validated keep-all
+#' selection does not resize the table. Renaming, ordering,
+#' and overwriting existing columns and editing metadata need no spare slots.
+#' Column-name edits on a data.table also need its valid self-reference;
+#' assign preparation after copying or serialization if that check fails.
+#' Inspect [column_capacity()] and [can_add_columns()] before growth.
 #'
 #' Base R serialization discards spare capacity. After `readRDS()` or
 #' `unserialize()`, assign `data <- reserve_columns(data)` before relying on
 #' explicit structural mutation through aliases. `read_dta()` and `read_arrow()` return
 #' prepared tables.
 #'
-#' @param data A dibble, tibble, base data frame, or data table.
+#' @param data A dibble, tibble, base data frame, or data table. data.table
+#'   support requires data.table 1.18.2.1 or newer.
 #' @param n A finite, nonnegative whole number of spare column-pointer slots.
 #' @return A rebuilt table with the same container and `n` spare slots.
 #' @export
@@ -71,107 +75,92 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
         (isTRUE(state$physical_overlay) || state$generated_count > 0L)
 }
 
-.prepare_column_operation <- function(data, columns) {
-    if (!.has_column_overlay(data) && isTRUE(.Call(
+.prepare_column_operation <- function(data, columns, names_change = TRUE) {
+    if (.ordinary_data_table(data)) .require_data_table()
+    if (!.has_column_overlay(data) &&
+        (!(names_change && .ordinary_data_table(data)) || .data_table_reference_ready(data)) &&
+        (columns == length(data) || .column_resize_ready(data)) && isTRUE(.Call(
         C_dtatools_can_select_data_columns, data, as.double(columns)
-    ))) return(data)
-    spare <- .validate_alloccol(getOption("dtatools.alloccol", 5000L), columns)
-    warning(
-        "Column reallocation may separate the mutation target from aliases; assign the returned table when used through a function parameter or unsupported target.",
-        call. = FALSE
-    )
-    reserve_columns(data, n = max(0, columns - length(data)) + spare)
-}
-
-# Capture extraction/get destinations before values run. In particular, never
-# reevaluate a get() name or environment expression while rebinding.
-.capture_mutation_binding <- function(target, env, value) {
-    if (!is.call(target) || !is.symbol(target[[1L]])) return(NULL)
-    head <- as.character(target[[1L]])
-    if (head %in% c("$", "[[") && length(target) == 3L &&
-        is.symbol(target[[2L]]) &&
-        (is.symbol(target[[3L]]) || is.atomic(target[[3L]]))) {
-        container <- eval(target[[2L]], env)
-        key <- if (head == "$") as.character(target[[3L]]) else eval(target[[3L]], env)
-        if (missing(value)) {
-            value <- if (head == "$") do.call(`$`, list(container, key)) else container[[key]]
-        }
-        return(list(kind = "extraction", data = value, container = target[[2L]],
-                    original_container = container, key = key, head = head, env = env))
-    }
-    if (!head %in% c("get", "get0")) return(NULL)
-    fun <- get(head, envir = env, mode = "function")
-    if (!identical(fun, get(head, envir = baseenv()))) return(NULL)
-    call <- match.call(fun, target)
-    args <- lapply(as.list(call)[-1L], eval, envir = env)
-    where <- args$envir
-    if (is.null(where)) {
-        pos <- args$pos
-        where <- if (is.null(pos) || identical(pos, -1L) || identical(pos, -1)) {
-            env
-        } else as.environment(pos)
-    }
-    args$envir <- where
-    args$pos <- NULL
-    if (missing(value)) value <- do.call(fun, args, envir = env)
-    inherits <- if (is.null(args$inherits)) TRUE else args$inherits
-    mode <- if (is.null(args$mode)) "any" else args$mode
-    if (isTRUE(inherits)) {
-        while (!identical(where, emptyenv()) &&
-               !exists(args$x, envir = where, mode = mode, inherits = FALSE)) {
-            where <- parent.env(where)
-        }
-    }
-    list(kind = "get", data = value, name = args$x, env = where)
+    ))) return(invisible(data))
+    extra <- max(0, columns - length(data))
+    stop(sprintf(
+        paste0("The supplied table needs column preparation for this operation. ",
+               "Assign `data <- reserve_columns(data, n = %s)` before calling ",
+               "this helper or passing the table to a function; `n` is the ",
+               "number of extra columns to allow."),
+        format(extra, scientific = FALSE, trim = TRUE)
+    ), call. = FALSE)
 }
 
 .same_mutation_object <- function(x, y) {
     identical(rlang::obj_address(x), rlang::obj_address(y))
 }
 
-.return_mutation <- function(before, result, target, env) {
-    .rebind_mutation(before, result, target, env)
-    invisible(result)
+#' Inspect physical column capacity
+#'
+#' `column_capacity()` reports the total number of columns the supplied table
+#' can hold in its current resizable allocation. It returns `NA_real_` when
+#' that allocation is absent, including after base R serialization. For a
+#' data.table both its list and its names must have resizable capacity and
+#' its self-reference must be valid. A zero-column table reserved with
+#' `n = 0` has no resizable allocation and also reports `NA_real_`.
+#'
+#' `can_add_columns(data, n)` reports whether an explicit helper can append
+#' `n` columns without rebuilding the supplied table. A prepared table with
+#' zero spare slots accepts `n = 0` but rejects `n = 1`. An ordinary unprepared
+#' table also accepts `n = 0`, because no additions are requested. This does
+#' not promise readiness for every structural helper: column-name edits on
+#' a data.table also need its valid self-reference. Nor does it promise that
+#' columns can be dropped. Shrinking requires a resizable allocation too. Legacy tables
+#' with columns outside their physical list always return `FALSE`.
+#'
+#' These queries do not repair a table, test its dibble type, or validate its
+#' dibble reference-ownership bookkeeping. A copied or serialized dibble can retain
+#' its type while losing capacity. Assign [reserve_columns()] before passing
+#' such a table to a function that adds or drops columns. Readers, [dibble()],
+#' and [copy_data()] return prepared tables. [as_dibble()] prepares conversions
+#' from other containers; an input that is already a dibble is returned as is.
+#'
+#' @param data A dibble, tibble, base data frame, or data table. data.table
+#'   support requires data.table 1.18.2.1 or newer.
+#' @param n A finite, nonnegative whole number of additional columns.
+#' @return `column_capacity()` returns one double, the total usable column
+#'   capacity or `NA_real_` for an unprepared allocation. Subtract `ncol(data)`
+#'   for spare slots. `can_add_columns()` returns one logical value.
+#' @export
+#' @examples
+#' data <- reserve_columns(data.frame(x = 1:3), n = 2)
+#' column_capacity(data) # three total slots
+#' can_add_columns(data, 2) # TRUE
+#' gen(data, y = x + 1)
+#' can_add_columns(data, 2) # FALSE
+column_capacity <- function(data) {
+    .reject_data_table_subclass(data)
+    .as_mutation_data(data, allow_grouped = TRUE)
+    capacity <- .Call(C_dtatools_column_capacity, data)
+    if (capacity < 0 || !.column_resize_ready(data)) NA_real_ else capacity
 }
 
-# Return the captured destination with its expected container advanced only
-# after a successful rebind. Bracket assignments reuse it for their next commit.
-.rebind_mutation <- function(before, result, target, env) {
-    if (.same_mutation_object(before, result)) return(target)
-    if (is.symbol(target)) {
-        current <- get0(as.character(target), envir = env, inherits = TRUE)
-        if (.same_mutation_object(current, before)) {
-            assign(as.character(target), result, envir = env)
-        } else {
-            warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
-        }
-    } else if (is.list(target) && identical(target$kind, "get")) {
-        current <- get0(target$name, envir = target$env, inherits = FALSE)
-        if (.same_mutation_object(current, before)) {
-            assign(target$name, result, envir = target$env)
-        } else {
-            warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
-        }
-    } else if (is.list(target) && identical(target$kind, "extraction")) {
-        container <- get0(as.character(target$container), envir = target$env,
-                          inherits = TRUE)
-        if (!.same_mutation_object(container, target$original_container)) {
-            warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
-            return(target)
-        }
-        current <- if (target$head == "$") {
-            do.call(`$`, list(container, target$key))
-        } else container[[target$key]]
-        if (.same_mutation_object(current, before)) {
-            destination <- as.call(list(as.name(target$head), target$container, target$key))
-            eval(as.call(list(quote(`<-`), destination, result)), envir = target$env)
-            target$original_container <- get0(
-                as.character(target$container), envir = target$env,
-                inherits = TRUE
-            )
-        } else {
-            warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
-        }
+#' @rdname column_capacity
+#' @export
+can_add_columns <- function(data, n = 1L) {
+    .reject_data_table_subclass(data)
+    .as_mutation_data(data, allow_grouped = TRUE)
+    n <- .validate_alloccol(n, length(data))
+    !.has_column_overlay(data) && (n == 0 || .column_resize_ready(data)) && isTRUE(.Call(
+        C_dtatools_can_select_data_columns, data, length(data) + n
+    ))
+}
+
+.column_resize_ready <- function(data) {
+    if (.ordinary_data_table(data)) {
+        # A staged data.table column commit requires matching table and names
+        # identities, even when the physical list still has spare slots.
+        if (!.data_table_reference_ready(data)) return(FALSE)
     }
-    target
+    .Call(C_dtatools_column_capacity, data) >= 0
+}
+
+.data_table_reference_ready <- function(data) {
+    isTRUE(.Call(C_dtatools_data_table_reference_valid, data))
 }

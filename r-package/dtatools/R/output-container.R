@@ -38,13 +38,7 @@
         identical(output, "dibble")) {
         output <- "tibble"
     }
-    if (identical(output, "data.table") &&
-        !requireNamespace("data.table", quietly = TRUE)) {
-        stop(
-            "Install the data.table package to request data.table output",
-            call. = FALSE
-        )
-    }
+    if (identical(output, "data.table")) .require_data_table()
     output
 }
 
@@ -106,6 +100,15 @@
     )
 }
 
+.require_data_table <- function() {
+    if (!requireNamespace("data.table", quietly = TRUE,
+                          versionCheck = list(op = ">=", version = "1.18.2.1"))) {
+        stop("Install or update data.table to version 1.18.2.1 or newer for dtatools data.table support",
+             call. = FALSE)
+    }
+    invisible(NULL)
+}
+
 .reject_data_table_subclass <- function(data, argument = "data") {
     if (.data_table_container(data) && !.ordinary_data_table(data)) {
         stop(
@@ -116,10 +119,12 @@
             call. = FALSE
         )
     }
+    if (.ordinary_data_table(data)) .require_data_table()
     invisible(NULL)
 }
 
 .repair_data_table_container <- function(data) {
+    if (inherits(data, "data.table")) .require_data_table()
     if (inherits(data, "data.table") &&
         inherits(data, "dtatools_dta_metadata")) {
         # A data.table must never carry the frame marker: its `[` method

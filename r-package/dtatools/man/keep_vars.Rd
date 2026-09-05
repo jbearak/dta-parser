@@ -22,8 +22,8 @@ drop_vars(data, ...)
 \code{keep_vars()} retains selected columns and \code{drop_vars()} removes selected
 columns. Both functions mutate the supplied data frame or tibble by
 reference and return it invisibly. Other bindings to the same dataset see
-the structural change while capacity remains. Preparation may separate
-aliases; see \code{\link[=reserve_columns]{reserve_columns()}}. Use \code{copy_data()} for isolation.
+the structural change. Assign \code{\link[=reserve_columns]{reserve_columns()}} before calling these
+helpers on an unprepared table. Use \code{copy_data()} for isolation.
 }
 \details{
 Selections accept bare names, \code{first:last} ranges, \code{c()}, and
@@ -36,11 +36,14 @@ to match the selection expression.
 
 Every surviving column stays physically present and keeps its vector,
 including Stata storage, tagged missing values, and labels.
-Serialized tables and legacy overlays are rebuilt when necessary.
-Reallocation warns and rebinds the supported target; see \code{\link[=reserve_columns]{reserve_columns()}}.
+Both helpers resolve and validate column selections before checking whether
+the supplied table can hold the result. Shrinking requires a resizable
+allocation; a validated keep-all selection needs no resize. Assign
+\code{\link[=reserve_columns]{reserve_columns()}} after base serialization, copying, or subsetting when
+needed. Helpers never rebuild a table or rebind a function parameter.
 }
 \examples{
-survey <- data.frame(id = 1:2, age = c(20, 30), temporary = 0)
+survey <- reserve_columns(data.frame(id = 1:2, age = c(20, 30), temporary = 0))
 gen(survey, age_next_year, age + 1)
 drop_vars(survey, temporary)
 keep_vars(survey, age_next_year, id)

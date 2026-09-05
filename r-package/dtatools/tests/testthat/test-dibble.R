@@ -37,12 +37,12 @@ test_that("is_dibble distinguishes dibbles from other reference frames", {
     expect_false(is_dibble(1:3))
     expect_false(is_dibble(NULL))
 
-    frame <- data.frame(x = 1:2)
+    frame <- reserve_columns(data.frame(x = 1:2))
     gen(frame, y = x + 1)
     expect_s3_class(frame, "dtatools_ref_data")
     expect_false(is_dibble(frame))
 
-    marked <- tibble::tibble(x = 1:2)
+    marked <- reserve_columns(tibble::tibble(x = 1:2))
     gen(marked, y = x + 1)
     expect_s3_class(marked, "dtatools_ref_data")
     expect_false(is_dibble(marked))
@@ -69,7 +69,7 @@ test_that("as_dibble converts frames, tibbles, and data tables", {
     expect_identical(class(tbl), c("tbl_df", "tbl", "data.frame"))
     expect_identical(from_tibble, as_dibble(from_tibble))
 
-    reference_frame <- data.frame(x = 1:2)
+    reference_frame <- reserve_columns(data.frame(x = 1:2))
     gen(reference_frame, y = x + 1L)
     from_reference <- as_dibble(reference_frame)
     expect_true(is_dibble(from_reference))
@@ -416,7 +416,7 @@ test_that("slice_dta_rows accepts the default read container", {
     )
     expect_identical(dta_notes(sliced), dta_notes(data))
     gen(data, flag = 1)
-    marked <- data.frame(x = 1:3)
+    marked <- reserve_columns(data.frame(x = 1:3))
     gen(marked, y = x)
     plain <- slice_dta_rows(marked, 2:3)
     expect_identical(class(plain), "data.frame")
@@ -613,7 +613,7 @@ test_that("mutate and transmute type new columns by the container mapping", {
 
     # A base frame carrying reference state is not a dibble and gets the
     # ordinary result.
-    frame <- data.frame(x = 1:2)
+    frame <- reserve_columns(data.frame(x = 1:2))
     gen(frame, y = x + 1L)
     plain <- dplyr::mutate(frame, z = 1)
     expect_identical(class(plain), "data.frame")
@@ -692,7 +692,7 @@ test_that("replacement operators type their columns and keep the dibble", {
     expect_identical(names(data)[1], "key")
     # gen() on a tibble leaves the tibble a tibble and its existing
     # columns bare; only the generated column is typed.
-    tbl <- tibble::tibble(n = 1:2, s = c("a", "b"), keep = c(TRUE, FALSE))
+    tbl <- reserve_columns(tibble::tibble(n = 1:2, s = c("a", "b"), keep = c(TRUE, FALSE)))
     alias <- tbl
     gen(tbl, y = n * 2L)
     expect_false(is_dibble(tbl))
@@ -700,7 +700,7 @@ test_that("replacement operators type their columns and keep the dibble", {
     expect_identical(alias$n, 1:2)
     expect_null(attr(alias$s, "stata.string.storage", exact = TRUE))
     expect_identical(alias$keep, c(TRUE, FALSE))
-    expect_false("y" %in% names(alias))
+    expect_true("y" %in% names(alias))
     expect_identical(dta_storage_type(tbl$y), "long")
 })
 
@@ -1036,7 +1036,7 @@ test_that("difftime arithmetic with Stata numerics works", {
 })
 
 test_that("the first gen on a tibble leaves its columns alone", {
-    tbl <- tibble::tibble(ok = 1:2, bad = c(Inf, Inf), typed = dta_byte(1:2))
+    tbl <- reserve_columns(tibble::tibble(ok = 1:2, bad = c(Inf, Inf), typed = dta_byte(1:2)))
     alias <- tbl
     gen(tbl, y = 1)
     # `bad` holds values no Stata storage can carry, and gen() never
@@ -1250,18 +1250,20 @@ test_that("generated columns reach consumers that read the column list", {
     gen(data, w = 1L)
     expect_identical(names(alias), c("x", "y", "s", "w"))
     expect_identical(as.integer(alias$w), c(1L, 1L))
-    # Past capacity, the rebound table is physically complete too.
+    # Assigned capacity repair leaves the original complete.
     withr::local_options(dtatools.alloccol = 2L)
     wide <- dibble(x = 1L)
     gen(wide, v1 = x)
     gen(wide, v2 = x)
     alias <- wide
-    expect_warning(gen(wide, v3 = x), "reallocation")
+    expect_error(gen(wide, v3 = x), "Assign.*reserve_columns")
+    wide <- reserve_columns(wide, 1)
+    expect_silent(gen(wide, v3 = x))
     expect_identical(length(unclass(wide)), 4L)
     expect_identical(names(wide), c("x", "v1", "v2", "v3"))
     expect_identical(names(alias), c("x", "v1", "v2"))
-    tbl <- tibble::tibble(a = 1:2)
-    expect_warning(gen(tbl, b = a), "reallocation")
+    tbl <- reserve_columns(tibble::tibble(a = 1:2))
+    expect_silent(gen(tbl, b = a))
     gen(tbl, c = a)
     expect_identical(names(unclass(tbl)), c("a", "b", "c"))
     expect_identical(names(dplyr::bind_rows(tbl, tbl)), c("a", "b", "c"))
@@ -1357,18 +1359,18 @@ test_that("gen on a tibble evaluates against the tibble's own columns", {
     # Stata's collation of `NA` with "" applies where a Stata dataset is.
     # A tibble is not one, so R's own semantics hold and the two are two
     # groups, exactly as on a base data frame.
-    tbl <- tibble::tibble(g = c(NA_character_, ""), v = 1:2)
+    tbl <- reserve_columns(tibble::tibble(g = c(NA_character_, ""), v = 1:2))
     gen(tbl, n = .N, by = g)
     expect_false(is_dibble(tbl))
     expect_identical(as.integer(tbl$n), c(1L, 1L))
     expect_identical(tbl$g, c(NA_character_, ""))
-    grouped <- dplyr::group_by(
+    grouped <- reserve_columns(dplyr::group_by(
         tibble::tibble(g = c(NA_character_, ""), v = 1:2), g
-    )
+    ))
     gen(grouped, n = .N)
     expect_identical(as.integer(grouped$n), c(1L, 1L))
     expect_identical(nrow(attr(grouped, "groups")), 2L)
-    flagged <- tibble::tibble(g = c(NA_character_, ""), v = 1:2)
+    flagged <- reserve_columns(tibble::tibble(g = c(NA_character_, ""), v = 1:2))
     gen(flagged, empty = g == "")
     expect_identical(flagged$empty, c(NA, TRUE))
     # `as_dibble()` is what makes it a Stata dataset; then Stata's
@@ -1380,9 +1382,9 @@ test_that("gen on a tibble evaluates against the tibble's own columns", {
     # later failure does not undo the sort. Rows stay aligned across
     # every column, and a tibble behaves here as a data frame and a
     # dibble do.
-    sorted <- tibble::tibble(
+    sorted <- reserve_columns(tibble::tibble(
         k = c(2L, 1L), flag = c(TRUE, FALSE), f = factor(c("b", "a"))
-    )
+    ))
     expect_error(gen(sorted, y = Inf, bysort = k))
     expect_false(is_dibble(sorted))
     expect_identical(names(sorted), c("k", "flag", "f"))
@@ -1390,9 +1392,9 @@ test_that("gen on a tibble evaluates against the tibble's own columns", {
     expect_identical(sorted$flag, c(FALSE, TRUE))
     expect_identical(as.character(sorted$f), c("a", "b"))
     # A failing gen leaves the tibble as it was, grouping included.
-    bad <- dplyr::group_by(
+    bad <- reserve_columns(dplyr::group_by(
         tibble::tibble(g = c(NA_character_, "b"), v = 1:2), g
-    )
+    ))
     alias <- bad
     expect_error(gen(bad, y = stop("boom")), "boom")
     expect_false(is_dibble(bad))
@@ -1659,7 +1661,7 @@ test_that("serialized legacy dibbles retain typing and closure", {
     expect_identical(dta_storage_type(restored$z), "float")
     # This checks the restored mutation target, not aliases across serialization.
 
-    ordinary <- tibble::tibble(x = 1:3)
+    ordinary <- reserve_columns(tibble::tibble(x = 1:3))
     gen(ordinary, y = 1)
     expect_identical(dtatools:::.reference_state(ordinary)$dibble, FALSE)
     expect_false(is_dibble(unserialize(serialize(ordinary, NULL))))

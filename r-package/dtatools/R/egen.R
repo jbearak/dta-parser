@@ -41,8 +41,8 @@
 #'
 #' Calculation, storage conversion, metadata, and optional row/column
 #' ordering are prepared before one column-set commit. Failed validation
-#' leaves the dataset unchanged. Capacity reallocation follows
-#' [reserve_columns()], including its warning and rebinding rules.
+#' leaves the dataset unchanged. Insufficient capacity fails before calculation
+#' or row selection. Assign [reserve_columns()] before calling `egen()`.
 #'
 #' @param data A data frame, tibble, dibble, or ordinary data table, modified
 #'   by reference under the same capacity rules as `gen()`.
@@ -72,9 +72,6 @@
 #' @export
 egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
                  rows = NULL, type = NULL, before = NULL, after = NULL) {
-    target_expr <- substitute(data)
-    binding <- .capture_mutation_binding(target_expr, parent.frame())
-    if (!is.null(binding)) data <- binding$data
     .reject_data_table_subclass(data)
     original <- .as_mutation_data(data, allow_grouped = TRUE,
                                   allow_rowwise = FALSE)
@@ -86,6 +83,7 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         function() rlang::enquos0(...)
     )
     target <- .mutation_name(arguments$variable, TRUE, original)$name
+    .prepare_column_operation(data, length(data) + 1L)
     storage <- .egen_storage(type)
     placement <- .egen_placement(rlang::enquo(before), rlang::enquo(after),
                                  names(data), target)
@@ -123,8 +121,7 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     result <- .install_column_selection(data, original, columns,
         source_names = if (is.null(group_plan$order)) names(columns) else
             rep(NA_character_, length(columns)))
-    .return_mutation(data, result,
-        if (is.null(binding)) target_expr else binding, parent.frame())
+    invisible(result)
 }
 
 .egen_storage <- function(type) {

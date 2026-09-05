@@ -71,6 +71,15 @@ reach its caller. Return and assign the result, or use explicit helpers such as
 `set_var_format(data, x, "%9.0g")`, `set_var_label()`, `set_dta_metadata()`,
 `gen()`, and `repl()` when caller mutation is intended.
 
+Prepare and assign before passing a table to a function that adds or drops
+columns: `survey <- reserve_columns(survey, n = 10L)`. Explicit helpers preserve
+the supplied table and fail before growth if its allocation is insufficient.
+`column_capacity(survey)` reports total usable slots; `can_add_columns(survey, 10L)`
+checks room for ten additions. Ordinary copies and base serialization can lose
+capacity; `copy_data()` returns a prepared independent table. Data.table
+support requires version 1.18.2.1 or newer; update an older installation before
+using that container.
+
 `dibble()` builds one like `tibble::tibble()`, `as_dibble()` converts a data
 frame, tibble, or data table (a data table is copied, since a dibble cannot
 share its self-reference), and `is_dibble()` tests for one. `as_dibble()` of a
