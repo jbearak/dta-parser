@@ -119,7 +119,8 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
 #' its type while losing capacity. Assign [reserve_columns()] before passing
 #' such a table to a function that adds or drops columns. Readers, [dibble()],
 #' and [copy_data()] return prepared tables. [as_dibble()] prepares conversions
-#' from other containers; an input that is already a dibble is returned as is.
+#' from other containers; an ordinary dibble without additional container
+#' classes is returned as is.
 #'
 #' @param data A dibble, tibble, base data frame, or data table. data.table
 #'   support requires data.table 1.18.2.1 or newer.
