@@ -39,8 +39,9 @@ Target names follow \code{\link[=set_var_label]{set_var_label()}}: a bare name, 
 For a vector, \code{set_var_format(x, "\%9.0g")},
 \code{set_var_format(x, format = "\%9.0g")}, and
 \code{set_var_formats(x, .formats = format)} return a copy that must be assigned.
-Supply exactly one format to the singular vector form; use an explicit
-\code{NULL} to remove it.
+Both vector forms require exactly one format value; use an explicit \code{NULL}
+to remove it. The plural form accepts that value in \code{...} or \code{.formats},
+never both.
 
 A format is a nonempty string beginning with \verb{\%}, with at most 56 UTF-8
 bytes. The setter records display metadata; it does not interpret Stata's

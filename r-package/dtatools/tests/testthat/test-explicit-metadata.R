@@ -86,6 +86,87 @@ test_that("singular vector formats accept positional or named values without mut
     }
 })
 
+test_that("plural vector formats require one explicitly supplied value", {
+    for (x in list(1:2, dta_float(1:2), dta_string(c("a", "b")))) {
+        x <- set_var_format(x, "%9.0g")
+        alias <- x
+        expect_error(set_var_formats(x), "Supply one vector format")
+        expect_error(set_var_formats(x, "%8.0g", .formats = NULL), "Supply one vector format")
+        expect_error(set_var_formats(x, NULL, .formats = NULL), "Supply one vector format")
+        expect_error(set_var_formats(x, .formats = "%8.0g", "%7.0g"), "Supply one vector format")
+        expect_error(set_var_formats(x, "%8.0g", "%7.0g"), "Supply one vector format")
+        expect_null(attr(set_var_formats(x, .formats = NULL), "format.stata"))
+        expect_null(attr(set_var_formats(x, NULL), "format.stata"))
+        expect_identical(set_var_formats(x, "%8.0g"), set_var_formats(x, .formats = "%8.0g"))
+        expect_identical(attr(x, "format.stata"), "%9.0g")
+        expect_identical(attr(alias, "format.stata"), "%9.0g")
+    }
+})
+
+test_that("table labels preserve container classes alongside notes and characteristics", {
+    for (make in metadata_containers()) {
+        data <- make(x = 1:2)
+        alias <- data
+        classes <- class(data)
+        set_dta_metadata(data)
+        expect_identical(class(alias), classes)
+        set_dta_metadata(data, label = "Dataset label")
+        expect_identical(dataset_label(alias), "Dataset label")
+        expect_identical(class(alias), classes)
+        expect_false(inherits(alias, "dtatools_dta_metadata"))
+        set_dta_metadata(data, label = NULL)
+        expect_null(dataset_label(alias))
+        expect_identical(class(alias), classes)
+        set_dta_metadata(data, notes = "Dataset note", stata.characteristics = c(source = "survey"))
+        marked_classes <- class(data)
+        set_dta_metadata(data, label = "Dataset label")
+        set_dta_metadata(data, label = NULL)
+        expect_identical(class(alias), marked_classes)
+        expect_identical(dta_notes(alias), c(`1` = "Dataset note"))
+        expect_identical(dta_characteristics(alias), c(source = "survey"))
+        subset <- slice_dta_rows(data, 1L)
+        expect_identical(dta_notes(subset), dta_notes(data))
+        expect_identical(dta_characteristics(subset), dta_characteristics(data))
+        set_dta_metadata(data, notes = NULL, stata.characteristics = NULL, label = "Retained label")
+        expect_identical(class(alias), classes)
+        expect_identical(dataset_label(alias), "Retained label")
+        set_dta_characteristic(data, "role", "id", "x")
+        marked_classes <- class(data)
+        set_dta_metadata(data, label = NULL)
+        expect_identical(class(alias), marked_classes)
+        expect_identical(dta_characteristics(alias, "x"), c(role = "id"))
+        drop_dta_characteristics(data, variable = "x")
+        expect_identical(class(alias), classes)
+    }
+})
+
+test_that("table metadata commits repair markers left by base attribute copies", {
+    for (make in list(dibble, tibble::tibble, data.frame)) {
+        for (updates in list(list(label = "Dataset label"), list(label = NULL), list())) {
+            original <- make(x = 1:2)
+            original_classes <- class(original)
+            set_dta_metadata(original, notes = "Kept on original",
+                             stata.characteristics = c(source = "survey"))
+            original_state <- dtatools:::.reference_state(original)
+            copied <- original
+            attr(copied, "notes") <- NULL
+            attr(copied, "stata.note.numbers") <- NULL
+            attr(copied, "stata.characteristics") <- NULL
+            alias <- copied
+            expect_true(inherits(copied, "dtatools_dta_metadata"))
+            expect_false(dtatools:::.has_dta_metadata(copied))
+            set_dta_metadata(copied, .metadata = updates)
+            expect_identical(class(alias), original_classes)
+            expect_identical(dataset_label(alias), updates$label)
+            expect_length(dta_notes(alias), 0L)
+            expect_length(dta_characteristics(alias), 0L)
+            expect_identical(dta_notes(original), c(`1` = "Kept on original"))
+            expect_identical(dta_characteristics(original), c(source = "survey"))
+            expect_identical(dtatools:::.reference_state(original), original_state)
+        }
+    }
+})
+
 test_that("metadata bundles restore downstream runtime column metadata atomically", {
     for (make in metadata_containers()) {
         data <- make(x = 1:2)

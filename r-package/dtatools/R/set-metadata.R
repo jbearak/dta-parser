@@ -54,8 +54,9 @@
 #' For a vector, `set_var_format(x, "%9.0g")`,
 #' `set_var_format(x, format = "%9.0g")`, and
 #' `set_var_formats(x, .formats = format)` return a copy that must be assigned.
-#' Supply exactly one format to the singular vector form; use an explicit
-#' `NULL` to remove it.
+#' Both vector forms require exactly one format value; use an explicit `NULL`
+#' to remove it. The plural form accepts that value in `...` or `.formats`,
+#' never both.
 #'
 #' A format is a nonempty string beginning with `%`, with at most 56 UTF-8
 #' bytes. The setter records display metadata; it does not interpret Stata's
@@ -109,7 +110,9 @@ set_var_formats <- function(.data, ..., .formats = NULL) {
         )
     }
     if (!is.data.frame(.data)) {
-        if (length(dots) > 1L || (!is.null(.formats) && length(dots))) {
+        supplied_formats <- !missing(.formats)
+        if (length(dots) > 1L || (supplied_formats && length(dots)) ||
+            (!supplied_formats && !length(dots))) {
             stop("Supply one vector format in either `...` or `.formats`", call. = FALSE)
         }
         value <- if (length(dots)) dots[[1L]] else .formats
@@ -275,7 +278,10 @@ set_dta_metadata <- function(x, ..., .metadata = NULL, variable = NULL) {
     }
     if (!table) return(changed)
     if (is.null(target$index)) {
-        staged <- changed
+        # Labels alone need no restoration marker. Recompute it nonetheless:
+        # a base attribute copy may have removed the last note or
+        # characteristic while retaining its old restoration class.
+        staged <- .metadata_frame_class(changed)
     } else {
         .Call(C_dtatools_set_data_column, staged, target$index, changed)
         staged <- .metadata_frame_class(staged)
