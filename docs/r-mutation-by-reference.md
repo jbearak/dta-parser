@@ -69,10 +69,11 @@ By reference, on any supported container (dibble, tibble, base data frame, data 
 By reference, on a dibble only:
 
 - `data[i, y := value]`, the bracket assignment shape
-- the replacement operators `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, `row.names<-`
-- and therefore every metadata setter used in replacement form, because R spells `var_label(data$x) <- "Age"` as a `$<-` call: `var_label<-`, `val_labels<-`, and `attr<-` on `format.stata`, notes, or characteristics
 
-Not by reference — these return a new object and leave their input alone:
+These return a new object and leave their input alone:
+
+- ordinary `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, and `row.names<-`
+- nested attribute and label replacement, including inside a function
 
 - every dplyr verb (`mutate()`, `filter()`, `arrange()`, `select()`, `group_by()`, joins, `bind_rows()`)
 - base `subset()`, `transform()`, `within()`, `head()`, `rbind()`, `cbind()`, and `[` subsetting without `:=`
@@ -86,13 +87,13 @@ On a dibble those operations still return a dibble, so the two styles mix freely
 
 **Translation fidelity.** `replace x = 0 if y > 5` becomes `repl(data, x = 0, where = y > 5)` — one line, no assignment, no renaming of the dataset at each step. A script converted from Stata reads like the original.
 
-**Cost.** Copy-on-modify means a full dataset copy per modified column, and Stata scripts modify columns in long sequences. On the 5.2 GB, 5,972-column files this package is built for, that is the difference between a workflow that runs and one that does not. Writing through the reference also lets `gen()` and `repl()` patch a compact Stata column in its native storage — `byte` stays one byte per row — instead of materializing a double vector.
+**Cost.** Ordinary R replacement copies the table's column pointers and any column it changes as needed. Explicit helpers can reuse the supplied table and patch compact Stata storage directly. A column shared with a separate table detaches before values change; an unshared `byte` column can stay one byte per row throughout a sequence of replacements.
 
-**Metadata setters reach the dataset.** `var_label(data$x) <- "Age"` in ordinary R extracts a column, labels the copy, and writes it back into a copy of the data frame. On a dibble it labels the dataset's own column, so the label is there for every binding, including the caller's when this happens inside a function.
+**Explicit metadata setters reach the dataset.** `set_var_label(data, x, "Age")` labels the supplied table's column, so every binding sees the label, including the caller when the setter runs inside a function. Use `set_var_format(data, x, "%9.0g")` for display formats and the note or characteristic setters for those attributes.
 
 ## What changes in your workflow
 
-**Aliases are the same dataset.** `b <- a` gives you a second name for one dataset, not a snapshot. Column-only subsets share their column payloads, so a mutation reaches them too. Row subsets have new payloads and are independent. When you need an untouchable original, say so:
+**Aliases are the same dataset.** `b <- a` gives you a second name for one dataset, not a snapshot. Ordinary replacement and dibble subsets return independent tables. Explicit mutation detaches columns shared with any separate table while preserving all bindings to the supplied table. A same-storage patch changes all slots pointing to the identical vector within that table. Promotion and metadata setters replace only their named column. When you need an untouchable original, say so:
 
 ```r
 original <- copy_data(survey)   # independent, keeps compact columns compact
@@ -107,11 +108,11 @@ snapshot <- tibble::as_tibble(survey)   # a plain tibble with R's semantics
 
 **A `[` assignment does not print.** `[` always makes its result visible, so a bracket assignment at the console would print the whole dataset. As data.table does, dtatools skips the next top-level print of the mutated dataset, so `survey[income < 0, income := NA]` prints nothing and a bare `survey` on the next line prints as usual. The skip lasts only for the statement that made the assignment.
 
-**Column capacity and aliases.** Constructors and readers reserve 5,000 spare column-pointer slots by default. Set `options(dtatools.alloccol = 5000L)` to change the number. Every column remains in the physical list: `unclass()`, `.subset()`, `bind_rows()`, `bind_cols()`, purrr, JSON, and `write.csv()` all see the complete table, and `attributes(data)$names` reports every column name. Within capacity, structural mutation preserves outer identity. When preparation or reallocation is necessary, the operation warns, shallow-copies the table without copying column payloads, and rebinds its target. Aliases retain the old complete table.
+**Column capacity and aliases.** Constructors and readers reserve 5,000 spare column-pointer slots by default. Set `options(dtatools.alloccol = 5000L)` to change the number. Every column remains in the physical list: `unclass()`, `.subset()`, `bind_rows()`, `bind_cols()`, purrr, JSON, and `write.csv()` all see the complete table, and `attributes(data)$names` reports every column name. Within capacity, structural mutation preserves outer identity. When preparation or reallocation is necessary, the operation warns, rebuilds an isolated table with compact copy-on-write backing, and rebinds its target. Aliases retain the old complete table.
 
 Automatic rebinding supports a symbol, simple `$` and `[[` extractions, and `get()` or `get0()`. Function entry points capture these destinations before values run. Bracket `:=` dispatch receives an already evaluated table, so assign its result for computed getter expressions. For other expressions assign the return value. Within a function, only the local parameter is rebound; return the table and assign the result in the caller when capacity changes.
 
-Use `data <- reserve_columns(data, n = getOption("dtatools.alloccol", 5000L))` to prepare a base data frame, tibble, dibble, or data table explicitly. It preserves the container, rebuilds legacy overlays, and repairs a serialized dibble's current-object bookkeeping. Base `readRDS()` and `unserialize()` discard spare capacity: call and assign `reserve_columns()` before relying on dibble replacement aliases. `read_dta()` and `read_arrow()` already return prepared tables.
+Use `data <- reserve_columns(data, n = getOption("dtatools.alloccol", 5000L))` to prepare a base data frame, tibble, dibble, or data table explicitly. It preserves the container, rebuilds legacy overlays, and repairs a serialized dibble's current-object bookkeeping. Base `readRDS()` and `unserialize()` discard spare capacity: call and assign `reserve_columns()` before relying on explicit structural mutation through aliases. `read_dta()` and `read_arrow()` already return prepared tables.
 
 **ALTREP columns from elsewhere are detached.** A generic ALTREP column created by base R or another package is converted to an ordinary vector before replacement, because its private caches cannot be safely invalidated. A standalone alias to that former column keeps the old values.
 
@@ -134,9 +135,10 @@ The order of operations is Stata's, not data.table's. In `DT[i, j, by]`, data.ta
 ## Explicit metadata migration
 
 Use explicit setters when a function must update its caller's table. This
-works on all four supported containers. The remaining epic changes will make
-ordinary dibble replacement follow R's copy-and-rebind rules, so conversion to
-a dibble will no longer make nested `attr<-` inside a function update its caller.
+works on all four supported containers. Ordinary dibble replacement follows
+R's copy-and-rebind rules. Conversion to a dibble does not make nested `attr<-`
+inside a function update its caller. Return and assign the result of ordinary
+replacement, or use the explicit setters below.
 
 ```r
 set_metadata <- function(data, my_name, mapping, table_name, metadata) {
@@ -193,3 +195,17 @@ column/container operations for those changes. Custom metadata stays in R;
 file writers can omit attributes outside their supported metadata profiles.
 Vector setters keep their assigned-copy contract, for example
 `x <- set_var_format(x, "%9.0g")`.
+
+When creating a new column that should have narrower string storage, construct
+that storage explicitly in `gen()` instead of assigning the protected
+`stata.string.storage` attribute later:
+
+```r
+gen(survey, status_copy = dta_string(as.character(status)))
+set_var_label(survey, status_copy, NULL)
+```
+
+`dta_string()` chooses the smallest fitting storage for the observed UTF-8 byte
+width unless an explicit storage is supplied. Generation keeps that declaration.
+Promotion of an existing column only widens storage, so construct the new copy
+at the intended width before further mutation.

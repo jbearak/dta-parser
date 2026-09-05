@@ -65,10 +65,10 @@
 #' metadata. Use `copy_data()` first when isolation is required. Replacement
 #' syntax applies R's assignment semantics to the metadata it changes: it
 #' updates the binding on its left-hand side but not another binding to the
-#' original data frame. It does not deep-copy untouched column payloads, so a
-#' later `replace_values()` call can still be visible through both bindings.
-#' Use `copy_data()` when later value mutations must also be isolated. Vector
-#' forms cannot mutate by reference and return a copy.
+#' original data frame. Later explicit value writes to these separate tables
+#' remain isolated, including writes to columns the replacement left unchanged. Vector
+#' forms cannot mutate by reference and return a copy. Whole-table label
+#' replacement also returns a copy and preserves a dibble's type.
 #'
 #' `NULL`, `NA_character_`, and `""` all remove a variable or dataset label.
 #' Empty or missing value-label text is discarded. If no entries remain, the
@@ -531,6 +531,7 @@ dataset_label <- function(data) {
 #' @rdname var_label
 #' @export
 `var_label<-` <- function(x, value) {
+    original <- x
     .validate_label_object(x)
     if (is.data.frame(x)) {
         .reject_data_table_subclass(x, "x")
@@ -542,7 +543,7 @@ dataset_label <- function(data) {
                 attr(column, "label") <- NULL
                 .set_data_column_at(access, index, column)
             }
-            return(invisible(x))
+            return(invisible(.close_dibble(original, x)))
         }
         source <- .column_access(x)
         updates <- .validate_column_updates(
@@ -551,7 +552,7 @@ dataset_label <- function(data) {
         .check_variable_label_updates(updates)
         x <- .label_replacement_data(x)
         access <- .column_access(x)
-        return(.apply_variable_label_updates(access, updates))
+        return(.close_dibble(original, .apply_variable_label_updates(access, updates)))
     }
 
     value <- .normalize_text_label(value)
@@ -566,6 +567,7 @@ dataset_label <- function(data) {
 #' @rdname var_label
 #' @export
 `dataset_label<-` <- function(data, value) {
+    original <- data
     if (!is.data.frame(data)) {
         stop("`data` must be a data frame", call. = FALSE)
     }
@@ -576,12 +578,13 @@ dataset_label <- function(data) {
     )
     data <- .label_replacement_data(data)
     attr(data, "label") <- value
-    .repair_data_table_container(data)
+    .close_dibble(original, .repair_data_table_container(data))
 }
 
 #' @rdname var_label
 #' @export
 `val_labels<-` <- function(x, value) {
+    original <- x
     .validate_label_object(x)
     if (is.data.frame(x)) {
         .reject_data_table_subclass(x, "x")
@@ -595,7 +598,7 @@ dataset_label <- function(data) {
                 column <- .apply_haven_labelled_class(column, FALSE)
                 .set_data_column_at(access, index, column)
             }
-            return(invisible(x))
+            return(invisible(.close_dibble(original, x)))
         }
         source <- .column_access(x)
         updates <- .validate_column_updates(
@@ -604,7 +607,7 @@ dataset_label <- function(data) {
         .check_value_label_updates(source, updates)
         x <- .label_replacement_data(x)
         access <- .column_access(x)
-        return(.apply_value_label_updates(access, updates))
+        return(.close_dibble(original, .apply_value_label_updates(access, updates)))
     }
 
     value <- .normalize_value_labels(value)

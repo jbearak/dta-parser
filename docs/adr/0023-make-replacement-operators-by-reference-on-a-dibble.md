@@ -1,6 +1,8 @@
 ---
-status: accepted
+status: superseded by ADR-0029
 ---
+
+> Superseded by [ADR 0029](0029-use-explicit-mutation-and-copy-rebind-replacement.md). The original decision below is retained as history.
 
 # Make the replacement operators write to a dibble by reference
 

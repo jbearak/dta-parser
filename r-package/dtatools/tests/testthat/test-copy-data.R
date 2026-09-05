@@ -23,7 +23,7 @@ test_that("copy_data preserves dibble identity and independent reference writes"
     expect_identical(as.double(copied$x), c(9, 2))
 })
 
-test_that("copied dibbles share metadata writes with aliases, including zero rows", {
+test_that("copied dibbles share explicit metadata writes with aliases, including zero rows", {
     for (n in c(2L, 0L)) {
         original <- dibble(x = seq_len(n))
         var_label(original$x) <- "Source"
@@ -37,7 +37,7 @@ test_that("copied dibbles share metadata writes with aliases, including zero row
         mutate_copy <- function(data) {
             gen(data, y = 3)
             replace_values(data, x = 9L)
-            var_label(data$x) <- "Copy"
+            set_var_label(data, x, "Copy")
         }
         expect_silent(mutate_copy(copied))
         expect_identical(names(alias), c("x", "y"))

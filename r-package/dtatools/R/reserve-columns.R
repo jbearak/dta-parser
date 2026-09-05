@@ -1,7 +1,8 @@
 #' Reserve spare column slots
 #'
-#' `reserve_columns()` shallow-copies a table and reserves `n` spare column
-#' pointer slots without copying its column payloads. Assign the returned
+#' `reserve_columns()` returns an isolated table with `n` spare column
+#' pointer slots. Compact columns use copy-on-write backing; ordinary columns
+#' are copied. Assign the returned
 #' table. The container and column storage are preserved. Legacy tables with
 #' columns stored outside their physical list are rebuilt into one complete
 #' list, and serialized dibbles get fresh current-object bookkeeping.
@@ -9,7 +10,7 @@
 #' Constructors and readers reserve 5,000 spare slots by default. Set
 #' `options(dtatools.alloccol = 5000L)` to change this default. Structural
 #' operations keep the outer object while capacity remains. When preparation
-#' or reallocation is needed, they warn, shallow-copy the table, and rebind
+#' or reallocation is needed, they warn, rebuild an isolated table, and rebind
 #' the mutation target. Other aliases retain the old complete table.
 #'
 #' Automatic rebinding supports a symbol, simple `$` or `[[` extraction,
@@ -22,7 +23,7 @@
 #'
 #' Base R serialization discards spare capacity. After `readRDS()` or
 #' `unserialize()`, assign `data <- reserve_columns(data)` before relying on
-#' dibble replacement aliases. `read_dta()` and `read_arrow()` return
+#' explicit structural mutation through aliases. `read_dta()` and `read_arrow()` return
 #' prepared tables.
 #'
 #' @param data A dibble, tibble, base data frame, or data table.
@@ -38,7 +39,7 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
     n <- .validate_alloccol(n, length(data))
     dibble <- is_dibble(data)
     marked <- !is.null(.reference_state(data))
-    snapshot <- .reference_snapshot(data)
+    snapshot <- .isolate_shared_columns(.reference_snapshot(data), NULL)
     if (.ordinary_data_table(data)) {
         # Remove runtime self-reference on a shallow attribute copy. setalloccol
         # rebuilds both the list and its resizable names, retaining payloads.

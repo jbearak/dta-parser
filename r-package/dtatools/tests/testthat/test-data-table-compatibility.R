@@ -133,7 +133,7 @@ test_that("repl retains aliases and copy_data isolates data tables", {
 
     repl(data, x, 9L, where = 1L)
     expect_identical(alias$x, c(9L, 2L, 3L))
-    expect_identical(column_alias, c(9L, 2L, 3L))
+    expect_identical(column_alias, 1:3)
     expect_identical(isolated$x, 1:3)
     expect_identical(data.table::key(isolated), "x")
     expect_false(is.null(attr(isolated, ".internal.selfref", exact = TRUE)))

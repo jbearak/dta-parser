@@ -633,8 +633,8 @@ test_that("parallel decoding is identical across supported releases", {
         col_select = c(text = make, number = price),
         threads = 4L
     )
-    expect_identical(parallel, serial)
-    expect_identical(
+    expect_identical_table(parallel, serial)
+    expect_identical_table(
         projected,
         read_dta(
             modern,
@@ -644,13 +644,13 @@ test_that("parallel decoding is identical across supported releases", {
     )
 
     for (name in c("all_types_v115.dta", "all_types_v117.dta")) {
-        expect_identical(
+        expect_identical_table(
             read_dta(fixture(name), threads = 4L),
             read_dta(fixture(name), threads = 1L),
             info = name
         )
     }
-    expect_identical(
+    expect_identical_table(
         read_dta(fixture("strl_test_v118.dta"), threads = 4L),
         read_dta(fixture("strl_test_v118.dta"), threads = 1L)
     )
@@ -754,9 +754,8 @@ test_that("native strings serialize and preserve copy-on-modify semantics", {
     invisible(gc())
     expect_identical(unserialize(encoded), reference)
 
-    # A dibble's replacement operators write by reference, so a second
-    # binding is an alias; `copy_data()` gives an independent dataset,
-    # and the reader's own vectors are never written through.
+    # Ordinary replacement separates a second binding from its source.
+    # Explicit copies and the reader's own vectors remain independent too.
     original <- read_dta(path)
     alias <- original
     modified <- copy_data(original)
@@ -767,7 +766,8 @@ test_that("native strings serialize and preserve copy-on-modify semantics", {
     )
     expect_identical(as.character(modified$make[[1L]]), "replacement")
     alias$make[[1L]] <- "aliased"
-    expect_identical(as.character(original$make[[1L]]), "aliased")
+    expect_identical(as.character(original$make[[1L]]), "AMC Concord")
+    expect_identical(as.character(alias$make[[1L]]), "aliased")
     expect_identical(as.character(reference$make[[1L]]), "AMC Concord")
 
     with_missing <- read_dta(path)$make

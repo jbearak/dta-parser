@@ -104,7 +104,7 @@ test_that("data-frame replacement syntax follows R copy semantics", {
     expect_null(val_labels(reference_alias$x))
 })
 
-test_that("label replacement isolates metadata, not untouched values", {
+test_that("label replacement isolates metadata and later value writes", {
     data <- data.frame(
         labelled = dta_byte(1:3),
         untouched = dta_byte(4:6)
@@ -116,7 +116,7 @@ test_that("label replacement isolates metadata, not untouched values", {
     replace_values(data, untouched, 9, where = 1)
 
     expect_identical(as.double(data$untouched), c(9, 5, 6))
-    expect_identical(as.double(alias$untouched), c(9, 5, 6))
+    expect_identical(as.double(alias$untouched), c(4, 5, 6))
     expect_identical(as.double(data$labelled), c(1, 8, 3))
     expect_identical(as.double(alias$labelled), c(1, 2, 3))
 })
@@ -131,8 +131,8 @@ test_that("dataset-label replacement detaches reference state", {
     replace_values(alias, x, 8, where = 2)
 
     expect_false(inherits(data, "dtatools_ref_data"))
-    expect_identical(as.double(data$x), c(9, 8, 3))
-    expect_identical(as.double(alias$x), c(9, 8, 3))
+    expect_identical(as.double(data$x), c(9, 2, 3))
+    expect_identical(as.double(alias$x), c(1, 8, 3))
     expect_identical(as.double(data$y), c(2, 3, 4))
     expect_identical(as.double(alias$y), c(2, 3, 4))
     expect_identical(dataset_label(data), "Labelled")
@@ -671,7 +671,7 @@ test_that("metadata proxies preserve copy-on-write in both directions", {
         list(
             source_value = 1,
             updated_value = 99,
-            updated_is_unmaterialized = FALSE,
+            updated_is_unmaterialized = TRUE,
             second_source_value = 99,
             second_updated_value = 1
         )

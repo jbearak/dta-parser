@@ -1202,7 +1202,7 @@ test_that("copy_data isolates every mutable column backing", {
     expect_identical(
         names(data), c("compact", "ordinary", "string", "generated")
     )
-    expect_identical(names(isolated), c("changed", "ordinary", "string"))
+    expect_identical(names(isolated), c("compact", "ordinary", "string"))
 
     grouped <- dplyr::group_by(
         data.frame(group = c("a", "b"), value = 1:2), group
@@ -1770,20 +1770,20 @@ test_that("reference data preserves base and tibble access semantics", {
     expect_equal(dim(combined), c(6L, 2L))
 })
 
-test_that("target-vector aliases observe replacement while row subsets isolate", {
+test_that("explicit replacement isolates separate tables sharing target vectors", {
     column <- dta_int(1:3)
     left <- data.frame(x = column)
     right <- data.frame(x = column)
     replace_values(left, x, 9, where = 1)
-    expect_identical(as.double(right$x), c(9, 2, 3))
+    expect_identical(as.double(right$x), c(1, 2, 3))
 
     column_subset <- left[, "x", drop = FALSE]
     replace_values(column_subset, x, 8, where = 2)
-    expect_identical(as.double(left$x), c(9, 8, 3))
+    expect_identical(as.double(left$x), c(9, 2, 3))
 
     row_subset <- left[1:2, , drop = FALSE]
     replace_values(row_subset, x, 7, where = 1)
-    expect_identical(as.double(left$x), c(9, 8, 3))
+    expect_identical(as.double(left$x), c(9, 2, 3))
 })
 
 test_that("rowwise inputs fail before reference mutation", {
@@ -2181,6 +2181,8 @@ test_that("sparse compact replacement and generation keep existing payloads", {
 
     x_trace <- tracemem(data$x)
     on.exit(untracemem(data$x), add = TRUE)
+    data <- reserve_columns(data)
+    x_trace <- tracemem(data$x)
     gen(data, added, 3L)
     expect_identical(tracemem(data$x), x_trace)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))

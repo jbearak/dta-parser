@@ -378,10 +378,6 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
         # The state's own class vector carries the marker so a snapshot
         # keeps dataset metadata behavior.
         classes <- c("dtatools_ref_data", setdiff(classes, "dtatools_ref_data"))
-        state <- .reference_state(value)
-        if (!is.null(state)) {
-            state$classes <- setdiff(classes, "dtatools_ref_data")
-        }
     }
     if (!is.data.frame(value)) {
         # A shared metadata proxy needs another compact wrapper before class

@@ -44,9 +44,9 @@ The three `set_*()` functions mutate a data frame and every binding to it by
 reference. Call `copy_data()` first when another binding must remain unchanged.
 Replacement syntax follows R's assignment rules for the metadata it changes:
 it updates the binding on the left, while another binding keeps its original
-metadata. Untouched column payloads are not deep-copied, so a later
-`replace_values()` call can still be visible through both bindings. Use
-`copy_data()` when later value mutations must also be isolated.
+metadata. Later explicit value writes to the separate tables remain isolated,
+including writes to columns that replacement left unchanged. Aliases of the
+same table still observe explicit helper writes.
 
 For data frames, `...` and `.labels` are combined into one atomic update. Every update must have a unique, known column name. Positional, duplicate, unknown, or overlapping updates are errors; no column is changed when validation fails. Replacement forms take a named list, while a bare `NULL` clears the corresponding metadata from every column.
 
@@ -185,7 +185,7 @@ The comparison below is specific to `labelled` 2.16.0 and `haven` 2.5.5. It is n
 | --- | --- | --- |
 | Read variable/value labels | Reads the native attributes | Reads the same attributes |
 | Set a variable label on an unmaterialized dtatools numeric ALTREP | Keeps an unmaterialized compact result | Keeps an unmaterialized compact result |
-| Set value labels on numeric ALTREP | Keeps an ALTREP result and preserves `format.stata` and custom attributes | Materializes the vector and drops `format.stata` and custom attributes |
+| Set value labels on numeric ALTREP | Keeps an ALTREP result and preserves `format.stata` and custom attributes | Keeps compact backing through dtatools duplication; drops `format.stata` and custom attributes |
 | Set value labels on `Date` or `POSIXct` | Preserves temporal classes and time zone | Reconstructs a plain haven-labelled numeric vector |
 | Remove all value labels | Removes compatibility classes added to ordinary numeric vectors while retaining unrelated classes | Reconstructs a standard haven-labelled numeric vector as an unclassed numeric vector |
 | Validate labels | Enforces Stata-native codes and atomic named data-frame updates | Implements the broader `labelled` contract, including behaviors dtatools deliberately omits |

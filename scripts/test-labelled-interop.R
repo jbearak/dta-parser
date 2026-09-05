@@ -199,6 +199,9 @@ interop <- callr::r(
             recode_labels = dtatools::val_labels(recoded),
             recode_format = attr(recoded, "format.stata", exact = TRUE),
             labelled_is_altrep = dtatools:::.is_altrep(labelled_result),
+            labelled_unmaterialized = dtatools:::.is_unmaterialized_numeric_altrep(labelled_result),
+            labelled_values = as.numeric(labelled_result),
+            labelled_labels = labelled::val_labels(labelled_result),
             labelled_format = attr(labelled_result, "format.stata", exact = TRUE),
             labelled_variable_unmaterialized =
                 dtatools:::.is_unmaterialized_numeric_altrep(
@@ -248,8 +251,11 @@ assert(
     "Loading labelled displaced the dtatools package's metadata-preserving recode method"
 )
 assert(
-    !interop$labelled_is_altrep && is.null(interop$labelled_format),
-    "The labelled 2.16.0 materialization/metadata-loss comparison changed"
+    interop$labelled_is_altrep && interop$labelled_unmaterialized &&
+        identical(interop$labelled_values, rep(c(1, 0), 5L)) &&
+        identical(interop$labelled_labels, c(Domestic = 0, Imported = 1)) &&
+        is.null(interop$labelled_format),
+    "The labelled 2.16.0 compact-copy/value/metadata comparison changed"
 )
 assert(
     interop$labelled_variable_unmaterialized,

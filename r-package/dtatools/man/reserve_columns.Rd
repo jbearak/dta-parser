@@ -15,8 +15,9 @@ reserve_columns(data, n = getOption("dtatools.alloccol", 5000L))
 A rebuilt table with the same container and \code{n} spare slots.
 }
 \description{
-\code{reserve_columns()} shallow-copies a table and reserves \code{n} spare column
-pointer slots without copying its column payloads. Assign the returned
+\code{reserve_columns()} returns an isolated table with \code{n} spare column
+pointer slots. Compact columns use copy-on-write backing; ordinary columns
+are copied. Assign the returned
 table. The container and column storage are preserved. Legacy tables with
 columns stored outside their physical list are rebuilt into one complete
 list, and serialized dibbles get fresh current-object bookkeeping.
@@ -25,7 +26,7 @@ list, and serialized dibbles get fresh current-object bookkeeping.
 Constructors and readers reserve 5,000 spare slots by default. Set
 \code{options(dtatools.alloccol = 5000L)} to change this default. Structural
 operations keep the outer object while capacity remains. When preparation
-or reallocation is needed, they warn, shallow-copy the table, and rebind
+or reallocation is needed, they warn, rebuild an isolated table, and rebind
 the mutation target. Other aliases retain the old complete table.
 
 Automatic rebinding supports a symbol, simple \code{$} or \code{[[} extraction,
@@ -38,7 +39,7 @@ and assign the rebuilt table in the caller when capacity changes.
 
 Base R serialization discards spare capacity. After \code{readRDS()} or
 \code{unserialize()}, assign \code{data <- reserve_columns(data)} before relying on
-dibble replacement aliases. \code{read_dta()} and \code{read_arrow()} return
+explicit structural mutation through aliases. \code{read_dta()} and \code{read_arrow()} return
 prepared tables.
 }
 \examples{
