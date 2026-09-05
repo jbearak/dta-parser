@@ -4,16 +4,18 @@
 #' Notes retain their Stata numbers, including gaps. Numeric `note*` keys are
 #' reserved for the note API and never appear in characteristic results.
 #'
-#' Setters return a copy of `x`. Supply `variable` as one column name or
+#' On a dibble, setters modify `x` by reference and return it invisibly, so
+#' every binding sees the change, including calls inside functions. On other
+#' data frames and vectors, setters return a copy of `x`. Use [copy_data()]
+#' first when a dibble's metadata changes should be independent.
+#' Supply `variable` as one column name or
 #' one-based position to work at variable scope. A missing variable is an
 #' error. Empty note text and characteristic values are retained; `NULL`
 #' removes a note or characteristic. Adding a note uses one more than the
 #' highest existing number, matching Stata's next-number behavior.
 #'
 #' `renumber_dta_notes()` preserves the current number order and assigns
-#' consecutive numbers beginning at `start`. R differs from Stata's command
-#' language by returning the changed object instead of modifying a dataset in
-#' place.
+#' consecutive numbers beginning at `start`.
 #'
 #' Arrow can retain metadata on a variable named `_dta`. DTA reserves that
 #' target spelling for dataset metadata, so `save_dta()` rejects notes or
@@ -44,7 +46,7 @@
 #' @param names Characteristic names to drop. `NULL` drops all characteristics.
 #' @return `dta_notes()` and `dta_characteristics()` return named character
 #'   vectors. Singular getters return one string or `NULL`. Mutation helpers
-#'   return the changed object.
+#'   return the changed object, invisibly for dibbles.
 #' @examples
 #' survey <- data.frame(age = c(20, 30))
 #' survey <- set_dta_note(survey, 2, "Cleaned after interview")
@@ -265,11 +267,11 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
 
 .dta_update_target <- function(x, variable, update) {
     if (is.data.frame(x)) .reject_data_table_subclass(x, "x")
-    # A reference dataset is edited through its snapshot: copying the
-    # marked object would share one reference state between the input
-    # and the result, so a later `gen()` on either would write to both.
-    # A dibble is re-marked afterwards; the result is a new object either
-    # way.
+    # Stage metadata and restoration classes on a snapshot before writing
+    # into the recorded dibble. Base attribute assignment on the dibble
+    # itself would copy its physical table and lose reserved capacity.
+    state <- if (is_dibble(x)) .reference_state(x) else NULL
+    if (!is.null(state$object)) x <- state$object
     source <- x
     if (inherits(x, "dtatools_ref_data")) x <- .reference_snapshot(x)
     target <- .dta_metadata_target(x, variable)
@@ -279,8 +281,28 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
         .as_dta_metadata_frame(changed)
     } else {
         result <- .metadata_copy(x)
-        result[[target$index]] <- changed
+        result[[target$index]] <- .as_dta_metadata_vector(changed)
         .as_dta_metadata_frame(result)
+    }
+    if (!is.null(state)) {
+        if (is.null(target$index)) {
+            for (name in .dta_metadata_attribute_names) {
+                .Call(
+                    C_dtatools_set_attribute, source, name,
+                    attr(result, name, exact = TRUE)
+                )
+            }
+        } else {
+            .set_data_column_at(
+                .column_access(source), target$index, result[[target$index]]
+            )
+        }
+        state$classes <- class(result)
+        .Call(
+            C_dtatools_set_attribute, source, "class",
+            unique(c("dtatools_ref_data", state$classes))
+        )
+        return(invisible(source))
     }
     .close_dibble(source, result)
 }

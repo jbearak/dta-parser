@@ -590,3 +590,133 @@ test_that("DTA and Arrow round trips retain dataset and projected variable metad
         dta_characteristics(data, "x")
     )
 })
+
+test_that("metadata helpers edit dibbles through function parameters and aliases", {
+    for (variable in list(NULL, "x", 1L)) {
+        data <- dibble(x = c("a", "b"), flag = c(TRUE, FALSE))
+        alias <- data
+        independent <- copy_data(data)
+        column <- data$x
+        address <- rlang::obj_address(data)
+        apply <- function(fun, ...) {
+            edit <- function(x) fun(x, ..., variable = variable)
+            result <- withVisible(edit(data))
+            expect_false(result$visible)
+            expect_identical(rlang::obj_address(result$value), address)
+            expect_identical(rlang::obj_address(data), address)
+            expect_identical(dta_notes(alias, variable), dta_notes(data, variable))
+            expect_identical(
+                dta_characteristics(alias, variable),
+                dta_characteristics(data, variable)
+            )
+        }
+        apply(set_dta_note, 4L, "four")
+        expect_identical(dta_notes(alias, variable), c(`4` = "four"))
+        apply(add_dta_note, "five")
+        expect_identical(dta_notes(alias, variable), c(`4` = "four", `5` = "five"))
+        apply(set_dta_note, 4L, "")
+        apply(renumber_dta_notes, 2L)
+        expect_identical(dta_notes(alias, variable), c(`2` = "", `3` = "five"))
+        apply(drop_dta_notes, 2L)
+        expect_identical(dta_notes(alias, variable), c(`3` = "five"))
+        apply(set_dta_note, 3L, NULL)
+        expect_length(dta_notes(alias, variable), 0L)
+        apply(add_dta_note, "one")
+        apply(drop_dta_notes)
+        expect_length(dta_notes(alias, variable), 0L)
+
+        apply(set_dta_characteristic, "source", "survey")
+        expect_identical(dta_characteristics(alias, variable), c(source = "survey"))
+        apply(set_dta_characteristic, "source", "")
+        expect_identical(dta_characteristics(alias, variable), c(source = ""))
+        apply(set_dta_characteristic, "source", NULL)
+        expect_length(dta_characteristics(alias, variable), 0L)
+        apply(set_dta_characteristic, "source", "survey")
+        apply(set_dta_characteristic, "role", "id")
+        apply(drop_dta_characteristics, "source")
+        expect_identical(dta_characteristics(alias, variable), c(role = "id"))
+        apply(drop_dta_characteristics)
+        expect_length(dta_characteristics(alias, variable), 0L)
+        expect_false(inherits(data, "dtatools_dta_metadata"))
+
+        apply(set_dta_note, 1L, "retained")
+        subset <- data[1L, ]
+        expect_identical(dta_notes(subset, variable), c(`1` = "retained"))
+        expect_length(dta_notes(independent, variable), 0L)
+        expect_length(dta_characteristics(independent, variable), 0L)
+        expect_length(dta_notes(column), 0L)
+        expect_length(dta_characteristics(column), 0L)
+        generate <- function(x) gen(x, added = 1)
+        expect_silent(generate(data))
+        expect_identical(names(alias), c("x", "flag", "added"))
+        expect_identical(as.double(alias$added), c(1, 1))
+        expect_true(is_dibble(alias))
+    }
+})
+
+test_that("metadata helpers keep copy semantics on ordinary tables and vectors", {
+    for (make in list(data.frame, tibble::tibble)) {
+        for (variable in list(NULL, "x")) {
+            original <- make(x = 1:2)
+            noted <- set_dta_note(original, 4L, "four", variable)
+            expect_length(dta_notes(original, variable), 0L)
+            added <- add_dta_note(noted, "five", variable)
+            expect_identical(dta_notes(noted, variable), c(`4` = "four"))
+            renumbered <- renumber_dta_notes(added, 1L, variable)
+            expect_identical(dta_notes(added, variable), c(`4` = "four", `5` = "five"))
+            dropped <- drop_dta_notes(renumbered, variable = variable)
+            expect_identical(dta_notes(renumbered, variable), c(`1` = "four", `2` = "five"))
+            expect_length(dta_notes(dropped, variable), 0L)
+            marked <- set_dta_characteristic(original, "source", "survey", variable)
+            expect_length(dta_characteristics(original, variable), 0L)
+            removed <- drop_dta_characteristics(marked, variable = variable)
+            expect_identical(dta_characteristics(marked, variable), c(source = "survey"))
+            expect_length(dta_characteristics(removed, variable), 0L)
+        }
+    }
+    original <- 1:2
+    noted <- set_dta_note(original, 1L, "note")
+    expect_length(dta_notes(original), 0L)
+    expect_identical(dta_notes(noted), c(`1` = "note"))
+})
+
+test_that("failed dibble metadata edits leave all bindings unchanged", {
+    data <- dibble(x = 1:2)
+    set_dta_note(data, 9999L, "last")
+    set_dta_note(data, 1L, "first")
+    set_dta_characteristic(data, "source", "survey", "x")
+    before <- copy_data(data)
+    expect_error(add_dta_note(data, "overflow"), "9,999")
+    expect_error(renumber_dta_notes(data, 9999L), "9,999")
+    expect_error(set_dta_note(data, 1L, NA_character_), "non-missing")
+    expect_error(set_dta_characteristic(data, "note1", "bad"), "numeric")
+    expect_error(drop_dta_notes(data, variable = "missing"), "does not exist")
+    expect_identical(as.data.frame(data), as.data.frame(before))
+})
+
+test_that("dibble metadata edits preserve other scopes and grouping", {
+    data <- dplyr::group_by(dibble(x = 1:2, flag = c(TRUE, FALSE)), flag)
+    alias <- data
+    groups <- dplyr::group_data(data)
+    set_dta_note(data, 1L, "dataset")
+    set_dta_note(data, 2L, "variable", "flag")
+    set_dta_characteristic(data, "source", "survey")
+    set_dta_characteristic(data, "role", "group", "flag")
+    snapshot <- copy_data(data)
+    drop_dta_notes(data)
+    drop_dta_characteristics(data)
+    expect_s3_class(alias, "dtatools_dta_metadata")
+    expect_identical(dta_notes(alias, "flag"), c(`2` = "variable"))
+    expect_identical(dta_characteristics(alias, "flag"), c(role = "group"))
+    expect_identical(dplyr::group_vars(alias), "flag")
+    expect_identical(dplyr::group_data(alias), groups)
+    drop_dta_notes(data, variable = "flag")
+    expect_s3_class(alias, "dtatools_dta_metadata")
+    drop_dta_characteristics(data, variable = "flag")
+    expect_false(inherits(alias, "dtatools_dta_metadata"))
+    expect_false(inherits(alias$flag, "dtatools_dta_metadata_vector"))
+    expect_identical(dta_notes(snapshot), c(`1` = "dataset"))
+    expect_identical(dta_notes(snapshot, "flag"), c(`2` = "variable"))
+    expect_identical(dta_characteristics(snapshot), c(source = "survey"))
+    expect_identical(dta_characteristics(snapshot, "flag"), c(role = "group"))
+})

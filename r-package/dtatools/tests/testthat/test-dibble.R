@@ -423,17 +423,17 @@ test_that("slice_dta_rows accepts the default read container", {
     expect_identical(as.double(plain$y), c(2, 3))
 })
 
-test_that("dataset-scoped metadata setters give a dibble its own state", {
+test_that("dataset-scoped metadata setters return the same dibble", {
     data <- read_dta(fixture("auto_v118.dta"))
     changed <- set_dta_note(data, 1, "note")
     expect_true(is_dibble(changed))
     expect_identical(dta_notes(changed), c(`1` = "note"))
     gen(changed, y = 1)
     expect_true("y" %in% names(changed))
-    expect_false("y" %in% names(data))
+    expect_true("y" %in% names(data))
     gen(data, z = 2)
-    expect_false("z" %in% names(changed))
-    expect_identical(dta_notes(data), dta_notes(read_dta(fixture("auto_v118.dta"))))
+    expect_true("z" %in% names(changed))
+    expect_identical(dta_notes(data), c(`1` = "note"))
 })
 
 test_that("slicing a grouped dibble keeps dataset metadata", {
@@ -1102,7 +1102,7 @@ test_that("a derived dibble owns its columns", {
         rename = dplyr::rename(source, id = x),
         group_by = dplyr::group_by(source, flag),
         bind_cols = dplyr::bind_cols(source, dibble(z = 4:6)),
-        noted = add_dta_note(source, "a note", variable = "s")
+        noted_copy = add_dta_note(copy_data(source), "a note", variable = "s")
     )
     for (name in names(derived)) {
         piece <- derived[[name]]

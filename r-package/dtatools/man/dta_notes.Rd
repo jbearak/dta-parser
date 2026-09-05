@@ -54,7 +54,7 @@ one-based position in a data frame.}
 \value{
 \code{dta_notes()} and \code{dta_characteristics()} return named character
 vectors. Singular getters return one string or \code{NULL}. Mutation helpers
-return the changed object.
+return the changed object, invisibly for dibbles.
 }
 \description{
 These helpers expose the metadata stored in Stata characteristic records.
@@ -62,16 +62,18 @@ Notes retain their Stata numbers, including gaps. Numeric \verb{note*} keys are
 reserved for the note API and never appear in characteristic results.
 }
 \details{
-Setters return a copy of \code{x}. Supply \code{variable} as one column name or
+On a dibble, setters modify \code{x} by reference and return it invisibly, so
+every binding sees the change, including calls inside functions. On other
+data frames and vectors, setters return a copy of \code{x}. Use \code{\link[=copy_data]{copy_data()}}
+first when a dibble's metadata changes should be independent.
+Supply \code{variable} as one column name or
 one-based position to work at variable scope. A missing variable is an
 error. Empty note text and characteristic values are retained; \code{NULL}
 removes a note or characteristic. Adding a note uses one more than the
 highest existing number, matching Stata's next-number behavior.
 
 \code{renumber_dta_notes()} preserves the current number order and assigns
-consecutive numbers beginning at \code{start}. R differs from Stata's command
-language by returning the changed object instead of modifying a dataset in
-place.
+consecutive numbers beginning at \code{start}.
 
 Arrow can retain metadata on a variable named \verb{_dta}. DTA reserves that
 target spelling for dataset metadata, so \code{save_dta()} rejects notes or
