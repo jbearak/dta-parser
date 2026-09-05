@@ -25,7 +25,7 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 | `data[i, y := v]` | Reference | Error | Error | data.table's own `:=`: reference, ignoring declared Stata storage |
 | `dplyr::mutate()` and the other verbs | Copy → dibble | Copy → tibble | Copy → data.frame | Copy → data.table |
 | `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, `row.names<-` | Copy | Copy | Copy | Copy |
-| `var_label(data$x) <- `, `val_labels(data$x) <- `, `attr(data$x, ...) <- ` | Copy | Copy | Copy | Copy |
+| `var_label(data$x) <-`, `val_labels(data$x) <-`, `attr(data$x, ...) <-` | Copy | Copy | Copy | Copy |
 | `set_var_label()`, `set_var_labels()`, `set_val_labels()` on a data frame | Reference | Reference | Reference | Reference |
 | `set_var_format()`, `set_var_formats()`, `set_dta_metadata()` on a data frame | Reference | Reference | Reference | Reference |
 | `set_dta_note()`, `add_dta_note()`, `drop_dta_notes()`, `renumber_dta_notes()`, `set_dta_characteristic()`, `drop_dta_characteristics()` on a data frame | Reference | Reference | Reference | Reference |

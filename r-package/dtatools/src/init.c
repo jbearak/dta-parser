@@ -4323,6 +4323,11 @@ static SEXP metadata_string_extract_subset(
     return dictstring_extract_subset(source, index, call);
 }
 
+/**
+ * Build an attribute-preserving proxy around numeric or dictionary storage.
+ * When isolate is nonzero, mark compact backing as shared or snapshot decoded
+ * backing so a later explicit patch cannot change the source vector.
+ */
 static SEXP metadata_proxy(
     SEXP value, R_altrep_class_t proxy_class, int isolate
 ) {
@@ -4380,21 +4385,33 @@ static SEXP metadata_proxy(
     return result;
 }
 
-/* A base table copy may duplicate these wrappers without going through an
-   explicit metadata setter. Keep both the copied column and its source compact
-   rather than letting R's default ALTREP duplication request a data pointer. */
+/**
+ * Duplicate an unmaterialized numeric proxy without requesting a data pointer.
+ * Both R duplication depths use an independent compact payload. Return NULL
+ * for decoded proxies so R can perform its ordinary duplication fallback.
+ */
 static SEXP metadata_real_duplicate(SEXP value, Rboolean deep) {
     (void) deep;
     numeric_data *source = unmaterialized_numeric_storage(value);
     return source == NULL ? NULL : numeric_compact_copy(source);
 }
 
+/**
+ * Duplicate an unmaterialized dictionary proxy with compact storage intact.
+ * The compact copy isolates later writes at either R duplication depth.
+ * Return NULL for decoded proxies to request R's duplication fallback.
+ */
 static SEXP metadata_string_duplicate(SEXP value, Rboolean deep) {
     (void) deep;
     if (unmaterialized_dictstring_source(value) == R_NilValue) return NULL;
     return dictstring_compact_copy(value);
 }
 
+/**
+ * Copy vector attributes and isolate later explicit payload writes.
+ * Native ALTREP columns use compact proxies; other vectors use R's shallow
+ * duplicate. The returned vector can receive metadata without changing input.
+ */
 SEXP C_dtatools_metadata_copy(SEXP value) {
     if (!ALTREP(value)) return Rf_shallow_duplicate(value);
     if (R_altrep_inherits(value, dtatools_numeric_class) ||
@@ -4421,6 +4438,11 @@ SEXP C_dtatools_metadata_view(SEXP value) {
     return Rf_shallow_duplicate(value);
 }
 
+/**
+ * Install fresh reference bookkeeping and classes on the supplied table.
+ * The caller must provide an unshared state environment. Its non-owning owner
+ * token records table identity without retaining the table or its columns.
+ */
 SEXP C_dtatools_mark_reference_data(
     SEXP data, SEXP state, SEXP classes
 ) {
@@ -4436,8 +4458,12 @@ SEXP C_dtatools_mark_reference_data(
     return data;
 }
 
-/* Non-owning identity only. Never dereference this pointer: serialized
-   external pointers are NULL and a copied table has a different address. */
+/**
+ * Report whether the supplied table owns its reference bookkeeping.
+ * Compare the non-owning token without dereferencing it. Serialization clears
+ * external pointers; a physical table copy has a different address. This does
+ * not repair state, inspect spare capacity, or determine whether data is typed.
+ */
 SEXP C_dtatools_reference_state_valid(SEXP data) {
     SEXP state = Rf_getAttrib(data, Rf_install(".dtatools_ref_state"));
     if (!Rf_inherits(data, "dtatools_ref_data") || TYPEOF(state) != ENVSXP)
@@ -7028,6 +7054,12 @@ static void restore_fused_compare_patch(
     transaction->source->missing_count = transaction->saved_missing_count;
 }
 
+/**
+ * Apply a fused numeric patch under its caller's unwind-protected transaction.
+ * Return TRUE after a write, FALSE after a successful zero-match operation,
+ * or R_NilValue when the fused kernel cannot handle the request. No-match and
+ * fallback paths restore the original target; interruption uses the journal.
+ */
 static SEXP apply_fused_compare_patch(void *data) {
     fused_compare_patch_transaction *transaction =
         (fused_compare_patch_transaction *) data;
@@ -7506,6 +7538,11 @@ static const R_CallMethodDef CallEntries[] = {
     {NULL, NULL, 0}
 };
 
+/**
+ * Register native routines, ALTREP classes, and their storage-aware methods.
+ * Metadata proxy Duplicate methods keep ordinary R copies compact; physical
+ * reference ownership and column-sharing checks are registered .Call entries.
+ */
 void attribute_visible R_init_dtatools(DllInfo *dll) {
     write_callback_condition_classes = PROTECT(Rf_allocVector(STRSXP, 2));
     SET_STRING_ELT(
