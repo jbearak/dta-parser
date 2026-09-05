@@ -24,7 +24,7 @@ R has no command prefixes, no `if`/`in` qualifiers, and no leading-underscore na
 
 Stata commands report how many missing values `generate` produced and how many real changes `replace` made. dtatools omits those counts; `repl()` reports storage promotion. They signal problems as R conditions instead: an error where Stata would refuse, a warning where a conversion loses information.
 
-Stata commands modify the dataset in memory. dtatools splits this: `gen()`, `repl()`, `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`, `reorder_dta_rows()`, and `:=` modify the dataset by reference, as Stata does, and explicit metadata setters also edit every supported table by reference. Vector metadata setters return an assigned copy. Called in replacement form on a dibble — `var_label(data$x) <- "Age"` — the metadata setters are by reference again. See [mutation by reference](./r-mutation-by-reference.md).
+Stata commands modify the dataset in memory. dtatools splits this: `gen()`, `repl()`, `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`, `reorder_dta_rows()`, and `:=` modify the dataset by reference, as Stata does, and explicit metadata setters also edit every supported table by reference. Vector metadata setters return an assigned copy. Ordinary replacement and nested metadata replacement use R copy-and-rebind semantics, including on a dibble. Use `set_var_label(data, x, "Age")` or `set_var_format(data, x, "%9.0g")` for caller mutation. See [mutation by reference](./r-mutation-by-reference.md).
 
 ## Egen calculations
 
@@ -217,4 +217,4 @@ See the [compatibility contract](./compatibility.md) for supported releases, enc
 Two behaviors surprise R users rather than Stata users, and are documented elsewhere:
 
 - Stata missing codes are missing to `is.na()` and `is_missing()`, but vctrs equality must encode them as distinct comparable keys, so `vctrs::vec_detect_missing()` and completeness operations treat them as present, and dplyr's `na_matches` does not change their identity. See [Stata vector operations](./r-stata-vector-operations.md).
-- On a dibble the replacement operators write by reference, which is not R's copy-on-modify. See [mutation by reference](./r-mutation-by-reference.md) and [containers](./r-containers.md).
+- On a dibble ordinary replacement follows R copy-and-rebind semantics; explicit helpers and `:=` mutate the supplied table. See [mutation by reference](./r-mutation-by-reference.md) and [containers](./r-containers.md).

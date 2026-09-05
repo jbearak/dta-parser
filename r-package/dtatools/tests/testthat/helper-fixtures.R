@@ -223,3 +223,12 @@ fixture_with_all_numeric_missing_codes <- function(name) {
     writeBin(bytes, output)
     output
 }
+
+# Runtime owner tokens distinguish objects, not dataset values. Compare every
+# represented column/attribute and container while excluding that token.
+expect_identical_table <- function(object, expected, ...) {
+    expect_identical(class(object), class(expected), ...)
+    expect_identical(is_dibble(object), is_dibble(expected), ...)
+    expect_identical(dtatools:::.reference_snapshot(object),
+                     dtatools:::.reference_snapshot(expected), ...)
+}

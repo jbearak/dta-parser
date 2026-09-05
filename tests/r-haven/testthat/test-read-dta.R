@@ -642,7 +642,9 @@ test_that("date and datetime storage become native R temporal vectors", {
     expect_equal(without_dta_storage(actual$instant), expected$instant)
     expect_s3_class(actual$instant, "POSIXct")
     expect_identical(attr(actual$instant, "tzone"), "UTC")
-    expect_identical(eager, actual)
+    expect_identical(class(eager), class(actual))
+    expect_identical(dtatools:::.reference_snapshot(eager),
+                     dtatools:::.reference_snapshot(actual))
     expect_false(any(vapply(
         eager, dtatools:::.is_numeric_altrep, logical(1)
     )))
@@ -788,8 +790,8 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
     })
 
     modern <- fixture("auto_v118.dta")
-    expect_identical(read_dta(modern, encoding = "utf_8"),
-                     read_dta(modern, encoding = "UTF8"))
+    expect_identical(dtatools:::.reference_snapshot(read_dta(modern, encoding = "utf_8")),
+                     dtatools:::.reference_snapshot(read_dta(modern, encoding = "UTF8")))
     expect_identical(without_dta_storage(
                          read_dta(modern, encoding = "UTF-8")$make
                      ),

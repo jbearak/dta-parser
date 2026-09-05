@@ -66,23 +66,22 @@ the column and so has no prior storage to widen.}
 \code{repl()} is a direct alias for \code{replace_values()}. The return value is the
 updated dataset, invisibly. Within reserved capacity, aliases observe
 generation and replacement. Preparation or reallocation can separate
-aliases; assign the returned table when calling through a function. This includes column-only subsets that share their column
-payload. Row subsets have new payloads and remain independent. Use
-\code{copy_data()} when isolation is required. Generic ALTREP columns created by
-base R or another package are detached to ordinary vectors before
-replacement because their private caches cannot be invalidated safely.
-Aliases to the same dataset object observe the installed vector. On a
-\link{dibble}, the replacement operators \verb{$<-}, \verb{[[<-}, \verb{[<-}, \verb{names<-},
-\verb{dimnames<-}, and \verb{row.names<-}, and so every setter used in
-replacement form such as \verb{var_label(data$x) <-}, write by reference as
-well. A standalone alias to the former generic ALTREP column, including
-one held by a previously created subset, remains unchanged.
+aliases; assign the returned table when calling through a function.
+Aliases to the supplied table observe installed columns. Columns shared
+with a separate table or standalone vector detach before values change;
+Same-storage patches change all slots that hold the identical vector.
+Promotion replaces only the named column, as do metadata setters.
+Use \code{copy_data()} when an independent dataset is required.
+Ordinary replacement operators and nested attribute or label replacement
+follow R copy-and-rebind semantics, including on a \link{dibble}. Use explicit
+metadata setters such as \code{\link[=set_var_format]{set_var_format()}} and \code{\link[=set_var_label]{set_var_label()}} to
+update the caller's table inside a function.
 Every generated column is stored in the physical column list, so direct
 consumers such as \code{unclass()}, \code{dplyr::bind_rows()}, \code{purrr::map()}, and
 \code{write.csv()} see the complete dataset. Constructors and readers reserve
 5,000 spare column-pointer slots by default, controlled by
 \code{options(dtatools.alloccol = 5000L)}. When capacity is exhausted or a
-table needs preparation, the operation warns, shallow-copies the table,
+table needs preparation, the operation warns, rebuilds an isolated table,
 and rebinds a supported target. Aliases retain the old complete table.
 See \code{\link[=reserve_columns]{reserve_columns()}} for supported targets, function parameters, and
 the required preparation after base R serialization.

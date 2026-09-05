@@ -13,7 +13,7 @@
 #' Within capacity, every binding sees the change. [gen()] keeps an ordinary
 #' tibble or data frame's existing columns unchanged and types only its new
 #' column; `is_dibble()` remains `FALSE`. Call `as_dibble()` to type the
-#' whole dataset and opt into dibble replacement behavior.
+#' whole dataset. Conversion does not make function-local replacement reach its caller.
 #'
 #' A dibble is a Stata dataset held in a tibble, and two invariants follow.
 #' Every numeric and string column carries Stata storage: `dibble()` and
@@ -31,31 +31,25 @@
 #' drew columns from as it was. Columns an operation leaves alone are
 #' shared copy-on-write, so compact columns stay compact.
 #'
-#' The replacement operators are the exception: `$<-`, `[[<-`, `[<-`,
-#' `names<-`, `dimnames<-`, and `row.names<-` on a dibble write by
-#' reference, as [gen()], \code{\link[=replace_values]{replace_values()}}, and `:=` do, so every binding
-#' to the dataset sees the change and a replacement inside a function
-#' reaches the caller's dibble while capacity remains. Reallocation rebinds
-#' only the local parameter; return and assign that result in the caller. Because R
-#' spells `var_label(data$x) <- "Age"` as a `$<-` call, every metadata
-#' setter used in replacement form is by reference on a dibble too:
-#' [var_label<-], [val_labels<-], and `attr<-` on `format.stata`, notes, or
-#' characteristics. A vector assigned in is copied on its first write, so
-#' the frame it came from is never reached. Use [copy_data()] for an
-#' independent dataset and [tibble::as_tibble()] for a copy with R's
-#' semantics. On a tibble or data frame that is not a dibble the operators
-#' keep R's copy-on-modify behaviour. A dibble reserves 5,000 spare column
-#' pointer slots by default, controlled by `dtatools.alloccol`. All columns
-#' stay physically present. Preparation or reallocation warns and may
-#' separate aliases; see [reserve_columns()] for target rebinding and the
-#' base R serialization boundary.
+#' Ordinary `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, and
+#' `row.names<-` return a changed dibble and leave existing aliases unchanged.
+#' Nested attribute or label replacement follows the same R copy-and-rebind
+#' rule, including inside functions. Return and assign that result in the caller.
+#' To change a caller's table, use explicit helpers such as [set_var_format()],
+#' [set_var_label()], [set_val_labels()], [set_dta_metadata()], [set_dta_note()],
+#' and [set_dta_characteristic()], or `gen()`, `repl()`, and dibble `:=`.
+#' Replacement results isolate unchanged columns too, so subsequent explicit
+#' writes cannot reach the input. Compact columns retain compact backing.
+#' A dibble reserves 5,000 spare column slots by default, controlled by
+#' `dtatools.alloccol`. Explicit structural helpers may reallocate and separate
+#' aliases; see [reserve_columns()] for required rebinding and serialization repair.
 #' [tibble::as_tibble()] returns a tibble snapshot, and `with()` returns
 #' its expression's value. `as_dibble()` of a grouped tibble keeps its
 #' grouping.
 #'
 #' `as_dibble()` returns a dibble as is. Otherwise it returns a new object
 #' and leaves its argument unchanged: a tibble or data frame is shallow
-#' copied, sharing its column vectors as any R copy does. A data table is
+#' copied. Shared columns detach when the dibble is explicitly mutated. A data table is
 #' copied into a fresh tibble, because a dibble cannot share data.table's
 #' self-reference or its over-allocated column slots; keys, indexes, and
 #' allocation capacity are left behind. In every case compact Stata numeric

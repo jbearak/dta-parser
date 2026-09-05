@@ -38,13 +38,14 @@ test_that("capacity reserves spare pointers and validates the option", {
     }
 })
 
-test_that("preparation preserves each container and payload identity", {
+test_that("preparation preserves containers and isolates column values", {
     for (x in list(data.frame(x = 1:100), tibble::tibble(x = 1:100), dibble(x = 1:100))) {
         address <- rlang::obj_address(x$x)
         y <- reserve_columns(x, 5)
         expect_identical(class(y), class(x))
         expect_identical(is_dibble(y), is_dibble(x))
-        expect_identical(rlang::obj_address(y$x), address)
+        expect_false(identical(rlang::obj_address(y$x), address))
+        expect_identical(as.integer(y$x), as.integer(x$x))
         expect_false(identical(rlang::obj_address(y), rlang::obj_address(x)))
         expect_equal(column_capacity(y), 6)
         expect_physical_table(y)
@@ -53,7 +54,7 @@ test_that("preparation preserves each container and payload identity", {
     x <- data.table::data.table(x = 1:100)
     y <- reserve_columns(x, 5)
     expect_identical(class(y), class(x))
-    expect_identical(rlang::obj_address(x$x), rlang::obj_address(y$x))
+    expect_false(identical(rlang::obj_address(x$x), rlang::obj_address(y$x)))
     expect_equal(column_capacity(y), 6)
     gen(y, z = .data$x + 1L)
     expect_physical_table(y, c("x", "z"))
@@ -117,17 +118,18 @@ test_that("function parameter rebuilding is local and returned for assignment", 
     expect_physical_table(prepared, c("x", "y"))
 })
 
-test_that("serialized dibble preparation repairs current-object replacement aliases", {
+test_that("serialized dibble preparation repairs explicit mutation aliases", {
     x <- unserialize(serialize(dibble(x = 1:3), NULL))
     expect_equal(column_capacity(x), -1)
     x <- reserve_columns(x, 2)
     alias <- x
-    x$y <- 4:6
+    gen(x, y = 4:6)
     expect_physical_table(alias, c("x", "y"))
     expect_identical(dta_storage_type(alias$y), "long")
-    x$x <- 9:11
+    repl(x, x = 9:11)
     expect_identical(as.integer(alias$x), 9:11)
-    expect_identical(dtatools:::.reference_state(x)$object, x)
+    expect_true(dtatools:::.reference_state_valid(x))
+    expect_null(dtatools:::.reference_state(x)$object)
     restored <- unserialize(serialize(dibble(x = 1:3), NULL))
     expect_warning(gen(restored, y = .data$x + 1L), "reallocation")
     expect_physical_table(restored, c("x", "y"))
@@ -145,9 +147,6 @@ test_that("all structural operations rebuild both kinds of legacy overlays", {
             function(data) { drop_vars(data, y); data },
             function(data) { order_vars(data, x); data },
             function(data) { rename_vars(data, renamed = y); data },
-            function(data) { data$extra <- 1:3; data },
-            function(data) { data[["extra"]] <- 1:3; data },
-            function(data) { data["extra"] <- list(1:3); data },
             function(data) { reorder_dta_rows(data, c(2L, 3L, 1L)); data },
             function(data) { gen(data, extra = .data$y + 1L, bysort = x); data },
             function(data) { data[, extra := .data$y + 1L]; data }
@@ -157,6 +156,19 @@ test_that("all structural operations rebuild both kinds of legacy overlays", {
             expect_warning(y <- op(x), "reallocation")
             expect_physical_table(y)
             expect_false(dtatools:::.has_column_overlay(y))
+        }
+        for (replace in list(
+            function(data) { data$extra <- 1:3; data },
+            function(data) { data[["extra"]] <- 1:3; data },
+            function(data) { data["extra"] <- list(1:3); data }
+        )) {
+            x <- legacy_column_table(structural)
+            before <- serialize(x, NULL)
+            expect_silent(y <- replace(x))
+            expect_true(is_dibble(y))
+            expect_physical_table(y)
+            expect_identical(as.integer(y$extra), 1:3)
+            expect_identical(serialize(x, NULL), before)
         }
         x <- legacy_column_table(structural)
         expect_warning(reorder_dta_rows(x, c(2L, 3L, 1L)), "reallocation")
@@ -206,11 +218,10 @@ test_that("replacement and bracket growth rebind at capacity boundaries", {
     for (op in list(
         function(data) { data$y <- 4:6; data },
         function(data) { data[["y"]] <- 4:6; data },
-        function(data) { data["y"] <- list(4:6); data },
-        function(data) { data[, y := 4:6]; data }
+        function(data) { data["y"] <- list(4:6); data }
     )) {
         x <- dibble(x = 1:3)
-        expect_warning(y <- op(x), "reallocation")
+        expect_silent(y <- op(x))
         expect_physical_table(x, "x")
         expect_physical_table(y, c("x", "y"))
         expect_true(is_dibble(y))

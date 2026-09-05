@@ -131,10 +131,10 @@ The caller and every other binding to the same data frame see the new
 metadata. Use \code{copy_data()} first when isolation is required. Replacement
 syntax applies R's assignment semantics to the metadata it changes: it
 updates the binding on its left-hand side but not another binding to the
-original data frame. It does not deep-copy untouched column payloads, so a
-later \code{replace_values()} call can still be visible through both bindings.
-Use \code{copy_data()} when later value mutations must also be isolated. Vector
-forms cannot mutate by reference and return a copy.
+original data frame. Later explicit value writes to these separate tables
+remain isolated, including writes to columns the replacement left unchanged. Vector
+forms cannot mutate by reference and return a copy. Whole-table label
+replacement also returns a copy and preserves a dibble's type.
 
 \code{NULL}, \code{NA_character_}, and \code{""} all remove a variable or dataset label.
 Empty or missing value-label text is discarded. If no entries remain, the

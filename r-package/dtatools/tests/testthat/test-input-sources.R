@@ -117,7 +117,7 @@ test_that("extensionless local reads resolve to the matching .dta file", {
 
     actual <- read_dta(base, n_max = 2)
     expected <- read_dta(dta, n_max = 2)
-    expect_identical(actual, expected)
+    expect_identical_table(actual, expected)
 })
 
 test_that("caller-supplied datasource paths are never deleted", {

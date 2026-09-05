@@ -4,23 +4,22 @@
 #' `repl()` is a direct alias for `replace_values()`. The return value is the
 #' updated dataset, invisibly. Within reserved capacity, aliases observe
 #' generation and replacement. Preparation or reallocation can separate
-#' aliases; assign the returned table when calling through a function. This includes column-only subsets that share their column
-#' payload. Row subsets have new payloads and remain independent. Use
-#' `copy_data()` when isolation is required. Generic ALTREP columns created by
-#' base R or another package are detached to ordinary vectors before
-#' replacement because their private caches cannot be invalidated safely.
-#' Aliases to the same dataset object observe the installed vector. On a
-#' [dibble], the replacement operators `$<-`, `[[<-`, `[<-`, `names<-`,
-#' `dimnames<-`, and `row.names<-`, and so every setter used in
-#' replacement form such as `var_label(data$x) <-`, write by reference as
-#' well. A standalone alias to the former generic ALTREP column, including
-#' one held by a previously created subset, remains unchanged.
+#' aliases; assign the returned table when calling through a function.
+#' Aliases to the supplied table observe installed columns. Columns shared
+#' with a separate table or standalone vector detach before values change;
+#' Same-storage patches change all slots that hold the identical vector.
+#' Promotion replaces only the named column, as do metadata setters.
+#' Use `copy_data()` when an independent dataset is required.
+#' Ordinary replacement operators and nested attribute or label replacement
+#' follow R copy-and-rebind semantics, including on a [dibble]. Use explicit
+#' metadata setters such as [set_var_format()] and [set_var_label()] to
+#' update the caller's table inside a function.
 #' Every generated column is stored in the physical column list, so direct
 #' consumers such as `unclass()`, `dplyr::bind_rows()`, `purrr::map()`, and
 #' `write.csv()` see the complete dataset. Constructors and readers reserve
 #' 5,000 spare column-pointer slots by default, controlled by
 #' `options(dtatools.alloccol = 5000L)`. When capacity is exhausted or a
-#' table needs preparation, the operation warns, shallow-copies the table,
+#' table needs preparation, the operation warns, rebuilds an isolated table,
 #' and rebinds a supported target. Aliases retain the old complete table.
 #' See [reserve_columns()] for supported targets, function parameters, and
 #' the required preparation after base R serialization.
@@ -504,11 +503,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     result
 }
 
-# The `dtatools_ref_data` class is what makes the state authoritative,
-# because the mark sets both together. An in-place converter that rewrites
-# the class alone, as `data.table::setDT()` does, leaves the attribute on
-# an object the state no longer describes; honouring it there would have
-# the mutators read a column list that is no longer the object's own.
+# Stored type and legacy information are separate from current ownership.
+# Readers use the supplied physical table, never a cached owner or column.
+# An in-place conversion that removes the marker also removes its meaning.
 .reference_state <- function(data) {
     if (!inherits(data, "dtatools_ref_data")) return(NULL)
     state <- attr(data, ".dtatools_ref_state", exact = TRUE)
@@ -527,7 +524,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 .reference_names <- function(data) {
     state <- .reference_state(data)
     physical <- attr(data, "names", exact = TRUE)
-    if (is.null(state)) return(physical)
+    if (!.has_column_overlay(data)) return(physical)
     if (isTRUE(state$physical_overlay)) physical <- state$physical_names
     if (state$generated_count == 0L) return(physical)
     result <- c(physical, character(state$generated_count))
@@ -540,53 +537,21 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 }
 
 .column_access <- function(data) {
-    state <- .reference_state(data)
-    list(
-        data = data,
-        state = state,
-        names = if (is.null(state)) {
-            attr(data, "names", exact = TRUE)
-        } else {
-            .reference_names(data)
-        }
-    )
+    list(data = data, names = attr(data, "names", exact = TRUE))
 }
 
-.data_column_at <- function(access, index) {
-    if (is.null(access$state) ||
-        (!isTRUE(access$state$physical_overlay) &&
-         index <= access$state$physical_count)) {
-        return(.subset2(access$data, index))
-    }
-    access$state$columns[[access$names[[index]]]]
-}
+.data_column_at <- function(access, index) .subset2(access$data, index)
 
 .set_data_column_at <- function(access, index, column) {
-    if (!is.null(access$state)) {
-        access$state$columns[[access$names[[index]]]] <- column
-        if (isTRUE(access$state$physical_overlay) ||
-            index > access$state$physical_count) {
-            return(invisible(NULL))
-        }
-    }
-    .Call(
-        C_dtatools_set_data_column, access$data, as.integer(index), column
-    )
+    .Call(C_dtatools_set_data_column, access$data, as.integer(index), column)
     invisible(NULL)
 }
 
-.native_data_column_location <- function(access, index) {
-    if (is.null(access$state) ||
-        (!isTRUE(access$state$physical_overlay) &&
-         index <= access$state$physical_count)) {
-        return(index)
-    }
-    length(attr(access$data, "names", exact = TRUE)) + 1L
-}
+.native_data_column_location <- function(access, index) index
 
 .data_columns <- function(data) {
     state <- .reference_state(data)
-    if (is.null(state)) {
+    if (!.has_column_overlay(data)) {
         physical <- .plain_data_columns(data)
         names(physical) <- attr(data, "names", exact = TRUE)
         return(physical)
@@ -615,26 +580,20 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 
 .new_reference_state <- function(data, dibble = FALSE) {
     state <- new.env(parent = emptyenv())
-    physical <- .plain_data_columns(data)
-    physical_names <- attr(data, "names", exact = TRUE)
-    columns <- new.env(hash = TRUE, parent = emptyenv())
-    locations <- new.env(hash = TRUE, parent = emptyenv())
-    for (index in seq_along(physical_names)) {
-        columns[[physical_names[[index]]]] <- physical[[index]]
-        locations[[physical_names[[index]]]] <- index
-    }
-    state$columns <- columns
-    state$locations <- locations
-    state$physical_names <- physical_names
+    # Do not retain column vectors. Extra references would hide whether a
+    # physical vector is shared with an ordinary R copy at the write boundary.
+    state$physical_names <- attr(data, "names", exact = TRUE)
     state$physical_overlay <- FALSE
-    state$physical_count <- length(physical)
+    state$physical_count <- length(state$physical_names)
     state$generated_count <- 0L
-    state$generated_head <- NULL
-    state$generated_tail <- NULL
-    state$nrow <- base::nrow(data)
-    state$classes <- class(data)
+    state$nrow <- abs(.row_names_info(data, 2L))
+    state$classes <- setdiff(class(data), "dtatools_ref_data")
     state$dibble <- dibble
     state
+}
+
+.reference_state_valid <- function(data) {
+    isTRUE(.Call(C_dtatools_reference_state_valid, data))
 }
 
 .new_structural_reference_state <- function(columns, row_count, classes,
@@ -670,6 +629,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     }
     state$generated_tail <- node
     state$generated_count <- state$generated_count + 1L
+    if (is.null(state$columns)) state$columns <- new.env(parent = emptyenv())
     state$columns[[name]] <- column
     if (is.environment(state$locations)) {
         state$locations[[name]] <- state$physical_count + state$generated_count
@@ -677,53 +637,27 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     invisible(NULL)
 }
 
-# `gen()` on a dibble with spare column capacity appends the new column
-# to the physical list itself, so every reader of that list, vctrs'
-# binders included, sees the complete dataset. The state records it as
-# one more physical column.
-.append_physical_column <- function(state, name, column) {
-    state$columns[[name]] <- column
-    if (is.environment(state$locations)) {
-        state$locations[[name]] <- state$physical_count + 1L
-    }
-    state$physical_count <- state$physical_count + 1L
-    state$physical_names <- c(state$physical_names, name)
-    invisible(NULL)
-}
-
-# Whether `gen()` can grow `data`'s physical column list in place: a
-# dibble built with spare capacity whose columns are all physical. Once
-# a generated column lives in the state, later ones follow it there so
-# the recorded locations stay in order.
-.can_append_physical_column <- function(data, state) {
-    !isTRUE(state$physical_overlay) && state$generated_count == 0L &&
-        !.ordinary_data_table(data)
-}
-
 .reserve_column_capacity <- function(x, n = getOption("dtatools.alloccol", 5000L)) {
     n <- .validate_alloccol(n, length(x))
     .Call(C_dtatools_reserve_column_capacity, x, as.double(length(x)) + n)
 }
 
-# The state records the object it marks. R shallow-duplicates a shared
-# object before dispatching a replacement operator, so the method's `x`
-# can be a copy; the recorded object is the one every binding holds, and
-# by-reference replacement installs into it and returns it.
+# The native marker records a non-owning identity token. Serialization clears
+# it; validation never follows it or repairs a shared environment in place.
 .mark_reference_data <- function(data, state) {
     classes <- unique(c("dtatools_ref_data", state$classes))
-    state$object <- data
     .Call(C_dtatools_mark_reference_data, data, state, classes)
 }
 
 .reference_snapshot <- function(data) {
     state <- .reference_state(data)
     if (is.null(state)) return(data)
-    if (!isTRUE(state$physical_overlay) && state$generated_count == 0L) {
+    if (!.has_column_overlay(data)) {
         # A fresh dibble: every column is physical, so the snapshot is the
         # object minus its mark. Dropping the attribute shallow-copies the
         # list, which is what every `[` and dplyr call on a read result pays.
         attr(data, ".dtatools_ref_state") <- NULL
-        class(data) <- state$classes
+        class(data) <- setdiff(class(data), "dtatools_ref_data")
         return(data)
     }
     result <- .data_columns(data)
@@ -753,30 +687,16 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         stop("`data` must be an ungrouped data frame or tibble", call. = FALSE)
     }
     state <- .reference_state(data)
-    names <- if (is.null(state)) {
-        names(data)
-    } else if (is.environment(state$locations)) {
-        NULL
-    } else {
-        .reference_names(data)
+    names <- .reference_names(data)
+    if (is.null(names) || anyNA(names) || any(names == "") ||
+        anyDuplicated(names)) {
+        stop("`data` must have unique, non-missing column names", call. = FALSE)
     }
-    if (is.null(state)) {
-        if (is.null(names) || anyNA(names) || any(names == "") ||
-            anyDuplicated(names)) {
-            stop("`data` must have unique, non-missing column names",
-                 call. = FALSE)
-        }
-    }
-    row_count <- if (is.null(state)) nrow(data) else state$nrow
-    if (is.null(state)) {
-        columns <- .data_columns(data)
-        sizes <- vapply(columns, NROW, numeric(1))
-        if (any(sizes != row_count)) {
-            stop("`data` has columns with inconsistent row counts",
-                 call. = FALSE)
-        }
-    } else {
-        columns <- state$columns
+    row_count <- if (.has_column_overlay(data)) state$nrow else abs(.row_names_info(data, 2L))
+    columns <- .data_columns(data)
+    sizes <- vapply(columns, NROW, numeric(1))
+    if (any(sizes != row_count)) {
+        stop("`data` has columns with inconsistent row counts", call. = FALSE)
     }
     list(
         columns = columns, names = names, nrow = row_count, state = state
@@ -876,14 +796,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 
 .mutation_name <- function(variable, generate, data) {
     name <- .unquoted_variable_name(variable)
-    location <- if (is.null(data$state)) {
-        match(name, data$names)
-    } else if (is.environment(data$state$locations) &&
-        exists(name, envir = data$state$locations, inherits = FALSE)) {
-        data$state$locations[[name]]
-    } else {
-        match(name, data$names)
-    }
+    location <- match(name, data$names)
     if (generate && !is.na(location)) {
         stop(sprintf("Column `%s` already exists", name), call. = FALSE)
     }
@@ -1802,6 +1715,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                          by = NULL, bysort = NULL, selection = NULL,
                          promote = FALSE, report_promotion = FALSE) {
     .reject_data_table_subclass(data)
+    # Inspect before masks and snapshots add temporary column references.
+    shared <- if (is.data.frame(data)) .Call(C_dtatools_shared_columns, data) else NULL
     grouped_input <- inherits(data, "grouped_df")
     original <- .as_mutation_data(
         data, allow_grouped = TRUE, allow_rowwise = FALSE
@@ -1810,6 +1725,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     if (.has_column_overlay(data)) {
         data <- .prepare_column_operation(data, length(.reference_names(data)))
         original <- .as_mutation_data(data, allow_grouped = TRUE)
+        shared <- rep(FALSE, length(data))
     }
     groups <- if (!is.null(selection)) {
         selection$groups
@@ -1877,6 +1793,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             .fused_replacement_plan(evaluated, column, original$nrow)
         } else NULL
         if (!is.null(replacement_plan)) {
+            original_column <- column
+            if (shared[[target$location]]) column <- .mutation_copy(column)
             patch <- function() .Call(
                 C_dtatools_fused_compare_patch,
                 column, fused$op_code, fused$left, fused$right,
@@ -1884,11 +1802,17 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                 replacement_plan$scalar, .mutation_threads()
             )
             patched <- if (.ordinary_data_table(data)) {
-                .data_table_fused_replace_commit(data, target$name, patch)
+                .data_table_fused_replace_commit(data, .aliased_column_names(data, original_column), patch)
             } else {
                 patch()
             }
-            if (isTRUE(patched)) return(invisible(data))
+            if (!is.null(patched)) {
+                if (isTRUE(patched) && shared[[target$location]]) {
+                    .commit_detached_column(data, original_column, column)
+                }
+                return(invisible(data))
+            }
+            column <- original_column
         }
         selected <- .fused_comparison_value(fused)
     }
@@ -1965,20 +1889,35 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     }
 
     if (!generate) {
+        if (is.null(rows) && .is_unmaterialized_dictstring(column) &&
+            .same_mutation_object(column, replacement)) return(invisible(data))
+        original_column <- column
+        detach <- isTRUE(shared[[target$location]]) &&
+            .mutation_selected_count(rows, original$nrow) > 0L
+        if (detach) {
+            column <- .mutation_copy(column)
+            if (.is_altrep(column) &&
+                (.is_materialized_numeric_altrep(original_column) ||
+                 (typeof(column) == "character" &&
+                  !.is_unmaterialized_dictstring(original_column)))) {
+                .force_altrep_materialization(column)
+            }
+        }
+        patch_data <- if (detach) list(column) else data
         patch <- function() .Call(
-            C_dtatools_patch_data_column, data,
-            as.integer(.native_data_column_location(access, target$location)),
+            C_dtatools_patch_data_column, patch_data,
+            as.integer(if (detach) 1L else target$location),
             column, rows, replacement
         )
         # The native patcher still validates strict scalar replacements for
         # an empty selection; do not invalidate lookup state without a write.
         column <- if (.ordinary_data_table(data) &&
                       .mutation_selected_count(rows, original$nrow) > 0L) {
-            .data_table_replace_commit(data, target$name, patch)
+            .data_table_replace_commit(data, .aliased_column_names(data, original_column), patch)
         } else {
             patch()
         }
-        if (!is.null(state)) state$columns[[target$name]] <- column
+        if (detach) .commit_detached_column(data, original_column, column)
         # Rebuild after every grouped replacement, not only one that names
         # a grouping column: a target can share its vector with a key
         # under the package's alias semantics, so the key may have changed
@@ -1986,28 +1925,50 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (grouped_input) .regroup_after_replacement(data, state)
     }
     if (generate) suspendInterrupts({
-        appended <- .can_append_physical_column(data, state) &&
-            .Call(C_dtatools_append_data_column, data, target$name, column)
-        if (appended) {
-            .append_physical_column(state, target$name, column)
-        } else {
+        appended <- .Call(C_dtatools_append_data_column, data, target$name, column)
+        if (!appended) {
             stop("internal error: prepared table cannot append a column")
         }
-        if (is.null(.reference_state(data))) .mark_reference_data(data, state)
+        .mark_reference_data(data, .new_reference_state(data, dibble = is_dibble(data)))
     })
     invisible(data)
+}
+
+# Preserve aliases within the supplied table while detaching its payload
+# from other tables. Every binding of the table observes the pointer commit.
+.mutation_copy <- function(column) {
+    # A write must detach the payload now. Return a native compact numeric
+    # object so later Date/as.double methods keep their compact-read behavior.
+    if (.is_unmaterialized_numeric_altrep(column)) .deep_copy_value(column) else .metadata_copy(column)
+}
+
+.aliased_column_names <- function(data, column) {
+    address <- rlang::obj_address(column)
+    matches <- vapply(seq_along(data), function(index) {
+        identical(rlang::obj_address(.subset2(data, index)), address)
+    }, logical(1))
+    names(data)[matches]
+}
+
+.commit_detached_column <- function(data, before, after) {
+    locations <- match(.aliased_column_names(data, before), names(data))
+    # Validate and stage the complete plan before a native commit that cannot
+    # allocate or be interrupted between same-vector column slots.
+    .Call(C_dtatools_replace_reference_columns, data, NULL, locations,
+          rep(NA_character_, length(locations)), rep(list(after), length(locations)))
+    invisible(NULL)
 }
 
 .data_table_fused_replace_commit <- function(data, target, patch) {
     key_columns <- data.table::key(data)
     index_columns <- data.table::indices(data, vectors = TRUE)
     affected_indexes <- vapply(
-        index_columns, function(columns) target %in% columns, logical(1)
+        index_columns, function(columns) any(target %in% columns), logical(1)
     )
     suspendInterrupts({
         result <- patch()
-        if (is.null(result)) return(NULL)
-        key_changed <- target %in% key_columns
+        if (!isTRUE(result)) return(result)
+        key_changed <- any(target %in% key_columns)
         if (key_changed) data.table::setkeyv(data, NULL)
         if (key_changed || any(affected_indexes)) {
             retained <- index_columns[!affected_indexes]
@@ -2022,11 +1983,11 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     key_columns <- data.table::key(data)
     index_columns <- data.table::indices(data, vectors = TRUE)
     affected_indexes <- vapply(
-        index_columns, function(columns) target %in% columns, logical(1)
+        index_columns, function(columns) any(target %in% columns), logical(1)
     )
     suspendInterrupts({
         result <- patch()
-        key_changed <- target %in% key_columns
+        key_changed <- any(target %in% key_columns)
         if (key_changed) data.table::setkeyv(data, NULL)
         if (key_changed || any(affected_indexes)) {
             retained <- index_columns[!affected_indexes]
@@ -2258,26 +2219,9 @@ copy_data <- function(data) {
     columns
 }
 
-# Reads one visible column without building a snapshot of the whole
-# table. Physical columns of an ordinary overlay still live in the
-# object itself, so they are read from there; generated columns and
-# every column of a structural overlay come from the store. Returns the
-# column wrapped in a list, or NULL when the name is not an exact match,
-# which sends the caller back to the general snapshot path.
 .reference_column <- function(data, name) {
-    state <- .reference_state(data)
-    if (is.null(state)) return(NULL)
-    if (!isTRUE(state$physical_overlay)) {
-        # Physical columns are read straight off the object; `.subset2()`
-        # matches names exactly and returns NULL for a generated or absent
-        # column, which the store lookup below then resolves.
-        value <- .subset2(data, name)
-        if (!is.null(value)) return(list(value))
-    }
-    if (exists(name, envir = state$columns, inherits = FALSE)) {
-        return(list(state$columns[[name]]))
-    }
-    NULL
+    value <- if (.has_column_overlay(data)) .data_columns(data)[[name]] else .subset2(data, name)
+    if (is.null(value)) NULL else list(value)
 }
 
 #' @export
@@ -2319,14 +2263,13 @@ names.dtatools_ref_data <- function(x) {
 
 #' @export
 length.dtatools_ref_data <- function(x) {
-    state <- .reference_state(x)
-    state$physical_count + state$generated_count
+    length(.reference_names(x))
 }
 
 #' @export
 dim.dtatools_ref_data <- function(x) {
-    state <- .reference_state(x)
-    c(state$nrow, state$physical_count + state$generated_count)
+    rows <- if (.has_column_overlay(x)) .reference_state(x)$nrow else abs(.row_names_info(x, 2L))
+    c(rows, length(.reference_names(x)))
 }
 
 #' @export
@@ -2405,17 +2348,8 @@ print.dtatools_ref_data <- function(x, ...) {
     invisible(x)
 }
 
-# The replacement operators on a dibble write by reference, as `gen()`,
-# `repl()`, and `:=` do. The ordinary tibble replacement runs on the
-# snapshot, the changed columns are typed and promoted as `mutate()` types
-# them, and the result's columns are installed into the dibble's own
-# reference state, so the object every binding holds is the one that
-# changed and R's rebinding in the calling frame is a no-op. That is what
-# makes R's replacement-function forms by reference too: `val_labels(d$x)
-# <- v` is ``d <- `$<-`(d, "x", `val_labels<-`(d$x, v))``, so a metadata
-# setter used on a dibble's column inside a function reaches the caller's
-# dataset and every alias of it (ADR 0023). A reference frame that is not
-# a dibble gets the ordinary copy.
+# Ordinary replacement follows R's copy-and-rebind semantics. Type and
+# validate the snapshot, then isolate every column before closing the result.
 #' @export
 `$<-.dtatools_ref_data` <- function(x, name, value) {
     result <- .reference_snapshot(x)
@@ -2460,87 +2394,17 @@ print.dtatools_ref_data <- function(x, ...) {
     .install_replacement(x, result, value, "`[<-`")
 }
 
-# Installs a replacement's result into the dibble itself. R
-# shallow-duplicates a shared object before it dispatches a replacement,
-# so `x` may be a copy of the object the caller's other bindings hold;
-# the reference state names that object, and the result's columns are
-# installed into it as `keep_vars()` installs a selection: into its
-# physical list when capacity allows, or into a shallow rebuilt table.
-# The installed object is returned for R's replacement assignment; other
-# aliases keep the old complete table when rebuilding was necessary. Columns the replacement left
-# alone are recognized by address and untouched; a changed column is
-# typed by promotion from its prior storage, or as a new column; and one
-# that is still the very vector the caller passed as `value` is wrapped
-# copy-on-write, so a later `:=` through this dibble cannot reach the
-# frame the vector came from.
 .install_replacement <- function(x, result, value, caller) {
-    if (!is_dibble(x)) return(result)
-    if (!is.data.frame(result)) return(result)
-    state <- .reference_state(x)
-    if (nrow(result) != state$nrow) {
-        stop(sprintf("%s cannot change a dibble's row count", caller),
-             call. = FALSE)
+    if (!is_dibble(x) || !is.data.frame(result)) return(result)
+    if (nrow(result) != nrow(x)) {
+        stop(sprintf("%s cannot change a dibble's row count", caller), call. = FALSE)
     }
     names <- names(result)
-    if (is.null(names) || anyNA(names) || any(names == "") ||
-        anyDuplicated(names) > 0L) {
-        stop(
-            sprintf("%s needs unique, non-missing column names", caller),
-            call. = FALSE
-        )
+    if (is.null(names) || anyNA(names) || any(names == "") || anyDuplicated(names)) {
+        stop(sprintf("%s needs unique, non-missing column names", caller), call. = FALSE)
     }
-    target <- state$object
-    if (is.null(target)) target <- x
-    before <- .data_columns(target)
-    typed <- .retype_changed_columns(result, before, caller)
-    columns <- .data_columns(typed)
-    shared <- .value_addresses(value)
-    if (length(shared)) {
-        for (index in seq_along(columns)) {
-            if (rlang::obj_address(columns[[index]]) %in% shared) {
-                columns[[index]] <- .metadata_copy(columns[[index]])
-            }
-        }
-    }
-    original <- .as_mutation_data(target, allow_grouped = TRUE)
-    target <- .install_column_selection(target, original, columns)
-    .sync_replacement_attributes(target, result)
-    invisible(target)
-}
-
-.value_addresses <- function(value) {
-    if (is.null(value)) return(character())
-    if (is.data.frame(value) || (is.list(value) && !is.object(value))) {
-        return(vapply(
-            .plain_data_columns(value), rlang::obj_address, character(1)
-        ))
-    }
-    rlang::obj_address(value)
-}
-
-# A replacement on a grouped snapshot goes through dplyr's `[<-` and
-# `$<-` methods, which recompute or drop the groups, and `row.names<-` or
-# `dimnames<-` may have changed the row names; the dibble takes the
-# result's grouping, row names, and classes as its own.
-.sync_replacement_attributes <- function(x, result) {
-    state <- .reference_state(x)
-    .Call(
-        C_dtatools_set_attribute, x, "groups",
-        attr(result, "groups", exact = TRUE)
-    )
-    .Call(
-        C_dtatools_set_attribute, x, "row.names",
-        attr(result, "row.names", exact = TRUE)
-    )
-    classes <- class(result)
-    if (!identical(classes, state$classes)) {
-        state$classes <- classes
-        .Call(
-            C_dtatools_set_attribute, x, "class",
-            unique(c("dtatools_ref_data", classes))
-        )
-    }
-    invisible(NULL)
+    typed <- .retype_changed_columns(result, .data_columns(x), caller)
+    .close_dibble(x, typed, caller)
 }
 
 # Row or cell assignment into a typed column runs the column's own strict
@@ -2590,7 +2454,7 @@ print.dtatools_ref_data <- function(x, ...) {
     result
 }
 
-# `names(d)[1] <- "k"` renames by reference, as `rename_vars()` does.
+# `names(d)[1] <- "k"` returns a renamed copy.
 #' @export
 `names<-.dtatools_ref_data` <- function(x, value) {
     result <- .reference_snapshot(x)
@@ -3226,10 +3090,16 @@ transmute.dtatools_ref_data <- function(.data, ...) {
             }
         }))
     }
+    result <- .metadata_copy(result)
+    detached <- new.env(parent = emptyenv())
     for (index in seq_len(length(result))) {
         column <- .subset2(result, index)
-        if (isolate_all || rlang::obj_address(column) %in% source_addresses) {
-            result[[index]] <- .metadata_copy(column)
+        address <- rlang::obj_address(column)
+        if (isolate_all || address %in% source_addresses) {
+            if (!exists(address, envir = detached, inherits = FALSE)) {
+                detached[[address]] <- .metadata_copy(column)
+            }
+            .Call(C_dtatools_set_data_column, result, as.integer(index), detached[[address]])
         }
     }
     result

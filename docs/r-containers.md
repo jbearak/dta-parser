@@ -24,8 +24,8 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 | `reorder_dta_rows(data, perm)` | Reference | Reference | Reference | Reference; drops the `sorted` marker and secondary indexes |
 | `data[i, y := v]` | Reference | Error | Error | data.table's own `:=`: reference, ignoring declared Stata storage |
 | `dplyr::mutate()` and the other verbs | Copy → dibble | Copy → tibble | Copy → data.frame | Copy → data.table |
-| `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, `row.names<-` | **Reference** | Copy | Copy | Copy |
-| `var_label(data$x) <- `, `val_labels(data$x) <- `, `attr(data$x, ...) <- ` | **Reference** (they are `$<-` calls) | Copy | Copy | Copy |
+| `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, `row.names<-` | Copy | Copy | Copy | Copy |
+| `var_label(data$x) <- `, `val_labels(data$x) <- `, `attr(data$x, ...) <- ` | Copy | Copy | Copy | Copy |
 | `set_var_label()`, `set_var_labels()`, `set_val_labels()` on a data frame | Reference | Reference | Reference | Reference |
 | `set_var_format()`, `set_var_formats()`, `set_dta_metadata()` on a data frame | Reference | Reference | Reference | Reference |
 | `set_dta_note()`, `add_dta_note()`, `drop_dta_notes()`, `renumber_dta_notes()`, `set_dta_characteristic()`, `drop_dta_characteristics()` on a data frame | Reference | Reference | Reference | Reference |
@@ -36,7 +36,9 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 
 `gen()` never changes what kind of table it was handed. A tibble is prepared for mutation by reference but stays a tibble, with R's own semantics for the replacement operators and its existing columns untouched, exactly as a base data frame does however often `gen()` has run on it. `is_dibble()` reports `FALSE` throughout. Call `as_dibble()` when you want the Stata dataset.
 
-Two rows deserve emphasis. `$<-` and its relatives are by reference **only** on a dibble; this is the one place where a dibble stops behaving like an ordinary tibble, and it is what makes `var_label(data$x) <- "Age"` reach every binding of the dataset. And `[i, y := v]` is a dibble form: on a data table the brackets are data.table's, with data.table's storage and promotion rules, and on the other two containers there is no `:=` to find. `gen()` and `repl()` are the spellings that mean the same thing on all four.
+Ordinary replacement uses copy-and-rebind semantics in every container. For metadata writes that must reach a caller, use `set_var_format()`, `set_var_label()`, `set_val_labels()`, or the note and characteristic helpers. Converting with `data <- as_dibble(data)` does not make function-local nested replacement mutate the caller.
+
+`[i, y := v]` is a dibble form. A data table runs its own bracket implementation, with its own storage and promotion rules; plain tibbles and data frames have no `:=` form. `gen()` and `repl()` are the explicit spellings shared by all four containers.
 
 Grouping works the same way everywhere: `by = ` groups in current row order, `bysort = ` sorts by reference and then groups, and a grouped tibble or dibble supplies its dplyr groups. The order of operations is Stata's — groups first, then row selection and values per group, with `.n` and `.N` as the within-group row number and count — rather than data.table's, which applies `i` before grouping.
 
@@ -70,8 +72,8 @@ tbl <- tibble::as_tibble(survey)          # a snapshot, ordinary tibble
 
 gen(survey, adjusted = income * 1.1)      # by reference; `adjusted` is float
 survey[income < 0, income := NA]          # by reference; prints nothing
-survey$region <- 1:nrow(survey)           # by reference; `region` is long
-var_label(survey$region) <- "Region"      # by reference; reaches the dataset
+survey$region <- 1:nrow(survey)           # copy and rebind; `region` is long
+set_var_label(survey, region, "Region")  # by reference; reaches the dataset
 
 tbl2 <- dplyr::mutate(tbl, adjusted = income * 1.1)   # a copy; `adjusted` is a bare double
 tbl$region <- 1:nrow(tbl)                             # a copy; nothing else sees it

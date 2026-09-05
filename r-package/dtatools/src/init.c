@@ -4380,6 +4380,21 @@ static SEXP metadata_proxy(
     return result;
 }
 
+/* A base table copy may duplicate these wrappers without going through an
+   explicit metadata setter. Keep both the copied column and its source compact
+   rather than letting R's default ALTREP duplication request a data pointer. */
+static SEXP metadata_real_duplicate(SEXP value, Rboolean deep) {
+    (void) deep;
+    numeric_data *source = unmaterialized_numeric_storage(value);
+    return source == NULL ? NULL : numeric_compact_copy(source);
+}
+
+static SEXP metadata_string_duplicate(SEXP value, Rboolean deep) {
+    (void) deep;
+    if (unmaterialized_dictstring_source(value) == R_NilValue) return NULL;
+    return dictstring_compact_copy(value);
+}
+
 SEXP C_dtatools_metadata_copy(SEXP value) {
     if (!ALTREP(value)) return Rf_shallow_duplicate(value);
     if (R_altrep_inherits(value, dtatools_numeric_class) ||
@@ -4413,9 +4428,23 @@ SEXP C_dtatools_mark_reference_data(
         TYPEOF(classes) != STRSXP || XLENGTH(classes) == 0) {
         Rf_error("invalid reference-data state");
     }
+    SEXP owner = PROTECT(R_MakeExternalPtr(data, R_NilValue, R_NilValue));
+    Rf_defineVar(Rf_install("owner"), owner, state);
     Rf_setAttrib(data, Rf_install(".dtatools_ref_state"), state);
     Rf_setAttrib(data, R_ClassSymbol, classes);
+    UNPROTECT(1);
     return data;
+}
+
+/* Non-owning identity only. Never dereference this pointer: serialized
+   external pointers are NULL and a copied table has a different address. */
+SEXP C_dtatools_reference_state_valid(SEXP data) {
+    SEXP state = Rf_getAttrib(data, Rf_install(".dtatools_ref_state"));
+    if (!Rf_inherits(data, "dtatools_ref_data") || TYPEOF(state) != ENVSXP)
+        return Rf_ScalarLogical(0);
+    SEXP owner = R_getVarEx(Rf_install("owner"), state, FALSE, R_NilValue);
+    return Rf_ScalarLogical(TYPEOF(owner) == EXTPTRSXP &&
+                            R_ExternalPtrAddr(owner) == data);
 }
 
 // Replaces one attribute on an object in place. Reference datasets are
@@ -7042,7 +7071,7 @@ static SEXP apply_fused_compare_patch(void *data) {
     if (!status || matched == 0) {
         restore_fused_compare_patch(transaction);
         transaction->journal_complete = 0;
-        return status ? Rf_ScalarLogical(1) : R_NilValue;
+        return status ? Rf_ScalarLogical(0) : R_NilValue;
     }
     if (old_missing > transaction->saved_missing_count ||
         transaction->saved_missing_count - old_missing > SIZE_MAX - new_missing) {
@@ -7421,6 +7450,9 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_patch_data_column, 5},
     {"C_dtatools_set_data_column",
      (DL_FUNC) &C_dtatools_set_data_column, 3},
+    {"C_dtatools_reference_state_valid",
+     (DL_FUNC) &C_dtatools_reference_state_valid, 1},
+    {"C_dtatools_shared_columns", (DL_FUNC) &C_dtatools_shared_columns, 1},
     {"C_dtatools_column_capacity", (DL_FUNC) &C_dtatools_column_capacity, 1},
     {"C_dtatools_reserve_column_capacity",
      (DL_FUNC) &C_dtatools_reserve_column_capacity, 2},
@@ -7541,6 +7573,9 @@ void attribute_visible R_init_dtatools(DllInfo *dll) {
     R_set_altrep_Length_method(
         dtatools_metadata_real_class, metadata_proxy_length
     );
+    R_set_altrep_Duplicate_method(
+        dtatools_metadata_real_class, metadata_real_duplicate
+    );
     R_set_altvec_Dataptr_method(
         dtatools_metadata_real_class, metadata_real_dataptr
     );
@@ -7573,6 +7608,9 @@ void attribute_visible R_init_dtatools(DllInfo *dll) {
     );
     R_set_altrep_Length_method(
         dtatools_metadata_string_class, metadata_proxy_length
+    );
+    R_set_altrep_Duplicate_method(
+        dtatools_metadata_string_class, metadata_string_duplicate
     );
     R_set_altvec_Dataptr_method(
         dtatools_metadata_string_class, metadata_string_dataptr

@@ -52,11 +52,8 @@ reorder_dta_rows <- function(data, rows) {
     .return_mutation(original_data, data, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
-# Works out, for every logical column, where its reordered replacement
-# has to be written: a physical position in `data`, a binding in the
-# reference-state column store, or — for a physical column mirrored by
-# a reference state — both. `locations` and `names` carry `NA` for the
-# destinations a column does not have.
+# Validate the supported container and stage the current physical columns.
+# All commits target positions in the supplied table; no state store is written.
 .reorder_column_plan <- function(data) {
     if (!is.data.frame(data)) {
         stop(
@@ -65,7 +62,7 @@ reorder_dta_rows <- function(data, rows) {
         )
     }
     state <- .reference_state(data)
-    classes <- if (is.null(state)) class(data) else state$classes
+    classes <- setdiff(class(data), "dtatools_ref_data")
     base_classes <- setdiff(classes, "dtatools_dta_metadata")
     data_table <- identical(base_classes, c("data.table", "data.frame"))
     if (!data_table &&
@@ -79,39 +76,14 @@ reorder_dta_rows <- function(data, rows) {
             call. = FALSE
         )
     }
-    if (is.null(state)) {
-        columns <- .plain_data_columns(data)
-        names(columns) <- attr(data, "names", exact = TRUE)
-        count <- length(columns)
-        return(list(
-            columns = columns,
-            store = NULL,
-            locations = seq_len(count),
-            names = rep(NA_character_, count),
-            nrow = base::nrow(data),
-            data_table = data_table
-        ))
-    }
     columns <- .data_columns(data)
     count <- length(columns)
-    physical <- if (isTRUE(state$physical_overlay)) {
-        0L
-    } else {
-        state$physical_count
-    }
-    store <- state$columns
-    absent <- !vapply(names(columns), exists, logical(1),
-                      envir = store, inherits = FALSE)
-    if (any(absent)) {
-        stop("`data` has a reference state without its own columns",
-             call. = FALSE)
-    }
     list(
         columns = columns,
-        store = store,
-        locations = c(seq_len(physical), rep(NA_integer_, count - physical)),
-        names = names(columns),
-        nrow = state$nrow,
+        store = NULL,
+        locations = seq_len(count),
+        names = rep(NA_character_, count),
+        nrow = abs(.row_names_info(data, 2L)),
         data_table = data_table
     )
 }

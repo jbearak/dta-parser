@@ -1480,70 +1480,68 @@ test_that("grouped gen() keeps a factor's attributes", {
     expect_identical(as.character(data$h), c("a", "b", "a"))
 })
 
-test_that("replacement operators write to a dibble by reference", {
+test_that("ordinary replacement stays local while explicit metadata reaches callers", {
     data <- dibble(x = 1:2, s = c("a", "b"))
     alias <- data
     annotate <- function(target) {
         val_labels(target$x) <- c(one = 1, two = 2)
         var_label(target$x) <- "Count"
         attr(target$x, "format.stata") <- "%9.0g"
-        attr(target$s, "notes") <- "a note"
-        attr(target$s, "stata.note.numbers") <- 1L
+        name <- "s"
+        attr(target[[name]], "notes") <- "a note"
+        attr(target[[name]], "stata.note.numbers") <- 4L
+        attr(target[[name]], "stata.characteristics") <- c(source = "survey")
         target$y <- c(1.5, 2)
         target[["z"]] <- 3L
         target[1, "s"] <- "longer"
-        invisible(NULL)
+        target
     }
-    annotate(data)
-    # R's replacement forms desugar to `$<-`, so every metadata setter and
-    # column assignment inside the function reached the caller's dibble
-    # and its alias.
-    expect_identical(val_labels(alias$x), c(one = 1, two = 2))
-    expect_identical(var_label(alias$x), "Count")
-    expect_identical(attr(alias$x, "format.stata"), "%9.0g")
-    expect_identical(attr(alias$s, "notes"), "a note")
-    expect_identical(names(alias), c("x", "s", "y", "z"))
-    expect_identical(as.character(alias$s), c("longer", "b"))
-    expect_identical(dta_storage_type(alias$x), "long")
-    expect_identical(dta_storage_type(alias$y), "double")
-    expect_identical(dta_storage_type(alias$z), "long")
-    expect_identical(attr(alias$s, "stata.string.storage"), "str6")
-    expect_true(is_dibble(data))
-    # Deletion and renaming follow.
-    data$y <- NULL
-    data["z"] <- NULL
-    names(data)[1] <- "k"
-    expect_identical(names(alias), c("k", "s"))
-    # The by-reference verbs keep working on the rewritten state, and
-    # the visible dataset is complete for every consumer.
-    gen(data, w = k * 2L)
-    data[, k := 0L]
-    expect_identical(as.integer(alias$w), c(2L, 4L))
-    expect_identical(as.integer(alias$k), c(0L, 0L))
-    expect_identical(dim(alias), c(2L, 3L))
-    expect_identical(names(tibble::as_tibble(alias)), c("k", "s", "w"))
-    expect_identical(names(dplyr::bind_rows(alias, alias)), c("k", "s", "w"))
-    keep_vars(data, k, s)
-    expect_identical(names(alias), c("k", "s"))
-    data$k <- NULL
-    data$s <- NULL
-    expect_identical(ncol(alias), 0L)
-    # A read dibble behaves the same, and the metadata is written.
-    path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
-    read <- dibble(v = 1:2)
-    read_alias <- read
-    var_label(read$v) <- "Value"
-    attr(read$v, "format.stata") <- "%8.0g"
-    save_dta(read_alias, path)
-    back <- read_dta(path)
-    back_alias <- back
-    var_label(back$v) <- "Changed"
-    expect_identical(var_label(back_alias$v), "Changed")
-    expect_identical(attr(back_alias$v, "format.stata"), "%8.0g")
+    changed <- annotate(data)
+    expect_identical(names(alias), c("x", "s"))
+    expect_identical(as.character(alias$s), c("a", "b"))
+    expect_null(val_labels(alias$x))
+    expect_null(var_label(alias$x))
+    expect_null(attr(alias$s, "notes"))
+    expect_null(attr(alias$s, "stata.characteristics"))
+    expect_identical(attr(changed$s, "notes"), "a note")
+    expect_identical(attr(changed$s, "stata.note.numbers"), 4L)
+    expect_identical(attr(changed$s, "stata.characteristics"), c(source = "survey"))
+    expect_identical(val_labels(changed$x), c(one = 1, two = 2))
+    expect_identical(var_label(changed$x), "Count")
+    expect_identical(attr(changed$x, "format.stata"), "%9.0g")
+    expect_identical(names(changed), c("x", "s", "y", "z"))
+    expect_identical(as.character(changed$s), c("longer", "b"))
+    expect_identical(dta_storage_type(changed$x), "long")
+    expect_identical(dta_storage_type(changed$y), "double")
+    expect_identical(dta_storage_type(changed$z), "long")
+    expect_identical(attr(changed$s, "stata.string.storage"), "str6")
+    expect_true(is_dibble(changed))
+    edit <- function(target, name) {
+        set_var_label(target, .(name), "Caller")
+        set_var_format(target, .(name), "%8.0g")
+        set_dta_note(target, 4L, "Checked", variable = name)
+    }
+    edit(data, "x")
+    expect_identical(var_label(alias$x), "Caller")
+    expect_identical(attr(alias$x, "format.stata"), "%8.0g")
+    expect_identical(dta_notes(alias, variable = "x"), c(`4` = "Checked"))
+    expect_identical(var_label(changed$x), "Count")
+    old <- changed
+    changed$y <- NULL
+    changed["z"] <- NULL
+    names(changed)[1] <- "k"
+    expect_identical(names(old), c("x", "s", "y", "z"))
+    expect_identical(names(changed), c("k", "s"))
+    current_alias <- changed
+    gen(changed, w = k * 2L)
+    changed[, k := 0L]
+    expect_identical(as.integer(current_alias$w), c(2L, 4L))
+    expect_identical(as.integer(current_alias$k), c(0L, 0L))
+    expect_identical(names(dplyr::bind_rows(changed, changed)), c("k", "s", "w"))
+    expect_identical(as.integer(old$x), 1:2)
 })
 
-test_that("by-reference replacement isolates other frames and vectors", {
+test_that("copying replacement isolates vectors and preserves grouping", {
     # A derived dibble never writes into its source.
     source <- dibble(x = dta_byte(1:2), w = 1:2)
     piece <- dplyr::select(source, x)
@@ -1584,10 +1582,13 @@ test_that("by-reference replacement isolates other frames and vectors", {
     named <- dibble(x = 1:2)
     named_alias <- named
     row.names(named) <- c("a", "b")
-    expect_identical(row.names(named_alias), c("a", "b"))
+    expect_identical(row.names(named_alias), c("1", "2"))
+    expect_identical(row.names(named), c("a", "b"))
     dimnames(named) <- list(c("c", "d"), "y")
-    expect_identical(row.names(named_alias), c("c", "d"))
-    expect_identical(names(named_alias), "y")
+    expect_identical(row.names(named_alias), c("1", "2"))
+    expect_identical(names(named_alias), "x")
+    expect_identical(row.names(named), c("c", "d"))
+    expect_identical(names(named), "y")
     expect_true(is_dibble(named_alias))
     # A grouped dibble regroups when a key changes.
     grouped <- dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g)
@@ -1601,6 +1602,8 @@ test_that("by-reference replacement isolates other frames and vectors", {
     renamed <- dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g)
     renamed_alias <- renamed
     names(renamed) <- c("x", "k")
+    expect_identical(dplyr::group_vars(renamed_alias), "g")
+    renamed_alias <- renamed
     expect_identical(dplyr::group_vars(renamed_alias), "k")
     expect_identical(
         names(attr(renamed_alias, "groups", exact = TRUE)),
@@ -1617,6 +1620,8 @@ test_that("by-reference replacement isolates other frames and vectors", {
     both <- dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g)
     both_alias <- both
     suppressWarnings(dimnames(both) <- list(row.names(both), c("x", "k")))
+    expect_identical(dplyr::group_vars(both_alias), "g")
+    both_alias <- both
     expect_identical(dplyr::group_vars(both_alias), "k")
     expect_identical(
         names(attr(both_alias, "groups", exact = TRUE)),

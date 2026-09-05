@@ -64,6 +64,13 @@ by-reference `:=` or `replace_values()` on the input or the result leaves the
 other as it was; untouched columns are shared copy-on-write, so compact
 columns stay compact. `tibble::as_tibble()` returns a tibble snapshot.
 
+Ordinary `$<-`, `[[<-`, `[<-`, names, row-name, and nested attribute
+replacement use R copy-and-rebind semantics. Existing aliases stay unchanged.
+Converting a table with `as_dibble()` does not make function-local replacement
+reach its caller. Return and assign the result, or use explicit helpers such as
+`set_var_format(data, x, "%9.0g")`, `set_var_label()`, `set_dta_metadata()`,
+`gen()`, and `repl()` when caller mutation is intended.
+
 `dibble()` builds one like `tibble::tibble()`, `as_dibble()` converts a data
 frame, tibble, or data table (a data table is copied, since a dibble cannot
 share its self-reference), and `is_dibble()` tests for one. `as_dibble()` of a
@@ -94,7 +101,7 @@ stored in Arrow files. Mutating and table-producing operations reject custom
 data-table subclasses whose invariants dtatools cannot know.
 
 `gen()`, `replace_values()`, `keep_vars()`, and `drop_vars()` mutate the supplied data frame or tibble. Dataset
-aliases and aliases of a target column observe the change. Call `copy_data()`
+aliases observe the change. Separate tables sharing a column remain isolated. Call `copy_data()`
 first when the original dataset, its compact storage, and its metadata must
 remain independent. See `?replace_values` for selection, evaluation, formula,
 grouping, and Stata compatibility details, and
@@ -568,10 +575,10 @@ required:
 
 ```r
 var_label(cars$foreign)
-var_label(cars$foreign) <- "Vehicle origin"
+set_var_label(cars, foreign, "Vehicle origin")
 
 val_labels(cars$foreign)
-val_labels(cars$foreign) <- c(Domestic = 0, Imported = 1)
+set_val_labels(cars, foreign, c(Domestic = 0, Imported = 1))
 
 dataset_label(cars) <- "Automobile data"
 ```
