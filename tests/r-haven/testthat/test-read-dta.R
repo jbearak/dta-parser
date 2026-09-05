@@ -399,12 +399,15 @@ test_that("all bundled fixtures agree with haven", {
                       117L, 118L, 119L), info = info)
 
         for (name in names(actual)) {
+            comparable <- without_haven_variable_notes(
+                without_stata_storage(actual[[name]])
+            )
             if (storage[[name]] %in% c("float", "double")) {
-                expect_equal(without_stata_storage(actual[[name]]),
+                expect_equal(comparable,
                              expected[[name]], tolerance = 1e-7,
                              info = paste(info, name))
             } else {
-                expect_equal(without_stata_storage(actual[[name]]),
+                expect_equal(comparable,
                              expected[[name]], tolerance = 0,
                              info = paste(info, name, "exact"))
             }
@@ -419,6 +422,21 @@ test_that("all bundled fixtures agree with haven", {
             }
         }
     }
+})
+
+test_that("Haven column comparisons exclude variable notes only", {
+    skip_if_not_installed("haven")
+    path <- fixture("egen_unicode_names_stata18.dta")
+    actual <- read_dta(path, output = "tibble")$group_unicode
+    expected <- haven::read_dta(path)$group_unicode
+    notes <- dta_notes(actual)
+    expect_length(notes, 1L)
+    expect_match(unname(notes), "^group\\(")
+    expect_null(attr(expected, "notes", exact = TRUE))
+    comparable <- without_haven_variable_notes(without_stata_storage(actual))
+    expect_identical(comparable, expected)
+    expect_identical(attr(comparable, "label", exact = TRUE), "see notes")
+    expect_identical(dta_notes(actual), notes)
 })
 
 test_that("dataset-note cardinality, ordering, and empty values are semantic", {

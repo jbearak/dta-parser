@@ -33,7 +33,7 @@ The TypeScript and Rust readers follow the same compatibility contract and are c
 
 - [Contributing](CONTRIBUTING.md) covers repository layout, development, testing, conformance, and releases.
 - [Benchmarks](benchmarks/README.md) covers methodology and links to dated TypeScript, Rust, R, haven, and Stata results.
-- R guides: [where dtatools diverges from Stata](docs/r-stata-divergences.md), [mutation by reference](docs/r-mutation-by-reference.md), and [containers](docs/r-containers.md) — what `gen()`, `repl()`, `:=`, and `mutate()` do on each table class.
+- R guides: [where dtatools diverges from Stata](docs/r-stata-divergences.md), [mutation by reference](docs/r-mutation-by-reference.md), [containers](docs/r-containers.md), and [egen calculations](docs/r-egen.md), including equivalent `gen()`, `egen()`, and `:=` forms.
 
 ## License
 
