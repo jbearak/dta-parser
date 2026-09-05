@@ -54,7 +54,7 @@ test_that("variable names are read from each supported container", {
     if (requireNamespace("data.table", quietly = TRUE)) {
         containers <- append(containers, list(data.table::data.table(target = 1)))
     }
-    reference_data <- data.frame(source = 1)
+    reference_data <- reserve_columns(data.frame(source = 1))
     gen(reference_data, target, source + 1)
     containers <- append(containers, list(reference_data))
 

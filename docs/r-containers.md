@@ -11,6 +11,11 @@
 
 Choose a reader's container with `output = ` on the call, or session-wide with `options(dtatools.output = )`. `as_dibble()`, `tibble::as_tibble()`, `as.data.frame()`, and `data.table::as.data.table()` convert. `save_arrow()` records which of three its input was — dibble, tibble, or data table — and `read_arrow()` restores that by default. A plain data frame records no choice: it, and files written before the container was recorded, read back as `options(dtatools.output)` names, falling back to a dibble.
 
+data.table support requires version 1.18.2.1 or newer, which uses the resizable
+allocation protocol required by R 4.6. If an older version is installed, update
+it with `install.packages("data.table")`; dtatools rejects its tables before
+mutation. The other supported containers do not require data.table.
+
 ## Where the write lands
 
 *Reference* means the operation modifies the dataset itself, so every name bound to it sees the change and no assignment is needed. *Copy* means R's ordinary copy-on-modify: a new object comes back and the input is untouched. See [mutation by reference](./r-mutation-by-reference.md).
@@ -34,7 +39,7 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 | Joins, `bind_rows()` | Copy → dibble when the dibble is first | Copy → tibble | Copy → data.frame | Copy → data.table |
 | `copy_data()`, `tibble::as_tibble()` | Copy, independent | Copy, independent | Copy, independent | Copy, independent |
 
-`gen()` never changes what kind of table it was handed. A tibble is prepared for mutation by reference but stays a tibble, with R's own semantics for the replacement operators and its existing columns untouched, exactly as a base data frame does however often `gen()` has run on it. `is_dibble()` reports `FALSE` throughout. Call `as_dibble()` when you want the Stata dataset.
+`gen()` never changes what kind of table it was handed. A caller-prepared tibble stays a tibble, with R's own semantics for the replacement operators and its existing columns untouched, exactly as a base data frame does however often `gen()` has run on it. `is_dibble()` reports `FALSE` throughout. Call `as_dibble()` when you want the Stata dataset.
 
 Ordinary replacement uses copy-and-rebind semantics in every container. For metadata writes that must reach a caller, use `set_var_format()`, `set_var_label()`, `set_val_labels()`, or the note and characteristic helpers. Converting with `data <- as_dibble(data)` does not make function-local nested replacement mutate the caller.
 
@@ -79,10 +84,11 @@ tbl2 <- dplyr::mutate(tbl, adjusted = income * 1.1)   # a copy; `adjusted` is a 
 tbl$region <- 1:nrow(tbl)                             # a copy; nothing else sees it
 tbl[income < 0, income := NA]                         # error: tibbles have no `:=`
 
+tbl <- reserve_columns(tbl)             # assign preparation before growth
 gen(tbl, flag = income > 0)               # by reference — and `tbl` is still a tibble
 ```
 
-The first `gen()` prepares and rebinds this unprepared `tbl`, with a warning. Earlier aliases keep the original table. `tbl` remains a tibble and includes `flag`. Its existing columns are untouched; only `flag` takes Stata storage, as it would on a base data frame. `is_dibble(tbl)` is `FALSE`. `tbl <- as_dibble(tbl)` is how you ask for the Stata dataset.
+Assign `reserve_columns()` before `gen()` when the input is an ordinary unprepared tibble. `tbl` remains a tibble and includes `flag`; existing columns keep their classes and `flag` keeps the logical type of its expression. `is_dibble(tbl)` remains `FALSE`. `tbl <- as_dibble(tbl)` explicitly asks for a Stata-typed dataset. Without preparation, generation stops before evaluating its values or changing the table.
 
 One consequence to expect: the expressions `gen()` evaluates on a tibble see the tibble's own columns, so `gen(tbl, n = .N, by = g)` on a bare character `g` treats `NA` and `""` as two groups. In a dibble they are one Stata string value and one group. Stata's collation applies where a Stata dataset is.
 
@@ -99,7 +105,7 @@ Rowwise tibbles are rejected by `gen()` and `repl()`; `copy_data()` accepts them
 - [Stata vector operations](./r-stata-vector-operations.md) — the rules columns follow outside a dibble
 - `?dibble`, `?"dibble-bracket"`, `?"dta-storage-defaults"`, `?replace_values` in R
 
-Constructors and readers reserve 5,000 spare column-pointer slots, controlled by `dtatools.alloccol`. Reallocation warns and may separate aliases. See [column capacity and aliases](r-mutation-by-reference.md) for `reserve_columns()`, function parameters, and preparation after base R serialization.
+Constructors, readers, and `copy_data()` reserve 5,000 spare column-pointer slots, controlled by `dtatools.alloccol`. Helpers stop when growth cannot fit the supplied table; they never rebind it. Inspect `column_capacity(data)` and `can_add_columns(data, n)`, and assign `data <- reserve_columns(data, n)` before passing a table into a function that needs more slots. Base serialization and ordinary copies can discard capacity. `keep_vars()` and `drop_vars()` also require preparation to shrink. Renaming, ordering, value replacement, and metadata edits need no spare slots. A copied or serialized data.table still needs assigned preparation before column-name edits because its self-reference no longer belongs to the supplied table. See [column capacity and aliases](r-mutation-by-reference.md) for the exact query and preparation contracts.
 
 ## Explicit metadata updates
 
@@ -107,7 +113,7 @@ All table metadata setters edit the supplied table, including through function
 parameters and runtime column names. They need no spare column capacity and
 preserve the existing allocation. They isolate copied reference bookkeeping
 without rebuilding the physical table. A table that already lost capacity
-still needs assigned `reserve_columns()` before a later structural operation.
+still needs assigned `reserve_columns()` before later additions or removals of columns.
 Vector forms return copies and require assignment.
 
 Use `set_var_format(data, .(my_name), "%9.0g")` for formats,

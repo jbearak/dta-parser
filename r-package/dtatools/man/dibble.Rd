@@ -66,8 +66,9 @@ and \code{\link[=set_dta_characteristic]{set_dta_characteristic()}}, or \code{ge
 Replacement results isolate unchanged columns too, so subsequent explicit
 writes cannot reach the input. Compact columns retain compact backing.
 A dibble reserves 5,000 spare column slots by default, controlled by
-\code{dtatools.alloccol}. Explicit structural helpers may reallocate and separate
-aliases; see \code{\link[=reserve_columns]{reserve_columns()}} for required rebinding and serialization repair.
+\code{dtatools.alloccol}. Explicit structural helpers fail when capacity is
+insufficient; assign \code{\link[=reserve_columns]{reserve_columns()}} before calling them or passing
+the table into a function that adds or drops columns.
 \code{\link[tibble:as_tibble]{tibble::as_tibble()}} returns a tibble snapshot, and \code{with()} returns
 its expression's value. \code{as_dibble()} of a grouped tibble keeps its
 grouping.

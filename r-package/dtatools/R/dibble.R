@@ -41,8 +41,9 @@
 #' Replacement results isolate unchanged columns too, so subsequent explicit
 #' writes cannot reach the input. Compact columns retain compact backing.
 #' A dibble reserves 5,000 spare column slots by default, controlled by
-#' `dtatools.alloccol`. Explicit structural helpers may reallocate and separate
-#' aliases; see [reserve_columns()] for required rebinding and serialization repair.
+#' `dtatools.alloccol`. Explicit structural helpers fail when capacity is
+#' insufficient; assign [reserve_columns()] before calling them or passing
+#' the table into a function that adds or drops columns.
 #' [tibble::as_tibble()] returns a tibble snapshot, and `with()` returns
 #' its expression's value. `as_dibble()` of a grouped tibble keeps its
 #' grouping.
@@ -301,22 +302,12 @@ NULL
     } else {
         rlang::enquo(i)
     }
-    target_expr <- substitute(x)
-    # The primitive has already evaluated x for dispatch. Resolve only simple
-    # destinations now, and pass x so the getter itself is not run again.
-    simple_target <- is.call(target_expr) && is.symbol(target_expr[[1L]]) &&
-        as.character(target_expr[[1L]]) %in% c("$", "[[", "get", "get0") &&
-        all(vapply(as.list(target_expr)[-1L], function(arg) {
-            is.atomic(arg) || is.symbol(arg)
-        }, logical(1)))
-    binding <- if (simple_target) {
-        .capture_mutation_binding(target_expr, parent.frame(), value = x)
-    } else NULL
-    destination <- if (is.null(binding)) target_expr else binding
-    original_x <- x
-    if (.has_column_overlay(x)) {
-        x <- .prepare_column_operation(x, length(.reference_names(x)))
-    }
+    .reject_data_table_subclass(x)
+    .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE)
+    new_names <- setdiff(vapply(assignments, `[[`, character(1), "name"),
+                         .reference_names(x))
+    .prepare_column_operation(x, length(x) + length(new_names),
+                              names_change = length(new_names) > 0L)
     selection <- .mutation_selection(
         x, where,
         by = by_quo,
@@ -335,12 +326,6 @@ NULL
             assignment$values, where, generate = !exists,
             selection = selection, promote = TRUE
         )
-        # Each completed assignment must reach its destination before another
-        # RHS runs or fails, including when its column list was reallocated.
-        destination <- .rebind_mutation(
-            original_x, x, destination, parent.frame()
-        )
-        original_x <- x
     }
     # `[` forces its result visible after dispatch, so `invisible()` alone
     # would autoprint the dataset after every assignment. Recorded after

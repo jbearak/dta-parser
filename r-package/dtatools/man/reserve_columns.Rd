@@ -7,7 +7,8 @@
 reserve_columns(data, n = getOption("dtatools.alloccol", 5000L))
 }
 \arguments{
-\item{data}{A dibble, tibble, base data frame, or data table.}
+\item{data}{A dibble, tibble, base data frame, or data table. data.table
+support requires data.table 1.18.2.1 or newer.}
 
 \item{n}{A finite, nonnegative whole number of spare column-pointer slots.}
 }
@@ -23,19 +24,22 @@ columns stored outside their physical list are rebuilt into one complete
 list, and serialized dibbles get fresh current-object bookkeeping.
 }
 \details{
-Constructors and readers reserve 5,000 spare slots by default. Set
-\code{options(dtatools.alloccol = 5000L)} to change this default. Structural
-operations keep the outer object while capacity remains. When preparation
-or reallocation is needed, they warn, rebuild an isolated table, and rebind
-the mutation target. Other aliases retain the old complete table.
+Constructors, readers, and \code{\link[=copy_data]{copy_data()}} reserve 5,000 spare slots by
+default. Set \code{options(dtatools.alloccol = 5000L)} to change this default.
+Explicit helpers preserve the supplied outer object. If it cannot hold
+the requested column count, they stop before evaluating values or sorting
+rows. Assign preparation before calling a function that adds or drops
+columns. The same rule applies to symbols, function parameters, extracted
+tables, and computed targets; helpers never rebind a caller's variable.
 
-Automatic rebinding supports a symbol, simple \code{$} or \code{[[} extraction,
-and \code{get()} or \code{get0()}. Destinations are captured before values run.
-Bracket \verb{:=} receives an already-evaluated table: assign its result for
-computed getter expressions. Otherwise assign unsupported target results
-yourself.
-Rebinding a function parameter changes only that local parameter: return
-and assign the rebuilt table in the caller when capacity changes.
+Adding columns consumes spare slots. Dropping columns also requires a
+resizable allocation. \code{keep_vars()} and \code{drop_vars()} validate their column
+selections first, then check capacity before a commit. A validated keep-all
+selection does not resize the table. Renaming, ordering,
+and overwriting existing columns and editing metadata need no spare slots.
+Column-name edits on a data.table also need its valid self-reference;
+assign preparation after copying or serialization if that check fails.
+Inspect \code{\link[=column_capacity]{column_capacity()}} and \code{\link[=can_add_columns]{can_add_columns()}} before growth.
 
 Base R serialization discards spare capacity. After \code{readRDS()} or
 \code{unserialize()}, assign \code{data <- reserve_columns(data)} before relying on

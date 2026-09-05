@@ -28,7 +28,7 @@ Suggests:
     arrow,
     bit64,
     callr,
-    data.table,
+    data.table (>= 1.18.2.1),
     httpuv,
     pkgload,
     testthat (>= 3.1.7),

@@ -87,8 +87,8 @@ the source's labels, date class, or display format.
 
 Calculation, storage conversion, metadata, and optional row/column
 ordering are prepared before one column-set commit. Failed validation
-leaves the dataset unchanged. Capacity reallocation follows
-\code{\link[=reserve_columns]{reserve_columns()}}, including its warning and rebinding rules.
+leaves the dataset unchanged. Insufficient capacity fails before calculation
+or row selection. Assign \code{\link[=reserve_columns]{reserve_columns()}} before calling \code{egen()}.
 }
 \examples{
 d <- dibble(household = c(1, 1, 2), income = c(10, 100, 30),

@@ -2,9 +2,9 @@
 #'
 #' `gen()` and `replace_values()` modify a data frame or tibble by reference.
 #' `repl()` is a direct alias for `replace_values()`. The return value is the
-#' updated dataset, invisibly. Within reserved capacity, aliases observe
-#' generation and replacement. Preparation or reallocation can separate
-#' aliases; assign the returned table when calling through a function.
+#' updated dataset, invisibly. Aliases observe generation and replacement.
+#' Assign [reserve_columns()] before passing a table to a function that needs
+#' more room; helpers never rebuild or rebind their supplied table.
 #' Aliases to the supplied table observe installed columns. Columns shared
 #' with a separate table or standalone vector detach before values change;
 #' Same-storage patches change all slots that hold the identical vector.
@@ -19,10 +19,11 @@
 #' `write.csv()` see the complete dataset. Constructors and readers reserve
 #' 5,000 spare column-pointer slots by default, controlled by
 #' `options(dtatools.alloccol = 5000L)`. When capacity is exhausted or a
-#' table needs preparation, the operation warns, rebuilds an isolated table,
-#' and rebinds a supported target. Aliases retain the old complete table.
-#' See [reserve_columns()] for supported targets, function parameters, and
-#' the required preparation after base R serialization.
+#' table needs preparation, generation fails before values, row selection,
+#' or `bysort` run. Assign [reserve_columns()] before calling a function that
+#' adds columns. Helpers never rebuild or rebind their supplied table.
+#' [copy_data()] returns an isolated table with default spare capacity.
+#' See [column_capacity()] and [can_add_columns()] for inspection.
 #' `gen()` and `replace_values()` accept a grouped tibble and treat its dplyr
 #' groups as assignment groups (see below). They reject rowwise tibbles;
 #' `copy_data()` accepts both and preserves their class.
@@ -298,7 +299,7 @@
 #' dta_storage_type(fraction$x)  # "double"
 #' identical(as.double(fraction$x), 0.1)  # TRUE
 #'
-#' survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
+#' survey <- reserve_columns(data.frame(income = c(10, 20), eligible = c(TRUE, FALSE)))
 #' gen(survey, adjusted = income + 5)
 #' replace_values(survey, income = income * 2, where = eligible)
 #' # The positional, Stata-shaped spelling means the same thing
@@ -317,7 +318,7 @@
 #' repl(survey, doubled = 0, where = .data[[source_name]] > 15)
 #'
 #' # Group-wise assignment in Stata's `by varlist:` order
-#' panel <- data.frame(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4)
+#' panel <- reserve_columns(data.frame(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4))
 #' gen(panel, rows = .N, by = id)               # each group's row count
 #' gen(panel, last = .n == .N, by = id)         # each group's last row
 #' gen(panel, above = x - mean(x), by = id)     # centred within group
@@ -325,9 +326,6 @@
 #' @export
 replace_values <- function(data, ..., where = NULL, by = NULL,
                            bysort = NULL, promote = TRUE) {
-    target_expr <- substitute(data)
-    binding <- .capture_mutation_binding(target_expr, parent.frame())
-    if (!is.null(binding)) data <- binding$data
 
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
@@ -345,7 +343,7 @@ replace_values <- function(data, ..., where = NULL, by = NULL,
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort),
         promote = .validate_promote(promote), report_promotion = TRUE
     )
-    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
+    invisible(result)
 }
 
 .validate_promote <- function(promote) {
@@ -362,9 +360,6 @@ repl <- replace_values
 #' @rdname replace_values
 #' @export
 gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
-    target_expr <- substitute(data)
-    binding <- .capture_mutation_binding(target_expr, parent.frame())
-    if (!is.null(binding)) data <- binding$data
 
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
@@ -379,7 +374,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         by = if (missing(by)) NULL else rlang::enquo(by),
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort)
     )
-    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
+    invisible(result)
 }
 
 .MUTATION_SHAPE_MESSAGE <- paste(
@@ -1722,11 +1717,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         data, allow_grouped = TRUE, allow_rowwise = FALSE
     )
     target <- .mutation_name(variable, generate, original)
-    if (.has_column_overlay(data)) {
-        data <- .prepare_column_operation(data, length(.reference_names(data)))
-        original <- .as_mutation_data(data, allow_grouped = TRUE)
-        shared <- rep(FALSE, length(data))
-    }
+    .prepare_column_operation(data, length(data) + as.integer(generate),
+                              names_change = generate)
     groups <- if (!is.null(selection)) {
         selection$groups
     } else if (grouped_input || !is.null(by) || !is.null(bysort)) {
@@ -1824,11 +1816,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         column <- .generated_column(
             values, rows, original$nrow, generate = TRUE
         )
-        data <- .prepare_column_operation(data, length(data) + 1L)
+        .prepare_column_operation(data, length(data) + 1L)
         state <- .reference_state(data)
         if (.ordinary_data_table(data)) {
-            data.table::set(data, j = target$name, value = column)
-            return(invisible(data))
+            columns <- .data_columns(data)
+            columns[[target$name]] <- column
+            return(.install_column_selection(data, original, columns))
         }
         if (is.null(state)) state <- .new_reference_state(data)
     } else {
@@ -2214,9 +2207,10 @@ copy_data <- function(data) {
         snapshot_attributes, .deep_copy_value
     )
     attributes(columns) <- copied_attributes
-    if (data_table) data.table::setalloccol(columns)
-    if (is_dibble(data)) columns <- .as_dibble(columns, "copy_data()")
-    columns
+    if (data_table) return(data.table::setalloccol(columns,
+        n = .validate_alloccol(getOption("dtatools.alloccol", 5000L), length(columns))))
+    if (is_dibble(data)) return(.as_dibble(columns, "copy_data()"))
+    .reserve_column_capacity(columns)
 }
 
 .reference_column <- function(data, name) {

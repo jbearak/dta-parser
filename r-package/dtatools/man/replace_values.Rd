@@ -64,9 +64,9 @@ the column and so has no prior storage to widen.}
 \description{
 \code{gen()} and \code{replace_values()} modify a data frame or tibble by reference.
 \code{repl()} is a direct alias for \code{replace_values()}. The return value is the
-updated dataset, invisibly. Within reserved capacity, aliases observe
-generation and replacement. Preparation or reallocation can separate
-aliases; assign the returned table when calling through a function.
+updated dataset, invisibly. Aliases observe generation and replacement.
+Assign \code{\link[=reserve_columns]{reserve_columns()}} before passing a table to a function that needs
+more room; helpers never rebuild or rebind their supplied table.
 Aliases to the supplied table observe installed columns. Columns shared
 with a separate table or standalone vector detach before values change;
 Same-storage patches change all slots that hold the identical vector.
@@ -81,10 +81,11 @@ consumers such as \code{unclass()}, \code{dplyr::bind_rows()}, \code{purrr::map(
 \code{write.csv()} see the complete dataset. Constructors and readers reserve
 5,000 spare column-pointer slots by default, controlled by
 \code{options(dtatools.alloccol = 5000L)}. When capacity is exhausted or a
-table needs preparation, the operation warns, rebuilds an isolated table,
-and rebinds a supported target. Aliases retain the old complete table.
-See \code{\link[=reserve_columns]{reserve_columns()}} for supported targets, function parameters, and
-the required preparation after base R serialization.
+table needs preparation, generation fails before values, row selection,
+or \code{bysort} run. Assign \code{\link[=reserve_columns]{reserve_columns()}} before calling a function that
+adds columns. Helpers never rebuild or rebind their supplied table.
+\code{\link[=copy_data]{copy_data()}} returns an isolated table with default spare capacity.
+See \code{\link[=column_capacity]{column_capacity()}} and \code{\link[=can_add_columns]{can_add_columns()}} for inspection.
 \code{gen()} and \code{replace_values()} accept a grouped tibble and treat its dplyr
 groups as assignment groups (see below). They reject rowwise tibbles;
 \code{copy_data()} accepts both and preserves their class.
@@ -324,7 +325,7 @@ repl(fraction, x = 0.1)
 dta_storage_type(fraction$x)  # "double"
 identical(as.double(fraction$x), 0.1)  # TRUE
 
-survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
+survey <- reserve_columns(data.frame(income = c(10, 20), eligible = c(TRUE, FALSE)))
 gen(survey, adjusted = income + 5)
 replace_values(survey, income = income * 2, where = eligible)
 # The positional, Stata-shaped spelling means the same thing
@@ -343,7 +344,7 @@ gen(survey, doubled = .data[[source_name]] * 2)
 repl(survey, doubled = 0, where = .data[[source_name]] > 15)
 
 # Group-wise assignment in Stata's `by varlist:` order
-panel <- data.frame(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4)
+panel <- reserve_columns(data.frame(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4))
 gen(panel, rows = .N, by = id)               # each group's row count
 gen(panel, last = .n == .N, by = id)         # each group's last row
 gen(panel, above = x - mean(x), by = id)     # centred within group

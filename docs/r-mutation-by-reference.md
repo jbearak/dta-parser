@@ -41,18 +41,19 @@ names(copy)          # `copy` has the new column too
 copy$adjusted[1]
 ```
 
-This prepared dibble had spare capacity, so the append changed the existing table. `gen()` returns the updated dataset invisibly. Assigning that return value is useful when preparation or reallocation may be needed; in that case earlier aliases retain the original table.
+This prepared dibble had spare capacity, so the append changed the existing table. `gen()` returns that same table invisibly. If capacity is insufficient, it stops before evaluating values or sorting rows.
 
-Inside a function, return the updated table so the caller receives it even when capacity changes:
+Prepare and assign before passing a table into a function that adds columns:
 
 ```r
 add_flags <- function(data) {
-    data <- gen(data, poor = income < 1000)
-    data <- repl(data, poor = NA, where = is_missing(income))
-    invisible(data)
+    gen(data, poor = income < 1000)
+    repl(data, poor = NA, where = is_missing(income))
+    invisible(NULL)
 }
 
-survey <- add_flags(survey)    # receives a rebuilt table if capacity changes
+survey <- reserve_columns(survey, n = 1L)
+add_flags(survey)             # the caller sees poor
 ```
 
 ## Which operations write by reference
@@ -102,17 +103,19 @@ snapshot <- tibble::as_tibble(survey)   # a plain tibble with R's semantics
 
 `copy_data()` deep-copies the columns, their compact backing, and mutable dataset metadata. It rejects columns or attributes holding environments, functions, bytecode, external pointers, or weak references, because those cannot be isolated by copying.
 
-**Return tables from functions that can change capacity.** Within reserved capacity, a function mutates its argument in place. If preparation or reallocation is needed, only its local parameter is rebound. Return the updated table and assign it in the caller. Passing a prepared dibble to another function can modify it; use `copy_data()` for isolation.
+**Prepare before the function call.** A helper mutates its supplied table in place or fails when that table cannot resize. It never rebinds a parameter or another target. Assign `survey <- reserve_columns(survey, n = 10L)` before invoking a function that may add ten columns. Preparation creates an isolated table, so create aliases afterwards when they should share the changes.
 
 **There is no undo.** A mutation commits. Interrupting one is safe — compact columns keep rollback bytes until the write commits, so `Ctrl-C` restores the original payload — but a completed `repl()` cannot be reversed except by writing the old values back.
 
 **A `[` assignment does not print.** `[` always makes its result visible, so a bracket assignment at the console would print the whole dataset. As data.table does, dtatools skips the next top-level print of the mutated dataset, so `survey[income < 0, income := NA]` prints nothing and a bare `survey` on the next line prints as usual. The skip lasts only for the statement that made the assignment.
 
-**Column capacity and aliases.** Constructors and readers reserve 5,000 spare column-pointer slots by default. Set `options(dtatools.alloccol = 5000L)` to change the number. Every column remains in the physical list: `unclass()`, `.subset()`, `bind_rows()`, `bind_cols()`, purrr, JSON, and `write.csv()` all see the complete table, and `attributes(data)$names` reports every column name. Within capacity, structural mutation preserves outer identity. When preparation or reallocation is necessary, the operation warns, rebuilds an isolated table with compact copy-on-write backing, and rebinds its target. Aliases retain the old complete table.
+**Column capacity and aliases.** Constructors, readers, and `copy_data()` reserve 5,000 spare column-pointer slots by default. Set `options(dtatools.alloccol = 5000L)` to change the number. Every column remains in the physical list, so direct consumers and `attributes(data)$names` see the complete table. Explicit helpers never rebuild that list into another object. Insufficient capacity causes an error before values, row selection, or `bysort` run.
 
-Automatic rebinding supports a symbol, simple `$` and `[[` extractions, and `get()` or `get0()`. Function entry points capture these destinations before values run. Bracket `:=` dispatch receives an already evaluated table, so assign its result for computed getter expressions. For other expressions assign the return value. Within a function, only the local parameter is rebound; return the table and assign the result in the caller when capacity changes.
+`column_capacity(data)` reports total usable column slots, or `NA_real_` for an unprepared allocation. Subtract `ncol(data)` to find spare slots. `can_add_columns(data, n = 1L)` checks whether `n` additional columns fit. Its `n = 0` case also accepts an unprepared table because no growth is requested; it does not promise that columns can be dropped. A zero-column table reserved with `n = 0` has no resizable allocation and reports `NA_real_`.
 
-Use `data <- reserve_columns(data, n = getOption("dtatools.alloccol", 5000L))` to prepare a base data frame, tibble, dibble, or data table explicitly. It preserves the container, rebuilds legacy overlays, and repairs a serialized dibble's current-object bookkeeping. Base `readRDS()` and `unserialize()` discard spare capacity: call and assign `reserve_columns()` before relying on explicit structural mutation through aliases. `read_dta()` and `read_arrow()` already return prepared tables.
+`keep_vars()` and `drop_vars()` resolve and validate their column selections before checking capacity for the resulting table. Invalid selections keep their usual diagnostics, and a validated keep-all selection is a no-op even without preparation. A selection that removes columns needs a resizable allocation. Column-selector expressions can therefore run before a capacity error; no table changes have been committed. `rename_vars()`, `order_vars()`, `reorder_dta_rows()`, value replacements, and metadata setters need no spare slots. A bracket call checks all distinct new names before its first write, so insufficient capacity cannot leave an earlier assignment committed. After that check, assignments still run sequentially; an error in a later expression does not roll back earlier successful values.
+
+Assign `data <- reserve_columns(data, n = 10L)` to allow ten extra columns on a base data frame, tibble, dibble, or data table. This preserves container and column classes, isolates columns, rebuilds legacy overlays, and creates fresh dibble bookkeeping without modifying another table's state. A data.table also needs a valid self-reference for column-name edits, even without growth; the same preparation repairs it. Structural commits give that table isolated names and matching bookkeeping so another table created by ordinary R copying remains complete. Base `readRDS()`, `unserialize()`, and ordinary table copies can discard capacity. Assign preparation before passing their results to functions that add or drop columns. The same helper contract applies to a symbol, function parameter, `$` or `[[` extraction, `get()`, `get0()`, and computed targets.
 
 **ALTREP columns from elsewhere are detached.** A generic ALTREP column created by base R or another package is converted to an ordinary vector before replacement, because its private caches cannot be safely invalidated. A standalone alias to that former column keeps the old values.
 

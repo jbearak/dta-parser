@@ -47,7 +47,7 @@ test_that("physical-only selection mutates ordinary data aliases", {
 })
 
 test_that("structural mutation does not alter shared names vectors", {
-    data <- data.frame(a = 1:2, b = 3:4, c = 5:6)
+    data <- reserve_columns(data.frame(a = 1:2, b = 3:4, c = 5:6))
     name_alias <- names(data)
     other <- data.frame(x = 1:2, y = 3:4, z = 5:6)
     names(other) <- names(data)
@@ -60,7 +60,7 @@ test_that("structural mutation does not alter shared names vectors", {
 })
 
 test_that("same-size selection materializes generated columns", {
-    data <- data.frame(a = 1:2, b = 3:4)
+    data <- reserve_columns(data.frame(a = 1:2, b = 3:4))
     gen(data, generated, a + b)
 
     drop_vars(data, b)
@@ -73,7 +73,7 @@ test_that("same-size selection materializes generated columns", {
 })
 
 test_that("ordinary gen keeps physical columns authoritative", {
-    data <- data.frame(a = 1:3)
+    data <- reserve_columns(data.frame(a = 1:3))
     gen(data, generated, a + 1L)
 
     repl(data, a, NA_integer_, where = 1)
@@ -84,7 +84,7 @@ test_that("ordinary gen keeps physical columns authoritative", {
 })
 
 test_that("legacy serialized reference state remains readable", {
-    data <- data.frame(a = 1:2, b = 3:4)
+    data <- reserve_columns(data.frame(a = 1:2, b = 3:4))
     gen(data, generated, a + b)
     state <- attr(data, ".dtatools_ref_state", exact = TRUE)
     rm("physical_names", "physical_overlay", envir = state)
@@ -115,7 +115,7 @@ test_that("ALTREP data-frame wrappers support structural mutation", {
 
 test_that("selection errors are atomic", {
     make_data <- function() {
-        data <- data.frame(a = 1, b = 2)
+        data <- reserve_columns(data.frame(a = 1, b = 2))
         gen(data, generated, a + b)
         data
     }
@@ -180,7 +180,7 @@ test_that("selection errors are atomic", {
 })
 
 test_that("strict name selection supports ranges, c, and all_of", {
-    data <- data.frame(a = 1, b = 2, c = 3, d = 4)
+    data <- reserve_columns(data.frame(a = 1, b = 2, c = 3, d = 4))
     config <- list(requested = c("d", "a"))
 
     keep_vars(data, c(a:b), tidyselect::all_of(config$requested))
@@ -188,13 +188,13 @@ test_that("strict name selection supports ranges, c, and all_of", {
     expect_named(data, c("a", "b", "d"))
 
     all_of <- tidyselect::all_of
-    data <- data.frame(a = 1, b = 2, c = 3)
+    data <- reserve_columns(data.frame(a = 1, b = 2, c = 3))
     keep_vars(data, all_of(c("c", "a")))
     expect_named(data, c("a", "c"))
 })
 
 test_that("multiple ranges resolve together", {
-    data <- as.data.frame(setNames(as.list(1:8), letters[1:8]))
+    data <- reserve_columns(as.data.frame(setNames(as.list(1:8), letters[1:8])))
 
     keep_vars(data, c(a:b, d:e), g:h)
 
@@ -205,7 +205,7 @@ test_that("all_of snapshots promises as character names before selection", {
     wrapper <- function(data, requested) {
         keep_vars(data, tidyselect::all_of(requested))
     }
-    data <- data.frame(a = 1, b = 2)
+    data <- reserve_columns(data.frame(a = 1, b = 2))
     before <- serialize(data, NULL)
 
     expect_error(
@@ -257,11 +257,14 @@ test_that("validated keep-all is a structural no-op", {
     expect_identical(data.table::indices(data), "b")
 })
 
-test_that("serialized data.tables reallocate and preserve old aliases", {
+test_that("serialized data.tables require assigned repair and preserve old aliases", {
     skip_if_not_installed("data.table")
     data <- unserialize(serialize(data.table::data.table(a = 1:2, b = 3:4), NULL))
     alias <- data
-    expect_warning(drop_vars(data, b), "reallocation")
+    expect_error(drop_vars(data, b), "Assign.*reserve_columns")
+    expect_named(data, c("a", "b"))
+    data <- reserve_columns(data, 0)
+    expect_silent(drop_vars(data, b))
     expect_named(data, "a")
     expect_named(alias, c("a", "b"))
     expect_identical(length(unclass(data)), 1L)
@@ -270,7 +273,7 @@ test_that("serialized data.tables reallocate and preserve old aliases", {
 })
 
 test_that("structural mutation uses values installed by repl", {
-    data <- data.frame(a = 1:3, b = 4:6)
+    data <- reserve_columns(data.frame(a = 1:3, b = 4:6))
     gen(data, generated, a + b)
     repl(data, a, 9L, where = 2)
     repl(data, generated, 20, where = 3)
@@ -289,7 +292,7 @@ test_that("surviving columns keep Stata values and metadata", {
     values <- dta_byte(c(1, tagged_missing("a"), NA_real_))
     attr(values, "label") <- "Status"
     attr(values, "labels") <- c(Active = 1)
-    data <- data.frame(discard = 1:3, status = values)
+    data <- reserve_columns(data.frame(discard = 1:3, status = values))
     before <- serialize(data$status, NULL)
 
     keep_vars(data, status)
@@ -302,7 +305,7 @@ test_that("surviving columns keep Stata values and metadata", {
 })
 
 test_that("keep and drop support zero-row and zero-column results", {
-    empty <- data.frame(a = integer(), b = character())
+    empty <- reserve_columns(data.frame(a = integer(), b = character()))
     gen(empty, generated, numeric())
     keep_vars(empty, generated, a)
     expect_identical(dim(empty), c(0L, 2L))
@@ -314,7 +317,7 @@ test_that("keep and drop support zero-row and zero-column results", {
 })
 
 test_that("later reference mutations see a consistent overlay", {
-    data <- data.frame(a = 1:2, b = 3:4, c = 5:6)
+    data <- reserve_columns(data.frame(a = 1:2, b = 3:4, c = 5:6))
     gen(data, first, a + b)
     gen(data, second, first + c)
 

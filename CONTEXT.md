@@ -204,3 +204,9 @@ _Avoid_: cached signature, object signature
 **Lossy export conversion**:
 A reported replacement required when an R value has no representation in the selected Stata storage. Numeric values become system missing, character missing values become empty strings, and factor classes become value-labelled `long` variables.
 _Avoid_: Silent coercion, semantic round-trip
+
+**Column capacity**:
+The total number of variables a prepared table can hold before it needs a larger allocation. Spare column capacity is that total minus the variables already present.
+
+**Assigned preparation**:
+Creating an isolated table with room for planned structural changes and assigning it before passing it to a function that mutates the table.

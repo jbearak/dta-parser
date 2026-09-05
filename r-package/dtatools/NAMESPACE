@@ -320,6 +320,8 @@ importFrom(stats,quantile)
 if (getRversion() >= "4.3.0") S3method(chooseOpsMethod,dta_numeric)
 
 export(reserve_columns)
+export(column_capacity)
+export(can_add_columns)
 
 export(set_var_format)
 export(set_var_formats)
