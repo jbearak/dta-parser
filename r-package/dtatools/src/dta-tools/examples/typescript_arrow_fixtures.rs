@@ -428,7 +428,40 @@ fn main() {
             ..Default::default()
         })
     );
-    fs::write(out.join("profile.expected.json"),serde_json::to_string_pretty(&serde_json::json!({"dataset":profiled.dataset,"columns":profiled.columns.iter().enumerate().map(|(i,column)|serde_json::json!({"name":column.name,"field":column.field,"values":(0..28).map(|row|if i<5 && row>0 {serde_json::json!({"missing":if row==1 {".".into()}else{format!(".{}",(b'a'+row as u8-2) as char)}})}else{cell(column.array.as_ref(),row)}).collect::<Vec<_>>()})).collect::<Vec<_>>()})).unwrap()).unwrap();
+    let expected_columns = profiled
+        .columns
+        .iter()
+        .map(|column| {
+            let has_missing_codes = column
+                .field
+                .as_ref()
+                .is_some_and(|field| field.missing.is_some());
+            let values = (0..28)
+                .map(|row| {
+                    if has_missing_codes && row > 0 {
+                        let missing = if row == 1 {
+                            ".".into()
+                        } else {
+                            format!(".{}", (b'a' + row as u8 - 2) as char)
+                        };
+                        serde_json::json!({ "missing": missing })
+                    } else {
+                        cell(column.array.as_ref(), row)
+                    }
+                })
+                .collect::<Vec<_>>();
+            serde_json::json!({ "name": column.name, "field": column.field, "values": values })
+        })
+        .collect::<Vec<_>>();
+    fs::write(
+        out.join("profile.expected.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "dataset": profiled.dataset,
+            "columns": expected_columns,
+        }))
+        .unwrap(),
+    )
+    .unwrap();
     for (name, codec) in [
         ("none", ArrowCompression::Uncompressed),
         ("lz4", ArrowCompression::Lz4),
