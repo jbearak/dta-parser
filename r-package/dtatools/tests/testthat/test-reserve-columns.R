@@ -357,6 +357,13 @@ test_that("data.table readiness requires valid self-reference and preserves look
         expect_physical_table(newer, c("id", "value", "extra"))
         expect_physical_table(alias, c("id", "value"))
         expect_identical(x[data.table::data.table(value = 3L), on = "value"]$id, 2L)
+        expect_silent(reorder_dta_rows(alias, 2:1))
+        expect_identical(as.integer(alias$id), c(2L, 1L))
+        expect_identical(as.integer(alias$value), c(3L, 4L))
+        expect_null(attr(alias, "sorted", exact = TRUE))
+        expect_null(attr(alias, "index", exact = TRUE))
+        expect_identical(column_capacity(alias), NA_real_)
+        expect_identical(as.integer(newer$id), c(1L, 2L))
     }
     empty <- reserve_columns(data.table::data.table(), 1)
     expect_true(can_add_columns(empty))

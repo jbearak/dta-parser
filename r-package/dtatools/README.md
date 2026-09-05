@@ -630,12 +630,20 @@ confirm_var(survey, "missing", on_failure = "false")
 
 `gen()` appends a variable and `repl()` (an alias of `replace_values()`)
 replaces selected values, both by reference. The target and its values are
-one tagged pair, or the positional pair that reads like the Stata line:
+one tagged pair, or the positional pair that reads like the Stata line.
+Assign `reserve_columns()` before adding columns to a data frame:
 
 ```r
+survey <- reserve_columns(data.frame(
+  identifier = 1:3,
+  id = c(2, 1, 2), region = c("west", "east", "west"), year = 2024L,
+  income = c(10, 20, 30), eligible = c(TRUE, FALSE, TRUE)
+), n = 3L)
 gen(survey, adjusted = income + 5)
+# Alternatively: gen(survey, adjusted, income + 5)
 repl(survey, adjusted = 0, where = !eligible)
-gen(survey, adjusted, income + 5)            # the same, Stata-shaped
+as.numeric(survey$adjusted)
+#> [1] 15  0 35
 ```
 
 Replacement preserves the input R double by default, widening storage for
@@ -689,6 +697,7 @@ existing one; several assignments apply left to right, and rows are
 selected once for the whole call.
 
 ```r
+survey <- as_dibble(survey)
 survey[income < 0, income := NA]
 survey[, `:=`(adjusted = income + 5, flag = income > 0)]
 survey[, last := .n == .N, bysort = id]
