@@ -195,3 +195,17 @@ column/container operations for those changes. Custom metadata stays in R;
 file writers can omit attributes outside their supported metadata profiles.
 Vector setters keep their assigned-copy contract, for example
 `x <- set_var_format(x, "%9.0g")`.
+
+When creating a new column that should have narrower string storage, construct
+that storage explicitly in `gen()` instead of assigning the protected
+`stata.string.storage` attribute later:
+
+```r
+gen(survey, status_copy = dta_string(as.character(status)))
+set_var_label(survey, status_copy, NULL)
+```
+
+`dta_string()` chooses the smallest fitting storage for the observed UTF-8 byte
+width unless an explicit storage is supplied. Generation keeps that declaration.
+Promotion of an existing column only widens storage, so construct the new copy
+at the intended width before further mutation.

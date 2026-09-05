@@ -36,3 +36,20 @@ attribute migration failures separately; any new failure or column-reallocation
 warning is a regression to investigate. Report failing test names. The pinned
 0.7.1 baseline had 497 tests, four existing failures in
 test-integration-mics-output.R, two skips, and no reallocation warnings.
+
+## Downstream evidence at #180
+
+The AST inventory found 56 nested metadata writes in fertility_surveys, including
+one multiline format assignment missed by the initial text count. It also found
+two ordinary replacements in `last_preg_was_desired.R`: clearing a variable label
+and narrowing a generated copy's string-storage attribute. Migrate the first
+with `set_var_label(..., NULL)` and construct the new string column explicitly
+with `gen(data, copy = dta_string(as.character(source)))` so its declaration has
+the required width; generic metadata remains unable to alter storage.
+
+The unchanged-source R suite against #180 ran 497 tests with 232 failing/error
+tests, including the four pre-existing output checks, two skips, and no column
+reallocation warnings. A diagnostic using temporary migrated script copies
+reduced that to the same four pre-existing failures, with the same skips and no
+reallocation warnings. No downstream source or lockfile was changed. The required
+final installed-SHA suite and restore still follow all four merges.
