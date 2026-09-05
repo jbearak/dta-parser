@@ -2,7 +2,9 @@
 
 The user confirmed this design and authorized implementation, independent
 subagent reviews, and the PR/CI/CodeRabbit/merge loop. The parser implementation
-and local review are in progress. Table Viewer adoption follows the parser merge.
+and local review are complete. PR #166 is undergoing CI and CodeRabbit review.
+The synchronized 0.7.0 release will supply Table Viewer's parser dependency;
+Table Viewer adoption follows the parser merge.
 
 ## Agreed scope
 
