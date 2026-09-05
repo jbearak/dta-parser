@@ -165,7 +165,7 @@ test_that("dplyr manipulation matches haven for every storage type", {
             mode <- if (use_numeric_altrep) "default" else "eager"
             expect_identical(names(actual), names(expected))
             for (index in seq_along(actual)) {
-                actual_value <- without_stata_storage(actual[[index]])
+                actual_value <- without_dta_storage(actual[[index]])
                 expected_value <- expected[[index]]
                 attr(actual_value, "label") <- NULL
                 attr(expected_value, "label") <- NULL
@@ -390,7 +390,7 @@ test_that("all bundled fixtures agree with haven", {
                          attr(expected, "notes", exact = TRUE), info = info)
         expect_null(attr(actual, "dta_format_version", exact = TRUE), info = info)
         expect_identical(
-            attributes(without_stata_storage_data(actual)),
+            attributes(without_dta_storage_data(actual)),
             attributes(expected),
             info = info
         )
@@ -400,7 +400,7 @@ test_that("all bundled fixtures agree with haven", {
 
         for (name in names(actual)) {
             comparable <- without_haven_variable_notes(
-                without_stata_storage(actual[[name]])
+                without_dta_storage(actual[[name]])
             )
             if (storage[[name]] %in% c("float", "double")) {
                 expect_equal(comparable,
@@ -433,7 +433,7 @@ test_that("Haven column comparisons exclude variable notes only", {
     expect_length(notes, 1L)
     expect_match(unname(notes), "^group\\(")
     expect_null(attr(expected, "notes", exact = TRUE))
-    comparable <- without_haven_variable_notes(without_stata_storage(actual))
+    comparable <- without_haven_variable_notes(without_dta_storage(actual))
     expect_identical(comparable, expected)
     expect_identical(attr(comparable, "label", exact = TRUE), "see notes")
     expect_identical(dta_notes(actual), notes)
@@ -505,9 +505,9 @@ test_that("projection, renaming, and row bounds match haven", {
 
     expect_identical(actual, rust_vectors)
     expect_identical(names(actual), c("origin", "make", "price"))
-    expect_equal(without_stata_storage(actual$origin), expected$foreign)
-    expect_equal(without_stata_storage(actual$make), expected$make)
-    expect_equal(without_stata_storage(actual$price), expected$price)
+    expect_equal(without_dta_storage(actual$origin), expected$foreign)
+    expect_equal(without_dta_storage(actual$make), expected$make)
+    expect_equal(without_dta_storage(actual$price), expected$price)
     expect_identical(attr(actual, "label"), attr(expected, "label"))
     expect_identical(attr(actual, "notes"), attr(expected, "notes"))
     expect_null(attr(actual, "dta_format_version", exact = TRUE))
@@ -547,7 +547,7 @@ test_that("safe row-window inputs align with haven in both collectors", {
         expect_identical(actual, rust_vectors,
                          info = paste(name, "materialization"))
         expect_identical(
-            without_stata_storage_data(actual), expected, info = name
+            without_dta_storage_data(actual), expected, info = name
         )
     }
 })
@@ -565,7 +565,7 @@ test_that("normalized windows cover empty data and zero-column projections", {
         )
         expected <- haven::read_dta(empty, n_max = n_max)
         expect_identical(actual, rust_vectors)
-        expect_identical(without_stata_storage_data(actual), expected)
+        expect_identical(without_dta_storage_data(actual), expected)
     }
 
     path <- fixture("auto_v118.dta")
@@ -637,9 +637,9 @@ test_that("date and datetime storage become native R temporal vectors", {
     actual <- read_dta(path)
     eager <- read_dta(path, use_numeric_altrep = FALSE)
     expected <- haven::read_dta(path)
-    expect_equal(without_stata_storage(actual$date), expected$date)
+    expect_equal(without_dta_storage(actual$date), expected$date)
     expect_s3_class(actual$date, "Date")
-    expect_equal(without_stata_storage(actual$instant), expected$instant)
+    expect_equal(without_dta_storage(actual$instant), expected$instant)
     expect_s3_class(actual$instant, "POSIXct")
     expect_identical(attr(actual$instant, "tzone"), "UTC")
     expect_identical(eager, actual)
@@ -655,10 +655,10 @@ test_that("imported strings use owned Stata string vectors", {
     haven::write_dta(data.frame(text = c("a", "wide", "")), path, version = 15)
 
     text <- read_dta(path)$text
-    expect_s3_class(text, "stata_string")
+    expect_s3_class(text, "dta_string")
     expect_identical(attr(text, "stata.string.storage", exact = TRUE), "str4")
     expect_identical(as.character(text[c(2, 2, 3)]), c("wide", "wide", ""))
-    expect_s3_class(text[integer()], "stata_string")
+    expect_s3_class(text[integer()], "dta_string")
 })
 
 test_that("legacy and custom daily-date formats match haven", {
@@ -699,7 +699,7 @@ test_that("legacy and custom daily-date formats match haven", {
     expect_identical(actual, rust_vectors)
     for (name in names(formats)) {
         expect_identical(
-            without_stata_storage(actual[[name]]), expected[[name]], info = name
+            without_dta_storage(actual[[name]]), expected[[name]], info = name
         )
         expect_identical(attr(actual[[name]], "format.stata"), formats[[name]],
                          info = name)
@@ -719,7 +719,7 @@ test_that("legacy and custom daily-date formats match haven", {
         identical(attr(column, "tzone"), "UTC")
     }, logical(1))))
     expect_true(all(vapply(
-        actual[numeric_names], inherits, logical(1), "stata_numeric"
+        actual[numeric_names], inherits, logical(1), "dta_numeric"
     )))
 
     selected_names <- c("daily_custom", "datetime_tC", "near_uppercase_d")
@@ -744,7 +744,7 @@ test_that("legacy and custom daily-date formats match haven", {
     )
     expect_identical(selected, selected_rust_vectors)
     expect_identical(
-        without_stata_storage_data(selected), selected_expected
+        without_dta_storage_data(selected), selected_expected
     )
 })
 
@@ -774,7 +774,7 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
 
             expect_identical(actual, rust_vectors,
                              info = paste(info, "materialization"))
-            expect_identical(without_stata_storage(actual$make), expected$make,
+            expect_identical(without_dta_storage(actual$make), expected$make,
                              info = paste(info, "fixed string"))
             expect_identical(attr(actual, "label"), attr(expected, "label"),
                              info = paste(info, "dataset label"))
@@ -790,7 +790,7 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
     modern <- fixture("auto_v118.dta")
     expect_identical(read_dta(modern, encoding = "utf_8"),
                      read_dta(modern, encoding = "UTF8"))
-    expect_identical(without_stata_storage(
+    expect_identical(without_dta_storage(
                          read_dta(modern, encoding = "UTF-8")$make
                      ),
                      haven::read_dta(modern, encoding = "UTF-8")$make)

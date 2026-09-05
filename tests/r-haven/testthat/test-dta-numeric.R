@@ -12,7 +12,7 @@ test_that("imported temporal columns retain storage through supported mutation",
     selected <- dplyr::if_else(c(TRUE, FALSE), values, shifted)
 
     expect_s3_class(values, "Date")
-    expect_s3_class(values, "stata_temporal")
+    expect_s3_class(values, "dta_temporal")
     expect_s3_class(shifted, "Date")
     expect_s3_class(selected, "Date")
     expect_identical(dta_storage_type(shifted), "double")

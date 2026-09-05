@@ -11,9 +11,9 @@
 //   %ws: string format
 // -----------------------------------------------------------
 
-const STATA_EPOCH_YEAR = 1960;
-const STATA_EPOCH_MONTH = 0; // January (0-indexed for Date)
-const STATA_EPOCH_DAY = 1;
+const DTA_EPOCH_YEAR = 1960;
+const DTA_EPOCH_MONTH = 0; // January (0-indexed for Date)
+const DTA_EPOCH_DAY = 1;
 
 const MONTH_ABBREVS = [
     'jan', 'feb', 'mar', 'apr', 'may', 'jun',
@@ -191,9 +191,9 @@ function format_date_time(
  */
 function format_td(days_since_epoch: number): string {
     const my_date = new Date(Date.UTC(
-        STATA_EPOCH_YEAR,
-        STATA_EPOCH_MONTH,
-        STATA_EPOCH_DAY + days_since_epoch
+        DTA_EPOCH_YEAR,
+        DTA_EPOCH_MONTH,
+        DTA_EPOCH_DAY + days_since_epoch
     ));
     const my_day = String(my_date.getUTCDate())
         .padStart(2, '0');
@@ -236,7 +236,7 @@ function format_tc(ms_since_epoch: number): string {
  * %tw -- weeks since 1960w1 -> "YYYYwW"
  */
 function format_tw(weeks_since_epoch: number): string {
-    const my_year = STATA_EPOCH_YEAR
+    const my_year = DTA_EPOCH_YEAR
         + Math.floor(weeks_since_epoch / 52);
     let my_week = (weeks_since_epoch % 52) + 1;
     if (my_week <= 0) my_week += 52;
@@ -250,7 +250,7 @@ function format_tm(months_since_epoch: number): string {
     // Use floor division so negatives work correctly.
     // months_since_epoch = 0 -> 1960m1
     // months_since_epoch = -1 -> 1959m12
-    const my_year = STATA_EPOCH_YEAR
+    const my_year = DTA_EPOCH_YEAR
         + Math.floor(months_since_epoch / 12);
     let my_month = (months_since_epoch % 12) + 1;
     // JavaScript % can return negative for negative
@@ -263,7 +263,7 @@ function format_tm(months_since_epoch: number): string {
  * %tq -- quarters since 1960q1 -> "YYYYqQ"
  */
 function format_tq(quarters_since_epoch: number): string {
-    const my_year = STATA_EPOCH_YEAR
+    const my_year = DTA_EPOCH_YEAR
         + Math.floor(quarters_since_epoch / 4);
     let my_quarter = (quarters_since_epoch % 4) + 1;
     if (my_quarter <= 0) my_quarter += 4;

@@ -186,11 +186,11 @@ omit any group \code{i} empties. Here \code{.N} counts the group's rows whatever
 
 \code{by} groups the dataset in its current row order and never sorts.
 \code{bysort} first sorts the dataset by reference on every listed column,
-in Stata's total order for \verb{stata_*()} columns (finite values, then \code{.},
+in Stata's total order for \verb{dta_*()} columns (finite values, then \code{.},
 then \code{.a} through \code{.z}), and then groups by those same columns, so the
 rows within each group are the sorted rows and \code{.n} follows the sort.
 Stata's parenthesized sort-only keys are not supported: \verb{bysort id (date):} is an \code{arrange()} or \code{reorder_dta_rows()} line followed by
-\code{by = id}. Group identity uses Stata value identity for \verb{stata_*()}
+\code{by = id}. Group identity uses Stata value identity for \verb{dta_*()}
 columns and ordinary identity otherwise, so missing values form their
 own group, as in Stata, and each extended missing code its own.
 
@@ -203,7 +203,7 @@ data.table's \code{list()}.
 
 \code{gen()} appends one variable and does not implement Stata's \code{before()} or
 \code{after()} placement. The new column takes the storage in
-\link{stata-storage-defaults}: a declared \verb{dta_*()} result keeps its storage,
+\link{dta-storage-defaults}: a declared \verb{dta_*()} result keeps its storage,
 bare integer results are \code{long}, bare double results take Stata's
 \code{generate} default of \code{float}, or \code{double} under
 \code{options(dtatools.generate_type = "double")}, the equivalent of Stata's
@@ -229,7 +229,7 @@ Stata \verb{[in]} and \verb{:lblname} authoring are not supported; the
 declared storage cannot hold a value is widened to the narrowest storage
 that does, and the change is reported the way Stata reports it:
 \code{variable `x` was byte now int}. The ladder is the one described
-under \link{stata-storage-defaults}, which keeps every value exact and so
+under \link{dta-storage-defaults}, which keeps every value exact and so
 differs from Stata's in two cases; an assignment that selects no rows
 promotes nothing, as Stata's \verb{(0 real changes made)} does not. Pass
 \code{promote = FALSE} to hold the column to its declared storage and raise
@@ -243,7 +243,7 @@ The table records the deliberate first-release choices relative to Stata's
 \tabular{lll}{
 Topic \tab Stata \tab dtatools \cr
 Existing name \tab Error \tab Error before mutation \cr
-Numeric default \tab \code{float}, or \code{double} after \verb{set type} \tab \code{float}, or \code{double} under \code{options(dtatools.generate_type = "double")}; integer results \code{long} (see \link{stata-storage-defaults}) \cr
+Numeric default \tab \code{float}, or \code{double} after \verb{set type} \tab \code{float}, or \code{double} under \code{options(dtatools.generate_type = "double")}; integer results \code{long} (see \link{dta-storage-defaults}) \cr
 Explicit storage \tab Type prefix \tab \verb{dta_*()} value expression \cr
 Strings \tab Smallest fitting \code{str#} or \code{strL} \tab Declared width, otherwise smallest UTF-8-byte width or \code{strL} \cr
 Rows outside \code{if} \tab Numeric \code{.} or string \code{""} \tab Same \cr

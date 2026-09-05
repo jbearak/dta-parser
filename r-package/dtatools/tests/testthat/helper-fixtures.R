@@ -61,7 +61,7 @@ tagged_nan_for_test <- function(tag) {
     readBin(bytes, "double", n = 1L, size = 8L, endian = "big")
 }
 
-without_stata_storage <- function(value) {
+without_dta_storage <- function(value) {
     has_numeric_storage <- !is.null(attr(
         value, "stata.storage", exact = TRUE
     ))
@@ -72,7 +72,7 @@ without_stata_storage <- function(value) {
         value, "value.label.name", exact = TRUE
     ))
     has_metadata_marker <- inherits(
-        value, "dtatools_stata_metadata_vector"
+        value, "dtatools_dta_metadata_vector"
     )
     if (!has_numeric_storage && !has_string_storage &&
         !has_value_label_name && !has_metadata_marker) {
@@ -86,10 +86,10 @@ without_stata_storage <- function(value) {
     classes <- attr(value, "class", exact = TRUE)
     if (!is.null(classes)) {
         classes <- classes[!classes %in% c(
-            "dtatools_stata_metadata_vector",
-            "stata_string",
-            "stata_numeric", "stata_temporal", "stata_date",
-            "stata_datetime", paste0("stata_", c(
+            "dtatools_dta_metadata_vector",
+            "dta_string",
+            "dta_numeric", "dta_temporal", "dta_date",
+            "dta_datetime", paste0("dta_", c(
                 "byte", "int", "long", "float", "double"
             ))
         )]
@@ -109,13 +109,13 @@ data_values <- function(data) {
     })
 }
 
-without_stata_storage_data <- function(data) {
+without_dta_storage_data <- function(data) {
     for (index in seq_along(data)) {
-        data[[index]] <- without_stata_storage(data[[index]])
+        data[[index]] <- without_dta_storage(data[[index]])
     }
     classes <- setdiff(
         attr(data, "class", exact = TRUE),
-        "dtatools_stata_metadata"
+        "dtatools_dta_metadata"
     )
     attr(data, "class") <- if (length(classes)) classes else NULL
     data

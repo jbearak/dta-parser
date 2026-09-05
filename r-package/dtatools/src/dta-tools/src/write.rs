@@ -4,10 +4,10 @@ use std::hash::{DefaultHasher, Hasher};
 use std::io::{Seek, SeekFrom, Write};
 use std::mem::size_of;
 
-use crate::metadata::{field_widths, FieldWidths};
-use crate::stata_metadata::{
-    valid_characteristic, valid_note, valid_stata_name_syntax, MAX_NOTE_NUMBER,
+use crate::dta_metadata::{
+    valid_characteristic, valid_dta_name_syntax, valid_note, MAX_NOTE_NUMBER,
 };
+use crate::metadata::{field_widths, FieldWidths};
 use crate::{
     DtaType, FormatVersion, MissingTag, SectionOffsets, DOUBLE_MISSING_DOT_BITS,
     FLOAT_MISSING_DOT_BITS,
@@ -426,7 +426,7 @@ pub enum DtaWriteError {
     Io(#[from] std::io::Error),
 }
 
-fn reserved_stata_name(name: &str) -> bool {
+fn reserved_dta_name(name: &str) -> bool {
     matches!(
         name,
         "alias"
@@ -473,10 +473,10 @@ fn reserved_stata_name(name: &str) -> bool {
     })
 }
 
-fn valid_stata_name(name: &str) -> bool {
-    valid_stata_name_syntax(name, 32)
+fn valid_dta_name(name: &str) -> bool {
+    valid_dta_name_syntax(name, 32)
         && name.len() < WRITE_FIELD_WIDTHS.varname
-        && !reserved_stata_name(name)
+        && !reserved_dta_name(name)
 }
 
 fn format_number(value: &str) -> Option<usize> {
@@ -485,7 +485,7 @@ fn format_number(value: &str) -> Option<usize> {
         .flatten()
 }
 
-fn valid_stata_decimal_format(format: &str) -> bool {
+fn valid_dta_decimal_format(format: &str) -> bool {
     if matches!(format, "%21x" | "%8H" | "%8L" | "%16H" | "%16L") {
         return true;
     }
@@ -518,7 +518,7 @@ fn valid_stata_decimal_format(format: &str) -> bool {
     (1..=2045).contains(&width) && decimals < width
 }
 
-fn valid_stata_string_format(format: &str) -> bool {
+fn valid_dta_string_format(format: &str) -> bool {
     let Some(mut body) = format.strip_prefix('%') else {
         return false;
     };
@@ -531,7 +531,7 @@ fn valid_stata_string_format(format: &str) -> bool {
     (1..=2045).contains(&width)
 }
 
-fn valid_stata_datetime_details(mut details: &str, tokens: &[&str]) -> bool {
+fn valid_dta_datetime_details(mut details: &str, tokens: &[&str]) -> bool {
     while !details.is_empty() {
         if let Some(escaped) = details.strip_prefix('!') {
             let Some(character) = escaped.chars().next() else {
@@ -556,7 +556,7 @@ fn valid_stata_datetime_details(mut details: &str, tokens: &[&str]) -> bool {
     true
 }
 
-fn valid_stata_calendar_format(format: &str) -> bool {
+fn valid_dta_calendar_format(format: &str) -> bool {
     const TOKENS: &[&str] = &[
         "DAYNAME", "Dayname", "Month", "month", "A.M.", "a.m.", ".sss", "Mon", "mon", "JJJ", "jjj",
         "Day", "day", ".ss", "CC", "cc", "YY", "yy", "NN", "nn", "DD", "dd", "Da", "da", "HH",
@@ -583,7 +583,7 @@ fn valid_stata_calendar_format(format: &str) -> bool {
 
     match kind {
         'c' | 'C' | 'd' | 'w' | 'm' | 'q' | 'h' | 'y' => {
-            valid_stata_datetime_details(details, TOKENS)
+            valid_dta_datetime_details(details, TOKENS)
         }
         'g' => details.is_empty(),
         'b' => {
@@ -592,22 +592,22 @@ fn valid_stata_calendar_format(format: &str) -> bool {
                 .map_or((details, None), |(calendar, details)| {
                     (calendar, Some(details))
                 });
-            if !valid_stata_name_syntax(calendar, 10) {
+            if !valid_dta_name_syntax(calendar, 10) {
                 return false;
             }
             details.is_none_or(|details| {
-                details.is_empty() || valid_stata_datetime_details(details, TOKENS)
+                details.is_empty() || valid_dta_datetime_details(details, TOKENS)
             })
         }
         _ => false,
     }
 }
 
-fn valid_stata_format(dta_type: &DtaType, format: &str) -> bool {
+fn valid_dta_format(dta_type: &DtaType, format: &str) -> bool {
     match dta_type {
-        DtaType::FixedString(_) | DtaType::StrL => valid_stata_string_format(format),
+        DtaType::FixedString(_) | DtaType::StrL => valid_dta_string_format(format),
         DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
-            valid_stata_decimal_format(format) || valid_stata_calendar_format(format)
+            valid_dta_decimal_format(format) || valid_dta_calendar_format(format)
         }
     }
 }
@@ -794,7 +794,7 @@ fn validate_structure(
                 }
             })?;
         }
-        if !valid_stata_name(&column.name) {
+        if !valid_dta_name(&column.name) {
             return Err(DtaWriteError::InvalidVariable {
                 column: column.name.to_string(),
                 message: "name must be a valid Stata name of at most 32 Unicode characters".into(),
@@ -821,7 +821,7 @@ fn validate_structure(
                 message: "display format must contain 1 to 56 UTF-8 bytes and no NUL".into(),
             });
         }
-        if !valid_stata_format(&column.dta_type, &column.format) {
+        if !valid_dta_format(&column.dta_type, &column.format) {
             return Err(DtaWriteError::InvalidVariable {
                 column: column.name.to_string(),
                 message: format!(
@@ -934,7 +934,7 @@ fn validate_value_label_names<S: DtaWriteValueLabelSource + ?Sized>(
         let Some(table) = output_value_label_table(data, source, column_index) else {
             continue;
         };
-        if !valid_stata_name(table.name) {
+        if !valid_dta_name(table.name) {
             return Err(DtaWriteError::InvalidValueLabels {
                 column: column.name.to_string(),
                 message: format!(
@@ -2021,7 +2021,7 @@ where
     offsets.value_labels = position(writer)?;
     write_value_labels(writer, data, observation_source, value_label_source)?;
     observation_source.check_interrupt()?;
-    offsets.stata_data_close = position(writer)?;
+    offsets.dta_data_close = position(writer)?;
     write_tag(writer, b"</stata_dta>")?;
     offsets.end_of_file = position(writer)?;
 

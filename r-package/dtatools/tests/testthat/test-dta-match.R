@@ -53,7 +53,7 @@ test_that("base matching supports Stata-backed dates and datetimes", {
     path <- fixture_with_temporal_storage("price")
     on.exit(unlink(path), add = TRUE)
     prototype <- read_dta(path)$price
-    date <- dtatools:::.restore_stata_temporal(
+    date <- dtatools:::.restore_dta_temporal(
         c(1, NA_real_, tagged_missing("a")), prototype, "int"
     )
     bare_date <- as.Date(c(1, NA_real_), origin = "1970-01-01")
@@ -64,9 +64,9 @@ test_that("base matching supports Stata-backed dates and datetimes", {
 
     datetime_prototype <- structure(
         as.POSIXct(prototype),
-        class = c("stata_temporal", "stata_datetime", "POSIXct", "POSIXt")
+        class = c("dta_temporal", "dta_datetime", "POSIXct", "POSIXt")
     )
-    datetime <- dtatools:::.restore_stata_temporal(
+    datetime <- dtatools:::.restore_dta_temporal(
         c(1000, NA_real_, tagged_missing("b")), datetime_prototype, "double"
     )
     bare_datetime <- as.POSIXct(
@@ -85,7 +85,7 @@ test_that("matching and sets support owned Stata strings", {
     expect_identical(dta_match(c("a", "b", ""), y), c(2L, 1L, NA_integer_))
     expect_identical(dta_in(c("a", "c"), y), c(TRUE, FALSE))
     result <- dta_union(x, y)
-    expect_s3_class(result, "stata_string")
+    expect_s3_class(result, "dta_string")
     expect_identical(attr(result, "stata.string.storage"), "str5")
     expect_identical(as.character(result), c("a", "", "b"))
     expect_null(names(result))
@@ -119,12 +119,12 @@ test_that("union widens losslessly for bare numeric operands in either order", {
 test_that("union widens Stata-backed dates with bare dates in either order", {
     prototype <- structure(
         as.Date(numeric(), origin = "1970-01-01"),
-        class = c("stata_temporal", "stata_date", "Date"),
+        class = c("dta_temporal", "dta_date", "Date"),
         stata.storage = "int",
         format.stata = "%td",
         label = "typed date"
     )
-    typed <- dtatools:::.restore_stata_temporal(
+    typed <- dtatools:::.restore_dta_temporal(
         as.Date(c(1, 2), origin = "1970-01-01"), prototype, "int"
     )
     bare <- as.Date(c(2, 200), origin = "1970-01-01")
@@ -132,8 +132,8 @@ test_that("union widens Stata-backed dates with bare dates in either order", {
     typed_first <- dta_union(typed, bare)
     bare_first <- dta_union(bare, typed)
 
-    expect_s3_class(typed_first, "stata_date")
-    expect_s3_class(bare_first, "stata_date")
+    expect_s3_class(typed_first, "dta_date")
+    expect_s3_class(bare_first, "dta_date")
     expect_identical(dta_storage_type(typed_first), "double")
     expect_identical(dta_storage_type(bare_first), "double")
     expect_identical(as.double(typed_first), c(1, 2, 200))
@@ -147,31 +147,31 @@ test_that("union widens Stata-backed dates with bare dates in either order", {
 test_that("union widens Stata-backed datetimes with bare datetimes in either order", {
     prototype <- structure(
         as.POSIXct(numeric(), origin = "1970-01-01", tz = "UTC"),
-        class = c("stata_temporal", "stata_datetime", "POSIXct", "POSIXt"),
+        class = c("dta_temporal", "dta_datetime", "POSIXct", "POSIXt"),
         stata.storage = "long",
         format.stata = "%tc",
         label = "typed datetime"
     )
-    stata_origin <- as.POSIXct("1960-01-01", tz = "UTC")
-    typed <- dtatools:::.restore_stata_temporal(
-        stata_origin + c(1, 2),
+    dta_origin <- as.POSIXct("1960-01-01", tz = "UTC")
+    typed <- dtatools:::.restore_dta_temporal(
+        dta_origin + c(1, 2),
         prototype,
         "long"
     )
-    bare <- stata_origin + c(2, 3e6)
+    bare <- dta_origin + c(2, 3e6)
 
     typed_first <- dta_union(typed, bare)
     bare_first <- dta_union(bare, typed)
 
-    expect_s3_class(typed_first, "stata_datetime")
-    expect_s3_class(bare_first, "stata_datetime")
+    expect_s3_class(typed_first, "dta_datetime")
+    expect_s3_class(bare_first, "dta_datetime")
     expect_identical(dta_storage_type(typed_first), "double")
     expect_identical(dta_storage_type(bare_first), "double")
     expect_identical(
-        as.double(typed_first), as.double(stata_origin + c(1, 2, 3e6))
+        as.double(typed_first), as.double(dta_origin + c(1, 2, 3e6))
     )
     expect_identical(
-        as.double(bare_first), as.double(stata_origin + c(2, 3e6, 1))
+        as.double(bare_first), as.double(dta_origin + c(2, 3e6, 1))
     )
     expect_identical(attr(typed_first, "tzone"), "UTC")
     expect_identical(attr(bare_first, "tzone"), "UTC")
@@ -314,13 +314,13 @@ test_that("temporal union reconciles variable metadata left-first", {
     path <- fixture_with_temporal_storage("price")
     on.exit(unlink(path), add = TRUE)
     prototype <- read_dta(path)$price
-    x <- dtatools:::.restore_stata_temporal(c(1, 2), prototype, "int")
-    y <- dtatools:::.restore_stata_temporal(c(2, 3), prototype, "int")
+    x <- dtatools:::.restore_dta_temporal(c(1, 2), prototype, "int")
+    y <- dtatools:::.restore_dta_temporal(c(2, 3), prototype, "int")
     attr(x, "label") <- "left date"
     attr(y, "label") <- "right date"
 
     expect_warning(result <- dta_union(x, y), "variable label")
-    expect_s3_class(result, "stata_temporal")
+    expect_s3_class(result, "dta_temporal")
     expect_identical(attr(result, "format.stata"), "%td")
     expect_identical(attr(result, "label"), "left date")
 })

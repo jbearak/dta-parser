@@ -47,7 +47,7 @@ fn matches_typescript_tables_exactly_in_disk_order_across_v117_and_v118() {
 }
 
 #[test]
-fn resolves_variable_to_table_associations_by_stata_name() {
+fn resolves_variable_to_table_associations_by_dta_name() {
     let data = read_dta(&fixture("value_labels_v118.dta")).unwrap();
     let foreign = data.value_label_table_for_variable(0).unwrap();
     let rep78 = data.value_label_table_for_variable(1).unwrap();
@@ -112,7 +112,7 @@ fn parses_a_strict_big_endian_v119_label_table() {
     bytes.extend_from_slice(&42_i32.to_be_bytes());
     bytes.extend_from_slice(text);
     bytes.extend_from_slice(b"</lbl></value_labels>");
-    let stata_data_close = bytes.len() as u64;
+    let dta_data_close = bytes.len() as u64;
     bytes.extend_from_slice(b"</stata_dta>");
     let end_of_file = bytes.len() as u64;
 
@@ -126,7 +126,7 @@ fn parses_a_strict_big_endian_v119_label_table() {
         characteristics: Vec::new(),
         variables: vec![],
         section_offsets: SectionOffsets {
-            stata_data: 0,
+            dta_data: 0,
             map: 1,
             variable_types: 2,
             varnames: 3,
@@ -138,7 +138,7 @@ fn parses_a_strict_big_endian_v119_label_table() {
             data: 9,
             strls: 10,
             value_labels: 0,
-            stata_data_close,
+            dta_data_close,
             end_of_file,
         },
         obs_length: 0,

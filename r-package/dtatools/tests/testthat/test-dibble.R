@@ -226,7 +226,7 @@ test_that("readers, save_arrow, and dta_merge take the dibble container", {
     expect_true(is_dibble(with_notes))
     expect_identical(
         class(with_notes),
-        c("dtatools_ref_data", "dtatools_stata_metadata", "tbl_df", "tbl",
+        c("dtatools_ref_data", "dtatools_dta_metadata", "tbl_df", "tbl",
           "data.frame")
     )
     expect_identical(
@@ -384,13 +384,13 @@ test_that("dataset metadata setters keep a dibble's bracket dispatch", {
     data <- set_dta_note(dibble(x = 1:2), 1, "a note")
     expect_true(is_dibble(data))
     expect_identical(class(data)[[1L]], "dtatools_ref_data")
-    expect_s3_class(data, "dtatools_stata_metadata")
+    expect_s3_class(data, "dtatools_dta_metadata")
     data[x > 1, y := 9]
     expect_identical(as.double(data$y), c(NA, 9))
     expect_identical(dta_notes(data)[[1L]], "a note")
     # The snapshot still carries the marker, so a subset keeps the notes.
     subset <- data[1, ]
-    expect_s3_class(subset, "dtatools_stata_metadata")
+    expect_s3_class(subset, "dtatools_dta_metadata")
     expect_identical(dta_notes(subset)[[1L]], "a note")
     variable_scoped <- set_dta_note(dibble(x = 1:2), 1, "on x", variable = "x")
     expect_true(is_dibble(variable_scoped))
@@ -535,9 +535,9 @@ test_that("mutate and transmute type new columns by the container mapping", {
     expect_identical(dta_storage_type(result$adjusted), "double")
     expect_identical(dta_storage_type(result$declared), "int")
     expect_identical(dta_storage_type(result$day), "float")
-    expect_s3_class(result$day, "stata_date")
+    expect_s3_class(result$day, "dta_date")
     expect_identical(dta_storage_type(result$stamp), "double")
-    expect_s3_class(result$stamp, "stata_datetime")
+    expect_s3_class(result$stamp, "dta_datetime")
     expect_identical(
         attr(result$label, "stata.string.storage", exact = TRUE), "str4"
     )
@@ -729,7 +729,7 @@ test_that("Arrow strings enter a dibble compact with an inferred width", {
     save_arrow(data.frame(text = c("alpha", "b", "alpha"), n = 1:3), path)
     data <- read_arrow(path)
     expect_true(is_dibble(data))
-    expect_s3_class(data$text, "stata_string")
+    expect_s3_class(data$text, "dta_string")
     expect_identical(attr(data$text, "stata.string.storage"), "str5")
     expect_true(dtatools:::.is_unmaterialized_dictstring(data$text))
     expect_identical(dta_storage_type(data$n), "long")
@@ -1145,7 +1145,7 @@ test_that("a derived dibble owns its columns", {
     expect_true(dtatools:::.is_unmaterialized_dictstring(data$s))
 })
 
-test_that("a stata_string column padded with NA is retyped on closure", {
+test_that("a dta_string column padded with NA is retyped on closure", {
     left <- dibble(id = 1:2, s = dta_string(c("a", "b")))
     right <- dibble(id = 2:4, t = dta_string(c("x", "y", "z")))
     joined <- dplyr::full_join(left, right, by = "id")
@@ -1185,7 +1185,7 @@ test_that("subsetting keeps compact dictionary strings compact", {
     expect_true(compact(data$s))
     expect_identical(as.character(filtered$s), c("aa", "cc", "bb"))
     expect_identical(attr(filtered$s, "stata.string.storage"), "str2")
-    expect_true(inherits(filtered$s, "stata_string"))
+    expect_true(inherits(filtered$s, "dta_string"))
 
     sliced <- vctrs::vec_slice(data$s, c(5L, 1L))
     expect_true(compact(sliced))

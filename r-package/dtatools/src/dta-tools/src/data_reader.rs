@@ -381,10 +381,10 @@ mod tests {
             "dataset_label": "",
             "variables": [],
             "section_offsets": {
-                "stata_data": "0", "map": "1", "variable_types": "2", "varnames": "3",
+                "dta_data": "0", "map": "1", "variable_types": "2", "varnames": "3",
                 "sortlist": "4", "formats": "5", "value_label_names": "6",
                 "variable_labels": "7", "characteristics": "8", "data": "0",
-                "strls": "13", "value_labels": "3", "stata_data_close": "30",
+                "strls": "13", "value_labels": "3", "dta_data_close": "30",
                 "end_of_file": "42"
             },
             "obs_length": "0"

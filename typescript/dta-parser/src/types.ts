@@ -240,7 +240,7 @@ export type RowCell = number | string | MissingValue;
 export type Row = RowCell[];
 
 export interface SectionOffsets {
-    stata_data: number;
+    dta_data: number;
     map: number;
     variable_types: number;
     varnames: number;
@@ -252,7 +252,7 @@ export interface SectionOffsets {
     data: number;
     strls: number;
     value_labels: number;
-    stata_data_close: number;
+    dta_data_close: number;
     end_of_file: number;
 }
 

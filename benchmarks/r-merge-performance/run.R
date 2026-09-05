@@ -83,10 +83,10 @@ rm(master, using)
 invisible(gc())
 
 to_standard_column <- function(value) {
-    if (inherits(value, c("stata_byte", "stata_int", "stata_long"))) {
+    if (inherits(value, c("dta_byte", "dta_int", "dta_long"))) {
         return(as.integer(as.vector(value)))
     }
-    if (inherits(value, c("stata_float", "stata_double"))) {
+    if (inherits(value, c("dta_float", "dta_double"))) {
         return(as.double(as.vector(value)))
     }
     if (is.character(value)) return(as.character(value))
@@ -109,11 +109,11 @@ saveRDS(using_standard, file.path(fixture_dir, "using-standard.rds"),
         compress = FALSE)
 invisible(gc())
 
-master_stata <- read_dta(master_path)
-using_stata <- read_dta(using_path)
+master_dta <- read_dta(master_path)
+using_dta <- read_dta(using_path)
 stopifnot(
-    dtatools:::.is_unmaterialized_numeric_altrep(master_stata$s1),
-    dtatools:::.is_unmaterialized_numeric_altrep(using_stata$s1)
+    dtatools:::.is_unmaterialized_numeric_altrep(master_dta$s1),
+    dtatools:::.is_unmaterialized_numeric_altrep(using_dta$s1)
 )
 
 master_s1_by_key <- setNames(
@@ -204,56 +204,56 @@ validate_join_result <- function(result, direction, method) {
 }
 
 validate_dta_result(suppressWarnings(dta_merge(
-    master_stata, using_stata, by = "caseid", relationship = "1:m"
+    master_dta, using_dta, by = "caseid", relationship = "1:m"
 )), "1:m")
 validate_dta_result(suppressWarnings(dta_merge(
     master_standard, using_standard, by = "caseid", relationship = "1:m"
 )), "1:m")
 validate_dta_result(suppressWarnings(dta_merge(
-    using_stata, master_stata, by = "caseid", relationship = "m:1"
+    using_dta, master_dta, by = "caseid", relationship = "m:1"
 )), "m:1")
 validate_dta_result(suppressWarnings(dta_merge(
     using_standard, master_standard, by = "caseid", relationship = "m:1"
 )), "m:1")
 
 validate_join_result(full_join(
-    master_stata, using_stata, by = join_by(caseid)
+    master_dta, using_dta, by = join_by(caseid)
 ), "1:m", "dplyr")
 validate_join_result(full_join(
     master_standard, using_standard, by = join_by(caseid)
 ), "1:m", "dplyr")
 validate_join_result(full_join(
-    using_stata, master_stata, by = join_by(caseid)
+    using_dta, master_dta, by = join_by(caseid)
 ), "m:1", "dplyr")
 validate_join_result(full_join(
     using_standard, master_standard, by = join_by(caseid)
 ), "m:1", "dplyr")
 
 validate_join_result(merge(
-    master_stata, using_stata, by = "caseid", all = TRUE
+    master_dta, using_dta, by = "caseid", all = TRUE
 ), "1:m", "base")
 validate_join_result(merge(
     master_standard, using_standard, by = "caseid", all = TRUE
 ), "1:m", "base")
 validate_join_result(merge(
-    using_stata, master_stata, by = "caseid", all = TRUE
+    using_dta, master_dta, by = "caseid", all = TRUE
 ), "m:1", "base")
 validate_join_result(merge(
     using_standard, master_standard, by = "caseid", all = TRUE
 ), "m:1", "base")
 
 stopifnot(
-    dtatools:::.is_unmaterialized_numeric_altrep(master_stata$s1),
-    dtatools:::.is_unmaterialized_numeric_altrep(using_stata$s1)
+    dtatools:::.is_unmaterialized_numeric_altrep(master_dta$s1),
+    dtatools:::.is_unmaterialized_numeric_altrep(using_dta$s1)
 )
 invisible(gc())
 
 primary <- mark(
-    dta_stata_1m = suppressWarnings(dta_merge(
-        master_stata, using_stata, by = "caseid", relationship = "1:m"
+    dta_dta_1m = suppressWarnings(dta_merge(
+        master_dta, using_dta, by = "caseid", relationship = "1:m"
     )),
-    dplyr_stata_1m = full_join(
-        master_stata, using_stata, by = join_by(caseid)
+    dplyr_dta_1m = full_join(
+        master_dta, using_dta, by = join_by(caseid)
     ),
     dta_standard_1m = suppressWarnings(dta_merge(
         master_standard, using_standard, by = "caseid", relationship = "1:m"
@@ -261,11 +261,11 @@ primary <- mark(
     dplyr_standard_1m = full_join(
         master_standard, using_standard, by = join_by(caseid)
     ),
-    dta_stata_m1 = suppressWarnings(dta_merge(
-        using_stata, master_stata, by = "caseid", relationship = "m:1"
+    dta_dta_m1 = suppressWarnings(dta_merge(
+        using_dta, master_dta, by = "caseid", relationship = "m:1"
     )),
-    dplyr_stata_m1 = full_join(
-        using_stata, master_stata, by = join_by(caseid)
+    dplyr_dta_m1 = full_join(
+        using_dta, master_dta, by = join_by(caseid)
     ),
     dta_standard_m1 = suppressWarnings(dta_merge(
         using_standard, master_standard, by = "caseid", relationship = "m:1"
@@ -280,14 +280,14 @@ primary <- mark(
 )
 
 base <- mark(
-    base_stata_1m = merge(
-        master_stata, using_stata, by = "caseid", all = TRUE
+    base_dta_1m = merge(
+        master_dta, using_dta, by = "caseid", all = TRUE
     ),
     base_standard_1m = merge(
         master_standard, using_standard, by = "caseid", all = TRUE
     ),
-    base_stata_m1 = merge(
-        using_stata, master_stata, by = "caseid", all = TRUE
+    base_dta_m1 = merge(
+        using_dta, master_dta, by = "caseid", all = TRUE
     ),
     base_standard_m1 = merge(
         using_standard, master_standard, by = "caseid", all = TRUE

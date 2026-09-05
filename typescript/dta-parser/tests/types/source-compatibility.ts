@@ -23,7 +23,7 @@ const oldMetadata: DtaMetadata = {
     dataset_label: '',
     variables: [oldVariable],
     section_offsets: {
-        stata_data: 0,
+        dta_data: 0,
         map: 0,
         variable_types: 0,
         varnames: 0,
@@ -35,7 +35,7 @@ const oldMetadata: DtaMetadata = {
         data: 0,
         strls: 0,
         value_labels: 0,
-        stata_data_close: 0,
+        dta_data_close: 0,
         end_of_file: 0,
     },
     obs_length: 1,

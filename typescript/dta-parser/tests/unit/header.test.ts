@@ -146,7 +146,7 @@ describe('parse_metadata', () => {
         it('has valid section offsets', () => {
             const my_offsets = meta.section_offsets;
             // Offsets should be monotonically increasing
-            expect(my_offsets.stata_data).toBe(0);
+            expect(my_offsets.dta_data).toBe(0);
             expect(my_offsets.map).toBeGreaterThan(0);
             expect(my_offsets.variable_types).toBeGreaterThan(
                 my_offsets.map
@@ -158,7 +158,7 @@ describe('parse_metadata', () => {
                 my_offsets.variable_labels
             );
             expect(my_offsets.end_of_file).toBeGreaterThan(
-                my_offsets.stata_data_close
+                my_offsets.dta_data_close
             );
         });
     });

@@ -266,7 +266,7 @@ export function repeat_modern_value_labels(
         my_metadata.section_offsets.value_labels
         + VALUE_LABELS_TAG_LENGTH;
     const my_entries_end =
-        my_metadata.section_offsets.stata_data_close
+        my_metadata.section_offsets.dta_data_close
         - VALUE_LABELS_CLOSE_TAG.length;
     assert_ascii_at(
         my_source, my_entries_end, VALUE_LABELS_CLOSE_TAG

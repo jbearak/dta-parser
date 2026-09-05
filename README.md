@@ -27,6 +27,9 @@ cargo doc -p dta-tools --no-deps --open
 
 ## Compatibility
 
+Package-owned underscore identifiers use `dta_` and `_dta`. See the
+[naming migration](docs/dta-naming.md) for renamed classes, constants, and metadata fields.
+
 The TypeScript and Rust readers follow the same compatibility contract and are checked against shared fixtures. See [DTA compatibility](docs/compatibility.md) for supported format releases, text encodings, missing values, and language-specific result shapes.
 
 ## Project documentation

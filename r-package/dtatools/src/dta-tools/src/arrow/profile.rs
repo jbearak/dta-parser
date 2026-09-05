@@ -325,7 +325,7 @@ where
         where
             A: SeqAccess<'de>,
         {
-            let maximum = crate::stata_metadata::MAX_NOTE_NUMBER as usize;
+            let maximum = crate::dta_metadata::MAX_NOTE_NUMBER as usize;
             let mut notes = Vec::with_capacity(sequence.size_hint().unwrap_or(0).min(maximum));
             while notes.len() < maximum {
                 let Some(note) = sequence.next_element::<NoteDocument>()? else {
@@ -369,7 +369,7 @@ where
         where
             A: SeqAccess<'de>,
         {
-            let maximum = crate::stata_metadata::MAX_NOTE_NUMBER as usize;
+            let maximum = crate::dta_metadata::MAX_NOTE_NUMBER as usize;
             let mut notes = Vec::with_capacity(sequence.size_hint().unwrap_or(0).min(maximum));
             while notes.len() < maximum {
                 let Some(note) = sequence.next_element::<&'de RawValue>()? else {
@@ -414,20 +414,20 @@ where
             while let Some(raw) = sequence.next_element::<RawCharacteristic<'de>>()? {
                 if raw_string_exceeds_limit(
                     raw.name,
-                    crate::stata_metadata::MAX_CHARACTERISTIC_NAME_BYTES,
+                    crate::dta_metadata::MAX_CHARACTERISTIC_NAME_BYTES,
                 ) {
                     return Err(serde::de::Error::custom(format!(
                         "characteristic name exceeds the {}-byte Stata metadata limit",
-                        crate::stata_metadata::MAX_CHARACTERISTIC_NAME_BYTES
+                        crate::dta_metadata::MAX_CHARACTERISTIC_NAME_BYTES
                     )));
                 }
                 if raw_string_exceeds_limit(
                     raw.value,
-                    crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
+                    crate::dta_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
                 ) {
                     return Err(serde::de::Error::custom(format!(
                         "characteristic value exceeds the {}-byte decoded Stata metadata limit",
-                        crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES
+                        crate::dta_metadata::MAX_DECODED_METADATA_VALUE_BYTES
                     )));
                 }
                 let characteristic = StataCharacteristic {
@@ -435,7 +435,7 @@ where
                     value: serde_json::from_str(raw.value.get())
                         .map_err(serde::de::Error::custom)?,
                 };
-                if !crate::stata_metadata::valid_canonical_characteristic(
+                if !crate::dta_metadata::valid_canonical_characteristic(
                     &characteristic.name,
                     &characteristic.value,
                 ) {
@@ -474,7 +474,7 @@ fn validate_notes(
 ) -> Result<(), ArrowProfileError> {
     let mut previous = 0;
     for note in notes {
-        if !crate::stata_metadata::valid_canonical_note(note.number, &note.text)
+        if !crate::dta_metadata::valid_canonical_note(note.number, &note.text)
             || note.number <= previous
         {
             return Err(malformed(
@@ -496,7 +496,7 @@ fn validate_characteristics(
 ) -> Result<(), ArrowProfileError> {
     let mut names = std::collections::HashSet::with_capacity(characteristics.len());
     for characteristic in characteristics {
-        if !crate::stata_metadata::valid_canonical_characteristic(
+        if !crate::dta_metadata::valid_canonical_characteristic(
             &characteristic.name,
             &characteristic.value,
         ) || !names.insert(characteristic.name.as_str())
@@ -645,7 +645,7 @@ fn decode_raw_notes(
                     &note_context,
                     invalid_document_context,
                     note,
-                    crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
+                    crate::dta_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
                 )?,
             });
         } else {
@@ -663,7 +663,7 @@ fn decode_raw_notes(
                     &note_context,
                     invalid_document_context,
                     numbered.text,
-                    crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
+                    crate::dta_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
                 )?,
             });
         }
@@ -1463,7 +1463,8 @@ fn validate_field_document_inner(
             ));
         }
         if let Some(semantics) = &document.r {
-            let valid = semantics.class == "stata_numeric"
+            // Profile v0 files written before the naming change remain readable.
+            let valid = matches!(semantics.class.as_str(), "dta_numeric" | "stata_numeric")
                 && semantics.ordered.is_none()
                 && semantics.tz.is_none()
                 && semantics.units.is_none();
@@ -1673,7 +1674,7 @@ mod tests {
     }
 
     #[test]
-    fn full_and_projected_registries_reject_more_than_stata_variable_limit() {
+    fn full_and_projected_registries_reject_more_than_dta_variable_limit() {
         let mut json = String::from(r#"{"version":0,"value_labels":{"#);
         for index in 0..MAX_VALUE_LABEL_TABLES {
             if index > 0 {

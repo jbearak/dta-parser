@@ -161,7 +161,7 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
         profiled = profiled
     )
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
-    result <- .copy_stata_metadata_attributes(native, result)
+    result <- .copy_dta_metadata_attributes(native, result)
     if (!is.null(disk_signature)) attr(result, "datasig") <- disk_signature
     result <- .repair_data_table_container(result)
     if (keep_source_rows) {

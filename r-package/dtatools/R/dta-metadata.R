@@ -54,7 +54,7 @@
 #' dta_characteristics(survey)
 #' @export
 dta_notes <- function(x, variable = NULL) {
-    target <- .stata_metadata_target(x, variable)
+    target <- .dta_metadata_target(x, variable)
     notes <- attr(target$value, "notes", exact = TRUE)
     if (is.null(notes)) return(stats::setNames(character(), character()))
     numbers <- attr(target$value, "stata.note.numbers", exact = TRUE)
@@ -63,7 +63,7 @@ dta_notes <- function(x, variable = NULL) {
         is.numeric(numbers) && length(numbers) == length(notes) &&
         !anyNA(numbers) && all(numbers == floor(numbers)) &&
         all(numbers >= 1 & numbers <= 9999) && !anyDuplicated(numbers) &&
-        all(vapply(notes, .valid_stata_metadata_value, logical(1)))
+        all(vapply(notes, .valid_dta_metadata_value, logical(1)))
     if (!valid) {
         stop("The object contains malformed Stata note metadata", call. = FALSE)
     }
@@ -74,7 +74,7 @@ dta_notes <- function(x, variable = NULL) {
 #' @rdname dta_notes
 #' @export
 dta_note <- function(x, number, variable = NULL) {
-    number <- .stata_note_number(number)
+    number <- .dta_note_number(number)
     notes <- dta_notes(x, variable)
     match <- match(as.character(number), names(notes))
     if (is.na(match)) NULL else unname(notes[[match]])
@@ -83,8 +83,8 @@ dta_note <- function(x, number, variable = NULL) {
 #' @rdname dta_notes
 #' @export
 set_dta_note <- function(x, number, value, variable = NULL) {
-    number <- .stata_note_number(number)
-    value <- .stata_metadata_value(value)
+    number <- .dta_note_number(number)
+    value <- .dta_metadata_value(value)
     notes <- dta_notes(x, variable)
     key <- as.character(number)
     if (is.null(value)) {
@@ -95,7 +95,7 @@ set_dta_note <- function(x, number, value, variable = NULL) {
         notes <- c(notes, stats::setNames(value, key))
         notes <- notes[order(as.integer(names(notes)))]
     }
-    .stata_set_notes(x, variable, notes)
+    .dta_set_notes(x, variable, notes)
 }
 
 #' @rdname dta_notes
@@ -116,39 +116,39 @@ drop_dta_notes <- function(x, numbers = NULL, variable = NULL) {
     if (is.null(numbers)) {
         notes <- stats::setNames(character(), character())
     } else {
-        numbers <- vapply(numbers, .stata_note_number, integer(1))
+        numbers <- vapply(numbers, .dta_note_number, integer(1))
         notes <- dta_notes(x, variable)
         notes <- notes[!(as.integer(names(notes)) %in% numbers)]
     }
-    .stata_set_notes(x, variable, notes)
+    .dta_set_notes(x, variable, notes)
 }
 
 #' @rdname dta_notes
 #' @export
 renumber_dta_notes <- function(x, start = 1L, variable = NULL) {
-    start <- .stata_note_number(start)
+    start <- .dta_note_number(start)
     notes <- dta_notes(x, variable)
     if (length(notes) && start + length(notes) - 1L > 9999L) {
         stop("Renumbered notes would exceed Stata note number 9,999", call. = FALSE)
     }
     names(notes) <- if (length(notes)) seq.int(start, length.out = length(notes)) else character()
-    .stata_set_notes(x, variable, notes)
+    .dta_set_notes(x, variable, notes)
 }
 
 #' @rdname dta_notes
 #' @export
 dta_characteristics <- function(x, variable = NULL) {
-    target <- .stata_metadata_target(x, variable)
+    target <- .dta_metadata_target(x, variable)
     characteristics <- attr(target$value, "stata.characteristics", exact = TRUE)
     if (is.null(characteristics)) return(stats::setNames(character(), character()))
     valid <- is.character(characteristics) && !anyNA(characteristics) &&
         !is.null(names(characteristics)) && !anyNA(names(characteristics)) &&
         !anyDuplicated(names(characteristics)) &&
         all(vapply(
-            names(characteristics), .valid_stata_characteristic_name,
+            names(characteristics), .valid_dta_characteristic_name,
             logical(1)
         )) && all(vapply(
-            characteristics, .valid_stata_metadata_value, logical(1)
+            characteristics, .valid_dta_metadata_value, logical(1)
         ))
     if (!valid) {
         stop("The object contains malformed Stata characteristic metadata", call. = FALSE)
@@ -159,7 +159,7 @@ dta_characteristics <- function(x, variable = NULL) {
 #' @rdname dta_notes
 #' @export
 dta_characteristic <- function(x, name, variable = NULL) {
-    name <- .stata_characteristic_name(name)
+    name <- .dta_characteristic_name(name)
     values <- dta_characteristics(x, variable)
     match <- match(name, names(values))
     if (is.na(match)) NULL else unname(values[[match]])
@@ -168,8 +168,8 @@ dta_characteristic <- function(x, name, variable = NULL) {
 #' @rdname dta_notes
 #' @export
 set_dta_characteristic <- function(x, name, value, variable = NULL) {
-    name <- .stata_characteristic_name(name)
-    value <- .stata_metadata_value(value)
+    name <- .dta_characteristic_name(name)
+    value <- .dta_metadata_value(value)
     characteristics <- dta_characteristics(x, variable)
     match <- match(name, names(characteristics))
     if (is.null(value)) {
@@ -179,7 +179,7 @@ set_dta_characteristic <- function(x, name, value, variable = NULL) {
     } else {
         characteristics[[match]] <- value
     }
-    .stata_set_characteristics(x, variable, characteristics)
+    .dta_set_characteristics(x, variable, characteristics)
 }
 
 #' @rdname dta_notes
@@ -191,27 +191,27 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
         if (!is.character(names) || anyNA(names)) {
             stop("`names` must be a character vector or NULL", call. = FALSE)
         }
-        names <- vapply(names, .stata_characteristic_name, character(1))
+        names <- vapply(names, .dta_characteristic_name, character(1))
         characteristics <- dta_characteristics(x, variable)
         characteristics <- characteristics[!(base::names(characteristics) %in% names)]
     }
-    .stata_set_characteristics(x, variable, characteristics)
+    .dta_set_characteristics(x, variable, characteristics)
 }
 
-.stata_note_number <- function(number) {
+.dta_note_number <- function(number) {
     valid <- is.numeric(number) && length(number) == 1L && !is.na(number) &&
         is.finite(number) && number == floor(number) && number >= 1 && number <= 9999
     if (!valid) stop("A note number must be one whole number from 1 through 9,999", call. = FALSE)
     as.integer(number)
 }
 
-.valid_stata_metadata_value <- function(value) {
+.valid_dta_metadata_value <- function(value) {
     is.character(value) && length(value) == 1L && !is.na(value) &&
         nchar(value, type = "chars") <= 67784L &&
         nchar(enc2utf8(value), type = "bytes") <= 203352L
 }
 
-.stata_metadata_value <- function(value) {
+.dta_metadata_value <- function(value) {
     if (is.null(value)) return(NULL)
     if (!is.character(value) || length(value) != 1L || is.na(value)) {
         stop("`value` must be one non-missing string or NULL", call. = FALSE)
@@ -226,8 +226,8 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     value
 }
 
-.stata_characteristic_name <- function(name) {
-    if (!.valid_stata_characteristic_name(name)) {
+.dta_characteristic_name <- function(name) {
+    if (!.valid_dta_characteristic_name(name)) {
         stop(paste0(
             "A characteristic name must be a valid Stata name with at most 32 Unicode ",
             "characters and cannot be a numeric `note*` key, language-control key, ",
@@ -237,9 +237,9 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     enc2utf8(name)
 }
 
-.valid_stata_characteristic_name <- function(name) {
+.valid_dta_characteristic_name <- function(name) {
     is.character(name) && length(name) == 1L && !is.na(name) &&
-        .valid_stata_name_syntax(name, 32L) &&
+        .valid_dta_name_syntax(name, 32L) &&
         nchar(name, type = "bytes") <= 128L && !grepl("^note[0-9]+$", name) &&
         !(name %in% c(
             "_lang_list", "_lang_c", "fralias_from", "fralias_varname"
@@ -247,7 +247,7 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
         !grepl("^_lang_[vl]_", name)
 }
 
-.stata_metadata_target <- function(x, variable) {
+.dta_metadata_target <- function(x, variable) {
     .validate_label_object(x)
     if (is.null(variable)) return(list(value = x, index = NULL))
     if (!is.data.frame(x)) stop("`variable` requires a data frame", call. = FALSE)
@@ -263,7 +263,7 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     list(value = x[[index]], index = index)
 }
 
-.stata_update_target <- function(x, variable, update) {
+.dta_update_target <- function(x, variable, update) {
     if (is.data.frame(x)) .reject_data_table_subclass(x, "x")
     # A reference dataset is edited through its snapshot: copying the
     # marked object would share one reference state between the input
@@ -272,21 +272,21 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     # way.
     source <- x
     if (inherits(x, "dtatools_ref_data")) x <- .reference_snapshot(x)
-    target <- .stata_metadata_target(x, variable)
+    target <- .dta_metadata_target(x, variable)
     changed <- .metadata_copy(target$value)
     changed <- update(changed)
     result <- if (is.null(target$index)) {
-        .as_stata_metadata_frame(changed)
+        .as_dta_metadata_frame(changed)
     } else {
         result <- .metadata_copy(x)
         result[[target$index]] <- changed
-        .as_stata_metadata_frame(result)
+        .as_dta_metadata_frame(result)
     }
     .close_dibble(source, result)
 }
 
-.stata_set_notes <- function(x, variable, notes) {
-    .stata_update_target(x, variable, function(target) {
+.dta_set_notes <- function(x, variable, notes) {
+    .dta_update_target(x, variable, function(target) {
         if (!length(notes)) {
             attr(target, "notes") <- NULL
             attr(target, "stata.note.numbers") <- NULL
@@ -298,8 +298,8 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     })
 }
 
-.stata_set_characteristics <- function(x, variable, characteristics) {
-    .stata_update_target(x, variable, function(target) {
+.dta_set_characteristics <- function(x, variable, characteristics) {
+    .dta_update_target(x, variable, function(target) {
         attr(target, "stata.characteristics") <- if (length(characteristics)) {
             characteristics
         } else NULL
@@ -307,19 +307,19 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     })
 }
 
-.copy_stata_metadata_attributes <- function(from, to, mark = TRUE) {
-    for (name in .stata_metadata_attribute_names) {
+.copy_dta_metadata_attributes <- function(from, to, mark = TRUE) {
+    for (name in .dta_metadata_attribute_names) {
         value <- attr(from, name, exact = TRUE)
         if (!is.null(value)) attr(to, name) <- value
     }
-    if (mark) .as_stata_metadata_frame(to) else to
+    if (mark) .as_dta_metadata_frame(to) else to
 }
 
-.stata_metadata_attribute_names <- c(
+.dta_metadata_attribute_names <- c(
     "notes", "stata.note.numbers", "stata.characteristics"
 )
 
-.reconcile_stata_metadata_attributes <- function(result, x, y) {
+.reconcile_dta_metadata_attributes <- function(result, x, y) {
     x_has_notes <- !is.null(attr(x, "notes", exact = TRUE)) ||
         !is.null(attr(x, "stata.note.numbers", exact = TRUE))
     note_source <- if (x_has_notes) x else y
@@ -344,19 +344,19 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     result
 }
 
-.has_stata_metadata <- function(value) {
-    any(vapply(.stata_metadata_attribute_names, function(name) {
+.has_dta_metadata <- function(value) {
+    any(vapply(.dta_metadata_attribute_names, function(name) {
         !is.null(attr(value, name, exact = TRUE))
     }, logical(1)))
 }
 
-.stata_metadata_vector_class <- "dtatools_stata_metadata_vector"
+.dta_metadata_vector_class <- "dtatools_dta_metadata_vector"
 
-.set_stata_metadata_class <- function(value, present) {
+.set_dta_metadata_class <- function(value, present) {
     marker <- if (is.data.frame(value)) {
-        "dtatools_stata_metadata"
+        "dtatools_dta_metadata"
     } else {
-        .stata_metadata_vector_class
+        .dta_metadata_vector_class
     }
     classes <- setdiff(attr(value, "class", exact = TRUE), marker)
     if (is.data.frame(value) && "data.table" %in% classes) {
@@ -367,7 +367,7 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
         present <- FALSE
     }
     if (!is.data.frame(value) && any(classes %in% c(
-        "stata_numeric", "stata_temporal"
+        "dta_numeric", "dta_temporal"
     ))) {
         present <- FALSE
     }
@@ -391,17 +391,17 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     value
 }
 
-.as_stata_metadata_vector <- function(value) {
-    .set_stata_metadata_class(value, .has_stata_metadata(value))
+.as_dta_metadata_vector <- function(value) {
+    .set_dta_metadata_class(value, .has_dta_metadata(value))
 }
 
-.as_stata_metadata_frame <- function(value) {
-    if (!is.data.frame(value)) return(.as_stata_metadata_vector(value))
-    variable_metadata <- vapply(value, .has_stata_metadata, logical(1))
+.as_dta_metadata_frame <- function(value) {
+    if (!is.data.frame(value)) return(.as_dta_metadata_vector(value))
+    variable_metadata <- vapply(value, .has_dta_metadata, logical(1))
     if (any(variable_metadata)) {
         locations <- which(variable_metadata)
         marked <- lapply(
-            locations, function(k) .as_stata_metadata_vector(value[[k]])
+            locations, function(k) .as_dta_metadata_vector(value[[k]])
         )
         if (inherits(value, "data.table")) {
             # `[<-` on a data.table with a logical index selects rows, and
@@ -414,136 +414,136 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
             value[locations] <- marked
         }
     }
-    .repair_data_table_container(.set_stata_metadata_class(
-        value, .has_stata_metadata(value) || any(variable_metadata)
+    .repair_data_table_container(.set_dta_metadata_class(
+        value, .has_dta_metadata(value) || any(variable_metadata)
     ))
 }
 
-.stata_metadata_vector_base <- function(value) {
-    for (name in .stata_metadata_attribute_names) attr(value, name) <- NULL
-    .set_stata_metadata_class(value, FALSE)
+.dta_metadata_vector_base <- function(value) {
+    for (name in .dta_metadata_attribute_names) attr(value, name) <- NULL
+    .set_dta_metadata_class(value, FALSE)
 }
 
 #' @export
-vec_proxy.dtatools_stata_metadata_vector <- function(x, ...) {
-    vctrs::vec_proxy(.stata_metadata_vector_base(x), ...)
+vec_proxy.dtatools_dta_metadata_vector <- function(x, ...) {
+    vctrs::vec_proxy(.dta_metadata_vector_base(x), ...)
 }
 
 #' @export
-vec_restore.dtatools_stata_metadata_vector <- function(x, to, ...) {
+vec_restore.dtatools_dta_metadata_vector <- function(x, to, ...) {
     restored <- vctrs::vec_restore(
-        x, .stata_metadata_vector_base(to), ...
+        x, .dta_metadata_vector_base(to), ...
     )
-    .copy_stata_metadata_attributes(to, restored)
+    .copy_dta_metadata_attributes(to, restored)
 }
 
-.stata_metadata_vector_ptype2 <- function(
+.dta_metadata_vector_ptype2 <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
     result <- vctrs::vec_ptype2(
-        .stata_metadata_vector_base(x),
-        .stata_metadata_vector_base(y),
+        .dta_metadata_vector_base(x),
+        .dta_metadata_vector_base(y),
         ...,
         x_arg = x_arg,
         y_arg = y_arg
     )
-    .as_stata_metadata_vector(
-        .reconcile_stata_metadata_attributes(result, x, y)
+    .as_dta_metadata_vector(
+        .reconcile_dta_metadata_attributes(result, x, y)
     )
 }
 
 #' @export
-vec_ptype2.dtatools_stata_metadata_vector.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.dtatools_dta_metadata_vector.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_ptype2
 
 #' @export
-vec_ptype2.dtatools_stata_metadata_vector.character <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.dtatools_dta_metadata_vector.character <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.character.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.character.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.dtatools_stata_metadata_vector.logical <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.dtatools_dta_metadata_vector.logical <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.logical.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.logical.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.dtatools_stata_metadata_vector.integer <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.dtatools_dta_metadata_vector.integer <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.integer.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.integer.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.dtatools_stata_metadata_vector.double <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.dtatools_dta_metadata_vector.double <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.double.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.double.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.dtatools_stata_metadata_vector.raw <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.dtatools_dta_metadata_vector.raw <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.raw.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.raw.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.dtatools_stata_metadata_vector.factor <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.dtatools_dta_metadata_vector.factor <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.factor.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.factor.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.dtatools_stata_metadata_vector.ordered <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.dtatools_dta_metadata_vector.ordered <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.ordered.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.ordered.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_ptype2
 
-.stata_metadata_vector_cast <- function(
+.dta_metadata_vector_cast <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
     result <- vctrs::vec_cast(
-        .stata_metadata_vector_base(x),
-        .stata_metadata_vector_base(to),
+        .dta_metadata_vector_base(x),
+        .dta_metadata_vector_base(to),
         ...,
         x_arg = x_arg,
         to_arg = to_arg,
         call = call
     )
-    .copy_stata_metadata_attributes(to, result)
+    .copy_dta_metadata_attributes(to, result)
 }
 
 #' @export
-vec_cast.dtatools_stata_metadata_vector.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_cast
+vec_cast.dtatools_dta_metadata_vector.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_cast
 #' @export
-vec_cast.dtatools_stata_metadata_vector.character <-
-    .stata_metadata_vector_cast
+vec_cast.dtatools_dta_metadata_vector.character <-
+    .dta_metadata_vector_cast
 #' @export
-vec_cast.dtatools_stata_metadata_vector.logical <-
-    .stata_metadata_vector_cast
+vec_cast.dtatools_dta_metadata_vector.logical <-
+    .dta_metadata_vector_cast
 #' @export
-vec_cast.dtatools_stata_metadata_vector.integer <-
-    .stata_metadata_vector_cast
+vec_cast.dtatools_dta_metadata_vector.integer <-
+    .dta_metadata_vector_cast
 #' @export
-vec_cast.dtatools_stata_metadata_vector.double <-
-    .stata_metadata_vector_cast
+vec_cast.dtatools_dta_metadata_vector.double <-
+    .dta_metadata_vector_cast
 #' @export
-vec_cast.dtatools_stata_metadata_vector.raw <-
-    .stata_metadata_vector_cast
+vec_cast.dtatools_dta_metadata_vector.raw <-
+    .dta_metadata_vector_cast
 #' @export
-vec_cast.dtatools_stata_metadata_vector.factor <-
-    .stata_metadata_vector_cast
+vec_cast.dtatools_dta_metadata_vector.factor <-
+    .dta_metadata_vector_cast
 #' @export
-vec_cast.dtatools_stata_metadata_vector.ordered <-
-    .stata_metadata_vector_cast
+vec_cast.dtatools_dta_metadata_vector.ordered <-
+    .dta_metadata_vector_cast
 
-.stata_metadata_vector_cast_base <- function(
+.dta_metadata_vector_cast_base <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
     vctrs::vec_cast(
-        .stata_metadata_vector_base(x),
-        .stata_metadata_vector_base(to),
+        .dta_metadata_vector_base(x),
+        .dta_metadata_vector_base(to),
         ...,
         x_arg = x_arg,
         to_arg = to_arg,
@@ -552,29 +552,29 @@ vec_cast.dtatools_stata_metadata_vector.ordered <-
 }
 
 #' @export
-vec_cast.character.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_cast_base
+vec_cast.character.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_cast_base
 #' @export
-vec_cast.logical.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_cast_base
+vec_cast.logical.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_cast_base
 #' @export
-vec_cast.integer.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_cast_base
+vec_cast.integer.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_cast_base
 #' @export
-vec_cast.double.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_cast_base
+vec_cast.double.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_cast_base
 #' @export
-vec_cast.raw.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_cast_base
+vec_cast.raw.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_cast_base
 #' @export
-vec_cast.factor.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_cast_base
+vec_cast.factor.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_cast_base
 #' @export
-vec_cast.ordered.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_cast_base
+vec_cast.ordered.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_cast_base
 
 #' @export
-`[.dtatools_stata_metadata` <- function(x, i, j, ..., drop) {
+`[.dtatools_dta_metadata` <- function(x, i, j, ..., drop) {
     argument_count <- nargs() - !missing(drop)
     one_dimensional <- argument_count < 3L
     indices <- stats::setNames(seq_along(x), names(x))
@@ -589,36 +589,36 @@ vec_cast.ordered.dtatools_stata_metadata_vector <-
     result <- NextMethod("[")
     if (!is.data.frame(result)) {
         if (length(selected) == 1L) {
-            result <- .copy_stata_metadata_attributes(
+            result <- .copy_dta_metadata_attributes(
                 x[[unname(selected[[1L]])]], result
             )
         }
         return(result)
     }
 
-    result <- .copy_stata_metadata_attributes(x, result, mark = FALSE)
+    result <- .copy_dta_metadata_attributes(x, result, mark = FALSE)
     if (length(selected) != ncol(result)) {
         stop("Could not restore Stata metadata after subsetting", call. = FALSE)
     }
     source_columns <- unclass(x)[unname(selected)]
     variable_metadata <- vapply(
-        source_columns, .has_stata_metadata, logical(1)
+        source_columns, .has_dta_metadata, logical(1)
     )
     if (any(variable_metadata)) {
         locations <- which(variable_metadata)
         replacements <- Map(
-            .copy_stata_metadata_attributes,
+            .copy_dta_metadata_attributes,
             source_columns[locations],
             unclass(result)[locations]
         )
         result[locations] <- replacements
     }
-    .set_stata_metadata_class(
-        result, .has_stata_metadata(x) || any(variable_metadata)
+    .set_dta_metadata_class(
+        result, .has_dta_metadata(x) || any(variable_metadata)
     )
 }
 
-.stata_metadata_payload <- function(
+.dta_metadata_payload <- function(
     notes, characteristics, inputs_are_utf8 = FALSE
 ) {
     note_count <- length(notes)
@@ -629,7 +629,7 @@ vec_cast.ordered.dtatools_stata_metadata_vector <-
         stop("Stata metadata contains too many entries", call. = FALSE)
     }
     result <- character(as.integer(field_count))
-    result[[1L]] <- paste0(intToUtf8(30L), "dtatools:stata-metadata:1")
+    result[[1L]] <- paste0(intToUtf8(30L), "dtatools:dta-metadata:1")
     result[[2L]] <- as.character(note_count)
     cursor <- 3L
     if (note_count) {
@@ -670,15 +670,15 @@ vec_cast.ordered.dtatools_stata_metadata_vector <-
 # the notes and characteristics.
 
 #' @export
-vec_ptype2.dtatools_stata_metadata_vector.stata_string <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.dtatools_dta_metadata_vector.dta_string <-
+    .dta_metadata_vector_ptype2
 #' @export
-vec_ptype2.stata_string.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_ptype2
+vec_ptype2.dta_string.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_ptype2
 
 #' @export
-vec_cast.dtatools_stata_metadata_vector.stata_string <-
-    .stata_metadata_vector_cast
+vec_cast.dtatools_dta_metadata_vector.dta_string <-
+    .dta_metadata_vector_cast
 #' @export
-vec_cast.stata_string.dtatools_stata_metadata_vector <-
-    .stata_metadata_vector_cast_base
+vec_cast.dta_string.dtatools_dta_metadata_vector <-
+    .dta_metadata_vector_cast_base

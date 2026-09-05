@@ -3,6 +3,32 @@ arrow_tempfile <- function() {
     tempfile(fileext = ".arrow")
 }
 
+test_that("legacy Arrow numeric metadata reads into current DTA classes", {
+    skip_if_not_installed("arrow")
+    schema <- arrow::schema(
+        arrow::field("x", arrow::int8(), nullable = FALSE, metadata = list(
+            "dtatools:field" = paste0(
+                '{"version":0,"format":"%8.0g","storage":"byte","missing":"sentinel",',
+                '"r":{"class":"stata_numeric"}}'
+            )
+        ))
+    )$WithMetadata(list("dtatools:profile-version" = "0"))
+    path <- arrow_tempfile()
+    arrow::write_ipc_file(arrow::Table$create(x = c(1L, 101L, 102L),
+                                             schema = schema), path)
+    actual <- read_arrow(path, verify = FALSE)
+    expect_s3_class(actual$x, "dta_numeric")
+    expect_s3_class(actual$x, "dta_byte")
+    expect_identical(as.double(actual$x), c(1, NA_real_, tagged_missing("a")))
+
+    rewritten <- arrow_tempfile()
+    save_arrow(actual, rewritten)
+    field <- arrow::read_ipc_file(rewritten, as_data_frame = FALSE)$schema$GetFieldByName("x")
+    expect_match(field$metadata[["dtatools:field"]], '"storage":"byte"', fixed = TRUE)
+    expect_false(grepl("stata_numeric", field$metadata[["dtatools:field"]], fixed = TRUE))
+    expect_identical(read_arrow(rewritten)$x, actual$x)
+})
+
 standard_arrow_fixture <- function() {
     data <- tibble::tibble(
         lgl = c(TRUE, NA, FALSE, TRUE),
@@ -311,7 +337,7 @@ test_that("owned Stata strings are writable and signable", {
     save_arrow(data, path)
     actual <- read_arrow(path)
 
-    expect_s3_class(actual$s, "stata_string")
+    expect_s3_class(actual$s, "dta_string")
     expect_identical(attr(actual$s, "stata.string.storage"), "str5")
     expect_identical(as.character(actual$s), as.character(data$s))
     expect_identical(datasig(actual), datasig(data))
@@ -337,16 +363,16 @@ test_that("compact ALTREP columns are written without materializing", {
 test_that("compact datetime timezone adjustment matches eager writing", {
     raw <- c(1, 999, 1001)
     observed <- raw / 1000 - 315619200
-    datetimes <- dtatools:::.construct_stata_numeric(
+    datetimes <- dtatools:::.construct_dta_numeric(
         observed, NULL, "long", temporal = 2L
     )
     prototype <- structure(
         double(),
         format.stata = "%tc",
         tzone = "UTC",
-        class = c("stata_temporal", "stata_datetime", "POSIXct", "POSIXt")
+        class = c("dta_temporal", "dta_datetime", "POSIXct", "POSIXt")
     )
-    datetimes <- dtatools:::.attach_stata_temporal(
+    datetimes <- dtatools:::.attach_dta_temporal(
         datetimes, prototype, "long"
     )
     source <- structure(
@@ -634,7 +660,7 @@ test_that("profiled storage uses its materialized R type for selection", {
 test_that("declared Stata storage overrides mismatched compact backing", {
     value <- dta_byte(c(1, 2, NA))
     attr(value, "stata.storage") <- "int"
-    class(value) <- dtatools:::.stata_storage_class("int")
+    class(value) <- dtatools:::.dta_storage_class("int")
     data <- tibble::tibble(x = value)
     path <- arrow_tempfile()
     save_arrow(data, path)
@@ -648,7 +674,7 @@ test_that("declared Stata storage overrides mismatched compact backing", {
 test_that("invalid NaNs in Stata storage become system missing", {
     values <- c(1, NaN, tagged_nan_for_test("?"))
     attr(values, "stata.storage") <- "double"
-    class(values) <- dtatools:::.stata_storage_class("double")
+    class(values) <- dtatools:::.dta_storage_class("double")
     data <- tibble::tibble(x = values)
     path <- arrow_tempfile()
 
@@ -870,7 +896,7 @@ test_that("non-Arrow input is rejected by name", {
 test_that("unrepresentable values in declared storage warn and count", {
     column <- c(1, 5e6)
     attr(column, "stata.storage") <- "int"
-    class(column) <- dtatools:::.stata_storage_class("int")
+    class(column) <- dtatools:::.dta_storage_class("int")
     data <- tibble::tibble(narrow = column)
     path <- arrow_tempfile()
 
@@ -906,7 +932,7 @@ test_that("save_arrow reports attributes the profile drops", {
 })
 
 test_that("Arrow owned-attribute allowlists share the metadata registry", {
-    registry <- dtatools:::.stata_metadata_attribute_names
+    registry <- dtatools:::.dta_metadata_attribute_names
     expect_true(all(registry %in% dtatools:::.arrow_known_column_attributes(
         "double"
     )))

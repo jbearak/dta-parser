@@ -25,10 +25,10 @@ test_that("order_vars permutes a tibble and a data.table by reference", {
     expect_true(tibble::is_tibble(table))
     expect_identical(table$a, 1:3)
 
-    stata_table <- data.table::data.table(a = 1:3, b = 4:6, c = 7:9)
-    order_vars(stata_table, b)
-    expect_identical(names(stata_table), c("b", "a", "c"))
-    expect_true(data.table::is.data.table(stata_table))
+    dta_table <- data.table::data.table(a = 1:3, b = 4:6, c = 7:9)
+    order_vars(dta_table, b)
+    expect_identical(names(dta_table), c("b", "a", "c"))
+    expect_true(data.table::is.data.table(dta_table))
 })
 
 test_that("order_vars leaves an unchanged order alone", {

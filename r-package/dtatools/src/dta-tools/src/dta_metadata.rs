@@ -71,7 +71,7 @@ pub(crate) fn is_structural_characteristic(name: &str) -> bool {
         || name.starts_with("_lang_l_")
 }
 
-fn stata_name_letter(character: char) -> bool {
+fn dta_name_letter(character: char) -> bool {
     matches!(
         get_general_category(character),
         GeneralCategory::UppercaseLetter
@@ -82,7 +82,7 @@ fn stata_name_letter(character: char) -> bool {
     )
 }
 
-fn stata_name_number(character: char) -> bool {
+fn dta_name_number(character: char) -> bool {
     matches!(
         get_general_category(character),
         GeneralCategory::DecimalNumber
@@ -91,14 +91,14 @@ fn stata_name_number(character: char) -> bool {
     )
 }
 
-pub(crate) fn valid_stata_name_syntax(name: &str, maximum_characters: usize) -> bool {
+pub(crate) fn valid_dta_name_syntax(name: &str, maximum_characters: usize) -> bool {
     let mut characters = name.chars();
     let Some(first) = characters.next() else {
         return false;
     };
-    (first == '_' || stata_name_letter(first))
+    (first == '_' || dta_name_letter(first))
         && characters.all(|character| {
-            character == '_' || stata_name_letter(character) || stata_name_number(character)
+            character == '_' || dta_name_letter(character) || dta_name_number(character)
         })
         && name.chars().count() <= maximum_characters
 }
@@ -118,7 +118,7 @@ pub fn valid_note(number: u32, text: &str) -> bool {
 }
 
 pub(crate) fn valid_characteristic_name(name: &str) -> bool {
-    valid_stata_name_syntax(name, 32)
+    valid_dta_name_syntax(name, 32)
         && name.len() <= MAX_CHARACTERISTIC_NAME_BYTES
         && !is_reserved_note_name(name.as_bytes())
         && !is_structural_characteristic(name)
@@ -384,7 +384,7 @@ pub(crate) fn classify_characteristic(
     offset: usize,
     resolve_variable: impl FnOnce(&str) -> Option<usize>,
 ) -> Result<Option<AcceptedCharacteristic>, DtaError> {
-    if !valid_stata_name_syntax(&name, 32) || name.len() > MAX_CHARACTERISTIC_NAME_BYTES {
+    if !valid_dta_name_syntax(&name, 32) || name.len() > MAX_CHARACTERISTIC_NAME_BYTES {
         return Err(DtaError::InvalidCharacteristicName { name, offset });
     }
     let key = if let Some(number) = note_index(name.as_bytes()) {

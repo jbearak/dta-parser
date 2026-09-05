@@ -43,7 +43,7 @@ whole dataset and opt into dibble replacement behavior.
 A dibble is a Stata dataset held in a tibble, and two invariants follow.
 Every numeric and string column carries Stata storage: \code{dibble()} and
 \code{as_dibble()} type bare columns by the mapping in
-\link{stata-storage-defaults}, and so does every operation that adds or
+\link{dta-storage-defaults}, and so does every operation that adds or
 changes a column, including \code{\link[dplyr:mutate]{dplyr::mutate()}}, \code{transform()}, and the
 replacement operators \verb{$<-}, \verb{[[<-}, and \verb{[<-}. Logical columns stay
 logical and factors stay factors. And every dataset operation on a
@@ -104,6 +104,6 @@ dplyr::group_vars(grouped)
 }
 \seealso{
 \link{dibble-bracket} for \code{survey[i, y := value]}, the assignment
-shape only a dibble supports; \link{stata-storage-defaults} for the Stata
+shape only a dibble supports; \link{dta-storage-defaults} for the Stata
 storage a dibble gives its columns.
 }

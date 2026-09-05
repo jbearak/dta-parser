@@ -205,10 +205,10 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
 
 .compatible_recode_classes <- function(value, source) {
     if (identical(class(value), class(source))) return(TRUE)
-    if (inherits(source, "stata_date") && inherits(value, "Date")) {
+    if (inherits(source, "dta_date") && inherits(value, "Date")) {
         return(TRUE)
     }
-    inherits(source, "stata_datetime") && inherits(value, "POSIXct")
+    inherits(source, "dta_datetime") && inherits(value, "POSIXct")
 }
 
 recode.numeric <- function(.x, ..., .default = NULL, .missing = NULL) {
@@ -224,7 +224,7 @@ recode.numeric <- function(.x, ..., .default = NULL, .missing = NULL) {
 }
 
 #' @export
-recode.stata_numeric <- function(
+recode.dta_numeric <- function(
     .x, ..., .default = NULL, .missing = NULL
 ) {
     .recode_numeric_like(
@@ -343,12 +343,12 @@ recode.POSIXct <- function(.x, ..., .default = NULL, .missing = NULL) {
 }
 
 #' @export
-recode.dtatools_stata_metadata_vector <- function(
+recode.dtatools_dta_metadata_vector <- function(
     .x, ..., .default = NULL, .missing = NULL
 ) {
     result <- dplyr::recode(
-        .stata_metadata_vector_base(.x), ...,
+        .dta_metadata_vector_base(.x), ...,
         .default = .default, .missing = .missing
     )
-    .copy_stata_metadata_attributes(.x, result)
+    .copy_dta_metadata_attributes(.x, result)
 }

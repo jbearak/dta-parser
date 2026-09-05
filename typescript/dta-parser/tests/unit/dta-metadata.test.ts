@@ -12,7 +12,7 @@ import {
     setStataCharacteristic,
     setStataNote,
 } from '../../src/index';
-import type { StataMetadataTarget } from '../../src/stata-metadata';
+import type { StataMetadataTarget } from '../../src/dta-metadata';
 import type { DtaMetadata, VariableInfo } from '../../src/types';
 
 function metadata(): StataMetadataTarget {
@@ -77,10 +77,10 @@ describe('Stata metadata accessors', () => {
             notes: ['legacy dataset note'],
             variables,
             section_offsets: {
-                stata_data: 0, map: 0, variable_types: 0, varnames: 0,
+                dta_data: 0, map: 0, variable_types: 0, varnames: 0,
                 sortlist: 0, formats: 0, value_label_names: 0,
                 variable_labels: 0, characteristics: 0, data: 0,
-                strls: 0, value_labels: 0, stata_data_close: 0,
+                strls: 0, value_labels: 0, dta_data_close: 0,
                 end_of_file: 0,
             },
             obs_length: 1,

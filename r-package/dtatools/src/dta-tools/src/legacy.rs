@@ -1,8 +1,8 @@
-use crate::endian::{checked_add, checked_mul, read_i16, read_i32, read_u16, slice_at};
-use crate::stata_metadata::{
+use crate::dta_metadata::{
     validate_raw_value_bytes, validate_raw_value_length, CharacteristicPlan,
     CharacteristicValueUse, DecodedCharacteristics, VariableTargetIndexes,
 };
+use crate::endian::{checked_add, checked_mul, read_i16, read_i32, read_u16, slice_at};
 use crate::text::{field_bytes, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
@@ -536,7 +536,7 @@ pub(crate) fn parse_legacy_metadata(
         characteristics,
         variables,
         section_offsets: SectionOffsets {
-            stata_data: 0,
+            dta_data: 0,
             map: 0,
             variable_types: to_u64(fixed.variable_types, "legacy variable_types offset")?,
             varnames: to_u64(fixed.varnames, "legacy varnames offset")?,
@@ -548,7 +548,7 @@ pub(crate) fn parse_legacy_metadata(
             data,
             strls: value_labels,
             value_labels,
-            stata_data_close: file_length,
+            dta_data_close: file_length,
             end_of_file: file_length,
         },
         obs_length: byte_offset,
@@ -562,7 +562,7 @@ mod tests {
     #[test]
     fn unterminated_legacy_characteristics_are_framed_before_values_are_decoded() {
         let layout = LegacyLayout::for_version(FormatVersion::V115);
-        let value_length = crate::stata_metadata::MAX_METADATA_VALUE_BYTES + 2;
+        let value_length = crate::dta_metadata::MAX_METADATA_VALUE_BYTES + 2;
         let payload_length = layout.varname_width * 2 + value_length;
         let mut bytes = vec![1];
         bytes.extend_from_slice(&(payload_length as i32).to_le_bytes());

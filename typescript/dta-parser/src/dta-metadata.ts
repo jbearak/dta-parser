@@ -6,8 +6,8 @@ export interface StataMetadataTarget {
 }
 
 const NOTE_NAME = /^note([0-9]+)$/;
-const MAX_STATA_METADATA_VALUE_BYTES = 67_784;
-const MAX_DECODED_STATA_METADATA_VALUE_BYTES = 203_352;
+const MAX_DTA_METADATA_VALUE_BYTES = 67_784;
+const MAX_DECODED_DTA_METADATA_VALUE_BYTES = 203_352;
 const TEXT_ENCODER = new TextEncoder();
 
 const LAZY_NOTES = new WeakMap<object, StataNote[] | string[]>();
@@ -326,13 +326,13 @@ function validCharacteristicName(name: string): void {
 export function stataMetadataValueEnd(
     bytes: Uint8Array, start: number, length: number
 ): number {
-    if (length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
+    if (length > MAX_DTA_METADATA_VALUE_BYTES + 1) {
         throw new Error('Characteristic value exceeds the 67,784-byte limit');
     }
     const limit = start + length;
     let end = start;
     while (end < limit && bytes[end] !== 0) end++;
-    if (end - start > MAX_STATA_METADATA_VALUE_BYTES) {
+    if (end - start > MAX_DTA_METADATA_VALUE_BYTES) {
         throw new Error('Characteristic value exceeds the 67,784-byte limit');
     }
     return end;
@@ -341,7 +341,7 @@ export function stataMetadataValueEnd(
 function validMetadataValue(value: string): void {
     if (typeof value !== 'string'
         || value.includes('\0')
-        || !utf8LengthAtMost(value, MAX_STATA_METADATA_VALUE_BYTES)) {
+        || !utf8LengthAtMost(value, MAX_DTA_METADATA_VALUE_BYTES)) {
         throw new Error('Invalid or over-limit Stata metadata value');
     }
 }
@@ -352,10 +352,10 @@ function validExistingMetadataValue(
     if (typeof value !== 'string'
         || value.includes('\0')
         || !codePointLengthAtMost(
-            value, MAX_STATA_METADATA_VALUE_BYTES
+            value, MAX_DTA_METADATA_VALUE_BYTES
         )
         || !utf8LengthAtMost(
-            value, MAX_DECODED_STATA_METADATA_VALUE_BYTES
+            value, MAX_DECODED_DTA_METADATA_VALUE_BYTES
         )) {
         throw new Error(`Malformed Stata ${kind} metadata`);
     }

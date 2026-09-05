@@ -128,7 +128,7 @@ test_that("comparisons never materialize compact operands", {
 test_that("the native kernel is engaged for compact storage", {
     for (storage in names(compact_constructors)) {
         value <- mixed_values(compact_constructors[[storage]])
-        native <- dtatools:::.stata_compare_native("==", value, 5)
+        native <- dtatools:::.dta_compare_native("==", value, 5)
 
         expect_identical(
             native, c(FALSE, FALSE, TRUE, FALSE, FALSE, FALSE),
@@ -139,7 +139,7 @@ test_that("the native kernel is engaged for compact storage", {
     # Eager doubles compare natively too, classifying NA_real_ and
     # tagged NaNs from the decoded payload bits.
     expect_identical(
-        dtatools:::.stata_compare_native("==", dta_double(c(1, 2)), 1),
+        dtatools:::.dta_compare_native("==", dta_double(c(1, 2)), 1),
         c(TRUE, FALSE)
     )
 })
@@ -169,7 +169,7 @@ test_that("decoded double vectors compare natively with full semantics", {
         -5, NA_real_, 5, 3, tagged_missing("a"), tagged_missing("z")
     ))
     expect_identical(
-        dtatools:::.stata_compare_native("==", compact, value),
+        dtatools:::.dta_compare_native("==", compact, value),
         c(TRUE, FALSE, TRUE, FALSE, TRUE, TRUE)
     )
     expect_identical(

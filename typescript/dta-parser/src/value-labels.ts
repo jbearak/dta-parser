@@ -451,7 +451,7 @@ export function parse_value_labels(
 
     // Section end sentinel
     const my_section_end =
-        metadata.section_offsets.stata_data_close
+        metadata.section_offsets.dta_data_close
         - base_offset;
 
     if (is_legacy_format(metadata.format_version)) {

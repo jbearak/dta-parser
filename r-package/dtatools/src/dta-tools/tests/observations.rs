@@ -202,7 +202,7 @@ struct CanonicalVariable {
 
 #[derive(Debug, Deserialize)]
 struct CanonicalSectionOffsets {
-    stata_data: u64,
+    dta_data: u64,
     map: u64,
     variable_types: u64,
     varnames: u64,
@@ -214,14 +214,14 @@ struct CanonicalSectionOffsets {
     data: u64,
     strls: u64,
     value_labels: u64,
-    stata_data_close: u64,
+    dta_data_close: u64,
     end_of_file: u64,
 }
 
 impl CanonicalSectionOffsets {
     fn as_array(&self) -> [u64; 14] {
         [
-            self.stata_data,
+            self.dta_data,
             self.map,
             self.variable_types,
             self.varnames,
@@ -233,7 +233,7 @@ impl CanonicalSectionOffsets {
             self.data,
             self.strls,
             self.value_labels,
-            self.stata_data_close,
+            self.dta_data_close,
             self.end_of_file,
         ]
     }
@@ -241,7 +241,7 @@ impl CanonicalSectionOffsets {
 
 fn actual_section_offsets(offsets: &dta_tools::SectionOffsets) -> [u64; 14] {
     [
-        offsets.stata_data,
+        offsets.dta_data,
         offsets.map,
         offsets.variable_types,
         offsets.varnames,
@@ -253,7 +253,7 @@ fn actual_section_offsets(offsets: &dta_tools::SectionOffsets) -> [u64; 14] {
         offsets.data,
         offsets.strls,
         offsets.value_labels,
-        offsets.stata_data_close,
+        offsets.dta_data_close,
         offsets.end_of_file,
     ]
 }

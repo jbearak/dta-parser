@@ -89,7 +89,7 @@ typedef struct {
     int compact_format_version;
     int compact_temporal;
     int value_label_index;
-    SEXP stata_metadata;
+    SEXP dta_metadata;
     int haven_labelled;
     /* Unmaterialized dictionary-string payload, or NULL for eager columns. */
     const void *dictstring;
@@ -97,7 +97,7 @@ typedef struct {
 
 enum dtatools_arrow_specification_slot {
     DTATOOLS_ARROW_SPECIFICATION_DATASET_LABEL = 0,
-    DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA = 1,
+    DTATOOLS_ARROW_SPECIFICATION_DTA_METADATA = 1,
     DTATOOLS_ARROW_SPECIFICATION_COLUMNS = 2,
     DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES = 3,
     DTATOOLS_ARROW_SPECIFICATION_OUTPUT_CONTAINER = 4,
@@ -118,7 +118,7 @@ enum dtatools_arrow_column_slot {
     DTATOOLS_ARROW_COLUMN_HAVEN_LABELLED = 10,
     DTATOOLS_ARROW_COLUMN_STRING_STORAGE = 11,
     DTATOOLS_ARROW_COLUMN_VALUE_LABEL_INDEX = 12,
-    DTATOOLS_ARROW_COLUMN_STATA_METADATA = 13,
+    DTATOOLS_ARROW_COLUMN_DTA_METADATA = 13,
     DTATOOLS_ARROW_COLUMN_SLOT_COUNT = 14
 };
 
@@ -355,16 +355,16 @@ static int is_tagged_na_value(double value) {
     return tagged_na_tag_value(value) != 0;
 }
 
-static int stata_expression_string_is_missing(SEXP value) {
+static int dta_expression_string_is_missing(SEXP value) {
     return value == NA_STRING || LENGTH(value) == 0;
 }
 
-static int stata_missing_tag_value(double value) {
+static int dta_missing_tag_value(double value) {
     int tag = tagged_na_tag_value(value);
     return tag >= 'a' && tag <= 'z' ? tag : 0;
 }
 
-static int normalized_stata_missing_tag(SEXP value, const char *argument) {
+static int normalized_dta_missing_tag(SEXP value, const char *argument) {
     if (value == NA_STRING) {
         Rf_error("`%s` must contain only letters `a` through `z`", argument);
     }
@@ -425,8 +425,8 @@ static int materialized_numeric_storage(
     memset(storage, 0, sizeof(*storage));
     storage->length = (size_t) XLENGTH(value);
     storage->kind = kind;
-    storage->temporal = Rf_inherits(value, "stata_date") ? 1 :
-        (Rf_inherits(value, "stata_datetime") ? 2 : 0);
+    storage->temporal = Rf_inherits(value, "dta_date") ? 1 :
+        (Rf_inherits(value, "dta_datetime") ? 2 : 0);
     storage->format_version = 119;
     return 1;
 }
@@ -828,7 +828,7 @@ typedef struct {
     void *numeric_values;
     SEXP string_values;
     int value_label_index;
-    SEXP stata_metadata;
+    SEXP dta_metadata;
     double numeric_shift;
     double numeric_scale;
     const void *direct_numeric_values;
@@ -848,7 +848,7 @@ enum dtatools_dta_column_slot {
     DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT = 5,
     DTATOOLS_DTA_COLUMN_NUMERIC_SCALE = 6,
     DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX = 7,
-    DTATOOLS_DTA_COLUMN_STATA_METADATA = 8,
+    DTATOOLS_DTA_COLUMN_DTA_METADATA = 8,
     DTATOOLS_DTA_COLUMN_SLOT_COUNT = 9
 };
 
@@ -863,7 +863,7 @@ DTATOOLS_LAYOUT_ASSERT(write_column_label, offsetof(dtatools_write_column, label
 DTATOOLS_LAYOUT_ASSERT(write_column_numeric_values, offsetof(dtatools_write_column, numeric_values) == 32);
 DTATOOLS_LAYOUT_ASSERT(write_column_string_values, offsetof(dtatools_write_column, string_values) == 40);
 DTATOOLS_LAYOUT_ASSERT(write_column_value_label_index, offsetof(dtatools_write_column, value_label_index) == 48);
-DTATOOLS_LAYOUT_ASSERT(write_column_stata_metadata, offsetof(dtatools_write_column, stata_metadata) == 56);
+DTATOOLS_LAYOUT_ASSERT(write_column_dta_metadata, offsetof(dtatools_write_column, dta_metadata) == 56);
 DTATOOLS_LAYOUT_ASSERT(write_column_numeric_shift, offsetof(dtatools_write_column, numeric_shift) == 64);
 DTATOOLS_LAYOUT_ASSERT(write_column_numeric_scale, offsetof(dtatools_write_column, numeric_scale) == 72);
 DTATOOLS_LAYOUT_ASSERT(write_column_direct_values, offsetof(dtatools_write_column, direct_numeric_values) == 80);
@@ -895,7 +895,7 @@ DTATOOLS_LAYOUT_ASSERT(arrow_column_compact_kind, offsetof(dtatools_arrow_column
 DTATOOLS_LAYOUT_ASSERT(arrow_column_compact_version, offsetof(dtatools_arrow_column, compact_format_version) == 100);
 DTATOOLS_LAYOUT_ASSERT(arrow_column_compact_temporal, offsetof(dtatools_arrow_column, compact_temporal) == 104);
 DTATOOLS_LAYOUT_ASSERT(arrow_column_value_label_index, offsetof(dtatools_arrow_column, value_label_index) == 108);
-DTATOOLS_LAYOUT_ASSERT(arrow_column_stata_metadata, offsetof(dtatools_arrow_column, stata_metadata) == 112);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_dta_metadata, offsetof(dtatools_arrow_column, dta_metadata) == 112);
 DTATOOLS_LAYOUT_ASSERT(arrow_column_haven_labelled, offsetof(dtatools_arrow_column, haven_labelled) == 120);
 DTATOOLS_LAYOUT_ASSERT(arrow_column_dictstring, offsetof(dtatools_arrow_column, dictstring) == 128);
 DTATOOLS_LAYOUT_ASSERT(arrow_column_size, sizeof(dtatools_arrow_column) == 136);
@@ -2818,10 +2818,10 @@ static int reference_string_reader_is_missing_at(
     const reference_string_reader *reader, R_xlen_t index
 ) {
     if (reader->scalar != R_NilValue) {
-        return stata_expression_string_is_missing(reader->scalar);
+        return dta_expression_string_is_missing(reader->scalar);
     }
     if (reader->source == R_NilValue) {
-        return stata_expression_string_is_missing(
+        return dta_expression_string_is_missing(
             STRING_ELT(reader->values, index)
         );
     }
@@ -3281,11 +3281,11 @@ static SEXP write_rooted_strings(
     return normalized;
 }
 
-static int is_stata_metadata(SEXP values) {
+static int is_dta_metadata(SEXP values) {
     return Rf_isNull(values) || TYPEOF(values) == STRSXP;
 }
 
-static SEXP write_rooted_stata_metadata(
+static SEXP write_rooted_dta_metadata(
     SEXP roots, R_xlen_t index, SEXP values, const char *name
 ) {
     if (Rf_isNull(values)) {
@@ -3359,7 +3359,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
     SEXP dataset_metadata = VECTOR_ELT(specification, 1);
     SEXP columns = VECTOR_ELT(specification, 2);
     SEXP value_label_tables = VECTOR_ELT(specification, 4);
-    if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP ||
+    if (!is_dta_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP ||
         TYPEOF(value_label_tables) != VECSXP) {
         Rf_error("invalid internal write specification");
     }
@@ -3381,7 +3381,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         string_roots, root_index++, VECTOR_ELT(specification, 0),
         "dataset label"
     );
-    SEXP rooted_dataset_metadata = write_rooted_stata_metadata(
+    SEXP rooted_dataset_metadata = write_rooted_dta_metadata(
         string_roots, root_index++, dataset_metadata, "dataset Stata metadata"
     );
     const char *timestamp = write_rooted_scalar_string(
@@ -3447,8 +3447,8 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         SEXP numeric_shift = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT);
         SEXP numeric_scale = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_NUMERIC_SCALE);
         SEXP value_label_index = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX);
-        SEXP stata_metadata = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_STATA_METADATA);
-        if (!is_stata_metadata(stata_metadata) ||
+        SEXP dta_metadata = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_DTA_METADATA);
+        if (!is_dta_metadata(dta_metadata) ||
             TYPEOF(value_label_index) != INTSXP ||
             XLENGTH(value_label_index) != 1 ||
             TYPEOF(numeric_shift) != REALSXP || XLENGTH(numeric_shift) != 1 ||
@@ -3477,8 +3477,8 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         const char *label = write_rooted_scalar_string(
             string_roots, root_index++, VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_LABEL), "variable label"
         );
-        stata_metadata = write_rooted_stata_metadata(
-            string_roots, root_index++, stata_metadata, "variable Stata metadata"
+        dta_metadata = write_rooted_dta_metadata(
+            string_roots, root_index++, dta_metadata, "variable Stata metadata"
         );
         dtatools_write_column *descriptor = &descriptors[index];
         *descriptor = (dtatools_write_column) {
@@ -3487,7 +3487,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
             .format = format,
             .label = label,
             .string_values = R_NilValue,
-            .stata_metadata = stata_metadata,
+            .dta_metadata = dta_metadata,
             .value_label_index = table_index,
             .numeric_shift = REAL(numeric_shift)[0],
             .numeric_scale = REAL(numeric_scale)[0],
@@ -3570,13 +3570,13 @@ static void arrow_write_column_descriptor(
     SEXP value_label_index = VECTOR_ELT(
         column, DTATOOLS_ARROW_COLUMN_VALUE_LABEL_INDEX
     );
-    SEXP stata_metadata = VECTOR_ELT(
-        column, DTATOOLS_ARROW_COLUMN_STATA_METADATA
+    SEXP dta_metadata = VECTOR_ELT(
+        column, DTATOOLS_ARROW_COLUMN_DTA_METADATA
     );
     if (TYPEOF(kind_value) != INTSXP || XLENGTH(kind_value) != 1 ||
         TYPEOF(ordered) != LGLSXP || XLENGTH(ordered) != 1 ||
         TYPEOF(storage) != INTSXP || XLENGTH(storage) != 1 ||
-        !is_stata_metadata(stata_metadata) ||
+        !is_dta_metadata(dta_metadata) ||
         TYPEOF(haven_labelled) != LGLSXP || XLENGTH(haven_labelled) != 1 ||
         LOGICAL(haven_labelled)[0] == NA_LOGICAL ||
         TYPEOF(string_storage) != INTSXP || XLENGTH(string_storage) != 1 ||
@@ -3620,8 +3620,8 @@ static void arrow_write_column_descriptor(
         VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_UNITS), "units"
     );
     descriptor->value_label_index = table_index;
-    descriptor->stata_metadata = write_rooted_stata_metadata(
-        string_roots, (*root_index)++, stata_metadata, "variable Stata metadata"
+    descriptor->dta_metadata = write_rooted_dta_metadata(
+        string_roots, (*root_index)++, dta_metadata, "variable Stata metadata"
     );
     descriptor->haven_labelled = LOGICAL(haven_labelled)[0];
 
@@ -3716,7 +3716,7 @@ static void arrow_write_specification_sizes(
         Rf_error("internal Arrow specification must be a five-element list");
     }
     SEXP dataset_metadata = VECTOR_ELT(
-        specification, DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA
+        specification, DTATOOLS_ARROW_SPECIFICATION_DTA_METADATA
     );
     SEXP columns = VECTOR_ELT(
         specification, DTATOOLS_ARROW_SPECIFICATION_COLUMNS
@@ -3724,7 +3724,7 @@ static void arrow_write_specification_sizes(
     SEXP tables = VECTOR_ELT(
         specification, DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES
     );
-    if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP ||
+    if (!is_dta_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP ||
         TYPEOF(tables) != VECSXP) {
         Rf_error("invalid internal Arrow specification");
     }
@@ -3741,7 +3741,7 @@ static arrow_write_specification prepare_arrow_write_specification(
         specification, &column_count, &table_count
     );
     SEXP dataset_metadata = VECTOR_ELT(
-        specification, DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA
+        specification, DTATOOLS_ARROW_SPECIFICATION_DTA_METADATA
     );
     SEXP columns = VECTOR_ELT(
         specification, DTATOOLS_ARROW_SPECIFICATION_COLUMNS
@@ -3757,7 +3757,7 @@ static arrow_write_specification prepare_arrow_write_specification(
             ),
             "dataset label"
         ),
-        .dataset_metadata = write_rooted_stata_metadata(
+        .dataset_metadata = write_rooted_dta_metadata(
             string_roots, (*root_index)++, dataset_metadata,
             "dataset Stata metadata"
         ),
@@ -6573,7 +6573,7 @@ SEXP C_dtatools_tagged_missing(SEXP tag) {
     double *output = REAL(result);
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
-        int normalized = normalized_stata_missing_tag(
+        int normalized = normalized_dta_missing_tag(
             STRING_ELT(tag, index), "tag"
         );
         output[index] = numeric_missing_value(normalized - 'a' + 1);
@@ -6598,7 +6598,7 @@ SEXP C_dtatools_is_tagged_missing(SEXP value, SEXP tag) {
         R_xlen_t tag_count = XLENGTH(tag);
         for (R_xlen_t index = 0; index < tag_count; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
-            int normalized = normalized_stata_missing_tag(
+            int normalized = normalized_dta_missing_tag(
                 STRING_ELT(tag, index), "tag"
             );
             selected[normalized - 'a'] = 1;
@@ -6629,14 +6629,14 @@ SEXP C_dtatools_is_tagged_missing(SEXP value, SEXP tag) {
         } else if (input != NULL) {
             for (R_xlen_t index = 0; index < length; index++) {
                 if ((index & 16383) == 0) R_CheckUserInterrupt();
-                int actual = stata_missing_tag_value(input[index]);
+                int actual = dta_missing_tag_value(input[index]);
                 output[index] = actual != 0 &&
                     (match_any || selected[actual - 'a']);
             }
         } else {
             for (R_xlen_t index = 0; index < length; index++) {
                 if ((index & 16383) == 0) R_CheckUserInterrupt();
-                int actual = stata_missing_tag_value(REAL_ELT(value, index));
+                int actual = dta_missing_tag_value(REAL_ELT(value, index));
                 output[index] = actual != 0 &&
                     (match_any || selected[actual - 'a']);
             }
@@ -6660,7 +6660,7 @@ static int is_missing_supported_class(SEXP value) {
     int metadata_only = TYPEOF(classes) == STRSXP && XLENGTH(classes) == 1 &&
         strcmp(
             CHAR(STRING_ELT(classes, 0)),
-            "dtatools_stata_metadata_vector"
+            "dtatools_dta_metadata_vector"
         ) == 0;
 
     switch (TYPEOF(value)) {
@@ -6668,14 +6668,14 @@ static int is_missing_supported_class(SEXP value) {
     case INTSXP:
     case REALSXP:
         return metadata_only ||
-            Rf_inherits(value, "stata_numeric") ||
-            Rf_inherits(value, "stata_temporal") ||
+            Rf_inherits(value, "dta_numeric") ||
+            Rf_inherits(value, "dta_temporal") ||
             Rf_inherits(value, "Date") ||
             Rf_inherits(value, "POSIXct") ||
             Rf_inherits(value, "haven_labelled");
     case STRSXP:
         return metadata_only || Rf_inherits(value, "haven_labelled") ||
-            Rf_inherits(value, "stata_string");
+            Rf_inherits(value, "dta_string");
     default:
         return 0;
     }
@@ -6887,7 +6887,7 @@ SEXP C_dtatools_missing_tag(SEXP value) {
         } else if (input != NULL) {
             for (R_xlen_t index = 0; index < length; index++) {
                 if ((index & 16383) == 0) R_CheckUserInterrupt();
-                int tag = stata_missing_tag_value(input[index]);
+                int tag = dta_missing_tag_value(input[index]);
                 SET_STRING_ELT(
                     result, index,
                     tag == 0 ? NA_STRING : STRING_ELT(tag_names, tag - 'a')
@@ -6896,7 +6896,7 @@ SEXP C_dtatools_missing_tag(SEXP value) {
         } else {
             for (R_xlen_t index = 0; index < length; index++) {
                 if ((index & 16383) == 0) R_CheckUserInterrupt();
-                int tag = stata_missing_tag_value(REAL_ELT(value, index));
+                int tag = dta_missing_tag_value(REAL_ELT(value, index));
                 SET_STRING_ELT(
                     result, index,
                     tag == 0 ? NA_STRING : STRING_ELT(tag_names, tag - 'a')
@@ -7173,7 +7173,7 @@ SEXP C_dtatools_fused_compare_patch(
     return result;
 }
 
-SEXP C_dtatools_stata_compare(
+SEXP C_dtatools_dta_compare(
     SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
 ) {
     /* Native Stata comparison over compact numeric storage. Returns
@@ -7467,8 +7467,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_factorize_numeric, 3},
     {"C_dtatools_missing_codes",
      (DL_FUNC) &C_dtatools_missing_codes, 1},
-    {"C_dtatools_stata_compare",
-     (DL_FUNC) &C_dtatools_stata_compare, 5},
+    {"C_dtatools_dta_compare",
+     (DL_FUNC) &C_dtatools_dta_compare, 5},
     {"C_dtatools_fused_compare_patch",
      (DL_FUNC) &C_dtatools_fused_compare_patch, 8},
     {NULL, NULL, 0}

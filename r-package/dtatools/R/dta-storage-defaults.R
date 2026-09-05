@@ -104,5 +104,5 @@
 #' default; ask for `output = "dibble"` to type them on the way in.
 #'
 #' @seealso [dibble], [gen()], [save_dta()], [dta_byte()], [dta_string()]
-#' @name stata-storage-defaults
+#' @name dta-storage-defaults
 NULL

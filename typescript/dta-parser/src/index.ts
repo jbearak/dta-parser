@@ -27,8 +27,8 @@ export {
     renumberStataNotes,
     setStataCharacteristic,
     setStataNote,
-} from './stata-metadata';
-export type { StataMetadataTarget } from './stata-metadata';
+} from './dta-metadata';
+export type { StataMetadataTarget } from './dta-metadata';
 export type {
     VariableInfo,
     Row,
@@ -61,5 +61,5 @@ export {
     is_missing_value_object,
     make_missing_value,
     missing_type_to_label_key,
-    STATA_MISSING_B,
+    DTA_MISSING_B,
 } from './missing-values';

@@ -48,6 +48,7 @@
 
 pub mod arrow;
 mod data_reader;
+mod dta_metadata;
 mod endian;
 mod error;
 mod file;
@@ -55,7 +56,6 @@ mod legacy;
 mod metadata;
 mod missing;
 mod selection;
-mod stata_metadata;
 mod strl;
 mod text;
 mod types;
@@ -64,6 +64,9 @@ mod write;
 
 pub use data_reader::{
     read_dta, read_dta_with_encoding, read_dta_with_options, read_dta_with_options_and_encoding,
+};
+pub use dta_metadata::{
+    valid_canonical_characteristic, valid_canonical_note, valid_characteristic, valid_note,
 };
 pub use error::DtaError;
 pub use file::{
@@ -77,9 +80,6 @@ pub use missing::{
     classify_int_missing_for_version, classify_long_missing, classify_long_missing_for_version,
     MissingTag, DOUBLE_MISSING_DOT_BITS, DOUBLE_MISSING_STEP_BITS, DOUBLE_MISSING_Z_BITS,
     FLOAT_MISSING_DOT_BITS, FLOAT_MISSING_STEP_BITS, FLOAT_MISSING_Z_BITS,
-};
-pub use stata_metadata::{
-    valid_canonical_characteristic, valid_canonical_note, valid_characteristic, valid_note,
 };
 pub use text::TextEncoding;
 pub use types::{

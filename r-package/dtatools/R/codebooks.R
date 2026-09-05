@@ -217,8 +217,8 @@ labelbook <- function(data, ..., .tables = NULL,
     gaps <- length(sorted) > 1L && all(sorted == floor(sorted)) &&
         any(diff(sorted) > 1)
     text <- names(labels)
-    keys <- .stata_value_label_keys(labels)
-    add("invalid_table_name", !.valid_stata_name_syntax(table, 32L),
+    keys <- .dta_value_label_keys(labels)
+    add("invalid_table_name", !.valid_dta_name_syntax(table, 32L),
         "Table name is not a valid Stata name")
     add("duplicate_codes", anyDuplicated(keys) > 0L,
         "Value-label table contains duplicate codes")
@@ -384,12 +384,12 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     report_type <- if (!supported) "unsupported" else if (categorical) {
         "categorical"
     } else if (numeric) "continuous" else "examples"
-    storage <- if (inherits(x, "stata_numeric") || inherits(x, "stata_temporal")) {
-        .declared_stata_storage(x)
+    storage <- if (inherits(x, "dta_numeric") || inherits(x, "dta_temporal")) {
+        .declared_dta_storage(x)
     } else if (is.character(x) && !is.null(dta_storage_type(x))) {
         # Stata's codebook names a string variable's storage `str8` or `strL`,
         # and a `gen()` string carries the declaration without the
-        # `stata_string` class, so the declaration is the test.
+        # `dta_string` class, so the declaration is the test.
         dta_storage_type(x)
     } else typeof(x)
     type <- if (is.ordered(x)) "ordered factor" else if (is.factor(x)) "factor" else {
@@ -501,7 +501,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         "Variable refers to an undefined value-label table")
     if (is.numeric(x) && !is.null(labels) && .valid_tab_labels(labels)) {
         observed <- .book_numeric_data(x[!missing])
-        uncovered <- !(.stata_value_label_keys(observed) %in% .stata_value_label_keys(labels))
+        uncovered <- !(.dta_value_label_keys(observed) %in% .dta_value_label_keys(labels))
         add("incomplete_value_labels", any(uncovered), "Observed values are not fully value labelled",
             details = list(values = unique(observed[uncovered])))
     }
@@ -511,8 +511,8 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         add("noninteger_date_values", any(date_values != floor(date_values)),
             "Date variable contains noninteger values")
     }
-    declared <- if (inherits(x, "stata_numeric") || inherits(x, "stata_temporal")) {
-        .declared_stata_storage(x)
+    declared <- if (inherits(x, "dta_numeric") || inherits(x, "dta_temporal")) {
+        .declared_dta_storage(x)
     } else NULL
     if (!is.null(declared) && is.numeric(x)) {
         observed <- .book_numeric_data(x[!missing])
@@ -533,7 +533,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         "int"
     } else if (whole && all(values >= -2147483647 & values <= 2147483620)) {
         "long"
-    } else if (all(abs(values) <= .stata_float_max)) "float" else "double"
+    } else if (all(abs(values) <= .dta_float_max)) "float" else "double"
     ranks <- c(byte = 1L, int = 2L, long = 3L, float = 4L, double = 5L)
     if (!declared %in% names(ranks) || ranks[[target]] >= ranks[[declared]]) NULL else target
 }
@@ -683,7 +683,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 }
 
 .book_mapping_signature <- function(labels) paste(
-    .stata_value_label_keys(labels), enc2utf8(names(labels)), collapse = "\r"
+    .dta_value_label_keys(labels), enc2utf8(names(labels)), collapse = "\r"
 )
 
 .book_diag <- function(code, scope, table = NA_character_, variable = NA_character_,

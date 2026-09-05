@@ -36,7 +36,7 @@ import {
 import {
     StataMetadataCollector,
     withLazyStataMetadata,
-} from './stata-metadata';
+} from './dta-metadata';
 import {
     StataCharacteristicFramePlan,
 } from './characteristic-payload';
@@ -419,7 +419,7 @@ function parse_dataset_label(
 // -----------------------------------------------------------
 
 const SECTION_OFFSET_KEYS: (keyof SectionOffsets)[] = [
-    'stata_data',
+    'dta_data',
     'map',
     'variable_types',
     'varnames',
@@ -431,7 +431,7 @@ const SECTION_OFFSET_KEYS: (keyof SectionOffsets)[] = [
     'data',
     'strls',
     'value_labels',
-    'stata_data_close',
+    'dta_data_close',
     'end_of_file',
 ];
 

@@ -131,7 +131,7 @@ test_that("a missing temporal contribution preserves the Stata type", {
             tibble::tibble(other = dta_byte(1))
         ))
 
-        expect_s3_class(result$v, "stata_temporal")
+        expect_s3_class(result$v, "dta_temporal")
         expect_identical(
             dta_storage_type(result$v), dta_storage_type(value)
         )
@@ -161,7 +161,7 @@ test_that("force fills a string/numeric conflict with missing values", {
         "stored differently"
     )
     # The first contributor's type wins, as the master's does in Stata.
-    expect_s3_class(result$v, "stata_string")
+    expect_s3_class(result$v, "dta_string")
     expect_identical(as.character(result$v), c("ab", "cd", "", ""))
 
     expect_message(
@@ -385,7 +385,7 @@ test_that("logical placeholders do not clear temporal structure", {
         tibble::tibble(v = NA), tibble::tibble(v = value)
     ))
 
-    expect_s3_class(result$v, "stata_datetime")
+    expect_s3_class(result$v, "dta_datetime")
     expect_identical(attr(result$v, "tzone"), "UTC")
     expect_identical(attr(result$v, "format.stata"), "%tc")
     expect_identical(is_missing(result$v), c(TRUE, FALSE))
@@ -395,11 +395,11 @@ test_that("a logical first contributor retains its user metadata", {
     first <- tibble::tibble(v = c(TRUE, FALSE))
     var_label(first$v) <- "logical first"
     attr(first$v, "notes") <- "first note"
-    first$v <- dtatools:::.as_stata_metadata_vector(first$v)
+    first$v <- dtatools:::.as_dta_metadata_vector(first$v)
     second <- tibble::tibble(v = dta_byte(c(1, 0)))
     var_label(second$v) <- "second"
     attr(second$v, "notes") <- "second note"
-    second$v <- dtatools:::.as_stata_metadata_vector(second$v)
+    second$v <- dtatools:::.as_dta_metadata_vector(second$v)
 
     result <- dta_append(list(first, second))
     expect_identical(as.numeric(result$v), c(1, 0, 1, 0))
@@ -499,7 +499,7 @@ test_that("the output container is honoured", {
     )
     result <- dta_append(the_sources, output = "data.table")
     expect_s3_class(result, "data.table")
-    expect_false(inherits(result, "dtatools_stata_metadata"))
+    expect_false(inherits(result, "dtatools_dta_metadata"))
 })
 
 test_that("a single source is returned unchanged in shape", {
@@ -535,7 +535,7 @@ test_that("a wrapped and a bare Stata string column append together", {
     # and the other leaves it a bare dta_string.
     labelled <- tibble::tibble(cp3k = dta_string("ab", storage = "str2"))
     attr(labelled$cp3k, "notes") <- "labelled source"
-    labelled$cp3k <- dtatools:::.as_stata_metadata_vector(labelled$cp3k)
+    labelled$cp3k <- dtatools:::.as_dta_metadata_vector(labelled$cp3k)
     bare <- tibble::tibble(cp3k = dta_string("cdefg"))
 
     result <- dta_append(list(labelled, bare))
@@ -598,7 +598,7 @@ test_that("widening an undeclared numeric preserves variable metadata", {
     noted <- data.frame(v = c(1, 2))
     attr(noted$v, "notes") <- "source note"
     attr(noted$v, "stata.characteristics") <- c(origin = "memory")
-    noted$v <- dtatools:::.as_stata_metadata_vector(noted$v)
+    noted$v <- dtatools:::.as_dta_metadata_vector(noted$v)
     labelled <- data.frame(v = c(5, 6))
     var_label(labelled$v) <- "first label"
 

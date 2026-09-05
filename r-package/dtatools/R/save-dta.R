@@ -6,7 +6,7 @@
 #'
 #' @section Conversions and metadata:
 #' Bare logical, integer, and double columns use Stata `byte`, `long`, and
-#' `double` storage, the mapping in [stata-storage-defaults]. A valid
+#' `double` storage, the mapping in [dta-storage-defaults]. A valid
 #' `stata.storage` declaration takes precedence.
 #' Compatible Stata display formats, dataset and variable labels, value labels,
 #' tagged missing codes, dates, datetimes, long strings, numbered notes, and
@@ -230,7 +230,7 @@ save_dta <- function(data, path, version = 19L,
     enc2utf8(value)
 }
 
-.stata_reserved_names <- c(
+.dta_reserved_names <- c(
     "alias", "_all", "_b", "_coef", "_cons", "_n", "_N", "_pi",
     "_pred", "_r_b", "_rc", "_r_ci", "_r_cri", "_r_crlb", "_r_crub",
     "_r_df", "_r_lb", "_r_p", "_r_se", "_r_ub", "_r_z", "_r_z_abs",
@@ -238,17 +238,17 @@ save_dta <- function(data, path, version = 19L,
     "long", "in", "if", "strL", "using", "with"
 )
 
-.valid_stata_name_syntax <- function(names, maximum_characters) {
+.valid_dta_name_syntax <- function(names, maximum_characters) {
     lengths <- nchar(names, type = "chars", allowNA = TRUE)
     !is.na(names) & nzchar(names) & !is.na(lengths) &
         lengths <= maximum_characters &
         grepl(r"{^[\p{L}_][\p{L}\p{N}_]*$}", names, perl = TRUE)
 }
 
-.valid_stata_names <- function(names) {
-    reserved <- names %in% .stata_reserved_names |
+.valid_dta_names <- function(names) {
+    reserved <- names %in% .dta_reserved_names |
         grepl("^str[1-9][0-9]*$", names, perl = TRUE)
-    .valid_stata_name_syntax(names, 32L) & !reserved
+    .valid_dta_name_syntax(names, 32L) & !reserved
 }
 
 .write_column_kind <- function(column) {
@@ -256,29 +256,29 @@ save_dta <- function(data, path, version = 19L,
     classes <- attr(column, "class", exact = TRUE)
     if (is.factor(column)) {
         if (all(classes %in% c(
-            .stata_metadata_vector_class, "ordered", "factor"
+            .dta_metadata_vector_class, "ordered", "factor"
         ))) return("factor")
         return(NA_character_)
     }
     if (inherits(column, "Date")) {
         if (all(classes %in% c(
-            .stata_metadata_vector_class,
-            "stata_temporal", "stata_date", "Date"
+            .dta_metadata_vector_class,
+            "dta_temporal", "dta_date", "Date"
         ))) return("date")
         return(NA_character_)
     }
     if (inherits(column, "POSIXct")) {
         if (all(classes %in% c(
-            .stata_metadata_vector_class,
-            "stata_temporal", "stata_datetime", "POSIXct", "POSIXt"
+            .dta_metadata_vector_class,
+            "dta_temporal", "dta_datetime", "POSIXct", "POSIXt"
         ))) return("datetime")
         return(NA_character_)
     }
     if (is.character(column)) {
         if (is.null(classes) || all(
             classes %in% c(
-                .stata_metadata_vector_class,
-                "stata_string", "vctrs_vctr", "character"
+                .dta_metadata_vector_class,
+                "dta_string", "vctrs_vctr", "character"
             )
         )) return("character")
         return(NA_character_)
@@ -287,9 +287,9 @@ save_dta <- function(data, path, version = 19L,
         return(NA_character_)
     }
     if (is.null(classes) || all(classes %in% c(
-        .stata_metadata_vector_class,
-        "haven_labelled", "vctrs_vctr", "stata_numeric",
-        paste0("stata_", .stata_storage), "double", "integer", "logical"
+        .dta_metadata_vector_class,
+        "haven_labelled", "vctrs_vctr", "dta_numeric",
+        paste0("dta_", .dta_storage), "double", "integer", "logical"
     ))) return("numeric")
     NA_character_
 }
@@ -299,7 +299,7 @@ save_dta <- function(data, path, version = 19L,
     if (is.null(classes)) typeof(column) else paste(classes, collapse = "/")
 }
 
-.default_stata_format <- function(storage, width = NULL) {
+.default_dta_format <- function(storage, width = NULL) {
     switch(storage,
         byte = "%8.0g",
         int = "%8.0g",
@@ -311,7 +311,7 @@ save_dta <- function(data, path, version = 19L,
     )
 }
 
-.valid_stata_decimal_format <- function(format) {
+.valid_dta_decimal_format <- function(format) {
     matched <- regmatches(
         format,
         regexec(
@@ -330,7 +330,7 @@ save_dta <- function(data, path, version = 19L,
         !(identical(matched[[4L]], "e") && nzchar(matched[[5L]]))
 }
 
-.valid_stata_string_format <- function(format) {
+.valid_dta_string_format <- function(format) {
     matched <- regmatches(
         format,
         regexec("^%-?([0-9]+)s$", format, perl = TRUE)
@@ -340,7 +340,7 @@ save_dta <- function(data, path, version = 19L,
     is.finite(width) && width >= 1 && width <= 2045
 }
 
-.valid_stata_datetime_details <- function(details, tokens) {
+.valid_dta_datetime_details <- function(details, tokens) {
     if (!nzchar(details)) return(TRUE)
     tokens <- tokens[order(nchar(tokens), decreasing = TRUE)]
     position <- 1L
@@ -365,7 +365,7 @@ save_dta <- function(data, path, version = 19L,
     TRUE
 }
 
-.valid_stata_calendar_format <- function(format, allowed) {
+.valid_dta_calendar_format <- function(format, allowed) {
     normalized <- sub("^%-", "%", format)
     if (startsWith(normalized, "%d")) {
         if (!("d" %in% allowed)) return(FALSE)
@@ -398,12 +398,12 @@ save_dta <- function(data, path, version = 19L,
     if (identical(type, "g")) return(!nzchar(details))
     if (identical(type, "b")) {
         calendar <- sub(":.*$", "", details)
-        if (!.valid_stata_name_syntax(calendar, 10L)) return(FALSE)
+        if (!.valid_dta_name_syntax(calendar, 10L)) return(FALSE)
         if (!grepl(":", details, fixed = TRUE)) return(TRUE)
         details <- sub("^[^:]*:", "", details)
         if (!nzchar(details)) return(TRUE)
     }
-    .valid_stata_datetime_details(details, tokens)
+    .valid_dta_datetime_details(details, tokens)
 }
 
 .prepare_write_format <- function(column, name, default, kind) {
@@ -414,11 +414,11 @@ save_dta <- function(data, path, version = 19L,
         maximum_characters = 56L, maximum_bytes = 56L
     )
     compatible <- switch(kind,
-        string = .valid_stata_string_format(format),
-        numeric = .valid_stata_decimal_format(format) ||
-            .valid_stata_calendar_format(format, c("w", "m", "q", "h", "y", "g", "b")),
-        date = .valid_stata_calendar_format(format, "d"),
-        datetime = .valid_stata_calendar_format(format, c("c", "C"))
+        string = .valid_dta_string_format(format),
+        numeric = .valid_dta_decimal_format(format) ||
+            .valid_dta_calendar_format(format, c("w", "m", "q", "h", "y", "g", "b")),
+        date = .valid_dta_calendar_format(format, "d"),
+        datetime = .valid_dta_calendar_format(format, c("c", "C"))
     )
     if (!compatible) {
         .dta_write_abort(sprintf(
@@ -433,7 +433,7 @@ save_dta <- function(data, path, version = 19L,
     explicit <- attr(column, "stata.storage", exact = TRUE)
     if (!is.null(explicit)) {
         if (!is.character(explicit) || length(explicit) != 1L ||
-            !(explicit %in% .stata_storage)) {
+            !(explicit %in% .dta_storage)) {
             return(NULL)
         }
         return(explicit)
@@ -500,7 +500,7 @@ save_dta <- function(data, path, version = 19L,
             labels <= .Machine$integer.max
         tagged | observed
     } else {
-        .stata_value_label_code_info(labels)$valid
+        .dta_value_label_code_info(labels)$valid
     }
     if (any(!valid)) {
         range <- if (allow_legacy_codes) {
@@ -574,7 +574,7 @@ save_dta <- function(data, path, version = 19L,
         table_name <- explicit[[index]]
         if (is.null(table_name)) next
         if (!is.character(table_name) || length(table_name) != 1L ||
-            is.na(table_name) || !.valid_stata_names(table_name)) {
+            is.na(table_name) || !.valid_dta_names(table_name)) {
             .dta_write_abort(sprintf(
                 paste0(
                     "Column `%s` has an invalid `value.label.name`; ",
@@ -882,19 +882,19 @@ save_dta <- function(data, path, version = 19L,
          missing_codes <= utf8ToInt("z"))
     invalid_missing <- !observed & !valid_missing
     temporal <- if (is.null(plan$temporal)) {
-        .stata_temporal_none
+        .dta_temporal_none
     } else {
         switch(
             plan$temporal,
-            date = .stata_temporal_date,
-            datetime = .stata_temporal_datetime
+            date = .dta_temporal_date,
+            datetime = .dta_temporal_datetime
         )
     }
-    encoded <- .encode_stata_temporal(
+    encoded <- .encode_dta_temporal(
         values, observed, temporal
     )
     invalid_missing |
-        .invalid_stata_observed(
+        .invalid_dta_observed(
             encoded, observed, plan$storage
         )
 }
@@ -904,15 +904,15 @@ save_dta <- function(data, path, version = 19L,
                                   numeric_scale = 1,
                                   value_label_index = -1L,
                                   character_missing = NULL,
-                                  stata_metadata) {
+                                  dta_metadata) {
     result <- stats::setNames(list(
         enc2utf8(name), as.integer(type_code), enc2utf8(format), label,
         values, numeric_shift, numeric_scale, as.integer(value_label_index),
-        stata_metadata
+        dta_metadata
     ), c(
         "name", "type_code", "format", "label", "values",
         "numeric_shift", "numeric_scale", "value_label_index",
-        "stata_metadata"
+        "dta_metadata"
     ))
     if (!is.null(character_missing)) {
         attr(result, "character_missing") <- character_missing
@@ -926,17 +926,17 @@ save_dta <- function(data, path, version = 19L,
         attr(column, "label", exact = TRUE),
         sprintf("variable label for `%s`", name)
     )
-    stata_metadata <- .stata_metadata_payload(
+    dta_metadata <- .dta_metadata_payload(
         dta_notes(column), dta_characteristics(column)
     )
     if (identical(kind, "factor")) {
         format <- .prepare_write_format(
-            column, name, .default_stata_format("long"), "numeric"
+            column, name, .default_dta_format("long"), "numeric"
         )
         return(.new_dta_write_column(
             name, 2L, format, variable_label, column,
             value_label_index = value_label_index,
-            stata_metadata = stata_metadata
+            dta_metadata = dta_metadata
         ))
     }
     if (identical(kind, "character")) {
@@ -963,7 +963,7 @@ save_dta <- function(data, path, version = 19L,
         type_code <- if (fixed) width + 4L else 2050L
         storage <- if (fixed) "fixed" else "strL"
         format <- .prepare_write_format(
-            column, name, .default_stata_format(storage, width), "string"
+            column, name, .default_dta_format(storage, width), "string"
         )
         if (!is.null(attr(column, "labels", exact = TRUE))) {
             .dta_write_abort(sprintf(
@@ -973,7 +973,7 @@ save_dta <- function(data, path, version = 19L,
         return(.new_dta_write_column(
             name, type_code, format, variable_label, values,
             character_missing = plan[[2L]],
-            stata_metadata = stata_metadata
+            dta_metadata = dta_metadata
         ))
     }
     numeric <- .prepare_dta_write_numeric(
@@ -981,7 +981,7 @@ save_dta <- function(data, path, version = 19L,
     )
     if (is.null(numeric$temporal)) {
         format <- .prepare_write_format(
-            column, name, .default_stata_format(numeric$storage),
+            column, name, .default_dta_format(numeric$storage),
             "numeric"
         )
     } else {
@@ -993,12 +993,12 @@ save_dta <- function(data, path, version = 19L,
         )
     }
     .new_dta_write_column(
-        name, match(numeric$storage, .stata_storage) - 1L,
+        name, match(numeric$storage, .dta_storage) - 1L,
         format, variable_label, numeric$values,
         numeric_shift = numeric$shift,
         numeric_scale = numeric$scale,
         value_label_index = value_label_index,
-        stata_metadata = stata_metadata
+        dta_metadata = dta_metadata
     )
 }
 
@@ -1035,7 +1035,7 @@ save_dta <- function(data, path, version = 19L,
     adjust_tz <- .write_scalar_logical(adjust_tz, "adjust_tz")
     data_names <- names(data)
     if (is.null(data_names) || anyDuplicated(data_names) ||
-        !all(.valid_stata_names(data_names))) {
+        !all(.valid_dta_names(data_names))) {
         .dta_write_abort(paste0(
             "Column names must be unique, nonempty valid Stata names with ",
             "at most 32 Unicode characters"
@@ -1124,7 +1124,7 @@ save_dta <- function(data, path, version = 19L,
         "dtatools_write_character_missing_warning"
     ))
     specification <- list(
-        label, .stata_metadata_payload(notes, characteristics),
+        label, .dta_metadata_payload(notes, characteristics),
         columns, .write_timestamp(), value_label_plan$tables
     )
     attr(specification, "write_warnings") <- write_warnings

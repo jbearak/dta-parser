@@ -12,7 +12,7 @@
         "dataset_label": "All Stata storage types",
         "obs_length": 52,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 181,
           "variable_types": 304,
           "varnames": 353,
@@ -24,7 +24,7 @@
           "data": 5629,
           "strls": 5902,
           "value_labels": 6172,
-          "stata_data_close": 6201,
+          "dta_data_close": 6201,
           "end_of_file": 6213
         },
         "variables": [
@@ -220,7 +220,7 @@
         "dataset_label": "All Stata storage types (legacy)",
         "obs_length": 44,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 0,
           "variable_types": 109,
           "varnames": 116,
@@ -232,7 +232,7 @@
           "data": 1509,
           "strls": 1729,
           "value_labels": 1729,
-          "stata_data_close": 1729,
+          "dta_data_close": 1729,
           "end_of_file": 1729
         },
         "variables": [
@@ -406,7 +406,7 @@
         "dataset_label": "All Stata storage types",
         "obs_length": 52,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 176,
           "variable_types": 299,
           "varnames": 348,
@@ -418,7 +418,7 @@
           "data": 2104,
           "strls": 2377,
           "value_labels": 2627,
-          "stata_data_close": 2656,
+          "dta_data_close": 2656,
           "end_of_file": 2668
         },
         "variables": [
@@ -614,7 +614,7 @@
         "dataset_label": "All Stata storage types",
         "obs_length": 52,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 181,
           "variable_types": 304,
           "varnames": 353,
@@ -626,7 +626,7 @@
           "data": 5629,
           "strls": 5902,
           "value_labels": 6172,
-          "stata_data_close": 6201,
+          "dta_data_close": 6201,
           "end_of_file": 6213
         },
         "variables": [
@@ -822,7 +822,7 @@
         "dataset_label": "1978 automobile data",
         "obs_length": 43,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 0,
           "variable_types": 109,
           "varnames": 121,
@@ -834,7 +834,7 @@
           "data": 2844,
           "strls": 6026,
           "value_labels": 6026,
-          "stata_data_close": 6107,
+          "dta_data_close": 6107,
           "end_of_file": 6107
         },
         "variables": [
@@ -1970,7 +1970,7 @@
         "dataset_label": "1978 automobile data",
         "obs_length": 43,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 173,
           "variable_types": 296,
           "varnames": 353,
@@ -1982,7 +1982,7 @@
           "data": 3273,
           "strls": 6468,
           "value_labels": 6483,
-          "stata_data_close": 6604,
+          "dta_data_close": 6604,
           "end_of_file": 6616
         },
         "variables": [
@@ -3118,7 +3118,7 @@
         "dataset_label": "1978 automobile data",
         "obs_length": 43,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 178,
           "variable_types": 301,
           "varnames": 358,
@@ -3130,7 +3130,7 @@
           "data": 9326,
           "strls": 12521,
           "value_labels": 12536,
-          "stata_data_close": 12753,
+          "dta_data_close": 12753,
           "end_of_file": 12765
         },
         "variables": [
@@ -4266,7 +4266,7 @@
         "dataset_label": "",
         "obs_length": 30,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 158,
           "variable_types": 281,
           "varnames": 320,
@@ -4278,7 +4278,7 @@
           "data": 2406,
           "strls": 2419,
           "value_labels": 2434,
-          "stata_data_close": 2463,
+          "dta_data_close": 2463,
           "end_of_file": 2475
         },
         "variables": [
@@ -4346,7 +4346,7 @@
         "dataset_label": "",
         "obs_length": 30,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 0,
           "variable_types": 109,
           "varnames": 112,
@@ -4358,7 +4358,7 @@
           "data": 713,
           "strls": 713,
           "value_labels": 713,
-          "stata_data_close": 713,
+          "dta_data_close": 713,
           "end_of_file": 713
         },
         "variables": [
@@ -4426,7 +4426,7 @@
         "dataset_label": "",
         "obs_length": 30,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 158,
           "variable_types": 281,
           "varnames": 320,
@@ -4438,7 +4438,7 @@
           "data": 2406,
           "strls": 2419,
           "value_labels": 2434,
-          "stata_data_close": 2463,
+          "dta_data_close": 2463,
           "end_of_file": 2475
         },
         "variables": [
@@ -4506,7 +4506,7 @@
         "dataset_label": "",
         "obs_length": 19,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 158,
           "variable_types": 281,
           "varnames": 324,
@@ -4518,7 +4518,7 @@
           "data": 3686,
           "strls": 4269,
           "value_labels": 4284,
-          "stata_data_close": 4313,
+          "dta_data_close": 4313,
           "end_of_file": 4325
         },
         "variables": [
@@ -4807,7 +4807,7 @@
         "dataset_label": "",
         "obs_length": 19,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 0,
           "variable_types": 109,
           "varnames": 114,
@@ -4819,7 +4819,7 @@
           "data": 1111,
           "strls": 1681,
           "value_labels": 1681,
-          "stata_data_close": 1681,
+          "dta_data_close": 1681,
           "end_of_file": 1681
         },
         "variables": [
@@ -5108,7 +5108,7 @@
         "dataset_label": "",
         "obs_length": 19,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 158,
           "variable_types": 281,
           "varnames": 324,
@@ -5120,7 +5120,7 @@
           "data": 3686,
           "strls": 4269,
           "value_labels": 4284,
-          "stata_data_close": 4313,
+          "dta_data_close": 4313,
           "end_of_file": 4325
         },
         "variables": [
@@ -5409,7 +5409,7 @@
         "dataset_label": "",
         "obs_length": 22,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 158,
           "variable_types": 281,
           "varnames": 320,
@@ -5421,7 +5421,7 @@
           "data": 2406,
           "strls": 2529,
           "value_labels": 2763,
-          "stata_data_close": 2792,
+          "dta_data_close": 2792,
           "end_of_file": 2804
         },
         "variables": [
@@ -5507,7 +5507,7 @@
         "dataset_label": "",
         "obs_length": 22,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 158,
           "variable_types": 281,
           "varnames": 320,
@@ -5519,7 +5519,7 @@
           "data": 2406,
           "strls": 2529,
           "value_labels": 2763,
-          "stata_data_close": 2792,
+          "dta_data_close": 2792,
           "end_of_file": 2804
         },
         "variables": [
@@ -5605,7 +5605,7 @@
         "dataset_label": "Value labels test dataset",
         "obs_length": 3,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 183,
           "variable_types": 306,
           "varnames": 345,
@@ -5617,7 +5617,7 @@
           "data": 2431,
           "strls": 2474,
           "value_labels": 2489,
-          "stata_data_close": 3150,
+          "dta_data_close": 3150,
           "end_of_file": 3162
         },
         "variables": [
@@ -5778,7 +5778,7 @@
         "dataset_label": "Value labels test dataset",
         "obs_length": 3,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 0,
           "variable_types": 109,
           "varnames": 112,
@@ -5790,7 +5790,7 @@
           "data": 713,
           "strls": 743,
           "value_labels": 743,
-          "stata_data_close": 1054,
+          "dta_data_close": 1054,
           "end_of_file": 1054
         },
         "variables": [
@@ -5951,7 +5951,7 @@
         "dataset_label": "Value labels test dataset",
         "obs_length": 3,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 178,
           "variable_types": 301,
           "varnames": 340,
@@ -5963,7 +5963,7 @@
           "data": 1106,
           "strls": 1149,
           "value_labels": 1164,
-          "stata_data_close": 1537,
+          "dta_data_close": 1537,
           "end_of_file": 1549
         },
         "variables": [
@@ -6124,7 +6124,7 @@
         "dataset_label": "Value labels test dataset",
         "obs_length": 3,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 183,
           "variable_types": 306,
           "varnames": 345,
@@ -6136,7 +6136,7 @@
           "data": 2431,
           "strls": 2474,
           "value_labels": 2489,
-          "stata_data_close": 3150,
+          "dta_data_close": 3150,
           "end_of_file": 3162
         },
         "variables": [
@@ -6297,7 +6297,7 @@
         "dataset_label": "",
         "obs_length": 480,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 158,
           "variable_types": 281,
           "varnames": 554,
@@ -6309,7 +6309,7 @@
           "data": 77286,
           "strls": 86899,
           "value_labels": 86914,
-          "stata_data_close": 86943,
+          "dta_data_close": 86943,
           "end_of_file": 86955
         },
         "variables": [
@@ -10769,7 +10769,7 @@
         "dataset_label": "",
         "obs_length": 480,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 0,
           "variable_types": 109,
           "varnames": 229,
@@ -10781,7 +10781,7 @@
           "data": 23996,
           "strls": 33596,
           "value_labels": 33596,
-          "stata_data_close": 33596,
+          "dta_data_close": 33596,
           "end_of_file": 33596
         },
         "variables": [
@@ -15241,7 +15241,7 @@
         "dataset_label": "",
         "obs_length": 480,
         "section_offsets": {
-          "stata_data": 0,
+          "dta_data": 0,
           "map": 158,
           "variable_types": 281,
           "varnames": 554,
@@ -15253,7 +15253,7 @@
           "data": 77286,
           "strls": 86899,
           "value_labels": 86914,
-          "stata_data_close": 86943,
+          "dta_data_close": 86943,
           "end_of_file": 86955
         },
         "variables": [

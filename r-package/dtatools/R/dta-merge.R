@@ -269,7 +269,7 @@ dta_merge <- function(x, y, by, relationship,
     selected <- .dta_merge_selected_container(x, x_container, output)
     result <- .dta_merge_output_container(result, selected)
     dataset_label(result) <- dataset_label(x)
-    result <- .copy_stata_metadata_attributes(x, result)
+    result <- .copy_dta_metadata_attributes(x, result)
     attr(result, "notes") <- dataset_notes$notes
     attr(result, "stata.note.numbers") <- dataset_notes$numbers
     result <- .repair_data_table_container(result)
@@ -449,7 +449,7 @@ dta_merge <- function(x, y, by, relationship,
     )
 }
 
-.dta_merge_stata_metadata <- function(x, y) {
+.dta_merge_dta_metadata <- function(x, y) {
     notes <- .dta_merge_nonempty_metadata(dta_notes(x), dta_notes(y))
     characteristics <- .dta_merge_nonempty_metadata(
         dta_characteristics(x), dta_characteristics(y)
@@ -468,7 +468,7 @@ dta_merge <- function(x, y, by, relationship,
     y_positions <- match(coalesced, names(y))
     var_label_conflict <- logical(length(coalesced))
     val_label_conflict <- logical(length(coalesced))
-    stata_metadata_conflict <- logical(length(coalesced))
+    dta_metadata_conflict <- logical(length(coalesced))
     for (index in seq_along(coalesced)) {
         x_column <- x[[x_positions[[index]]]]
         y_column <- y[[y_positions[[index]]]]
@@ -484,12 +484,12 @@ dta_merge <- function(x, y, by, relationship,
         )) {
             val_label_conflict[[index]] <- TRUE
         }
-        stata_metadata_conflict[[index]] <-
-            .dta_merge_stata_metadata(x_column, y_column)$conflict
+        dta_metadata_conflict[[index]] <-
+            .dta_merge_dta_metadata(x_column, y_column)$conflict
     }
     var_label_diff <- coalesced[var_label_conflict]
     val_label_diff <- coalesced[val_label_conflict]
-    stata_metadata_diff <- coalesced[stata_metadata_conflict]
+    dta_metadata_diff <- coalesced[dta_metadata_conflict]
     if (length(var_label_diff) > 0L) {
         warning(sprintf(
             paste0(
@@ -512,15 +512,15 @@ dta_merge <- function(x, y, by, relationship,
             .listed_variable_names(val_label_diff)
         ), call. = FALSE)
     }
-    if (length(stata_metadata_diff) > 0L) {
+    if (length(dta_metadata_diff) > 0L) {
         warning(sprintf(
             paste0(
                 "notes or characteristics differ for %d coalesced variable%s; ",
                 "the `x` metadata wins: %s"
             ),
-            length(stata_metadata_diff),
-            if (length(stata_metadata_diff) == 1L) "" else "s",
-            .listed_variable_names(stata_metadata_diff)
+            length(dta_metadata_diff),
+            if (length(dta_metadata_diff) == 1L) "" else "s",
+            .listed_variable_names(dta_metadata_diff)
         ), call. = FALSE)
     }
     invisible(NULL)
@@ -628,14 +628,14 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_has_compact_storage <- function(value) {
-    !identical(.declared_stata_storage(value), "double") &&
+    !identical(.declared_dta_storage(value), "double") &&
         .is_unmaterialized_numeric_altrep(value)
 }
 
 .dta_merge_same_compact_storage <- function(x, y) {
     .dta_merge_has_compact_storage(x) &&
         .dta_merge_has_compact_storage(y) &&
-        identical(.declared_stata_storage(x), .declared_stata_storage(y)) &&
+        identical(.declared_dta_storage(x), .declared_dta_storage(y)) &&
         identical(
             .temporal_kind_or_missing(x),
             .temporal_kind_or_missing(y)
@@ -643,8 +643,8 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_same_double_storage <- function(x, y) {
-    identical(.declared_stata_storage(x), "double") &&
-        identical(.declared_stata_storage(y), "double") &&
+    identical(.declared_dta_storage(x), "double") &&
+        identical(.declared_dta_storage(y), "double") &&
         identical(
             .temporal_kind_or_missing(x),
             .temporal_kind_or_missing(y)
@@ -652,18 +652,18 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_restore_gathered <- function(value, prototype) {
-    storage <- .declared_stata_storage(prototype)
-    if (inherits(prototype, "stata_temporal")) {
-        return(.attach_stata_temporal(value, prototype, storage))
+    storage <- .declared_dta_storage(prototype)
+    if (inherits(prototype, "dta_temporal")) {
+        return(.attach_dta_temporal(value, prototype, storage))
     }
-    .restore_stata_metadata(value, prototype, storage)
+    .restore_dta_metadata(value, prototype, storage)
 }
 
 .dta_merge_reconcile_variable_metadata <- function(value, x, y) {
     label <- var_label(x)
     if (is.null(label)) label <- var_label(y)
     if (!identical(var_label(value), label)) var_label(value) <- label
-    metadata <- .dta_merge_stata_metadata(x, y)
+    metadata <- .dta_merge_dta_metadata(x, y)
     desired <- list(
         notes = if (length(metadata$notes)) unname(metadata$notes) else NULL,
         note_numbers = if (length(metadata$notes)) {
@@ -683,10 +683,10 @@ dta_merge <- function(x, y, by, relationship,
         attr(value, "stata.note.numbers") <- desired$note_numbers
         attr(value, "stata.characteristics") <- desired$characteristics
     }
-    if (inherits(value, "stata_numeric") || inherits(value, "stata_temporal")) {
+    if (inherits(value, "dta_numeric") || inherits(value, "dta_temporal")) {
         value
     } else {
-        .as_stata_metadata_vector(value)
+        .as_dta_metadata_vector(value)
     }
 }
 
@@ -699,7 +699,7 @@ dta_merge <- function(x, y, by, relationship,
     if (!is.character(value)) return(value)
     missing_rows <- which(is.na(rows))
     if (length(missing_rows) == 0L) return(value)
-    fill <- if (inherits(value, "stata_string")) dta_string("") else ""
+    fill <- if (inherits(value, "dta_string")) dta_string("") else ""
     vctrs::vec_assign(value, missing_rows, fill)
 }
 
@@ -713,8 +713,8 @@ dta_merge <- function(x, y, by, relationship,
         )
         return(.dta_merge_restore_gathered(gathered, value))
     }
-    if (identical(.declared_stata_storage(value), "double")) {
-        gathered <- .stata_data(value)[rows]
+    if (identical(.declared_dta_storage(value), "double")) {
+        gathered <- .dta_data(value)[rows]
         return(.dta_merge_restore_gathered(gathered, value))
     }
     result <- vctrs::vec_slice(value, rows)
@@ -734,7 +734,7 @@ dta_merge <- function(x, y, by, relationship,
     if (count == 0L) return(result)
 
     storage <- vapply(values, function(value) {
-        storage <- .declared_stata_storage(value)
+        storage <- .declared_dta_storage(value)
         if (is.null(storage)) "" else storage
     }, character(1))
     compact <- vapply(
@@ -798,9 +798,9 @@ dta_merge <- function(x, y, by, relationship,
         }
     }
     if (.dta_merge_same_double_storage(x, y)) {
-        gathered <- .stata_data(x)[x_rows]
+        gathered <- .dta_data(x)[x_rows]
         if (length(using_only) > 0L) {
-            gathered[using_only] <- .stata_data(y)[y_rows[using_only]]
+            gathered[using_only] <- .dta_data(y)[y_rows[using_only]]
         }
         return(.dta_merge_restore_gathered(gathered, x))
     }
@@ -849,8 +849,8 @@ dta_merge <- function(x, y, by, relationship,
     }
 
     ordinary <- !native & vapply(seq_len(count), function(index) {
-        is.null(.declared_stata_storage(x[[index]])) &&
-            is.null(.declared_stata_storage(y[[index]]))
+        is.null(.declared_dta_storage(x[[index]])) &&
+            is.null(.declared_dta_storage(y[[index]]))
     }, logical(1))
     if (any(ordinary)) {
         gathered <- vctrs::vec_slice(

@@ -8,7 +8,7 @@ metadata_wrapped_string <- function(x, storage = NULL, notes = NULL,
     value <- dta_string(x, storage = storage)
     if (!is.null(label)) var_label(value) <- label
     if (!is.null(notes)) attr(value, "notes") <- notes
-    dtatools:::.as_stata_metadata_vector(value)
+    dtatools:::.as_dta_metadata_vector(value)
 }
 
 test_that("a wrapped Stata string has a common type with a bare one", {
@@ -16,11 +16,11 @@ test_that("a wrapped Stata string has a common type with a bare one", {
     wrapped <- metadata_wrapped_string("efgh", storage = "str4",
                                        notes = "source note")
 
-    expect_s3_class(wrapped, "dtatools_stata_metadata_vector")
-    expect_s3_class(wrapped, "stata_string")
+    expect_s3_class(wrapped, "dtatools_dta_metadata_vector")
+    expect_s3_class(wrapped, "dta_string")
 
     prototype <- vctrs::vec_ptype2(bare, wrapped)
-    expect_s3_class(prototype, "stata_string")
+    expect_s3_class(prototype, "dta_string")
     expect_identical(attr(prototype, "stata.string.storage"), "str6")
 })
 
@@ -66,11 +66,11 @@ test_that("casting works in both directions", {
     bare <- dta_string(character(), storage = "str8")
 
     to_bare <- vctrs::vec_cast(wrapped, bare)
-    expect_s3_class(to_bare, "stata_string")
-    expect_false(inherits(to_bare, "dtatools_stata_metadata_vector"))
+    expect_s3_class(to_bare, "dta_string")
+    expect_false(inherits(to_bare, "dtatools_dta_metadata_vector"))
     expect_identical(as.character(to_bare), "abcd")
 
     to_wrapped <- vctrs::vec_cast(dta_string("xy"), wrapped)
-    expect_s3_class(to_wrapped, "dtatools_stata_metadata_vector")
+    expect_s3_class(to_wrapped, "dtatools_dta_metadata_vector")
     expect_identical(attr(to_wrapped, "notes"), "kept")
 })

@@ -22,22 +22,22 @@ dta_string <- function(x = character(), storage = NULL) {
         stop("Stata strings cannot contain `NA_character_`; use `\"\"`", call. = FALSE)
     }
     x <- enc2utf8(x)
-    required <- .stata_string_required_width(x)
-    storage <- .normalize_stata_string_storage(storage, required)
-    .new_stata_string(x, storage)
+    required <- .dta_string_required_width(x)
+    storage <- .normalize_dta_string_storage(storage, required)
+    .new_dta_string(x, storage)
 }
 
-.stata_string_required_width <- function(x) {
+.dta_string_required_width <- function(x) {
     if (!length(x)) return(1L)
     max(nchar(enc2utf8(x), type = "bytes"))
 }
 
-.stata_string_storage_width <- function(storage) {
+.dta_string_storage_width <- function(storage) {
     if (identical(storage, "strL")) return(Inf)
     as.integer(substring(storage, 4L))
 }
 
-.normalize_stata_string_storage <- function(storage, required = 1L) {
+.normalize_dta_string_storage <- function(storage, required = 1L) {
     if (is.null(storage)) {
         return(if (required > 2045L) "strL" else paste0("str", max(1L, required)))
     }
@@ -46,7 +46,7 @@ dta_string <- function(x = character(), storage = NULL) {
     if (!valid) {
         stop("`storage` must be `str1` through `str2045`, or `strL`", call. = FALSE)
     }
-    if (.stata_string_storage_width(storage) < required) {
+    if (.dta_string_storage_width(storage) < required) {
         stop(sprintf(
             "Stata %s storage cannot represent `x`; use `dta_string(x, storage = %s)`",
             storage, if (required > 2045L) '"strL"' else paste0('"str', required, '"')
@@ -55,20 +55,20 @@ dta_string <- function(x = character(), storage = NULL) {
     storage
 }
 
-.new_stata_string <- function(x, storage, prototype = NULL) {
+.new_dta_string <- function(x, storage, prototype = NULL) {
     value_names <- names(x)
     if (!is.null(prototype)) {
         # Attribute replacement materializes the dictionary-string ALTREP used
         # by read_dta(). Restore the owned attributes in place so imported
         # strings keep their deferred backing until a value operation needs it.
-        x <- .restore_stata_variable_metadata(x, prototype, names = value_names)
+        x <- .restore_dta_variable_metadata(x, prototype, names = value_names)
     } else {
         for (name in setdiff(names(attributes(x)), "names")) {
             attr(x, name) <- NULL
         }
     }
     attr(x, "stata.string.storage") <- storage
-    attr(x, "class") <- c("stata_string", "vctrs_vctr", "character")
+    attr(x, "class") <- c("dta_string", "vctrs_vctr", "character")
     if (!is.null(value_names)) names(x) <- value_names
     x
 }
@@ -78,7 +78,7 @@ dta_string <- function(x = character(), storage = NULL) {
 # stripping the attributes of the vector itself would materialize it.
 # Subsetting the view keeps the result compact too, so `filter()`,
 # `vec_slice()`, and `[` on a read column never expand it.
-.stata_string_data <- function(x) {
+.dta_string_data <- function(x) {
     value_names <- names(x)
     value <- .metadata_view(x)
     attributes(value) <- NULL
@@ -87,81 +87,81 @@ dta_string <- function(x = character(), storage = NULL) {
 }
 
 #' @export
-as.character.stata_string <- function(x, ...) .stata_string_data(x)
+as.character.dta_string <- function(x, ...) .dta_string_data(x)
 
 #' @export
-vec_proxy.stata_string <- function(x, ...) .stata_string_data(x)
+vec_proxy.dta_string <- function(x, ...) .dta_string_data(x)
 
 #' @export
-vec_restore.stata_string <- function(x, to, ...) {
+vec_restore.dta_string <- function(x, to, ...) {
     storage <- attr(to, "stata.string.storage", exact = TRUE)
     value <- as.character(x)
     if (!.is_unmaterialized_dictstring(value) && anyNA(value)) value[is.na(value)] <- ""
-    .new_stata_string(value, storage, to)
+    .new_dta_string(value, storage, to)
 }
 
 #' @export
-`[.stata_string` <- function(x, i, ..., drop = TRUE) {
+`[.dta_string` <- function(x, i, ..., drop = TRUE) {
     if (length(list(...))) stop("Stata string vectors do not support array subscripts", call. = FALSE)
-    data <- .stata_string_data(x)
+    data <- .dta_string_data(x)
     result <- if (missing(i)) data[] else data[i]
     if (!.is_unmaterialized_dictstring(result) && anyNA(result)) result[is.na(result)] <- ""
-    .new_stata_string(result, attr(x, "stata.string.storage", exact = TRUE), x)
+    .new_dta_string(result, attr(x, "stata.string.storage", exact = TRUE), x)
 }
 
 #' @export
-`[[.stata_string` <- function(x, i, ...) {
+`[[.dta_string` <- function(x, i, ...) {
     if (length(list(...))) stop("Stata string vectors do not support array subscripts", call. = FALSE)
-    result <- .stata_string_data(x)[[i]]
-    .new_stata_string(result, attr(x, "stata.string.storage", exact = TRUE), x)
+    result <- .dta_string_data(x)[[i]]
+    .new_dta_string(result, attr(x, "stata.string.storage", exact = TRUE), x)
 }
 
-.stata_string_common_storage <- function(x, y) {
+.dta_string_common_storage <- function(x, y) {
     declared <- c(
-        if (inherits(x, "stata_string")) attr(x, "stata.string.storage", exact = TRUE),
-        if (inherits(y, "stata_string")) attr(y, "stata.string.storage", exact = TRUE)
+        if (inherits(x, "dta_string")) attr(x, "stata.string.storage", exact = TRUE),
+        if (inherits(y, "dta_string")) attr(y, "stata.string.storage", exact = TRUE)
     )
     required <- max(
-        .stata_string_required_width(as.character(x)),
-        .stata_string_required_width(as.character(y))
+        .dta_string_required_width(as.character(x)),
+        .dta_string_required_width(as.character(y))
     )
     if ("strL" %in% declared || required > 2045L) return("strL")
-    widths <- vapply(declared, .stata_string_storage_width, numeric(1))
+    widths <- vapply(declared, .dta_string_storage_width, numeric(1))
     paste0("str", max(c(1, required, widths)))
 }
 
-.stata_string_ptype2 <- function(x, y, ..., x_arg = "", y_arg = "") {
-    both_owned <- inherits(x, "stata_string") && inherits(y, "stata_string")
-    storage <- if (both_owned) .stata_string_common_storage(x, y) else "strL"
-    prototype <- if (inherits(x, "stata_string")) x else y
-    result <- .new_stata_string(character(), storage, prototype)
+.dta_string_ptype2 <- function(x, y, ..., x_arg = "", y_arg = "") {
+    both_owned <- inherits(x, "dta_string") && inherits(y, "dta_string")
+    storage <- if (both_owned) .dta_string_common_storage(x, y) else "strL"
+    prototype <- if (inherits(x, "dta_string")) x else y
+    result <- .new_dta_string(character(), storage, prototype)
     if (both_owned) {
-        result <- .reconcile_stata_metadata(result, x, y, x_arg, y_arg)
+        result <- .reconcile_dta_metadata(result, x, y, x_arg, y_arg)
     }
     result
 }
 
 #' @export
-vec_ptype2.stata_string.stata_string <- .stata_string_ptype2
+vec_ptype2.dta_string.dta_string <- .dta_string_ptype2
 #' @export
-vec_ptype2.stata_string.character <- .stata_string_ptype2
+vec_ptype2.dta_string.character <- .dta_string_ptype2
 #' @export
-vec_ptype2.character.stata_string <- .stata_string_ptype2
+vec_ptype2.character.dta_string <- .dta_string_ptype2
 
 # The vctrs cast into a Stata string. `NA` becomes `""`, which is how
 # Stata spells a missing string: a join pads the unmatched side with `NA`
 # and a `vec_c()` can carry one in, and the result must still be a Stata
 # string. `dta_string()` and subset assignment stay strict, since there
 # the `NA` is the user's own.
-.cast_stata_string <- function(x, to) {
+.cast_dta_string <- function(x, to) {
     storage <- attr(to, "stata.string.storage", exact = TRUE)
     value <- as.character(x)
     value[is.na(value)] <- ""
-    .normalize_stata_string_storage(storage, .stata_string_required_width(value))
-    .new_stata_string(value, storage, to)
+    .normalize_dta_string_storage(storage, .dta_string_required_width(value))
+    .new_dta_string(value, storage, to)
 }
 
-.reject_missing_stata_string <- function(value) {
+.reject_missing_dta_string <- function(value) {
     if (anyNA(value)) {
         stop("Stata strings cannot contain `NA_character_`; use `\"\"`", call. = FALSE)
     }
@@ -169,63 +169,63 @@ vec_ptype2.character.stata_string <- .stata_string_ptype2
 }
 
 #' @export
-vec_cast.stata_string.stata_string <- function(x, to, ...) .cast_stata_string(x, to)
+vec_cast.dta_string.dta_string <- function(x, to, ...) .cast_dta_string(x, to)
 #' @export
-vec_cast.stata_string.character <- function(x, to, ...) .cast_stata_string(x, to)
+vec_cast.dta_string.character <- function(x, to, ...) .cast_dta_string(x, to)
 #' @export
-vec_cast.character.stata_string <- function(x, to, ...) as.character(x)
+vec_cast.character.dta_string <- function(x, to, ...) as.character(x)
 
 #' @export
 # Replacement within the vector is strict: the value must fit the declared
 # width. Extending the vector, as base `rbind()` does when it appends a
 # second frame's rows, takes the common storage of the vector and the
 # value, so a wider string widens the declaration as concatenation would.
-.stata_string_replacement_storage <- function(x, i, value) {
-    if (!missing(i) && .stata_subscript_extends(x, i)) {
-        .stata_string_common_storage(x, value)
+.dta_string_replacement_storage <- function(x, i, value) {
+    if (!missing(i) && .dta_subscript_extends(x, i)) {
+        .dta_string_common_storage(x, value)
     } else {
         attr(x, "stata.string.storage", exact = TRUE)
     }
 }
 
 #' @export
-`[<-.stata_string` <- function(x, i, ..., value) {
+`[<-.dta_string` <- function(x, i, ..., value) {
     if (length(list(...))) stop("Stata string vectors do not support array subscripts", call. = FALSE)
-    .reject_missing_stata_string(value)
-    storage <- .stata_string_replacement_storage(x, i, value)
-    replacement <- as.character(.cast_stata_string(
-        value, .new_stata_string(character(), storage, x)
+    .reject_missing_dta_string(value)
+    storage <- .dta_string_replacement_storage(x, i, value)
+    replacement <- as.character(.cast_dta_string(
+        value, .new_dta_string(character(), storage, x)
     ))
-    data <- .stata_string_data(x)
+    data <- .dta_string_data(x)
     if (missing(i)) data[] <- replacement else data[i] <- replacement
     # The value's own `NA` was rejected above; any left is a gap the
     # extension opened, which Stata spells `""`.
     data[is.na(data)] <- ""
-    .new_stata_string(data, storage, x)
+    .new_dta_string(data, storage, x)
 }
 
 #' @export
-`[[<-.stata_string` <- function(x, i, ..., value) {
+`[[<-.dta_string` <- function(x, i, ..., value) {
     if (length(list(...))) stop("Stata string vectors do not support array subscripts", call. = FALSE)
-    .reject_missing_stata_string(value)
-    storage <- .stata_string_replacement_storage(x, i, value)
-    replacement <- as.character(.cast_stata_string(
-        value, .new_stata_string(character(), storage, x)
+    .reject_missing_dta_string(value)
+    storage <- .dta_string_replacement_storage(x, i, value)
+    replacement <- as.character(.cast_dta_string(
+        value, .new_dta_string(character(), storage, x)
     ))
-    data <- .stata_string_data(x)
+    data <- .dta_string_data(x)
     data[[i]] <- replacement
     data[is.na(data)] <- ""
-    .new_stata_string(data, storage, x)
+    .new_dta_string(data, storage, x)
 }
 
 #' @export
-c.stata_string <- function(..., recursive = FALSE) {
+c.dta_string <- function(..., recursive = FALSE) {
     if (recursive) stop("recursive concatenation is not supported", call. = FALSE)
     vctrs::vec_c(...)
 }
 
 #' @export
-sort.stata_string <- function(
+sort.dta_string <- function(
     x, decreasing = FALSE, na.last = NA, ..., partial = NULL,
     method = "auto"
 ) {

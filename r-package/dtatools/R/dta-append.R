@@ -126,7 +126,7 @@ dta_append <- function(sources, force = TRUE,
     } else {
         .stored_output_container(schemas[[1L]]$schema)
     }
-    result <- .as_stata_metadata_frame(
+    result <- .as_dta_metadata_frame(
         .finalize_output_container(result, output, "minimal", stored)
     )
     .complete_output_container(result, output, stored)
@@ -384,7 +384,7 @@ dta_append <- function(sources, force = TRUE,
         attr(result, my_name) <- attr(owner, my_name, exact = TRUE)
     }
     owner_format <- attr(owner, "format.stata", exact = TRUE)
-    if (!is.null(owner_format) || !inherits(prototype, "stata_temporal")) {
+    if (!is.null(owner_format) || !inherits(prototype, "dta_temporal")) {
         attr(result, "format.stata") <- .append_widened_string_format(
             owner_format, owner, prototype
         )
@@ -418,7 +418,7 @@ dta_append <- function(sources, force = TRUE,
 # not of the `%[-|~]Ns` shape is left alone.
 .append_widened_string_format <- function(owner_format, owner, prototype) {
     if (!is.character(owner_format) || length(owner_format) != 1L ||
-        !inherits(prototype, "stata_string")) {
+        !inherits(prototype, "dta_string")) {
         return(owner_format)
     }
     owner_storage <- attr(owner, "stata.string.storage", exact = TRUE)
@@ -434,7 +434,7 @@ dta_append <- function(sources, force = TRUE,
     width <- if (identical(result_storage, "strL")) {
         9L
     } else {
-        max(9L, .stata_string_storage_width(result_storage))
+        max(9L, .dta_string_storage_width(result_storage))
     }
     sprintf("%%%s%ds", flag, width)
 }
@@ -468,24 +468,24 @@ dta_append <- function(sources, force = TRUE,
 }
 
 .append_common_prototype <- function(left, right) {
-    if (inherits(left, .stata_metadata_vector_class)) {
-        left <- .stata_metadata_vector_base(left)
+    if (inherits(left, .dta_metadata_vector_class)) {
+        left <- .dta_metadata_vector_base(left)
     }
-    if (inherits(right, .stata_metadata_vector_class)) {
-        right <- .stata_metadata_vector_base(right)
+    if (inherits(right, .dta_metadata_vector_class)) {
+        right <- .dta_metadata_vector_base(right)
     }
     left <- .append_without_value_labels(left)
     right <- .append_without_value_labels(right)
-    left_storage <- .declared_stata_storage(left)
-    right_storage <- .declared_stata_storage(right)
+    left_storage <- .declared_dta_storage(left)
+    right_storage <- .declared_dta_storage(right)
     left_declared <- !is.null(left_storage) &&
-        !inherits(left, "stata_temporal")
+        !inherits(left, "dta_temporal")
     right_declared <- !is.null(right_storage) &&
-        !inherits(right, "stata_temporal")
+        !inherits(right, "dta_temporal")
     left_bare <- is.numeric(left) && is.null(left_storage) &&
-        !inherits(left, "stata_temporal")
+        !inherits(left, "dta_temporal")
     right_bare <- is.numeric(right) && is.null(right_storage) &&
-        !inherits(right, "stata_temporal")
+        !inherits(right, "dta_temporal")
     if (left_declared && right_bare) {
         right <- .append_promote_bare_numeric(right)
     }
@@ -496,10 +496,10 @@ dta_append <- function(sources, force = TRUE,
 }
 
 .append_promote_bare_numeric <- function(prototype) {
-    widened <- .restore_stata_variable_metadata(
+    widened <- .restore_dta_variable_metadata(
         dta_double(), prototype, names = NULL
     )
-    .as_stata_metadata_vector(widened)
+    .as_dta_metadata_vector(widened)
 }
 
 # Pass two. One source is held at a time: its columns are cast to the
@@ -622,11 +622,11 @@ dta_append <- function(sources, force = TRUE,
 # buffer as the empty string, so a source that never writes into its
 # range already holds that variable's missing value.
 .append_allocate_buffer <- function(prototype, total_rows) {
-    if (inherits(prototype, "stata_temporal")) return(NULL)
-    if (inherits(prototype, "stata_string")) {
+    if (inherits(prototype, "dta_temporal")) return(NULL)
+    if (inherits(prototype, "dta_string")) {
         return(structure(character(total_rows), dtatools.buffer = "string"))
     }
-    storage <- .declared_stata_storage(prototype)
+    storage <- .declared_dta_storage(prototype)
     if (is.null(storage)) return(NULL)
     structure(
         rep(NA_real_, total_rows), dtatools.buffer = "numeric",
@@ -635,11 +635,11 @@ dta_append <- function(sources, force = TRUE,
 }
 
 .append_fits_buffer <- function(value, prototype) {
-    if (inherits(prototype, "stata_string")) {
+    if (inherits(prototype, "dta_string")) {
         # `NA_character_` has no Stata string encoding, so such a source
         # goes to `.append_cast_to_buffer()`, which refuses it the way the
         # pieces path does.
-        return(is.character(value) && !inherits(value, "stata_temporal") &&
+        return(is.character(value) && !inherits(value, "dta_temporal") &&
             !anyNA(value))
     }
     # Any declared Stata numeric may widen into the buffer without a
@@ -647,37 +647,37 @@ dta_append <- function(sources, force = TRUE,
     # lossless lattice, so it represents every contributor's values
     # exactly. A bare double carries no such guarantee, so the caller
     # casts it to the prototype before writing.
-    !is.null(.declared_stata_storage(value)) &&
-        !inherits(value, "stata_temporal") && is.null(names(value))
+    !is.null(.declared_dta_storage(value)) &&
+        !inherits(value, "dta_temporal") && is.null(names(value))
 }
 
 .append_cast_to_buffer <- function(value, prototype) {
-    if (inherits(value, .stata_metadata_vector_class)) {
-        value <- .stata_metadata_vector_base(value)
+    if (inherits(value, .dta_metadata_vector_class)) {
+        value <- .dta_metadata_vector_base(value)
     }
     # `NA_character_` has no Stata string encoding, and the vctrs cast
     # would spell it `""`; here it is a source the plan cannot write, so
     # `force` decides between missing rows and an error as for numerics.
-    if (inherits(prototype, "stata_string") && anyNA(value)) return(NULL)
+    if (inherits(prototype, "dta_string") && anyNA(value)) return(NULL)
     writable <- tryCatch(
         vctrs::vec_cast(value, prototype),
         error = function(condition) NULL
     )
-    if (is.null(writable) || inherits(prototype, "stata_string")) {
+    if (is.null(writable) || inherits(prototype, "dta_string")) {
         return(writable)
     }
-    storage <- .declared_stata_storage(prototype)
+    storage <- .declared_dta_storage(prototype)
     if (is.null(storage)) {
         return(writable)
     }
     valid <- tryCatch({
-        if (inherits(prototype, "stata_temporal")) {
-            .construct_stata_numeric(
-                as.double(.base_stata_temporal(writable)), NULL, storage,
-                temporal = .stata_temporal_code(prototype)
+        if (inherits(prototype, "dta_temporal")) {
+            .construct_dta_numeric(
+                as.double(.base_dta_temporal(writable)), NULL, storage,
+                temporal = .dta_temporal_code(prototype)
             )
         } else {
-            .construct_stata_numeric(as.double(writable), NULL, storage)
+            .construct_dta_numeric(as.double(writable), NULL, storage)
         }
         TRUE
     }, error = function(condition) FALSE)
@@ -713,8 +713,8 @@ dta_append <- function(sources, force = TRUE,
     storage <- attr(buffer, "dtatools.storage", exact = TRUE)
     attributes(buffer) <- NULL
     if (identical(kind, "string")) return(vctrs::vec_cast(buffer, prototype))
-    .restore_stata_variable_metadata(
-        .construct_stata_numeric(buffer, NULL, storage), prototype,
+    .restore_dta_variable_metadata(
+        .construct_dta_numeric(buffer, NULL, storage), prototype,
         names = NULL
     )
 }
@@ -728,7 +728,7 @@ dta_append <- function(sources, force = TRUE,
                                    schemas, my_name, force) {
     # Stata numerics, including temporals, need observation-level range
     # validation in addition to vctrs' type compatibility check.
-    if (!is.null(.declared_stata_storage(prototype))) {
+    if (!is.null(.declared_dta_storage(prototype))) {
         for (my_index in seq_along(the_pieces)) {
             cast <- .append_cast_to_buffer(the_pieces[[my_index]], prototype)
             if (is.null(cast)) {
@@ -770,13 +770,13 @@ dta_append <- function(sources, force = TRUE,
 # vec_init()'s `NA`.
 .append_missing_column <- function(prototype, rows) {
     if (rows == 0L) return(prototype)
-    if (inherits(prototype, "stata_temporal")) {
+    if (inherits(prototype, "dta_temporal")) {
         return(vctrs::vec_init(prototype, rows))
     }
-    if (inherits(prototype, "stata_string")) {
+    if (inherits(prototype, "dta_string")) {
         return(vctrs::vec_cast(rep("", rows), prototype))
     }
-    storage <- .declared_stata_storage(prototype)
+    storage <- .declared_dta_storage(prototype)
     if (!is.null(storage) && storage %in%
         c("byte", "int", "long", "float", "double")) {
         constructor <- switch(
@@ -796,7 +796,7 @@ dta_append <- function(sources, force = TRUE,
 
     if (identical(dataset_notes, "none")) return(result)
     if (identical(dataset_notes, "first")) {
-        return(.copy_stata_metadata_attributes(first, result, mark = FALSE))
+        return(.copy_dta_metadata_attributes(first, result, mark = FALSE))
     }
 
     the_notes <- unlist(lapply(schemas, function(my_schema) {

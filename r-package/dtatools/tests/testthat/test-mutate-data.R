@@ -1006,8 +1006,8 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(temporal$date))
     expect_identical(as.double(temporal$date), as.double(dates))
     expect_identical(as.double(temporal$datetime), as.double(datetimes))
-    expect_s3_class(temporal$date, "stata_date")
-    expect_s3_class(temporal$datetime, "stata_datetime")
+    expect_s3_class(temporal$date, "dta_date")
+    expect_s3_class(temporal$datetime, "dta_datetime")
     expect_identical(dta_storage_type(temporal$date), "float")
     expect_identical(dta_storage_type(temporal$datetime), "double")
 
@@ -1121,7 +1121,7 @@ test_that("gen preserves metadata on otherwise supported numeric classes", {
             dta_characteristics(data$copied), c(source = kind), info = kind
         )
         if (identical(kind, "date")) {
-            expect_s3_class(data$copied, "stata_date")
+            expect_s3_class(data$copied, "dta_date")
         }
         if (identical(kind, "labelled")) {
             expect_identical(val_labels(data$copied), c(One = 1, Two = 2))
@@ -2818,22 +2818,22 @@ test_that("promotion never narrows the integers a column can hold", {
     # column that silently rounds the next long-range integer. `long`
     # carries 31 bits of integer precision and `float` 24, so `long`
     # skips `float`, as Stata's `replace` does and as the arithmetic
-    # lattice in `.stata_promote()` already did.
+    # lattice in `.dta_promote()` already did.
     expect_identical(
-        dtatools:::.narrowest_stata_storage(c(1, 3e9), from = "long"),
+        dtatools:::.narrowest_dta_storage(c(1, 3e9), from = "long"),
         "double"
     )
     expect_identical(
-        dtatools:::.narrowest_stata_storage(c(1, 1.5), from = "long"),
+        dtatools:::.narrowest_dta_storage(c(1, 1.5), from = "long"),
         "double"
     )
     # `byte` and `int` are unaffected: their whole ranges are float-exact.
     expect_identical(
-        dtatools:::.narrowest_stata_storage(c(1, 1.5), from = "byte"),
+        dtatools:::.narrowest_dta_storage(c(1, 1.5), from = "byte"),
         "float"
     )
     expect_identical(
-        dtatools:::.narrowest_stata_storage(c(1, 1.5), from = "int"),
+        dtatools:::.narrowest_dta_storage(c(1, 1.5), from = "int"),
         "float"
     )
     data <- dibble(x = dta_long(c(1, 2)))

@@ -1,12 +1,12 @@
+use crate::dta_metadata::{
+    validate_raw_value_bytes, validate_raw_value_length, CharacteristicPlan,
+    CharacteristicValueUse, DecodedCharacteristics, VariableTargetIndexes,
+};
 use crate::endian::{
     checked_add, checked_mul, ensure_map_offset, expect_at, offset_to_usize, read_u16, read_u32,
     read_u64, read_u8, slice_at,
 };
 use crate::legacy::parse_legacy_metadata;
-use crate::stata_metadata::{
-    validate_raw_value_bytes, validate_raw_value_length, CharacteristicPlan,
-    CharacteristicValueUse, DecodedCharacteristics, VariableTargetIndexes,
-};
 use crate::text::{field_bytes, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
@@ -208,11 +208,11 @@ fn validate_map(
     map_start: usize,
     after_map: usize,
 ) -> Result<(), DtaError> {
-    if offsets.stata_data != 0 {
+    if offsets.dta_data != 0 {
         return Err(DtaError::MapOffsetMismatch {
-            section: "stata_data",
+            section: "dta_data",
             expected: 0,
-            actual: offsets.stata_data,
+            actual: offsets.dta_data,
         });
     }
     let expected_map = u64::try_from(map_start).map_err(|_| DtaError::OffsetOutOfRange {
@@ -717,7 +717,7 @@ mod tests {
     #[test]
     fn unterminated_modern_characteristics_are_framed_before_values_are_decoded() {
         let width = 129;
-        let value_length = crate::stata_metadata::MAX_METADATA_VALUE_BYTES + 2;
+        let value_length = crate::dta_metadata::MAX_METADATA_VALUE_BYTES + 2;
         let payload_length = width * 2 + value_length;
         let mut bytes = CHARACTERISTICS_OPEN.to_vec();
         bytes.extend_from_slice(CHARACTERISTIC_OPEN);
@@ -755,7 +755,7 @@ mod tests {
     #[test]
     fn forged_modern_terminator_is_framed_before_values_are_decoded() {
         let width = 129;
-        let value_length = crate::stata_metadata::MAX_METADATA_VALUE_BYTES + 2;
+        let value_length = crate::dta_metadata::MAX_METADATA_VALUE_BYTES + 2;
         let payload_length = width * 2 + value_length;
         let mut bytes = CHARACTERISTICS_OPEN.to_vec();
         bytes.extend_from_slice(CHARACTERISTIC_OPEN);

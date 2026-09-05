@@ -41,7 +41,7 @@ mapping model below, without a live shared-table replacement operation.
 
 ## Storage types
 
-`?"stata-storage-defaults"` states the full mapping, and [containers](./r-containers.md#what-column-type-results) tabulates it. Three of its rules diverge from Stata.
+`?"dta-storage-defaults"` states the full mapping, and [containers](./r-containers.md#what-column-type-results) tabulates it. Three of its rules diverge from Stata.
 
 **Generation defaults apply at command assignment.** A bare double result from `gen(data, y = x * 2)` is stored as `float`, exactly as Stata's `generate` would, and `options(dtatools.generate_type = "double")` is the equivalent of Stata's `set type double`. New `:=` columns and untyped `egen()` results use the same default. `dplyr::mutate()`, `transform()`, `within()`, and the replacement operators follow R's types: the same expression takes `float` through `gen()` and `double` through `mutate()`. Standalone numeric calculation helpers retain double precision until assignment. See [ADR 0022](./adr/0022-give-gen-statas-generate-default.md) and [ADR 0027](./adr/0027-compose-egen-with-value-functions.md).
 

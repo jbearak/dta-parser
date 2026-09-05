@@ -281,7 +281,7 @@ dataset_label <- function(data) {
     )
 }
 
-.warn_stata_metadata_limits <- function(violations) {
+.warn_dta_metadata_limits <- function(violations) {
     if (length(violations) == 0L) return(invisible(NULL))
 
     warning(
@@ -320,12 +320,12 @@ dataset_label <- function(data) {
     .Call(C_dtatools_metadata_view, value)
 }
 
-.stata_value_label_code_info <- function(value) {
+.dta_value_label_code_info <- function(value) {
     missing_codes <- .tab_missing_codes(value)
     tagged <- !is.na(missing_codes) &
         missing_codes >= utf8ToInt("a") & missing_codes <= utf8ToInt("z")
     observed <- is.na(missing_codes)
-    observed <- observed & !.invalid_stata_observed(
+    observed <- observed & !.invalid_dta_observed(
         value, observed, "long"
     )
     list(
@@ -356,7 +356,7 @@ dataset_label <- function(data) {
     label_text <- label_text[keep]
     if (length(value) == 0L) return(NULL)
 
-    code_info <- .stata_value_label_code_info(value)
+    code_info <- .dta_value_label_code_info(value)
     if (any(!code_info$valid)) {
         stop(
             sprintf(
@@ -445,7 +445,7 @@ dataset_label <- function(data) {
     if (has_labels && !temporal &&
         typeof(value) %in% c("integer", "double") &&
         !inherits(value, "haven_labelled")) {
-        if (inherits(value, "stata_numeric")) {
+        if (inherits(value, "dta_numeric")) {
             location <- match("vctrs_vctr", classes)
             classes <- append(classes, "haven_labelled", after = location - 1L)
         } else if (is.null(classes)) {
@@ -480,7 +480,7 @@ dataset_label <- function(data) {
 }
 
 .check_variable_label_updates <- function(updates) {
-    .warn_stata_metadata_limits(
+    .warn_dta_metadata_limits(
         .text_label_violations(updates, "variable label for")
     )
 }
@@ -493,7 +493,7 @@ dataset_label <- function(data) {
             column, updates[[index]], paste0("x$", names(updates)[[index]])
         )
     }
-    .warn_stata_metadata_limits(.value_label_violations(updates))
+    .warn_dta_metadata_limits(.value_label_violations(updates))
 }
 
 .apply_variable_label_updates <- function(access, updates) {
@@ -551,7 +551,7 @@ dataset_label <- function(data) {
     }
 
     value <- .normalize_text_label(value)
-    .warn_stata_metadata_limits(
+    .warn_dta_metadata_limits(
         .text_label_violations(value, "variable label")
     )
     x <- .metadata_copy(x)
@@ -567,7 +567,7 @@ dataset_label <- function(data) {
     }
     .reject_data_table_subclass(data)
     value <- .normalize_text_label(value)
-    .warn_stata_metadata_limits(
+    .warn_dta_metadata_limits(
         .text_label_violations(value, "dataset label")
     )
     data <- .label_replacement_data(data)
@@ -605,7 +605,7 @@ dataset_label <- function(data) {
 
     value <- .normalize_value_labels(value)
     .validate_value_label_target(x, value)
-    .warn_stata_metadata_limits(.value_label_violations(value))
+    .warn_dta_metadata_limits(.value_label_violations(value))
     x <- .metadata_copy(x)
     attr(x, "labels") <- value
     if (is.null(value)) attr(x, "value.label.name") <- NULL

@@ -51,7 +51,7 @@ dta_group_id <- function(..., missing = FALSE, autotype = FALSE,
     .dta_group_flag(label, "label")
     if (!is.null(label_name) && (!label || !is.character(label_name) ||
         length(label_name) != 1L || is.na(label_name) ||
-        !.valid_stata_names(label_name))) {
+        !.valid_dta_names(label_name))) {
         stop("`label_name` requires `label = TRUE` and a valid Stata name",
              call. = FALSE)
     }
@@ -124,15 +124,15 @@ dta_group_tag <- function(..., missing = FALSE) {
         }
         x <- values[[i]]
         supported <- if (typeof(x) == "character") {
-            inherits(x, "stata_string") || .generated_numeric_class_supported(x)
+            inherits(x, "dta_string") || .generated_numeric_class_supported(x)
         } else .dta_egen_numeric_supported(x)
         if (!supported || !is.null(dim(x)) || is.factor(x) ||
             inherits(x, c("integer64", "difftime")) ||
             !typeof(x) %in% c("double", "integer", "logical", "character"))
             stop("Grouping columns must be numeric or character vectors",
                  call. = FALSE)
-        if (inherits(x, "stata_temporal")) {
-            values[[i]] <- .base_stata_temporal(x)
+        if (inherits(x, "dta_temporal")) {
+            values[[i]] <- .base_dta_temporal(x)
         } else if (inherits(x, "Date")) {
             values[[i]] <- as.double(x) + 3653
         } else if (inherits(x, "POSIXct")) {
@@ -196,8 +196,8 @@ dta_group_tag <- function(..., missing = FALSE) {
     if (!is.null(labels)) {
         if (!.valid_tab_labels(labels))
             stop("Grouping column has invalid value labels", call. = FALSE)
-        matched <- match(.stata_value_label_keys(values),
-                         .stata_value_label_keys(labels))
+        matched <- match(.dta_value_label_keys(values),
+                         .dta_value_label_keys(labels))
         mapped <- rep("", length(values))
         found <- !is.na(matched)
         mapped[found] <- names(labels)[matched[found]]

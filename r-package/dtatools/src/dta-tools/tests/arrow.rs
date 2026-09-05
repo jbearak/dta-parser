@@ -250,9 +250,9 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
         Arc::new(DictionaryArray::try_new(keys, Arc::new(values)).expect("valid dictionary"));
     // Profiled columns in raw Stata missing storage: sentinel integers, no
     // validity bitmap.
-    let stata_byte: ArrayRef = Arc::new(Int8Array::from(vec![1, 101, 102, 127]));
-    let stata_int: ArrayRef = Arc::new(Int16Array::from(vec![7, 32741, 32742, 32767]));
-    let stata_float: ArrayRef = Arc::new(Float32Array::from(vec![
+    let dta_byte: ArrayRef = Arc::new(Int8Array::from(vec![1, 101, 102, 127]));
+    let dta_int: ArrayRef = Arc::new(Int16Array::from(vec![7, 32741, 32742, 32767]));
+    let dta_float: ArrayRef = Arc::new(Float32Array::from(vec![
         1.5,
         f32::from_bits(0x7f000000),
         f32::from_bits(0x7f000800),
@@ -298,28 +298,28 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
                     ..field_document(
                         Some(StataStorage::Byte),
                         Some(ArrowMissingEncoding::Sentinel),
-                        "stata_numeric",
+                        "dta_numeric",
                     )
                 }),
-                array: stata_byte.clone(),
+                array: dta_byte.clone(),
             },
             ArrowWriteColumn {
                 name: "i".to_owned(),
                 field: Some(field_document(
                     Some(StataStorage::Int),
                     Some(ArrowMissingEncoding::Sentinel),
-                    "stata_numeric",
+                    "dta_numeric",
                 )),
-                array: stata_int.clone(),
+                array: dta_int.clone(),
             },
             ArrowWriteColumn {
                 name: "f".to_owned(),
                 field: Some(field_document(
                     Some(StataStorage::Float),
                     Some(ArrowMissingEncoding::Payload),
-                    "stata_numeric",
+                    "dta_numeric",
                 )),
-                array: stata_float.clone(),
+                array: dta_float.clone(),
             },
         ],
     };
@@ -346,9 +346,9 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
         ("flag", &logical),
         ("name", &strings),
         ("grade", &factor),
-        ("b", &stata_byte),
-        ("i", &stata_int),
-        ("f", &stata_float),
+        ("b", &dta_byte),
+        ("i", &dta_int),
+        ("f", &dta_float),
     ];
     for (column, (name, array)) in result.columns.iter().zip(expected) {
         assert_eq!(column.name, name);
@@ -966,7 +966,7 @@ fn plain_arrow_file(metadata: HashMap<String, String>) -> Vec<u8> {
 }
 
 #[test]
-fn plain_arrow_files_read_without_stata_semantics() {
+fn plain_arrow_files_read_without_dta_semantics() {
     let bytes = plain_arrow_file(HashMap::new());
     let result = read_arrow_file_from(
         &mut Cursor::new(&bytes),
@@ -1453,7 +1453,7 @@ fn nonnullable_profile_fields_reject_nulls() {
     let mut field = Field::new("x", DataType::Int8, false);
     field.set_metadata(HashMap::from([(
         ARROW_FIELD_KEY.to_owned(),
-        r#"{"version":0,"storage":"byte","missing":"sentinel","r":{"class":"stata_numeric"}}"#
+        r#"{"version":0,"storage":"byte","missing":"sentinel","r":{"class":"dta_numeric"}}"#
             .to_owned(),
     )]));
     let schema = Arc::new(Schema::new(vec![field]).with_metadata(HashMap::from([(
