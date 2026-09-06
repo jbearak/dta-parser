@@ -73,6 +73,15 @@ the table into a function that adds or drops columns.
 its expression's value. \code{as_dibble()} of a grouped tibble keeps its
 grouping.
 
+Printing and formatting use the heading \verb{# A dibble:} and show declared
+Stata storage below column names: \code{byte}, \code{int}, \code{long}, \code{float}, \code{double},
+\code{str#}, or \code{strL}. Temporal columns show storage and meaning, such as
+\code{float/date} and \code{double/dttm}. String widths come from the declaration,
+even for empty columns or values shorter than that width. Logical, factor,
+and other untyped columns retain their usual tibble type labels. Grouping,
+cell formatting, missing-value display, and tibble printing options are
+unchanged. Displaying a dibble leaves its stored columns unchanged.
+
 \code{as_dibble()} returns an ordinary dibble as is. For an additional container
 subclass it returns a new dibble without that subclass, retaining recognized
 grouped or rowwise structure and dataset metadata. The removed subclass's
