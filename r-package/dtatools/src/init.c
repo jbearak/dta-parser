@@ -8001,14 +8001,16 @@ SEXP C_dtatools_dta_compare(
 SEXP C_dtatools_missing_codes(SEXP value) {
     /* NA means observed, zero is system missing, 1--255 is the tagged-NA
        payload byte, and 256 is an ordinary R NaN. */
-    R_xlen_t length = XLENGTH(value);
+    SEXP payload = PROTECT(owned_real(value) ? owned_values(value) : value);
+    R_xlen_t length = XLENGTH(payload);
     SEXP result = PROTECT(Rf_allocVector(INTSXP, length));
     int *output = INTEGER(result);
 
     if (TYPEOF(value) == REALSXP) {
+        const double *values = owned_real(value) ? (const double *) DATAPTR_RO(payload) : NULL;
         for (R_xlen_t index = 0; index < length; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
-            double element = REAL_ELT(value, index);
+            double element = values != NULL ? values[index] : REAL_ELT(value, index);
             int tag = tagged_na_tag_value(element);
             if (tag != 0) {
                 output[index] = tag;
@@ -8030,7 +8032,7 @@ SEXP C_dtatools_missing_codes(SEXP value) {
         Rf_error("missing-code classification requires a numeric vector");
     }
 
-    UNPROTECT(1);
+    UNPROTECT(2);
     return result;
 }
 
@@ -8116,6 +8118,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_release_mutation_views", (DL_FUNC) &C_dtatools_release_mutation_views, 1},
     {"C_dtatools_mutation_info", (DL_FUNC) &C_dtatools_mutation_info, 2},
     {"C_dtatools_is_owned_double", (DL_FUNC) &C_dtatools_is_owned_double, 1},
+    {"C_dtatools_owned_plain_snapshot", (DL_FUNC) &C_dtatools_owned_plain_snapshot, 1},
+    {"C_dtatools_owned_coerce", (DL_FUNC) &C_dtatools_owned_coerce, 2},
+    {"C_dtatools_owned_missing_mask", (DL_FUNC) &C_dtatools_owned_missing_mask, 1},
+    {"C_dtatools_owned_bare", (DL_FUNC) &C_dtatools_owned_bare, 1},
     {"C_dtatools_mutation_prototype", (DL_FUNC) &C_dtatools_mutation_prototype, 1},
     {"C_dtatools_column_names_info", (DL_FUNC) &C_dtatools_column_names_info, 1},
     {"C_dtatools_mutation_shape", (DL_FUNC) &C_dtatools_mutation_shape, 2},

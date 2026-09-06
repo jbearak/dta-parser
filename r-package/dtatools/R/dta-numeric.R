@@ -183,19 +183,27 @@ dta_storage_type <- function(x) {
         names(result) <- value_names
         return(result)
     }
-    missing_codes <- .tab_missing_codes(values)
-    dta_missing <- !is.na(missing_codes) &
-        (missing_codes == 0L |
-         (missing_codes >= utf8ToInt("a") &
-          missing_codes <= utf8ToInt("z")))
-    invalid_missing <- !is.na(missing_codes) & !dta_missing
-    observed <- is.na(missing_codes)
-    encoded <- .encode_dta_temporal(values, observed, temporal)
-    invalid_observed <- .invalid_dta_observed(encoded, observed, storage)
-    if (any(invalid_missing | invalid_observed)) {
-        .stop_unrepresentable_dta(
-            encoded, observed, storage, any(invalid_missing)
-        )
+    # A known owned double can use the same complete value scan as replacement
+    # promotion. Invalid or foreign values retain the detailed R diagnostics.
+    valid_owned <- identical(storage, "double") &&
+        identical(temporal, .dta_temporal_none) &&
+        .Call(C_dtatools_owned_bare, values) &&
+        isTRUE(.Call(C_dtatools_replacement_fits, values, NULL, FALSE, 4L))
+    if (!valid_owned) {
+        missing_codes <- .tab_missing_codes(values)
+        dta_missing <- !is.na(missing_codes) &
+            (missing_codes == 0L |
+             (missing_codes >= utf8ToInt("a") &
+              missing_codes <= utf8ToInt("z")))
+        invalid_missing <- !is.na(missing_codes) & !dta_missing
+        observed <- is.na(missing_codes)
+        encoded <- .encode_dta_temporal(values, observed, temporal)
+        invalid_observed <- .invalid_dta_observed(encoded, observed, storage)
+        if (any(invalid_missing | invalid_observed)) {
+            .stop_unrepresentable_dta(
+                encoded, observed, storage, any(invalid_missing)
+            )
+        }
     }
 
     result <- if (identical(storage, "double")) {
@@ -356,17 +364,24 @@ as.character.dta_numeric <- function(x, ...) {
 # R integer in a dibble, so `as.integer()` is the way back.
 #' @export
 as.integer.dta_numeric <- function(x, ...) {
-    as.integer(.dta_snapshot(x), ...)
+    value <- .dta_snapshot(x)
+    if (...length() != 0L || !is.primitive(base::as.integer)) return(as.integer(value, ...))
+    result <- .Call(C_dtatools_owned_coerce, value, FALSE)
+    if (is.null(result)) as.integer(value, ...) else result
 }
 
 #' @export
 as.logical.dta_numeric <- function(x, ...) {
-    as.logical(.dta_snapshot(x), ...)
+    value <- .dta_snapshot(x)
+    if (...length() != 0L || !is.primitive(base::as.logical)) return(as.logical(value, ...))
+    result <- .Call(C_dtatools_owned_coerce, value, TRUE)
+    if (is.null(result)) as.logical(value, ...) else result
 }
 
-.dta_data <- function(x) {
+.dta_data <- function(x, ordinary = FALSE) {
     value_names <- names(x)
-    value <- .metadata_view(x)
+    value <- if (ordinary) .Call(C_dtatools_owned_plain_snapshot, x) else NULL
+    if (is.null(value)) value <- .metadata_view(x)
     attributes(value) <- NULL
     names(value) <- value_names
     value
@@ -378,6 +393,12 @@ as.logical.dta_numeric <- function(x, ...) {
     attributes(value) <- NULL
     names(value) <- value_names
     value
+}
+
+.dta_read_is_na <- function(x) {
+    if (!is.primitive(base::is.na)) return(is.na(x))
+    result <- .Call(C_dtatools_owned_missing_mask, x)
+    if (is.null(result)) is.na(x) else result
 }
 
 .dta_promote <- function(left, right) {
@@ -1085,7 +1106,7 @@ vec_cast.logical.dta_numeric <- function(
     args <- vctrs::vec_recycle_common(left, right)
     operation <- getExportedValue("base", op)
     result <- suppressWarnings(operation(args[[1L]], args[[2L]]))
-    missing_operand <- is.na(args[[1L]]) | is.na(args[[2L]])
+    missing_operand <- .dta_read_is_na(args[[1L]]) | .dta_read_is_na(args[[2L]])
     .dta_computed(.collapse_missing(result, missing_operand), minimum)
 }
 
@@ -1209,7 +1230,7 @@ chooseOpsMethod.dta_numeric <- function(x, y, mx, my, cl, reverse) {
 #' @export
 vec_math.dta_numeric <- function(.fn, .x, ...) {
     operation <- getExportedValue("base", .fn)
-    result <- suppressWarnings(operation(.dta_data(.x), ...))
+    result <- suppressWarnings(operation(.dta_data(.x, ordinary = .fn == "range"), ...))
     if (length(.x) == 0L && .fn %in% c("min", "max", "range")) {
         return(result)
     }
@@ -1235,8 +1256,9 @@ Summary.dta_numeric <- function(..., na.rm = FALSE) {
     storage <- vapply(declared, .declared_dta_storage, character(1))
     minimum <- Reduce(.dta_promote, storage)
     operation <- getExportedValue("base", .Generic)
+    ordinary <- .Generic == "range"
     arguments <- c(lapply(inputs, function(value) {
-        if (inherits(value, "dta_numeric")) .dta_data(value) else value
+        if (inherits(value, "dta_numeric")) .dta_data(value, ordinary = ordinary) else value
     }), list(na.rm = na.rm))
     empty_extreme <- sum(lengths(inputs)) == 0L &&
         .Generic %in% c("min", "max", "range")
@@ -1289,7 +1311,7 @@ anyNA.dta_numeric <- function(x, recursive = FALSE) {
 
 #' @export
 is.na.dta_numeric <- function(x) {
-    is.na(.dta_data(x))
+    .dta_read_is_na(.dta_data(x))
 }
 
 #' @export

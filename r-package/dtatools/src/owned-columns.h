@@ -116,6 +116,57 @@ static SEXP C_dtatools_is_owned_double(SEXP value) {
     return Rf_ScalarLogical(owned_real(value) && owned_real_supported(value));
 }
 
+static int owned_bare_real(SEXP value) {
+    return owned_real(value) && !Rf_isObject(value) && !ANY_ATTRIB(value);
+}
+
+static SEXP C_dtatools_owned_bare(SEXP value) {
+    return Rf_ScalarLogical(owned_bare_real(value));
+}
+
+/* R's range argument flattening repeatedly requests a writable pointer.
+   Give that R call an independent ordinary snapshot, never the owned payload. */
+static SEXP C_dtatools_owned_plain_snapshot(SEXP value) {
+    if (!owned_real(value)) return R_NilValue;
+    SEXP payload = PROTECT(owned_values(value));
+    R_xlen_t length = XLENGTH(payload);
+    SEXP result = PROTECT(Rf_allocVector(REALSXP, length));
+    memcpy(REAL(result), DATAPTR_RO(payload), (size_t) length * sizeof(double));
+    owned_capture_bytes += (double) length * sizeof(double);
+    SHALLOW_DUPLICATE_ATTRIB(result, value);
+    UNPROTECT(2);
+    return result;
+}
+
+/* Public integer/logical exports discard attributes. Using an explicit seam
+   keeps generic ALTREP coercion's attribute and warning order unchanged.
+   R allocates a fresh ordinary result for these two target types. */
+static SEXP C_dtatools_owned_coerce(SEXP value, SEXP logical) {
+    if (!owned_real(value)) return R_NilValue;
+    SEXPTYPE type = Rf_asLogical(logical) == TRUE ? LGLSXP : INTSXP;
+    SEXP payload = PROTECT(owned_values(value));
+    SEXP result = Rf_coerceVector(payload, type);
+    UNPROTECT(1);
+    return result;
+}
+
+/* Only bare handles qualify. Named, shaped and classed values keep base R's
+   attribute and method dispatch behavior in the R fallback. */
+static SEXP C_dtatools_owned_missing_mask(SEXP value) {
+    if (!owned_bare_real(value)) return R_NilValue;
+    SEXP payload = PROTECT(owned_values(value));
+    R_xlen_t length = XLENGTH(payload);
+    SEXP result = PROTECT(Rf_allocVector(LGLSXP, length));
+    const double *values = (const double *) DATAPTR_RO(payload);
+    int *out = LOGICAL(result);
+    for (R_xlen_t i = 0; i < length; i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        out[i] = ISNAN(values[i]);
+    }
+    UNPROTECT(2);
+    return result;
+}
+
 
 /* This is the only writable backing preparation for owned doubles. Public
    access and transaction access differ solely in their exposure policy. */
@@ -150,18 +201,22 @@ static SEXP owned_real_duplicate(SEXP value, Rboolean deep) {
 static int owned_real_no_na(SEXP value) {
     int *flags = owned_flags(value);
     if (!flags[OWNED_EXPOSED] && flags[OWNED_NO_NA] >= 0) return flags[OWNED_NO_NA];
-    const double *values = (const double *) DATAPTR_RO(owned_values(value));
+    SEXP record = PROTECT(R_altrep_data1(value));
+    SEXP payload = VECTOR_ELT(record, OWNED_VALUES);
+    R_xlen_t length = XLENGTH(payload);
+    const double *values = (const double *) DATAPTR_RO(payload);
     int no_na = 1;
-    for (R_xlen_t i = 0; i < XLENGTH(value); i++) {
+    for (R_xlen_t i = 0; i < length; i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
         if (ISNAN(values[i])) { no_na = 0; break; }
     }
     if (!flags[OWNED_EXPOSED]) flags[OWNED_NO_NA] = no_na;
+    UNPROTECT(1);
     return no_na;
 }
 
-/* No Sum/Min/Max hooks: R's ordinary aggregate implementation reads this
-   handle through the ALTREP region interface. Passing the plain backing to
+/* No Sum/Min/Max hooks: R's ordinary aggregate implementation uses the
+   read-only Dataptr_or_null pointer through its region iterator. Passing the plain backing to
    an R call would let tracing or callbacks retain an untracked writable alias. */
 
 static SEXP owned_real_subset(SEXP value, SEXP index, SEXP call) {

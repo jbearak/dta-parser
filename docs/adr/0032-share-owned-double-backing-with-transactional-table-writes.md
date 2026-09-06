@@ -22,6 +22,24 @@ Initial ordinary-double serialization may materialize values, but never saves
 live ownership records. Existing compact numeric and dictionary storage retain
 their public representations.
 
+Read loops retain the exact payload they read across allocations and callbacks.
+Missing-code and bare missing-mask scans use one read-only pointer. Valid bare
+owned double constructors reuse the complete native storage-fit scan; attributed,
+classed, foreign or invalid values retain the detailed R validation path.
+Integer and logical exports use R's native coercion API after taking the normal
+snapshot. Extra arguments and traced base coercions retain the existing R call.
+There is no generic ALTREP Coerce hook, which would change attribute-copy timing
+around coercion warnings. Double and deferred character exports remain tracked.
+
+Base range flattens arguments with repeated writable pointer requests. Owned
+range arguments therefore receive one independent ordinary snapshot before
+the existing base call. This replaces the copy that writable access otherwise
+requires, keeps range's argument and warning behavior, and avoids handing an R
+callback a private backing vector. The source's exposure and sharing flags are
+unchanged by this snapshot, including when a writable pointer already exists.
+Sum, min and max keep R's ordinary aggregate implementation and read-only
+pointer path. No R aggregation or coercion algorithm is copied.
+
 Explicit value helpers inspect physical column sharing before creating R
 evaluation objects and again at the native table boundary after callbacks.
 Supported preflight views carry native sizes and cannot enter R methods.

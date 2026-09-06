@@ -38,9 +38,37 @@ that final R change. The installed R database hash is
 `af0a8331d16b5fefc4d90ee18b4f49df`; its unchanged DLL hash alone cannot identify
 the R-only fix. Exact-source provenance will bind both before release.
 
-The initial source commit, complete exact-source gates, paired performance and
-memory evidence, final evidence reviews and PR are still pending. Nothing in
-this checkpoint closes Stage 3 or substitutes a working build for qualification.
+Initial source commit `6dcb9af279237402eedd7ca4147bfb8ecdc76337` has a fresh
+provenance-validated installation. Root's 237 behavior cases, the full owned
+operation/read matrix, historical double matrix, and six isolated memory cases
+pass their correctness and preservation guards. Performance does not pass.
+Controlled ABBA repeats confirm seven read regressions: range and filter at
+100,000 and 1,000,000 rows, and integer coercion, arithmetic and arithmetic
+mutation at 1,000,000 rows. Exact pre-fix results and manifests remain under
+`/private/tmp/dta-direct-stage3-validation/root-owned-repeat-*6dcb9af`.
+
+Read fixes are in progress. The measured causes include repeated owned scalar
+dispatch during validation and repeated writable pointer requests in base
+range's argument concatenation. An independent ordinary range snapshot and
+rooted native read/conversion paths are being qualified against the same
+baseline behavior and performance gates. Complete checks on the final exact
+source, final evidence reviews and PR remain pending. Nothing in this checkpoint
+closes Stage 3 or substitutes a working build for qualification.
+
+The corrected working DLL `bde1e78a7bb52f2a6284110364a47f72` and R database
+`df00ab77aceccc2a628d9ebbe0edbf93` pass the new focused read suite and all 237
+root compatibility/ownership checks. Independent API round 14 and storage
+round 16 reviews inspect the final source, permanent tests and attribution
+without remaining findings. Their bounded comparisons cover coercion warning
+and argument behavior, constructor and missingness dispatch, range results,
+pointer writes, aliases and callback collection. A diagnostic twelve-iteration
+run reports 1,000,000-row filter at 27.16 ms and 50.10 MB allocated, arithmetic
+at 18.42 ms, range at 6.50 ms and integer conversion at 0.57 ms. These working
+measurements are feedback, not the final source-bound paired acceptance.
+The complete working R suite passes 15,478 assertions with the four recorded
+baseline warnings, no failures, errors or skips. Pinned roxygen2 8.1.0 leaves
+the manual pages unchanged. Logs are `read-fix2-full-suite.log` and
+`read-fix2-roxygen.log` in the same validation directory.
 
 Stage 2 merged normally as [PR #193](https://github.com/jbearak/dta-parser/pull/193)
 at 2026-09-06 18:20:48 UTC, producing

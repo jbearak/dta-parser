@@ -834,3 +834,7 @@ credited to the R Core Team and John Chambers. The same notice preserves the
 upstream GPL version 2 or later license; this package uses GPL-3. R 4.6.1 native
 attribute and resizing code was also studied for the append journal; that
 implementation uses public APIs and incorporates no source from those files.
+R's read, coercion and concatenation code informed owned read paths. Range
+receives an independent ordinary snapshot, and integer/logical exports call
+R's native coercion API. No R implementation or tests were copied for these
+paths; the notice lists the studied files.
