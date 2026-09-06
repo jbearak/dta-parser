@@ -290,3 +290,11 @@ before output. A locale-ordering issue found during independent fix review uses
 radix ordering. Historical measured libraries and runner labels remain intact;
 new installation/guard tests are separate evidence. Final fix reviews and
 latest-head external gates are still required before merge.
+
+The provenance follow-up at `bbed948` passed both independent reviews and
+matching smoke runs. CodeRabbit requested tighter test diagnostics because a
+broad SOURCE_SHA match could accept a usage error. The test now requires each
+mode's exact guard diagnostic and separately rejects all five runners' usage
+errors as guard evidence. The previously withdrawn base singleton/drop claim
+remains closed; its stale summary wording is being corrected with the reviewer.
+Package source and the original measured evidence are unchanged.

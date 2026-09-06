@@ -25,8 +25,16 @@ main <- function() {
     description <- file.path(package_path, "DESCRIPTION")
     saved_description <- readBin(description, "raw", n = file.info(description)$size)
     runners <- c("run.R", "columns.R", "run-rows.R", "row-memory.R", "repeat-group-reconstruct.R")
+    expected_errors <- c(
+        mismatch = "Benchmark SOURCE_SHA does not match installation provenance",
+        missing = "Missing benchmark installation provenance; use install.R",
+        malformed = "Benchmark SOURCE_SHA does not match installation provenance",
+        changed = "Benchmark installation changed after provenance was recorded")
+    guard_diagnostic <- function(path, expected) {
+        any(grepl(paste0("Error: ", expected), readLines(path), fixed = TRUE))
+    }
     checks <- 0L
-    for (mode in c("mismatch", "missing", "malformed", "changed")) {
+    for (mode in names(expected_errors)) {
         writeBin(saved_sidecar, sidecar)
         writeBin(saved_description, description)
         if (mode == "missing") unlink(sidecar)
@@ -43,13 +51,26 @@ main <- function() {
                          copied_library, second, claimed), shQuote, character(1)),
                 stdout = stdout, stderr = stderr)
             stopifnot(status != 0L, file.info(stdout)$size == 0, !file.exists(output),
-                any(grepl("provenance|SOURCE_SHA|installation changed", readLines(stderr))))
+                guard_diagnostic(stderr, expected_errors[[mode]]))
             checks <- checks + 1L
         }
     }
     writeBin(saved_sidecar, sidecar)
     writeBin(saved_description, description)
     validate_benchmark_install(copied_library, source_sha)
+    # Usage failures mention SOURCE_SHA but must not count as guard coverage.
+    for (runner in runners) {
+        stdout <- tempfile(tmpdir = temporary)
+        stderr <- tempfile(tmpdir = temporary)
+        status <- system2(file.path(R.home("bin"), "Rscript"),
+            vapply(c("--vanilla", file.path("benchmarks/r-dibble-dplyr", runner),
+                     copied_library), shQuote, character(1)), stdout = stdout, stderr = stderr)
+        stopifnot(status != 0L, file.info(stdout)$size == 0,
+                  any(grepl("Usage:", readLines(stderr), fixed = TRUE)),
+                  any(grepl("SOURCE_SHA", readLines(stderr), fixed = TRUE)),
+                  !any(vapply(expected_errors, function(expected)
+                      guard_diagnostic(stderr, expected), logical(1))))
+    }
     # Matching installation: a complete, small grouped run writes real results.
     output <- file.path(temporary, "matching.csv")
     status <- system2(file.path(R.home("bin"), "Rscript"),
@@ -59,6 +80,6 @@ main <- function() {
     stopifnot(status == 0L, file.exists(output))
     result <- read.csv(output)
     stopifnot(nrow(result) == 3L, all(result$source_sha == source_sha))
-    cat(checks, "direct rejection/no-output cases, matching CSV and locale/copy checks passed\n")
+    cat(checks, "exact-diagnostic rejection/no-output cases, five usage counterchecks, matching CSV and locale/copy checks passed\n")
 }
 main()
