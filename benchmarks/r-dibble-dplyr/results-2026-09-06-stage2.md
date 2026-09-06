@@ -48,8 +48,11 @@ groups; actual representation is asserted. Earlier compact-key setup was rejecte
 because baseline serialization materialized that key. Compact row fixtures remain
 separate and assert unmaterialized source backing before and after operations.
 
-The table uses one million rows. MB means 1,000,000 bytes of cumulative R
-allocation; it is neither retained memory nor peak RSS.
+The table uses one million input rows. Brackets and row hooks select every
+other row, producing 500,000 output rows; reconstruction uses that same half-row
+candidate. Validation and delegated mutation use the full input. MB means
+1,000,000 bytes of cumulative R allocation; it is neither retained memory nor
+peak RSS.
 
 | Operation | Baseline ms | Candidate ms | Baseline MB | Candidate MB |
 | --- | ---: | ---: | ---: | ---: |
