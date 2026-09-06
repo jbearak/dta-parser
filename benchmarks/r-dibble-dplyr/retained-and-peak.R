@@ -1,6 +1,12 @@
 args <- commandArgs(TRUE)
-.libPaths(c(normalizePath(args[[1L]]), .libPaths()))
-suppressPackageStartupMessages({library(dtatools); library(dplyr)})
+if (length(args) != 2L) stop("Usage: retained-and-peak.R LIBRARY KIND")
+library_path <- normalizePath(args[[1L]], mustWork = TRUE)
+.libPaths(c(library_path, .libPaths()))
+suppressPackageStartupMessages({
+    library(dtatools, lib.loc = library_path)
+    library(dplyr)
+})
+stopifnot(identical(normalizePath(dirname(find.package("dtatools"))), library_path))
 source("benchmarks/r-dibble-dplyr/helpers.R")
 pair <- make_pair(args[[2L]], 1000000L, 16L)
 # Warm method planning on a small independent fixture; do not retain its output.

@@ -37,8 +37,9 @@ data.table website pages identify themselves as 1.18.99, so pinned source is
 used for implementation details.
 
 The Stata typing comparison used dtatools 0.7.1 freshly built from
-`3a8189933a8ddd32a1bc1c5c6194956382586a20` in
-`/tmp/dibble-dplyr-benchmark.W2NXPq/library`, matching the earlier benchmark.
+`3a8189933a8ddd32a1bc1c5c6194956382586a20` in an isolated library, matching the
+[earlier benchmark](../../benchmarks/r-dibble-dplyr/results-2026-09-05.md). The
+author-local installation was temporary; recreate it from that recorded revision.
 Other experiments used ordinary R columns. They isolate dtplyr/data.table
 behavior and are not a direct Stata-class performance comparison.
 
@@ -304,8 +305,10 @@ plan nor production code.
 
 Run this in a fresh R process with the versions above. It reproduces the
 fixtures and measured expressions; timing and small first-use allocations will
-vary. The complete scratch run and logs for this session are under
-`/tmp/dtplyr-research.ruIAjq`.
+vary. The complete scratch run and logs were temporary session artifacts and
+are not distributed with the repository. The script below preserves the measured
+expressions; the [benchmark runners](../../benchmarks/r-dibble-dplyr/README.md)
+provide the committed Stata-class comparison and isolated-install procedure.
 
 ```r
 suppressPackageStartupMessages({

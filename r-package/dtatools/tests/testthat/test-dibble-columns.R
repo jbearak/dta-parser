@@ -78,6 +78,16 @@ test_that("direct selectors retain grouped and rowwise policies", {
     expect_message(dplyr::select(data, x), "Adding missing grouping variables: `g`, `h`")
 })
 
+test_that("shadowing every omitted grouping key clears the grouping attribute", {
+    data <- dplyr::group_by(dibble(g = c(1, 2), x = c(3, 4)), g)
+    out <- dplyr::select(data, g = x)
+    expected <- dplyr::select(dtatools:::.reference_snapshot(data), g = x)
+    expect_column_result(out, expected)
+    expect_false(inherits(out, "grouped_df"))
+    expect_null(attr(out, "groups", exact = TRUE))
+    expect_silent(reserve_columns(out))
+})
+
 test_that("selector expressions run once in their captured environment", {
     data <- dibble(a = 1, b = 2, c = 3)
     calls <- 0L

@@ -10,7 +10,7 @@ the prior safe typing path.
 
 ## Exact-source validation
 
-Starting main is `5ad44406f9b80db81789dcf7b7e1756c28502559`. Final package source is
+Starting main is `5ad44406f9b80db81789dcf7b7e1756c28502559`. The production implementation measured here is
 `be9eac34b2d52efa664b9f0eb9f6e0d9e8e41c9c`, exported and installed in an isolated
 library from its freshly built source archive. All timing runs were serial while
 other package and fertility CPU workloads were paused. The host was Apple M4 Max,
@@ -18,8 +18,11 @@ macOS 26.6.2, R 4.6.1, dplyr 1.2.1 and vctrs 0.7.3. The complete matrix contains
 71 paired cases over 13 fixture shapes, with seven iterations including GC.
 Fixture construction, warming and correctness assertions are outside timing.
 
-- The final selector, encoding and metadata suite passed 568 assertions with
-  no warnings, skips or failures.
+- The measured-source selector, encoding and metadata suite passed 568
+  assertions without warnings, skips or failures. CodeRabbit follow-up added
+  an explicit grouping-attribute regression test; the expanded suite passed
+  579 assertions, again without warnings, skips or failures. Production R and
+  native code remained unchanged.
 - The required conformance script passed 22 immutable TypeScript fixtures,
   32,085 decoded-cell comparisons, 10 deterministic native cases and the native
   fixture oracle. It built the current source archive and completed the full R
@@ -83,11 +86,12 @@ An isolated ordinary-string rename retained 128,000,320 additional bytes of R
 vector heap on baseline and 128,000,440 on candidate. Nominal `object.size()` of
 both results was 128,019,112 bytes. No permanent validity or ownership token is
 inferred from those results. Separate fresh-process peak RSS measured
-529,678,336 bytes on baseline and 451,084,288 on candidate. These process peaks
+529,088,512 bytes on baseline and 450,904,064 on candidate after the requested-
+library guard was added. This follow-up measurement also used an idle CPU window. These process peaks
 include startup and fixture construction as well as rename; they are not
 operation-only peak allocations. R vector-heap deltas exclude node headers
-and native allocations. Raw [baseline](results-2026-09-06-stage1/baseline-final/retained-and-peak.log)
-and [candidate](results-2026-09-06-stage1/final/retained-and-peak.log) logs preserve
+and native allocations. Raw [baseline](results-2026-09-06-stage1/baseline-final/guarded-retained-and-peak.log)
+and [candidate](results-2026-09-06-stage1/final/guarded-retained-and-peak.log) logs preserve
 the separate measures.
 
 The [interim scanner report](results-2026-09-06-scanner-prototype.md) records the
@@ -140,3 +144,9 @@ installation with `DTATOOLS_BENCHMARK_CHILD=1` and
 builds that checkout. Its final-build failure is preserved in
 [this log](results-2026-09-06-stage1/final/reference-mutation.log); later assertions
 were not reached. The original runner must pass before the next native change.
+
+The retained-memory runner now explicitly loads dtatools from the requested
+library and verifies the actual package location before fixture construction.
+The guard was checked with both a valid exact-build library and an empty library;
+the latter fails before measurements rather than finding a global installation.
+This changes benchmark startup validation, not the recorded measured operation.

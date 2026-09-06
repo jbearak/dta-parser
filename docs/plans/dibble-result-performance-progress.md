@@ -2,13 +2,14 @@
 
 Starting main: `5ad44406f9b80db81789dcf7b7e1756c28502559`.
 Issue: https://github.com/jbearak/dta-parser/issues/172, still open.
-Contract: [implementation plan](dibble-result-performance.md), plus the
-user handoff `/tmp/dibble-direct-operations-handoff.3hgh3u_0.txt`.
+Contract: [implementation plan](dibble-result-performance.md), with the user’s
+authorized sequential PR, independent-review, CI and CodeRabbit process. The
+original orchestration prompt was supplied outside the repository; its operative
+decisions are recorded in that plan.
 
 ## Stage 1 PR open, external gates pending
 
-Branch `codex/direct-dibble-columns`, isolated worktree
-`/private/tmp/dta-direct-stage1`. Direct select, rename and relocate share result
+Branch `codex/direct-dibble-columns`, implemented in an isolated worktree. Direct select, rename and relocate share result
 context/finalization and a private validated constructor. Ordinary payloads still
 copy. Eligible string results reuse the existing generation kernel to validate
 width and copy once; exact value/attribute identity is checked before reuse.
@@ -43,8 +44,14 @@ pipeline timing outliers disappeared in matched isolated repeats. Complete
 cumulative allocation, retained memory and whole-process peak RSS. Final report
 reviews approved `f493e2241a20127d0b94825669184512f02f573c` with no unresolved
 actionable findings. [PR #192](https://github.com/jbearak/dta-parser/pull/192) is
-open. Package source remains `be9eac34`; subsequent commits update this progress
-record and the report. CI and completed latest-head CodeRabbit review are pending.
+open. Production R/native code remains as at `be9eac34`; subsequent commits update this progress
+record, benchmark guards and regression coverage. CodeRabbit completed its
+review of `75b7d7e`. Its benchmark-library and temporary-reference findings were
+fixed; the benchmark now rejects an empty requested library instead of falling
+back to a global installation. A new public grouping assertion raises the
+selector suite to 579 passes without warnings or skips. Production R/native
+code is unchanged. Both independent local fix and memory-evidence reviews are clean. Fresh
+latest-head CI/CodeRabbit results are required before merge.
 No stage has merged yet.
 
 Attribution: pinned dplyr selector/group policies and tests were adapted;
@@ -80,3 +87,20 @@ compatibility matrix passes.
 The fertility_surveys migration is managed by root in its existing `test/mics`
 working tree. Preserve its user edits and rerun the downstream suite against
 the final epic default branch.
+
+## CodeRabbit follow-up
+
+The grouping warning was checked against the real current implementation:
+`grouped_df(..., character())` returns no groups attribute, so the existing
+assignment clears it. The new public test locks down `select(data, g = x)` when
+it shadows the only omitted grouping key. CodeRabbit [withdrew the finding](https://github.com/jbearak/dta-parser/pull/192#issuecomment-5559556941)
+after evaluating this evidence.
+
+The data.table minimum in the test matches DESCRIPTION and ADR 0030's supported
+minimum of 1.18.2.1; lowering it would admit unsupported containers. Stable native
+condition classes are a later native-stage improvement. This R-only stage uses
+only the existing width error and R-translated bytes error, and propagates other
+errors. CodeRabbit [explicitly withdrew both summary nitpicks](https://github.com/jbearak/dta-parser/pull/192#issuecomment-5559541437)
+on 2026-09-06 after checking DESCRIPTION, ADR 0030 and the unchanged native
+source tree. All applicability responses have substantive acknowledgment. Any native implementation still has the recorded
+allocation and alias-escape prerequisites.
