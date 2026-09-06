@@ -17,8 +17,11 @@ Tested package source: `95685536e8b12c70aa252cd3842efad131204216`.
 Both independent reviewers were clean through benchmark head
 `c1e145bf5d5cc0a29d7a11cdad71ff7685a81516`. They inspected correctness, aliases,
 capacity, serialization, native GC, API compatibility, documentation and notices;
-5,100 independent selector comparisons passed. Final documentation/evidence review
-is pending. No PR has been opened or merged yet. CI and CodeRabbit are pending.
+5,100 independent selector comparisons passed. Final documentation/evidence review confirmed the results and release-script
+fix, but the correctness reviewer flags the failed native allocation gate as an
+unresolved merge-gate requirement under the handoff. Root is resolving that
+applicability question; it is not a clean final review. No PR has been opened or
+merged yet. CI and CodeRabbit are pending.
 
 Local validation passed 500 new selector assertions, 3,718 focused assertions,
 12,570 full package assertions, examples, roxygen, archive tests, required shared

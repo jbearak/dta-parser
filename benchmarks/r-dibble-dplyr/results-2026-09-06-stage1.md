@@ -31,11 +31,14 @@ Other test/build and fertility workloads were paused for the final comparison.
 Raw [baseline](results-2026-09-06-stage1/baseline/operations.csv) and
 [candidate](results-2026-09-06-stage1/candidate/operations.csv) results include
 identical-column typed-tibble controls. Values, attributes, input preservation
-and compact-source assertions passed in every case. The only initial median
-regression above 10% and 1 ms was double filtering. Three further seven-iteration
+and compact-source assertions passed in every case. The only initial dibble
+median regression above 10% and 1 ms was double filtering. Three further seven-iteration
 comparisons did not reproduce it: baseline 134.38/147.09/140.88 ms, candidate
 140.63/134.76/139.26 ms. Their allocation differed by only 280 bytes. The repeat
-logs are retained beside the raw results.
+logs are retained beside the raw results. The typed-tibble compact-integer
+control for the 100-row, 1,000-column five-verb pipeline also varied from
+8.581 to 10.075 ms. That control does not use dibble result finalization; it is
+reported as control variation, not omitted from the raw comparison.
 
 The [separate column comparison](results-2026-09-06-stage1/columns.csv) uses the
 same candidate finalizer after a whole dplyr verb as its safe-delegation control.
