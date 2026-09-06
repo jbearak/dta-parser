@@ -260,11 +260,19 @@ test_that("drop and unused-argument validation follows each bracket container", 
         plain <- data.frame(x = 1:3, y = 4:6)
         if (tibble) plain <- tibble::as_tibble(plain)
         data <- reserve_columns(plain)
+        gen(data, z = x)
+        expect_s3_class(data, "dtatools_ref_data")
         events <- character()
         i <- function() { events <<- c(events, "i"); 1L }
         j <- function() { events <<- c(events, "j"); 1L }
         data[i(), j(), drop = FALSE]
         expect_identical(events, if (tibble) c("i", "j") else c("j", "i"))
+        events <- character()
+        i_error <- function() { events <<- c(events, "i"); stop("row expression") }
+        j_error <- function() { events <<- c(events, "j"); stop("column expression") }
+        expect_error(data[i_error(), j_error(), drop = FALSE],
+                     if (tibble) "row expression" else "column expression")
+        expect_identical(events, if (tibble) "i" else "j")
     }
 })
 
@@ -349,5 +357,84 @@ test_that("the dplyr row hook keeps vctrs row-name repair", {
             if (dibble) expected <- dtatools:::.close_dibble(data, expected)
             expect_identical(.row_result_plain(actual), .row_result_plain(expected))
         }
+    }
+})
+
+
+test_that("group rebuild honors the legacy locale compatibility option", {
+    withr::local_options(list(dplyr.legacy_locale = TRUE))
+    data <- dibble(g = c("Z", "a", "b", "A", "\u00e1", "\u00e4"), x = 1:6)
+    grouped <- suppressWarnings(dplyr::group_by(data, g))
+    snapshot <- dtatools:::.reference_snapshot(grouped)
+    expect_identical(dplyr::group_data(grouped[6:1, ]),
+                     suppressWarnings(dplyr::group_data(snapshot[6:1, ])))
+    data <- tibble::tibble(g = factor(c("b", "a", NA), levels = c("a", "b", "c")),
+                           nested = tibble::tibble(x = c("Z", "a", "A")))
+    expect_identical(dtatools:::.build_group_metadata(as.list(data), names(data), nrow(data), FALSE),
+                     suppressWarnings(attr(dplyr::grouped_df(data, names(data), drop = FALSE), "groups")))
+    options(dplyr.legacy_locale = NA)
+    expect_error(dtatools:::.build_group_metadata(as.list(data), names(data), nrow(data)),
+                 "single `TRUE` or `FALSE`")
+})
+
+test_that("bracket planning does not introduce named-argument warnings", {
+    data <- reserve_columns(data.frame(x = 1:3, y = 4:6))
+    gen(data, z = x)
+    expect_silent(data[2L])
+    expect_silent(data[2:1, ])
+    expect_warning(data[i = 2:1, ], "named arguments")
+})
+
+
+test_that("base reference gathers retain base observation metadata and drop shapes", {
+    plain <- data.frame(x = 1:4, y = 5:8)
+    plain$named <- stats::setNames(11:14, letters[1:4])
+    plain$matrix <- I(matrix(1:8, nrow = 4L, dimnames = list(letters[1:4], c("a", "b"))))
+    plain$nested <- data.frame(value = 21:24)
+    data <- reserve_columns(plain)
+    gen(data, generated = x)
+    snapshot <- dtatools:::.reference_snapshot(data)
+    for (rows in list(c(NA_integer_, 2L), c(4L, 1L, 1L))) {
+        expect_identical(data[rows, , drop = FALSE], snapshot[rows, , drop = FALSE])
+    }
+    for (expr in alist(d[1L, c(1L, 1L), drop = TRUE],
+                       d[1L, integer(), drop = TRUE],
+                       d[1L, 99L, drop = TRUE])) {
+        expect_identical(eval(expr, list(d = data)), eval(expr, list(d = snapshot)))
+    }
+    expect_error(data[, 99L, drop = TRUE], "undefined columns")
+    empty <- reserve_columns(data.frame(row.names = letters[1:4]))
+    gen(empty, temporary = 1L)
+    drop_vars(empty, temporary)
+    expect_s3_class(empty, "dtatools_ref_data")
+    snapshot <- dtatools:::.reference_snapshot(empty)
+    expect_identical(empty[1L, , drop = TRUE], snapshot[1L, , drop = TRUE])
+    expect_identical(empty[1L, 1L, drop = TRUE], snapshot[1L, 1L, drop = TRUE])
+})
+
+test_that("reference row subsets preserve the metadata wrapper's policies", {
+    for (tibble in c(FALSE, TRUE)) for (mark in c("raw", "dataset", "variable", "both")) {
+        source <- data.frame(x = 1:3, y = letters[1:3])
+        if (tibble) source <- tibble::as_tibble(source)
+        attr(source, "custom") <- list(key = "kept")
+        attr(source, "notes") <- "raw note"
+        data <- reserve_columns(source)
+        gen(data, z = x)
+        if (mark %in% c("dataset", "both")) add_dta_note(data, "dataset")
+        if (mark %in% c("variable", "both")) add_dta_note(data, "column", variable = "x")
+        expect_s3_class(data, "dtatools_ref_data")
+        snapshot <- dtatools:::.reference_snapshot(data)
+        for (expr in alist(d[, NULL], d[, c("x", "y"), drop = FALSE],
+                           d[c(NA_integer_, 2L), c("x", "y"), drop = FALSE],
+                           d[2:1, ], d[NULL, "x", drop = TRUE],
+                           d[1L, "x", drop = TRUE], d[1L, , drop = TRUE])) {
+            expect_identical(eval(expr, list(d = data)), eval(expr, list(d = snapshot)))
+        }
+        events <- character()
+        rows <- function() { events <<- c(events, "i"); 1L }
+        cols <- function() { events <<- c(events, "j"); 1L }
+        data[rows(), cols(), drop = FALSE]
+        expected_order <- if (tibble && mark == "raw") c("i", "j") else c("j", "i")
+        expect_identical(events, expected_order)
     }
 })

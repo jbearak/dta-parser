@@ -829,4 +829,6 @@ Its implementation and tests are credited in the [installed source notice](inst/
 which includes the upstream MIT copyright and license. The dtplyr implementation
 and tests were studied for operation planning and copying behavior; no dtplyr
 implementation is incorporated. The notice records the exact source revisions
-and local adaptations.
+and local adaptations. Plain data-frame row subsetting adapts base R rules
+credited to the R Core Team and John Chambers. The same notice preserves the
+upstream GPL version 2 or later license; this package uses GPL-3.

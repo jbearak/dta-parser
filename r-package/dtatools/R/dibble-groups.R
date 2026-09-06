@@ -19,7 +19,7 @@
         if (!is.data.frame(groups) || !is.list(groups) ||
             is.null(group_columns) || anyNA(group_columns) ||
             any(!nzchar(group_columns)) || anyDuplicated(group_columns) ||
-            !identical(tail(group_columns, 1L), ".rows")) {
+            !identical(utils::tail(group_columns, 1L), ".rows")) {
             stop("`data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again",
                  call. = FALSE)
         }
@@ -96,6 +96,14 @@
     }
     if (!length(keys)) return(NULL)
     located <- vctrs::vec_locate_sorted_groups(key_frame, nan_distinct = TRUE)
+    legacy_locale <- getOption("dplyr.legacy_locale")
+    if (!is.null(legacy_locale)) {
+        if (!is.logical(legacy_locale) || length(legacy_locale) != 1L || is.na(legacy_locale)) {
+            rlang::abort("Global option `dplyr.legacy_locale` must be a single `TRUE` or `FALSE`.")
+        }
+        if (legacy_locale) located <- vctrs::vec_slice(
+            located, .group_order_legacy(located$key))
+    }
     groups <- tibble::new_tibble(as.list(located$key), nrow = nrow(located$key))
     groups$.rows <- vctrs::new_list_of(located$loc, ptype = integer())
     if (!isTRUE(drop) && any(vapply(groups[keys], is.factor, logical(1)))) {
@@ -103,6 +111,24 @@
     }
     attr(groups, ".drop") <- drop
     groups
+}
+
+# Adapted from dplyr's arrange.R legacy order proxies; see NOTICE. Public
+# order proxies preserve Stata missing ranks while base order supplies locale
+# collation for this compatibility option. Data-frame proxies need dense ranks.
+.group_order_legacy <- function(data) {
+    if (!length(data)) return(seq_len(nrow(data)))
+    proxies <- lapply(data, function(value) {
+        proxy <- vctrs::vec_proxy_order(value)
+        if (is.data.frame(proxy)) {
+            unique <- vctrs::vec_unique(proxy)
+            return(vctrs::vec_match(proxy, vctrs::vec_slice(
+                unique, .group_order_legacy(unique))))
+        }
+        attributes(proxy) <- NULL
+        proxy
+    })
+    do.call(order, unname(proxies))
 }
 
 # Expand each factor's complete levels within the preceding key prefix.
@@ -188,7 +214,8 @@
                                  rowwise = rowwise)
     attr(result, "row.names") <- .set_row_names(nrow(result))
     attr(result, "groups") <- groups
-    base <- setdiff(class(result), c("grouped_df", "rowwise_df"))
-    class(result) <- c(if (rowwise) "rowwise_df" else if (length(keys)) "grouped_df", base)
+    classes <- .reference_base_classes(class(template))
+    class(result) <- if (rowwise || length(keys)) classes else
+        setdiff(classes, c("grouped_df", "rowwise_df"))
     result
 }

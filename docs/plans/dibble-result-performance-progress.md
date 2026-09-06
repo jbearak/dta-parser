@@ -173,3 +173,29 @@ vctrs row names through the shared finalizer; using public `as_dibble()` as the
 oracle would reset those names and would not represent that public path.
 Provenance now includes the pinned dplyr factor-expansion and row-hook policies
 adapted in this stage. The installed NOTICE retains the full license.
+
+The first committed Stage 2 candidate, `f1e0dfa`, failed the full standard
+conformance check with two class-order failures, 13,736 passing assertions,
+14 test warnings, three check warnings and three notes. The extra check note
+identified an unqualified utility call. Fixes preserve grouping-class placement,
+remove synthetic base named-argument warnings and qualify that call. An extra
+`--as-cran` run failed the same tests and reported mode-specific dependency and
+native diagnostics; it is separate evidence from the standard check baseline.
+Fresh installed full checks of the fixes are still required.
+
+Independent API review exposed base fallback differences for named vectors,
+matrices and nested columns, and a separate base drop-policy mismatch. Corrected
+fixtures explicitly assert reference dispatch. The old 1,280-case evaluation
+sweep used unmarked reserved frames and is withdrawn as direct-path evidence.
+Corrected working-source sweeps pass 18,144 reference edge cases, 390 fallback
+cases and 640 evaluation-order cases. A further 1,440-case custom/Stata metadata
+matrix passes after restoring base's supplied-column attribute policy and
+sharing the existing table/column metadata restoration routine. These are
+working-source review results, not substitutes for the final installed checks.
+
+Grouping reconstruction now honors `dplyr.legacy_locale` through public vctrs
+ordering proxies and base order. Its dplyr-owned lifecycle notification is not
+incorporated. NOTICE records this adaptation and the base R 4.6.1 subsetting
+control-flow adaptation, with the exact upstream copyright and complete
+GPL-2-or-later COPYING text. DESCRIPTION and README carry the new attribution.
+The package remains GPL-3; no native source or export has changed.

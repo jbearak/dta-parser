@@ -38,7 +38,13 @@ paths until their own direct implementations pass the plan's gates.
 Row brackets, `slice_dta_rows()` and the dplyr row hook now share a batch gather
 module. Each entry point resolves its own locations before gathering. Brackets
 use one integer column to obtain the public tibble or base row-index behavior;
-column planning is shallow. Plain data.table expressions continue using that
+column planning is shallow. Plain base frames gather fallback columns through
+base subsetting, preserving named vectors, matrix/nested columns and base drop
+shapes. Tibble, explicit helper and row-hook fallbacks retain vctrs semantics.
+Base bracket evaluation and attribute policies adapt R 4.6.1, with its
+GPL-2-or-later source notice preserved in installed `NOTICE`. The package
+remains GPL-3. Existing Stata metadata wrappers retain their evaluation order
+and restore both table and column metadata. Plain data.table expressions continue using that
 container's own bracket method. Group validation, key extraction, empty factor
 group expansion and regrouping use package-owned code and public vctrs/tibble
 operations, without runtime dplyr calls.
