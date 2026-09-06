@@ -29,7 +29,7 @@ Diagnosis proved the identical starting-main failure, but baseline evidence
 does not count as a passing gate. The new native scanner was removed. A working
 build of the R-only revision passes the 130 MB rename gate at 128,044,928 bytes;
 its roughly 133 ms string timings miss the host-specific 60 ms target.
-Final package source `be9eac34b2d52efa664b9f0eb9f6e0d9e8e41c9c` passed a fresh
+Measured package source `be9eac34b2d52efa664b9f0eb9f6e0d9e8e41c9c` passed a fresh
 isolated build/install, full conformance and R check, Haven interoperability,
 roxygen, six archive checks and installed/binary NOTICE verification. R CMD
 check retains three baseline warnings and two notes. The new selector/encoding
@@ -44,8 +44,7 @@ pipeline timing outliers disappeared in matched isolated repeats. Complete
 cumulative allocation, retained memory and whole-process peak RSS. Final report
 reviews approved `f493e2241a20127d0b94825669184512f02f573c` with no unresolved
 actionable findings. [PR #192](https://github.com/jbearak/dta-parser/pull/192) is
-open. Production R/native code remains as at `be9eac34`; subsequent commits update this progress
-record, benchmark guards and regression coverage. CodeRabbit completed its
+open. CodeRabbit completed its
 review of `75b7d7e`. Its benchmark-library and temporary-reference findings were
 fixed; the benchmark now rejects an empty requested library instead of falling
 back to a global installation. A new public grouping assertion raises the
@@ -55,8 +54,19 @@ latest-head CI/CodeRabbit results are required before merge.
 The next CodeRabbit review, on `ba9481f`, requested full table-level attribute
 comparisons. Those assertions exposed a row-name regression in the direct
 methods. The fix restores the baseline selector policy, with separate tests for
-dataset notes, custom metadata, ungrouped, grouped and rowwise row names. Exact
-source checks and independent reviews for this fix are pending.
+dataset notes, custom metadata, ungrouped, grouped and rowwise row names.
+Both independent reviewers then caught missing grouped metadata coverage and
+legacy-overlay row-name handling. Both fixes are complete in production source
+`9f2f98859f48bea3ff36bc8b7befc3bd0d26e0a9`, with 1,144 exact-install selector
+assertions and no failures, warnings or skips. The portable rename allocation
+gate still measures 128,044,928 bytes for ordinary and declared strings. Source
+archive checks, six archive tests and exact installed/binary NOTICE verification
+pass. Full R check and examples pass, with 13,214 assertions, four existing
+test warnings and the same three R CMD check warnings and two notes. Both
+independent final evidence reviews are clean, with all actionable findings
+closed. The full timing matrix remains attributed to `be9eac34`; the follow-up changes structural metadata
+and row-name policy, not column storage or string validation. No native source
+has changed.
 No stage has merged yet.
 
 Attribution: pinned dplyr selector/group policies and tests were adapted;
@@ -109,3 +119,13 @@ errors. CodeRabbit [explicitly withdrew both summary nitpicks](https://github.co
 on 2026-09-06 after checking DESCRIPTION, ADR 0030 and the unchanged native
 source tree. All applicability responses have substantive acknowledgment. Any native implementation still has the recorded
 allocation and alias-escape prerequisites.
+
+CodeRabbit's second review requested structural-aware table-level attribute
+comparisons. The expanded suite compares all public attributes and separately
+asserts notes, note numbers and custom metadata for ungrouped, grouped and
+rowwise select, rename and relocate. Preserving grouped dataset metadata is an
+intentional improvement over dplyr delegation, which could discard it.
+Row-name expectations retain the old policy: select/relocate reset them; plain
+rename preserves them, including legacy generated/structural overlays;
+grouped/rowwise rename resets them. Independent review checked 144 metadata
+cases and a separate 36-case row-name matrix, then reviewed the fixes.

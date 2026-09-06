@@ -44,6 +44,26 @@ Fixture construction, warming and correctness assertions are outside timing.
   [PR #192](https://github.com/jbearak/dta-parser/pull/192) awaits CI and completed
   latest-head CodeRabbit review before merge.
 
+## Metadata follow-up
+
+Production source `9f2f98859f48bea3ff36bc8b7befc3bd0d26e0a9` adds structural-aware
+table-attribute assertions and restores the previous row-name policy for direct
+selectors, including legacy column overlays. Grouped and rowwise dataset
+metadata retention is explicitly tested as an improvement over prior dplyr
+delegation. These changes do not modify column storage or string validation;
+all timing and memory results below remain attributed to `be9eac34`.
+
+The exact follow-up archive was freshly built and installed. Its selector suite
+passes 1,144 assertions without failures, warnings or skips. Fresh allocation
+checks still measure 128,044,928 bytes for both ordinary-string and declared-
+character rename, below 130 MB. Six archive tests, archive verification and
+byte-identical source/installed/macOS-binary NOTICE checks pass. Full R check
+and examples pass with 13,214 assertions and four existing test warnings.
+The same three R CMD check warnings and two notes remain. Both independent
+reviewers inspected and closed their source, test, ADR and final evidence
+findings, including additional 144-case metadata and 36-case row-name
+comparisons against the exact installation.
+
 ## Paired performance
 
 These rows use one million observations and 16 distinct columns. MB means
