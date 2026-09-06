@@ -1,12 +1,15 @@
 # Direct dibble operations and optional dplyr
 
-Status: proposed implementation sequence, revised 2026-09-06 to include
-[issue #172](https://github.com/jbearak/dta-parser/issues/172). The user has
-chosen package-owned direct operations as the target architecture. Benchmarking
-and a limited validation prototype are complete; production implementation has
-not started. Current checkout: `5ad44406f9b80db81789dcf7b7e1756c28502559`,
-including printing PR #190 and explicit dibble-class PR #191, both merged.
-The recorded performance baseline remains `3a8189933a8ddd32a1bc1c5c6194956382586a20`.
+Status: stage 1 implemented and locally reviewed on 2026-09-06 for
+[issue #172](https://github.com/jbearak/dta-parser/issues/172), awaiting PR and
+external gates. Stages 2 through 9 remain pending. See the
+[progress record](dibble-result-performance-progress.md) for current heads,
+checks, review and merge state. The chosen architecture is package-owned direct
+operations. The starting main was `5ad44406f9b80db81789dcf7b7e1756c28502559`,
+including printing PR #190 and explicit dibble-class PR #191.
+The historical baseline remains `3a8189933a8ddd32a1bc1c5c6194956382586a20`;
+the [stage 1 report](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage1.md)
+compares fresh builds of the actual starting revision and candidate.
 
 ## Evidence and decision
 
@@ -545,3 +548,16 @@ The safe validation prototype establishes only stage 1's opportunity. The
 complete owned-column architecture has not been implemented or benchmarked;
 its first-write, reader, and interoperability acceptance checks are required
 before claiming the broader performance improvement.
+
+### Recorded ownership-stage blocker
+
+The unchanged `benchmarks/r-reference-mutation/run.R` allocation gate fails on
+both starting main `5ad44406` and stage 1 package source `95685536`: each sparse
+write allocates a 5,000,048-byte compact copy through `.mutation_copy()`.
+[The stage 1 evidence](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage1.md)
+includes exact-build comparisons and a minimized reproducer. This is not a
+passing gate. Stage 1 introduces no new write path or allocation regression and
+keeps the conservative sharing check. Ownership stage 3 and the integrated epic
+remain blocked on making the original gate pass without weakening its checks
+or losing isolation. The planned shared-backing work must resolve this before
+those acceptance criteria can be closed.
