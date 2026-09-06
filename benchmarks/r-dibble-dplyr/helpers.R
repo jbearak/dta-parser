@@ -58,4 +58,3 @@ operations <- list(
         data
     }
 )
-

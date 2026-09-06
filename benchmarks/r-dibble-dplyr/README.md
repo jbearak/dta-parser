@@ -56,3 +56,13 @@ retained numeric payload. It is not enabled as a current CI gate.
 
 The dated result directory contains raw CSV files and package versions. The
 package build/check result and exact baseline revision are recorded in the report.
+
+## Direct column stage
+
+`columns.R LIBRARY OUTPUT_DIRECTORY SOURCE_SHA` compares direct column methods
+with whole-verb delegation through the same installed safe finalizer. It checks
+values and metadata before timing, records nominal retained R object sizes
+separately, and enforces the stage 1 limit of 130 MB for a 1M by 16 ordinary
+string rename. It does not replace the future owned-backing allocation gate.
+Run from the repository root with an isolated build of the recorded revision.
+The historical reports and their revision labels remain unchanged.
