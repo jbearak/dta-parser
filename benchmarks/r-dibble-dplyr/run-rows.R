@@ -11,7 +11,9 @@ stopifnot(iterations > 0L, capabilities("profmem"))
 suppressPackageStartupMessages({ library(dtatools); library(dplyr); library(bench) })
 stopifnot(identical(normalizePath(dirname(find.package("dtatools"))), library_path))
 dir.create(output, recursive = TRUE, showWarnings = FALSE)
-writeLines(c(paste("source_sha", source_sha), paste("library", library_path),
+writeLines(c(paste("source_sha", source_sha),
+             paste("runner_md5", unname(tools::md5sum("benchmarks/r-dibble-dplyr/run-rows.R"))),
+             paste("library", library_path),
              paste("iterations", iterations), paste("utc", format(Sys.time(), tz = "UTC", usetz = TRUE)),
              capture.output(sessionInfo())), file.path(output, "session.txt"))
 source("benchmarks/r-dibble-dplyr/helpers.R")
@@ -42,8 +44,11 @@ for (index in seq_len(nrow(cases))) {
     case <- cases[index, ]
     pair <- make_pair(case$kind, case$rows, case$columns)
     data <- pair$dibble
-    source_bytes <- serialize(public_attributes(data), NULL)
+    stopifnot(is_dibble(data))
     compact_before <- compact_state(data)
+    if (case$kind %in% c("compact_int", "dict_string")) stopifnot(all(compact_before))
+    source_bytes <- serialize(public_attributes(data), NULL)
+    stopifnot(identical(compact_state(data), compact_before))
     locations <- seq.int(1L, nrow(data), by = 2L)
     all_rows <- seq_len(nrow(data))
     ops <- list(bracket_half = function(d) d[locations, ],
