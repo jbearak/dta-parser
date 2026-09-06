@@ -52,6 +52,11 @@ back to a global installation. A new public grouping assertion raises the
 selector suite to 579 passes without warnings or skips. Production R/native
 code is unchanged. Both independent local fix and memory-evidence reviews are clean. Fresh
 latest-head CI/CodeRabbit results are required before merge.
+The next CodeRabbit review, on `ba9481f`, requested full table-level attribute
+comparisons. Those assertions exposed a row-name regression in the direct
+methods. The fix restores the baseline selector policy, with separate tests for
+dataset notes, custom metadata, ungrouped, grouped and rowwise row names. Exact
+source checks and independent reviews for this fix are pending.
 No stage has merged yet.
 
 Attribution: pinned dplyr selector/group policies and tests were adapted;

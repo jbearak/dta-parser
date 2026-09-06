@@ -106,6 +106,12 @@
     metadata <- context$metadata
     metadata$names <- names(columns)
     attributes(columns) <- metadata
+    # Tibble column subsetting resets row names. Grouped/rowwise names<-
+    # reconstructs the frame and does so too; plain rename preserves them.
+    if (!identical(context$caller, "rename()") ||
+        any(metadata$class %in% c("grouped_df", "rowwise_df"))) {
+        attr(columns, "row.names") <- .set_row_names(nrow(columns))
+    }
     columns <- .dibble_select_groups(context, columns, locations)
     .finish_dibble_result(context, columns)
 }

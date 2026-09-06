@@ -5,6 +5,15 @@ expect_column_result <- function(actual, expected) {
     expect_identical(names(actual), names(expected))
     expect_identical(dim(actual), dim(expected))
     expect_identical(lapply(actual, attributes), lapply(expected, attributes))
+    table_attributes <- function(data) {
+        metadata <- attributes(data)
+        # Result tables have fresh private reference state and explicit dibble
+        # markers. Compare every public structural and dataset attribute.
+        metadata$.dtatools_ref_state <- NULL
+        metadata$class <- setdiff(metadata$class, c("dibble", "dtatools_ref_data"))
+        metadata[sort(names(metadata))]
+    }
+    expect_identical(table_attributes(actual), table_attributes(expected))
     expect_identical(lapply(actual, as.vector), lapply(expected, as.vector))
     expect_identical(dplyr::group_vars(actual), dplyr::group_vars(expected))
     if (inherits(expected, c("grouped_df", "rowwise_df"))) {
@@ -48,6 +57,57 @@ test_that("direct column selectors match typed tibble selections", {
         expect_column_result(dplyr::rename(empty), dplyr::rename(expected))
         expect_column_result(dplyr::relocate(empty, .after = dplyr::everything()),
                              dplyr::relocate(expected, .after = dplyr::everything()))
+    }
+})
+
+test_that("selectors preserve dataset metadata", {
+    data <- dibble(a = 1:3, b = c("a", "b", "c"), flag = TRUE)
+    set_dta_metadata(data, notes = c("dataset note", "another note"),
+                     stata.note.numbers = c(2L, 5L),
+                     custom.dataset = list(source = "selector test", version = 1L))
+    input <- dtatools:::.reference_snapshot(data)
+    operations <- list(
+        function(x) dplyr::select(x, text = b, a),
+        function(x) dplyr::select(x, dplyr::everything()),
+        function(x) dplyr::select(x, NULL),
+        function(x) dplyr::relocate(x, b, .before = a),
+        function(x) dplyr::relocate(x, number = a, .after = flag)
+    )
+    for (operation in operations) {
+        actual <- operation(data)
+        expect_column_result(actual, operation(input))
+        expect_identical(attr(actual, "notes"), c("dataset note", "another note"))
+        expect_identical(attr(actual, "stata.note.numbers"), c(2L, 5L))
+        expect_identical(attr(actual, "custom.dataset"),
+                         list(source = "selector test", version = 1L))
+    }
+})
+
+test_that("selectors retain established tibble row-name policies", {
+    plain <- dibble(a = 1:3, b = c("a", "b", "c"))
+    containers <- list(plain, dplyr::group_by(plain, a), dplyr::rowwise(plain, a))
+    operations <- list(
+        select = function(x) dplyr::select(x, b, a),
+        select_all = function(x) dplyr::select(x, dplyr::everything()),
+        select_empty = function(x) dplyr::select(x, NULL),
+        relocate = function(x) dplyr::relocate(x, b),
+        rename = function(x) dplyr::rename(x, key = a)
+    )
+    for (data in containers) {
+        # Conversion from a base frame drops row names before selection. Install
+        # them on the existing dibble to exercise the actual selector boundary.
+        attr(data, "row.names") <- c("first", "middle", "last")
+        input <- dtatools:::.reference_snapshot(data)
+        for (name in names(operations)) {
+            operation <- operations[[name]]
+            actual <- suppressMessages(operation(data))
+            expect_column_result(actual, suppressMessages(operation(input)))
+            preserves <- name == "rename" &&
+                !inherits(data, c("grouped_df", "rowwise_df"))
+            expected <- if (preserves) c("first", "middle", "last") else as.character(1:3)
+            expect_identical(row.names(actual), expected)
+            expect_identical(row.names(data), c("first", "middle", "last"))
+        }
     }
 })
 
