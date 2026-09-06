@@ -8,7 +8,9 @@
     metadata$.dtatools_ref_state <- NULL
     metadata$class <- .reference_base_classes(class(data))
     if (.has_column_overlay(data)) {
-        metadata$row.names <- .set_row_names(.reference_state(data)$nrow)
+        if (.row_names_info(data, 1L) < 0L) {
+            metadata$row.names <- .set_row_names(.reference_state(data)$nrow)
+        }
         metadata$names <- names(columns)
     }
     addresses <- vapply(columns, rlang::obj_address, character(1))

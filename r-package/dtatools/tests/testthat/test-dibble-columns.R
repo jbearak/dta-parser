@@ -61,31 +61,57 @@ test_that("direct column selectors match typed tibble selections", {
 })
 
 test_that("selectors preserve dataset metadata", {
-    data <- dibble(a = 1:3, b = c("a", "b", "c"), flag = TRUE)
-    set_dta_metadata(data, notes = c("dataset note", "another note"),
-                     stata.note.numbers = c(2L, 5L),
-                     custom.dataset = list(source = "selector test", version = 1L))
-    input <- dtatools:::.reference_snapshot(data)
+    plain <- dibble(a = 1:3, b = c("a", "b", "c"), flag = TRUE)
+    containers <- list(plain, dplyr::group_by(plain, a), dplyr::rowwise(plain, a))
     operations <- list(
         function(x) dplyr::select(x, text = b, a),
         function(x) dplyr::select(x, dplyr::everything()),
         function(x) dplyr::select(x, NULL),
         function(x) dplyr::relocate(x, b, .before = a),
-        function(x) dplyr::relocate(x, number = a, .after = flag)
+        function(x) dplyr::relocate(x, number = a, .after = flag),
+        function(x) dplyr::rename(x, key = a)
     )
-    for (operation in operations) {
-        actual <- operation(data)
-        expect_column_result(actual, operation(input))
-        expect_identical(attr(actual, "notes"), c("dataset note", "another note"))
-        expect_identical(attr(actual, "stata.note.numbers"), c(2L, 5L))
-        expect_identical(attr(actual, "custom.dataset"),
-                         list(source = "selector test", version = 1L))
+    for (data in containers) {
+        set_dta_metadata(data, notes = c("dataset note", "another note"),
+                         stata.note.numbers = c(2L, 5L),
+                         custom.dataset = list(source = "selector test", version = 1L))
+        input <- dtatools:::.reference_snapshot(data)
+        for (operation in operations) {
+            actual <- suppressMessages(operation(data))
+            expected <- suppressMessages(operation(input))
+            # Some grouped tibble methods drop dataset metadata. Dibble promises
+            # to preserve it; use dplyr only for the remaining selector policy.
+            class(expected) <- c("dtatools_dta_metadata",
+                                 setdiff(class(expected), "dtatools_dta_metadata"))
+            attr(expected, "notes") <- c("dataset note", "another note")
+            attr(expected, "stata.note.numbers") <- c(2L, 5L)
+            attr(expected, "custom.dataset") <- list(source = "selector test", version = 1L)
+            expect_column_result(actual, expected)
+            expect_identical(attr(actual, "notes"), c("dataset note", "another note"))
+            expect_identical(attr(actual, "stata.note.numbers"), c(2L, 5L))
+            expect_identical(attr(actual, "custom.dataset"),
+                             list(source = "selector test", version = 1L))
+        }
     }
 })
 
 test_that("selectors retain established tibble row-name policies", {
     plain <- dibble(a = 1:3, b = c("a", "b", "c"))
     containers <- list(plain, dplyr::group_by(plain, a), dplyr::rowwise(plain, a))
+    for (structural in c(FALSE, TRUE)) {
+        legacy <- dibble(a = 1:3, b = c("a", "b", "c"))
+        state <- dtatools:::.reference_state(legacy)
+        if (structural) {
+            state <- dtatools:::.new_structural_reference_state(
+                list(b = legacy$b, a = legacy$a, extra = dta_int(4:6)),
+                3L, state$classes, dibble = TRUE)
+            legacy <- dtatools:::.mark_reference_data(legacy, state)
+        } else {
+            dtatools:::.append_generated_column(state, "extra", dta_int(4:6))
+        }
+        expect_true(dtatools:::.has_column_overlay(legacy))
+        containers[[length(containers) + 1L]] <- legacy
+    }
     operations <- list(
         select = function(x) dplyr::select(x, b, a),
         select_all = function(x) dplyr::select(x, dplyr::everything()),

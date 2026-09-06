@@ -14,10 +14,13 @@ functionality until dplyr can become optional.
 
 Column selection, renaming and relocation now share a result context, isolate
 retained vectors and normalize each distinct output once before a private
-constructor prepares the table. Table attributes follow the existing selector
-contract: dataset metadata survives, while select and relocate reset explicit
-row names as tibble subsetting does. Rename preserves explicit row names on
-ungrouped tables; grouped and rowwise reconstruction resets them.
+constructor prepares the table. Dataset metadata survives all three selectors,
+including grouped and rowwise operations where prior dplyr delegation could
+drop notes or custom dataset attributes. Structural row names follow the
+existing selector policy: select and relocate reset explicit row names as
+tibble subsetting does. Rename preserves explicit row names on ungrouped
+tables, including legacy column overlays; grouped and rowwise reconstruction
+resets them.
 Source identity records lineage only. Ordinary
 borrowed strings are validated while an existing generation kernel copies the
 result. Reuse requires identical values and attributes; stale declarations,
