@@ -27,8 +27,21 @@ The correctness reviewer kept the required reference allocation gate open.
 Diagnosis proved the identical starting-main failure, but baseline evidence
 does not count as a passing gate. The new native scanner was removed. A working
 build of the R-only revision passes the 130 MB rename gate at 128,044,928 bytes;
-its roughly 133 ms string timings miss the host-specific 60 ms target. Fresh
-committed-source checks and both independent final-diff reviews are pending.
+its roughly 133 ms string timings miss the host-specific 60 ms target.
+Final package source `be9eac34b2d52efa664b9f0eb9f6e0d9e8e41c9c` passed a fresh
+isolated build/install, full conformance and R check, Haven interoperability,
+roxygen, six archive checks and installed/binary NOTICE verification. R CMD
+check retains three baseline warnings and two notes. The new selector/encoding
+suite passed 568 assertions without warnings or skips. Both independent
+reviewers approved the R-only code and gate applicability, then passed another
+3,600 selector comparisons and metadata/encoding/GC/error probes. Final paired timing measurements are complete: string rename 223.55 to
+129.63 ms and 640.05 to 128.04 MB; declared character 137.89 to 122.18 ms and
+256.05 to 128.04 MB. The separate direct comparison measures roughly 131 ms.
+The portable allocation gate passes; the 60 ms host target is not met. Two
+pipeline timing outliers disappeared in matched isolated repeats. Complete
+[results](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage1.md) distinguish
+cumulative allocation, retained memory and whole-process peak RSS. Final report
+review is pending.
 No PR has been opened or merged. CI and CodeRabbit are pending.
 
 Attribution: pinned dplyr selector/group policies and tests were adapted;
@@ -37,8 +50,7 @@ modifications and full MIT notices. DESCRIPTION credits the copyright holder;
 README links the detailed notice. Historical 2026-09-05 artifacts retain their
 original dates and revision labels.
 
-Next: complete fresh checks and independent review of the R-only implementation
-and gate applicability, then push/open the focused PR. Inspect CI plus completed
+Next: obtain both independent final-report reviews, then push/open the focused PR. Inspect CI plus completed
 CodeRabbit summaries and inline comments on the latest head. Address findings
 with independent fix review before root performs the normal merge.
 

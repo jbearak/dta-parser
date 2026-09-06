@@ -1,0 +1,12 @@
+    kind repeat_index median_ms allocated_bytes gc_count
+1 double            1  25.89195       640220120       30
+    kind repeat_index median_ms allocated_bytes gc_count
+1 double            2  25.33542       640220120       35
+    kind repeat_index median_ms allocated_bytes gc_count
+1 double            3  35.08038       640220120       29
+     kind repeat_index median_ms allocated_bytes gc_count
+1 logical            1  5.652178        62280720        2
+     kind repeat_index median_ms allocated_bytes gc_count
+1 logical            2  4.978712        62280720        2
+     kind repeat_index median_ms allocated_bytes gc_count
+1 logical            3  5.149846        62280720        2
