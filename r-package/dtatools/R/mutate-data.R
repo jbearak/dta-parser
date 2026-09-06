@@ -2499,7 +2499,7 @@ dplyr_reconstruct.dtatools_ref_data <- function(data, template) {
     if (is_dibble(template)) return(.reconstruct_dibble(data, template))
     metadata <- attributes(.reference_snapshot(template))
     metadata$names <- names(data)
-    metadata$row.names <- attr(data, "row.names", exact = TRUE)
+    metadata$row.names <- .row_names_info(data, 0L)
     result <- .data_columns(data)
     attributes(result) <- metadata
     .restore_group_metadata(result, template)

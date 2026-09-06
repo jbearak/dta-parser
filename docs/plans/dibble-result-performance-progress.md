@@ -222,3 +222,11 @@ The legacy-locale review also found interleaved NA/NaN prefixes during factor
 expansion. Expansion now follows contiguous runs, matching the upstream
 VectorExpander policy. Both fixes have committed regression coverage and remain
 subject to final independent review and fresh installed validation.
+
+Root's independent baseline probe identified the same automatic-row-name loss
+in Stage 1 plain rename: original pre-epic names were automatic, but the shared
+context had expanded them. The raw row-name repair therefore covers the common
+context for selectors too. Plain rename preserves automatic or custom names;
+select and relocate retain their established reset policy. Regression tests
+assert the compact bookkeeping directly, alongside the existing visible-name
+and full-attribute comparisons.

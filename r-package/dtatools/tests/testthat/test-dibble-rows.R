@@ -498,3 +498,17 @@ test_that("row results retain automatic versus explicit row-name bookkeeping", {
     on.exit(unlink(path), add = TRUE)
     expect_no_warning(save_arrow(joined, path))
 })
+
+test_that("plain-reference reconstruction preserves raw payload row names", {
+    for (tibble in c(FALSE, TRUE)) for (explicit in c(FALSE, TRUE)) {
+        data <- data.frame(x = 1:3, y = 4:6)
+        if (tibble) data <- tibble::as_tibble(data)
+        data <- reserve_columns(data)
+        gen(data, z = x)
+        expect_s3_class(data, "dtatools_ref_data")
+        payload <- data.frame(x = 4:5)
+        if (explicit) attr(payload, "row.names") <- c("a", "b")
+        expect_identical(.row_names_info(dplyr::dplyr_reconstruct(payload, data), 0L),
+                         .row_names_info(payload, 0L))
+    }
+})
