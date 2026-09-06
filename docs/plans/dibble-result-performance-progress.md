@@ -230,3 +230,24 @@ context for selectors too. Plain rename preserves automatic or custom names;
 select and relocate retain their established reset policy. Regression tests
 assert the compact bookkeeping directly, alongside the existing visible-name
 and full-attribute comparisons.
+
+Package source `544af28` passed both independent fix reviews, fresh standard
+conformance and full R check: 13,903 assertions, no failures or skips, the four
+baseline test warnings, three check warnings and two notes. Focused checks,
+interoperability, roxygen, source and binary archives, installed NOTICE and the
+106-export comparison passed. Independent review also confirmed metadata
+force order, raw row-name policies, grouping ties and symmetric write isolation.
+
+The first complete paired row benchmark used identical runner `da40094` with
+fresh Stage 1 and `544af28` libraries. It found substantial row-gather gains but
+also grouped reconstruction/mutation and wide-helper regressions. Controlled
+repeats confirmed repeated class restoration in key validation and repeated
+source-membership hashing in finalization. The current R-only fixes cast group
+keys at their original cardinality before expanding equality proxies, validate
+partitions with linear counts, and batch source membership. All input and
+output validation and isolation rules remain. Two independent fix reviews and
+fresh checks and measurements are required for this revision; earlier timings
+do not qualify it. Discarded benchmark attempts exposed shared-oracle and
+compact-key serialization effects; the accepted runner freezes an independent
+oracle, checks source values and representation after every operation, and uses
+an explicitly ordinary-double group key. Compact row fixtures remain separate.

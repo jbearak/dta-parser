@@ -38,7 +38,8 @@
         if (anyNA(rows) || any(rows < 1L | rows > row_count) ||
             !all(group_names %in% names) ||
             any(vapply(groups$.rows, is.unsorted, logical(1), strictly = TRUE)) ||
-            !identical(sort(as.integer(rows)), seq_len(row_count)) ||
+            length(rows) != row_count ||
+            any(tabulate(as.integer(rows), nbins = row_count) != 1L) ||
             (inherits(data, "rowwise_df") &&
              (!all(lengths(groups$.rows) == 1L) ||
               !identical(as.integer(rows), seq_len(row_count))))) {
@@ -50,15 +51,26 @@
             stop("`data` has duplicated grouping keys; assign `data <- dplyr::ungroup(data)` and group again",
                  call. = FALSE)
         }
+        if (!length(group_names)) return(invisible(NULL))
         # A complete partition is not enough: each key must describe every
         # row assigned to it. Otherwise grouped helpers silently compute on
         # the wrong observations after ordinary edits to grouping metadata.
+        sizes <- lengths(groups$.rows)
+        used <- which(sizes > 0L)
+        expected_rows <- rep.int(seq_along(used), sizes[used])
+        group_keys <- .data_columns(groups)
         for (name in group_names) {
-            actual <- vctrs::vec_slice(columns[[name]], rows)
-            expected <- vctrs::vec_slice(.subset2(groups, name),
-                rep.int(seq_len(nrow(groups)), lengths(groups$.rows)))
-            if (!all(vctrs::vec_equal(.grouping_key_value(actual),
-                                     .grouping_key_value(expected), na_equal = TRUE))) {
+            actual <- .gather_dta_columns(columns[name], as.integer(rows))[[1L]]
+            key <- .gather_dta_columns(group_keys[name], used)[[1L]]
+            # Cast compatible keys before taking equality proxies. Cast each
+            # observed group key once, then expand its plain proxy; empty
+            # groups contribute no values. Keep each key's error order.
+            pair <- vctrs::vec_cast_common(x = .grouping_key_value(actual),
+                                           y = .grouping_key_value(key))
+            actual <- vctrs::vec_proxy_equal(pair$x)
+            expected <- .gather_dta_columns(list(key = vctrs::vec_proxy_equal(pair$y)),
+                                             expected_rows)[[1L]]
+            if (!all(vctrs::vec_equal(actual, expected, na_equal = TRUE))) {
                 stop("`data` has grouping keys that do not match its rows; assign `data <- dplyr::ungroup(data)` and group again",
                      call. = FALSE)
             }

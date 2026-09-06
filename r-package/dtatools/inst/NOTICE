@@ -35,7 +35,10 @@ Adapted from dplyr 1.2.1:
   Changes: factor expansion is expressed as R recursion over integer key
     positions; public vctrs grouping/slicing and tibble construction replace
     dplyr internals. Validation additionally requires a complete partition and
-    matching keys before expressions run. Native gathering uses the existing
+    matching keys before expressions run. Partition counts are linear, and
+    compatible equality proxies are expanded after casting observed keys.
+    These use public vctrs APIs; no additional upstream source is incorporated.
+    Native gathering uses the existing
     dtatools kernel. Missing strings are normalized before groups are rebuilt;
     arbitrary dataset metadata survives grouped reconstruction. The grouped
     row hook preserves its separate existing-group remapping policy. The

@@ -14,9 +14,12 @@
         }
         metadata$names <- names(columns)
     }
-    addresses <- vapply(columns, rlang::obj_address, character(1))
-    lineage <- new.env(hash = TRUE, parent = emptyenv())
-    for (address in addresses) lineage[[address]] <- TRUE
+    lineage <- NULL
+    if (identical(operation, "columns")) {
+        addresses <- vapply(columns, rlang::obj_address, character(1))
+        lineage <- new.env(hash = TRUE, parent = emptyenv())
+        for (address in addresses) lineage[[address]] <- TRUE
+    }
     list(columns = columns, metadata = metadata, caller = caller,
          operation = operation, lineage = lineage)
 }
@@ -30,25 +33,29 @@
             } else rlang::obj_address(source)
         }))
     }
-    completed <- new.env(hash = TRUE, parent = emptyenv())
-    # Retain the original result list throughout the loop. This keeps every
-    # address in completed rooted even after the output slot has been replaced.
+    # Keep original columns rooted while their addresses describe this result.
     columns <- .data_columns(result)
+    addresses <- vapply(columns, rlang::obj_address, character(1))
+    shared <- if (!is.null(sources)) addresses %in% source_addresses else NULL
+    repeated <- anyDuplicated(addresses) > 0L
+    completed <- if (repeated) new.env(hash = TRUE, parent = emptyenv()) else NULL
+    row_count <- nrow(result)
+    column_names <- names(columns)
     for (index in seq_along(columns)) {
-        column <- columns[[index]]
-        address <- rlang::obj_address(column)
-        if (!exists(address, envir = completed, inherits = FALSE)) {
-            unchanged <- exists(address, context$lineage, inherits = FALSE)
-            # Even an unchanged source can be borrowed or externally writable.
-            # Isolate before validation; never cache validity on the table.
-            isolate <- is.null(sources) || address %in% source_addresses ||
-                (identical(context$operation, "columns") && unchanged)
-            completed[[address]] <- .prepare_dibble_result_column(
-                column, isolate, nrow(result), context$caller,
-                names(columns)[[index]])
+        address <- addresses[[index]]
+        if (repeated && exists(address, envir = completed, inherits = FALSE)) {
+            prepared <- completed[[address]]
+        } else {
+            # Source membership records lineage only. Borrowed or externally
+            # writable columns still need isolation before validation.
+            isolate <- is.null(sources) || shared[[index]] ||
+                (identical(context$operation, "columns") &&
+                 exists(address, context$lineage, inherits = FALSE))
+            prepared <- .prepare_dibble_result_column(
+                columns[[index]], isolate, row_count, context$caller, column_names[[index]])
+            if (repeated) completed[[address]] <- prepared
         }
-        .Call(C_dtatools_set_data_column, result, as.integer(index),
-              completed[[address]])
+        .Call(C_dtatools_set_data_column, result, as.integer(index), prepared)
     }
     if (!is.null(grouping)) result <- grouping(result)
     .validate_group_metadata(result)

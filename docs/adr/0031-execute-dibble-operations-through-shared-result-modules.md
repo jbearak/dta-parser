@@ -71,3 +71,14 @@ preservation are improvements, separate from the retained indexing policies.
 The expression-based `slice()` family remains Stage 6 work. Complete vctrs and
 binding integration remains Stage 8 work, and dplyr stays in Imports until
 Stage 9 qualifies all package-native features with the dependency absent.
+
+Group validation checks a complete partition with linear row counts after the
+integer, bounds and per-group ordering checks. Each key is still checked in
+order. Compatible key values are cast before taking equality proxies; only
+observed group keys are expanded, so unused factor groups retain their previous
+validation behavior. Input and final-result validation remain mandatory.
+Result finalization computes source membership once for all columns, builds
+lineage only for column operations, and caches prepared columns only when the
+result repeats a source address. Original columns stay rooted throughout.
+These changes remove repeated planning and class restoration without caching
+validity or ownership on a table.

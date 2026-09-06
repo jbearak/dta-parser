@@ -104,6 +104,61 @@ test_that("group metadata rebuild matches sorted factor expansion", {
     }
 })
 
+test_that("group validation preserves empty keys and equality casting", {
+    values <- list(dta_byte(c(2, 1, 2)), dta_int(c(2, 1, 2)),
+                   dta_long(c(2, 1, 2)), dta_float(c(2, 1, 2)),
+                   dta_double(c(2, 1, 2)),
+                   dta_double(c(NA_real_, tagged_missing("a"), tagged_missing("b"))),
+                   factor(c("b", "a", "b"), levels = c("a", "b", "unused")),
+                   as.Date(c("2020-01-01", "2020-01-02", "2020-01-01")),
+                   list(1:2, NULL, 1:2),
+                   tibble::tibble(a = c(2, 1, 2), b = c("z", "a", "z")))
+    for (value in values) for (empty in c(FALSE, TRUE)) {
+        if (empty) value <- vctrs::vec_slice(value, integer())
+        grouped <- dplyr::grouped_df(tibble::tibble(g = value), "g", drop = FALSE)
+        before <- serialize(grouped, NULL)
+        expect_silent(dtatools:::.validate_group_metadata(grouped))
+        expect_identical(serialize(grouped, NULL), before)
+    }
+    explicit <- function(value, key) dplyr::new_grouped_df(
+        tibble::new_tibble(list(g = value), nrow = NROW(value)),
+        tibble::new_tibble(list(g = key, .rows = vctrs::list_of(c(1L, 3L), 2L)),
+                           nrow = NROW(key)))
+    for (pair in list(list(c(1L, 2L, 1L), c(1, 2)),
+                      list(factor(c("a", "b", "a")), c("a", "b")),
+                      list(dta_byte(c(1, 2, 1)), dta_double(c(1, 2))))) {
+        expect_silent(dtatools:::.validate_group_metadata(explicit(pair[[1L]], pair[[2L]])))
+    }
+    # A native-declined matrix key retains the public fallback's row shape.
+    value <- structure(matrix(c(1, 2, 1, 3, 4, 3), 3, 2), stata.storage = "double")
+    key <- structure(matrix(c(1, 2, 3, 4), 2, 2), stata.storage = "double")
+    expect_silent(dtatools:::.validate_group_metadata(explicit(value, key)))
+    wrong <- explicit(c(1, 2, 1), c(3, 2))
+    wrong$h <- c(1, 2, 1)
+    groups <- attr(wrong, "groups")
+    groups$h <- c("one", "two")
+    attr(wrong, "groups") <- groups[c("g", "h", ".rows")]
+    expect_error(dtatools:::.validate_group_metadata(wrong),
+                 "grouping keys that do not match", class = "simpleError")
+    incompatible <- explicit(c(1, 2, 1), c("one", "two"))
+    expect_error(dtatools:::.validate_group_metadata(incompatible),
+                 "`x`.*`y`", class = "vctrs_error_ptype2")
+})
+
+test_that("group partitions reject repeated rows and retain rowwise order", {
+    grouped <- dplyr::group_by(tibble::tibble(g = c(1, 2, 1)), g)
+    attr(grouped, "groups")$.rows <- vctrs::list_of(c(1L, 3L), 1L)
+    expect_error(dtatools:::.validate_group_metadata(grouped), "malformed grouping")
+    for (n in c(0L, 3L)) {
+        rowwise <- dplyr::rowwise(tibble::tibble(x = seq_len(n)))
+        expect_silent(dtatools:::.validate_group_metadata(rowwise))
+        if (n) {
+            attr(rowwise, "groups")$.rows <- rev(attr(rowwise, "groups")$.rows)
+            expect_error(dtatools:::.validate_group_metadata(rowwise), "malformed grouping")
+        }
+    }
+})
+
 test_that("row entry points retain their grouped and rowwise policies", {
     plain <- dibble(g = factor(c("b", "a", "b", "a"), levels = c("a", "b", "c")),
                     id = c(2L, 1L, 2L, 1L), x = dta_double(c(1, 2, 3, 4)))
