@@ -274,4 +274,8 @@ that cost, compact-index allocation growth, all raw measurements and the
 still-missed inherited 60 ms string-rename target. The portable 130 MB gate
 passes at 128,044,648 bytes. See the
 [Stage 2 report](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage2.md).
-Final evidence reviews and external PR gates remain pending.
+Both final independent evidence reviews are clean at `b74bc21`, including the
+reported performance costs, derived evidence formatting and repeat-process
+boundaries. [PR #193](https://github.com/jbearak/dta-parser/pull/193) is open.
+Latest-head CI and substantive CodeRabbit review remain required before merge;
+Stage 2 remains active until that merge completes.
