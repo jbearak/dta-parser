@@ -1,0 +1,11 @@
+"","self.time","self.pct","total.time","total.pct"
+""".metadata_view""",0.147,32.67,0.147,32.67
+""".dta_string_required_width""",0.131,29.11,0.169,37.56
+""".repair_data_table_container""",0.061,13.56,0.061,13.56
+"""vec_detect_missing""",0.046,10.22,0.193,42.89
+"""enc2utf8""",0.025,5.56,0.025,5.56
+"""any""",0.021,4.67,0.021,4.67
+"""max""",0.013,2.89,0.013,2.89
+""".reserve_column_capacity""",0.004,0.89,0.004,0.89
+""".dta_string_storage_width""",0.001,0.22,0.001,0.22
+"""grepl""",0.001,0.22,0.001,0.22

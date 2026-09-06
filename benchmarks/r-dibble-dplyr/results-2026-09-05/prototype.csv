@@ -1,0 +1,11 @@
+"kind","rows","columns","variant","median_ms","allocated_bytes","iterations","gc_count"
+"double",1000000,16,"baseline",2.9137060046196,128044648,7,1
+"double",1000000,16,"validation_once",2.56311520934105,128084696,7,4
+"string",1000000,16,"baseline",213.371215388179,640049256,7,13
+"string",1000000,16,"validation_once",31.5794292837381,128044648,7,2
+"declared_character",1000000,16,"baseline",139.078724198043,256046184,7,5
+"declared_character",1000000,16,"validation_once",36.8019687011838,128044648,7,3
+"compact_int",1000000,16,"baseline",0.434312969446182,43880,7,0
+"compact_int",1000000,16,"validation_once",0.42734295129776,43880,7,0
+"dict_string",100000,16,"baseline",0.734474509954453,43880,7,0
+"dict_string",100000,16,"validation_once",0.488145276904106,43880,7,0

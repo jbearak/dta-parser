@@ -68,7 +68,11 @@ result is a fresh object holding the current contents; the input is
 unchanged, and a by-reference write on either the input or the result
 leaves the other as it was, and leaves any other frame the operation
 drew columns from as it was. Columns an operation leaves alone are
-shared copy-on-write, so compact columns stay compact.
+isolated for later writes, using copy-on-write for compact columns.
+\code{dplyr::select()}, \code{dplyr::rename()}, and \code{dplyr::relocate()} resolve
+selectors against the actual Stata columns and build their dibble result
+directly. Ordinary retained vectors are still copied; their string storage
+declarations are checked against current values, including borrowed data.
 
 Ordinary \verb{$<-}, \verb{[[<-}, \verb{[<-}, \verb{names<-}, \verb{dimnames<-}, and
 \verb{row.names<-} return a changed dibble and leave existing aliases unchanged.

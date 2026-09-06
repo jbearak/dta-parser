@@ -1,0 +1,22 @@
+library /private/tmp/dta-direct-stage1-validation/final/library
+kind string
+retained_vector_heap_bytes 128000440
+nominal_result_bytes 128019112
+        0.78 real         0.74 user         0.02 sys
+           451084288  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               31393  page reclaims
+                  37  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   9  voluntary context switches
+                  68  involuntary context switches
+         18096114789  instructions retired
+          3422897136  cycles elapsed
+           434766712  peak memory footprint

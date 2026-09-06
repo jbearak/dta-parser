@@ -17,6 +17,7 @@ from archive_safety import (
 
 
 REQUIRED_FILES = {
+    "dtatools/inst/NOTICE",
     "dtatools/src/dta-tools/Cargo.toml",
     "dtatools/src/dta-tools/src/lib.rs",
     "dtatools/src/rust/Cargo.toml",

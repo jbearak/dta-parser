@@ -818,3 +818,12 @@ names, `labelbook`'s deterministic listing, and the rest — and why.
 ## License
 
 GPL-3.0. See the repository's [LICENSE](https://github.com/jbearak/dta-parser/blob/main/LICENSE).
+
+## Acknowledgements
+
+The direct dibble column selectors adapt dplyr's selector and grouping rules.
+Its implementation and tests are credited in the [installed source notice](inst/NOTICE),
+which includes the upstream MIT copyright and license. The dtplyr implementation
+and tests were studied for operation planning and copying behavior; no dtplyr
+implementation is incorporated. The notice records the exact source revisions
+and local adaptations.

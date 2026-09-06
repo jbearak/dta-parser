@@ -1,0 +1,4 @@
+Escaped values: 2 2 
+Supplied table: 2 2 
+Error: identical(as.double(escaped), c(1, 2)) is not TRUE
+Execution halted

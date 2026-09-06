@@ -2601,7 +2601,13 @@ dplyr_col_modify.dtatools_ref_data <- function(data, cols) {
 
 #' @export
 select.dtatools_ref_data <- function(.data, ...) {
-    .close_dibble(.data, dplyr::select(.reference_snapshot(.data), ...))
+    if (!is_dibble(.data)) {
+        return(dplyr::select(.reference_snapshot(.data), ...))
+    }
+    context <- .begin_dibble_result(.data, "select()", "columns")
+    locations <- tidyselect::eval_select(rlang::expr(c(...)), .data)
+    locations <- .dibble_ensure_group_columns(context, locations)
+    .dibble_select_columns(context, locations)
 }
 
 .reference_delegate <- function(data, call, generic, environment) {
@@ -2683,12 +2689,31 @@ slice.dtatools_ref_data <- function(.data, ..., .by = NULL, .preserve = FALSE) {
 relocate.dtatools_ref_data <- function(
     .data, ..., .before = NULL, .after = NULL
 ) {
-    .closed_reference_verb(.data, sys.call(), dplyr::relocate, parent.frame())
+    if (!is_dibble(.data)) {
+        return(.reference_delegate(
+            .data, sys.call(), dplyr::relocate, parent.frame()
+        ))
+    }
+    context <- .begin_dibble_result(.data, "relocate()", "columns")
+    locations <- .dibble_relocate_locations(
+        .data, rlang::expr(c(...)), rlang::enquo(.before),
+        rlang::enquo(.after), environment()
+    )
+    .dibble_select_columns(context, locations)
 }
 
 #' @export
 rename.dtatools_ref_data <- function(.data, ...) {
-    .closed_reference_verb(.data, sys.call(), dplyr::rename, parent.frame())
+    if (!is_dibble(.data)) {
+        return(.reference_delegate(
+            .data, sys.call(), dplyr::rename, parent.frame()
+        ))
+    }
+    context <- .begin_dibble_result(.data, "rename()", "columns")
+    changes <- tidyselect::eval_rename(rlang::expr(c(...)), .data)
+    names <- names(context$columns)
+    names[changes] <- names(changes)
+    .dibble_select_columns(context, stats::setNames(seq_along(names), names))
 }
 
 #' @export
@@ -2774,13 +2799,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # checked without being materialized.
 .string_declaration_holds <- function(column) {
     declared <- attr(column, "stata.string.storage", exact = TRUE)
-    if (is.null(declared)) return(FALSE)
-    valid <- is.character(declared) && length(declared) == 1L &&
-        !is.na(declared) && (identical(declared, "strL") || grepl(
-            "^str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5])$",
-            declared
-        ))
-    if (!valid) return(FALSE)
+    if (!.valid_string_declaration(declared)) return(FALSE)
     if (.is_unmaterialized_dictstring(column)) {
         return(.dta_string_storage_width(declared) >=
             max(1L, .dictstring_max_width(column)))
@@ -2788,6 +2807,14 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     if (anyNA(column)) return(FALSE)
     .dta_string_storage_width(declared) >=
         .dta_string_required_width(column)
+}
+
+.valid_string_declaration <- function(declared) {
+    is.character(declared) && length(declared) == 1L &&
+        !is.na(declared) && (identical(declared, "strL") || grepl(
+            "^str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5])$",
+            declared
+        ))
 }
 
 # A column no Stata storage can hold: raw, list, complex, a matrix, a
@@ -2815,6 +2842,10 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # for its values. `caller` names the entry point in errors.
 .typed_column <- function(column, row_count, caller) {
     if (.dta_typed_column(column)) return(column)
+    .normalize_untyped_column(column, row_count, caller)
+}
+
+.normalize_untyped_column <- function(column, row_count, caller) {
     if (.is_unmaterialized_dictstring(column)) {
         storage <- .normalize_dta_string_storage(
             NULL, .dictstring_max_width(column)
@@ -2859,10 +2890,10 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # The same for a column entering a dibble from construction or a verb,
 # where a column no Stata storage can hold passes through unchanged.
 .typed_column_named <- function(column, row_count, caller, name) {
-    if (.dta_typed_column(column) ||
-        .is_unmaterialized_dictstring(column) ||
+    if (.dta_typed_column(column)) return(column)
+    if (.is_unmaterialized_dictstring(column) ||
         !.dta_untypable_column(column)) {
-        return(.typed_column(column, row_count, caller))
+        return(.normalize_untyped_column(column, row_count, caller))
     }
     column
 }
@@ -3137,7 +3168,8 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     if (!is_dibble(data) || !is.data.frame(result) || is_dibble(result)) {
         return(result)
     }
-    .as_dibble(.isolate_shared_columns(result, sources), caller)
+    context <- .begin_dibble_result(data, caller, "unknown")
+    .finish_dibble_result(context, result, sources)
 }
 
 # A column the operation left alone, as `select()`, `relocate()`,
