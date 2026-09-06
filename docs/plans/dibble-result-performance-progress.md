@@ -251,3 +251,27 @@ do not qualify it. Discarded benchmark attempts exposed shared-oracle and
 compact-key serialization effects; the accepted runner freezes an independent
 oracle, checks source values and representation after every operation, and uses
 an explicitly ordinary-double group key. Compact row fixtures remain separate.
+
+Production `c6696c9` passed fresh standard conformance and full R check with
+13,953 assertions, no failures or skips, the four original test warnings,
+three check warnings and two notes. The focused suite passed 3,984 assertions
+without warnings or skips. Haven/labelled interoperability, pinned roxygen,
+six archive tests, source and macOS binary NOTICE, and the 106-export comparison
+also passed; native source remains identical to the merged Stage 1 base.
+Both independent reviewers inspected the optimization fixes. Correctness
+review compared 111 key-validator and 735 partition fixtures against the prior
+exact installation, plus 80 alias/cache/serialization cases and eight context
+corners. API review independently compared 66 validator cases, including
+custom record equality proxies and additional temporal and cast combinations.
+The reviewed memory runner checks the actual supplied dibble's public slots
+and attributes against frozen bytes, retaining independent comparison data.
+Final paired timing, retained-memory and process-peak measurements passed their
+fixture and preservation guards. The complete 96-case matrix resolves the
+initial grouped and wide-table regressions. One small grouped-reconstruction
+case remains slower by about 1.2–1.4 ms in controlled repeats because the supplied
+template is now validated; its allocation decreases. The final report records
+that cost, compact-index allocation growth, all raw measurements and the
+still-missed inherited 60 ms string-rename target. The portable 130 MB gate
+passes at 128,044,648 bytes. See the
+[Stage 2 report](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage2.md).
+Final evidence reviews and external PR gates remain pending.

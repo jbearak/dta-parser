@@ -1,0 +1,23 @@
+source_sha c8173b2af7105596f8a59e28e61a9bdd49fa8c3f 
+kind dict_string 
+runner_md5 41a5731788317005587688adb65b2ef7 
+retained_vector_heap_bytes 64005136 
+nominal_result_bytes 64022696 
+        2.99 real         2.96 user         0.09 sys
+          1377435648  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               98343  page reclaims
+                  37  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  79  voluntary context switches
+                 379  involuntary context switches
+         76182343838  instructions retired
+         13630788993  cycles elapsed
+          1360184904  peak memory footprint

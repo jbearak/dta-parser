@@ -94,3 +94,9 @@ Wrap that separate process with the platform's peak-RSS tool, such as
 `/usr/bin/time -l` on macOS. Its peak includes startup, fixtures and validation;
 it is not peak memory attributable only to the row operation. These retained
 and process-peak measurements are distinct from `bench` cumulative allocation.
+
+The [Stage 2 report](results-2026-09-06-stage2.md) records the exact final pair,
+the small grouped-reconstruction regression, retained heap and process peaks.
+`repeat-group-reconstruct.R LIBRARY OUTPUT_CSV SOURCE_SHA` repeats that
+10,000-row, 1,000-group case with three independent fixtures and fifteen
+iterations, retaining source and output guards outside timing.
