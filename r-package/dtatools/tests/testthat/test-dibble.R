@@ -1,4 +1,4 @@
-dibble_classes <- c("dtatools_ref_data", "tbl_df", "tbl", "data.frame")
+dibble_classes <- c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")
 
 test_that("dibble() builds a tibble that carries reference state", {
     data <- dibble(x = 1:3, y = c("a", "b", "c"), .rows = 3)
@@ -176,7 +176,7 @@ test_that("grouping keeps a dibble a dibble", {
     expect_s3_class(grouped, "grouped_df")
     expect_identical(
         class(grouped),
-        c("dtatools_ref_data", "grouped_df", "tbl_df", "tbl", "data.frame")
+        c("dibble", "dtatools_ref_data", "grouped_df", "tbl_df", "tbl", "data.frame")
     )
     expect_identical(dplyr::group_vars(grouped), "group")
     expect_identical(
@@ -209,7 +209,7 @@ test_that("grouping keeps a dibble a dibble", {
     # dibble.
     expect_identical(
         class(dplyr::filter(grouped, value > 1)),
-        c("dtatools_ref_data", "grouped_df", "tbl_df", "tbl", "data.frame")
+        c("dibble", "dtatools_ref_data", "grouped_df", "tbl_df", "tbl", "data.frame")
     )
     expect_identical(class(dplyr::filter(data, value > 1)), dibble_classes)
     # Group-wise assignment uses the dplyr groups, and the result stays a
@@ -230,7 +230,7 @@ test_that("readers, save_arrow, and dta_merge take the dibble container", {
     expect_true(is_dibble(with_notes))
     expect_identical(
         class(with_notes),
-        c("dtatools_ref_data", "dtatools_dta_metadata", "tbl_df", "tbl",
+        c("dibble", "dtatools_ref_data", "dtatools_dta_metadata", "tbl_df", "tbl",
           "data.frame")
     )
     expect_identical(
@@ -387,7 +387,7 @@ test_that("unknown stored containers fall back to a tibble", {
 test_that("dataset metadata setters keep a dibble's bracket dispatch", {
     data <- set_dta_note(dibble(x = 1:2), 1, "a note")
     expect_true(is_dibble(data))
-    expect_identical(class(data)[[1L]], "dtatools_ref_data")
+    expect_identical(class(data)[[1L]], "dibble")
     expect_s3_class(data, "dtatools_dta_metadata")
     data[x > 1, y := 9]
     expect_identical(as.double(data$y), c(NA, 9))
@@ -402,7 +402,7 @@ test_that("dataset metadata setters keep a dibble's bracket dispatch", {
     expect_identical(as.double(variable_scoped$y), c(NA, 5))
     expect_identical(dta_notes(variable_scoped, "x")[[1L]], "on x")
     with_characteristic <- set_dta_characteristic(dibble(x = 1), "k", "v")
-    expect_identical(class(with_characteristic)[[1L]], "dtatools_ref_data")
+    expect_identical(class(with_characteristic)[[1L]], "dibble")
     with_characteristic[, z := 1]
     expect_identical(as.double(with_characteristic$z), 1)
 })
@@ -1647,6 +1647,7 @@ test_that("serialized legacy dibbles retain typing and closure", {
     legacy <- dibble(x = 1:3)
     state <- dtatools:::.reference_state(legacy)
     state$dibble <- NULL
+    class(legacy) <- setdiff(class(legacy), "dibble")
     restored <- unserialize(serialize(legacy, NULL))
     expect_true(is_dibble(restored))
     restored$x <- c(4, 5, 6)

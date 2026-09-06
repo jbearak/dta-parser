@@ -585,7 +585,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     state$physical_count <- length(state$physical_names)
     state$generated_count <- 0L
     state$nrow <- abs(.row_names_info(data, 2L))
-    state$classes <- setdiff(class(data), "dtatools_ref_data")
+    state$classes <- .reference_base_classes(class(data))
     state$dibble <- dibble
     state
 }
@@ -611,7 +611,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     state$generated_head <- NULL
     state$generated_tail <- NULL
     state$nrow <- row_count
-    state$classes <- classes
+    state$classes <- .reference_base_classes(classes)
     state$dibble <- dibble
     state
 }
@@ -640,28 +640,40 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     .Call(C_dtatools_reserve_column_capacity, x, as.double(length(x)) + n)
 }
 
+# The public dataset identity comes before shared reference dispatch. Stored
+# base classes contain grouping and metadata behavior, never package identity.
+.reference_base_classes <- function(classes) {
+    setdiff(classes, c("dibble", "dtatools_ref_data"))
+}
+
+.reference_classes <- function(classes, dibble = FALSE) {
+    c(if (dibble) "dibble", "dtatools_ref_data",
+      .reference_base_classes(classes))
+}
+
 # The native marker records a non-owning identity token. Serialization clears
 # it; validation never follows it or repairs a shared environment in place.
 .mark_reference_data <- function(data, state) {
-    classes <- unique(c("dtatools_ref_data", state$classes))
+    classes <- .reference_classes(state$classes, isTRUE(state$dibble))
     .Call(C_dtatools_mark_reference_data, data, state, classes)
 }
 
 .reference_snapshot <- function(data) {
     state <- .reference_state(data)
-    if (is.null(state)) return(data)
+    if (is.null(state) && !any(class(data) %in%
+        c("dibble", "dtatools_ref_data"))) return(data)
     if (!.has_column_overlay(data)) {
         # A fresh dibble: every column is physical, so the snapshot is the
         # object minus its mark. Dropping the attribute shallow-copies the
         # list, which is what every `[` and dplyr call on a read result pays.
         attr(data, ".dtatools_ref_state") <- NULL
-        class(data) <- setdiff(class(data), "dtatools_ref_data")
+        class(data) <- .reference_base_classes(class(data))
         return(data)
     }
     result <- .data_columns(data)
     source_attributes <- attributes(data)
     source_attributes$.dtatools_ref_state <- NULL
-    source_attributes$class <- state$classes
+    source_attributes$class <- .reference_base_classes(state$classes)
     source_attributes$names <- names(result)
     automatic_rows <- .row_names_info(data, 1L) < 0L
     attributes(result) <- source_attributes
@@ -2406,7 +2418,11 @@ print.dtatools_ref_data <- function(x, ...) {
     if (.skip_bracket_autoprint(x, sys.nframe(), sys.call(1L))) {
         return(invisible(x))
     }
-    print(.dibble_display_snapshot(x), ...)
+    if (is_dibble(x)) {
+        .print_dibble(x, ...)
+    } else {
+        print(.reference_snapshot(x), ...)
+    }
     invisible(x)
 }
 
