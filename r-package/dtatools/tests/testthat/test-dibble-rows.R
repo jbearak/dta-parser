@@ -512,3 +512,19 @@ test_that("plain-reference reconstruction preserves raw payload row names", {
                          .row_names_info(payload, 0L))
     }
 })
+
+
+test_that("the row helper retains its shell's raw row-name policy", {
+    for (tibble in c(FALSE, TRUE)) for (row_names in list(NULL, 1:3, c("a", "b", "c"))) {
+        data <- data.frame(x = 1:3, y = 4:6)
+        if (tibble) data <- tibble::as_tibble(data)
+        if (!is.null(row_names)) attr(data, "row.names") <- row_names
+        data <- reserve_columns(data)
+        gen(data, z = x)
+        snapshot <- dtatools:::.reference_snapshot(data)
+        for (rows in list(1:3, 3:1, c(NA_integer_, 2L))) {
+            expect_identical(.row_names_info(slice_dta_rows(data, rows), 0L),
+                             .row_names_info(snapshot[rows, integer(), drop = FALSE], 0L))
+        }
+    }
+})

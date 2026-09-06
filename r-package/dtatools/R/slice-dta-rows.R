@@ -115,7 +115,7 @@ slice_dta_rows <- function(data, rows) {
         result_attributes <- c(
             list(
                 names = names(data),
-                row.names = attr(shell, "row.names", exact = TRUE)
+                row.names = .row_names_info(shell, 0L)
             ),
             custom,
             list(class = class(data))
@@ -128,7 +128,7 @@ slice_dta_rows <- function(data, rows) {
         result_attributes <- c(
             leading,
             list(
-                row.names = attr(shell, "row.names", exact = TRUE),
+                row.names = .row_names_info(shell, 0L),
                 class = class(data)
             )
         )

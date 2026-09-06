@@ -60,8 +60,9 @@ reconstruction are isolated and validated conservatively.
 
 Row paths preserve the automatic-versus-explicit row-name marker as well as
 visible names. The common context also repairs the Stage 1 plain-rename loss
-of automatic names. The explicit row helper constructs automatic result names;
-its former dibble path accidentally marked them explicit. This correction can
+of automatic names. The explicit row helper preserves the underlying container's row-name policy,
+including its automatic marker; its former assembly accidentally expanded that
+marker into explicit integers. This correction can
 remove an Arrow warning about discarded row-name metadata. Rowwise dibbles now
 work through the helper, while ordinary unmarked rowwise frames retain their
 previous unsupported status. These changes and grouped dataset metadata
