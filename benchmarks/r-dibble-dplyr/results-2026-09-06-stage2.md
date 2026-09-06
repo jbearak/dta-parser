@@ -95,8 +95,9 @@ at one million rows, respectively, while substantially reducing elapsed time.
 Their row-location planning remains linear; this is not a payload-sharing claim.
 
 One final case crossed the 10% and 1 ms investigation threshold: reconstruction
-of 10,000 rows with 1,000 groups measured 2.84 to 3.97 ms. Three isolated
-15-iteration repeats confirmed 2.787/2.752/2.751 ms baseline versus
+of 10,000 rows with 1,000 groups measured 2.84 to 3.97 ms. Three fresh-fixture
+repeats, each with fifteen iterations, ran in separate baseline and candidate
+processes. They confirmed 2.787/2.752/2.751 ms baseline versus
 3.983/4.154/4.029 ms candidate. Allocation improves from 5,257,256 to
 4,927,640 bytes; GC counts increase from two to four. The new hook validates the
 supplied template before reconstructing. Call traces confirm that extra input
