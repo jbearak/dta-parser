@@ -7,7 +7,8 @@ memory is cumulative R allocation, not peak RSS or total native allocation.
 
 The [2026-09-05 report](results-2026-09-05.md) records the baseline and a narrow
 validation prototype. The [implementation plan](../../docs/plans/dibble-result-performance.md)
-describes the proposed architecture. No production optimization is included here.
+describes the staged architecture. Later dated reports record production changes
+and keep their exact source revisions separate from the initial prototype.
 
 ## Reproduce
 
@@ -66,3 +67,30 @@ separately, and enforces the stage 1 limit of 130 MB for a 1M by 16 ordinary
 string rename. It does not replace the future owned-backing allocation gate.
 Run from the repository root with an isolated build of the recorded revision.
 The historical reports and their revision labels remain unchanged.
+
+
+## Direct row stage
+
+`run-rows.R LIBRARY OUTPUT_DIRECTORY SOURCE_SHA [ITERATIONS]` measures ordinary
+row brackets, the explicit helper, the dplyr row hook and the shared gatherer.
+Tall and wide fixtures cover ordinary doubles/strings, compact integers and
+dictionary strings, mixed columns, logicals and converted factors. Grouped
+fixtures separately measure reconstruction, validation and delegated filter/
+mutate consumers at 10,000, 100,000 and 1,000,000 rows. The default is nine
+iterations with GC included. All fixtures and public equivalence checks are
+outside timing; the runner rejects an unintended library, asserts dibble and
+compact fixture preconditions, and records its own file hash.
+
+The source oracle is serialized before operations and compared afterward.
+Full-row result comparisons use a separate deserialized oracle so they cannot
+materialize source ALTREP columns through a shared comparison target. Source
+values, attributes and compact state are checked before and after timing.
+`gather_only` isolates the common gather path but is not an additive timing
+component of the public operation.
+
+`row-memory.R LIBRARY KIND SOURCE_SHA` records the retained R vector-heap
+increase after GC for a one-million-row, sixteen-column half-row subset.
+Wrap that separate process with the platform's peak-RSS tool, such as
+`/usr/bin/time -l` on macOS. Its peak includes startup, fixtures and validation;
+it is not peak memory attributable only to the row operation. These retained
+and process-peak measurements are distinct from `bench` cumulative allocation.

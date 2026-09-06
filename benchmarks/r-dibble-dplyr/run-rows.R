@@ -87,7 +87,9 @@ for (rows in c(10000L, 100000L, 1000000L)) {
     gen(data, group = rep(seq_len(1000L), length.out = rows))
     data <- group_by(data, group)
     snapshot <- dtatools:::.reference_snapshot(data)
+    compact_before <- compact_state(data)
     source_bytes <- serialize(public_attributes(data), NULL)
+    stopifnot(identical(compact_state(data), compact_before))
     locations <- seq.int(1L, rows, by = 2L)
     candidate <- dtatools:::.reference_snapshot(data)[locations, ]
     case <- data.frame(kind = "grouped_double", rows = rows, columns = 17L)
@@ -113,11 +115,14 @@ for (rows in c(10000L, 100000L, 1000000L)) {
         } else {
             stopifnot(identical(actual$names, names(data)), identical(actual$nrow, nrow(data)))
         }
-        stopifnot(identical(serialize(public_attributes(data), NULL), source_bytes))
+        stopifnot(identical(serialize(public_attributes(data), NULL), source_bytes),
+                  identical(compact_state(data), compact_before))
         rm(actual)
         record(ops[[name]], data, case, name)
+        stopifnot(identical(serialize(public_attributes(data), NULL), source_bytes),
+                  identical(compact_state(data), compact_before))
     }
-    rm(data, pair, ops, candidate, snapshot, source_bytes)
+    rm(data, pair, ops, candidate, snapshot, source_bytes, compact_before)
     invisible(gc())
 }
 cat("Public row equivalence, source preservation and grouped validity checks passed.\n")
