@@ -48,6 +48,15 @@
 #' its expression's value. `as_dibble()` of a grouped tibble keeps its
 #' grouping.
 #'
+#' Printing and formatting use the heading `# A dibble:` and show declared
+#' Stata storage below column names: `byte`, `int`, `long`, `float`, `double`,
+#' `str#`, or `strL`. Temporal columns show storage and meaning, such as
+#' `float/date` and `double/dttm`. String widths come from the declaration,
+#' even for empty columns or values shorter than that width. Logical, factor,
+#' and other untyped columns retain their usual tibble type labels. Grouping,
+#' cell formatting, missing-value display, and tibble printing options are
+#' unchanged. Displaying a dibble leaves its stored columns unchanged.
+#'
 #' `as_dibble()` returns an ordinary dibble as is. For an additional container
 #' subclass it returns a new dibble without that subclass, retaining recognized
 #' grouped or rowwise structure and dataset metadata. The removed subclass's

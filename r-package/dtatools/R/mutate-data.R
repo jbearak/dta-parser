@@ -2406,7 +2406,7 @@ print.dtatools_ref_data <- function(x, ...) {
     if (.skip_bracket_autoprint(x, sys.nframe(), sys.call(1L))) {
         return(invisible(x))
     }
-    print(.reference_snapshot(x), ...)
+    print(.dibble_display_snapshot(x), ...)
     invisible(x)
 }
 

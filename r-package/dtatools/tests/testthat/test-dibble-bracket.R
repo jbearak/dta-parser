@@ -267,9 +267,9 @@ test_that("the next top-level print after a bracket assignment is skipped", {
     dtatools:::.suppress_bracket_autoprint(data)
     # Inside a test the print sits deep in the call stack, so it is never
     # taken for the assignment's autoprint; the record is spent regardless.
-    expect_output(print(data), "A tibble")
+    expect_output(print(data), "A dibble")
     expect_null(dtatools:::.bracket_print$skip)
-    expect_output(print(data), "A tibble")
+    expect_output(print(data), "A dibble")
 })
 
 test_that("the autoprint skip does not outlive its top-level statement", {
@@ -315,7 +315,7 @@ test_that("the autoprint skip does not outlive its top-level statement", {
     )
     for (index in 2:6) {
         expect_true(
-            any(grepl("tibble", section(index), fixed = TRUE)),
+            any(grepl("A dibble", section(index), fixed = TRUE)),
             info = paste("section", index)
         )
     }

@@ -28,7 +28,7 @@ test_that("dibble() builds a tibble that carries reference state", {
     expect_identical(as.double(alias$z), c(2, 4, 6))
 
     printed <- capture.output(print(data))
-    expect_true(any(grepl("A tibble: 3", printed, fixed = TRUE)))
+    expect_true(any(grepl("A dibble: 3", printed, fixed = TRUE)))
 })
 
 test_that("is_dibble distinguishes dibbles from other reference frames", {
