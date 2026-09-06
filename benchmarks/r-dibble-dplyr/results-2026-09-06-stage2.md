@@ -161,3 +161,24 @@ Reproduce the paired matrix and separate memory processes with the commands in
 case investigation with three independent fixtures and fifteen iterations each.
 Final evidence reviews and latest-head CI/CodeRabbit gates must complete before
 this stage merges.
+
+## Review follow-up: installation provenance
+
+The recorded pair above used the stated runner versions and manually verified
+exact archive installations. Both independent reviewers verified those source
+and installed artifacts. CodeRabbit subsequently identified that a direct runner
+invocation could pair an arbitrary SOURCE_SHA with a different library of the
+same package version. The new `install.R` exports the requested git revision,
+builds its archive, installs into a fresh library and records source/tree/archive
+identities plus installed-file hashes. All five runners accepting SOURCE_SHA
+check that binding before writing results. Missing, mismatched or changed
+installations fail closed, while the loaded-library assertion remains.
+Manifest ordering uses radix sorting so a changed collation locale cannot
+misidentify an unchanged installation.
+
+This startup guard does not change the timed operations or package source.
+Historical output retains its original source and runner hashes; provenance is
+not retroactively attached to those libraries. New exact installations and
+bounded mismatch, missing, malformed, changed-installation, locale and matching
+output checks qualify the guard separately. The original paired timing and
+whole-process memory figures are not relabeled as guarded-run measurements.

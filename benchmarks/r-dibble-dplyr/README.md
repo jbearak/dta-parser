@@ -20,22 +20,25 @@ library; do not use an older globally installed dtatools.
 benchmark_source=$(git rev-parse HEAD)
 git diff --exit-code "$benchmark_source" -- r-package/dtatools
 benchmark_root=$(mktemp -d /tmp/dibble-dplyr-benchmark.XXXXXX)
-mkdir -p "$benchmark_root/source" "$benchmark_root/library"
-git archive "$benchmark_source" r-package/dtatools | tar -x -C "$benchmark_root/source"
-R CMD INSTALL --preclean --library="$benchmark_root/library" \
-  "$benchmark_root/source/r-package/dtatools"
+Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
+  "$benchmark_root/library" "$benchmark_source"
 R_LIBS="$benchmark_root/library" Rscript --vanilla -e \
   'library(dtatools); testthat::test_local(commandArgs(TRUE)[1], filter="dibble|reference-copy|dta-string|dta-numeric|mutate-data|slice-dta-rows", load_package="installed", stop_on_failure=TRUE)' \
-  "$benchmark_root/source/r-package/dtatools"
+  "r-package/dtatools"
 Rscript --vanilla benchmarks/r-dibble-dplyr/run.R \
   "$benchmark_root/library" "$benchmark_root/results" "$benchmark_source" 7
 Rscript --vanilla benchmarks/r-dibble-dplyr/prototype.R \
   "$benchmark_root/library" "$benchmark_root/prototype"
 ```
 
-The baseline command requires clean tracked package source and exports only
-tracked files from that revision. For an implementation comparison, build the
-candidate's recorded commit the same way. `DTATOOLS_BENCH_KINDS` can restrict
+The installer exports only tracked package files from the resolved revision,
+builds its source archive and installs into a library without an existing
+dtatools package. After successful installation it records the full source SHA,
+package-tree ID, archive hash and installed-file hashes in a sidecar. Runners
+that accept SOURCE_SHA validate that sidecar before creating result directories
+or writing measurements, and retain the loaded-library path assertion. Missing
+provenance, a mismatched SHA or a changed installation fails before output.
+For an implementation comparison, install each recorded commit this way. `DTATOOLS_BENCH_KINDS` can restrict
 the comma-separated storage kinds for a targeted rerun.
 
 `run.R` checks equivalent result values and column attributes, input preservation,
@@ -100,3 +103,10 @@ the small grouped-reconstruction regression, retained heap and process peaks.
 `repeat-group-reconstruct.R LIBRARY OUTPUT_CSV SOURCE_SHA` repeats that
 10,000-row, 1,000-group case with three independent fixtures and fifteen
 iterations, retaining source and output guards outside timing.
+
+Run `test-provenance.R LIBRARY SOURCE_SHA` against a fresh `install.R` library
+for the bounded guard checks. It exercises every SOURCE_SHA runner with missing,
+mismatched, malformed and changed installation metadata, asserts no result
+output on rejection, and checks locale-independent fingerprints and matching
+result output. Older dated artifacts keep their recorded runner versions and
+manual exact-install verification; do not add provenance to an old library.

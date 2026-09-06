@@ -3,10 +3,11 @@
 args <- commandArgs(TRUE)
 if (length(args) != 3L) stop("Usage: repeat-group-reconstruct.R LIBRARY OUTPUT SOURCE_SHA")
 library_path <- normalizePath(args[[1L]], mustWork = TRUE)
+source("benchmarks/r-dibble-dplyr/helpers.R")
+validate_benchmark_install(library_path, args[[3L]])
 .libPaths(c(library_path, .libPaths()))
 suppressPackageStartupMessages({ library(dtatools); library(dplyr); library(bench) })
 stopifnot(identical(normalizePath(dirname(find.package("dtatools"))), library_path))
-source("benchmarks/r-dibble-dplyr/helpers.R")
 public_attributes <- function(data) {
     attr(data, ".dtatools_ref_state") <- NULL
     class(data) <- dtatools:::.reference_base_classes(class(data))

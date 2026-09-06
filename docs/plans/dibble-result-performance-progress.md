@@ -279,3 +279,14 @@ reported performance costs, derived evidence formatting and repeat-process
 boundaries. [PR #193](https://github.com/jbearak/dta-parser/pull/193) is open.
 Latest-head CI and substantive CodeRabbit review remain required before merge;
 Stage 2 remains active until that merge completes.
+
+CodeRabbit completed its first review of `b74bc21` with two findings. It
+explicitly withdrew the proposed base singleton/drop reorder after exact
+R 4.6.1 and separate baseline/candidate direct-reference probes confirmed the
+existing NULL-versus-error behavior. The provenance finding adds a fresh git
+archive installer and shared preflight binding for all five SOURCE_SHA runners.
+The sidecar records the source revision and installed-file hashes; checks run
+before output. A locale-ordering issue found during independent fix review uses
+radix ordering. Historical measured libraries and runner labels remain intact;
+new installation/guard tests are separate evidence. Final fix reviews and
+latest-head external gates are still required before merge.

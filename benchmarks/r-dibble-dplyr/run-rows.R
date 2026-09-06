@@ -3,6 +3,8 @@
 args <- commandArgs(TRUE)
 if (length(args) < 3L) stop("Usage: run-rows.R LIBRARY OUTPUT_DIRECTORY SOURCE_SHA [ITERATIONS]")
 library_path <- normalizePath(args[[1L]], mustWork = TRUE)
+source("benchmarks/r-dibble-dplyr/helpers.R")
+validate_benchmark_install(library_path, args[[3L]])
 output <- args[[2L]]
 source_sha <- args[[3L]]
 iterations <- if (length(args) > 3L) as.integer(args[[4L]]) else 9L
@@ -16,7 +18,6 @@ writeLines(c(paste("source_sha", source_sha),
              paste("library", library_path),
              paste("iterations", iterations), paste("utc", format(Sys.time(), tz = "UTC", usetz = TRUE)),
              capture.output(sessionInfo())), file.path(output, "session.txt"))
-source("benchmarks/r-dibble-dplyr/helpers.R")
 
 cases <- data.frame(kind = c(rep(c("double", "compact_int", "string", "mixed"), each = 2L),
                              "dict_string", "logical", "factor", "double", "compact_int"),
