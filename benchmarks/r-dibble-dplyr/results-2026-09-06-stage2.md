@@ -70,7 +70,10 @@ peak RSS.
 Raw [baseline](results-2026-09-06-stage2/baseline/rows.csv),
 [candidate](results-2026-09-06-stage2/candidate/rows.csv) and
 [comparison](results-2026-09-06-stage2/comparison.csv) files retain all cases,
-GC counts and allocation results. Shared-gather measurements are independent
+GC counts and allocation results. Checked-in evidence copies normalize line
+endings and trailing whitespace; session copies omit author-local library paths.
+The original process output is retained separately. Numerical fields and source
+identifiers are unchanged. Shared-gather measurements are independent
 microbenchmarks, not additive components of the public-operation medians.
 
 ## Regressions investigated

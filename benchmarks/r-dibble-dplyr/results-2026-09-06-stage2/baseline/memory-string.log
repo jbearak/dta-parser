@@ -1,8 +1,8 @@
-source_sha c8173b2af7105596f8a59e28e61a9bdd49fa8c3f 
-kind string 
-runner_md5 41a5731788317005587688adb65b2ef7 
-retained_vector_heap_bytes 64003544 
-nominal_result_bytes 64019112 
+source_sha c8173b2af7105596f8a59e28e61a9bdd49fa8c3f
+kind string
+runner_md5 41a5731788317005587688adb65b2ef7
+retained_vector_heap_bytes 64003544
+nominal_result_bytes 64019112
         2.36 real         2.29 user         0.05 sys
           1348681728  maximum resident set size
                    0  average shared memory size
