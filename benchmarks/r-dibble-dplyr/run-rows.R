@@ -60,12 +60,14 @@ for (index in seq_len(nrow(cases))) {
     expected <- dtatools:::.close_dibble(data, pair$typed_tibble[locations, ])
     for (name in names(ops)) {
         actual <- ops[[name]](data)
-        oracle <- if (name == "bracket_all") pair$typed_tibble else expected
+        oracle <- if (name == "bracket_all") unserialize(source_bytes) else expected
         stopifnot(identical(public_attributes(actual), public_attributes(oracle)),
                   identical(serialize(public_attributes(data), NULL), source_bytes),
                   identical(compact_state(data), compact_before))
         rm(actual)
         record(ops[[name]], data, case, name)
+        stopifnot(identical(serialize(public_attributes(data), NULL), source_bytes),
+                  identical(compact_state(data), compact_before))
     }
     # Isolate gather costs from grouping and finalization, without summing
     # these measurements into a claimed whole-operation decomposition.
@@ -73,6 +75,8 @@ for (index in seq_len(nrow(cases))) {
         dtatools:::.reference_snapshot(d), locations, fill_string_missing = FALSE)
     invisible(gather(data))
     record(gather, data, case, "gather_only")
+    stopifnot(identical(serialize(public_attributes(data), NULL), source_bytes),
+              identical(compact_state(data), compact_before))
     rm(pair, data, expected, ops, source_bytes, compact_before)
     invisible(gc())
 }
