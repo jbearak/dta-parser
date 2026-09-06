@@ -52,7 +52,7 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
         return(data.table::setalloccol(snapshot, n = n))
     }
     result <- .reserve_column_capacity(snapshot, n)
-    if (marked) {
+    if (marked || dibble) {
         result <- .mark_reference_data(
             result, .new_reference_state(result, dibble = dibble)
         )

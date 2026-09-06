@@ -46,3 +46,13 @@ conversion. Reference bookkeeping is separate from dibble type, and no helper ro
 writes through an object retained in shared state. Converting a function parameter
 still does not make ordinary nested attribute replacement reach its caller. Use the
 explicit metadata setters from [ADR 0028](0028-edit-metadata-on-the-supplied-table.md).
+
+Dibble identity is the leading public S3 class `dibble`. An ungrouped dibble has
+`c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")`; grouping and
+metadata classes follow the two package classes. `dtatools_ref_data` remains
+shared support for explicit reference mutation, so ordinary tibbles and base
+frames can carry it without becoming dibbles or typing existing columns.
+Creation and restoration build this class chain centrally. Ordinary-container
+conversions and internal delegation snapshots remove both classes. Printing
+uses the real `dibble` dispatch and pillar summary hook, retaining dataset
+identity on a display snapshot without changing stored columns.

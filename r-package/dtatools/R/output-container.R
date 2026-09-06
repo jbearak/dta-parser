@@ -141,7 +141,7 @@
 # Explicit mutation supports these complete class chains plus package markers.
 # Unknown subclasses can carry invariants our physical commits cannot update.
 .mutation_container_classes <- function(data) {
-    setdiff(class(data), c("dtatools_ref_data", "dtatools_dta_metadata"))
+    setdiff(.reference_base_classes(class(data)), "dtatools_dta_metadata")
 }
 
 .supported_mutation_container <- function(data) {

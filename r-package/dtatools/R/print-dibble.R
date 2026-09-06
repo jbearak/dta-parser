@@ -1,5 +1,5 @@
-# Printing alone adds these classes. General snapshots remain ordinary
-# tibbles, and the stored columns keep their classes and compact backing.
+# General snapshots remove dibble dispatch. A display snapshot restores only
+# its public identity, plus temporary string views; stored columns are unchanged.
 .dibble_display_snapshot <- function(x) {
     result <- .reference_snapshot(x)
     if (!is_dibble(x)) return(result)
@@ -14,22 +14,43 @@
             result[[index]] <- column
         }
     }
-    class(result) <- c("dtatools_dibble_display", class(result))
+    class(result) <- c("dibble", class(result))
     result
 }
 
 # Use pillar's summary hook so grouped and rowwise summaries still supply
 # their own dimensions and grouping lines.
 #' @exportS3Method pillar::tbl_sum
-tbl_sum.dtatools_dibble_display <- function(x, ...) {
+tbl_sum.dibble <- function(x, ...) {
     result <- NextMethod()
     names(result)[[1L]] <- "A dibble"
     result
 }
 
+# Delegate to the registered ordinary table method so pillar can still call
+# tbl_sum.dibble on the snapshot, without recursively dispatching print.dibble.
+.print_dibble <- function(x, ...) {
+    utils::getS3method("print", "tbl")(.dibble_display_snapshot(x), ...)
+}
+
+#' @export
+print.dibble <- function(x, ...) {
+    if (.skip_bracket_autoprint(x, sys.nframe(), sys.call(1L))) {
+        return(invisible(x))
+    }
+    .print_dibble(x, ...)
+    invisible(x)
+}
+
+#' @export
+format.dibble <- function(x, ...) {
+    utils::getS3method("format", "tbl")(.dibble_display_snapshot(x), ...)
+}
+
+# Legacy dibbles still dispatch through shared reference support.
 #' @export
 format.dtatools_ref_data <- function(x, ...) {
-    format(.dibble_display_snapshot(x), ...)
+    if (is_dibble(x)) format.dibble(x, ...) else format(.reference_snapshot(x), ...)
 }
 
 # These labels read declarations only, including for empty vectors and

@@ -11,7 +11,7 @@
     }
     result <- .metadata_copy(data)
     attr(result, ".dtatools_ref_state") <- NULL
-    class(result) <- setdiff(class(data), "dtatools_ref_data")
+    class(result) <- .reference_base_classes(class(data))
     result
 }
 
@@ -20,7 +20,7 @@
     old_state <- .reference_state(data)
     # Construct all bookkeeping before the first write. No shared environment
     # is updated, including when the supplied table is the old state's owner.
-    state <- if (!is.null(old_state)) {
+    state <- if (!is.null(old_state) || is_dibble(data)) {
         .new_reference_state(staged, dibble = is_dibble(data))
     } else NULL
     for (location in locations) {

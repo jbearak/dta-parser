@@ -8,6 +8,20 @@
 #' tests for one. Those are the only ways to get one: no operation turns a
 #' table you already have into a dibble behind your back.
 #'
+#' New ungrouped dibbles have class
+#' `c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")`.
+#' Grouping and metadata classes follow `dibble` and shared reference support.
+#' The `dibble` class identifies current objects even after bookkeeping or
+#' spare capacity is lost. `is_dibble()` also recognizes legacy serialized
+#' objects without that class: their reference-state flag must be `TRUE`,
+#' or absent with stored tibble classes. An explicit legacy `FALSE` stays
+#' ordinary. Prefer `is_dibble()` to exact class comparisons for recognition
+#' across package versions. This predicate does not validate ownership or
+#' capacity. Assign [reserve_columns()] when preparation is needed.
+#' Assigned `as_dibble()`, `copy_data()`, and `reserve_columns()` upgrade
+#' legacy dibbles to the current class on a fresh object, leaving aliases
+#' and their shared bookkeeping unchanged.
+#'
 #' [gen()], \code{\link[=replace_values]{replace_values()}}, [keep_vars()],
 #' and the other by-reference operations change a prepared dataset in place.
 #' Within capacity, every binding sees the change. [gen()] keeps an ordinary
@@ -104,7 +118,7 @@ dibble <- function(...) {
 #' @rdname dibble
 #' @export
 as_dibble <- function(x) {
-    if (is_dibble(x) && .supported_mutation_container(x)) return(x)
+    if (inherits(x, "dibble") && .supported_mutation_container(x)) return(x)
     if (!is.data.frame(x)) {
         stop("`x` must be a data frame, tibble, or data table", call. = FALSE)
     }
@@ -119,12 +133,10 @@ as_dibble <- function(x) {
 #' @rdname dibble
 #' @export
 is_dibble <- function(x) {
-    if (!inherits(x, "dtatools_ref_data")) return(FALSE)
+    if (inherits(x, "dibble")) return(TRUE)
     state <- .reference_state(x)
-    # Dibble-ness is recorded, not inferred from the container. A tibble
-    # that went through `gen()` carries reference state and is still a
-    # tibble; only `as_dibble()`, `dibble()`, and the readers build the
-    # Stata dataset, and only they set the flag.
+    # Current type identity is independent of ownership and legacy flags.
+    # Older serialized objects use the flag in their reference state.
     if (is.null(state)) return(FALSE)
     # Serialized pre-0025 dibbles have no explicit flag. Preserve a stored
     # FALSE on ordinary containers that acquired state through gen().

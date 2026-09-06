@@ -964,7 +964,7 @@ test_that("save_arrow reports custom row metadata the profile drops", {
     # The custom class is gone; the reader's default container takes over.
     expect_identical(
         class(actual),
-        c("dtatools_ref_data", "tbl_df", "tbl", "data.frame")
+        c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")
     )
     expect_true(is_dibble(actual))
     expect_identical(

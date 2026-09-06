@@ -33,6 +33,20 @@ tests for one. Those are the only ways to get one: no operation turns a
 table you already have into a dibble behind your back.
 }
 \details{
+New ungrouped dibbles have class
+\code{c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")}.
+Grouping and metadata classes follow \code{dibble} and shared reference support.
+The \code{dibble} class identifies current objects even after bookkeeping or
+spare capacity is lost. \code{is_dibble()} also recognizes legacy serialized
+objects without that class: their reference-state flag must be \code{TRUE},
+or absent with stored tibble classes. An explicit legacy \code{FALSE} stays
+ordinary. Prefer \code{is_dibble()} to exact class comparisons for recognition
+across package versions. This predicate does not validate ownership or
+capacity. Assign \code{\link[=reserve_columns]{reserve_columns()}} when preparation is needed.
+Assigned \code{as_dibble()}, \code{copy_data()}, and \code{reserve_columns()} upgrade
+legacy dibbles to the current class on a fresh object, leaving aliases
+and their shared bookkeeping unchanged.
+
 \code{\link[=gen]{gen()}}, \code{\link[=replace_values]{replace_values()}}, \code{\link[=keep_vars]{keep_vars()}},
 and the other by-reference operations change a prepared dataset in place.
 Within capacity, every binding sees the change. \code{\link[=gen]{gen()}} keeps an ordinary

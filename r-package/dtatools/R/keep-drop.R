@@ -400,7 +400,7 @@ rename_vars <- function(data, ..., .names = NULL) {
 ) {
     state <- original$state
     dibble_input <- is_dibble(data)
-    source_classes <- setdiff(class(data), "dtatools_ref_data")
+    source_classes <- .reference_base_classes(class(data))
     .prepare_column_operation(data, length(retained_columns))
     final_state <- NULL
     if (!is.null(state) || dibble_input) {
@@ -409,7 +409,7 @@ rename_vars <- function(data, ..., .names = NULL) {
         class(planned) <- source_classes
         final_state <- .new_reference_state(planned, dibble = dibble_input)
     }
-    reference_classes <- unique(c("dtatools_ref_data", source_classes))
+    reference_classes <- .reference_classes(source_classes, dibble_input)
 
     select <- function() .Call(
         C_dtatools_select_data_columns, data, unname(retained_columns),

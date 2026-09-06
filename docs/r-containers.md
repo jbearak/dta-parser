@@ -47,6 +47,27 @@ Ordinary replacement uses copy-and-rebind semantics in every container. For meta
 
 Grouping works the same way everywhere: `by = ` groups in current row order, `bysort = ` sorts by reference and then groups, and a grouped tibble or dibble supplies its dplyr groups. The order of operations is Stata's — groups first, then row selection and values per group, with `.n` and `.N` as the within-group row number and count — rather than data.table's, which applies `i` before grouping.
 
+## Class identity and older objects
+
+An ungrouped dibble has class
+`c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")`.
+Grouping and metadata classes follow the first two classes. Ordinary tibbles and
+base frames can acquire `dtatools_ref_data` support through explicit helpers;
+they do not acquire `dibble` or change their existing column classes.
+
+Use `is_dibble(data)` for recognition across versions. It recognizes the new
+class and supported older serialized dibbles that recorded their type only in
+reference state. A stored `TRUE` means dibble; an absent flag falls back to stored
+tibble classes. A stored `FALSE` without the new class remains ordinary.
+Assigned `as_dibble()`, `copy_data()`, or `reserve_columns()` upgrades a legacy
+dibble on a fresh object, leaving aliases unchanged. `as_tibble()` and
+`as.data.frame()` remove dibble and shared reference dispatch.
+
+The new leading class changes exact `class()` comparisons and S3 dispatch.
+Type identity does not promise valid reference bookkeeping or spare capacity.
+After R serialization, assign `data <- reserve_columns(data)` before structural
+mutation. Current dibble identity survives that loss of preparation.
+
 ## What column type results
 
 A dibble types the whole dataset. Plain tibbles, data frames, and data tables keep their existing column classes. `gen()` and `egen()` apply Stata generation rules to their new column on every supported container. Ordinary operations on the other containers retain their own R column semantics. The last column below describes those ordinary operations, not generation.
