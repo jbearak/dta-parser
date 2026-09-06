@@ -85,6 +85,22 @@
         call[[2L]] <- snapshot
         return(.close_dibble(data, eval(call, environment)))
     }
+    metadata_selected <- NULL
+    if (inherits(snapshot, "dtatools_dta_metadata")) {
+        # The metadata wrapper selects indices before NextMethod matches the
+        # container method's arguments. Force its subscript once, then retain
+        # the value as a quoted argument for subsequent container planning.
+        metadata_call <- match.call(`[.dtatools_dta_metadata`, call, expand.dots = FALSE)
+        metadata_selected <- stats::setNames(seq_along(snapshot), names(snapshot))
+        subscript <- if (one_dimension) "i" else "j"
+        if (subscript %in% names(metadata_call)) {
+            value <- eval(metadata_call[[subscript]], environment)
+            metadata_selected <- metadata_selected[value]
+            where <- if (subscript %in% names(call)) match(subscript, names(call)) else
+                if (one_dimension) 3L else 4L
+            call[[where]] <- call("quote", value)
+        }
+    }
     method <- if (grouped || rowwise) {
         # These two dplyr bracket methods have no dots argument. Keep their
         # argument-matching errors without loading either implementation.
@@ -114,10 +130,9 @@
         return(.close_dibble(data, result))
     }
     if (!inherits(snapshot, "tbl_df")) {
-        return(.reference_base_rows(snapshot, matched, call, environment))
+        return(.reference_base_rows(snapshot, matched, call, environment, metadata_selected))
     }
-    metadata_first <- inherits(snapshot, "dtatools_dta_metadata")
-    if (!metadata_first) i <- if (supplied_i) eval(matched$i, environment) else NULL
+    i <- if (supplied_i) eval(matched$i, environment) else NULL
     j <- if (supplied_j) eval(matched$j, environment) else NULL
     # Evaluate extra arguments just as the underlying method does. Tibble
     # accepts unused dots; base data frames report their own unused arguments.
@@ -128,7 +143,6 @@
     explicit <- intersect(c("x", "i", "j"), names(call))
     for (name in explicit) names(column_call)[match(name, c("", "x", "i", "j", "drop"))] <- name
     selected <- eval(column_call, environment)
-    if (metadata_first) i <- if (supplied_i) eval(matched$i, environment) else NULL
     row_frame <- tibble::new_tibble(list(.row = seq_len(nrow(snapshot))), nrow = nrow(snapshot))
     attr(row_frame, "row.names") <- attr(snapshot, "row.names", exact = TRUE)
     row_plan <- if (supplied_i) row_frame[i, , drop = FALSE] else row_frame
@@ -165,7 +179,7 @@
 # from the same two-index call. Plan columns as a list so frame name repair does
 # not change a later list result. The one-column row frame supplies base row
 # names and locations, and the shared gatherer applies base fallback semantics.
-.reference_base_rows <- function(snapshot, matched, original_call, environment) {
+.reference_base_rows <- function(snapshot, matched, original_call, environment, selected) {
     has_i <- "i" %in% names(matched)
     has_j <- "j" %in% names(matched)
     has_drop <- "drop" %in% names(matched)
@@ -173,15 +187,8 @@
         warning("named arguments other than 'drop' are discouraged", call. = FALSE)
     }
     metadata_first <- inherits(snapshot, "dtatools_dta_metadata")
-    selected <- seq_along(snapshot)
     restore <- function(result) {
         if (metadata_first) .restore_subset_dta_metadata(snapshot, result, selected) else result
-    }
-    if (metadata_first && has_j) {
-        j <- eval(matched$j, environment)
-        # The metadata wrapper determines its selected columns before base
-        # evaluates drop or rows, including the index's own error behavior.
-        selected <- stats::setNames(seq_along(snapshot), names(snapshot))[j]
     }
     if (!has_i) {
         drop <- if (has_drop) eval(matched$drop, environment) else TRUE

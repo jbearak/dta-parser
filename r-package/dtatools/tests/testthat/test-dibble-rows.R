@@ -438,3 +438,26 @@ test_that("reference row subsets preserve the metadata wrapper's policies", {
         expect_identical(events, expected_order)
     }
 })
+
+test_that("metadata subscript forcing precedes container argument validation", {
+    for (kind in c("base", "tibble", "grouped", "rowwise")) {
+        data <- data.frame(x = 1:3, y = 4:6)
+        if (kind != "base") data <- tibble::as_tibble(data)
+        if (kind == "grouped") data <- dplyr::group_by(data, x)
+        if (kind == "rowwise") data <- as_dibble(dplyr::rowwise(data, x)) else {
+            data <- reserve_columns(data)
+            gen(data, marker = x)
+        }
+        add_dta_note(data, "dataset")
+        expect_s3_class(data, "dtatools_ref_data")
+        expect_error(data[, stop("column expression"), extra = 1], "column expression")
+        if (kind != "base") {
+            expect_error(data[stop("row expression"), "absent"], "row expression")
+        }
+        events <- character()
+        cols <- function() { events <<- c(events, "j"); "absent" }
+        rows <- function() { events <<- c(events, "i"); stop("row expression") }
+        suppressWarnings(try(data[rows(), cols()], silent = TRUE))
+        expect_identical(events, if (kind == "base") "j" else c("j", "i"))
+    }
+})

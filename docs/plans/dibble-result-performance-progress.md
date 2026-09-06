@@ -199,3 +199,16 @@ incorporated. NOTICE records this adaptation and the base R 4.6.1 subsetting
 control-flow adaptation, with the exact upstream copyright and complete
 GPL-2-or-later COPYING text. DESCRIPTION and README carry the new attribution.
 The package remains GPL-3; no native source or export has changed.
+
+Candidate `24b1025` passed standard conformance, R package checks and examples
+with the original three check warnings and two notes. Fresh installed focused
+checks, interoperability, roxygen, six archive tests, exact source/installed/
+macOS binary NOTICE and the 106-export comparison passed. Its retained full
+installed suite passed 13,831 assertions with five warnings; that mode's warning
+count is being compared against the same-mode baseline before attribution.
+The second review's corrected 2,560-case evaluation sweep then exposed 304
+metadata-wrapper force-order differences. The fix plans the wrapper's selected
+indices before underlying method argument matching and delays column validation
+until after the row expression where tibble requires it. All 2,560 working-source
+cases pass, with explicit reference-class preconditions. Final installed gates
+remain required for this fix.
