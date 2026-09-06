@@ -1,8 +1,8 @@
 # Direct dibble operations and optional dplyr
 
-Status: stage 1 revised to existing native primitives on 2026-09-06 for
-[issue #172](https://github.com/jbearak/dta-parser/issues/172), under independent re-review before PR and
-external gates. Stages 2 through 9 remain pending. See the
+Status: stage 1 merged as PR #192 on 2026-09-06 for
+[issue #172](https://github.com/jbearak/dta-parser/issues/172). Stage 2 is active;
+stages 3 through 9 remain pending. See the
 [progress record](dibble-result-performance-progress.md) for current heads,
 checks, review and merge state. The chosen architecture is package-owned direct
 operations. The starting main was `5ad44406f9b80db81789dcf7b7e1756c28502559`,
@@ -558,8 +558,14 @@ implementation uses the existing character-generation kernel and changes no
 native source. Independent reviewers must confirm the final scope and gates
 before that R-only PR proceeds. The baseline failure is not a passing gate.
 
-Before the first later PR with native changes can merge, the original reference
-allocation runner must pass unchanged. The handoff permits first-write cost to
+Before the first later PR with native changes can merge, the reference
+allocation runner's numerical budgets and safety guarantees must pass with
+independently reviewed fixture preconditions. A read-only audit after Stage 1
+found obsolete bare `gen()` fixtures and unknown borrowed first-write cases.
+Stage 3 must assign preparation outside timing and measure capture separately
+from strict private writes, without weakening their budgets or rollback and
+isolation assertions. This qualification is pending; do not claim that the
+byte-identical historical runner passes. The handoff permits first-write cost to
 scale with the changed column, but this runner also forbids a column-sized copy
 on the first borrowed, unprepared data-frame write. Current monolithic compact
 backing and R's conservative sharing flag cannot distinguish that fixture from

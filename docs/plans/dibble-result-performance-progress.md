@@ -7,7 +7,7 @@ authorized sequential PR, independent-review, CI and CodeRabbit process. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stage 1 PR open, external gates pending
+## Stage 1 complete, Stage 2 active
 
 Branch `codex/direct-dibble-columns`, implemented in an isolated worktree. Direct select, rename and relocate share result
 context/finalization and a private validated constructor. Ordinary payloads still
@@ -67,7 +67,11 @@ independent final evidence reviews are clean, with all actionable findings
 closed. The full timing matrix remains attributed to `be9eac34`; the follow-up changes structural metadata
 and row-name policy, not column storage or string validation. No native source
 has changed.
-No stage has merged yet.
+Stage 1 merged normally as [PR #192](https://github.com/jbearak/dta-parser/pull/192)
+on 2026-09-06, at `c8173b2af7105596f8a59e28e61a9bdd49fa8c3f`. All 16 CI
+checks and completed latest-head CodeRabbit review passed, with all findings
+closed. Root independently confirmed that the merged tree matches reviewed
+head `6c6e59cd28106f406604c98b1d6cc8c30b9a23af` exactly.
 
 Attribution: pinned dplyr selector/group policies and tests were adapted;
 dtplyr was studied only. Installed NOTICE includes exact revisions, destinations,
@@ -75,24 +79,39 @@ modifications and full MIT notices. DESCRIPTION credits the copyright holder;
 README links the detailed notice. Historical 2026-09-05 artifacts retain their
 original dates and revision labels.
 
-Next: inspect CI plus completed
-CodeRabbit summaries and inline comments on the latest head. Address findings
-with independent fix review before root performs the normal merge.
+Stage 2 is active on `codex/direct-dibble-rows`, in an isolated worktree based
+on that merge. It owns shared batch row gathering, package-owned grouping
+validation and rebuilding, ordinary bracket slicing, and dplyr row/reconstruction
+hooks. Entry points retain their separate indexing and grouping policies.
+Direct expression `slice()` remains Stage 6 work; full vctrs/bind integration
+remains Stage 8 work. This stage must preserve metadata, Stata typing, container
+classes, assigned capacity preparation and symmetric later-write isolation.
+Serialized grouped fixtures must work through package-native consumers without
+loading dplyr. Stage 9 still owns Imports changes and genuinely absent-dplyr CI.
+
+Next: implement those shared modules without native changes, run focused and
+full gates, complete two independent actual-diff reviews and fix reviews, then
+open a focused PR for latest-head CI and substantive CodeRabbit review. Root
+will independently verify gates and perform the normal merge.
 
 ## Native ownership prerequisite and pending stages
 
 The unchanged reference allocation runner fails at its first sparse-write budget
 on starting main, the initial prototype and final package source `be9eac34`:
 5,000,048 bytes per call. The original
-runner remains unchanged. It must pass before any later PR with native changes
-merges, and before the epic completes. First-write capture cannot safely skip
+runner remains unchanged. Its numerical budgets and isolation/rollback guarantees must be qualified
+before any later PR with native changes merges, and before the epic completes.
+An independent read-only audit found obsolete bare `gen()` fixtures and
+unknown borrowed first-write assumptions. Stage 3 must review assigned fixture
+preparation and separate capture measurements from strict private-write gates.
+No threshold changes or passing byte-identical historical runner are claimed. First-write capture cannot safely skip
 ambiguous aliases; current monolithic backing would copy the changed column.
 A second reproduction shows that entry-time sharing proof can become stale when
 an evaluated expression exports a column alias. Both reproductions and the
 required dependency repair are recorded in the [plan](dibble-result-performance.md).
 Neither finding is closed by the R-only stage 1 revision.
 
-Stages 2 through 9 remain pending: shared row gathering and grouping; owned
+Stage 2 is active as recorded above. Stages 3 through 9 remain pending: owned
 doubles; owned strings/logicals/integers; expression engine; filter/order/distinct/
 slice families; summaries/callbacks; joins/binding/hooks; independent recoding
 and optional dplyr configuration. Reconcile the ownership prerequisite before
@@ -129,3 +148,153 @@ Row-name expectations retain the old policy: select/relocate reset them; plain
 rename preserves them, including legacy generated/structural overlays;
 grouped/rowwise rename resets them. Independent review checked 144 metadata
 cases and a separate 36-case row-name matrix, then reviewed the fixes.
+
+The stricter minimum-version preflight found that pristine dplyr 1.1.0 and
+1.2.0 sources fail compilation under R 4.6.1 because removed promise APIs are
+used before dtatools runs. These are not runtime compatibility results. Current
+dplyr 1.2.1 works. Stages 5 and 9 must qualify an installable supported minimum.
+
+## Stage 2 implementation and validation in progress
+
+Shared modules now own grouping validation, key extraction, sorted grouping and
+factor expansion, row gathering, ordinary base/tibble reference-frame brackets,
+and the dplyr row/reconstruction hooks. Native source and the 106 existing
+exports are unchanged. Plain data.table bracket expressions retain their own
+container method; row gathering is direct through `slice_dta_rows()`.
+A fresh installed build passes 1,930 focused row, bracket, gather and selector
+assertions with no failures, warnings or skips. Serialized grouped fixtures
+pass in a fresh process that confirms dplyr remains unloaded through package
+brackets, slicing, gen, egen and regrouping. The early development-load bracket
+subprocess failures came from the stale global installation; all 162 bracket
+assertions now pass against the fresh package. Full checks, conformance,
+interoperability, benchmarks and two independent actual-diff reviews remain
+in progress. Exact Stage 1 hook evidence confirms that padded string rows keep
+vctrs row names through the shared finalizer; using public `as_dibble()` as the
+oracle would reset those names and would not represent that public path.
+Provenance now includes the pinned dplyr factor-expansion and row-hook policies
+adapted in this stage. The installed NOTICE retains the full license.
+
+The first committed Stage 2 candidate, `f1e0dfa`, failed the full standard
+conformance check with two class-order failures, 13,736 passing assertions,
+14 test warnings, three check warnings and three notes. The extra check note
+identified an unqualified utility call. Fixes preserve grouping-class placement,
+remove synthetic base named-argument warnings and qualify that call. An extra
+`--as-cran` run failed the same tests and reported mode-specific dependency and
+native diagnostics; it is separate evidence from the standard check baseline.
+Fresh installed full checks of the fixes are still required.
+
+Independent API review exposed base fallback differences for named vectors,
+matrices and nested columns, and a separate base drop-policy mismatch. Corrected
+fixtures explicitly assert reference dispatch. The old 1,280-case evaluation
+sweep used unmarked reserved frames and is withdrawn as direct-path evidence.
+Corrected working-source sweeps pass 18,144 reference edge cases, 390 fallback
+cases and 640 evaluation-order cases. A further 1,440-case custom/Stata metadata
+matrix passes after restoring base's supplied-column attribute policy and
+sharing the existing table/column metadata restoration routine. These are
+working-source review results, not substitutes for the final installed checks.
+
+Grouping reconstruction now honors `dplyr.legacy_locale` through public vctrs
+ordering proxies and base order. Its dplyr-owned lifecycle notification is not
+incorporated. NOTICE records this adaptation and the base R 4.6.1 subsetting
+control-flow adaptation, with the exact upstream copyright and complete
+GPL-2-or-later COPYING text. DESCRIPTION and README carry the new attribution.
+The package remains GPL-3; no native source or export has changed.
+
+Candidate `24b1025` passed standard conformance, R package checks and examples
+with the original three check warnings and two notes. Fresh installed focused
+checks, interoperability, roxygen, six archive tests, exact source/installed/
+macOS binary NOTICE and the 106-export comparison passed. Its retained full
+installed suite passed 13,831 assertions with five warnings; that mode's warning
+count is being compared against the same-mode baseline before attribution.
+The second review's corrected 2,560-case evaluation sweep then exposed 304
+metadata-wrapper force-order differences. The fix plans the wrapper's selected
+indices before underlying method argument matching and delays column validation
+until after the row expression where tibble requires it. All 2,560 working-source
+cases pass, with explicit reference-class preconditions. Final installed gates
+remain required for this fix.
+
+Exact baseline comparison identified the fifth installed-suite warning as a
+Stage 2 regression: reconstruction changed automatic row names into explicit
+integer names, which Arrow then reported as dropped metadata. New row planning
+and reconstruction now carry `.row_names_info(..., 0L)`, preserving that
+bookkeeping as well as visible names. The join/Arrow probe is warning-free.
+The legacy-locale review also found interleaved NA/NaN prefixes during factor
+expansion. Expansion now follows contiguous runs, matching the upstream
+VectorExpander policy. Both fixes have committed regression coverage and remain
+subject to final independent review and fresh installed validation.
+
+Root's independent baseline probe identified the same automatic-row-name loss
+in Stage 1 plain rename: original pre-epic names were automatic, but the shared
+context had expanded them. The raw row-name repair therefore covers the common
+context for selectors too. Plain rename preserves automatic or custom names;
+select and relocate retain their established reset policy. Regression tests
+assert the compact bookkeeping directly, alongside the existing visible-name
+and full-attribute comparisons.
+
+Package source `544af28` passed both independent fix reviews, fresh standard
+conformance and full R check: 13,903 assertions, no failures or skips, the four
+baseline test warnings, three check warnings and two notes. Focused checks,
+interoperability, roxygen, source and binary archives, installed NOTICE and the
+106-export comparison passed. Independent review also confirmed metadata
+force order, raw row-name policies, grouping ties and symmetric write isolation.
+
+The first complete paired row benchmark used identical runner `da40094` with
+fresh Stage 1 and `544af28` libraries. It found substantial row-gather gains but
+also grouped reconstruction/mutation and wide-helper regressions. Controlled
+repeats confirmed repeated class restoration in key validation and repeated
+source-membership hashing in finalization. The current R-only fixes cast group
+keys at their original cardinality before expanding equality proxies, validate
+partitions with linear counts, and batch source membership. All input and
+output validation and isolation rules remain. Two independent fix reviews and
+fresh checks and measurements are required for this revision; earlier timings
+do not qualify it. Discarded benchmark attempts exposed shared-oracle and
+compact-key serialization effects; the accepted runner freezes an independent
+oracle, checks source values and representation after every operation, and uses
+an explicitly ordinary-double group key. Compact row fixtures remain separate.
+
+Production `c6696c9` passed fresh standard conformance and full R check with
+13,953 assertions, no failures or skips, the four original test warnings,
+three check warnings and two notes. The focused suite passed 3,984 assertions
+without warnings or skips. Haven/labelled interoperability, pinned roxygen,
+six archive tests, source and macOS binary NOTICE, and the 106-export comparison
+also passed; native source remains identical to the merged Stage 1 base.
+Both independent reviewers inspected the optimization fixes. Correctness
+review compared 111 key-validator and 735 partition fixtures against the prior
+exact installation, plus 80 alias/cache/serialization cases and eight context
+corners. API review independently compared 66 validator cases, including
+custom record equality proxies and additional temporal and cast combinations.
+The reviewed memory runner checks the actual supplied dibble's public slots
+and attributes against frozen bytes, retaining independent comparison data.
+Final paired timing, retained-memory and process-peak measurements passed their
+fixture and preservation guards. The complete 96-case matrix resolves the
+initial grouped and wide-table regressions. One small grouped-reconstruction
+case remains slower by about 1.2–1.4 ms in controlled repeats because the supplied
+template is now validated; its allocation decreases. The final report records
+that cost, compact-index allocation growth, all raw measurements and the
+still-missed inherited 60 ms string-rename target. The portable 130 MB gate
+passes at 128,044,648 bytes. See the
+[Stage 2 report](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage2.md).
+Both final independent evidence reviews are clean at `b74bc21`, including the
+reported performance costs, derived evidence formatting and repeat-process
+boundaries. [PR #193](https://github.com/jbearak/dta-parser/pull/193) is open.
+Latest-head CI and substantive CodeRabbit review remain required before merge;
+Stage 2 remains active until that merge completes.
+
+CodeRabbit completed its first review of `b74bc21` with two findings. It
+explicitly withdrew the proposed base singleton/drop reorder after exact
+R 4.6.1 and separate baseline/candidate direct-reference probes confirmed the
+existing NULL-versus-error behavior. The provenance finding adds a fresh git
+archive installer and shared preflight binding for all five SOURCE_SHA runners.
+The sidecar records the source revision and installed-file hashes; checks run
+before output. A locale-ordering issue found during independent fix review uses
+radix ordering. Historical measured libraries and runner labels remain intact;
+new installation/guard tests are separate evidence. Final fix reviews and
+latest-head external gates are still required before merge.
+
+The provenance follow-up at `bbed948` passed both independent reviews and
+matching smoke runs. CodeRabbit requested tighter test diagnostics because a
+broad SOURCE_SHA match could accept a usage error. The test now requires each
+mode's exact guard diagnostic and separately rejects all five runners' usage
+errors as guard evidence. The previously withdrawn base singleton/drop claim
+remains closed; its stale summary wording is being corrected with the reviewer.
+Package source and the original measured evidence are unchanged.

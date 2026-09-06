@@ -340,3 +340,16 @@ test_that("column results preserve metadata, compact columns and legacy recognit
     expect_identical(class(plain), "data.frame")
     expect_identical(plain$value, c(1, 2))
 })
+
+test_that("selectors retain automatic row-name bookkeeping and rename policy", {
+    for (row_names in list(NULL, 1:3, c("a", "b", "c"))) {
+        data <- dibble(x = 1:3, y = 4:6)
+        if (!is.null(row_names)) attr(data, "row.names") <- row_names
+        expect_identical(.row_names_info(dplyr::rename(data, z = x), 0L),
+                         .row_names_info(data, 0L))
+        for (operation in list(function(d) dplyr::select(d, x),
+                               function(d) dplyr::relocate(d, y))) {
+            expect_identical(.row_names_info(operation(data), 0L), c(NA_integer_, -3L))
+        }
+    }
+})

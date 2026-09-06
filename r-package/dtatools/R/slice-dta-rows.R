@@ -13,10 +13,12 @@
 #'
 #' For a dibble with at least ten rows, `slice_dta_rows(survey, 1:10)` and
 #' `survey[1:10, ]` both return the first ten rows with all columns, preserving
-#' Stata metadata and leaving `survey` unchanged. Brackets use ordinary tibble
-#' subsetting; `slice_dta_rows()` batches compact Stata numeric columns in native
-#' code to reduce per-column overhead. Use brackets for everyday subsetting;
-#' consider `slice_dta_rows()` when slicing wide Stata datasets.
+#' Stata metadata and leaving `survey` unchanged. Both share the batched row
+#' gatherer. Brackets retain tibble indexing rules; `slice_dta_rows()` uses
+#' vctrs location rules, including errors for unknown row names or out-of-range
+#' positive locations. Grouped dibbles rebuild groups from the selected rows,
+#' retaining `.drop`; rowwise dibbles retain their identifier variables. Missing
+#' string rows become Stata's empty string before grouping is rebuilt.
 #'
 #' @param data An ordinary base data frame, tibble, data.table, or
 #'   [dibble][dibble()]. Other data-frame subclasses are not supported.
@@ -35,33 +37,20 @@ slice_dta_rows <- function(data, rows) {
         )
     }
     if (inherits(data, "dtatools_ref_data")) {
-        # Slice the complete visible dataset, then return it in the same
-        # container: a dibble yields a dibble, and a base frame that gained
-        # reference state through `gen()` yields a base frame.
+        .as_mutation_data(data, allow_grouped = TRUE)
+        if (is_dibble(data)) {
+            context <- .begin_dibble_result(data, "slice_dta_rows()", "rows")
+            locations <- vctrs::vec_as_location(rows, n = nrow(data),
+                names = if (is.character(rows)) row.names(data) else NULL,
+                missing = "propagate", arg = "rows")
+            return(.dibble_take_rows(context, locations, data))
+        }
         snapshot <- .reference_snapshot(data)
-        grouped <- inherits(snapshot, "grouped_df")
-        if (grouped) {
-            # The `groups` attribute indexes rows of the old data, so slice
-            # the plain tibble and regroup the result on its own rows. The
-            # grouping is stripped by hand because `ungroup()` would also
-            # drop the dataset label, notes, and characteristics.
-            classes <- class(snapshot)
-            group_vars <- dplyr::group_vars(snapshot)
-            drop <- dplyr::group_by_drop_default(snapshot)
-            attr(snapshot, "groups") <- NULL
-            class(snapshot) <- setdiff(classes, "grouped_df")
-        }
-        result <- slice_dta_rows(snapshot, rows)
-        if (grouped) {
-            regrouped <- dplyr::group_by(
-                result, dplyr::across(dplyr::all_of(group_vars)),
-                .drop = drop
-            )
-            attr(result, "groups") <- attr(regrouped, "groups", exact = TRUE)
-            class(result) <- classes
-        }
-        return(if (is_dibble(data)) .as_dibble(result) else result)
+        attr(snapshot, "groups") <- NULL
+        class(snapshot) <- setdiff(class(snapshot), c("grouped_df", "rowwise_df"))
+        return(.restore_group_metadata(slice_dta_rows(snapshot, rows), data))
     }
+
     base_classes <- setdiff(class(data), "dtatools_dta_metadata")
     data_table <- .ordinary_data_table(data)
     ordinary <- data_table ||
@@ -92,9 +81,7 @@ slice_dta_rows <- function(data, rows) {
     } else {
         data
     }
-    columns <- .dta_merge_slice_columns(
-        source_columns, locations, fill_string_missing = FALSE
-    )
+    columns <- .gather_dta_columns(.data_columns(source_columns), locations)
 
     source_attributes <- attributes(data)
     structural <- c("names", "row.names", "class")
@@ -128,7 +115,7 @@ slice_dta_rows <- function(data, rows) {
         result_attributes <- c(
             list(
                 names = names(data),
-                row.names = attr(shell, "row.names", exact = TRUE)
+                row.names = .row_names_info(shell, 0L)
             ),
             custom,
             list(class = class(data))
@@ -141,7 +128,7 @@ slice_dta_rows <- function(data, rows) {
         result_attributes <- c(
             leading,
             list(
-                row.names = attr(shell, "row.names", exact = TRUE),
+                row.names = .row_names_info(shell, 0L),
                 class = class(data)
             )
         )

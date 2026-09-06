@@ -153,10 +153,12 @@ first_ten <- slice_dta_rows(survey, 1:10)
 
 For a dibble with at least ten rows, `slice_dta_rows(survey, 1:10)` and
 `survey[1:10, ]` both return the first ten rows with all columns, preserving
-Stata metadata and leaving `survey` unchanged. Brackets use ordinary tibble
-subsetting; `slice_dta_rows()` batches compact Stata numeric columns in native
-code to reduce per-column overhead. Use brackets for everyday subsetting;
-consider `slice_dta_rows()` when slicing wide Stata datasets.
+Stata metadata and leaving `survey` unchanged. Both share batch row gathering.
+Brackets retain tibble indexing rules; `slice_dta_rows()` uses vctrs location
+rules and rejects unknown row names or out-of-range positive locations. Grouped
+results rebuild their groups and retain `.drop`; rowwise results retain their
+identifier variables. Missing string rows become Stata's empty string before
+grouping is rebuilt.
 
 ## Why use dtatools?
 
@@ -821,9 +823,12 @@ GPL-3.0. See the repository's [LICENSE](https://github.com/jbearak/dta-parser/bl
 
 ## Acknowledgements
 
-The direct dibble column selectors adapt dplyr's selector and grouping rules.
+The direct dibble selectors, grouping metadata and row/reconstruction hooks
+adapt dplyr's selector, grouping and reconstruction rules.
 Its implementation and tests are credited in the [installed source notice](inst/NOTICE),
 which includes the upstream MIT copyright and license. The dtplyr implementation
 and tests were studied for operation planning and copying behavior; no dtplyr
 implementation is incorporated. The notice records the exact source revisions
-and local adaptations.
+and local adaptations. Plain data-frame row subsetting adapts base R rules
+credited to the R Core Team and John Chambers. The same notice preserves the
+upstream GPL version 2 or later license; this package uses GPL-3.

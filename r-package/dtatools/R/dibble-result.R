@@ -7,20 +7,24 @@
     metadata <- attributes(data)
     metadata$.dtatools_ref_state <- NULL
     metadata$class <- .reference_base_classes(class(data))
+    metadata$row.names <- .row_names_info(data, 0L)
     if (.has_column_overlay(data)) {
         if (.row_names_info(data, 1L) < 0L) {
             metadata$row.names <- .set_row_names(.reference_state(data)$nrow)
         }
         metadata$names <- names(columns)
     }
-    addresses <- vapply(columns, rlang::obj_address, character(1))
-    lineage <- new.env(hash = TRUE, parent = emptyenv())
-    for (address in addresses) lineage[[address]] <- TRUE
+    lineage <- NULL
+    if (identical(operation, "columns")) {
+        addresses <- vapply(columns, rlang::obj_address, character(1))
+        lineage <- new.env(hash = TRUE, parent = emptyenv())
+        for (address in addresses) lineage[[address]] <- TRUE
+    }
     list(columns = columns, metadata = metadata, caller = caller,
          operation = operation, lineage = lineage)
 }
 
-.finish_dibble_result <- function(context, result, sources = NULL) {
+.finish_dibble_result <- function(context, result, sources = NULL, grouping = NULL) {
     result <- .prepare_dibble_frame(result)
     source_addresses <- if (!is.null(sources)) {
         unlist(lapply(sources, function(source) {
@@ -29,26 +33,32 @@
             } else rlang::obj_address(source)
         }))
     }
-    completed <- new.env(hash = TRUE, parent = emptyenv())
-    # Retain the original result list throughout the loop. This keeps every
-    # address in completed rooted even after the output slot has been replaced.
+    # Keep original columns rooted while their addresses describe this result.
     columns <- .data_columns(result)
+    addresses <- vapply(columns, rlang::obj_address, character(1))
+    shared <- if (!is.null(sources)) addresses %in% source_addresses else NULL
+    repeated <- anyDuplicated(addresses) > 0L
+    completed <- if (repeated) new.env(hash = TRUE, parent = emptyenv()) else NULL
+    row_count <- nrow(result)
+    column_names <- names(columns)
     for (index in seq_along(columns)) {
-        column <- columns[[index]]
-        address <- rlang::obj_address(column)
-        if (!exists(address, envir = completed, inherits = FALSE)) {
-            unchanged <- exists(address, context$lineage, inherits = FALSE)
-            # Even an unchanged source can be borrowed or externally writable.
-            # Isolate before validation; never cache validity on the table.
-            isolate <- is.null(sources) || address %in% source_addresses ||
-                (identical(context$operation, "columns") && unchanged)
-            completed[[address]] <- .prepare_dibble_result_column(
-                column, isolate, nrow(result), context$caller,
-                names(columns)[[index]])
+        address <- addresses[[index]]
+        if (repeated && exists(address, envir = completed, inherits = FALSE)) {
+            prepared <- completed[[address]]
+        } else {
+            # Source membership records lineage only. Borrowed or externally
+            # writable columns still need isolation before validation.
+            isolate <- is.null(sources) || shared[[index]] ||
+                (identical(context$operation, "columns") &&
+                 exists(address, context$lineage, inherits = FALSE))
+            prepared <- .prepare_dibble_result_column(
+                columns[[index]], isolate, row_count, context$caller, column_names[[index]])
+            if (repeated) completed[[address]] <- prepared
         }
-        .Call(C_dtatools_set_data_column, result, as.integer(index),
-              completed[[address]])
+        .Call(C_dtatools_set_data_column, result, as.integer(index), prepared)
     }
+    if (!is.null(grouping)) result <- grouping(result)
+    .validate_group_metadata(result)
     .new_validated_dibble(result)
 }
 
@@ -120,8 +130,7 @@
 
 # Match dplyr's column-only grouped/rowwise subset and subsequent names<- rules.
 # Keep a complete grouped partition without regrouping; dropping a key can merge
-# groups and still uses the existing grouping constructor until the row module
-# replaces it. Rowwise key order follows the selected column order.
+# groups and rebuilds their keys and indices with the shared grouping module. Rowwise key order follows the selected column order.
 .dibble_select_groups <- function(context, result, locations) {
     classes <- context$metadata$class
     grouped <- "grouped_df" %in% classes
@@ -137,11 +146,9 @@
     if (grouped && !identical(kept, group_names)) {
         attr(result, "groups") <- NULL
         class(result) <- setdiff(classes, "grouped_df")
-        regrouped <- dplyr::grouped_df(
-            result, new_names, drop = !identical(attr(groups, ".drop"), FALSE)
-        )
-        # grouped_df() does not promise to preserve arbitrary table metadata.
-        attr(result, "groups") <- attr(regrouped, "groups", exact = TRUE)
+        attr(result, "groups") <- .build_group_metadata(
+            .data_columns(result), new_names, nrow(result),
+            drop = !identical(attr(groups, ".drop"), FALSE))
         class(result) <- if (length(kept)) classes else setdiff(classes, "grouped_df")
         return(result)
     }

@@ -48,6 +48,11 @@
 #' selectors against the actual Stata columns and build their dibble result
 #' directly. Ordinary retained vectors are still copied; their string storage
 #' declarations are checked against current values, including borrowed data.
+#' Ordinary row brackets and [slice_dta_rows()] share batch row gathering with
+#' the dplyr row-slicing hook. Package-owned grouping validation and rebuilding
+#' retain sorted groups, empty factor groups and rowwise identifiers. Row
+#' brackets rebuild groups from selected values; dplyr's row hook remaps the
+#' existing group indices and honors its `preserve` argument.
 #'
 #' Ordinary `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, and
 #' `row.names<-` return a changed dibble and leave existing aliases unchanged.
@@ -334,13 +339,10 @@ NULL
             stop("`by` and `bysort` need a `:=` assignment in `j`",
                  call. = FALSE)
         }
-        # Ordinary subsetting: hand the snapshot to tibble's `[` with the
-        # original call, so `data[i]`, `data[, j]`, and `drop` all keep
-        # tibble's meaning and its own errors.
         call <- sys.call()
-        call[[1L]] <- quote(`[`)
-        call[[2L]] <- .reference_snapshot(x)
-        return(.close_dibble(x, eval(call, parent.frame())))
+        environment <- parent.frame()
+        one_dimension <- (nargs() - !missing(drop)) <= 2L
+        return(.reference_bracket(x, call, environment, one_dimension))
     }
     # data.table's third slot is `by`, so `data[i, j, id]` puts `id` in
     # `...`; one unnamed dot is that positional `by`.

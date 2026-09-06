@@ -241,7 +241,7 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
                  call. = FALSE)
         }
         argument <- if (is.null(by)) "bysort" else "by"
-        keys <- if (grouped) dplyr::group_vars(data) else
+        keys <- if (grouped) .group_vars(data) else
             .mutation_group_expression(
                 rlang::quo_get_expr(if (is.null(by)) bysort else by),
                 rlang::quo_get_env(if (is.null(by)) bysort else by), argument

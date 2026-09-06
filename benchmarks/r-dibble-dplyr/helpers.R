@@ -1,5 +1,32 @@
 # Shared deterministic fixtures and assertions for the benchmark runners.
 
+benchmark_install_files <- function(package_path) {
+    files <- list.files(package_path, recursive = TRUE, all.files = TRUE,
+                        no.. = TRUE)
+    files <- setdiff(files, "Meta/benchmark-provenance.rds")
+    files <- sort(files[!file.info(file.path(package_path, files))$isdir], method = "radix")
+    hashes <- tools::md5sum(file.path(package_path, files))
+    if (!length(files) || anyNA(hashes)) stop("Cannot fingerprint benchmark installation", call. = FALSE)
+    stats::setNames(unname(hashes), files)
+}
+
+validate_benchmark_install <- function(library_path, source_sha) {
+    package_path <- file.path(library_path, "dtatools")
+    sidecar <- file.path(package_path, "Meta", "benchmark-provenance.rds")
+    if (!file.exists(sidecar)) stop("Missing benchmark installation provenance; use install.R", call. = FALSE)
+    provenance <- tryCatch(readRDS(sidecar), error = function(e) NULL)
+    if (!is.list(provenance) || !identical(provenance$format, 1L) ||
+        !is.character(source_sha) || length(source_sha) != 1L ||
+        is.na(source_sha) || !grepl("^[0-9a-f]{40}$", source_sha) ||
+        !identical(provenance$source_sha, source_sha)) {
+        stop("Benchmark SOURCE_SHA does not match installation provenance", call. = FALSE)
+    }
+    if (!identical(provenance$files, benchmark_install_files(package_path))) {
+        stop("Benchmark installation changed after provenance was recorded", call. = FALSE)
+    }
+    invisible(provenance)
+}
+
 make_pair <- function(kind, rows, columns) {
     values <- lapply(seq_len(columns), function(index) {
         type <- if (kind == "mixed") {

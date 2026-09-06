@@ -594,7 +594,10 @@ vec_cast.ordered.dtatools_dta_metadata_vector <-
         indices[j]
     }
 
-    result <- NextMethod("[")
+    .restore_subset_dta_metadata(x, NextMethod("["), selected)
+}
+
+.restore_subset_dta_metadata <- function(x, result, selected) {
     if (!is.data.frame(result)) {
         if (length(selected) == 1L) {
             result <- .copy_dta_metadata_attributes(

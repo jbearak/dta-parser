@@ -1,0 +1,38 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Tracing function ".as_mutation_data" in package "namespace:dtatools"
+Tracing function ".prepare_dibble_frame" in package
+"namespace:dtatools"
+.prepare_dibble_frame
+ dplyr_reconstruct(candidate, data)
+dplyr_reconstruct_dispatch(data, template)
+dplyr_reconstruct.dtatools_ref_data(data, template)
+.close_dibble(template, dplyr::dplyr_reconstruct(data, .reference_snapshot(template)))
+.finish_dibble_result(context, result, sources)
+.prepare_dibble_frame(result)
+.doTrace(.dta_calls[[length(.dta_calls) + 1L]] <<- list(name = ".prepare_dibble_frame",      calls = vapply(sys.calls(), function(x) paste(deparse(x),          collapse = " "), character(1))))
+eval.parent(exprObj)
+
+.as_mutation_data
+ dplyr_reconstruct(candidate, data)
+dplyr_reconstruct_dispatch(data, template)
+dplyr_reconstruct.dtatools_ref_data(data, template)
+.close_dibble(template, dplyr::dplyr_reconstruct(data, .reference_snapshot(template)))
+.finish_dibble_result(context, result, sources)
+.prepare_dibble_frame(result)
+.as_mutation_data(x, allow_grouped = TRUE)
+.doTrace(.dta_calls[[length(.dta_calls) + 1L]] <<- list(name = ".as_mutation_data",      calls = vapply(sys.calls(), function(x) paste(deparse(x),          collapse = " "), character(1))))
+eval.parent(exprObj)

@@ -728,58 +728,9 @@ dta_merge <- function(x, y, by, relationship,
 .dta_merge_slice_columns <- function(
     values, rows, fill_string_missing = TRUE
 ) {
-    count <- length(values)
-    result <- vector("list", count)
-    names(result) <- names(values)
-    if (count == 0L) return(result)
-
-    storage <- vapply(values, function(value) {
-        storage <- .declared_dta_storage(value)
-        if (is.null(storage)) "" else storage
-    }, character(1))
-    compact <- vapply(
-        values, .dta_merge_has_compact_storage, logical(1)
-    )
-    native <- compact | storage == "double"
-    if (any(native)) {
-        gathered <- .Call(
-            C_dtatools_gather_numeric_columns,
-            unname(as.list(values[native])), NULL, rows, NULL
-        )
-        locations <- which(native)
-        for (offset in seq_along(locations)) {
-            location <- locations[[offset]]
-            value <- values[[location]]
-            result[[location]] <- if (is.null(gathered[[offset]])) {
-                .dta_merge_slice(
-                    value, rows,
-                    fill_string_missing = fill_string_missing
-                )
-            } else {
-                gathered[[offset]]
-            }
-        }
-    }
-
-    ordinary <- storage == ""
-    if (any(ordinary)) {
-        gathered <- unname(as.list(
-            vctrs::vec_slice(values[ordinary], rows)
-        ))
-        if (fill_string_missing) {
-            gathered <- lapply(
-                gathered, .dta_merge_fill_string_missing, rows = rows
-            )
-        }
-        result[ordinary] <- gathered
-    }
-
-    fallback <- !(native | ordinary)
-    for (location in which(fallback)) {
-        result[[location]] <- .dta_merge_slice(
-            values[[location]], rows,
-            fill_string_missing = fill_string_missing
-        )
+    result <- .gather_dta_columns(.data_columns(values), rows)
+    if (fill_string_missing) {
+        result <- lapply(result, .dta_merge_fill_string_missing, rows = rows)
     }
     result
 }

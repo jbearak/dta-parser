@@ -3,12 +3,13 @@
 args <- commandArgs(TRUE)
 if (length(args) != 3L) stop("Usage: columns.R LIBRARY OUTPUT_DIRECTORY SOURCE_SHA")
 library_path <- normalizePath(args[[1L]], mustWork = TRUE)
+source("benchmarks/r-dibble-dplyr/helpers.R")
+validate_benchmark_install(library_path, args[[3L]])
 output <- args[[2L]]
 dir.create(output, recursive = TRUE, showWarnings = FALSE)
 .libPaths(c(library_path, .libPaths()))
 suppressPackageStartupMessages({ library(dtatools); library(dplyr); library(bench) })
 stopifnot(identical(normalizePath(dirname(find.package("dtatools"))), library_path))
-source("benchmarks/r-dibble-dplyr/helpers.R")
 writeLines(c(paste("source_sha", args[[3L]]), paste("library", library_path),
              capture.output(sessionInfo())), file.path(output, "session.txt"))
 results <- list()

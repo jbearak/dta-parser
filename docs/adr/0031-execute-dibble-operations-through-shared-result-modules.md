@@ -34,3 +34,51 @@ notice in the installed package's `NOTICE`. dtplyr's copy planning was studied
 as a reference; its lazy execution and weaker later-write isolation are not the
 dibble contract. Other operation families retain their recorded compatibility
 paths until their own direct implementations pass the plan's gates.
+
+Row brackets, `slice_dta_rows()` and the dplyr row hook now share a batch gather
+module. Each entry point resolves its own locations before gathering. Brackets
+use one integer column to obtain the public tibble or base row-index behavior;
+column planning is shallow. Plain base frames gather fallback columns through
+base subsetting, preserving named vectors, matrix/nested columns and base drop
+shapes. Tibble, explicit helper and row-hook fallbacks retain vctrs semantics.
+Base bracket evaluation and attribute policies adapt R 4.6.1, with its
+GPL-2-or-later source notice preserved in installed `NOTICE`. The package
+remains GPL-3. Existing Stata metadata wrappers retain their evaluation order
+and restore both table and column metadata. Plain data.table expressions continue using that
+container's own bracket method. Group validation, key extraction, empty factor
+group expansion and regrouping use package-owned code and public vctrs/tibble
+operations, without runtime dplyr calls.
+
+Ordinary grouped row subsets rebuild keys from the selected values. The dplyr
+row hook instead retains existing keys, remaps their row indices and honors
+`preserve`. Rowwise reconstruction retains identifiers in template order;
+rowwise brackets follow selected-column order. Missing character rows take the
+dibble typing path before group reconstruction, keeping the group keys equal
+to the normalized string values. Grouped reconstruction preserves dataset
+metadata, extending the selector improvement from Stage 1. Unknown inputs to
+reconstruction are isolated and validated conservatively.
+
+Row paths preserve the automatic-versus-explicit row-name marker as well as
+visible names. The common context also repairs the Stage 1 plain-rename loss
+of automatic names. The explicit row helper preserves the underlying container's row-name policy,
+including its automatic marker; its former assembly accidentally expanded that
+marker into explicit integers. This correction can
+remove an Arrow warning about discarded row-name metadata. Rowwise dibbles now
+work through the helper, while ordinary unmarked rowwise frames retain their
+previous unsupported status. These changes and grouped dataset metadata
+preservation are improvements, separate from the retained indexing policies.
+
+The expression-based `slice()` family remains Stage 6 work. Complete vctrs and
+binding integration remains Stage 8 work, and dplyr stays in Imports until
+Stage 9 qualifies all package-native features with the dependency absent.
+
+Group validation checks a complete partition with linear row counts after the
+integer, bounds and per-group ordering checks. Each key is still checked in
+order. Compatible key values are cast before taking equality proxies; only
+observed group keys are expanded, so unused factor groups retain their previous
+validation behavior. Input and final-result validation remain mandatory.
+Result finalization computes source membership once for all columns, builds
+lineage only for column operations, and caches prepared columns only when the
+result repeats a source address. Original columns stay rooted throughout.
+These changes remove repeated planning and class restoration without caching
+validity or ownership on a table.
