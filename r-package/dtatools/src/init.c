@@ -4433,45 +4433,6 @@ SEXP C_dtatools_metadata_copy(SEXP value) {
 }
 
 /**
- * Validate current string values without allocating character/logical/width
- * vectors or trusting an S3 class. No evidence survives this call. The caller
- * checks the declaration syntax and retains compact dictionary validation.
- */
-SEXP C_dtatools_string_declaration_holds(SEXP value, SEXP declared_width) {
-    if (TYPEOF(value) != STRSXP) Rf_error("expected a character column");
-    double limit = Rf_asReal(declared_width);
-    if (ISNAN(limit) || limit < 1) Rf_error("invalid string width");
-    /* CHARSXPs are immutable. A bounded call-local cache avoids repeatedly
-       translating common strings, while every current element is inspected.
-       A protected cache also roots strings produced by foreign ALTREP. */
-    SEXP checked[256] = {0};
-    SEXP roots = PROTECT(Rf_allocVector(VECSXP, 256));
-    const SEXP *ordinary = ALTREP(value) ? NULL : STRING_PTR_RO(value);
-    for (R_xlen_t index = 0; index < XLENGTH(value); index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        SEXP text = ordinary == NULL ? STRING_ELT(value, index) : ordinary[index];
-        if (text == NA_STRING) {
-            UNPROTECT(1);
-            return Rf_ScalarLogical(0);
-        }
-        size_t slot = ((uintptr_t) text >> 3) & 255;
-        if (checked[slot] == text) continue;
-        SET_VECTOR_ELT(roots, slot, text);
-        /* enc2utf8() leaves bytes-marked strings untouched. */
-        cetype_t encoding = Rf_getCharCE(text);
-        size_t width = (encoding == CE_BYTES || encoding == CE_UTF8)
-            ? (size_t) LENGTH(text) : strlen(Rf_translateCharUTF8(text));
-        if ((double) width > limit) {
-            UNPROTECT(1);
-            return Rf_ScalarLogical(0);
-        }
-        checked[slot] = text;
-    }
-    UNPROTECT(1);
-    return Rf_ScalarLogical(1);
-}
-
-/**
  * Create a metadata view for internal reads without isolating native backing.
  * Use C_dtatools_metadata_copy when later explicit writes need isolation.
  */
@@ -7576,7 +7537,6 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_is_numeric_altrep, 1},
     {"C_dtatools_is_altrep", (DL_FUNC) &C_dtatools_is_altrep, 1},
     {"C_dtatools_metadata_copy", (DL_FUNC) &C_dtatools_metadata_copy, 1},
-    {"C_dtatools_string_declaration_holds", (DL_FUNC) &C_dtatools_string_declaration_holds, 2},
     {"C_dtatools_metadata_view", (DL_FUNC) &C_dtatools_metadata_view, 1},
     {"C_dtatools_mark_reference_data",
      (DL_FUNC) &C_dtatools_mark_reference_data, 3},

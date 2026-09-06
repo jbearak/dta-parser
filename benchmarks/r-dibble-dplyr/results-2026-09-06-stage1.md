@@ -1,128 +1,47 @@
 # Direct dibble column operations, 2026-09-06
 
-Stage 1 removes whole-table dplyr delegation for select, rename and relocate.
-Every result still isolates ordinary borrowed payloads and checks current string
-values. One native scan replaces repeated allocation-heavy validation; no source
-address or class is treated as a lasting storage-validity claim.
+The final stage 1 implementation replaces whole-table delegation for select,
+rename and relocate with direct selector plans and a shared result finalizer.
+It copies ordinary retained payloads and validates current string values through
+the existing character-generation kernel. No native source changes. A copied
+string result is reused only when its values and attributes are identical to
+the source; missing values, stale declarations and unsupported encodings retain
+the prior safe typing path.
 
-## Fresh comparison
+## Fresh validation pending
 
-Both installations came from isolated source exports. Baseline:
-`5ad44406f9b80db81789dcf7b7e1756c28502559`. Candidate package source:
-`95685536e8b12c70aa252cd3842efad131204216`. Later stage 1 commits only add benchmark
-artifacts and documentation. The 2026-09-05 report and its earlier source revision
-remain historical measurements, not the starting baseline for this change.
+Starting main is `5ad44406f9b80db81789dcf7b7e1756c28502559`. The revised source is
+being committed for a fresh isolated build/check and benchmark. A preliminary
+installed build passes the 1M by 16 string rename allocation gate at 128,044,928
+bytes for both ordinary dta_string and declared character. Their timings were
+132.53 and 132.64 ms, so this implementation does not meet the host-specific
+60 ms target. Full exact-source results and independent reviews follow before
+this PR opens.
 
-The full matrix contains 71 paired cases over 13 fixture shapes. These rows are
-one million observations and 16 distinct columns. Seven iterations include GC;
-fixture construction, initial warming and correctness checks are outside timing.
-The host was Apple M4 Max, macOS 26.6.2, R 4.6.1, with dplyr 1.2.1 and vctrs 0.7.3.
-Other test/build and fertility workloads were paused for the final comparison.
+The [interim scanner report](results-2026-09-06-scanner-prototype.md) records the
+superseded native-scanner source `95685536`, its complete comparisons and checks.
+Those measurements are not attributed to the final R-only revision. The original
+2026-09-05 historical report and source revision labels remain unchanged.
 
-| Operation and representation | Baseline ms | Candidate ms | Baseline allocated MB | Candidate allocated MB |
-| --- | ---: | ---: | ---: | ---: |
-| Rename ordinary doubles | 2.163 | 2.164 | 128.045 | 128.045 |
-| Rename ordinary dta_string | 225.875 | 52.556 | 640.049 | 128.078 |
-| Rename declared character | 137.395 | 54.853 | 256.046 | 128.078 |
-| Five symbol mutations, doubles | 29.302 | 27.602 | 640.219 | 640.220 |
-| Five symbol mutations, dta_string | 1206.766 | 299.750 | 3216.242 | 640.379 |
-| Five symbol mutations, declared character | 759.514 | 361.401 | 1244.226 | 600.379 |
+## Recorded ownership prerequisites
 
-Raw [baseline](results-2026-09-06-stage1/baseline/operations.csv) and
-[candidate](results-2026-09-06-stage1/candidate/operations.csv) results include
-identical-column typed-tibble controls. Values, attributes, input preservation
-and compact-source assertions passed in every case. The only initial dibble
-median regression above 10% and 1 ms was double filtering. Three further seven-iteration
-comparisons did not reproduce it: baseline 134.38/147.09/140.88 ms, candidate
-140.63/134.76/139.26 ms. Their allocation differed by only 280 bytes. The repeat
-logs are retained beside the raw results. The typed-tibble compact-integer
-control for the 100-row, 1,000-column five-verb pipeline also varied from
-8.581 to 10.075 ms. That control does not use dibble result finalization; it is
-reported as control variation, not omitted from the raw comparison.
+The unchanged reference mutation runner fails on starting main and the initial
+prototype at its first sparse-write allocation assertion. Every call allocates
+5,000,048 bytes through `.deep_copy_value()` / `.mutation_copy()` /
+`.mutate_data()` / `replace_values()`. The gate requires less than one compact
+column even on the first write to an unprepared data frame. A
+[minimized reproducer](diagnose-reference-sharing.R) confirms the failure.
+It is not a passing gate, and its later assertions were not reached.
 
-The [separate column comparison](results-2026-09-06-stage1/columns.csv) uses the
-same candidate finalizer after a whole dplyr verb as its safe-delegation control.
-String rename measured 60.21 ms direct versus 62.15 ms delegated; declared
-character measured 63.14 versus 63.12 ms. Both direct cases allocated 128,078,464
-bytes, below the 130 MB gate. The host-specific target of less than 60 ms was met
-in the full matrix but missed narrowly in this separate comparison. This stage's
-measured benefit comes mainly from removing repeated validation, not from
-eliminating retained payload copies. The future less-than-1-MB gate remains
-pending owned backing and has not been enabled or weakened.
+A separate [alias-escape reproduction](diagnose-mutation-alias-escape.R) fails
+identically on starting main and the revised R-only installation. A fresh private
+column is exported inside the replacement expression after the early sharing
+check; both the supplied table and that alias change. Ordinary public preflight
+currently masks this case by creating conservative references. Moving the entry
+check earlier without solving expression-created aliases would expose it.
 
-## Memory measures
-
-MB above means 1,000,000 bytes of cumulative R allocation. It is neither retained
-memory nor peak RSS. An isolated ordinary-string rename retained about 128.00 MB
-of additional R vector heap in both builds. Nominal `object.size()` of each result
-was 128,019,112 bytes. The native scanner's bounded, call-local cache is released
-after validation; no source history is retained in reference bookkeeping.
-
-Separate fresh processes measured maximum RSS of 529,088,512 bytes for baseline
-and 447,119,360 bytes for candidate. These whole-process peaks include library
-startup and fixture construction as well as rename, so they are not isolated
-operation-only peaks. The R vector-heap delta excludes node headers and native
-allocations. The [measurement script](retained-and-peak.R) and raw process logs
-are retained with the results.
-
-## Validation and review
-
-- The new public selector suite passed 500 assertions without warnings or skips.
-- Focused dibble, copy, numeric/string, mutation and slicing coverage passed
-  3,718 assertions, with four existing factor-export, Date-comparison and
-  tibble-row-name warnings.
-- Fresh `R CMD build` and `R CMD check --no-manual` passed all 12,570 assertions
-  and examples, with those four existing test warnings and no skipped tests.
-  Check status was three warnings and two notes, matching the known baseline:
-  macOS deployment-target linker warnings, GNU vendor Makefiles, a Rust `_abort`
-  symbol, vendor CITATION location and a generated C file without a final newline.
-- Required shared conformance passed 22 TypeScript fixtures, 32,085 decoded-cell
-  comparisons, 10 native cases plus the fixture oracle, and the source R check.
-- Repository Haven/labelled interoperability passed without skips after granting
-  local loopback access to the HTTP fixture server.
-- Roxygen regeneration matched committed manuals. Six archive-validation tests
-  passed. Source archive, installed library and locally built macOS `.tgz` each
-  contained the exact NOTICE; the release workflow now verifies installed and
-  binary notices on every platform.
-- Two independent actual-diff reviews found no actionable issues. They added
-  5,100 selector comparisons against real dplyr, grouped/rowwise and alias checks,
-  serialization/preparation probes, and native validation under forced GC. Review
-  covered package source `95685536`, then benchmark head `c1e145bf`.
-
-## Existing allocation blocker for ownership stage 3
-
-The unchanged reference mutation gate **did not pass** on starting main or this
-candidate. On both exact builds, every sparse patch in its first workload
-allocated 5,000,048 bytes through `.deep_copy_value()` / `.mutation_copy()` /
-`.mutate_data()` / `replace_values()`. The gate requires each allocation to stay
-below the five-million-byte compact payload. A
-[minimized reproducer](diagnose-reference-sharing.R) confirms the identical
-failure in three calls. Full GC between calls and assigned `reserve_columns()`
-do not remove the baseline sharing claim. No stage 1 code executes on that write
-path, and neither its safety check nor the benchmark was changed.
-
-This is a recorded acceptance blocker for ownership stage 3 and integrated epic
-completion. Stage 1's read-only scan and result construction introduce no new
-sparse-write regression. The original gate must pass under the ownership work;
-this report does not waive, suppress or count the failure as a passing check.
-The full runner stopped at that assertion, so its later allocation assertions
-were not exercised by this run. Existing package rollback tests and the native
-conformance gates passed separately.
-
-## Reproduction
-
-Use the exact isolated export/install procedure in [README](README.md), substituting
-one of the recorded source SHAs. Then run from the repository root:
-
-```sh
-Rscript --vanilla benchmarks/r-dibble-dplyr/run.R LIBRARY OUTPUT SOURCE_SHA 7
-Rscript --vanilla benchmarks/r-dibble-dplyr/columns.R LIBRARY OUTPUT SOURCE_SHA
-/usr/bin/time -l Rscript --vanilla benchmarks/r-dibble-dplyr/retained-and-peak.R LIBRARY string
-Rscript --vanilla benchmarks/r-dibble-dplyr/diagnose-reference-sharing.R LIBRARY
-Rscript --vanilla benchmarks/r-reference-mutation/run.R
-```
-
-The column allocation gate is expected to fail on the old baseline. The minimized
-sharing reproduction is expected to fail on both revisions until stage 3 fixes
-the existing blocker. The full reference runner builds the clean current checkout
-itself; to reproduce starting main, run it in an isolated worktree at that SHA.
+Both findings remain required ownership prerequisites before the next native
+change and before epic completion. The original runner, sharing guard, rollback
+checks and container coverage remain unchanged. See the
+[plan](../../docs/plans/dibble-result-performance.md#recorded-prerequisite-for-native-changes)
+for the required dependency repair and the independent applicability review.

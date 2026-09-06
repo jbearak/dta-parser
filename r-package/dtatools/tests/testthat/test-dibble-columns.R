@@ -164,7 +164,7 @@ test_that("borrowed and stale strings are checked on every column result", {
     }
 })
 
-test_that("string validation counts current UTF-8 bytes without class dispatch", {
+test_that("string validation counts current UTF-8 bytes", {
     latin <- iconv("\u00e9", from = "UTF-8", to = "latin1")
     Encoding(latin) <- "latin1"
     for (value in list(character(), c("", "a"), "\u00e9", latin)) {
@@ -179,6 +179,46 @@ test_that("string validation counts current UTF-8 bytes without class dispatch",
     Encoding(bytes) <- "bytes"
     expect_true(dtatools:::.string_declaration_holds(
         structure(bytes, stata.string.storage = "str1")))
+})
+
+test_that("isolated string results preserve encodings and complete metadata", {
+    latin <- iconv("\u00e9", from = "UTF-8", to = "latin1")
+    Encoding(latin) <- "latin1"
+    bytes <- rawToChar(as.raw(255L))
+    Encoding(bytes) <- "bytes"
+    for (values in list(character(), c("", "a"), "\u00e9", latin, bytes)) {
+        for (storage in c("str12", "strL")) {
+            for (classed in c(FALSE, TRUE)) {
+                column <- structure(values, stata.string.storage = storage,
+                    label = "A variable", notes = "Keep", custom = list(a = 1L))
+                if (classed) class(column) <- c("dta_string", "vctrs_vctr", "character")
+                names(column) <- if (length(column))
+                    paste0("row", seq_along(column)) else character()
+                x <- dibble(s = column)
+                before <- x$s
+                out <- dplyr::rename(x, text = s)
+                expect_identical(out$text, before)
+                expect_identical(Encoding(out$text), Encoding(before))
+                if (length(values)) {
+                    set_var_label(out, text, "Changed")
+                    expect_identical(attr(x$s, "label"), "A variable")
+                }
+            }
+        }
+    }
+    for (storage in list(NA_character_, character(), "str01", "str2046", 1L)) {
+        x <- dibble(s = c("long", "short"))
+        stale <- structure(c("long", NA_character_), stata.string.storage = storage)
+        .Call(dtatools:::C_dtatools_set_data_column, x, 1L, stale)
+        out <- dplyr::rename(x, text = s)
+        expect_identical(as.character(out$text), c("long", ""))
+        expect_identical(attr(out$text, "stata.string.storage"), "str4")
+    }
+    column <- structure(c("a", "b"), class = "foreign_character",
+                        stata.string.storage = "str12", label = "Keep")
+    x <- dibble(s = column)
+    expect_identical(dplyr::rename(x, text = s)$text, x$s)
+    expect_identical(class(x$s), "foreign_character")
 })
 
 test_that("column results preserve metadata, compact columns and legacy recognition", {

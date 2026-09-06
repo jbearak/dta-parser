@@ -2799,19 +2799,22 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # checked without being materialized.
 .string_declaration_holds <- function(column) {
     declared <- attr(column, "stata.string.storage", exact = TRUE)
-    if (is.null(declared)) return(FALSE)
-    valid <- is.character(declared) && length(declared) == 1L &&
-        !is.na(declared) && (identical(declared, "strL") || grepl(
-            "^str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5])$",
-            declared
-        ))
-    if (!valid) return(FALSE)
+    if (!.valid_string_declaration(declared)) return(FALSE)
     if (.is_unmaterialized_dictstring(column)) {
         return(.dta_string_storage_width(declared) >=
             max(1L, .dictstring_max_width(column)))
     }
-    .Call(C_dtatools_string_declaration_holds, column,
-          .dta_string_storage_width(declared))
+    if (anyNA(column)) return(FALSE)
+    .dta_string_storage_width(declared) >=
+        .dta_string_required_width(column)
+}
+
+.valid_string_declaration <- function(declared) {
+    is.character(declared) && length(declared) == 1L &&
+        !is.na(declared) && (identical(declared, "strL") || grepl(
+            "^str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5])$",
+            declared
+        ))
 }
 
 # A column no Stata storage can hold: raw, list, complex, a matrix, a

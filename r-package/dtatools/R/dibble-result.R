@@ -40,15 +40,44 @@
             # Isolate before validation; never cache validity on the table.
             isolate <- is.null(sources) || address %in% source_addresses ||
                 (identical(context$operation, "columns") && unchanged)
-            value <- if (isolate) .metadata_copy(column) else column
-            completed[[address]] <- .typed_column_named(
-                value, nrow(result), context$caller, names(columns)[[index]]
-            )
+            completed[[address]] <- .prepare_dibble_result_column(
+                column, isolate, nrow(result), context$caller,
+                names(columns)[[index]])
         }
         .Call(C_dtatools_set_data_column, result, as.integer(index),
               completed[[address]])
     }
     .new_validated_dibble(result)
+}
+
+.prepare_dibble_result_column <- function(column, isolate, row_count, caller, name) {
+    if (isolate && is.character(column) && !.is_altrep(column) &&
+        is.null(dim(column)) && .valid_string_declaration(
+            attr(column, "stata.string.storage", exact = TRUE))) {
+        # The existing generation kernel validates width while allocating the
+        # isolated result. It preserves every attribute supplied here. It also
+        # normalizes NA, which a valid declaration cannot contain, so reuse the
+        # result only if all values and attributes are identical to the source.
+        # Stale declarations and encodings unsupported by that kernel retain
+        # the established normalization path below.
+        copied <- tryCatch(.Call(
+            C_dtatools_generate_character, column, NULL, as.double(row_count),
+            attr(column, "stata.string.storage", exact = TRUE), attributes(column)
+        ), error = function(condition) {
+            message <- conditionMessage(condition)
+            if (identical(message,
+                "Generated values do not fit their declared Stata string storage") ||
+                identical(message,
+                    gettext('translating strings with "bytes" encoding is not allowed',
+                            domain = "R"))) {
+                return(NULL)
+            }
+            stop(condition)
+        })
+        if (!is.null(copied) && identical(column, copied)) return(copied)
+    }
+    value <- if (isolate) .metadata_copy(column) else column
+    .typed_column_named(value, row_count, caller, name)
 }
 
 # Selector planning is adapted from dplyr 1.2.1's select.R, rename.R and

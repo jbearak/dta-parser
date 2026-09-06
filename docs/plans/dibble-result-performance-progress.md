@@ -5,66 +5,62 @@ Issue: https://github.com/jbearak/dta-parser/issues/172, still open.
 Contract: [implementation plan](dibble-result-performance.md), plus the
 user handoff `/tmp/dibble-direct-operations-handoff.3hgh3u_0.txt`.
 
-## Stage 1: implementation reviewed, external gates pending
+## Stage 1 revision under review
 
 Branch `codex/direct-dibble-columns`, isolated worktree
 `/private/tmp/dta-direct-stage1`. Direct select, rename and relocate share result
 context/finalization and a private validated constructor. Ordinary payloads still
-copy, and current string values receive one bounded-allocation native scan.
-No source address is trusted as ownership or permanent validity evidence.
+copy. Eligible string results reuse the existing generation kernel to validate
+width and copy once; exact value/attribute identity is checked before reuse.
+Stale declarations, missing values and unsupported encodings retain the prior
+safe normalization path. No native source differs from starting main.
 
-Tested package source: `95685536e8b12c70aa252cd3842efad131204216`.
-Both independent reviewers were clean through benchmark head
-`c1e145bf5d5cc0a29d7a11cdad71ff7685a81516`. They inspected correctness, aliases,
-capacity, serialization, native GC, API compatibility, documentation and notices;
-5,100 independent selector comparisons passed. Final documentation/evidence review confirmed the results and release-script
-fix, but the correctness reviewer flags the failed native allocation gate as an
-unresolved merge-gate requirement under the handoff. Root is resolving that
-applicability question; it is not a clean final review. No PR has been opened or
-merged yet. CI and CodeRabbit are pending.
+The initial package source `95685536` and benchmark head `c1e145bf` passed two
+independent code reviews and 5,100 independent selector comparisons. Full check
+passed 12,570 assertions and examples with four existing test warnings; R CMD
+check reported three baseline native/vendor warnings and two notes. Conformance,
+Haven/labelled interoperability, roxygen, archive checks, installed NOTICE and
+macOS binary NOTICE checks passed. These are initial-prototype results, not
+validation of the revised implementation.
 
-Local validation passed 500 new selector assertions, 3,718 focused assertions,
-12,570 full package assertions, examples, roxygen, archive tests, required shared
-conformance and Haven/labelled interoperability. Four existing test warnings
-remain. R CMD check ended with the baseline three native/vendor warnings and two
-notes. The source archive, installed library and macOS binary `.tgz` all contain
-byte-identical NOTICE. Release binary verification is part of the workflow.
-
-Fresh baseline and candidate measurements, commands, limitations and complete
-raw results are in the [stage 1 report](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage1.md).
-A 1M by 16 ordinary-string rename allocates 128.078 MB, below the 130 MB gate,
-versus baseline 640.049 MB. Final timing comparisons ranged from 52.56 to 63.14 ms;
-the host-specific 60 ms target was not met in every run. No repeatable regression
-above 10% and 1 ms remained after the double-filter repeat check. Historical
-2026-09-05 measurements and revision labels are retained unchanged.
-
-The unchanged reference-mutation allocation runner fails identically on baseline
-and candidate at its first sparse-write allocation assertion: 5,000,048 bytes
-per call. It is **not a passing gate**. The report and minimized reproducer preserve
-the evidence. This pre-existing sharing/copy issue is an explicit blocker for
-ownership stage 3 and final epic acceptance. Stage 1 changes no write path and
-introduces no new failure there; the original gate must pass before that later
-acceptance can be closed. No check or sharing safeguard was weakened.
+The correctness reviewer kept the required reference allocation gate open.
+Diagnosis proved the identical starting-main failure, but baseline evidence
+does not count as a passing gate. The new native scanner was removed. A working
+build of the R-only revision passes the 130 MB rename gate at 128,044,928 bytes;
+its roughly 133 ms string timings miss the host-specific 60 ms target. Fresh
+committed-source checks and both independent final-diff reviews are pending.
+No PR has been opened or merged. CI and CodeRabbit are pending.
 
 Attribution: pinned dplyr selector/group policies and tests were adapted;
-dtplyr was studied only. The installed NOTICE includes exact revisions, local
-destinations, modifications and full MIT notices. DESCRIPTION credits the
-incorporated copyright holder; the package README links the detailed notice.
+dtplyr was studied only. Installed NOTICE includes exact revisions, destinations,
+modifications and full MIT notices. DESCRIPTION credits the copyright holder;
+README links the detailed notice. Historical 2026-09-05 artifacts retain their
+original dates and revision labels.
 
-Next: review the final evidence delta, push and open the focused PR, then wait
-for required CI and CodeRabbit's completed latest-head review. Resolve actionable
-feedback with another independent fix review. Root merges only after all gates
-pass and updates this record with PR/merge links and merged-default verification.
+Next: complete fresh checks and independent review of the R-only implementation
+and gate applicability, then push/open the focused PR. Inspect CI plus completed
+CodeRabbit summaries and inline comments on the latest head. Address findings
+with independent fix review before root performs the normal merge.
 
-## Pending stages
+## Native ownership prerequisite and pending stages
 
-Stages 2 through 9 remain pending in order: shared row gathering and grouping;
-owned doubles; owned strings/logicals/integers; expression engine;
-filter/order/distinct/slice families; summaries/callbacks; joins/binding/hooks;
-independent recoding and optional dplyr configuration. Stage 3 must also resolve
-the recorded unchanged reference allocation failure. No stage is merged yet.
-Issue 172 closes only after the complete absence-and-compatibility matrix passes.
+The unchanged reference allocation runner fails at its first sparse-write budget
+on starting main and the initial prototype: 5,000,048 bytes per call. The original
+runner remains unchanged. It must pass before any later PR with native changes
+merges, and before the epic completes. First-write capture cannot safely skip
+ambiguous aliases; current monolithic backing would copy the changed column.
+A second reproduction shows that entry-time sharing proof can become stale when
+an evaluated expression exports a column alias. Both reproductions and the
+required dependency repair are recorded in the [plan](dibble-result-performance.md).
+Neither finding is closed by the R-only stage 1 revision.
 
-The fertility_surveys migration remains a coordinated downstream task in its
-existing `test/mics` working tree, managed by root. Preserve its existing user
-edits and rerun its downstream suite against the final epic default branch.
+Stages 2 through 9 remain pending: shared row gathering and grouping; owned
+doubles; owned strings/logicals/integers; expression engine; filter/order/distinct/
+slice families; summaries/callbacks; joins/binding/hooks; independent recoding
+and optional dplyr configuration. Reconcile the ownership prerequisite before
+the first native change. Issue 172 closes only after the complete absence and
+compatibility matrix passes.
+
+The fertility_surveys migration is managed by root in its existing `test/mics`
+working tree. Preserve its user edits and rerun the downstream suite against
+the final epic default branch.

@@ -15,9 +15,10 @@ functionality until dplyr can become optional.
 Column selection, renaming and relocation now share a result context, isolate
 retained vectors and normalize each distinct output once before a private
 constructor prepares the table. Source identity records lineage only. Ordinary
-borrowed strings are scanned on every result, without allocating full-size
-validation vectors; stale declarations and missing strings still receive their
-existing repair. No persistent validity flag or ownership claim follows from
+borrowed strings are validated while an existing generation kernel copies the
+result. Reuse requires identical values and attributes; stale declarations,
+missing strings and unsupported encodings retain their existing repair path.
+This stage changes no native code. No persistent validity flag or ownership claim follows from
 an S3 class or a matching address. Ordinary payload copies remain until the
 later owned-column stages qualify capture, detachment and every write path.
 

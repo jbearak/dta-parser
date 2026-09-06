@@ -1,7 +1,7 @@
 # Direct dibble operations and optional dplyr
 
-Status: stage 1 implemented and locally reviewed on 2026-09-06 for
-[issue #172](https://github.com/jbearak/dta-parser/issues/172), awaiting PR and
+Status: stage 1 revised to existing native primitives on 2026-09-06 for
+[issue #172](https://github.com/jbearak/dta-parser/issues/172), under independent re-review before PR and
 external gates. Stages 2 through 9 remain pending. See the
 [progress record](dibble-result-performance-progress.md) for current heads,
 checks, review and merge state. The chosen architecture is package-owned direct
@@ -549,15 +549,28 @@ complete owned-column architecture has not been implemented or benchmarked;
 its first-write, reader, and interoperability acceptance checks are required
 before claiming the broader performance improvement.
 
-### Recorded ownership-stage blocker
+### Recorded prerequisite for native changes
 
 The unchanged `benchmarks/r-reference-mutation/run.R` allocation gate fails on
-both starting main `5ad44406` and stage 1 package source `95685536`: each sparse
-write allocates a 5,000,048-byte compact copy through `.mutation_copy()`.
-[The stage 1 evidence](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage1.md)
-includes exact-build comparisons and a minimized reproducer. This is not a
-passing gate. Stage 1 introduces no new write path or allocation regression and
-keeps the conservative sharing check. Ownership stage 3 and the integrated epic
-remain blocked on making the original gate pass without weakening its checks
-or losing isolation. The planned shared-backing work must resolve this before
-those acceptance criteria can be closed.
+starting main `5ad44406` and the initial native-scanner prototype `95685536`:
+each sparse write allocates a 5,000,048-byte compact copy. The final stage 1
+implementation uses the existing character-generation kernel and changes no
+native source. Independent reviewers must confirm the final scope and gates
+before that R-only PR proceeds. The baseline failure is not a passing gate.
+
+Before the first later PR with native changes can merge, the original reference
+allocation runner must pass unchanged. The handoff permits first-write cost to
+scale with the changed column, but this runner also forbids a column-sized copy
+on the first borrowed, unprepared data-frame write. Current monolithic compact
+backing and R's conservative sharing flag cannot distinguish that fixture from
+a live external column alias. Moving the sharing check earlier is insufficient
+and can miss aliases exported during expression evaluation. This requires an
+ownership prerequisite, potentially sparse capture, rather than relaxing a
+sharing check or assuming the existing first-write budget is already satisfied.
+
+The [diagnosis](../../benchmarks/r-dibble-dplyr/diagnose-reference-sharing.R)
+and [alias-escape reproduction](../../benchmarks/r-dibble-dplyr/diagnose-mutation-alias-escape.R)
+remain explicit acceptance blockers for the ownership stage and integrated epic.
+Preserve rollback and both directions of isolation, including aliases created
+inside `values` and `where`. If that prerequisite changes the dependency order,
+record and independently review the repaired order before the next native PR.
