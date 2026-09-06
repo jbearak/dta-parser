@@ -705,77 +705,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     if (any(sizes != row_count)) {
         stop("`data` has columns with inconsistent row counts; assign `data <- dplyr::ungroup(data)` and group again", call. = FALSE)
     }
-    if (inherits(data, "grouped_df") || inherits(data, "rowwise_df")) {
-        groups <- attr(data, "groups", exact = TRUE)
-        group_columns <- attr(groups, "names", exact = TRUE)
-        if (!is.data.frame(groups) || !is.list(groups) ||
-            is.null(group_columns) || anyNA(group_columns) ||
-            any(!nzchar(group_columns)) || anyDuplicated(group_columns) ||
-            !".rows" %in% group_columns) {
-            stop("`data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again",
-                 call. = FALSE)
-        }
-        if (any(vapply(.plain_data_columns(groups), NROW, numeric(1)) !=
-                abs(.row_names_info(groups, 2L)))) {
-            stop("`data` has malformed grouping metadata with inconsistent row counts; assign `data <- dplyr::ungroup(data)` and group again",
-                 call. = FALSE)
-        }
-        if (inherits(data, "grouped_df")) {
-            dplyr::validate_grouped_df(data, check_bounds = TRUE)
-        }
-        if (!is.list(groups$.rows) ||
-            !all(vapply(groups$.rows, is.integer, logical(1)))) {
-            stop("`data` has malformed grouping metadata; assign `data <- dplyr::ungroup(data)` first",
-                 call. = FALSE)
-        }
-        group_names <- setdiff(names(groups), ".rows")
-        rows <- unlist(groups$.rows, use.names = FALSE)
-        if (!all(group_names %in% names) ||
-            any(vapply(groups$.rows, is.unsorted, logical(1), strictly = TRUE)) ||
-            !identical(sort(as.integer(rows)), seq_len(row_count)) ||
-            (inherits(data, "rowwise_df") &&
-             (!all(lengths(groups$.rows) == 1L) ||
-              !identical(as.integer(rows), seq_len(row_count))))) {
-            stop("`data` has malformed grouping metadata; assign `data <- dplyr::ungroup(data)` first",
-                 call. = FALSE)
-        }
-        if (inherits(data, "grouped_df") &&
-            vctrs::vec_duplicate_any(groups[group_names])) {
-            stop("`data` has duplicated grouping keys; assign `data <- dplyr::ungroup(data)` and group again",
-                 call. = FALSE)
-        }
-        # A complete partition is not enough: each key must describe every
-        # row assigned to it. Otherwise grouped helpers silently compute on
-        # the wrong observations after ordinary edits to grouping metadata.
-        for (name in group_names) {
-            actual <- vctrs::vec_slice(columns[[name]], rows)
-            expected <- vctrs::vec_slice(.subset2(groups, name),
-                rep.int(seq_len(nrow(groups)), lengths(groups$.rows)))
-            if (!all(vctrs::vec_equal(.grouping_key_value(actual),
-                                     .grouping_key_value(expected), na_equal = TRUE))) {
-                stop("`data` has grouping keys that do not match its rows; assign `data <- dplyr::ungroup(data)` and group again",
-                     call. = FALSE)
-            }
-        }
-    }
+    .validate_group_metadata(data, columns, names, row_count)
     list(
         columns = columns, names = names, nrow = row_count, state = state
     )
-}
-
-# Label/metadata wrappers do not change a grouping key's values. Compare
-# without those wrappers while retaining factors, dates and Stata missing-code
-# identity. Copies here change attributes only, never the supplied columns.
-.grouping_key_value <- function(value) {
-    if (inherits(value, "dtatools_dta_metadata_vector")) {
-        value <- .dta_metadata_vector_base(value)
-    }
-    if (inherits(value, "haven_labelled") && !inherits(value, "dta_numeric")) {
-        value <- .metadata_copy(value)
-        classes <- setdiff(class(value), c("haven_labelled", "vctrs_vctr", typeof(value)))
-        attr(value, "class") <- if (length(classes)) classes else NULL
-    }
-    value
 }
 
 .RUNTIME_NAME_MESSAGE <-
@@ -1624,18 +1557,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # current columns, keeping the `.drop` setting, so a following dplyr verb
 # or `.N` assignment partitions the rows the way the data now reads.
 .regroup_after_replacement <- function(data, state) {
-    snapshot <- if (is.null(state)) data else .reference_snapshot(data)
-    # The snapshot reads attributes off `data`, so rewriting the attribute
-    # on the object is what every binding and later snapshot observes.
-    regrouped <- dplyr::group_by(
-        dplyr::ungroup(snapshot),
-        dplyr::across(dplyr::all_of(dplyr::group_vars(data))),
-        .drop = dplyr::group_by_drop_default(data)
-    )
-    .Call(
-        C_dtatools_set_attribute, data, "groups",
-        attr(regrouped, "groups", exact = TRUE)
-    )
+    groups <- .build_group_metadata(.data_columns(data), .group_vars(data),
+                                    nrow(data), drop = .group_drop_default(data))
+    .Call(C_dtatools_set_attribute, data, "groups", groups)
     invisible(NULL)
 }
 
@@ -2572,20 +2496,31 @@ vec_restore.dtatools_ref_data <- function(x, to, ...) {
 
 #' @export
 dplyr_reconstruct.dtatools_ref_data <- function(data, template) {
-    .close_dibble(
-        template,
-        dplyr::dplyr_reconstruct(data, .reference_snapshot(template))
-    )
+    if (is_dibble(template)) return(.reconstruct_dibble(data, template))
+    metadata <- attributes(.reference_snapshot(template))
+    metadata$names <- names(data)
+    metadata$row.names <- attr(data, "row.names", exact = TRUE)
+    result <- .data_columns(data)
+    attributes(result) <- metadata
+    .restore_group_metadata(result, template)
 }
 
 # dplyr's grouped and rowwise row slicing, which `semi_join()`,
 # `anti_join()`, and the `rows_*()` verbs use, builds its result without
 # passing through `dplyr_reconstruct()`, so the dibble closes here.
 #' @export
-dplyr_row_slice.dtatools_ref_data <- function(data, i, ...) {
-    .close_dibble(
-        data, dplyr::dplyr_row_slice(.reference_snapshot(data), i, ...)
-    )
+dplyr_row_slice.dtatools_ref_data <- function(data, i, ..., preserve = FALSE) {
+    .as_mutation_data(data, allow_grouped = TRUE)
+    locations <- vctrs::vec_as_location(i, n = nrow(data), missing = "propagate", arg = "i")
+    context <- .begin_dibble_result(data, "dplyr_row_slice()", "rows")
+    row_names <- .row_slice_names(context, locations)
+    if (!is_dibble(data)) {
+        result <- .ungrouped_result_frame(
+            .gather_dta_columns(context$columns, locations), context$metadata, row_names)
+        return(.restore_group_metadata(result, data, "slice", locations, preserve))
+    }
+    .dibble_take_rows(context, locations, data, "slice", preserve, row_names)
+
 }
 
 # Likewise for column modification on a grouped dibble, which
@@ -3438,7 +3373,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 #' @export
 group_by.dtatools_ref_data <- function(
     .data, ..., .add = FALSE,
-    .drop = dplyr::group_by_drop_default(.data)
+    .drop = .group_drop_default(.data)
 ) {
     # `group_by(d, g = x > 1)` computes a key as `mutate()` would, and
     # the key is typed before the groups form, so `NA` and `""` in a

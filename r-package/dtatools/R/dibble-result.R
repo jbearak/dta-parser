@@ -20,7 +20,7 @@
          operation = operation, lineage = lineage)
 }
 
-.finish_dibble_result <- function(context, result, sources = NULL) {
+.finish_dibble_result <- function(context, result, sources = NULL, grouping = NULL) {
     result <- .prepare_dibble_frame(result)
     source_addresses <- if (!is.null(sources)) {
         unlist(lapply(sources, function(source) {
@@ -49,6 +49,8 @@
         .Call(C_dtatools_set_data_column, result, as.integer(index),
               completed[[address]])
     }
+    if (!is.null(grouping)) result <- grouping(result)
+    .validate_group_metadata(result)
     .new_validated_dibble(result)
 }
 
@@ -120,8 +122,7 @@
 
 # Match dplyr's column-only grouped/rowwise subset and subsequent names<- rules.
 # Keep a complete grouped partition without regrouping; dropping a key can merge
-# groups and still uses the existing grouping constructor until the row module
-# replaces it. Rowwise key order follows the selected column order.
+# groups and rebuilds their keys and indices with the shared grouping module. Rowwise key order follows the selected column order.
 .dibble_select_groups <- function(context, result, locations) {
     classes <- context$metadata$class
     grouped <- "grouped_df" %in% classes
@@ -137,11 +138,9 @@
     if (grouped && !identical(kept, group_names)) {
         attr(result, "groups") <- NULL
         class(result) <- setdiff(classes, "grouped_df")
-        regrouped <- dplyr::grouped_df(
-            result, new_names, drop = !identical(attr(groups, ".drop"), FALSE)
-        )
-        # grouped_df() does not promise to preserve arbitrary table metadata.
-        attr(result, "groups") <- attr(regrouped, "groups", exact = TRUE)
+        attr(result, "groups") <- .build_group_metadata(
+            .data_columns(result), new_names, nrow(result),
+            drop = !identical(attr(groups, ".drop"), FALSE))
         class(result) <- if (length(kept)) classes else setdiff(classes, "grouped_df")
         return(result)
     }

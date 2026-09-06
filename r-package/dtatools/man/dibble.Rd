@@ -73,6 +73,11 @@ isolated for later writes, using copy-on-write for compact columns.
 selectors against the actual Stata columns and build their dibble result
 directly. Ordinary retained vectors are still copied; their string storage
 declarations are checked against current values, including borrowed data.
+Ordinary row brackets and \code{\link[=slice_dta_rows]{slice_dta_rows()}} share batch row gathering with
+the dplyr row-slicing hook. Package-owned grouping validation and rebuilding
+retain sorted groups, empty factor groups and rowwise identifiers. Row
+brackets rebuild groups from selected values; dplyr's row hook remaps the
+existing group indices and honors its \code{preserve} argument.
 
 Ordinary \verb{$<-}, \verb{[[<-}, \verb{[<-}, \verb{names<-}, \verb{dimnames<-}, and
 \verb{row.names<-} return a changed dibble and leave existing aliases unchanged.

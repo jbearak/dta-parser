@@ -34,3 +34,24 @@ notice in the installed package's `NOTICE`. dtplyr's copy planning was studied
 as a reference; its lazy execution and weaker later-write isolation are not the
 dibble contract. Other operation families retain their recorded compatibility
 paths until their own direct implementations pass the plan's gates.
+
+Row brackets, `slice_dta_rows()` and the dplyr row hook now share a batch gather
+module. Each entry point resolves its own locations before gathering. Brackets
+use one integer column to obtain the public tibble or base row-index behavior;
+column planning is shallow. Plain data.table expressions continue using that
+container's own bracket method. Group validation, key extraction, empty factor
+group expansion and regrouping use package-owned code and public vctrs/tibble
+operations, without runtime dplyr calls.
+
+Ordinary grouped row subsets rebuild keys from the selected values. The dplyr
+row hook instead retains existing keys, remaps their row indices and honors
+`preserve`. Rowwise reconstruction retains identifiers in template order;
+rowwise brackets follow selected-column order. Missing character rows take the
+dibble typing path before group reconstruction, keeping the group keys equal
+to the normalized string values. Grouped reconstruction preserves dataset
+metadata, extending the selector improvement from Stage 1. Unknown inputs to
+reconstruction are isolated and validated conservatively.
+
+The expression-based `slice()` family remains Stage 6 work. Complete vctrs and
+binding integration remains Stage 8 work, and dplyr stays in Imports until
+Stage 9 qualifies all package-native features with the dependency absent.

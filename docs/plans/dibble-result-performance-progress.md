@@ -7,7 +7,7 @@ authorized sequential PR, independent-review, CI and CodeRabbit process. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stage 1 PR open, external gates pending
+## Stage 1 complete, Stage 2 active
 
 Branch `codex/direct-dibble-columns`, implemented in an isolated worktree. Direct select, rename and relocate share result
 context/finalization and a private validated constructor. Ordinary payloads still
@@ -67,7 +67,11 @@ independent final evidence reviews are clean, with all actionable findings
 closed. The full timing matrix remains attributed to `be9eac34`; the follow-up changes structural metadata
 and row-name policy, not column storage or string validation. No native source
 has changed.
-No stage has merged yet.
+Stage 1 merged normally as [PR #192](https://github.com/jbearak/dta-parser/pull/192)
+on 2026-09-06, at `c8173b2af7105596f8a59e28e61a9bdd49fa8c3f`. All 16 CI
+checks and completed latest-head CodeRabbit review passed, with all findings
+closed. Root independently confirmed that the merged tree matches reviewed
+head `6c6e59cd28106f406604c98b1d6cc8c30b9a23af` exactly.
 
 Attribution: pinned dplyr selector/group policies and tests were adapted;
 dtplyr was studied only. Installed NOTICE includes exact revisions, destinations,
@@ -75,24 +79,39 @@ modifications and full MIT notices. DESCRIPTION credits the copyright holder;
 README links the detailed notice. Historical 2026-09-05 artifacts retain their
 original dates and revision labels.
 
-Next: inspect CI plus completed
-CodeRabbit summaries and inline comments on the latest head. Address findings
-with independent fix review before root performs the normal merge.
+Stage 2 is active on `codex/direct-dibble-rows`, in an isolated worktree based
+on that merge. It owns shared batch row gathering, package-owned grouping
+validation and rebuilding, ordinary bracket slicing, and dplyr row/reconstruction
+hooks. Entry points retain their separate indexing and grouping policies.
+Direct expression `slice()` remains Stage 6 work; full vctrs/bind integration
+remains Stage 8 work. This stage must preserve metadata, Stata typing, container
+classes, assigned capacity preparation and symmetric later-write isolation.
+Serialized grouped fixtures must work through package-native consumers without
+loading dplyr. Stage 9 still owns Imports changes and genuinely absent-dplyr CI.
+
+Next: implement those shared modules without native changes, run focused and
+full gates, complete two independent actual-diff reviews and fix reviews, then
+open a focused PR for latest-head CI and substantive CodeRabbit review. Root
+will independently verify gates and perform the normal merge.
 
 ## Native ownership prerequisite and pending stages
 
 The unchanged reference allocation runner fails at its first sparse-write budget
 on starting main, the initial prototype and final package source `be9eac34`:
 5,000,048 bytes per call. The original
-runner remains unchanged. It must pass before any later PR with native changes
-merges, and before the epic completes. First-write capture cannot safely skip
+runner remains unchanged. Its numerical budgets and isolation/rollback guarantees must be qualified
+before any later PR with native changes merges, and before the epic completes.
+An independent read-only audit found obsolete bare `gen()` fixtures and
+unknown borrowed first-write assumptions. Stage 3 must review assigned fixture
+preparation and separate capture measurements from strict private-write gates.
+No threshold changes or passing byte-identical historical runner are claimed. First-write capture cannot safely skip
 ambiguous aliases; current monolithic backing would copy the changed column.
 A second reproduction shows that entry-time sharing proof can become stale when
 an evaluated expression exports a column alias. Both reproductions and the
 required dependency repair are recorded in the [plan](dibble-result-performance.md).
 Neither finding is closed by the R-only stage 1 revision.
 
-Stages 2 through 9 remain pending: shared row gathering and grouping; owned
+Stage 2 is active as recorded above. Stages 3 through 9 remain pending: owned
 doubles; owned strings/logicals/integers; expression engine; filter/order/distinct/
 slice families; summaries/callbacks; joins/binding/hooks; independent recoding
 and optional dplyr configuration. Reconcile the ownership prerequisite before
@@ -129,3 +148,28 @@ Row-name expectations retain the old policy: select/relocate reset them; plain
 rename preserves them, including legacy generated/structural overlays;
 grouped/rowwise rename resets them. Independent review checked 144 metadata
 cases and a separate 36-case row-name matrix, then reviewed the fixes.
+
+The stricter minimum-version preflight found that pristine dplyr 1.1.0 and
+1.2.0 sources fail compilation under R 4.6.1 because removed promise APIs are
+used before dtatools runs. These are not runtime compatibility results. Current
+dplyr 1.2.1 works. Stages 5 and 9 must qualify an installable supported minimum.
+
+## Stage 2 implementation and validation in progress
+
+Shared modules now own grouping validation, key extraction, sorted grouping and
+factor expansion, row gathering, ordinary base/tibble reference-frame brackets,
+and the dplyr row/reconstruction hooks. Native source and the 106 existing
+exports are unchanged. Plain data.table bracket expressions retain their own
+container method; row gathering is direct through `slice_dta_rows()`.
+A fresh installed build passes 1,930 focused row, bracket, gather and selector
+assertions with no failures, warnings or skips. Serialized grouped fixtures
+pass in a fresh process that confirms dplyr remains unloaded through package
+brackets, slicing, gen, egen and regrouping. The early development-load bracket
+subprocess failures came from the stale global installation; all 162 bracket
+assertions now pass against the fresh package. Full checks, conformance,
+interoperability, benchmarks and two independent actual-diff reviews remain
+in progress. Exact Stage 1 hook evidence confirms that padded string rows keep
+vctrs row names through the shared finalizer; using public `as_dibble()` as the
+oracle would reset those names and would not represent that public path.
+Provenance now includes the pinned dplyr factor-expansion and row-hook policies
+adapted in this stage. The installed NOTICE retains the full license.

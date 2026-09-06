@@ -34,8 +34,10 @@ locations. Character locations match row names.
 
 For a dibble with at least ten rows, \code{slice_dta_rows(survey, 1:10)} and
 \code{survey[1:10, ]} both return the first ten rows with all columns, preserving
-Stata metadata and leaving \code{survey} unchanged. Brackets use ordinary tibble
-subsetting; \code{slice_dta_rows()} batches compact Stata numeric columns in native
-code to reduce per-column overhead. Use brackets for everyday subsetting;
-consider \code{slice_dta_rows()} when slicing wide Stata datasets.
+Stata metadata and leaving \code{survey} unchanged. Both share the batched row
+gatherer. Brackets retain tibble indexing rules; \code{slice_dta_rows()} uses
+vctrs location rules, including errors for unknown row names or out-of-range
+positive locations. Grouped dibbles rebuild groups from the selected rows,
+retaining \code{.drop}; rowwise dibbles retain their identifier variables. Missing
+string rows become Stata's empty string before grouping is rebuilt.
 }

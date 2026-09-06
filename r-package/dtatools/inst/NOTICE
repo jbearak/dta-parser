@@ -21,6 +21,26 @@ Adapted from dplyr 1.2.1:
   Tests: public selector cases adapted into tests/testthat/test-dibble-columns.R
     from tests/testthat/test-select.R, test-rename.R and test-relocate.R,
     with Stata-typed fixtures and additional dibble ownership assertions.
+  Additional Stage 2 sources:
+    R/grouped-df.R: compute_groups(), dplyr_locate_sorted_groups(),
+      group_data_trim(), group_intersect(), [.grouped_df
+    R/rowwise.R: rowwise_df(), new_rowwise_df(), [.rowwise_df
+    R/generics.R: grouped/rowwise dplyr_row_slice() and dplyr_reconstruct()
+    src/group_by.cpp: FactorExpander, VectorExpander, LeafExpander and
+      grouping validation policies
+  Additional destinations: R/dibble-groups.R, R/dibble-rows.R and the
+    row/reconstruction hooks in R/mutate-data.R.
+  Changes: factor expansion is expressed as R recursion over integer key
+    positions; public vctrs grouping/slicing and tibble construction replace
+    dplyr internals. Validation additionally requires a complete partition and
+    matching keys before expressions run. Native gathering uses the existing
+    dtatools kernel. Missing strings are normalized before groups are rebuilt;
+    arbitrary dataset metadata survives grouped reconstruction. The grouped
+    row hook preserves its separate existing-group remapping policy.
+  Additional tests: tests/testthat/test-dibble-rows.R adapts group expansion,
+    rowwise identifier and reconstruction cases from test-group-by.R,
+    test-grouped-df.R, test-generics.R and test-rowwise.R, with package-specific
+    storage, metadata, indexing and later-write isolation assertions.
   The inspected files contain no separate file-level copyright or license.
 
 Studied as references only, with no dtplyr implementation incorporated:
@@ -33,8 +53,8 @@ Studied as references only, with no dtplyr implementation incorporated:
   is reproduced for reference; this is not a claim that its code was copied.
 
 Public tidyselect, rlang, vctrs, tibble and dplyr APIs remain dependencies.
-Calling those APIs does not incorporate their implementations. No vctrs or
-data.table source was copied or adapted for this stage.
+Calling those APIs does not incorporate their implementations. Tibble index implementation was inspected to check the public planning API;
+no tibble, vctrs or data.table source was copied or adapted.
 
 Preserved dplyr license
 ----------------------
