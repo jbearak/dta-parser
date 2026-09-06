@@ -44,7 +44,7 @@
 .row_slice_names <- function(context, locations) {
     shell <- .ungrouped_result_frame(list(), context$metadata,
                                       context$metadata$row.names)
-    attr(vctrs::vec_slice(shell, locations), "row.names", exact = TRUE)
+    .row_names_info(vctrs::vec_slice(shell, locations), 0L)
 }
 
 .dibble_take_rows <- function(context, locations, template,
@@ -63,7 +63,7 @@
     .as_mutation_data(template, allow_grouped = TRUE)
     context <- .begin_dibble_result(template, "dplyr_reconstruct()", "unknown")
     result <- .ungrouped_result_frame(.data_columns(data), context$metadata,
-                                      attr(data, "row.names", exact = TRUE))
+                                      .row_names_info(data, 0L))
     .finish_dibble_result(context, result, grouping = function(value)
         .restore_group_metadata(value, template))
 }
@@ -144,15 +144,15 @@
     for (name in explicit) names(column_call)[match(name, c("", "x", "i", "j", "drop"))] <- name
     selected <- eval(column_call, environment)
     row_frame <- tibble::new_tibble(list(.row = seq_len(nrow(snapshot))), nrow = nrow(snapshot))
-    attr(row_frame, "row.names") <- attr(snapshot, "row.names", exact = TRUE)
+    attr(row_frame, "row.names") <- .row_names_info(snapshot, 0L)
     row_plan <- if (supplied_i) row_frame[i, , drop = FALSE] else row_frame
     locations <- row_plan[[1L]]
     columns <- if (supplied_i) .gather_dta_columns(.data_columns(selected), locations) else
         .data_columns(selected)
     metadata <- attributes(selected)
     result <- .ungrouped_result_frame(columns, metadata,
-        if (supplied_i) attr(row_plan, "row.names", exact = TRUE) else
-            attr(selected, "row.names", exact = TRUE))
+        if (supplied_i) .row_names_info(row_plan, 0L) else
+            .row_names_info(selected, 0L))
     drop <- if (supplied_drop) eval(matched$drop, environment) else FALSE
     result <- result[, , drop = drop]
     if (!is.data.frame(result)) return(result)
@@ -214,7 +214,7 @@
         return(restore(if (length(dim(column)) == 2L) column[i, , drop = FALSE] else column[i]))
     }
     row_frame <- vctrs::new_data_frame(list(.row = seq_len(nrow(snapshot))), n = nrow(snapshot))
-    attr(row_frame, "row.names") <- attr(snapshot, "row.names", exact = TRUE)
+    attr(row_frame, "row.names") <- .row_names_info(snapshot, 0L)
     row_plan <- if (has_i) row_frame[i, , drop = FALSE] else row_frame
     if (has_i) columns <- .gather_dta_columns(columns, row_plan[[1L]], fallback = "base")
     if (!exists("drop", inherits = FALSE)) {
@@ -230,7 +230,7 @@
     metadata <- if (has_j) attributes(columns) else attributes(snapshot)
     metadata$class <- class(snapshot)
     metadata$names <- names(columns)
-    metadata$row.names <- attr(row_plan, "row.names", exact = TRUE)
+    metadata$row.names <- .row_names_info(row_plan, 0L)
     if ((!has_i || !drop_list) && anyDuplicated(names(columns))) {
         metadata$names <- make.unique(names(columns))
     }

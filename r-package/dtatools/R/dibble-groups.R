@@ -153,10 +153,23 @@
             return(invisible(NULL))
         }
         values <- positions[[depth]][remaining]
+        if (!is.factor(old_keys[[depth]]) && length(remaining)) {
+            # Legacy ordering can interleave distinct NA/NaN prefixes. The
+            # upstream VectorExpander follows contiguous runs, not all equal
+            # keys across this prefix, so retain that sequence during expansion.
+            runs <- rle(values)
+            end <- cumsum(runs$lengths)
+            start <- end - runs$lengths + 1L
+            for (run in seq_along(end)) {
+                visit(depth + 1L, remaining[seq.int(start[[run]], end[[run]])],
+                      c(path, runs$values[[run]]))
+            }
+            return(invisible(NULL))
+        }
         candidates <- if (is.factor(old_keys[[depth]])) {
             c(seq_along(levels(old_keys[[depth]])),
               if (anyNA(values)) NA_integer_)
-        } else if (length(remaining)) unique(values) else NA_integer_
+        } else NA_integer_
         for (value in candidates) {
             selected <- if (is.na(value)) is.na(values) else
                 !is.na(values) & values == value

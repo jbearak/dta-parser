@@ -458,6 +458,43 @@ test_that("metadata subscript forcing precedes container argument validation", {
         cols <- function() { events <<- c(events, "j"); "absent" }
         rows <- function() { events <<- c(events, "i"); stop("row expression") }
         suppressWarnings(try(data[rows(), cols()], silent = TRUE))
-        expect_identical(events, if (kind == "base") "j" else c("j", "i"))
+        expect_identical(events, c("j", "i"))
     }
+})
+
+test_that("legacy factor expansion retains contiguous missing-value prefixes", {
+    withr::local_options(list(dplyr.legacy_locale = TRUE))
+    plain <- tibble::tibble(n = c(NA_real_, NaN, NA_real_), s = c("a", "b", "c"),
+                           f = factor(rep("u", 3L), levels = c("u", "v")), x = 1:3)
+    data <- reserve_columns(suppressWarnings(dplyr::group_by(plain, n, s, f, .drop = FALSE)))
+    gen(data, marker = x)
+    expect_s3_class(data, "dtatools_ref_data")
+    snapshot <- dtatools:::.reference_snapshot(data)
+    expect_identical(attr(data[3:1, ], "groups"),
+                     suppressWarnings(attr(snapshot[3:1, ], "groups")))
+})
+
+test_that("row results retain automatic versus explicit row-name bookkeeping", {
+    for (explicit in c(FALSE, TRUE)) {
+        data <- dibble(x = 1:3, s = c("a", "b", "c"))
+        if (explicit) attr(data, "row.names") <- 1:3
+        snapshot <- dtatools:::.reference_snapshot(data)
+        for (rows in list(1:3, 3:1, c(NA_integer_, 2L), integer())) {
+            for (operation in list(function(d) d[rows, ],
+                                   function(d) dplyr::dplyr_row_slice(d, rows))) {
+                expected <- dtatools:::.close_dibble(data, operation(snapshot))
+                expect_identical(.row_names_info(operation(data), 0L),
+                                 .row_names_info(expected, 0L))
+            }
+        }
+        candidate <- snapshot[2:1, ]
+        expect_identical(.row_names_info(dplyr::dplyr_reconstruct(candidate, data), 0L),
+                         .row_names_info(dplyr::dplyr_reconstruct(candidate, snapshot), 0L))
+    }
+    joined <- dplyr::full_join(dibble(id = 1:2, s = c("a", "b")),
+                               tibble::tibble(id = 3L), by = "id")
+    expect_identical(.row_names_info(joined, 0L), c(NA_integer_, -3L))
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    expect_no_warning(save_arrow(joined, path))
 })

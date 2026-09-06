@@ -212,3 +212,13 @@ indices before underlying method argument matching and delays column validation
 until after the row expression where tibble requires it. All 2,560 working-source
 cases pass, with explicit reference-class preconditions. Final installed gates
 remain required for this fix.
+
+Exact baseline comparison identified the fifth installed-suite warning as a
+Stage 2 regression: reconstruction changed automatic row names into explicit
+integer names, which Arrow then reported as dropped metadata. New row planning
+and reconstruction now carry `.row_names_info(..., 0L)`, preserving that
+bookkeeping as well as visible names. The join/Arrow probe is warning-free.
+The legacy-locale review also found interleaved NA/NaN prefixes during factor
+expansion. Expansion now follows contiguous runs, matching the upstream
+VectorExpander policy. Both fixes have committed regression coverage and remain
+subject to final independent review and fresh installed validation.
