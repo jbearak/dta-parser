@@ -5,7 +5,7 @@ Issue: https://github.com/jbearak/dta-parser/issues/172, still open.
 Contract: [implementation plan](dibble-result-performance.md), plus the
 user handoff `/tmp/dibble-direct-operations-handoff.3hgh3u_0.txt`.
 
-## Stage 1: local gates complete, external gates pending
+## Stage 1: implementation reviewed, external gates pending
 
 Branch `codex/direct-dibble-columns`, isolated worktree
 `/private/tmp/dta-direct-stage1`. Direct select, rename and relocate share result
