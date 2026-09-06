@@ -137,6 +137,19 @@ jobs:
           .libPaths(c(file.path(getwd(), "release-build", "library"), .libPaths()))
           library(dtatools)
           stopifnot(is.function(read_dta))
+          notice <- system.file("NOTICE", package = "dtatools", mustWork = TRUE)
+          expected <- readLines("r-package/dtatools/inst/NOTICE", warn = FALSE)
+          stopifnot(identical(readLines(notice, warn = FALSE), expected))
+          binary <- Sys.glob(file.path("release-build", "binary", "dtatools_*"))
+          stopifnot(length(binary) == 1L)
+          unpacked <- tempfile("dtatools-binary-")
+          dir.create(unpacked)
+          if (grepl("[.]zip$", binary)) utils::unzip(binary, exdir = unpacked)
+          else utils::untar(binary, exdir = unpacked)
+          stopifnot(identical(
+            readLines(file.path(unpacked, "dtatools", "NOTICE"), warn = FALSE),
+            expected
+          ))
 
       - name: Stage binary for release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

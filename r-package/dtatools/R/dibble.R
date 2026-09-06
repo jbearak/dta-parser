@@ -43,7 +43,11 @@
 #' unchanged, and a by-reference write on either the input or the result
 #' leaves the other as it was, and leaves any other frame the operation
 #' drew columns from as it was. Columns an operation leaves alone are
-#' shared copy-on-write, so compact columns stay compact.
+#' isolated for later writes, using copy-on-write for compact columns.
+#' `dplyr::select()`, `dplyr::rename()`, and `dplyr::relocate()` resolve
+#' selectors against the actual Stata columns and build their dibble result
+#' directly. Ordinary retained vectors are still copied; their string storage
+#' declarations are checked against current values, including borrowed data.
 #'
 #' Ordinary `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, and
 #' `row.names<-` return a changed dibble and leave existing aliases unchanged.
@@ -151,7 +155,7 @@ is_dibble <- function(x) {
 # or rowwise tibble keeps its class, so `state$classes` records the grouping
 # and dplyr sees it again on the snapshot. The shallow copy leaves the
 # caller's object untouched by the in-place mark.
-.as_dibble <- function(x, caller = "as_dibble()") {
+.prepare_dibble_frame <- function(x) {
     if (is.data.frame(x) && !.supported_mutation_container(x)) {
         x <- .metadata_copy(x)
         class(x) <- if (inherits(x, "data.table")) {
@@ -183,7 +187,17 @@ is_dibble <- function(x) {
         )
     }
     .as_mutation_data(x, allow_grouped = TRUE)
-    x <- .type_dibble_columns(x, caller)
+    x
+}
+
+.as_dibble <- function(x, caller = "as_dibble()") {
+    x <- .prepare_dibble_frame(x)
+    .new_validated_dibble(.type_dibble_columns(x, caller))
+}
+
+# Private constructor. Its caller has checked table shape and normalized every
+# column. Validation does not imply isolation; result finalization owns that.
+.new_validated_dibble <- function(x) {
     # Spare column slots let `gen()` append in place, so the physical
     # list stays the complete dataset for every reader.
     x <- .reserve_column_capacity(x)

@@ -20,6 +20,7 @@ archive_check = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(archive_check)
 
 REQUIRED_FIXTURE_FILES = {
+    "dtatools/inst/NOTICE",
     "dtatools/src/dta-tools/Cargo.toml",
     "dtatools/src/dta-tools/src/lib.rs",
     "dtatools/src/rust/Cargo.toml",

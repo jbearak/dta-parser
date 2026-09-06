@@ -1,0 +1,87 @@
+Third-party source and reference inventory
+==========================================
+
+This package remains licensed under GPL-3. The following incorporated portions
+are also subject to the preserved upstream MIT notice below.
+
+Adapted from dplyr 1.2.1:
+  Revision: 95740975c465c29cdb2abdfa13effddb948444dc
+  Source: https://github.com/tidyverse/dplyr/tree/95740975c465c29cdb2abdfa13effddb948444dc
+  R/select.R: select.data.frame(), ensure_group_vars()
+  R/rename.R: rename.data.frame()
+  R/relocate.R: relocate.data.frame(), eval_relocate()
+  R/grouped-df.R: [.grouped_df and names<-.grouped_df policies
+  R/rowwise.R: [.rowwise_df and names<-.rowwise_df policies
+  Destinations: R/dibble-result.R and the select, rename, and relocate methods
+    in R/mutate-data.R.
+  Changes: package-owned column-list assembly and result finalization replace
+    whole-table dplyr dispatch. Existing dibble typing, metadata, isolation and
+    capacity rules apply. Selector helpers use qualified public tidyselect,
+    rlang and base R functions. Group retention and renaming are explicit.
+  Tests: public selector cases adapted into tests/testthat/test-dibble-columns.R
+    from tests/testthat/test-select.R, test-rename.R and test-relocate.R,
+    with Stata-typed fixtures and additional dibble ownership assertions.
+  The inspected files contain no separate file-level copyright or license.
+
+Studied as references only, with no dtplyr implementation incorporated:
+  dtplyr 1.3.3, revision 2cc627511c34ed461093ae4c5dc94faccffeb93c
+  https://github.com/tidyverse/dtplyr/tree/2cc627511c34ed461093ae4c5dc94faccffeb93c
+  R/step-subset-select.R, R/step-call.R, R/step-subset.R, and their tests.
+  Selection plans and copy flags informed the design review. They do not
+  establish the ownership or symmetric isolation required by dibbles. The
+  inspected files contain no separate file-level notices. dtplyr's MIT license
+  is reproduced for reference; this is not a claim that its code was copied.
+
+Public tidyselect, rlang, vctrs, tibble and dplyr APIs remain dependencies.
+Calling those APIs does not incorporate their implementations. No vctrs or
+data.table source was copied or adapted for this stage.
+
+Preserved dplyr license
+----------------------
+
+# MIT License
+
+Copyright (c) 2026 dplyr authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Reference dtplyr license
+------------------------
+
+# MIT License
+
+Copyright (c) 2023 dtplyr authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
