@@ -70,7 +70,10 @@ test_that("base copies read physical columns and never rewrite source bookkeepin
         expect_identical(as.integer(target$x), rep(99L, 3))
         expect_identical(as.integer(target$y), if (mutate_original) 11:13 else 1:3)
         expect_identical(serialize(other, NULL), before)
-        expect_identical(original_state$physical_names, c("x", "y"))
+        expect_identical(names(source), c("x", "y"))
+        expect_identical(dtatools:::.reference_state(source), original_state)
+        expect_identical(original_state$physical_count, 2L)
+        expect_null(original_state$physical_names)
         expect_null(original_state$object)
     }
     # Old serialized states had cached locations and owning back-pointers.

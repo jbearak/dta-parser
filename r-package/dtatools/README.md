@@ -831,4 +831,6 @@ and tests were studied for operation planning and copying behavior; no dtplyr
 implementation is incorporated. The notice records the exact source revisions
 and local adaptations. Plain data-frame row subsetting adapts base R rules
 credited to the R Core Team and John Chambers. The same notice preserves the
-upstream GPL version 2 or later license; this package uses GPL-3.
+upstream GPL version 2 or later license; this package uses GPL-3. R 4.6.1 native
+attribute and resizing code was also studied for the append journal; that
+implementation uses public APIs and incorporates no source from those files.

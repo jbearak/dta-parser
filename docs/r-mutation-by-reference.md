@@ -94,6 +94,14 @@ On a dibble those operations still return a dibble, so the two styles mix freely
 
 **Cost.** Ordinary R replacement copies the table's column pointers and any column it changes as needed. Explicit helpers can reuse the supplied table and patch compact Stata storage directly. A column shared with a separate table detaches before values change; an unshared `byte` column can stay one byte per row throughout a sequence of replacements.
 
+Dibble results can also share ordinary double values until a write requires
+isolation. Selecting, renaming or relocating those columns creates independent
+column attributes without copying their values. A first write to a borrowed or
+shared column can copy that column; subsequent private sparse writes reuse its
+backing. A full replacement installs the new values without copying the old
+values first. These choices preserve the existing column classes and the helper
+contract on base data frames, tibbles, dibbles and data tables.
+
 **Explicit metadata setters reach the dataset.** `set_var_label(data, x, "Age")` labels the supplied table's column, so every binding sees the label, including the caller when the setter runs inside a function. Use `set_var_format(data, x, "%9.0g")` for display formats and the note or characteristic setters for those attributes.
 
 ## What changes in your workflow
@@ -109,7 +117,11 @@ snapshot <- tibble::as_tibble(survey)   # a plain tibble with R's semantics
 
 **Prepare before the function call.** A helper mutates its supplied table in place or fails when that table cannot resize. It never rebinds a parameter or another target. Assign `survey <- reserve_columns(survey, n = 10L)` before invoking a function that may add ten columns. Preparation creates an isolated table, so create aliases afterwards when they should share the changes.
 
-**There is no undo.** A mutation commits. Interrupting one is safe — compact columns keep rollback bytes until the write commits, so `Ctrl-C` restores the original payload — but a completed `repl()` cannot be reversed except by writing the old values back.
+**There is no undo after a successful mutation.** Native writes either stage
+validated values before committing or retain rollback data through fallible
+writes. An interrupted native transaction preserves the original values and
+ownership state. A completed `repl()` can only be reversed by supplying the old
+values again.
 
 **A `[` assignment does not print.** `[` always makes its result visible, so a bracket assignment at the console would print the whole dataset. As data.table does, dtatools skips the next top-level print of the mutated dataset, so `survey[income < 0, income := NA]` prints nothing and a bare `survey` on the next line prints as usual. The skip lasts only for the statement that made the assignment.
 
@@ -124,6 +136,13 @@ Assign `data <- reserve_columns(data, n = 10L)` to allow ten extra columns on a 
 Dropping the last column preserves the row count of a base data frame, tibble, or dibble. A data.table follows its own empty-table convention and becomes a zero-row, zero-column table. Its stored row names are cleared too, so later generation cannot restore rows that its public shape had lost.
 
 **ALTREP columns from elsewhere are detached.** A generic ALTREP column created by base R or another package is converted to an ordinary vector before replacement, because its private caches cannot be safely invalidated. A standalone alias to that former column keeps the old values.
+
+Owned doubles still report `typeof(x) == "double"`. Native code that requests a
+writable pointer gets independent backing when needed. Retaining that pointer
+prevents later results from sharing its writable values. R serialization can
+materialize an owned double column; values, classes and metadata survive, while
+live ownership records do not. Continue assigning `reserve_columns()` after
+restoration when subsequent operations need column capacity.
 
 ## Compared with data.table
 

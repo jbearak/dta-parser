@@ -7,7 +7,195 @@ authorized sequential PR, independent-review, CI and CodeRabbit process. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stage 1 complete, Stage 2 active
+## Stages 1 and 2 complete, Stage 3 active
+
+Latest Stage 3 working checkpoint: native runner round 9 passes every original
+159 condition plus 15 provenance/readiness conditions, with no bound changes. On working
+DLL `c3a298572b15a23671572d51b5778951`, 400 and 1,600 repeated generations take
+0.123 and 0.855 seconds and profile 3,256 and 12,856 bytes above the original
+1,000-byte threshold. These are modified-build diagnostics, not committed-source
+qualification. The runner logs and Markdown are retained under
+`/private/tmp/dta-direct-stage3-validation/native-runner-working-round9.*`.
+
+The repeated-generation repair uses bounded native shape validation, direct
+already-evaluated scalar generation and genuinely private resizable names.
+A temporary length-only names value lets the public setter release the removed
+attribute cell's reference before resizing. An unwind journal restores shape,
+attribute order, names privacy and reference-state identity. ADR 0032 records
+its small attribute allocations and catastrophic cleanup-allocation limitation.
+Independent reviews closed names loss, a foreign class callback, a journal root
+mistake and conservative copying caused by detached attribute cells. Storage
+round 13 and the API reviewer inspect the final names fixes; root's 219 exact-baseline
+compatibility cases and 18 strict reuse/copy/capture cases pass. Permanent tests
+include 36 immediate-privacy rollback combinations and 60 private appends.
+
+A final API probe then found method dispatch on an attributed `.env[[literal]]`
+member during scalar eligibility checking. Both direct-read recognizers now
+decline attributed or ALTREP literal members before generic operations; public
+generation and replacement regression tests pass. Independent API round 11
+and storage round 15 reviews close the fix, and native round 9 passes after
+that final R change. The installed R database hash is
+`af0a8331d16b5fefc4d90ee18b4f49df`; its unchanged DLL hash alone cannot identify
+the R-only fix. Exact-source provenance will bind both before release.
+
+The initial source commit, complete exact-source gates, paired performance and
+memory evidence, final evidence reviews and PR are still pending. Nothing in
+this checkpoint closes Stage 3 or substitutes a working build for qualification.
+
+Stage 2 merged normally as [PR #193](https://github.com/jbearak/dta-parser/pull/193)
+at 2026-09-06 18:20:48 UTC, producing
+[`fd069a36832ed7c1bdedeed52a4281ecabb36e25`](https://github.com/jbearak/dta-parser/commit/fd069a36832ed7c1bdedeed52a4281ecabb36e25).
+Root verified that its tree exactly matches reviewed head
+`fc130fd722ec9428f451339fd77a689c7c6ad2ac`. All 16 checks passed; CodeRabbit
+completed run `072b0e19-c200-4cb8-862d-f2bc14f1ea1d` with no actionable findings,
+and all three threads are resolved. The withdrawn singleton/drop claim has
+[explicit acknowledgment](https://github.com/jbearak/dta-parser/pull/193#discussion_r3944777128).
+The retained evidence is in `/private/tmp/dta-direct-stage2-validation/`, under
+`root-final-fc130fd` and `final-fc130fd-external/manifest.json`.
+
+Stage 3 is active on `codex/direct-dibble-owned-doubles`, in the isolated
+`/private/tmp/dta-direct-stage3` worktree based on that exact merge. It owns
+ordinary-double capture, backing forks, native adoption and private writes,
+including complete compact mutation/rollback qualification. Stages 4 through 9
+remain pending. A fresh exact-source baseline installation reproduces both
+prerequisites: 5,000,048 bytes copied on each sparse compact write, and a column
+alias exported during private-seam expression evaluation changing unexpectedly.
+Logs and the isolated library are in `/private/tmp/dta-direct-stage3-validation`.
+The working implementation has owned double capture/forks, native adoption after
+R/Rust/DTA/Arrow fills, read-only access, and staged numeric table transactions.
+The development focused suite reached 1,816 passing assertions with no warnings
+after native Stata-double RHS validation removed unnecessary scalar capture.
+This is working-build evidence, not exact-source release qualification. The log
+is `owned-ingress-green-1816.log` in the validation directory.
+
+Correctness review round 1 found three actionable defects: a foreign ALTREP
+callback could escape after the fused sharing guard; fallback prototype creation
+forced repeated plain-double payload copies; and fused no-op/error work leaked
+an original compact ownership claim. The independent reviewer inspected and
+reran all fixes, closing those findings against development DLL MD5
+`d9d238fa05de97c4c459b74692f56f06`, with a further direct fused-slot check against
+`b8ad95063403c946e2416af1007783f6`. Actual callback preparation now precedes the
+effective guard; native empty prototypes avoid sharing target values; working
+compact captures do not revoke original claims. Retained red/fixed probes are
+`review-fused-callback`, `review-fused-noop-claim` and `review-plain-private`.
+The earlier root length-method escape and its comparison fallback variant also
+have retained red/green evidence. These closures do not approve the final diff.
+
+The next working full R suite passed 14,179 assertions with the four existing
+warnings and no failures or skips (`working-full-suite.log`). A new independent
+API review then found that constructor capture split identical owned-double
+slots. Permanent constructor/conversion tests reproduced the changed explicit
+write behavior; capture now reuses one handle per normalized input handle. The
+focused ownership, row and reference suite passed 1,217 assertions, including
+foreign-double ingress and public export tests, without warnings or skips.
+
+Root's foreign-index callback probe also exposed an incorrect subset after the
+callback detached the source and invoked GC. The permanent test reproduced
+`c(11,12,13)` instead of `c(1,2,3)` before the fix. Owned subsetting now roots the
+exact payload; compact subsetting freezes its descriptor and retains the raw
+payload through index callbacks. Combined operand-callback tests cover new
+aliases followed by no-match, error and interrupt paths. Separate native and
+public materialized partial-write tests exercise journal restoration and
+discarding detached work. A genuine noncanonical-NaN comparison decline tests
+the remaining R fallback and isolation after its error and a later valid write.
+
+Two attempts to resume the original correctness reviewer failed at the review
+service with an automated cybersecurity classification. Exact requests and
+returned errors are retained in `review-service-status.md`; neither failure is
+an approval. A fresh independent numeric reviewer is reviewing the actual diff,
+and the API reviewer is reviewing its fixes. Both final reviews remain required.
+
+At that review point, migration of the native runner's 159 assertions and the
+ordinary-string sparse-write prerequisite were unresolved. The resume update
+below records their subsequent fixes and remaining qualification work. Final
+checks, measurements and PR gates are pending. Stages 4 through 9 remain pending.
+
+Resume review and implementation update, 2026-09-06: two new independent agents
+reviewed the actual Stage 3 diff. The grouped Date proxy finding now has a
+permanent red/green regression. A second review found that an unread captured
+mutation environment could observe later writes, and that restoring an empty
+mask parent broke deferred base/lexical lookup. Arbitrary expressions now receive
+complete snapshot column lists; only literal values, direct symbol reads and
+literal `.env` members bypass creation of a data mask. Root's independently
+constructed shared/private delayed-capture matrices match the exact Stage 2
+baseline in all 144 cases. A separate 30-case private active-binding matrix
+matches baseline across numeric, logical, integer and string columns. These
+results use development DLL `1b3591a6c153969f8976f8bfdc7bdd0a` and are not final
+source-bound qualification.
+
+The shared ordinary-string prerequisite now uses temporary internal read handles
+whose source references are released after preflight/evaluation. Exposed masks
+retain ordinary physical handles, and direct column reads receive an isolated
+copy. Public string columns keep their ordinary representation; shared ordinary
+string ownership remains Stage 4. Plain atomic table writes stage operands before
+the late physical sharing check, closing the independent integer RHS callback
+finding. The legacy direct-vector paths still retain journaled after-write
+interrupt coverage. Three consecutive private string writes now keep the same
+physical handle without the former 800,048-byte copies on a 100,000-row probe.
+The latest working full suite passes with the four established warnings. A
+further API review found a full string copy per group in the Date isolation fix.
+The reviewed fix uses the common exposure boundary; independent measurements
+show 12.94, 12.50 and 12.53 MB for 1, 10 and 100 groups, instead of growth with
+group count.
+
+The first native-runner fixture migration assigns column preparation before
+generation and measures borrowed first capture separately from proven private
+writes. The original first native-generated patch remains cold, and the shared
+proxy, dictionary and foreign integer ALTREP fixtures retain their original
+alias cases. The original 159 assertion expressions remain unchanged and in
+order; a root-provided AST comparison confirms this. The sparse dictionary RHS
+handle is acquired before timing, with all cache/source checks preserved. A
+separate arbitrary-expression snapshot measurement must disclose its full
+changed-column cost. Runner execution, complete timing/retained/peak evidence,
+source-bound builds, full required gates and both final independent reviews
+remain pending. No assertion bound has been weakened and no PR is open.
+
+Further native-runner diagnostics found full R temporaries in numeric promotion
+validation. A selected-value native fit scan preserves all five Stata numeric
+storage boundaries and missing-value rules without those temporaries. Independent
+reviews passed 500 and 1,175 paired fit cases, including fallback classes. Review
+also found mutable foreign row indices and unrooted generic target handles.
+The fixed fit loop checks each consumed row bound, and remaining detached generic
+transactions root and revalidate the original handle and ALTREP state after
+callbacks. Both findings were independently reproduced and closed against DLL
+`b77634597474c97704b2ef9af4401041`.
+
+The runner now precomputes the second proxy row index before timing. Its
+near-unique dictionary target explicitly uses `read_arrow(output = "tibble")`
+to retain the ordinary character representation required by the unchanged
+value assertions. The default reader now produces typed dibbles; exact Stage 2
+baseline evidence confirms the same class mismatch there. A later allocation
+failure traced to decoding a full dictionary target solely for its empty cast
+prototype. Known unclassed dictionary prototypes now use attributes alone; the
+full changed-column destination remains measured. A further readiness check
+confirmed that an ordinary R `data.frame(text = rep.int("", n))` enters shared,
+so its first isolation capture is now measured before the private sparse RHS
+kernel. Both reviewers accepted the actual migration. It retains physical
+plain-string privacy checks and reports the first-capture cost separately.
+
+The corresponding integer/logical cast prototype now also avoids old target
+reads, and generic ALTREP full replacements allocate their result without
+reading overwritten values. Bounded independent foreign ALTREP probes cover
+prototype, full/sparse replacement, callbacks, alias preservation and interrupted
+detached work; permanent tests retain the callback-count distinction. Working
+native-runner round 7 passes all preceding original checks and reaches only the
+last repeated-generation scaling gate. That gate remains failed: 400 appends
+allocate 10.22 MB in 0.151 seconds, while 1,600 allocate 188.66 MB in 1.866 seconds.
+Repeated whole-table preflight/view creation, name validation/lookup and append
+names reconstruction account for the growth. The shared structural prerequisite
+is under investigation; neither the allocation nor time bound has been relaxed.
+This is development evidence only. Exact-source builds and final reviews remain
+pending.
+
+Source audit: Stage 3 studied R 4.6.1 ALTREP, garbage-collection and reference-count
+interfaces, including `memory.c`, `subscript.c`, `subset.c` and `Defn.h`, as
+reference only. No additional upstream implementation was copied or adapted in
+this stage. Existing installed NOTICE and README attribution retain their pinned
+Stage 1/2 adaptations and full required licenses. Final archives still require
+NOTICE verification.
+
+The entries below retain earlier implementation and review history; their
+then-pending statements do not override the confirmed merge state above.
 
 Branch `codex/direct-dibble-columns`, implemented in an isolated worktree. Direct select, rename and relocate share result
 context/finalization and a private validated constructor. Ordinary payloads still

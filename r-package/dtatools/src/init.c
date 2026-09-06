@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "owned-columns.h"
+
 extern SEXP dtatools_metadata_rust(
     const char *, uint32_t, uint32_t, const char *, int, char **
 );
@@ -167,6 +169,7 @@ static R_altrep_class_t dtatools_numeric_class;
 static R_altrep_class_t dtatools_metadata_real_class;
 static R_altrep_class_t dtatools_metadata_string_class;
 static R_altrep_class_t dtatools_ephemeral_string_class;
+static R_altrep_class_t dtatools_mutation_string_class;
 static SEXP write_callback_condition_classes;
 static int metadata_real_aggregate_mask_enabled;
 static int metadata_real_aggregate_mask;
@@ -621,6 +624,20 @@ enum {
     WRITE_NUMERIC_LONG = 5,
     WRITE_NUMERIC_FLOAT = 6
 };
+
+/* Retain the allocation behind a native read pointer across later R callbacks.
+   Retaining only an ALTREP handle is insufficient if the callback changes its
+   data1/data2 state. This function neither copies nor marks backing shared. */
+static SEXP numeric_payload_root(SEXP value) {
+    if (owned_real(value)) return owned_values(value);
+    if (unmaterialized_numeric_storage(value) != NULL) {
+        SEXP source = value;
+        while (R_altrep_inherits(source, dtatools_metadata_real_class)) source = metadata_proxy_source(source);
+        return R_ExternalPtrProtected(R_altrep_data1(source));
+    }
+    if (ALTREP(value) && R_altrep_data2(value) != R_NilValue) return R_altrep_data2(value);
+    return value;
+}
 
 static numeric_reader numeric_reader_create(
     SEXP value, R_xlen_t expected_length
@@ -1736,6 +1753,7 @@ static SEXP numeric_compact_copy(const numeric_data *data) {
     R_xlen_t byte_length = (R_xlen_t) (data->length * width);
     SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
     memcpy(RAW(backing), data->values, (size_t) byte_length);
+    compact_copy_bytes += (double) byte_length;
     SEXP result = numeric_from_backing(
         backing, data->length, data->kind, data->temporal,
         data->format_version, data->missing_count
@@ -1867,7 +1885,12 @@ static SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
         (TYPEOF(index) != INTSXP && TYPEOF(index) != REALSXP)) {
         return NULL;
     }
-    numeric_data *data = numeric_storage(value);
+    /* Index callbacks can materialize value and free its native descriptor.
+       Freeze the descriptor and retain its raw payload for this read loop. */
+    numeric_data snapshot = *numeric_storage(value);
+    const numeric_data *data = &snapshot;
+    SEXP source_backing = PROTECT(R_ExternalPtrProtected(R_altrep_data1(value)));
+    (void) source_backing;
     R_xlen_t length = XLENGTH(index);
     size_t width = numeric_kind_width(data->kind);
     if ((size_t) length > SIZE_MAX / width) {
@@ -1910,7 +1933,7 @@ static SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
         backing, (size_t) length, data->kind, data->temporal,
         data->format_version, missing_count
     );
-    UNPROTECT(1);
+    UNPROTECT(2);
     return result;
 }
 
@@ -2285,6 +2308,16 @@ SEXP C_dtatools_gather_numeric_columns(
         Rf_error("parallel compact numeric gather failed");
     }
     R_CheckUserInterrupt();
+    /* All worker writes have completed. These ordinary output buffers have
+       never escaped native gathering, so ownership needs no second copy. */
+    for (R_xlen_t index = 0; index < XLENGTH(result); index++) {
+        SEXP gathered = VECTOR_ELT(result, index);
+        if (TYPEOF(gathered) == REALSXP && !ALTREP(gathered)) {
+            SEXP owned = PROTECT(owned_adopt_real(gathered));
+            SET_VECTOR_ELT(result, index, owned);
+            UNPROTECT(1);
+        }
+    }
     UNPROTECT(1);
     return result;
 }
@@ -3646,7 +3679,7 @@ static void arrow_write_column_descriptor(
         if (TYPEOF(values) != REALSXP) {
             Rf_error("internal Arrow double column has the wrong type");
         }
-        descriptor->values = REAL(values);
+        descriptor->values = DATAPTR_RO(values);
         break;
     case 3: { /* character */
         if (TYPEOF(values) != STRSXP) {
@@ -3687,7 +3720,7 @@ static void arrow_write_column_descriptor(
             if (TYPEOF(values) != REALSXP) {
                 Rf_error("internal Arrow Stata column has the wrong type");
             }
-            descriptor->values = REAL(values);
+            descriptor->values = DATAPTR_RO(values);
         }
         break;
     }
@@ -4092,6 +4125,61 @@ SEXP C_dtatools_arrow_datasig(SEXP path) {
     return result;
 }
 
+/* Internal ordinary-string reads use a separate temporary handle so R
+   preflight frames cannot retain the physical target. Release severs its one
+   source reference after evaluation. Public exposure must copy or retain the
+   original physical handle, never publish this temporary view. */
+static int mutation_string_view(SEXP value) {
+    return ALTREP(value) && R_altrep_inherits(value, dtatools_mutation_string_class);
+}
+
+static SEXP mutation_string_source(SEXP value) {
+    SEXP source = R_altrep_data2(value) == R_NilValue
+        ? R_altrep_data1(value) : R_altrep_data2(value);
+    if (source == R_NilValue) Rf_error("an internal mutation string view was released");
+    return source;
+}
+
+static R_xlen_t mutation_string_length(SEXP value) { return XLENGTH(mutation_string_source(value)); }
+static SEXP mutation_string_elt(SEXP value, R_xlen_t i) { return STRING_ELT(mutation_string_source(value), i); }
+static SEXP mutation_string_duplicate(SEXP value, Rboolean deep) {
+    (void) deep;
+    SEXP result = PROTECT(Rf_shallow_duplicate(mutation_string_source(value)));
+    SHALLOW_DUPLICATE_ATTRIB(result, value);
+    UNPROTECT(1);
+    return result;
+}
+static void *mutation_string_dataptr(SEXP value, Rboolean writable) {
+    (void) writable;
+    if (R_altrep_data2(value) == R_NilValue) {
+        SEXP copy = PROTECT(mutation_string_duplicate(value, FALSE));
+        R_set_altrep_data2(value, copy);
+        UNPROTECT(1);
+    }
+    return (void *) DATAPTR_RO(R_altrep_data2(value));
+}
+static const void *mutation_string_dataptr_or_null(SEXP value) {
+    return DATAPTR_RO(mutation_string_source(value));
+}
+static SEXP C_dtatools_mutation_prototype(SEXP value) {
+    int ordinary_discrete = (TYPEOF(value) == INTSXP || TYPEOF(value) == LGLSXP) &&
+        Rf_getAttrib(value, R_DimSymbol) == R_NilValue && !Rf_isObject(value);
+    int ordinary_string = TYPEOF(value) == STRSXP &&
+        (!ALTREP(value) || mutation_string_view(value) ||
+         unmaterialized_dictstring_source(value) != R_NilValue) &&
+        Rf_getAttrib(value, R_DimSymbol) == R_NilValue && !Rf_isObject(value);
+    if ((!owned_real(value) || !owned_real_supported(value)) &&
+        !ordinary_string && !ordinary_discrete) return R_NilValue;
+    SEXP result = PROTECT(Rf_allocVector(TYPEOF(value), 0));
+    SHALLOW_DUPLICATE_ATTRIB(result, value);
+    if (Rf_getAttrib(value, R_NamesSymbol) != R_NilValue) {
+        Rf_setAttrib(result, R_NamesSymbol, Rf_allocVector(STRSXP, 0));
+    }
+    UNPROTECT(1);
+    return result;
+}
+
+
 static R_xlen_t ephemeral_string_length(SEXP value) {
     return XLENGTH(R_altrep_data1(value));
 }
@@ -4121,14 +4209,24 @@ SEXP C_dtatools_is_altrep(SEXP value) {
 
 static SEXP metadata_proxy_state(SEXP value) {
     SEXP state = R_altrep_data1(value);
-    return TYPEOF(state) == VECSXP && XLENGTH(state) == 2
+    return TYPEOF(state) == VECSXP && (XLENGTH(state) == 2 || XLENGTH(state) == 3)
         ? state : R_NilValue;
 }
 
 static SEXP metadata_proxy_source(SEXP value) {
     SEXP state = metadata_proxy_state(value);
-    return state == R_NilValue
+    SEXP source = state == R_NilValue
         ? R_altrep_data1(value) : VECTOR_ELT(state, 0);
+    if (state != R_NilValue && XLENGTH(state) == 3 &&
+        ALTREP(source) && R_altrep_inherits(source, dtatools_numeric_class) &&
+        R_altrep_data2(source) == R_NilValue) {
+        numeric_data *origin = (numeric_data *) R_ExternalPtrAddr(VECTOR_ELT(state, 2));
+        numeric_data *view = numeric_storage(source);
+        if (origin != NULL && origin->values == view->values) {
+            view->missing_count = origin->missing_count;
+        }
+    }
+    return source;
 }
 
 static SEXP metadata_proxy_owner(SEXP value) {
@@ -4339,8 +4437,14 @@ static SEXP metadata_proxy(
     SEXP value, R_altrep_class_t proxy_class, int isolate
 ) {
     SEXP source = value;
+    SEXP read_origin = R_NilValue;
     while (ALTREP(source) && R_altrep_inherits(source, proxy_class) &&
            R_altrep_data2(source) == R_NilValue) {
+        SEXP state = metadata_proxy_state(source);
+        if (state != R_NilValue && XLENGTH(state) == 3) {
+            read_origin = VECTOR_ELT(state, 2);
+            if (isolate) compact_payload_mark_shared(read_origin);
+        }
         SEXP owner = metadata_proxy_owner(source);
         SEXP next = metadata_proxy_source(source);
         if (isolate && owner != R_NilValue && ALTREP(next) &&
@@ -4380,9 +4484,11 @@ static SEXP metadata_proxy(
         compact_payload_mark_shared(external);
         source = alias;
     }
-    SEXP state = PROTECT(Rf_allocVector(VECSXP, 2));
+    SEXP state = PROTECT(Rf_allocVector(VECSXP,
+        !isolate && read_origin != R_NilValue ? 3 : 2));
     SET_VECTOR_ELT(state, 0, source);
     SET_VECTOR_ELT(state, 1, R_NilValue);
+    if (XLENGTH(state) == 3) SET_VECTOR_ELT(state, 2, read_origin);
     SEXP result = PROTECT(R_new_altrep(proxy_class, state, R_NilValue));
     SHALLOW_DUPLICATE_ATTRIB(result, value);
     UNPROTECT(
@@ -4420,6 +4526,8 @@ static SEXP metadata_string_duplicate(SEXP value, Rboolean deep) {
  * duplicate. The returned vector can receive metadata without changing input.
  */
 SEXP C_dtatools_metadata_copy(SEXP value) {
+    if (mutation_string_view(value)) return mutation_string_duplicate(value, FALSE);
+    if (owned_real_supported(value)) return owned_fork_real(value);
     if (!ALTREP(value)) return Rf_shallow_duplicate(value);
     if (R_altrep_inherits(value, dtatools_numeric_class) ||
         R_altrep_inherits(value, dtatools_metadata_real_class)) {
@@ -4437,6 +4545,8 @@ SEXP C_dtatools_metadata_copy(SEXP value) {
  * Use C_dtatools_metadata_copy when later explicit writes need isolation.
  */
 SEXP C_dtatools_metadata_view(SEXP value) {
+    if (mutation_string_view(value)) return mutation_string_duplicate(value, FALSE);
+    if (owned_real(value)) return owned_fork_real(value);
     if (!ALTREP(value)) return Rf_shallow_duplicate(value);
     if (R_altrep_inherits(value, dtatools_numeric_class) ||
         R_altrep_inherits(value, dtatools_metadata_real_class)) {
@@ -4447,6 +4557,200 @@ SEXP C_dtatools_metadata_view(SEXP value) {
         return metadata_proxy(value, dtatools_metadata_string_class, 0);
     }
     return Rf_shallow_duplicate(value);
+}
+
+/* Call-local read handles keep R validation from creating references to the
+   physical column handle. They must cross metadata_copy before user evaluation.
+   A compact view has a separate descriptor retaining the raw allocation, so a
+   foreign materialization of the physical handle cannot invalidate the view. */
+static SEXP mutation_column_view(SEXP value) {
+    if (TYPEOF(value) == STRSXP && !ALTREP(value) && !Rf_isObject(value) &&
+        Rf_getAttrib(value, R_DimSymbol) == R_NilValue) {
+        SEXP view = PROTECT(R_new_altrep(dtatools_mutation_string_class, value, R_NilValue));
+        SHALLOW_DUPLICATE_ATTRIB(view, value);
+        UNPROTECT(1);
+        return view;
+    }
+    if (owned_real(value) && owned_real_supported(value)) {
+        SEXP view = PROTECT(R_new_altrep(
+            dtatools_owned_real_class, R_altrep_data1(value), R_BaseEnv));
+        SHALLOW_DUPLICATE_ATTRIB(view, value);
+        UNPROTECT(1);
+        return view;
+    }
+    numeric_data *numeric = unmaterialized_numeric_storage(value);
+    if (numeric != NULL && known_numeric_classes(value, 1)) {
+        SEXP source = value;
+        while (R_altrep_inherits(source, dtatools_metadata_real_class)) {
+            source = metadata_proxy_source(source);
+        }
+        SEXP origin = R_altrep_data1(source);
+        SEXP descriptor = PROTECT(numeric_from_backing(
+            R_ExternalPtrProtected(origin), numeric->length, numeric->kind,
+            numeric->temporal, numeric->format_version, numeric->missing_count));
+        SEXP state = PROTECT(Rf_allocVector(VECSXP, 3));
+        SET_VECTOR_ELT(state, 0, descriptor);
+        SET_VECTOR_ELT(state, 1, R_NilValue);
+        SET_VECTOR_ELT(state, 2, origin);
+        SEXP view = PROTECT(R_new_altrep(dtatools_metadata_real_class, state, R_NilValue));
+        SHALLOW_DUPLICATE_ATTRIB(view, value);
+        UNPROTECT(3);
+        return view;
+    }
+    /* Unknown and unsupported representations retain the physical handle.
+       The final conservative native guard therefore captures before writing. */
+    return value;
+}
+
+static SEXP C_dtatools_mutation_views(SEXP data) {
+    if (TYPEOF(data) != VECSXP) Rf_error("mutation views need a physical table");
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, XLENGTH(data)));
+    SEXP sizes = PROTECT(Rf_allocVector(REALSXP, XLENGTH(data)));
+    for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
+        SEXP column = VECTOR_ELT(data, i);
+        SEXP view = mutation_column_view(column);
+        SET_VECTOR_ELT(result, i, view);
+        /* An internal view must never reach NROW/length/dim dispatch. Unknown
+           classes retain their physical handle and conservative alias guard. */
+        REAL(sizes)[i] = view == column ? NA_REAL : (double) XLENGTH(view);
+    }
+    Rf_setAttrib(result, R_NamesSymbol, Rf_getAttrib(data, R_NamesSymbol));
+    Rf_setAttrib(result, Rf_install(".dtatools_mutation_views"), Rf_ScalarLogical(1));
+    Rf_setAttrib(result, Rf_install(".dtatools_mutation_sizes"), sizes);
+    UNPROTECT(2);
+    return result;
+}
+
+/* These lists belong solely to a finished mutation evaluation. Drop their
+   physical fallback references before the late sharing check; genuine aliases
+   retained by user callbacks remain counted. No view is used after release. */
+static SEXP C_dtatools_release_mutation_views(SEXP columns) {
+    if (TYPEOF(columns) != VECSXP ||
+        Rf_asLogical(Rf_getAttrib(columns, Rf_install(".dtatools_mutation_views"))) != TRUE) {
+        return R_NilValue;
+    }
+    for (R_xlen_t i = 0; i < XLENGTH(columns); i++) {
+        SEXP column = VECTOR_ELT(columns, i);
+        if (mutation_string_view(column)) R_set_altrep_data1(column, R_NilValue);
+        SET_VECTOR_ELT(columns, i, R_NilValue);
+    }
+    return R_NilValue;
+}
+
+static SEXP C_dtatools_expose_mutation_column(SEXP value) {
+    if (mutation_string_view(value)) return mutation_string_source(value);
+    if (owned_real(value) || unmaterialized_numeric_storage(value) != NULL) {
+        return C_dtatools_metadata_copy(value);
+    }
+    return value;
+}
+
+/* Rf_getAttrib deliberately marks its result immutable. Internal names reads
+   must not publish the vector or revoke privacy merely to validate/count it.
+   R 4.6's experimental attribute iterator keeps this narrow read on the public
+   API; all actual writes still require the real late MAYBE_SHARED check. */
+static SEXP mutation_names_attribute(SEXP tag, SEXP value, void *context) {
+    (void) context;
+    return tag == R_NamesSymbol ? value : NULL;
+}
+
+static SEXP mutation_physical_names(SEXP data) {
+    if (Rf_getAttrib(data, R_DimSymbol) != R_NilValue) return Rf_getAttrib(data, R_NamesSymbol);
+    SEXP names = R_mapAttrib(data, mutation_names_attribute, NULL);
+    return names == NULL ? R_NilValue : names;
+}
+
+/* Diagnostic scalars only: do not export names or affect their sharing. */
+static SEXP C_dtatools_column_names_info(SEXP data) {
+    if (TYPEOF(data) != VECSXP || ALTREP(data)) Rf_error("physical table required");
+    SEXP names = mutation_physical_names(data);
+    if (TYPEOF(names) != STRSXP || ALTREP(names)) Rf_error("ordinary physical column names required");
+    char address[64];
+    snprintf(address, sizeof(address), "%p", (void *) names);
+    int shared = MAYBE_SHARED(names);
+    double length = (double) XLENGTH(names);
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 3));
+    SET_VECTOR_ELT(result, 0, Rf_mkString(address));
+    SET_VECTOR_ELT(result, 1, Rf_ScalarLogical(shared));
+    SET_VECTOR_ELT(result, 2, Rf_ScalarReal(length));
+    UNPROTECT(1);
+    return result;
+}
+
+/* A 32 KiB fixed stack budget avoids heap churn for common-width tables.
+   At a half-full hash table this supports 2,048 names. Wider tables, encoded
+   non-ASCII names and callback-capable columns retain the complete R path. */
+#define MUTATION_SHAPE_NAME_SLOTS 4096
+static int mutation_ascii_name(SEXP name) {
+    if (name == NA_STRING || Rf_getCharCE(name) == CE_BYTES) return 0;
+    const unsigned char *text = (const unsigned char *) CHAR(name);
+    for (; *text; text++) if (*text >= 128) return 0;
+    return 1;
+}
+
+static SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count) {
+    if (ALTREP(row_count) || (TYPEOF(row_count) != INTSXP && TYPEOF(row_count) != REALSXP) ||
+        XLENGTH(row_count) != 1) return Rf_ScalarLogical(0);
+    if (TYPEOF(data) != VECSXP || ALTREP(data) ||
+        XLENGTH(data) > MUTATION_SHAPE_NAME_SLOTS / 2) return Rf_ScalarLogical(0);
+    if (Rf_getAttrib(data, R_DimSymbol) != R_NilValue) return Rf_ScalarLogical(0);
+    SEXP names = mutation_physical_names(data);
+    if (TYPEOF(names) != STRSXP || ALTREP(names) || Rf_isObject(names) ||
+        XLENGTH(names) != XLENGTH(data)) return Rf_ScalarLogical(0);
+    /* Establish the callback-free domain before reading lengths or names. */
+    for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
+        SEXP value = VECTOR_ELT(data, i);
+        if (ALTREP(Rf_getAttrib(value, R_ClassSymbol))) return Rf_ScalarLogical(0);
+        int known = owned_real_supported(value) ||
+            (unmaterialized_numeric_storage(value) != NULL && known_numeric_classes(value, 1)) ||
+            (!ALTREP(value) && !Rf_isObject(value) &&
+             (TYPEOF(value) == REALSXP || TYPEOF(value) == INTSXP ||
+              TYPEOF(value) == LGLSXP || TYPEOF(value) == STRSXP));
+        if (!known || Rf_getAttrib(value, R_DimSymbol) != R_NilValue) return Rf_ScalarLogical(0);
+        SEXP name = STRING_ELT(names, i);
+        if (!mutation_ascii_name(name)) return Rf_ScalarLogical(0);
+    }
+    SEXP seen[MUTATION_SHAPE_NAME_SLOTS] = {0};
+    for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
+        SEXP name = STRING_ELT(names, i);
+        const unsigned char *text = (const unsigned char *) CHAR(name);
+        if (!*text) Rf_error("`data` must have unique, non-missing column names; duplicated names are ambiguous");
+        uint32_t hash = 2166136261u;
+        for (; *text; text++) hash = (hash ^ *text) * 16777619u;
+        size_t slot = hash & (MUTATION_SHAPE_NAME_SLOTS - 1);
+        while (seen[slot] != NULL) {
+            if (seen[slot] == name || strcmp(CHAR(seen[slot]), CHAR(name)) == 0)
+                Rf_error("`data` must have unique, non-missing column names; duplicated names are ambiguous");
+            slot = (slot + 1) & (MUTATION_SHAPE_NAME_SLOTS - 1);
+        }
+        seen[slot] = name;
+    }
+    double expected = Rf_asReal(row_count);
+    for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
+        if ((double) XLENGTH(VECTOR_ELT(data, i)) != expected)
+            Rf_error("`data` has columns with inconsistent row counts; assign `data <- dplyr::ungroup(data)` and group again");
+    }
+    return Rf_ScalarLogical(1);
+}
+
+/* Only used after the ASCII shape certificate above. A non-ASCII query
+   declines so R's complete encoding-aware matching remains authoritative. */
+static SEXP C_dtatools_mutation_name_location(SEXP data, SEXP name) {
+    if (TYPEOF(name) != STRSXP || XLENGTH(name) != 1 ||
+        !mutation_ascii_name(STRING_ELT(name, 0))) return R_NilValue;
+    SEXP names = mutation_physical_names(data);
+    if (TYPEOF(names) != STRSXP || ALTREP(names)) return R_NilValue;
+    const char *wanted = CHAR(STRING_ELT(name, 0));
+    for (R_xlen_t i = 0; i < XLENGTH(names); i++) {
+        if (strcmp(CHAR(STRING_ELT(names, i)), wanted) == 0) return Rf_ScalarInteger((int) i + 1);
+    }
+    return Rf_ScalarInteger(NA_INTEGER);
+}
+
+static SEXP C_dtatools_physical_column_count(SEXP data) {
+    if (TYPEOF(data) != VECSXP) Rf_error("physical column count needs a list");
+    return XLENGTH(data) <= INT_MAX ? Rf_ScalarInteger((int) XLENGTH(data))
+        : Rf_ScalarReal((double) XLENGTH(data));
 }
 
 /**
@@ -4591,6 +4895,7 @@ static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
 }
 
 SEXP C_dtatools_deep_copy_value(SEXP value) {
+    if (owned_real(value)) return owned_capture_real(value);
     numeric_data *numeric = unmaterialized_numeric_storage(value);
     if (numeric != NULL) {
         SEXP result = PROTECT(numeric_compact_copy(numeric));
@@ -4646,7 +4951,7 @@ SEXP C_dtatools_reference_contents(SEXP value) {
 
 static int reference_mutable_altrep(SEXP value) {
     return ALTREP(value) &&
-        (R_altrep_inherits(value, dtatools_numeric_class) ||
+        (owned_real(value) || R_altrep_inherits(value, dtatools_numeric_class) ||
          R_altrep_inherits(value, dtatools_dictstring_class) ||
          R_altrep_inherits(value, dtatools_metadata_real_class) ||
          R_altrep_inherits(value, dtatools_metadata_string_class));
@@ -4933,6 +5238,7 @@ static void snapshot_reference_rows(reference_rows *rows) {
     if (rows->snapshot == NULL) {
         Rf_error("could not snapshot the reference mutation row plan");
     }
+    native_scratch_allocated += (double) length * sizeof(R_xlen_t);
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         rows->snapshot[index] = reference_live_row_at(rows, index);
@@ -5267,6 +5573,7 @@ static SEXP apply_compact_patch_transaction(void *data) {
                 transaction->compact->values,
                 transaction->undo_bytes
             );
+            old_journal_bytes += (double) transaction->undo_bytes;
         }
     } else {
         for (R_xlen_t index = 0; index < count; index++) {
@@ -5280,6 +5587,7 @@ static SEXP apply_compact_patch_transaction(void *data) {
                     row * transaction->width,
                 transaction->width
             );
+            old_journal_bytes += (double) transaction->width;
         }
     }
     transaction->journal_complete = 1;
@@ -5498,6 +5806,8 @@ static SEXP apply_vector_patch_transaction(void *data) {
                 );
                 break;
             }
+            old_journal_bytes += transaction->type == STRSXP
+                ? sizeof(SEXP) : transaction->width;
         }
     }
     transaction->journal_complete = transaction->rollback_required;
@@ -5547,7 +5857,6 @@ static SEXP apply_vector_patch_transaction(void *data) {
     SEXP string_output = R_NilValue;
     if (transaction->type == REALSXP) {
         real_output = (double *) DATAPTR_RW(transaction->target);
-
     } else if (transaction->type == INTSXP) {
         integer_output = INTEGER(transaction->target);
     } else if (transaction->type == LGLSXP) {
@@ -5634,9 +5943,12 @@ static void commit_vector_patch_transaction(
     R_set_altrep_data1(transaction->target, R_NilValue);
 }
 
+static SEXP patch_owned_vector(SEXP target, SEXP rows, SEXP replacement);
+
 static SEXP patch_vector(
     SEXP target, SEXP rows, SEXP replacement, int rollback_required
 ) {
+    if (owned_real(target)) return patch_owned_vector(target, rows, replacement);
     if (rows != R_NilValue &&
         TYPEOF(rows) != INTSXP && TYPEOF(rows) != REALSXP) {
         Rf_error("invalid reference replacement plan");
@@ -5683,6 +5995,7 @@ static SEXP patch_vector(
             UNPROTECT(2);
             Rf_error("could not allocate reference replacement rollback data");
         }
+        native_scratch_allocated += (double) undo_bytes;
         compact_patch_transaction transaction = {
             target,
             VECTOR_ELT(saved_state, 0),
@@ -5813,6 +6126,7 @@ static SEXP patch_vector(
             UNPROTECT(7);
             Rf_error("could not allocate reference replacement rollback data");
         }
+        native_scratch_allocated += (double) bytes;
     }
     vector_patch_transaction transaction = {
         .target = target,
@@ -5923,6 +6237,105 @@ SEXP C_dtatools_set_data_column(SEXP data, SEXP location, SEXP column) {
     return column;
 }
 
+static R_xlen_t mutation_slot(SEXP data, SEXP location) {
+    if (TYPEOF(data) != VECSXP || TYPEOF(location) != INTSXP || XLENGTH(location) != 1) {
+        Rf_error("invalid physical mutation target");
+    }
+    int slot = INTEGER_ELT(location, 0);
+    if (slot == NA_INTEGER || slot < 1 || (R_xlen_t) slot > XLENGTH(data)) {
+        Rf_error("invalid physical mutation target");
+    }
+    return (R_xlen_t) slot - 1;
+}
+
+static SEXP mutation_detached_handle(SEXP target, int copy_values) {
+    if (ALTREP(target) && !reference_mutable_altrep(target)) {
+        return plain_column(target, copy_values);
+    }
+    if (owned_real(target)) return owned_capture_real(target);
+    /* These working proxies stay inside the native transaction. Their patch
+       paths allocate independent decoded values, so preparation need not mark
+       original backing shared or revoke a claim that an error must preserve. */
+    SEXP result = PROTECT(ALTREP(target) && TYPEOF(target) == REALSXP
+        ? metadata_proxy(target, dtatools_metadata_real_class, 0)
+        : ALTREP(target) && TYPEOF(target) == STRSXP
+            ? metadata_proxy(target, dtatools_metadata_string_class, 0)
+            : C_dtatools_metadata_copy(target));
+    numeric_data storage;
+    if (ALTREP(result) &&
+        (materialized_numeric_storage(target, &storage) ||
+         (TYPEOF(result) == STRSXP && unmaterialized_dictstring_source(target) == R_NilValue))) {
+        (void) DATAPTR_RO(result);
+    }
+    UNPROTECT(1);
+    return result;
+}
+
+static void commit_identical_slots(SEXP data, SEXP before, SEXP after) {
+    /* Slots and table shape are already validated. No allocation or R code
+       may run between committing the first and final identical slot. */
+    for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
+        if (VECTOR_ELT(data, i) == before) SET_VECTOR_ELT(data, i, after);
+    }
+}
+
+#include "mutation-write.h"
+
+static SEXP C_dtatools_patch_slot(SEXP data, SEXP location, SEXP rows,
+                                SEXP replacement, SEXP entry_shared) {
+    R_xlen_t slot = mutation_slot(data, location);
+    SEXP numeric_result = patch_numeric_slot(data, slot, rows, replacement,
+        Rf_asLogical(entry_shared) != FALSE);
+    if (numeric_result != R_NilValue) return numeric_result;
+    SEXP plain_result = patch_plain_slot(data, slot, rows, replacement,
+        Rf_asLogical(entry_shared) != FALSE);
+    if (plain_result != R_NilValue) return plain_result;
+    SEXP target = VECTOR_ELT(data, slot);
+    if (rows == R_NilValue && TYPEOF(target) == STRSXP) {
+        SEXP source = unmaterialized_dictstring_source(target);
+        SEXP from = unmaterialized_dictstring_source(replacement);
+        if (source != R_NilValue && from != R_NilValue &&
+            R_altrep_data1(source) == R_altrep_data1(from)) return data;
+    }
+    PROTECT(target);
+    SEXP saved_data1 = PROTECT(ALTREP(target) ? R_altrep_data1(target) : R_NilValue);
+    SEXP saved_data2 = PROTECT(ALTREP(target) ? R_altrep_data2(target) : R_NilValue);
+    R_xlen_t target_length = XLENGTH(target);
+    /* All plain and owned numeric targets were handled above. Remaining
+       dictionary, materialized and foreign ALTREP handles need isolated work
+       before the legacy patcher invokes any operand callbacks. */
+    int detach = 1;
+    if (XLENGTH(target) == 0 || (rows != R_NilValue && XLENGTH(rows) == 0)) detach = 0;
+    SEXP column = PROTECT(detach ? mutation_detached_handle(target, rows != R_NilValue) : target);
+    PROTECT(patch_vector(column, rows, replacement, !detach));
+    if (detach) {
+        if (slot >= XLENGTH(data) || VECTOR_ELT(data, slot) != target ||
+            XLENGTH(target) != target_length ||
+            (ALTREP(target) && (R_altrep_data1(target) != saved_data1 ||
+                                R_altrep_data2(target) != saved_data2))) {
+            Rf_error("reference mutation target changed while preparing replacement");
+        }
+        commit_identical_slots(data, target, column);
+    }
+    UNPROTECT(5);
+    return data;
+}
+
+static SEXP C_dtatools_identical_slot_names(SEXP data, SEXP location) {
+    R_xlen_t slot = mutation_slot(data, location);
+    SEXP target = VECTOR_ELT(data, slot);
+    R_xlen_t count = 0;
+    for (R_xlen_t i = 0; i < XLENGTH(data); i++) if (VECTOR_ELT(data, i) == target) count++;
+    SEXP result = PROTECT(Rf_allocVector(STRSXP, count));
+    SEXP names = Rf_getAttrib(data, R_NamesSymbol);
+    R_xlen_t out = 0;
+    for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
+        if (VECTOR_ELT(data, i) == target) SET_STRING_ELT(result, out++, STRING_ELT(names, i));
+    }
+    UNPROTECT(1);
+    return result;
+}
+
 static void resize_reference_vector(SEXP value, R_xlen_t length) {
     R_resizeVector(value, length);
 
@@ -6011,40 +6424,216 @@ SEXP C_dtatools_reserve_column_capacity(SEXP x, SEXP capacity_value) {
         SET_VECTOR_ELT(result, index, VECTOR_ELT(x, index));
     }
     SHALLOW_DUPLICATE_ATTRIB(result, x);
+    SEXP original_names = Rf_getAttrib(x, R_NamesSymbol);
+    if (TYPEOF(original_names) == STRSXP && XLENGTH(original_names) == length) {
+        SEXP names = PROTECT(R_allocResizableVector(STRSXP, capacity));
+        R_resizeVector(names, length);
+        for (R_xlen_t index = 0; index < length; index++) {
+            SET_STRING_ELT(names, index, STRING_ELT(original_names, index));
+        }
+        SHALLOW_DUPLICATE_ATTRIB(names, original_names);
+        Rf_setAttrib(result, R_NamesSymbol, names);
+        UNPROTECT(1);
+    }
     UNPROTECT(1);
     return result;
 }
 
-/* Appends `column` as the last physical column of `data`, in place, when
-   the list has capacity for it; returns FALSE for an unprepared target.
-   Data tables grow through their own `set()`. */
+/* Structural append uses public resize/attribute APIs. Resizing removes names;
+   detach them first so R's internal getter does not mark private names shared.
+   Reinstalling the attribute can allocate, so an unwind journal restores shape
+   and original attribute order. Catastrophic allocation failure during cleanup
+   cannot be made recoverable with the public attribute setter API. */
+/* An O(1) temporary names value lets the public setter replace the existing
+   attribute cell before removal. Merely unlinking that cell leaves its old
+   reference alive until collection, which would revoke reuse on reinstallation.
+   The placeholder retains only its length, never the original names. */
+static R_altrep_class_t column_append_blank_names_class;
+
+static R_xlen_t column_append_blank_names_length(SEXP value) {
+    return (R_xlen_t) REAL(R_altrep_data1(value))[0];
+}
+
+static SEXP column_append_blank_names_elt(SEXP value, R_xlen_t index) {
+    SEXP materialized = R_altrep_data2(value);
+    return materialized == R_NilValue ? R_BlankString : STRING_ELT(materialized, index);
+}
+
+static void *column_append_blank_names_dataptr(SEXP value, Rboolean writable) {
+    SEXP materialized = R_altrep_data2(value);
+    if (materialized == R_NilValue) {
+        R_xlen_t length = column_append_blank_names_length(value);
+        materialized = PROTECT(Rf_allocVector(STRSXP, length));
+        for (R_xlen_t i = 0; i < length; i++) SET_STRING_ELT(materialized, i, R_BlankString);
+        R_set_altrep_data2(value, materialized);
+        UNPROTECT(1);
+    }
+    return writable ? DATAPTR_RW(materialized) : (void *) DATAPTR_RO(materialized);
+}
+
+static const void *column_append_blank_names_dataptr_or_null(SEXP value) {
+    SEXP materialized = R_altrep_data2(value);
+    return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
+}
+
+static SEXP column_append_blank_names(R_xlen_t length) {
+    SEXP size = PROTECT(Rf_ScalarReal((double) length));
+    SEXP result = R_new_altrep(column_append_blank_names_class, size, R_NilValue);
+    UNPROTECT(1);
+    return result;
+}
+
+typedef struct {
+    SEXP tag;
+    SEXP value;
+    PROTECT_INDEX tag_index, value_index;
+} append_attribute;
+
+typedef struct {
+    SEXP data, original_names, names, new_name, column, result, blank_old, blank_new;
+    append_attribute *attributes;
+    size_t attribute_count, attribute_capacity;
+    R_xlen_t length;
+    int reusable, started;
+} column_append_transaction;
+
+static int column_append_failure_stage = 0;
+static int column_append_failure_interrupt = 0;
+
+static SEXP C_dtatools_inject_column_append_failure(SEXP stage, SEXP interrupt) {
+    int value = Rf_asInteger(stage);
+    int signal = Rf_asLogical(interrupt);
+    if (value < 0 || value > 3 || signal == NA_LOGICAL)
+        Rf_error("invalid column append failure injection");
+    column_append_failure_stage = value;
+    column_append_failure_interrupt = signal;
+    return R_NilValue;
+}
+
+static void maybe_inject_column_append_failure(int stage) {
+    if (column_append_failure_stage != stage) return;
+    column_append_failure_stage = 0;
+    if (column_append_failure_interrupt) {
+        raise(SIGINT);
+        R_CheckUserInterrupt();
+    }
+    Rf_error("injected column append failure at stage %d", stage);
+}
+
+static SEXP count_append_attribute(SEXP tag, SEXP value, void *context) {
+    (void) tag;
+    (void) value;
+    (*(size_t *) context)++;
+    return NULL;
+}
+
+static SEXP save_append_attribute(SEXP tag, SEXP value, void *context) {
+    column_append_transaction *transaction = context;
+    if (transaction->attribute_count >= transaction->attribute_capacity)
+        Rf_error("column append attributes changed while preparing journal");
+    append_attribute *attribute = &transaction->attributes[transaction->attribute_count++];
+    attribute->tag = tag;
+    attribute->value = value;
+    REPROTECT(tag, attribute->tag_index);
+    REPROTECT(value, attribute->value_index);
+    return NULL;
+}
+
+static SEXP apply_column_append(void *context) {
+    column_append_transaction *transaction = context;
+    transaction->started = 1;
+    if (transaction->reusable)
+        Rf_setAttrib(transaction->data, R_NamesSymbol, transaction->blank_old);
+    Rf_setAttrib(transaction->data, R_NamesSymbol, R_NilValue);
+    maybe_inject_column_append_failure(1);
+    if (transaction->reusable) R_resizeVector(transaction->names, transaction->length + 1);
+    SET_STRING_ELT(transaction->names, transaction->length, transaction->new_name);
+    resize_reference_vector(transaction->data, transaction->length + 1);
+    SET_VECTOR_ELT(transaction->data, transaction->length, transaction->column);
+    maybe_inject_column_append_failure(2);
+    Rf_setAttrib(transaction->data, R_NamesSymbol, transaction->names);
+    maybe_inject_column_append_failure(3);
+    return transaction->result;
+}
+
+static void cleanup_column_append(void *context, Rboolean jump) {
+    column_append_transaction *transaction = context;
+    if (!jump || !transaction->started) return;
+    /* Remove names before shrinking as well. Restore every original attribute
+       in order, including the exact reference-state object. Attribute setters
+       may allocate; all saved values remain protected throughout unwinding. */
+    if (transaction->reusable && mutation_physical_names(transaction->data) != R_NilValue)
+        Rf_setAttrib(transaction->data, R_NamesSymbol,
+                     XLENGTH(transaction->data) == transaction->length
+                         ? transaction->blank_old : transaction->blank_new);
+    for (size_t i = 0; i < transaction->attribute_count; i++)
+        Rf_setAttrib(transaction->data, transaction->attributes[i].tag, R_NilValue);
+    resize_reference_vector(transaction->data, transaction->length);
+    if (transaction->reusable) R_resizeVector(transaction->original_names, transaction->length);
+    for (size_t i = 0; i < transaction->attribute_count; i++)
+        Rf_setAttrib(transaction->data, transaction->attributes[i].tag,
+                     transaction->attributes[i].value);
+}
+
+/* Appends the last physical column when outer capacity is sufficient.
+   Data tables grow through their own set(). */
 SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column) {
     if (TYPEOF(data) != VECSXP || TYPEOF(name) != STRSXP ||
         XLENGTH(name) != 1 || Rf_inherits(data, "data.table")) {
         Rf_error("invalid column append");
     }
-    SEXP current_names = PROTECT(Rf_getAttrib(data, R_NamesSymbol));
+    SEXP current_names = PROTECT(mutation_physical_names(data));
     R_xlen_t length = XLENGTH(data);
-    if (TYPEOF(current_names) != STRSXP ||
-        XLENGTH(current_names) != length) {
+    if (TYPEOF(current_names) != STRSXP || XLENGTH(current_names) != length)
         Rf_error("invalid column append names");
-    }
     if (!can_resize_reference_columns(data, current_names, length + 1)) {
         UNPROTECT(1);
         return Rf_ScalarLogical(0);
     }
-    SEXP names = PROTECT(Rf_allocVector(STRSXP, length + 1));
-    for (R_xlen_t index = 0; index < length; index++) {
-        SET_STRING_ELT(names, index, STRING_ELT(current_names, index));
+    SEXP new_name = PROTECT(STRING_ELT(name, 0));
+    SEXP names = current_names;
+    int reusable = !ALTREP(names) && !ANY_ATTRIB(names) && R_isResizable(names) &&
+        R_maxLength(names) >= length + 1 && !MAYBE_SHARED(names);
+    if (!reusable) {
+        names = PROTECT(R_allocResizableVector(STRSXP, R_maxLength(data)));
+        R_resizeVector(names, length + 1);
+        for (R_xlen_t index = 0; index < length; index++)
+            SET_STRING_ELT(names, index, STRING_ELT(current_names, index));
+    } else PROTECT(names);
+    SEXP blank_old = PROTECT(reusable ? column_append_blank_names(length) : R_NilValue);
+    SEXP blank_new = PROTECT(reusable ? column_append_blank_names(length + 1) : R_NilValue);
+    SEXP continuation = PROTECT(R_MakeUnwindCont());
+    SEXP result = PROTECT(Rf_ScalarLogical(1));
+    size_t attribute_count = 0;
+    R_mapAttrib(data, count_append_attribute, &attribute_count);
+    if (attribute_count > (INT_MAX - 7) / 2) Rf_error("too many column append attributes");
+    append_attribute *attributes = (append_attribute *) R_alloc(attribute_count, sizeof(append_attribute));
+    /* The iterator balances its own protect stack around each callback.
+       Reserve our roots outside it and only REPROTECT inside the callback. */
+    for (size_t i = 0; i < attribute_count; i++) {
+        PROTECT_WITH_INDEX(R_NilValue, &attributes[i].tag_index);
+        PROTECT_WITH_INDEX(R_NilValue, &attributes[i].value_index);
     }
-    SET_STRING_ELT(names, length, STRING_ELT(name, 0));
-    /* Everything below is a committed plan: the resize cannot fail once
-       capacity is known, and the element and names are already built. */
-    resize_reference_vector(data, length + 1);
-    SET_VECTOR_ELT(data, length, column);
-    Rf_setAttrib(data, R_NamesSymbol, names);
-    UNPROTECT(2);
-    return Rf_ScalarLogical(1);
+    column_append_transaction transaction = {
+        .data = data, .original_names = current_names, .names = names,
+        .new_name = new_name, .column = column, .result = result,
+        .blank_old = blank_old, .blank_new = blank_new,
+        .attributes = attributes, .attribute_count = 0, .attribute_capacity = attribute_count,
+        .length = length, .reusable = reusable, .started = 0
+    };
+    R_mapAttrib(data, save_append_attribute, &transaction);
+    /* All operand callbacks and journal allocation precede this final check.
+       The public names setter inside the journal still allocates an attr cell. */
+    if (XLENGTH(data) != length || mutation_physical_names(data) != current_names ||
+        XLENGTH(current_names) != length ||
+        !can_resize_reference_columns(data, current_names, length + 1))
+        Rf_error("column append target changed while preparing names");
+    if (reusable && MAYBE_SHARED(names))
+        Rf_error("column append names became shared while preparing names");
+    result = R_UnwindProtect(apply_column_append, &transaction,
+                            cleanup_column_append, &transaction, continuation);
+    UNPROTECT(7 + 2 * (int) attribute_count);
+    return result;
 }
 
 /* Return whether the physical table can hold the requested complete column
@@ -6058,7 +6647,7 @@ SEXP C_dtatools_can_select_data_columns(SEXP data, SEXP length) {
         requested > (double) R_XLEN_T_MAX || requested != floor(requested)) {
         Rf_error("invalid reference column selection capacity query");
     }
-    SEXP current_names = Rf_getAttrib(data, R_NamesSymbol);
+    SEXP current_names = mutation_physical_names(data);
     if (TYPEOF(current_names) != STRSXP ||
         XLENGTH(current_names) != XLENGTH(data)) {
         Rf_error("invalid reference column selection names");
@@ -6484,8 +7073,9 @@ SEXP C_dtatools_generate_numeric(
             values, &row_plan, row_count, &value_plan, temporal
         ));
         set_generated_attributes(result, attributes);
-        UNPROTECT(1);
-        return result;
+        SEXP owned = PROTECT(owned_adopt_real(result));
+        UNPROTECT(2);
+        return owned;
     }
 
     numeric_data plan = {
@@ -7049,7 +7639,7 @@ static int numeric_compare_operand_create(
         return 1;
     }
     if (TYPEOF(value) != REALSXP) return 0;
-    operand->values = (void *) REAL(value);
+    operand->values = (void *) DATAPTR_RO(value);
     operand->kind = NUMERIC_DOUBLE;
     operand->temporal = 0;
     operand->format_version = 0;
@@ -7140,6 +7730,7 @@ static SEXP apply_fused_compare_patch(void *data) {
             transaction->source->values,
             transaction->undo_bytes
         );
+        old_journal_bytes += (double) transaction->undo_bytes;
     }
     transaction->journal_complete = 1;
     transaction->patched = detach_compact_patch_target(transaction->target);
@@ -7201,12 +7792,20 @@ static void cleanup_fused_compare_patch(void *data, Rboolean jump) {
     transaction->undo = NULL;
 }
 
-SEXP C_dtatools_fused_compare_patch(
+static SEXP fused_compare_patch(
     SEXP target, SEXP op_value, SEXP x, SEXP y, SEXP scalar,
-    SEXP replacement, SEXP replacement_scalar, SEXP threads_value
+    SEXP replacement, SEXP replacement_scalar, SEXP threads_value,
+    SEXP table, R_xlen_t slot, int entry_shared
 ) {
     numeric_data *target_storage = unmaterialized_numeric_storage(target);
     if (target_storage == NULL) return R_NilValue;
+    /* Operand readers can execute foreign ALTREP callbacks. Retain the
+       original handle/state, and use copied encoding fields until they finish. */
+    numeric_data encoding = *target_storage;
+    SEXP original = PROTECT(target);
+    SEXP original_data1 = PROTECT(R_altrep_data1(target));
+    SEXP original_data2 = PROTECT(R_altrep_data2(target));
+    int protect_count = 3;
     int op = Rf_asInteger(op_value);
     if (op < 0 || op > 5) Rf_error("invalid Stata comparison operator");
     int threads = Rf_asInteger(threads_value);
@@ -7215,9 +7814,12 @@ SEXP C_dtatools_fused_compare_patch(
     dtatools_compare_operand left;
     size_t length = 0;
     if (!numeric_compare_operand_create(x, &left, &length) ||
-        length != target_storage->length) {
+        length != encoding.length) {
+        UNPROTECT(protect_count);
         return R_NilValue;
     }
+    PROTECT(numeric_payload_root(x));
+    protect_count++;
     dtatools_compare_operand right;
     memset(&right, 0, sizeof(right));
     int has_right = y != R_NilValue;
@@ -7227,8 +7829,11 @@ SEXP C_dtatools_fused_compare_patch(
         size_t right_length = 0;
         if (!numeric_compare_operand_create(y, &right, &right_length) ||
             right_length != length) {
+            UNPROTECT(protect_count);
             return R_NilValue;
         }
+        PROTECT(numeric_payload_root(y));
+        protect_count++;
     } else {
         numeric_scalar_plan(
             scalar, &scalar_value, &scalar_rank,
@@ -7246,8 +7851,11 @@ SEXP C_dtatools_fused_compare_patch(
         if (!numeric_compare_operand_create(
                 replacement, &replacement_operand, &replacement_length
             ) || replacement_length != length) {
+            UNPROTECT(protect_count);
             return R_NilValue;
         }
+        PROTECT(numeric_payload_root(replacement));
+        protect_count++;
     } else {
         numeric_scalar_plan(
             replacement_scalar,
@@ -7259,25 +7867,45 @@ SEXP C_dtatools_fused_compare_patch(
             ? -1 : (replacement_scalar_rank == 1
                 ? 0 : 'a' + replacement_scalar_rank - 2);
         validate_compact_patch_value(
-            target_storage, replacement_scalar_value, missing_code
+            &encoding, replacement_scalar_value, missing_code
         );
     }
 
-    size_t width = numeric_kind_width(target_storage->kind);
-    if (target_storage->length > SIZE_MAX / width) {
+    size_t width = numeric_kind_width(encoding.kind);
+    if (encoding.length > SIZE_MAX / width) {
         Rf_error("fused replacement target is too large");
     }
-    size_t undo_bytes = target_storage->length * width;
+    size_t undo_bytes = encoding.length * width;
+    SEXP saved_state = PROTECT(Rf_allocVector(VECSXP, 2));
+    SEXP continuation = PROTECT(R_MakeUnwindCont());
+    protect_count += 2;
+    if ((table != R_NilValue && (slot >= XLENGTH(table) || VECTOR_ELT(table, slot) != original)) ||
+        R_altrep_data1(original) != original_data1 || R_altrep_data2(original) != original_data2 ||
+        unmaterialized_numeric_storage(original) == NULL) {
+        Rf_error("reference mutation target changed while preparing replacement");
+    }
+    int detached = table != R_NilValue && (entry_shared || MAYBE_SHARED(original));
+    if (detached) {
+        /* A working capture must not mutate the original backing's claim.
+           No-match/error paths discard it without revoking a real sibling. */
+        target = PROTECT(C_dtatools_deep_copy_value(original));
+        protect_count++;
+    }
+    if ((table != R_NilValue && (slot >= XLENGTH(table) || VECTOR_ELT(table, slot) != original)) ||
+        R_altrep_data1(original) != original_data1 || R_altrep_data2(original) != original_data2 ||
+        unmaterialized_numeric_storage(original) == NULL) {
+        Rf_error("reference mutation target changed while preparing replacement");
+    }
+    target_storage = unmaterialized_numeric_storage(target);
+    SET_VECTOR_ELT(saved_state, 0, R_altrep_data1(target));
+    SET_VECTOR_ELT(saved_state, 1, R_altrep_data2(target));
     unsigned char *undo = (unsigned char *) malloc(
         undo_bytes == 0 ? 1 : undo_bytes
     );
     if (undo == NULL) {
         Rf_error("could not allocate fused replacement rollback data");
     }
-    SEXP saved_state = PROTECT(Rf_allocVector(VECSXP, 2));
-    SET_VECTOR_ELT(saved_state, 0, R_altrep_data1(target));
-    SET_VECTOR_ELT(saved_state, 1, R_altrep_data2(target));
-    SEXP continuation = PROTECT(R_MakeUnwindCont());
+    native_scratch_allocated += (double) undo_bytes;
     fused_compare_patch_transaction transaction = {
         .target = target,
         .saved_data1 = VECTOR_ELT(saved_state, 0),
@@ -7300,13 +7928,35 @@ SEXP C_dtatools_fused_compare_patch(
         .threads = threads,
         .journal_complete = 0
     };
-    SEXP result = R_UnwindProtect(
+    SEXP result = PROTECT(R_UnwindProtect(
         apply_fused_compare_patch, &transaction,
         cleanup_fused_compare_patch, &transaction,
         continuation
-    );
-    UNPROTECT(2);
+    ));
+    protect_count++;
+    if (detached && result != R_NilValue && Rf_asLogical(result) == TRUE) {
+        commit_identical_slots(table, original, target);
+    }
+    UNPROTECT(protect_count);
     return result;
+}
+
+SEXP C_dtatools_fused_compare_patch(
+    SEXP target, SEXP op_value, SEXP x, SEXP y, SEXP scalar,
+    SEXP replacement, SEXP replacement_scalar, SEXP threads_value
+) {
+    return fused_compare_patch(target, op_value, x, y, scalar, replacement,
+        replacement_scalar, threads_value, R_NilValue, 0, 0);
+}
+
+static SEXP C_dtatools_fused_patch_slot(
+    SEXP data, SEXP location, SEXP entry_shared, SEXP op, SEXP left,
+    SEXP right, SEXP scalar, SEXP replacement, SEXP replacement_scalar, SEXP threads
+) {
+    R_xlen_t slot = mutation_slot(data, location);
+    return fused_compare_patch(VECTOR_ELT(data, slot), op, left, right, scalar,
+        replacement, replacement_scalar, threads, data, slot,
+        Rf_asLogical(entry_shared) != FALSE);
 }
 
 SEXP C_dtatools_dta_compare(
@@ -7321,69 +7971,30 @@ SEXP C_dtatools_dta_compare(
     int threads = Rf_asInteger(threads_value);
     if (threads == NA_INTEGER || threads < 0) threads = 0;
 
-    /* Compact storage compares raw encoded bytes; a materialized (or
-       eagerly constructed) double vector compares decoded values whose
-       missing codes are NA_real_ and haven-style tagged NaNs. */
-    numeric_data *x_data = unmaterialized_numeric_storage(x);
-    dtatools_compare_operand left;
+    dtatools_compare_operand left, right;
     size_t length;
-    if (x_data != NULL) {
-        left.values = x_data->values;
-        left.kind = x_data->kind;
-        left.temporal = x_data->temporal;
-        left.format_version = x_data->format_version;
-        length = x_data->length;
-    } else if (TYPEOF(x) == REALSXP) {
-        left.values = (void *) REAL(x);
-        left.kind = NUMERIC_DOUBLE;
-        left.temporal = 0;
-        left.format_version = 0;
-        length = (size_t) XLENGTH(x);
-    } else {
-        return R_NilValue;
-    }
-
-    dtatools_compare_operand right;
+    if (!numeric_compare_operand_create(x, &left, &length)) return R_NilValue;
+    PROTECT(numeric_payload_root(x));
+    int protected = 1;
     const dtatools_compare_operand *right_pointer = NULL;
-    double scalar_value = 0.0;
+    double scalar_value = 0;
     int scalar_rank = 0;
     if (y != R_NilValue) {
-        numeric_data *y_data = unmaterialized_numeric_storage(y);
-        if (y_data != NULL) {
-            if (y_data->length != length) return R_NilValue;
-            right.values = y_data->values;
-            right.kind = y_data->kind;
-            right.temporal = y_data->temporal;
-            right.format_version = y_data->format_version;
-        } else if (TYPEOF(y) == REALSXP &&
-                   (size_t) XLENGTH(y) == length) {
-            right.values = (void *) REAL(y);
-            right.kind = NUMERIC_DOUBLE;
-            right.temporal = 0;
-            right.format_version = 0;
-        } else {
+        size_t right_length;
+        if (!numeric_compare_operand_create(y, &right, &right_length) || right_length != length) {
+            UNPROTECT(protected);
             return R_NilValue;
         }
+        PROTECT(numeric_payload_root(y));
+        protected++;
         right_pointer = &right;
-    } else {
-        if (TYPEOF(scalar) != REALSXP || XLENGTH(scalar) != 2) {
-            Rf_error("invalid Stata comparison scalar plan");
-        }
-        scalar_value = REAL(scalar)[0];
-        double rank = REAL(scalar)[1];
-        if (ISNAN(rank) || rank < 0 || rank > 27 || rank != trunc(rank)) {
-            Rf_error("invalid Stata comparison scalar plan");
-        }
-        scalar_rank = (int) rank;
-    }
-    if (length > (size_t) R_XLEN_T_MAX) return R_NilValue;
-
+    } else numeric_scalar_plan(scalar, &scalar_value, &scalar_rank,
+                               "invalid Stata comparison scalar plan");
+    if (length > (size_t) R_XLEN_T_MAX) { UNPROTECT(protected); return R_NilValue; }
     SEXP result = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t) length));
-    int status = dtatools_numeric_compare(
-        op, &left, right_pointer, scalar_value, scalar_rank,
-        LOGICAL(result), length, threads
-    );
-    UNPROTECT(1);
+    int status = dtatools_numeric_compare(op, &left, right_pointer, scalar_value,
+        scalar_rank, LOGICAL(result), length, threads);
+    UNPROTECT(protected + 1);
     return status ? result : R_NilValue;
 }
 
@@ -7498,6 +8109,29 @@ SEXP C_dtatools_replace_reference_columns(
 #include "egen-groups.h"
 
 static const R_CallMethodDef CallEntries[] = {
+    {"C_dtatools_native_copy_stats", (DL_FUNC) &C_dtatools_native_copy_stats, 1},
+    {"C_dtatools_mutation_views", (DL_FUNC) &C_dtatools_mutation_views, 1},
+    {"C_dtatools_replacement_fits", (DL_FUNC) &C_dtatools_replacement_fits, 4},
+    {"C_dtatools_expose_mutation_column", (DL_FUNC) &C_dtatools_expose_mutation_column, 1},
+    {"C_dtatools_release_mutation_views", (DL_FUNC) &C_dtatools_release_mutation_views, 1},
+    {"C_dtatools_mutation_info", (DL_FUNC) &C_dtatools_mutation_info, 2},
+    {"C_dtatools_is_owned_double", (DL_FUNC) &C_dtatools_is_owned_double, 1},
+    {"C_dtatools_mutation_prototype", (DL_FUNC) &C_dtatools_mutation_prototype, 1},
+    {"C_dtatools_column_names_info", (DL_FUNC) &C_dtatools_column_names_info, 1},
+    {"C_dtatools_mutation_shape", (DL_FUNC) &C_dtatools_mutation_shape, 2},
+    {"C_dtatools_mutation_name_location", (DL_FUNC) &C_dtatools_mutation_name_location, 2},
+    {"C_dtatools_physical_column_count", (DL_FUNC) &C_dtatools_physical_column_count, 1},
+    {"C_dtatools_callback_double", (DL_FUNC) &C_dtatools_callback_double, 3},
+    {"C_dtatools_arm_callback_character", (DL_FUNC) &C_dtatools_arm_callback_character, 2},
+    {"C_dtatools_callback_character", (DL_FUNC) &C_dtatools_callback_character, 2},
+    {"C_dtatools_callback_integer", (DL_FUNC) &C_dtatools_callback_integer, 2},
+    {"C_dtatools_patch_slot", (DL_FUNC) &C_dtatools_patch_slot, 5},
+    {"C_dtatools_fused_patch_slot", (DL_FUNC) &C_dtatools_fused_patch_slot, 10},
+    {"C_dtatools_identical_slot_names", (DL_FUNC) &C_dtatools_identical_slot_names, 2},
+    {"C_dtatools_capture_column", (DL_FUNC) &C_dtatools_capture_column, 1},
+    {"C_dtatools_owned_info", (DL_FUNC) &C_dtatools_owned_info, 1},
+    {"C_dtatools_owned_pointer", (DL_FUNC) &C_dtatools_owned_pointer, 2},
+    {"C_dtatools_owned_pointer_write", (DL_FUNC) &C_dtatools_owned_pointer_write, 3},
     {"C_dtatools_egen_group", (DL_FUNC) &dtatools_egen_group, 3},
     {"C_dtatools_egen_summary", (DL_FUNC) &C_dtatools_egen_summary, 4},
     {"C_dtatools_egen_rows", (DL_FUNC) &C_dtatools_egen_rows, 4},
@@ -7565,6 +8199,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_data_table_reference_valid, 1},
     {"C_dtatools_reserve_column_capacity",
      (DL_FUNC) &C_dtatools_reserve_column_capacity, 2},
+    {"C_dtatools_inject_column_append_failure",
+     (DL_FUNC) &C_dtatools_inject_column_append_failure, 2},
     {"C_dtatools_append_data_column",
      (DL_FUNC) &C_dtatools_append_data_column, 3},
     {"C_dtatools_can_select_data_columns",
@@ -7621,6 +8257,12 @@ static const R_CallMethodDef CallEntries[] = {
  * reference ownership and column-sharing checks are registered .Call entries.
  */
 void attribute_visible R_init_dtatools(DllInfo *dll) {
+    initialize_owned_columns(dll);
+    column_append_blank_names_class = R_make_altstring_class("dtatools_append_blank_names", "dtatools", dll);
+    R_set_altrep_Length_method(column_append_blank_names_class, column_append_blank_names_length);
+    R_set_altstring_Elt_method(column_append_blank_names_class, column_append_blank_names_elt);
+    R_set_altvec_Dataptr_method(column_append_blank_names_class, column_append_blank_names_dataptr);
+    R_set_altvec_Dataptr_or_null_method(column_append_blank_names_class, column_append_blank_names_dataptr_or_null);
     write_callback_condition_classes = PROTECT(Rf_allocVector(STRSXP, 2));
     SET_STRING_ELT(
         write_callback_condition_classes, 0, Rf_mkChar("interrupt")
@@ -7672,6 +8314,12 @@ void attribute_visible R_init_dtatools(DllInfo *dll) {
     R_set_altstring_Elt_method(dtatools_dictstring_class, dictstring_value);
     R_set_altstring_Set_elt_method(dtatools_dictstring_class, dictstring_set_elt);
     R_set_altstring_No_NA_method(dtatools_dictstring_class, dictstring_no_na);
+    dtatools_mutation_string_class = R_make_altstring_class("dtatools_mutation_string", "dtatools", dll);
+    R_set_altrep_Length_method(dtatools_mutation_string_class, mutation_string_length);
+    R_set_altrep_Duplicate_method(dtatools_mutation_string_class, mutation_string_duplicate);
+    R_set_altvec_Dataptr_method(dtatools_mutation_string_class, mutation_string_dataptr);
+    R_set_altvec_Dataptr_or_null_method(dtatools_mutation_string_class, mutation_string_dataptr_or_null);
+    R_set_altstring_Elt_method(dtatools_mutation_string_class, mutation_string_elt);
     dtatools_ephemeral_string_class = R_make_altstring_class(
         "dtatools_ephemeral_string", "dtatools", dll
     );

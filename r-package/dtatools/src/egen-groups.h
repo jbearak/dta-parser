@@ -120,11 +120,12 @@ static SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
         INTEGER(first)[i] = (int) scratch[i] + 1;
     }
     SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
-    SET_VECTOR_ELT(result, 0, codes); SET_VECTOR_ELT(result, 1, first);
+    SEXP owned = PROTECT(owned_adopt_real(codes));
+    SET_VECTOR_ELT(result, 0, owned); SET_VECTOR_ELT(result, 1, first);
     SEXP names = PROTECT(Rf_allocVector(STRSXP, 2));
     SET_STRING_ELT(names, 0, Rf_mkChar("codes"));
     SET_STRING_ELT(names, 1, Rf_mkChar("first"));
     Rf_setAttrib(result, R_NamesSymbol, names);
-    UNPROTECT(5);
+    UNPROTECT(6);
     return result;
 }

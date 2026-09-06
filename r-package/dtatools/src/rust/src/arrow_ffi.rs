@@ -3194,6 +3194,13 @@ unsafe fn finalize_read_column(
             }
             plan.vector
         }
+        ColumnShape::ProfiledDouble { .. }
+        | ColumnShape::ProfiledEager { .. }
+        | ColumnShape::Date32
+        | ColumnShape::Timestamp
+        | ColumnShape::Duration { .. }
+        | ColumnShape::PayloadDouble
+        | ColumnShape::SemanticDouble => guard.adopt_real(plan.vector)?,
         _ => plan.vector,
     };
     match &plan.shape {

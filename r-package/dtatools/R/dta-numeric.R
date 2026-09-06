@@ -199,7 +199,7 @@ dta_storage_type <- function(x) {
     }
 
     result <- if (identical(storage, "double")) {
-        values
+        .metadata_copy(values)
     } else {
         .Call(
             C_dtatools_construct_numeric,
@@ -221,7 +221,7 @@ dta_storage_type <- function(x) {
     temporal = .dta_temporal_none
 ) {
     result <- if (identical(storage, "double")) {
-        values
+        .metadata_copy(values)
     } else {
         .Call(
             C_dtatools_construct_numeric_trusted,

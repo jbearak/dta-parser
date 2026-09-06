@@ -9,7 +9,7 @@ change, then run the shared conformance gate when parsing behavior changes.
 - Bun for the TypeScript package
 - Node.js 20 or newer for its Node entrypoint
 - Rust 1.98.0 with Cargo, rustfmt, and Clippy
-- R 4.1.0 or newer for the R package
+- R 4.6.0 or newer for the R package
 - Python 3.11 or newer for repository archive checks
 
 R package dependencies are listed in [`DESCRIPTION`](r-package/dtatools/DESCRIPTION). Stata is needed only for the benchmark modules that explicitly call it.

@@ -327,7 +327,11 @@
 #' @export
 replace_values <- function(data, ..., where = NULL, by = NULL,
                            bysort = NULL, promote = TRUE) {
-    .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE)
+    shared <- if (is.data.frame(data)) .Call(C_dtatools_shared_columns, data) else NULL
+    preflight <- .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE,
+                                   private_views = TRUE)
+    .Call(C_dtatools_release_mutation_views, preflight$columns)
+    preflight <- NULL
 
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
@@ -343,7 +347,8 @@ replace_values <- function(data, ..., where = NULL, by = NULL,
         generate = FALSE,
         by = if (missing(by)) NULL else rlang::enquo(by),
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort),
-        promote = .validate_promote(promote), report_promotion = TRUE
+        promote = .validate_promote(promote), report_promotion = TRUE,
+        entry_shared = shared
     )
     invisible(result)
 }
@@ -362,7 +367,12 @@ repl <- replace_values
 #' @rdname replace_values
 #' @export
 gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
-    .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE)
+    if (is.null(.mutation_fast_shape(data))) {
+        preflight <- .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE,
+                                       private_views = TRUE)
+        .Call(C_dtatools_release_mutation_views, preflight$columns)
+        preflight <- NULL
+    }
 
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
@@ -580,9 +590,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     state <- new.env(parent = emptyenv())
     # Do not retain column vectors. Extra references would hide whether a
     # physical vector is shared with an ordinary R copy at the write boundary.
-    state$physical_names <- attr(data, "names", exact = TRUE)
     state$physical_overlay <- FALSE
-    state$physical_count <- length(state$physical_names)
+    state$physical_count <- length(data)
     state$generated_count <- 0L
     state$nrow <- abs(.row_names_info(data, 2L))
     state$classes <- .reference_base_classes(class(data))
@@ -687,7 +696,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # input. Metadata setters and assigned utilities also accept rowwise tibbles.
 # Validate the physical shape and grouping before caller expressions run.
 .as_mutation_data <- function(data, allow_grouped = FALSE,
-                              allow_rowwise = allow_grouped) {
+                              allow_rowwise = allow_grouped,
+                              private_views = FALSE) {
     .validate_mutation_container(data, allow_grouped, allow_rowwise)
     state <- .reference_state(data)
     names <- .reference_names(data)
@@ -700,15 +710,104 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         stop("An empty data.table must have zero rows; assign `data <- as_dibble(data)` to convert its public contents",
              call. = FALSE)
     }
-    columns <- .data_columns(data)
-    sizes <- vapply(columns, NROW, numeric(1))
+    columns <- if (private_views && !.has_column_overlay(data)) {
+        .Call(C_dtatools_mutation_views, data)
+    } else .data_columns(data)
+    sizes <- attr(columns, ".dtatools_mutation_sizes", exact = TRUE)
+    if (is.null(sizes)) {
+        sizes <- vapply(columns, NROW, numeric(1))
+    } else {
+        unknown <- is.na(sizes)
+        sizes[unknown] <- vapply(columns[unknown], NROW, numeric(1))
+    }
     if (any(sizes != row_count)) {
         stop("`data` has columns with inconsistent row counts; assign `data <- dplyr::ungroup(data)` and group again", call. = FALSE)
     }
-    .validate_group_metadata(data, columns, names, row_count)
+    grouping_columns <- columns
+    if (private_views && (inherits(data, "grouped_df") || inherits(data, "rowwise_df"))) {
+        # Group validation can invoke user-defined casts and proxies. Only the
+        # keys cross that callback boundary, and must have isolated handles.
+        keys <- intersect(names, setdiff(names(attr(data, "groups", exact = TRUE)), ".rows"))
+        grouping_columns[keys] <- lapply(columns[keys], .metadata_copy)
+    }
+    .validate_group_metadata(data, grouping_columns, names, row_count)
     list(
         columns = columns, names = names, nrow = row_count, state = state
     )
+}
+
+# Validate supported physical shapes without retaining their columns or names.
+# Both public preflight and direct generation call this: argument capture can
+# execute quasiquotation callbacks between those two validation moments.
+.mutation_fast_shape <- function(data) {
+    .validate_mutation_container(data, allow_grouped = TRUE, allow_rowwise = FALSE)
+    if (.ordinary_data_table(data) || inherits(data, "grouped_df") ||
+        .has_column_overlay(data)) return(NULL)
+    rows <- abs(.row_names_info(data, 2L))
+    if (isTRUE(.Call(C_dtatools_mutation_shape, data, rows))) rows else NULL
+}
+
+# Eligibility checks must not dispatch methods while examining a literal AST.
+.mutation_literal_member <- function(value) {
+    is.character(value) && is.null(attributes(value)) && !.is_altrep(value) &&
+        length(value) == 1L && !is.na(value)
+}
+
+# Only already evaluated, unclassed scalar bindings qualify. Promises and
+# active bindings can return formulas or retain/mutate a table before a later
+# mask read, so they must use the complete snapshot path from the outset.
+.mutation_scalar_binding <- function(quo, data) {
+    expression <- rlang::quo_get_expr(quo)
+    environment <- rlang::quo_get_env(quo)
+    value <- expression
+    if (is.symbol(expression)) {
+        name <- as.character(expression)
+        if (name %in% c(".n", ".N", ".data", ".env")) return(NULL)
+        location <- .Call(C_dtatools_mutation_name_location, data, name)
+        if (is.null(location) || !is.na(location)) return(NULL)
+    } else if (is.call(expression) && is.null(attributes(expression)) && length(expression) == 3L &&
+               identical(expression[[2L]], quote(.env)) &&
+               ((identical(expression[[1L]], quote(`$`)) && is.symbol(expression[[3L]])) ||
+                (identical(expression[[1L]], quote(`[[`)) &&
+                 .mutation_literal_member(expression[[3L]])))) {
+        name <- as.character(expression[[3L]])
+    } else if (!is.atomic(expression)) return(NULL) else name <- NULL
+    if (!is.null(name)) {
+        if (is.na(name) || !nzchar(name)) return(NULL)
+        while (!identical(environment, emptyenv()) &&
+               !exists(name, environment, inherits = FALSE)) environment <- parent.env(environment)
+        if (identical(environment, emptyenv()) || bindingIsActive(name, environment) ||
+            rlang::env_binding_are_lazy(environment, name)[[1L]]) return(NULL)
+        value <- get(name, environment, inherits = FALSE)
+    }
+    if (!typeof(value) %in% c("integer", "double", "logical", "character") ||
+        !is.null(attributes(value)) || .is_altrep(value) || length(value) != 1L) return(NULL)
+    list(value = value)
+}
+
+.generate_direct_scalar <- function(data, variable, values, where) {
+    row_count <- .mutation_fast_shape(data)
+    if (is.null(row_count) || rlang::quo_is_missing(where) ||
+        !is.null(rlang::quo_get_expr(where)) || rlang::quo_is_missing(values)) return(NULL)
+    expression <- rlang::quo_get_expr(variable)
+    if (!is.symbol(expression) && !is.character(expression)) return(NULL)
+    if (is.character(expression) && (!is.null(attributes(expression)) || .is_altrep(expression))) return(NULL)
+    name <- .unquoted_variable_name(variable)
+    location <- .Call(C_dtatools_mutation_name_location, data, name)
+    if (is.null(location)) return(NULL)
+    if (!is.na(location)) stop(sprintf("Column `%s` already exists", name), call. = FALSE)
+    scalar <- .mutation_scalar_binding(values, data)
+    if (is.null(scalar)) return(NULL)
+    .prepare_column_operation(data, length(data) + 1L)
+    column <- .generated_column(scalar$value, NULL, row_count, generate = TRUE)
+    .prepare_column_operation(data, length(data) + 1L)
+    suspendInterrupts({
+        if (!.Call(C_dtatools_append_data_column, data, name, column)) {
+            stop("internal error: prepared table cannot append a column")
+        }
+        .mark_reference_data(data, .new_reference_state(data, dibble = is_dibble(data)))
+    })
+    data
 }
 
 .RUNTIME_NAME_MESSAGE <-
@@ -953,8 +1052,59 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     eval(expression, frame)
 }
 
+.exposed_mutation_columns <- function(columns) {
+    # An arbitrary expression may retain its entire environment before reading
+    # any column. Freeze numeric views now. Ordinary physical handles stay in
+    # this separate snapshot list, where the final native sharing guard sees
+    # their aliases. The internal preflight list can then be released safely.
+    lapply(columns, function(column) {
+        .Call(C_dtatools_expose_mutation_column, column)
+    })
+}
+
+# Literal and symbol reads never execute code in a newly created data frame.
+# Resolve these directly; every function call receives a complete snapshot.
+.mutation_direct_read <- function(expression, columns, environment, extras) {
+    if (rlang::is_quosure(expression)) {
+        environment <- rlang::quo_get_env(expression)
+        expression <- rlang::quo_get_expr(expression)
+    }
+    if (is.null(expression) || is.atomic(expression)) return(list(value = expression))
+    if (is.symbol(expression)) {
+        name <- as.character(expression)
+        if (!is.null(extras) && name %in% names(extras)) return(list(value = extras[[name]]))
+        if (name %in% names(columns)) return(list(value = .metadata_copy(columns[[name]])))
+        return(list(value = eval(expression, environment)))
+    }
+    # The .env pronoun reads only the caller's environment. Its literal member
+    # cannot retain the data mask, including when the referenced value is a promise.
+    if (is.call(expression) && is.null(attributes(expression)) && length(expression) == 3L &&
+        identical(expression[[2L]], quote(.env)) &&
+        ((identical(expression[[1L]], quote(`$`)) &&
+          (is.symbol(expression[[3L]]) ||
+           .mutation_literal_member(expression[[3L]]))) ||
+         (identical(expression[[1L]], quote(`[[`)) &&
+          .mutation_literal_member(expression[[3L]])))) {
+        return(list(value = rlang::eval_tidy(expression, data = list(), env = environment)))
+    }
+    NULL
+}
+
 .eval_in_mutation_data <- function(expression, columns, environment = NULL,
                                    extras = NULL, shadow = TRUE) {
+    if (isTRUE(attr(columns, ".dtatools_mutation_views", exact = TRUE))) {
+        caller <- if (!is.null(environment)) environment else
+            if (rlang::is_quosure(expression)) rlang::quo_get_env(expression) else parent.frame()
+        if (shadow) {
+            .check_shadowed_symbols(
+                if (rlang::is_quosure(expression)) rlang::quo_get_expr(expression) else expression,
+                columns, caller
+            )
+        }
+        direct <- .mutation_direct_read(expression, columns, caller, extras)
+        if (!is.null(direct)) return(direct$value)
+        columns <- .exposed_mutation_columns(columns)
+    }
     # Plain expressions -- no `.data`/`.env` pronouns and no embedded
     # quosures -- have identical semantics under base evaluation with the
     # columns masking the expression environment. Skipping the rlang data
@@ -1104,8 +1254,11 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     }
     if (!present) return(NULL)
     value <- columns[[name]]
-    if (!inherits(value, "dta_numeric") || length(value) != row_count ||
-        !is.null(dim(value))) {
+    sizes <- attr(columns, ".dtatools_mutation_sizes", exact = TRUE)
+    size <- if (is.null(sizes)) NA_real_ else sizes[[match(name, names(columns))]]
+    if (is.na(size)) size <- length(value)
+    if (!inherits(value, "dta_numeric") || size != row_count ||
+        !is.null(attr(value, "dim", exact = TRUE))) {
         return(NULL)
     }
     value
@@ -1188,7 +1341,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 }
 
 .fused_comparison_value <- function(plan) {
-    .dta_compare(plan$op, plan$original_left, plan$original_right)
+    # The plan already has validated sizes and a normalized scalar. Keep its
+    # internal read handles inside native code, including for owned doubles.
+    native <- .Call(C_dtatools_dta_compare, plan$op_code, plan$left,
+                    plan$right, plan$scalar, .mutation_threads())
+    if (!is.null(native)) return(native)
+    # Unsupported operands can enter user-defined R methods. Fork handles at
+    # that boundary, so retaining an operand cannot observe a later table write.
+    .dta_compare(plan$op, .metadata_copy(plan$original_left),
+                 .metadata_copy(plan$original_right))
 }
 
 .fused_replacement_plan <- function(values, target, row_count) {
@@ -1364,6 +1525,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     if (original$nrow == 0L) return(NULL)
     key_columns <- function() {
         keys <- lapply(names, .mutation_column, columns = original$columns)
+        if (isTRUE(attr(original$columns, ".dtatools_mutation_views", exact = TRUE))) {
+            keys <- lapply(keys, .metadata_copy)
+        }
         names(keys) <- names
         vctrs::new_data_frame(keys, n = original$nrow)
     }
@@ -1376,7 +1540,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             reorder_dta_rows(data, order)
             # The sort permuted every column by reference; a plain data
             # frame's column list was snapshotted before it.
-            original <- .as_mutation_data(data, allow_grouped = TRUE)
+            original <- .as_mutation_data(data, allow_grouped = TRUE, private_views = TRUE)
         }
     }
     located <- vctrs::vec_group_loc(key_columns())
@@ -1409,6 +1573,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 }
 
 .mutation_group_slice <- function(column, rows) {
+    # The vctrs fallback may invoke an R proxy that retains its input. Native
+    # compact and declared-double gathering cannot expose that full read view.
+    if (!.dta_merge_has_compact_storage(column) &&
+        !identical(.declared_dta_storage(column), "double")) {
+        column <- .Call(C_dtatools_expose_mutation_column, column)
+    }
     .dta_merge_slice(column, rows, fill_string_missing = FALSE)
 }
 
@@ -1418,6 +1588,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # expression pays for the columns it reads and nothing else, and a
 # runtime name through `.data[[name]]` or `.(name)` still resolves.
 .mutation_group_view <- function(columns) {
+    if (isTRUE(attr(columns, ".dtatools_mutation_views", exact = TRUE))) {
+        columns <- .exposed_mutation_columns(columns)
+    }
     view <- new.env(parent = emptyenv())
     view$rows <- integer()
     view$cache <- new.env(hash = TRUE, parent = emptyenv())
@@ -1604,7 +1777,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 }
 
 .cast_replacement <- function(values, target, rows, value_mode) {
-    if (is.factor(target) || !is.null(dim(target)) ||
+    if (is.factor(target) || !is.null(attr(target, "dim", exact = TRUE)) ||
         !(typeof(target) %in% c("logical", "integer", "double", "character"))) {
         stop("The target column has an unsupported replacement type",
              call. = FALSE)
@@ -1618,13 +1791,14 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
          (inherits(target, "dta_datetime") &&
           inherits(values, "POSIXct")))
     if ((.is_unmaterialized_numeric_altrep(target) ||
-         .is_materialized_numeric_altrep(target)) &&
+         .is_materialized_numeric_altrep(target) ||
+         .Call(C_dtatools_is_owned_double, target)) &&
         (native_numeric || native_temporal) &&
         !is.factor(values) && is.null(dim(values))) {
         # The native patcher validates and encodes these values directly for
         # the target's declared storage. Going through vec_cast() would build
-        # a replacement compact column and, for ordinary input, a full double
-        # temporary before decoding it again.
+        # a replacement compact column or owned scalar and, for ordinary input,
+        # a full double temporary before decoding it again.
         return(values)
     }
     if (typeof(target) == "character" &&
@@ -1659,7 +1833,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     } else if (inherits(target, "dta_numeric")) {
         .dta_ptype(.declared_dta_storage(target), target)
     } else {
-        target[integer()]
+        # A supported owned prototype needs attributes, not the target values.
+        # Forking its full read view would make every later private write copy.
+        empty <- .Call(C_dtatools_mutation_prototype, target)
+        if (is.null(empty)) .metadata_copy(target)[integer()] else empty[integer()]
     }
     result <- vctrs::vec_cast(values, prototype)
     .validate_numeric_values(result)
@@ -1676,7 +1853,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     .reject_data_table_subclass(data)
     grouped_input <- inherits(data, "grouped_df")
     original <- .as_mutation_data(
-        data, allow_grouped = TRUE, allow_rowwise = FALSE
+        data, allow_grouped = TRUE, allow_rowwise = FALSE, private_views = TRUE
     )
     groups <- if (grouped_input || !is.null(by) || !is.null(bysort)) {
         .mutation_groups(data, original, by, bysort, grouped_input)
@@ -1712,13 +1889,19 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # `values` can be given `.n` and `.N` on the same terms.
 .mutate_data <- function(data, variable, values, where, generate,
                          by = NULL, bysort = NULL, selection = NULL,
-                         promote = FALSE, report_promotion = FALSE) {
+                         promote = FALSE, report_promotion = FALSE,
+                         entry_shared = NULL) {
     .reject_data_table_subclass(data)
+    if (generate && is.null(by) && is.null(bysort) && is.null(selection)) {
+        direct <- .generate_direct_scalar(data, variable, values, where)
+        if (!is.null(direct)) return(invisible(direct))
+    }
     # Inspect before masks and snapshots add temporary column references.
-    shared <- if (is.data.frame(data)) .Call(C_dtatools_shared_columns, data) else NULL
+    shared <- if (!is.null(entry_shared)) entry_shared else
+        if (is.data.frame(data)) .Call(C_dtatools_shared_columns, data) else NULL
     grouped_input <- inherits(data, "grouped_df")
     original <- .as_mutation_data(
-        data, allow_grouped = TRUE, allow_rowwise = FALSE
+        data, allow_grouped = TRUE, allow_rowwise = FALSE, private_views = TRUE
     )
     target <- .mutation_name(variable, generate, original)
     .prepare_column_operation(data, length(data) + as.integer(generate),
@@ -1782,33 +1965,28 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             row_count = original$nrow
         )
         access <- .column_access(data)
-        column <- .data_column_at(access, target$location)
+        column <- original$columns[[target$location]]
         replacement_plan <- if (
             .is_unmaterialized_numeric_altrep(column)
         ) {
             .fused_replacement_plan(evaluated, column, original$nrow)
         } else NULL
         if (!is.null(replacement_plan)) {
-            original_column <- column
-            if (shared[[target$location]]) column <- .mutation_copy(column)
             patch <- function() .Call(
-                C_dtatools_fused_compare_patch,
-                column, fused$op_code, fused$left, fused$right,
+                C_dtatools_fused_patch_slot,
+                data, as.integer(target$location), shared[[target$location]],
+                fused$op_code, fused$left, fused$right,
                 fused$scalar, replacement_plan$values,
                 replacement_plan$scalar, .mutation_threads()
             )
             patched <- if (.ordinary_data_table(data)) {
-                .data_table_fused_replace_commit(data, .aliased_column_names(data, original_column), patch)
+                .data_table_fused_replace_commit(data, .physical_alias_names(data, target$location), patch)
             } else {
                 patch()
             }
             if (!is.null(patched)) {
-                if (isTRUE(patched) && shared[[target$location]]) {
-                    .commit_detached_column(data, original_column, column)
-                }
                 return(invisible(data))
             }
-            column <- original_column
         }
         selected <- .fused_comparison_value(fused)
     }
@@ -1831,7 +2009,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     } else {
         if (is.null(access)) access <- .column_access(data)
         if (is.null(column)) {
-            column <- .data_column_at(access, target$location)
+            column <- original$columns[[target$location]]
         }
         # An assignment that selects no rows changes nothing and returns
         # here: it neither declares storage nor promotes. Stata's
@@ -1888,33 +2066,22 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     if (!generate) {
         if (is.null(rows) && .is_unmaterialized_dictstring(column) &&
             .same_mutation_object(column, replacement)) return(invisible(data))
-        original_column <- column
-        detach <- isTRUE(shared[[target$location]]) &&
-            .mutation_selected_count(rows, original$nrow) > 0L
-        if (detach) {
-            column <- .mutation_copy(column)
-            if (.is_altrep(column) &&
-                (.is_materialized_numeric_altrep(original_column) ||
-                 (typeof(column) == "character" &&
-                  !.is_unmaterialized_dictstring(original_column)))) {
-                .force_altrep_materialization(column)
-            }
-        }
-        patch_data <- if (detach) list(column) else data
+        # Evaluation and casting are complete. Release only the internal read
+        # list and local target; callbacks' independent aliases remain live.
+        .Call(C_dtatools_release_mutation_views, original$columns)
+        column <- NULL
         patch <- function() .Call(
-            C_dtatools_patch_data_column, patch_data,
-            as.integer(if (detach) 1L else target$location),
-            column, rows, replacement
+            C_dtatools_patch_slot, data, as.integer(target$location),
+            rows, replacement, shared[[target$location]]
         )
         # The native patcher still validates strict scalar replacements for
         # an empty selection; do not invalidate lookup state without a write.
-        column <- if (.ordinary_data_table(data) &&
+        if (.ordinary_data_table(data) &&
                       .mutation_selected_count(rows, original$nrow) > 0L) {
-            .data_table_replace_commit(data, .aliased_column_names(data, original_column), patch)
+            .data_table_replace_commit(data, .physical_alias_names(data, target$location), patch)
         } else {
             patch()
         }
-        if (detach) .commit_detached_column(data, original_column, column)
         # Rebuild after every grouped replacement, not only one that names
         # a grouping column: a target can share its vector with a key
         # under the package's alias semantics, so the key may have changed
@@ -1937,6 +2104,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     # A write must detach the payload now. Return a native compact numeric
     # object so later Date/as.double methods keep their compact-read behavior.
     if (.is_unmaterialized_numeric_altrep(column)) .deep_copy_value(column) else .metadata_copy(column)
+}
+
+.physical_alias_names <- function(data, location) {
+    .Call(C_dtatools_identical_slot_names, data, as.integer(location))
 }
 
 .aliased_column_names <- function(data, column) {
@@ -2261,13 +2432,14 @@ names.dtatools_ref_data <- function(x) {
 
 #' @export
 length.dtatools_ref_data <- function(x) {
-    length(.reference_names(x))
+    if (.has_column_overlay(x)) length(.reference_names(x)) else
+        .Call(C_dtatools_physical_column_count, x)
 }
 
 #' @export
 dim.dtatools_ref_data <- function(x) {
     rows <- if (.has_column_overlay(x)) .reference_state(x)$nrow else abs(.row_names_info(x, 2L))
-    c(rows, length(.reference_names(x)))
+    c(rows, length(x))
 }
 
 #' @export
@@ -2810,6 +2982,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 .type_dibble_columns <- function(data, caller = "as_dibble()") {
     row_count <- nrow(data)
     column_names <- names(data)
+    captured_columns <- new.env(parent = emptyenv())
     for (index in seq_along(column_names)) {
         column <- .subset2(data, index)
         typed <- .typed_column_named(
@@ -2818,6 +2991,17 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
             data[[index]] <- typed
         }
+        # Value normalization above keeps the existing replacement/regrouping
+        # policy. Capturing identical values only changes their private handle;
+        # dispatching [[<- here would trim preserved empty grouping keys.
+        normalized <- .subset2(data, index)
+        address <- rlang::obj_address(normalized)
+        captured <- captured_columns[[address]]
+        if (is.null(captured)) {
+            captured <- .Call(C_dtatools_capture_column, normalized)
+            captured_columns[[address]] <- captured
+        }
+        .Call(C_dtatools_set_data_column, data, as.integer(index), captured)
     }
     data
 }
@@ -2926,6 +3110,12 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # so the strict replacement path handles or refuses them as before.
 .replacement_fits <- function(values, target, rows, value_mode) {
     if (!.promotable_pair(values, target)) return(TRUE)
+    if (typeof(target) != "character") {
+        native <- .Call(C_dtatools_replacement_fits, values, rows,
+                        identical(value_mode, "row"),
+                        match(.declared_dta_storage(target), .dta_storage) - 1L)
+        if (!is.null(native)) return(native)
+    }
     # The dictionary's widest entry answers the question for a compact
     # Arrow string without populating its shared cache, which the
     # `as.character()` below would. Only a dictionary too wide for the
@@ -2963,6 +3153,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # `declared` when the right-hand side settled a wider one.
 .promoted_replacement <- function(values, target, rows, value_mode,
                                   row_count, declared = NULL) {
+    target <- .metadata_copy(target)
     current <- if (typeof(target) == "character") {
         text <- as.character(target)
         text[is.na(text)] <- ""

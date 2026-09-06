@@ -43,11 +43,14 @@
 #' unchanged, and a by-reference write on either the input or the result
 #' leaves the other as it was, and leaves any other frame the operation
 #' drew columns from as it was. Columns an operation leaves alone are
-#' isolated for later writes, using copy-on-write for compact columns.
+#' isolated for later writes, using copy-on-write for compact columns and
+#' package-owned ordinary doubles.
 #' `dplyr::select()`, `dplyr::rename()`, and `dplyr::relocate()` resolve
 #' selectors against the actual Stata columns and build their dibble result
-#' directly. Ordinary retained vectors are still copied; their string storage
-#' declarations are checked against current values, including borrowed data.
+#' directly. Owned ordinary doubles share value backing with distinct metadata
+#' handles. Borrowed doubles are captured before sharing. Ordinary strings are
+#' still copied and their storage declarations are checked against current
+#' values, including borrowed data.
 #' Ordinary row brackets and [slice_dta_rows()] share batch row gathering with
 #' the dplyr row-slicing hook. Package-owned grouping validation and rebuilding
 #' retain sorted groups, empty factor groups and rowwise identifiers. Row
@@ -85,7 +88,9 @@
 #' grouped or rowwise structure and dataset metadata. The removed subclass's
 #' invariants are not retained. Otherwise it returns a new object
 #' and leaves its argument unchanged: a tibble or data frame is shallow
-#' copied. Shared columns detach when the dibble is explicitly mutated. A data table is
+#' copied. Borrowed ordinary doubles are captured into independent backing;
+#' owned doubles and compact columns can share until a write needs to detach
+#' them. A data table is
 #' copied into a fresh tibble, because a dibble cannot share data.table's
 #' self-reference or its over-allocated column slots; keys, indexes, and
 #' allocation capacity are left behind. In every case compact Stata numeric
@@ -331,7 +336,8 @@ NULL
     expression <- if (rlang::quo_is_missing(raw_j)) NULL else rlang::quo_get_expr(raw_j)
     if (is.call(expression) && identical(expression[[1L]], quote(`:=`))) {
         .require_dibble_assignment(x)
-        .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE)
+        .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE,
+                          private_views = TRUE)
     }
     assignments <- .bracket_assignments(rlang::enquo(j), x)
     if (is.null(assignments)) {
@@ -362,7 +368,8 @@ NULL
         rlang::enquo(i)
     }
     .reject_data_table_subclass(x)
-    .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE)
+    .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE,
+                      private_views = TRUE)
     new_names <- setdiff(vapply(assignments, `[[`, character(1), "name"),
                          .reference_names(x))
     .prepare_column_operation(x, length(x) + length(new_names),
@@ -376,10 +383,7 @@ NULL
         # `:=` creates or overwrites, so the target's presence picks the
         # path. Looked up per assignment because an earlier one may have
         # created the column.
-        exists <- .has_mutation_column(
-            .as_mutation_data(x, allow_grouped = TRUE)$columns,
-            assignment$name
-        )
+        exists <- assignment$name %in% .reference_names(x)
         x <- .mutate_data(
             x, rlang::new_quosure(assignment$name, emptyenv()),
             assignment$values, where, generate = !exists,

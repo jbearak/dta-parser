@@ -98,6 +98,7 @@ SEXP C_dtatools_egen_rows(SEXP columns, SEXP operation, SEXP missing,
         if (!ISNAN(value) && !R_FINITE(value)) value = NA_REAL;
         REAL(result)[row] = value;
     }
-    UNPROTECT(1);
-    return result;
+    SEXP owned = PROTECT(owned_adopt_real(result));
+    UNPROTECT(2);
+    return owned;
 }

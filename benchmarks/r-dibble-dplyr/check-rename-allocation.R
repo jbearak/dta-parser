@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
-# Intentionally fails on the measured baseline. This is a proposed acceptance
-# check for the future architecture, not a currently passing CI gate.
+# This intentionally fails on the recorded Stage 2 baseline. Stage 3 requires
+# it to pass for owned doubles; owned-double.R adds full selector/scaling gates.
 args <- commandArgs(TRUE)
 stopifnot(length(args) == 1L)
 .libPaths(c(normalizePath(args[[1L]], mustWork = TRUE), .libPaths()))
