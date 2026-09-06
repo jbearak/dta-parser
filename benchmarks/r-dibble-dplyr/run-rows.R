@@ -84,10 +84,11 @@ for (index in seq_len(nrow(cases))) {
 for (rows in c(10000L, 100000L, 1000000L)) {
     pair <- make_pair("double", rows, 16L)
     data <- pair$dibble
-    gen(data, group = rep(seq_len(1000L), length.out = rows))
+    gen(data, group = dta_double(rep(seq_len(1000L), length.out = rows)))
     data <- group_by(data, group)
     snapshot <- dtatools:::.reference_snapshot(data)
     compact_before <- compact_state(data)
+    stopifnot(!any(compact_before))
     source_bytes <- serialize(public_attributes(data), NULL)
     stopifnot(identical(compact_state(data), compact_before))
     locations <- seq.int(1L, rows, by = 2L)
