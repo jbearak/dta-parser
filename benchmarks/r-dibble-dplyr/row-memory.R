@@ -11,7 +11,12 @@ pair <- make_pair(args[[2L]], 1000000L, 16L)
 stopifnot(is_dibble(pair$dibble))
 compact_before <- compact_state(pair$dibble)
 if (args[[2L]] %in% c("compact_int", "dict_string")) stopifnot(all(compact_before))
-source_bytes <- serialize(pair$typed_tibble, NULL)
+public_attributes <- function(data) {
+    attr(data, ".dtatools_ref_state") <- NULL
+    class(data) <- dtatools:::.reference_base_classes(class(data))
+    data
+}
+source_bytes <- serialize(public_attributes(pair$dibble), NULL)
 stopifnot(identical(compact_state(pair$dibble), compact_before))
 locations <- seq.int(1L, 1000000L, by = 2L)
 invisible(make_pair(args[[2L]], 4L, 2L)$dibble[1:2, ])
@@ -20,7 +25,7 @@ result <- pair$dibble[locations, ]
 after <- gc()
 stopifnot(is_dibble(result), nrow(result) == length(locations),
           identical(column_values(result), column_values(unserialize(source_bytes)[locations, ])),
-          identical(serialize(pair$typed_tibble, NULL), source_bytes),
+          identical(serialize(public_attributes(pair$dibble), NULL), source_bytes),
           identical(compact_state(pair$dibble), compact_before))
 cat("source_sha", args[[3L]], "\nkind", args[[2L]], "\n")
 cat("runner_md5", unname(tools::md5sum("benchmarks/r-dibble-dplyr/row-memory.R")), "\n")
