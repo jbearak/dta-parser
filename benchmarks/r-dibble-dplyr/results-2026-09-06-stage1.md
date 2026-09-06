@@ -37,7 +37,9 @@ Fixture construction, warming and correctness assertions are outside timing.
   105 baseline metadata/encoding/stale/NA/custom-class/ALTREP cases, nine exact-build
   metadata/encoding cases, forced-GC generation and error-propagation checks.
   The earlier selector reviews independently passed another 5,100 cases.
-  Final report review follows the completed measurements.
+  Both final report reviews approved `f493e22` without actionable findings.
+  [PR #192](https://github.com/jbearak/dta-parser/pull/192) awaits CI and completed
+  latest-head CodeRabbit review before merge.
 
 ## Paired performance
 

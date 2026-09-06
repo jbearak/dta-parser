@@ -5,7 +5,7 @@ Issue: https://github.com/jbearak/dta-parser/issues/172, still open.
 Contract: [implementation plan](dibble-result-performance.md), plus the
 user handoff `/tmp/dibble-direct-operations-handoff.3hgh3u_0.txt`.
 
-## Stage 1 revision under review
+## Stage 1 PR open, external gates pending
 
 Branch `codex/direct-dibble-columns`, isolated worktree
 `/private/tmp/dta-direct-stage1`. Direct select, rename and relocate share result
@@ -41,8 +41,11 @@ The portable allocation gate passes; the 60 ms host target is not met. Two
 pipeline timing outliers disappeared in matched isolated repeats. Complete
 [results](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage1.md) distinguish
 cumulative allocation, retained memory and whole-process peak RSS. Final report
-review is pending.
-No PR has been opened or merged. CI and CodeRabbit are pending.
+reviews approved `f493e2241a20127d0b94825669184512f02f573c` with no unresolved
+actionable findings. [PR #192](https://github.com/jbearak/dta-parser/pull/192) is
+open. Package source remains `be9eac34`; subsequent commits update this progress
+record and the report. CI and completed latest-head CodeRabbit review are pending.
+No stage has merged yet.
 
 Attribution: pinned dplyr selector/group policies and tests were adapted;
 dtplyr was studied only. Installed NOTICE includes exact revisions, destinations,
@@ -50,14 +53,15 @@ modifications and full MIT notices. DESCRIPTION credits the copyright holder;
 README links the detailed notice. Historical 2026-09-05 artifacts retain their
 original dates and revision labels.
 
-Next: obtain both independent final-report reviews, then push/open the focused PR. Inspect CI plus completed
+Next: inspect CI plus completed
 CodeRabbit summaries and inline comments on the latest head. Address findings
 with independent fix review before root performs the normal merge.
 
 ## Native ownership prerequisite and pending stages
 
 The unchanged reference allocation runner fails at its first sparse-write budget
-on starting main and the initial prototype: 5,000,048 bytes per call. The original
+on starting main, the initial prototype and final package source `be9eac34`:
+5,000,048 bytes per call. The original
 runner remains unchanged. It must pass before any later PR with native changes
 merges, and before the epic completes. First-write capture cannot safely skip
 ambiguous aliases; current monolithic backing would copy the changed column.
