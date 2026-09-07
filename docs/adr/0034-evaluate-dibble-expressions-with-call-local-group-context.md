@@ -30,6 +30,16 @@ values remain usable and isolated. All exits, including interrupts, restore the
 outer helper context. This strengthens within-call captures relative to the old
 live bindings, while preserving the established post-call invalidation contract.
 
+Mask setup keeps a unique history of column names for expiry, including names
+removed and later re-added during the call. Each internal addition supplies one
+plain character name, so a membership check and append preserve first-seen order
+without rebuilding that set. Every generation still receives its isolated
+metadata copy and weak cleanup reference. Metadata copying returns non-data.table
+values before table repair checks; actual data.tables retain their existing
+marker and capacity repair. Both changes followed a reproduced wide-column
+overhead and ordinary sampling profiles, with separate exact-source variants
+and public timing checks before integration.
+
 Qualified and aliased dplyr helpers execute their real implementations against
 a narrow optional adapter. It isolates private context installation, across/pick
 expansion and warning aggregation. Group metadata and the core evaluator contain

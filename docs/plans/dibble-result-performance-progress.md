@@ -48,16 +48,49 @@ eight payload-lifetime cases. The original exact `985e26b` focused run passed
 reporter; that failed record remains retained. The reporter fix and subsequent
 source changes required fresh exact-installed qualification.
 
-Those local gates now pass. The final package source is `57309d4`; its fresh
+Those earlier local gates passed on package source `57309d4`; its fresh
 Git-archive installation and corrected package checks are preserved in the
 [qualification archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-qualification/README.md).
-The final R checks pass 16,624 assertions with no failures or skips and the four
+Its R checks pass 16,624 assertions with no failures or skips and the four
 established test warnings. The three R check warnings and two notes retain their
 prior categories; a new NEWS parser sub-note found during review was fixed and
 the earlier record remains unchanged. Full installed tests, five fresh Cargo
 gates, unchanged native mutation gates, 18 atomic allocation cases, rename
 allocation, interoperability, pinned roxygen, source/binary archive and NOTICE
 checks passed. NAMESPACE remains identical with 106 exports.
+
+The paired expression matrix later reproduced overhead in two 64-column cases.
+Three paired width repeats and a 12-row, 64-column retain case kept the signal
+while removing payload size as its main cause. Ordinary sampling profiles
+identified eager setup costs in table repair checks on atomic columns and in
+rebuilding the name set for each column. Separate exact source `622ffc19` adds
+only the non-data.table repair guard. Source `ad976f7a` then replaces mask-name
+union with membership-guarded append and adds a public remove/re-add/capture
+test. The latter full suite passes 16,632 assertions without failures or skips
+and with the four established warnings. Its unchanged six-case width loop
+clears the combined greater-than-10-percent and greater-than-1-ms diagnosis
+threshold against its same-source safe reference. These bounded measurements
+retain their original libraries and do not qualify a later combined source.
+
+A macOS CI failure on the unchanged Stage 4 package also exposed a limit of the
+fixed-delay generation interrupt test. An induced one-second signal delay
+reproduced its failure pattern after generation had already committed. The
+original CI timing was not logged, so its cause remains unproven. Separately
+reviewed source `725974a` replaces that timing assumption with a private native
+checkpoint after staged generation and before installation. Native interrupts
+and real POSIX SIGINT both exercise seven named cases, checking unchanged
+values, names, aliases, reference state and dictionary caches, then a successful
+retry. The control is consumed once at native entry; helper cleanup also
+disarms it when R validation fails before entry. Focused/full and deliberately
+delayed readiness checks pass on that separate source.
+
+The three source changes are now integrated for fresh combined qualification.
+Earlier source installs, failed attempts, local gates and measured results keep
+their exact identities. Both combined-diff reviews, current and minimum-runtime
+integration, affected package/native gates and full performance acceptance
+remain required. The minimum evidence merged normally in PR #200 as
+`220ac07a33323398f4b78d4cb23fd9ba9bd808be`; its package tree is unchanged. Helper
+evidence PR #201 still requires actual substantive review before normal merge.
 
 The exact clean R 4.6.0 evaluator source `4900dc8` passes 179 expression
 assertions without failures, skips or warnings. Its broader focused run passes
