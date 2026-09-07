@@ -1,0 +1,73 @@
+{
+  "scope": "Fresh additive comparison identity audit; no historical file rewrite, new measurement, or broad performance acceptance.",
+  "candidate_source": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "baseline_source": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+  "runner_source": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "comparisons": {
+    "atomic": {
+      "baseline_manifest_sha256": "cc066b4f708cc07a9aafcd1ad5763922ce1bb042383cdfc657822a9f27b2ced9",
+      "candidate_manifest_sha256": "d713382ebeac521689745beee906eebc0a520fa792ce65717784e95516d73d9f",
+      "deriver_sha256": "4a9051ce97c5a84ff580f0ddda4cce2692c847695d0500ad8c239618e312b9bf",
+      "result_rows": {
+        "investigate.json": 15,
+        "memory-comparison.csv": 30,
+        "operation-comparison.csv": 206
+      },
+      "result_sha256": {
+        "investigate.json": "632c2758ed3ab4f667d30a9cf2acd0567af05110fda8fe55c94976740f492d96",
+        "memory-comparison.csv": "6cb0d53c809de845cfb373df42535b6ffa774f80c393ee738b4bd30ccf2e80da",
+        "operation-comparison.csv": "cb012d19156b18ded1a426ab8e7dce896ab03cc62415aab4f67033bbf7e8da71"
+      }
+    },
+    "double": {
+      "baseline_manifest_sha256": "d84653f0af2036281dee521560461cfc6a8b3851c7f467df93219a6d4048c3aa",
+      "candidate_manifest_sha256": "9621eed3eadd2002e28c19be32c566d245e69dd84fb85f20a24fa2a2be2d2fe0",
+      "deriver_sha256": "6da73e867e3d33cbb8469bc253058a4044ae8011220d6f539f43107f2d9867ad",
+      "result_rows": {
+        "investigate.json": 0,
+        "memory-comparison.csv": 6,
+        "operation-comparison.csv": 46
+      },
+      "result_sha256": {
+        "investigate.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "memory-comparison.csv": "29017df8b39902dbc6c355cd7fd25abb57d35cc0aa3ef1db7e5659fab197f273",
+        "operation-comparison.csv": "54ebd083061c888c4457ef193cca36521251f12e36cfce98ae19d73fcd071806"
+      }
+    },
+    "heap": {
+      "baseline_manifest_sha256": "5dba6b5e9cd8b355ebeebf348211d9689a997fc82782f64114ffe8b4f98743fb",
+      "candidate_manifest_sha256": "75a0601133b27d4ca1a4765124bec72b1b01f596e9fbec276d91b6d013ed4fb2",
+      "deriver_sha256": "3b7e989f6e15589c7e83f5e418eed572345533afaa0de00462fdec2d4f62d802",
+      "metric_verifier_sha256": "16c9dd392abe7fa31f074e49fc927eb05218d7b0a10b9b2d257303e01f64390b",
+      "result_rows": {
+        "heap-comparison.csv": 36
+      },
+      "result_sha256": {
+        "heap-comparison.csv": "4ad547ea89137cb5f9dbb8596aa54ca3f72668511e292df3db05a2184c86b4ee"
+      }
+    }
+  },
+  "inputs_sha256": {
+    "benchmark/qualification.json": "85a2af0bc5c3d72d605f8e9d85d3a0611cce71ec9f4aa7ca5fcc925ede1d69dd",
+    "benchmark/atomic-comparison/derivation.json": "2b6bbb87fbd54ab00e1759abfc9070eb53a3e4b17ad28bb2c1df229bc7a4b90d",
+    "benchmark/atomic-baseline/root-manifest.json": "cc066b4f708cc07a9aafcd1ad5763922ce1bb042383cdfc657822a9f27b2ced9",
+    "benchmark/atomic-candidate/root-manifest.json": "d713382ebeac521689745beee906eebc0a520fa792ce65717784e95516d73d9f",
+    "benchmark/source/compare-atomic.py": "4a9051ce97c5a84ff580f0ddda4cce2692c847695d0500ad8c239618e312b9bf",
+    "benchmark/double-comparison/derivation.json": "a7418b25926e57931bb363842be7c9202ec0b939718956fe6883e39167142860",
+    "benchmark/double-baseline/root-manifest.json": "d84653f0af2036281dee521560461cfc6a8b3851c7f467df93219a6d4048c3aa",
+    "benchmark/double-candidate/root-manifest.json": "9621eed3eadd2002e28c19be32c566d245e69dd84fb85f20a24fa2a2be2d2fe0",
+    "benchmark/source/compare-double.py": "6da73e867e3d33cbb8469bc253058a4044ae8011220d6f539f43107f2d9867ad",
+    "benchmark/heap-comparison/derivation.json": "a7251f096fff910139777b0629f6ff862dbf3c317ce098ebbaa78866e039fd8d",
+    "benchmark/heap-baseline/root-manifest.json": "5dba6b5e9cd8b355ebeebf348211d9689a997fc82782f64114ffe8b4f98743fb",
+    "benchmark/heap-candidate/root-manifest.json": "75a0601133b27d4ca1a4765124bec72b1b01f596e9fbec276d91b6d013ed4fb2",
+    "benchmark/source/compare-heap-c8ca0a4.py": "3b7e989f6e15589c7e83f5e418eed572345533afaa0de00462fdec2d4f62d802",
+    "benchmark/atomic-comparison/investigate.json": "632c2758ed3ab4f667d30a9cf2acd0567af05110fda8fe55c94976740f492d96",
+    "benchmark/atomic-comparison/memory-comparison.csv": "6cb0d53c809de845cfb373df42535b6ffa774f80c393ee738b4bd30ccf2e80da",
+    "benchmark/atomic-comparison/operation-comparison.csv": "cb012d19156b18ded1a426ab8e7dce896ab03cc62415aab4f67033bbf7e8da71",
+    "benchmark/double-comparison/investigate.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "benchmark/double-comparison/memory-comparison.csv": "29017df8b39902dbc6c355cd7fd25abb57d35cc0aa3ef1db7e5659fab197f273",
+    "benchmark/double-comparison/operation-comparison.csv": "54ebd083061c888c4457ef193cca36521251f12e36cfce98ae19d73fcd071806",
+    "benchmark/heap-comparison/heap-comparison.csv": "4ad547ea89137cb5f9dbb8596aa54ca3f72668511e292df3db05a2184c86b4ee"
+  },
+  "auditor_sha256": "97709832d0b5599e96038c09fd1dd8f9d0adb7d0b4df89fa397be6f944a8e51e"
+}
