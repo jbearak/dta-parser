@@ -1,0 +1,15 @@
+{
+  "copied_utc": "2026-09-07T03:08:37.562117+00:00",
+  "source_directory": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5",
+  "retry_directory": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified",
+  "reason": "R memory case passed, but sandbox denied /usr/bin/time sysctl kern.clockrate; process exited 1 without RSS. Original failed log and all evidence preserved. Only guarded successful operation evidence copied unchanged before retrying memory with escalation. No operations rerun or identity rewritten.",
+  "copied_file_sha256": {
+    "owned-atomic-after-read.csv": "76d17161b93fe0cabfbaca8ee34e66a33e4ac87ee20fbe502edce9eddb480f97",
+    "owned-atomic-session.txt": "87a31ddc4c686ceecbcebd927f1bbc55d3f5e1f68ab5f683a25962a66be05fd8",
+    "owned-atomic-writes.csv": "28b300e4d2486cae9aa3328201c4918cb66ceb734a9c57ab1aabb79d9c46e67c",
+    "owned-atomic.csv": "e65bd8eedf5384ac1ec3942b303202625399bdff75933cfc583c19288d4dd1ed",
+    "runner.log": "6d558b3671c4ab27814529d69b7b4ca98aa04c03ee080781148382770a72344f",
+    "root-manifest.json": "e5bef084b8c760f939fdfdb32b07616186a4caada378123ff3946f982dcbf95e"
+  },
+  "failed_memory_log_sha256": "441254fd4944a71e62191cfdd7bfe27bffe2424113f620abe36d84df11aee5b2"
+}

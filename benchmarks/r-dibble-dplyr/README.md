@@ -223,8 +223,10 @@ attribute oracles. Table metadata checks include compact row-name bookkeeping.
 File-format expectations explicitly include DTA's logical-to-byte and
 factor-to-labelled-long conversions and Arrow's preservation of logicals and
 factor levels. The runner checks the expected factor conversion warning; other
-warnings remain visible. Fixture creation and all oracle checks occur outside
-timing and allocation profiles. The profiled result and `bench`'s retained
+warnings remain visible. The DTA writer wrapper collects and checks that warning
+inside each measured call in both revisions. Fixture creation and all value and
+metadata oracle checks occur outside timing and allocation profiles. The
+profiled result and `bench`'s retained
 preflight result are checked as well as the initial result. Writers' final timed
 files are reopened and compared with the independent oracle.
 
