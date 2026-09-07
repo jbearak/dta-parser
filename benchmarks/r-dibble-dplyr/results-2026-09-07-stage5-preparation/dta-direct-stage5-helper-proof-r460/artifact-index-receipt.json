@@ -1,0 +1,9 @@
+{
+  "bytes": 1312404,
+  "file_count": 19,
+  "index_sha256": "cb479c9fd9118b9fd90cc47e81a2f56469c079ecbcb6a7c08ba7370ff50d7593",
+  "original_proof_index_sha256": "bb907a08b4566579b6fad1ebad6f2bf8a588e2219ac162c06d2ef43306af1931",
+  "readme_sha256": "6d8bf44810c8779193dfef8d7b5c6a256ad66d45e9340425b3770b9af3584db7",
+  "run_receipt_sha256": "de3c0c65e6c67eeaaaaa45555e2801aded65f069114c772dbb71c73c5549c905",
+  "time_utc": "2026-09-07T15:02:46.092283+00:00"
+}

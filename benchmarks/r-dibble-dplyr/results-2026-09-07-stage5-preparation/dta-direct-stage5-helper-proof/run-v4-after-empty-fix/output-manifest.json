@@ -1,0 +1,54 @@
+{
+  "excluded_self": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/output-manifest.json",
+  "products": [
+    {
+      "bytes": 793,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/dll-paths.txt",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/dll-paths.txt",
+      "sha256": "040c0ec5a22ef018006fc20109f88267b239601e8ccdc19bc28501ddf9d2a41c"
+    },
+    {
+      "bytes": 153,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/execution-result.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/execution-result.json",
+      "sha256": "4e9bedbe604d547c22cedcc5767c8631f06b5f86aed7f475cb7ff969edbc3f24"
+    },
+    {
+      "bytes": 2505,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/execution.log",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/execution.log",
+      "sha256": "39ca6e228f9a0ce414d5fda93d3cf3b111b2d5ad1376079d895d24e203ef3c47"
+    },
+    {
+      "bytes": 1140179,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/inputs-before.json",
+      "sha256": "52bcd015f61f7943a5788b49ee1130980861afa9320150bdfd2455d439948da7"
+    },
+    {
+      "bytes": 1335,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/namespaces.tsv",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/namespaces.tsv",
+      "sha256": "590218029782a89bcd0990065ff82210aa4ccc6ba20316e7519bd952646c142e"
+    },
+    {
+      "bytes": 12426,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/observations.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/observations.rds",
+      "sha256": "af46aa6dec041815cb352fdda8f000c2026da210a62261323e11931e11fb3b85"
+    },
+    {
+      "bytes": 67803,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/observations.txt",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v4-after-empty-fix/observations.txt",
+      "sha256": "4c186de862ab7dd199dcbe7738a08209e5774a911f3b54297cd441a02b3cb059"
+    }
+  ]
+}

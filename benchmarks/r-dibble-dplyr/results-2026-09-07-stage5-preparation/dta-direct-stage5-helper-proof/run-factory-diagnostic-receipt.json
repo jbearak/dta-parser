@@ -1,0 +1,12 @@
+{
+  "changed_inputs": [],
+  "manifest": {
+    "bytes": 1525,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-helper-proof/run-factory-diagnostic/output-manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-factory-diagnostic/output-manifest.json",
+    "sha256": "efd7b94e76ea16bb9dfd86f879db0726be0a5a6c98336f4d86bc85e2f9aa1be1"
+  },
+  "output": "/private/tmp/dta-direct-stage5-helper-proof/run-factory-diagnostic",
+  "returncode": 0
+}

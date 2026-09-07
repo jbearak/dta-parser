@@ -1,0 +1,9 @@
+name	path
+compiler	/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/compiler
+graphics	/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/graphics
+utils	/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/utils
+grDevices	/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/grDevices
+stats	/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/stats
+datasets	/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/datasets
+methods	/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/methods
+base	/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/base

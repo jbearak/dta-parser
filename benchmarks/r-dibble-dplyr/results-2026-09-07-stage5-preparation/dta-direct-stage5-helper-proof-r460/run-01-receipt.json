@@ -1,0 +1,30 @@
+{
+  "changed_inputs": [],
+  "output_manifest": {
+    "bytes": 4421,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-helper-proof-r460/run-01/output-manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-helper-proof-r460/run-01/output-manifest.json",
+    "sha256": "2563da2b8ab40ec523dc4d02ed9970f223f830fcc06ed8ee4a6e1f25e9c6618f"
+  },
+  "returncode": 0,
+  "runtime_coverage": {
+    "all_non_os_loaded_images_bound": true,
+    "all_registered_dlls_bound": true,
+    "images": {
+      "after": {
+        "count": 376,
+        "libR": [
+          "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+        ]
+      },
+      "before": {
+        "count": 364,
+        "libR": [
+          "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+        ]
+      }
+    },
+    "namespace_count": 22
+  }
+}

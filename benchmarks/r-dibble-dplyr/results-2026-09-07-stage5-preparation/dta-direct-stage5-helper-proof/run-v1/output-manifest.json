@@ -1,0 +1,26 @@
+{
+  "excluded_self": "/private/tmp/dta-direct-stage5-helper-proof/run-v1/output-manifest.json",
+  "products": [
+    {
+      "bytes": 153,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v1/execution-result.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v1/execution-result.json",
+      "sha256": "65d5f42e8477c9aa53407960ea916292701ae42e21c1b38962367345131b50ca"
+    },
+    {
+      "bytes": 3685,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v1/execution.log",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v1/execution.log",
+      "sha256": "24d441fd4101bc520553c8ad1121401340633c7a111defb7835cc2c63572f985"
+    },
+    {
+      "bytes": 1140163,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v1/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v1/inputs-before.json",
+      "sha256": "0d229153ef10003463d799e177caec6db177df25cfd9e2941734eaed14f16d25"
+    }
+  ]
+}
