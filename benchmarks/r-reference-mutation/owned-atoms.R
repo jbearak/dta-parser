@@ -57,18 +57,23 @@ profile <- function(fun) {
 }
 records <- list()
 for (rows in c(100000L, 1000000L)) for (kind in c("integer", "factor", "ordered")) {
-    values <- rep(c(1L, 2L, NA_integer_), length.out = rows)
-    if (kind != "integer") {
-        attributes(values) <- list(levels = c("first", "second", "unused"),
-            class = if (kind == "ordered") c("ordered", "factor") else "factor")
-    }
+    cat("Native atom case:", kind, rows, "rows\n")
+    # Assigning factor attributes to a large existing vector can create R's
+    # foreign metadata ALTREP. Construct actual ordinary factor storage here.
+    values <- if (kind == "integer") rep(c(1L, 2L, NA_integer_), length.out = rows) else
+        factor(rep(c("first", "second", NA_character_), length.out = rows),
+               levels = c("first", "second", "unused"), ordered = kind == "ordered")
+    stopifnot(typeof(values) == "integer", !native("C_dtatools_is_altrep", values))
     # Snapshot before native capture; an erroneous borrowed write must not
     # change both the source and its oracle through an ordinary R alias.
     original <- unserialize(serialize(values, NULL))
     column <- native("C_dtatools_capture_column", values)
     sibling <- native("C_dtatools_metadata_copy", column)
-    stopifnot(identical(native("C_dtatools_owned_info", column)$backing,
-                        native("C_dtatools_owned_info", sibling)$backing))
+    column_info <- native("C_dtatools_owned_info", column)
+    sibling_info <- native("C_dtatools_owned_info", sibling)
+    stopifnot(!is.null(column_info), !is.null(sibling_info),
+              identical(column_info$depth, 1L), identical(sibling_info$depth, 1L),
+              identical(column_info$backing, sibling_info$backing))
     data <- structure(list(x = column), class = "data.frame", row.names = c(NA_integer_, -rows),
                       label = "native owned atom fixture", note = c("one", "two"))
     table_attributes <- function(x) {
