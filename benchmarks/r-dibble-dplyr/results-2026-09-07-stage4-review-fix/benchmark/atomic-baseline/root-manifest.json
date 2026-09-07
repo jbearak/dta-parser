@@ -1,0 +1,453 @@
+{
+  "source_sha": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+  "library": "/private/tmp/dta-direct-stage4-validation/baseline-library",
+  "mode": "baseline",
+  "iterations": 7,
+  "runner_source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "runner_sha256": {
+    "helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "owned-double-helpers.R": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2",
+    "owned-atomic-helpers.R": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+    "owned-atomic.R": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012",
+    "owned-atomic-memory.R": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2",
+    "run-atomic-qualification.py": "5ee991fdbb5e01ed5b5a5efcd1215be664db7e9d41ee82c3225655f31419f55e"
+  },
+  "started_utc": "2026-09-07T10:54:59.350362+00:00",
+  "csv_rows": {
+    "owned-atomic.csv": 206,
+    "owned-atomic-after-read.csv": 126,
+    "owned-atomic-writes.csv": 18
+  },
+  "measurement_window": "Implementation and reviewers paused builds/tests; processes ran sequentially.",
+  "files": {
+    "owned-atomic-after-read.csv": "76d17161b93fe0cabfbaca8ee34e66a33e4ac87ee20fbe502edce9eddb480f97",
+    "owned-atomic-session.txt": "87a31ddc4c686ceecbcebd927f1bbc55d3f5e1f68ab5f683a25962a66be05fd8",
+    "owned-atomic-writes.csv": "28b300e4d2486cae9aa3328201c4918cb66ceb734a9c57ab1aabb79d9c46e67c",
+    "owned-atomic.csv": "999a185279e66a21bb20b5155a6651b42ded2cb55ad187e526951242370c1928",
+    "runner.log": "83caa08b0be8a60dd6717d285e084e60ee7fd329cb592f543bcef409c38f95d9"
+  },
+  "manifest_utc": "2026-09-07T11:06:23.347457+00:00",
+  "memory_cases": [
+    {
+      "kind": "string",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "memory-string-rename-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 238190592,
+        "retained_with_source_vector_heap_bytes": 12881496,
+        "excess_after_drop_result_bytes": -57016,
+        "released_with_last_result_bytes": 12881136
+      },
+      "sha256": "40eb6ce1784c3305946ed2728b6f1516362598bd9366832cb775a8f811f39e95"
+    },
+    {
+      "kind": "string",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "memory-string-pipeline_five-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 239747072,
+        "retained_with_source_vector_heap_bytes": 12084504,
+        "excess_after_drop_result_bytes": -53896,
+        "released_with_last_result_bytes": 12081056
+      },
+      "sha256": "075531adfd7a0386b9174e88dc18648c225773c8c4f5c991034e5a19f3c68396"
+    },
+    {
+      "kind": "string",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "memory-string-pipeline_50-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 290570240,
+        "retained_with_source_vector_heap_bytes": 12083000,
+        "excess_after_drop_result_bytes": -57832,
+        "released_with_last_result_bytes": 12081056
+      },
+      "sha256": "c5ebe856173fe0fcc0d479598c50dfbe07d9c4f26e5dd73df6c302ce9bc8f1ce"
+    },
+    {
+      "kind": "string",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "memory-string-rename-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1288749056,
+        "retained_with_source_vector_heap_bytes": 128081496,
+        "excess_after_drop_result_bytes": -57016,
+        "released_with_last_result_bytes": 128081136
+      },
+      "sha256": "48f7804a59b1a5b74a3315206195599abcbe95224bdde8e02490c53f9c3d023e"
+    },
+    {
+      "kind": "string",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "memory-string-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1145454592,
+        "retained_with_source_vector_heap_bytes": 120084472,
+        "excess_after_drop_result_bytes": -53928,
+        "released_with_last_result_bytes": 120081056
+      },
+      "sha256": "e1485cfc83e44b0dcd7c08f2e819d293443b932f048fb423dc5e73e4e9eae7df"
+    },
+    {
+      "kind": "string",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "memory-string-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1307901952,
+        "retained_with_source_vector_heap_bytes": 120082232,
+        "excess_after_drop_result_bytes": -58600,
+        "released_with_last_result_bytes": 120081056
+      },
+      "sha256": "d19b62558ddbad48b3d69317be92bcced39c26ed695974483d19587cedbb4758"
+    },
+    {
+      "kind": "declared_character",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "memory-declared_character-rename-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 242155520,
+        "retained_with_source_vector_heap_bytes": 12881496,
+        "excess_after_drop_result_bytes": -56504,
+        "released_with_last_result_bytes": 12880624
+      },
+      "sha256": "33e6090e2abe3ef2a1cb36da769a1818c336c201b72ded22ebd788314e299a95"
+    },
+    {
+      "kind": "declared_character",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "memory-declared_character-pipeline_five-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 239550464,
+        "retained_with_source_vector_heap_bytes": 12084488,
+        "excess_after_drop_result_bytes": -53432,
+        "released_with_last_result_bytes": 12080576
+      },
+      "sha256": "f978aee476e72850358a7e9e1b8f853c2d207bf0244ebbdf0882b59da5cd562e"
+    },
+    {
+      "kind": "declared_character",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "memory-declared_character-pipeline_50-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 290242560,
+        "retained_with_source_vector_heap_bytes": 12083000,
+        "excess_after_drop_result_bytes": -57352,
+        "released_with_last_result_bytes": 12080576
+      },
+      "sha256": "992f1b97c08c194f80edcd74808efe0c683d83741d7c4125dd6e6eece3b6f031"
+    },
+    {
+      "kind": "declared_character",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "memory-declared_character-rename-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1312866304,
+        "retained_with_source_vector_heap_bytes": 128081496,
+        "excess_after_drop_result_bytes": -56504,
+        "released_with_last_result_bytes": 128080624
+      },
+      "sha256": "0af0eb30cb27bd354186c32695cbf5ca3a5b0f75a1b026affeb08cc68f9c6e25"
+    },
+    {
+      "kind": "declared_character",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "memory-declared_character-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1169768448,
+        "retained_with_source_vector_heap_bytes": 120084440,
+        "excess_after_drop_result_bytes": -53480,
+        "released_with_last_result_bytes": 120080576
+      },
+      "sha256": "9fea613e59370a7df1f8bfc28f984cb52720ae6683728d1c7d43325befd08318"
+    },
+    {
+      "kind": "declared_character",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "memory-declared_character-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1332576256,
+        "retained_with_source_vector_heap_bytes": 120082232,
+        "excess_after_drop_result_bytes": -58120,
+        "released_with_last_result_bytes": 120080576
+      },
+      "sha256": "8c744742a6f2c302a36118f4c87d6d7ae28fc51178d8c9f0642dce5754a2e803"
+    },
+    {
+      "kind": "logical",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "memory-logical-rename-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 200359936,
+        "retained_with_source_vector_heap_bytes": 6481368,
+        "excess_after_drop_result_bytes": -55864,
+        "released_with_last_result_bytes": 6480240
+      },
+      "sha256": "ee10db4ce4011d9192d974dfbd6b257ea47134f7a55c296b54e8d7ecd3a8efe7"
+    },
+    {
+      "kind": "logical",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "memory-logical-pipeline_five-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 198459392,
+        "retained_with_source_vector_heap_bytes": 6084560,
+        "excess_after_drop_result_bytes": -52640,
+        "released_with_last_result_bytes": 6080216
+      },
+      "sha256": "70dcfb78d02b5ee399efbcbbcccf61064a0283b69d97aba1809420b612f56982"
+    },
+    {
+      "kind": "logical",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "memory-logical-pipeline_50-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 216285184,
+        "retained_with_source_vector_heap_bytes": 6083184,
+        "excess_after_drop_result_bytes": -56448,
+        "released_with_last_result_bytes": 6080216
+      },
+      "sha256": "f10445c034804820fc74f7cfdb50acee23c50dc58652060ea472b5809700ea0c"
+    },
+    {
+      "kind": "logical",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "memory-logical-rename-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 583565312,
+        "retained_with_source_vector_heap_bytes": 64081368,
+        "excess_after_drop_result_bytes": -55864,
+        "released_with_last_result_bytes": 64080240
+      },
+      "sha256": "97a9465852b6c9c6fd3786d9b120fbf04cb0b5021b181ac7fb696ec671cc09cc"
+    },
+    {
+      "kind": "logical",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "memory-logical-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 576929792,
+        "retained_with_source_vector_heap_bytes": 60084176,
+        "excess_after_drop_result_bytes": -53024,
+        "released_with_last_result_bytes": 60080216
+      },
+      "sha256": "f3bde904d89906163e440b379a72815abbf8b3e3b194107f4f00e9b71817b05f"
+    },
+    {
+      "kind": "logical",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "memory-logical-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 699826176,
+        "retained_with_source_vector_heap_bytes": 60082560,
+        "excess_after_drop_result_bytes": -57072,
+        "released_with_last_result_bytes": 60080216
+      },
+      "sha256": "e74f599b5b44f81a93d4cd29ab49c7c1375028a23045b5b0f796a558583b7abd"
+    },
+    {
+      "kind": "factor",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "memory-factor-rename-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 218824704,
+        "retained_with_source_vector_heap_bytes": 6481368,
+        "excess_after_drop_result_bytes": -56504,
+        "released_with_last_result_bytes": 6480880
+      },
+      "sha256": "2162ca8d0c456a2daa1f1e2f6e8d3c14c6aa44c0ed130bfbbcc901fb3e0ce776"
+    },
+    {
+      "kind": "factor",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "memory-factor-pipeline_five-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 226607104,
+        "retained_with_source_vector_heap_bytes": 6084560,
+        "excess_after_drop_result_bytes": -53240,
+        "released_with_last_result_bytes": 6080816
+      },
+      "sha256": "cda167d36686ca81c82afea62b064db54440756fd9b7a08e04418f211ae6a8a8"
+    },
+    {
+      "kind": "factor",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "memory-factor-pipeline_50-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 243499008,
+        "retained_with_source_vector_heap_bytes": 6083536,
+        "excess_after_drop_result_bytes": -56696,
+        "released_with_last_result_bytes": 6080816
+      },
+      "sha256": "258eccb31d9290f5195299bdc96d12f760f6a05aeb03046f9934318c5c868d18"
+    },
+    {
+      "kind": "factor",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "memory-factor-rename-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1152024576,
+        "retained_with_source_vector_heap_bytes": 64081368,
+        "excess_after_drop_result_bytes": -56504,
+        "released_with_last_result_bytes": 64080880
+      },
+      "sha256": "0acad6e3708b4c3d0d9eb49e83620a3ac27fb18a2e98e4fb41066878c1a3bf8e"
+    },
+    {
+      "kind": "factor",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "memory-factor-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1101414400,
+        "retained_with_source_vector_heap_bytes": 60084400,
+        "excess_after_drop_result_bytes": -53400,
+        "released_with_last_result_bytes": 60080816
+      },
+      "sha256": "da1166d035fee541e5f5a17b404ffa4959904bd8c17bdb0b1c6d4e6ed8df6cd2"
+    },
+    {
+      "kind": "factor",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "memory-factor-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1052491776,
+        "retained_with_source_vector_heap_bytes": 60082560,
+        "excess_after_drop_result_bytes": -57672,
+        "released_with_last_result_bytes": 60080816
+      },
+      "sha256": "43998b0eabdf9bc679a642829d7855b9c20e072f19313c7b2670a8467950a5ff"
+    },
+    {
+      "kind": "ordered",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "memory-ordered-rename-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 218775552,
+        "retained_with_source_vector_heap_bytes": 6481368,
+        "excess_after_drop_result_bytes": -56632,
+        "released_with_last_result_bytes": 6481008
+      },
+      "sha256": "5f2eb22759880374b06c973eca249a90948b4655667827d6111f5535e2dd74cb"
+    },
+    {
+      "kind": "ordered",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "memory-ordered-pipeline_five-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 226721792,
+        "retained_with_source_vector_heap_bytes": 6084560,
+        "excess_after_drop_result_bytes": -53360,
+        "released_with_last_result_bytes": 6080936
+      },
+      "sha256": "b4dc02b7538f1ef9d33cace45acb949e03891227ea13f683064c03350b0056c5"
+    },
+    {
+      "kind": "ordered",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "memory-ordered-pipeline_50-100000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 243580928,
+        "retained_with_source_vector_heap_bytes": 6083536,
+        "excess_after_drop_result_bytes": -56816,
+        "released_with_last_result_bytes": 6080936
+      },
+      "sha256": "9a77cf34539c35473658742e6e3b6e4ae4852215e761e924389d74ca27df9a57"
+    },
+    {
+      "kind": "ordered",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "memory-ordered-rename-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1152237568,
+        "retained_with_source_vector_heap_bytes": 64081368,
+        "excess_after_drop_result_bytes": -56632,
+        "released_with_last_result_bytes": 64081008
+      },
+      "sha256": "40fc3444f3a78189ac6f2b62eaa084225d061814dcebe18ab4c1c48d7731618a"
+    },
+    {
+      "kind": "ordered",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "memory-ordered-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1101774848,
+        "retained_with_source_vector_heap_bytes": 60084400,
+        "excess_after_drop_result_bytes": -53520,
+        "released_with_last_result_bytes": 60080936
+      },
+      "sha256": "73c430be52e95d1af58ee991798545449c0fbe2f11093b858133913443a8e32f"
+    },
+    {
+      "kind": "ordered",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "memory-ordered-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "metrics": {
+        "maximum_resident_set_size": 1052033024,
+        "retained_with_source_vector_heap_bytes": 60082560,
+        "excess_after_drop_result_bytes": -57792,
+        "released_with_last_result_bytes": 60080936
+      },
+      "sha256": "bf4797bcc307e30b8b7985e40d85019e66f75145976bc7c92515605779d5b2a0"
+    }
+  ],
+  "memory_scope": "Whole-process RSS includes startup, fixtures and validation; retained vector heap is separate."
+}

@@ -1,100 +1,104 @@
-# Stage 4 review fixes: diagnosis and local qualification
+# Stage 4 review fixes: evidence
 
-This first evidence scope records the PR #195 review fixes at
+This archive records the fixes prompted by PR #195's substantive review of
+`75b0c54`. The qualified package source is
 [`c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe`](https://github.com/jbearak/dta-parser/commit/c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe),
-package tree `f88005766aee9b9dd5827b33a3930feff6672008`. It publishes diagnosis
-and exact local qualification. The complete paired benchmark records and dated
-report will be added in a second focused evidence PR. This partition makes no
-new performance acceptance claim. The repository package files in this
-evidence-only branch retain merged Stage 3; the records identify the separately
-built Stage 4 candidate.
+package tree `f88005766aee9b9dd5827b33a3930feff6672008`. The original 887-file Stage 4 report/evidence scope and the 161-file review
+supplement are unchanged.
 
-The original 887-file Stage 4 report/evidence scope and the 161-file review
-supplement remain unchanged. The [index](index.json) records every copied file's
-original path, size, SHA-256 and Unix mode. It also maps byte-identical review
-diffs, eleven reviewed source snapshots available as fixed Git blobs, and
-historical inputs already published in the merged evidence. Earlier attempts
-retain their source labels and outcomes.
+The [dated report](../results-2026-09-07-stage4-review-fix.md) separates passing
+correctness, allocation and memory checks from fifteen remaining read flags.
+The [index](index.json) records each copied file's original path, size, SHA-256 and
+Unix mode. Earlier attempts retain their original source labels and outcomes.
 
 | Directory | Evidence |
 | --- | --- |
-| `qualification/checks` | Full installed R suite, standard conformance, Haven loopback retry, bridge, archive/binary/NOTICE and native output-preflight checks |
-| `qualification/native` | Original 159 native assertions and 15 readiness checks, 18 atomic allocation cases, rename allocation, source and installation guards |
-| `qualification/workspace` | Five fresh Cargo gates with all clean input snapshots and the actual verified 27-member crate identity |
-| `qualification/source` | Exact source inventory, execution drivers, install log and independent gate audit |
-| `qualification/root-219` | Unchanged R inputs/oracles, child outputs, failed outer label check and corrected read-only audit |
-| `qualification/fertility` | Strict complete-log parity and all 454 downstream file/state guards |
-| `qualification/manifest-audit` | Independent completed-manifest binding and all 32 non-self file hashes |
-| `qualification/archive-verifier` | Source and results for 18 synthetic integrity cases, without package workloads |
-| `diagnosis/implementation` | Constructor/output-guard red-green probes, extracted width helpers, focused differential, source reviews and failed fixtures |
-| `diagnosis/root-probes*` | Independent actual-package constructor and temporary-memory probes, including original attempts and corrected oracles |
-| `diagnosis/external-review` | Actual review findings and the bot's unavailable-docstring-scope response |
+| `qualification/checks` | Complete installed R tests, standard conformance, Haven loopback retry, archive/binary/NOTICE checks, bridge gates, and the native output preflight under three Python modes |
+| `qualification/native` | Original unchanged 159 native assertions and 15 readiness checks, 18 atomic allocation cases, rename allocation, and before/after source and installation guards |
+| `qualification/workspace` | Five fresh Cargo gates with complete clean input snapshots and the actual verified 27-member `.crate` identity |
+| `qualification/source` | Exact source inventory, execution drivers, installer log and independent root audit |
+| `qualification/root-219` | Unchanged historical R inputs and oracles, four child outputs, initial outer label-check failure and the corrected read-only audit |
+| `qualification/fertility` | Strict complete-log parity, all 454 file/state guards and the exact-library downstream result |
+| `diagnosis/implementation` | Constructor and output-guard red/green probes, extracted width helpers, focused test differential, and preserved failed fixture/setup attempts |
+| `diagnosis/root-probes*` | Independent actual-package constructor and temporary-memory probes, including original attempts and narrowly corrected oracles |
+| `diagnosis/external-review` | The actual PR review and the bot's response about unavailable docstring scope |
+| `benchmark` | Fresh paired atomic, double and heap outputs, complete manifests, raw logs, comparisons and executed coordinator/comparator sources |
 
-Run the portable archive check without executing package code:
+Run the portable integrity check from any checkout:
 
 ```sh
 python3 benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-fix/verify.py
 ```
 
-It verifies the complete scoped inventory, bytes and Git-representable executable
-bits. `--originals` additionally checks retained execution files at their absolute
-paths; `--external` checks listed build products. These options require the
-original local evidence workspace. Full Unix modes are recorded for forensics;
-Git retains only the executable distinction. Empty fixture directories are
-recorded explicitly because Git does not store them. The current preflight
-driver recreates them in a new destination.
+It checks the complete archive inventory, bytes and Git-representable executable
+bits without running package code. `--originals` also checks all retained source
+copies at their absolute execution paths; `--external` checks the listed large
+products. Those two options require the original local evidence workspace. Full
+Unix permission bits are recorded for forensics; Git preserves only the
+executable distinction. The verifier's 18 synthetic integrity cases exercise
+rejection under default and optimized Python without R or benchmark work.
 
-Full source exports, installations, compiled probes and package artifacts stay
-at the recorded external paths with hashes and build recipes. The source export
-contains 1,950 files verified against Git bytes and modes. Current guarded runners
-are available at the fixed
+The original absolute paths in copied manifests identify the execution inputs
+and outputs. The index maps those paths to their archive copies. Full
+source exports, installations, compiled probe DLLs, binary packages and Cargo
+build outputs stay at their recorded external paths with exact hashes. Their
+source identities and build recipes are retained; they are not silently replaced
+by a different installed package. The actual source export contains 1,950 files,
+each verified against the committed Git blob and mode. The eleven reviewed package, runner and document source snapshots
+resolve to the exact committed blobs listed in the index. Exact-byte aliases
+and three historical cross-archive inputs have explicit fixed-revision mappings. Current reusable
+runners are available at the fixed
 [c8 source](https://github.com/jbearak/dta-parser/tree/c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe/benchmarks).
-Archived execution and diagnosis scripts retain their original path assumptions;
-they record what ran and should not be run blindly from an archive copy.
+Archived diagnostic/execution scripts retain their original path assumptions;
+they record what ran and are not a replacement for the current guarded runners.
 
-The constructor probes show one initial payload capture and zero additional capture on
-the first private write at one, 100,000 and one million elements, with stable backing and
-complete source/result checks. Separate retained aliases still detach. These
-are native copy counters, not total R allocations or timings. The actual
-registered width-entry probes show that one Latin-1 character and a 1,000-element
-Latin-1 vector release translation temporaries with unchanged widths and scan
-counts. The extracted helper is a separate lifetime experiment; neither probe
-measures temporary bytes, RSS or time.
+The output-preflight records use the real R runner and exact library. Only Git
+is synthetic, to stop an admitted empty-directory control before identity output
+or measured workloads. Fixture bytes and modes are preserved. Git does not store
+empty directories; their recorded states and the executable fixture setup retain
+that distinction. Run the current preflight driver with a new output directory
+to recreate those cases, rather than treating an archived fixture directory as
+a new qualification destination.
 
-The native runner rejects hidden, unrelated and nested existing content before
-output. Its eight cases pass under default Python, `-O` and `PYTHONOPTIMIZE=1`.
-Only Git is synthetic: its sentinel stops the admitted empty control before
-identity output or a measured workload. All fixture bytes and modes are checked.
+The extracted width helper demonstrates temporary-allocation lifetime within a
+small native loop. The separate root probe calls the actual registered package
+entry point before the outer `.Call` cleanup. Neither measures allocation bytes,
+peak RSS or elapsed time. Constructor counters measure native captured payload
+bytes; they do not include R headers or every allocation made during construction.
 
-The full installed suite passes 16,445 assertions with no failures, errors or
-skips and four established warnings. The 956-assertion focused suite, original
-native gates, 18 atomic cases, rename allocation, source/binary archives, NOTICE,
-roxygen and interoperability also pass. Standard R check retains three warnings
-and two notes. The initial skipped Haven loopback attempt remains beside the
-successful authorized rerun. All five fresh Cargo gates pass, with 278 tests and
-eleven existing packaging warnings about excluded tests. The actual crate's
-27 members are bound to the source; bridge tests pass all 18 cases.
+The full installed suite passed 16,445 assertions with zero failures, errors or
+skips and the four established warnings. The standard R check retained three
+warnings and two notes. Its sandbox run is supplemented by the complete installed
+suite with loopback access; the initially skipped Haven attempt remains intact
+beside the successful loopback rerun. All five Cargo gates passed, with 278 tests
+and eleven existing package warnings about excluded test targets. Those warnings
+are retained in `qualification/workspace/package.log`.
 
-Failed attempts are preserved. The final names-dispatch fixture retains only
-the first escaped handle; later callbacks cannot overwrite its oracle. The same
-final file passes 956 assertions on the candidate and fails exactly 18 expected
-fresh-constructor assertions on e343. Root corrected an integer-versus-double
-expected count and an outer audit's overly narrow DLL label parser; both original
-attempts remain. The initial crate record expected a mandatory `dirty` field,
-but Cargo omits it for this clean artifact; complete clean snapshots supplement
-the actual VCS metadata.
+Earlier failed attempts remain visible. The final names-dispatch fixture retains
+only the first escaped handle; later legitimate callbacks cannot overwrite its
+oracle. The same final test file passes all 956 assertions on the candidate and
+fails exactly the 18 fresh-constructor sharing/copy assertions on `e343b3b`.
+Root's first constructor count comparison confused R integer and double types;
+its corrected oracle and both attempts are preserved. The 219-case outer audit
+first expected one DLL label in every historical child; the corrected audit
+accepts only the two actual anchored labels and rechecks the unchanged outputs.
+The final root probe manifest and the 219-case post-run audit each recorded the
+empty hash of their own output while it was still being written. Those self
+entries do not describe the completed JSON files. The
+[additive audit](qualification/manifest-audit/c8ca0a4-manifest-self-entry-audit.json)
+independently verifies all 32 non-self file hashes and binds both completed
+manifest hashes; the original files remain unchanged. The initial root results
+summarizer also had a syntax error before execution, before any output existed.
+No malformed source snapshot or error log was retained for that attempt, so none
+is reconstructed here.
 
-The root probe manifest and 219-case post-run audit each recorded the empty hash
-of their own output while it was still being written. Those self entries do not
-hash the completed JSON. The [additive audit](qualification/manifest-audit/c8ca0a4-manifest-self-entry-audit.json)
-verifies all 32 non-self hashes and binds both completed manifests externally,
-without changing or rerunning them.
+The initial crate identity assembly expected a mandatory `dirty` field; Cargo
+omits that optional field for this clean artifact. The final record combines the
+actual VCS metadata with complete before/after clean Git snapshots.
 
-All 219 independent R comparisons pass. The isolated fertility run matches the
-complete baseline log, including its four known failed/error blocks and two
-skips among 499 tests; no Column reallocation warning appears. Its 454 files,
-Git state and existing output size/mtime are unchanged. That result does not
-replace the final actual renv install/test/original-lock restoration. The
-previous twelve base-R read costs and three required Stage 6 filter fixes remain
-open. Stages 5 through 9, integrated acceptance, final substantive review, CI and
-normal merges remain required; issue #172 stays open.
+The strict fertility result concerns the isolated candidate library. It does
+not replace the epic's final actual renv installation, test run and original-lock
+restoration. The fresh comparison repeats the same twelve base-R read flags and three
+required Stage 6 filter fixes. Neither the local gates nor this archive claims
+integrated epic acceptance; final substantive review, CI and normal merge also
+remain separate gates.

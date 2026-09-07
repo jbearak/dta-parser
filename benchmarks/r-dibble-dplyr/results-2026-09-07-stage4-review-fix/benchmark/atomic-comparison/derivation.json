@@ -1,0 +1,12 @@
+{
+  "baseline_manifest": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/root-manifest.json",
+  "baseline_manifest_sha256": "cc066b4f708cc07a9aafcd1ad5763922ce1bb042383cdfc657822a9f27b2ced9",
+  "candidate_manifest": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/root-manifest.json",
+  "candidate_manifest_sha256": "d713382ebeac521689745beee906eebc0a520fa792ce65717784e95516d73d9f",
+  "deriver_sha256": "4a9051ce97c5a84ff580f0ddda4cce2692c847695d0500ad8c239618e312b9bf",
+  "files": {
+    "investigate.json": "632c2758ed3ab4f667d30a9cf2acd0567af05110fda8fe55c94976740f492d96",
+    "memory-comparison.csv": "6cb0d53c809de845cfb373df42535b6ffa774f80c393ee738b4bd30ccf2e80da",
+    "operation-comparison.csv": "cb012d19156b18ded1a426ab8e7dce896ab03cc62415aab4f67033bbf7e8da71"
+  }
+}

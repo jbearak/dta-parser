@@ -1,0 +1,70 @@
+source_sha ec10a6ac34602f3bd691e8043019c1b479babda4
+library /private/tmp/dta-direct-stage4-validation/baseline-library
+mode baseline
+runner_md5 benchmarks/r-dibble-dplyr/helpers.R d6c0341379dd025e4e0492d6b14f4d22
+runner_md5 benchmarks/r-dibble-dplyr/owned-double-helpers.R 4d31109f49d89bbcdbfbb989dccf5334
+runner_md5 benchmarks/r-dibble-dplyr/owned-atomic-helpers.R df5f3183107290847a82415124d44d49
+runner_md5 benchmarks/r-dibble-dplyr/owned-atomic.R 7e87cb5f50a51ea4c571f27d3a329bca
+runner_md5 benchmarks/r-dibble-dplyr/owned-atomic-memory.R d8bd50bb040618201a2817031b47100c
+R version 4.6.1 (2026-06-24)
+Platform: aarch64-apple-darwin25.4.0
+Running under: macOS Tahoe 26.6.2
+
+Matrix products: default
+BLAS:   /opt/homebrew/Cellar/openblas/0.3.34/lib/libopenblasp-r0.3.34.dylib 
+LAPACK: /opt/homebrew/Cellar/r/4.6.1/lib/R/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] dplyr_1.2.1    dtatools_0.7.1
+
+loaded via a namespace (and not attached):
+ [1] tidyselect_1.2.1 compiler_4.6.1   magrittr_2.0.5   R6_2.6.1        
+ [5] generics_0.1.4   cli_3.6.6        tools_4.6.1      pillar_1.11.1   
+ [9] glue_1.8.1       tibble_3.3.1     vctrs_0.7.3      lifecycle_1.0.5 
+[13] pkgconfig_2.0.3  rlang_1.3.0      
+kind factor 
+operation pipeline_50 
+rows 100000 
+retained_with_source_vector_heap_bytes 6084080 
+vector_heap_bytes_after_drop_source 15448152 
+nominal_result_bytes 6416288 
+vector_heap_bytes_after_drop_result 9367304 
+prefixture_vector_heap_bytes 9341752 
+excess_after_drop_result_bytes 25552 
+released_with_last_result_bytes 6080848 
+heap_source_sha ec10a6ac34602f3bd691e8043019c1b479babda4 
+heap_library /private/tmp/dta-direct-stage4-validation/baseline-library 
+heap_mode baseline 
+heap_kind factor 
+heap_operation pipeline_50 
+heap_rows 100000 
+heap_header_bytes_per_cell 56 
+heap_runner_md5 benchmarks/r-dibble-dplyr/helpers.R d6c0341379dd025e4e0492d6b14f4d22
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-double-helpers.R 4d31109f49d89bbcdbfbb989dccf5334
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-atomic-helpers.R df5f3183107290847a82415124d44d49
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-double.R ee0e2fa5ef4e447efaebbf89199e9939
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-double-memory.R 5edf6459397ea2166f0b578ed549a6de
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-atomic.R 7e87cb5f50a51ea4c571f27d3a329bca
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-atomic-memory.R d8bd50bb040618201a2817031b47100c
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-heap.R afa138d1036683b4b27ace1c77d970e6
+
+heap_retained_header_cells 632
+heap_excess_header_cells_after_drop_result 1335
+heap_retained_tracked_heap_bytes 6119472
+heap_excess_tracked_heap_bytes_after_drop_result 100312
+heap_released_tracked_heap_bytes_with_last_result 6087064
+heap_checkpoint prefixture header_cells 685955 vector_bytes 9341752 header_reported_mb 36.7 
+heap_checkpoint prior header_cells 686670 vector_bytes 29842288 header_reported_mb 36.7 
+heap_checkpoint after_result header_cells 687302 vector_bytes 35926368 header_reported_mb 36.8 
+heap_checkpoint after_drop_source header_cells 687401 vector_bytes 15448152 header_reported_mb 36.8 
+heap_checkpoint after_drop_result header_cells 687290 vector_bytes 9367304 header_reported_mb 36.8 
+heap_scope R header cells plus vector heap; excludes external native allocations and unused heap capacity

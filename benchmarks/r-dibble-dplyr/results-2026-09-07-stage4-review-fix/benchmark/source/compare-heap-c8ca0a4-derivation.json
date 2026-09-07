@@ -1,0 +1,12 @@
+{
+  "original_script": "/private/tmp/dta-direct-stage4-validation/compare-heap.py",
+  "original_sha256": "d30c84133f1893b7fe7f76ef6d7c580cbc48962dd9aba0e253a628f4eb93a4ad",
+  "new_script": "/private/tmp/dta-direct-stage4-validation/compare-heap-c8ca0a4.py",
+  "new_sha256": "3b7e989f6e15589c7e83f5e418eed572345533afaa0de00462fdec2d4f62d802",
+  "exact_identity_replacements": {
+    "39fd4814b59eec2e3fcbc8ff4cc7af608c8ef76b52f71e70f794e6a4d75fe9f3": "16c9dd392abe7fa31f074e49fc927eb05218d7b0a10b9b2d257303e01f64390b",
+    "7003a46899ed508c4068e077e3aa1af7fff541f3": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+  },
+  "scope": "Only expected candidate source, paired runner revision and documented metric-verifier SHA change. Raw checkpoint, completeness, budget, digest and pairing checks unchanged."
+}
