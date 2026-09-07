@@ -1,0 +1,52 @@
+{
+  "source_sha": "fd069a36832ed7c1bdedeed52a4281ecabb36e25",
+  "library": "/private/tmp/dta-direct-stage3-validation/baseline-library",
+  "mode": "baseline",
+  "operation_rows": 46,
+  "post_read_rows": 30,
+  "iterations": 7,
+  "runner_sha256": {
+    "owned-double-helpers.R": "bee37bbc62457b1e6af4a7ac96d8a8eb6c7e64bb17094342b19812cae4bd7bee",
+    "owned-double.R": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685",
+    "owned-double-memory.R": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416"
+  },
+  "measurement_window": "Implementation and reviewers paused builds/tests; sequential benchmark processes.",
+  "memory_cases": [
+    {
+      "operation": "rename",
+      "rows": 100000,
+      "file": "memory-rename-100000.log",
+      "maximum_resident_set_size_bytes": 239337472
+    },
+    {
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "memory-pipeline_five-100000.log",
+      "maximum_resident_set_size_bytes": 238403584
+    },
+    {
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "memory-pipeline_50-100000.log",
+      "maximum_resident_set_size_bytes": 279838720
+    },
+    {
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "memory-rename-1000000.log",
+      "maximum_resident_set_size_bytes": 1268449280
+    },
+    {
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "memory-pipeline_five-1000000.log",
+      "maximum_resident_set_size_bytes": 1186824192
+    },
+    {
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "memory-pipeline_50-1000000.log",
+      "maximum_resident_set_size_bytes": 1374044160
+    }
+  ]
+}

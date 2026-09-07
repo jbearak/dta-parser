@@ -1,0 +1,375 @@
+TypeScript fixture conformance: PASS (22 immutable fixtures, 32085 decoded cell comparisons); 10 deterministic native gate identities validated (execution follows in scripts/conformance.sh)
+accepts_alternate_release_105_and_108_offset_label_tables: test
+alternate_value_label_layouts_do_not_fallback_after_selection: test
+decodes_big_endian_release_111_observations_notes_and_labels: test
+decodes_checked_legacy_fixtures_and_value_labels: test
+decodes_pre111_layouts_types_expansions_missing_and_value_labels_with_file_parity: test
+decodes_release_111_metadata_observations_labels_and_missing_tags: test
+decodes_true_big_endian_v113_and_windows_1252: test
+explicit_encoding_overrides_every_legacy_text_surface: test
+generated_pre111_fixtures_decode_expected_semantics: test
+legacy_layout_probe_is_interruptible_during_large_zero_padding: test
+legacy_metadata_bounds_and_raw_names_have_file_parity: test
+legacy_metadata_decoding_preserves_the_canonical_utf8_bound: test
+legacy_slice_and_streaming_parsers_compact_adversarial_duplicates: test
+legacy_slice_and_streaming_parsers_validate_superseded_duplicate_values: test
+legacy_value_label_zero_padding_has_slice_file_parity: test
+parallel_decoder_matches_serial_for_releases_113_and_114: test
+preserves_empty_legacy_dataset_notes: test
+reads_every_checked_in_legacy_fixture_and_synthetic_v114: test
+rejects_malformed_legacy_counts_filetype_and_expansion_fields: test
+rejects_negative_two_byte_expansion_lengths_with_file_parity: test
+release_108_prefers_complete_short_name_framing: test
+release_108_prefers_long_names_for_empty_first_offset_table: test
+release_111_slice_and_file_projection_windows_are_identical: test
+release_111_truncation_and_malformed_expansions_fail_without_panicking: test
+
+24 tests, 0 benchmarks
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling cfg-if v1.0.4
+   Compiling libm v0.2.16
+   Compiling version_check v0.9.5
+   Compiling autocfg v1.5.1
+   Compiling libc v0.2.189
+   Compiling zerocopy v0.8.56
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.11
+   Compiling pkg-config v0.3.34
+   Compiling getrandom v0.3.4
+   Compiling getrandom v0.4.3
+   Compiling rand_core v0.10.1
+   Compiling bytes v1.12.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling semver v1.0.28
+   Compiling chacha20 v0.10.2
+   Compiling arrow-schema v59.2.0
+   Compiling iana-time-zone v0.1.65
+   Compiling generic-array v0.14.7
+   Compiling num-traits v0.2.19
+   Compiling ahash v0.8.12
+   Compiling rustc_version v0.4.1
+   Compiling zstd-safe v7.2.4
+   Compiling once_cell v1.21.4
+   Compiling serde_core v1.0.229
+   Compiling typenum v1.20.1
+   Compiling flatbuffers v25.12.19
+   Compiling zmij v1.0.23
+   Compiling hashbrown v0.17.1
+   Compiling serde v1.0.229
+   Compiling bitflags v2.13.1
+   Compiling unicode-general-category v1.1.0
+   Compiling thiserror v2.0.19
+   Compiling serde_json v1.0.151
+   Compiling itoa v1.0.18
+   Compiling syn v2.0.119
+   Compiling syn v3.0.3
+   Compiling rand v0.10.2
+   Compiling memchr v2.8.3
+   Compiling cpufeatures v0.2.17
+   Compiling encoding_rs v0.8.35
+   Compiling jobserver v0.1.35
+   Compiling twox-hash v2.1.4
+   Compiling cc v1.4.4
+   Compiling lz4_flex v0.14.0
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling digest v0.10.7
+   Compiling sha2 v0.10.9
+   Compiling thiserror-impl v2.0.19
+   Compiling num-integer v0.1.47
+   Compiling num-complex v0.4.6
+   Compiling chrono v0.4.45
+   Compiling num-bigint v0.5.1
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling serde_derive v1.0.229
+   Compiling zerocopy-derive v0.8.56
+   Compiling half v2.7.1
+   Compiling zstd v0.13.3
+   Compiling arrow-buffer v59.2.0
+   Compiling arrow-data v59.2.0
+   Compiling arrow-array v59.2.0
+   Compiling arrow-select v59.2.0
+   Compiling arrow-ipc v59.2.0
+   Compiling dta-tools v0.7.1 (/private/tmp/dta-direct-stage3-validation/source-08b086c/r-package/dtatools/src/dta-tools)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.68s
+     Running tests/legacy.rs (target/debug/deps/legacy-5624f88adbf79873)
+canonical_data_serde_keeps_u64s_decimal_and_storage_explicit: test
+clamps_ranges_supports_empty_projection_and_resolves_strl_columns: test
+decodes_big_endian_v119_observations_and_labels: test
+decodes_every_supported_storage_width_and_projected_row_window: test
+every_checked_fixture_matches_the_typescript_haven_oracle: test
+matches_typescript_and_haven_derived_auto_values_across_v117_and_v118: test
+preserves_raw_numeric_missing_values_and_all_storage_tags: test
+validates_data_tags_geometry_and_closing_map_offset: test
+validates_strls_envelope_while_projecting_a_real_strl_fixture: test
+
+9 tests, 0 benchmarks
+   Compiling dta-tools v0.7.1 (/private/tmp/dta-direct-stage3-validation/source-08b086c/r-package/dtatools/src/dta-tools)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.72s
+     Running tests/observations.rs (target/debug/deps/observations-710944c799614da4)
+auto_uses_utf8_for_unicode_release_118: test
+auto_uses_windows_1252_for_pre_unicode_release_117: test
+override_reaches_modern_metadata_fixed_strings_and_value_labels: test
+override_reaches_modern_strl_payloads: test
+
+4 tests, 0 benchmarks
+   Compiling dta-tools v0.7.1 (/private/tmp/dta-direct-stage3-validation/source-08b086c/r-package/dtatools/src/dta-tools)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.41s
+     Running tests/encoding.rs (target/debug/deps/encoding-93571bcd8a49abaf)
+checked_manifest_has_an_honest_immutable_32_case_inventory: test
+every_fixture_has_exact_hash_and_slice_file_projection_parity: test
+invalid_signatures_do_not_disagree_between_slice_and_file: test
+truncated_closing_tag_does_not_disagree_between_slice_and_file: test
+
+4 tests, 0 benchmarks
+   Compiling dta-tools v0.7.1 (/private/tmp/dta-direct-stage3-validation/source-08b086c/r-package/dtatools/src/dta-tools)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.52s
+     Running tests/conformance.rs (target/debug/deps/conformance-fd74b275cd0f5603)
+non_strl_projection_does_not_scan_gso_records: test
+rejects_partial_dangling_duplicate_and_invalid_gso_records: test
+resolves_v117_and_v118_strl_values_nulls_and_projection: test
+
+3 tests, 0 benchmarks
+   Compiling dta-tools v0.7.1 (/private/tmp/dta-direct-stage3-validation/source-08b086c/r-package/dtatools/src/dta-tools)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running tests/strl.rs (target/debug/deps/strl-5dfabbbda8e7ffed)
+
+running 1 test
+test generated_pre111_fixtures_decode_expected_semantics ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/legacy.rs (target/debug/deps/legacy-5624f88adbf79873)
+
+running 1 test
+test decodes_release_111_metadata_observations_labels_and_missing_tags ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/legacy.rs (target/debug/deps/legacy-5624f88adbf79873)
+
+running 1 test
+test decodes_true_big_endian_v113_and_windows_1252 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/legacy.rs (target/debug/deps/legacy-5624f88adbf79873)
+
+running 1 test
+test reads_every_checked_in_legacy_fixture_and_synthetic_v114 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/legacy.rs (target/debug/deps/legacy-5624f88adbf79873)
+
+running 1 test
+test decodes_big_endian_v119_observations_and_labels ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/observations.rs (target/debug/deps/observations-710944c799614da4)
+
+running 1 test
+test auto_uses_windows_1252_for_pre_unicode_release_117 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/encoding.rs (target/debug/deps/encoding-93571bcd8a49abaf)
+
+running 1 test
+test every_fixture_has_exact_hash_and_slice_file_projection_parity ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.02s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/conformance.rs (target/debug/deps/conformance-fd74b275cd0f5603)
+
+running 1 test
+test invalid_signatures_do_not_disagree_between_slice_and_file ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/conformance.rs (target/debug/deps/conformance-fd74b275cd0f5603)
+
+running 1 test
+test truncated_closing_tag_does_not_disagree_between_slice_and_file ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/conformance.rs (target/debug/deps/conformance-fd74b275cd0f5603)
+
+running 1 test
+test rejects_partial_dangling_duplicate_and_invalid_gso_records ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/strl.rs (target/debug/deps/strl-5dfabbbda8e7ffed)
+
+running 1 test
+test every_checked_fixture_matches_the_typescript_haven_oracle ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.03s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/observations.rs (target/debug/deps/observations-710944c799614da4)
+native conformance gates: PASS (10 deterministic cases + 1 fixture canonical oracle)
+* checking for file ‘dtatools/DESCRIPTION’ ... OK
+* preparing ‘dtatools’:
+* checking DESCRIPTION meta-information ... OK
+* cleaning src
+* running ‘cleanup’
+* checking for LF line-endings in source and make files and shell scripts
+* checking for empty or unneeded directories
+* building ‘dtatools_0.7.1.tar.gz’
+
+R package archive: PASS
+* using log directory ‘/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck’
+* using R version 4.6.1 (2026-06-24)
+* using platform: aarch64-apple-darwin25.4.0
+* R was compiled by
+    Apple clang version 21.0.0 (clang-2100.0.123.102)
+    GNU Fortran (Homebrew GCC 16.1.0) 16.1.0
+* running under: macOS Tahoe 26.6.2
+* using session charset: UTF-8
+* current time: 2026-09-07 00:49:29 UTC
+* using option ‘--no-manual’
+* checking for file ‘dtatools/DESCRIPTION’ ... OK
+* this is package ‘dtatools’ version ‘0.7.1’
+* package encoding: UTF-8
+* checking package namespace information ... OK
+* checking package dependencies ...Warning: unable to access index for repository https://CRAN.R-project.org/src/contrib:
+  cannot open URL 'https://CRAN.R-project.org/src/contrib/PACKAGES'
+Warning: unable to access index for repository https://bioconductor.org/packages/3.23/bioc/src/contrib:
+  cannot open URL 'https://bioconductor.org/packages/3.23/bioc/src/contrib/PACKAGES'
+Warning: unable to access index for repository https://bioconductor.org/packages/3.23/data/annotation/src/contrib:
+  cannot open URL 'https://bioconductor.org/packages/3.23/data/annotation/src/contrib/PACKAGES'
+Warning: unable to access index for repository https://bioconductor.org/packages/3.23/data/experiment/src/contrib:
+  cannot open URL 'https://bioconductor.org/packages/3.23/data/experiment/src/contrib/PACKAGES'
+ OK
+* checking if this is a source package ... OK
+* checking if there is a namespace ... OK
+* checking for executable files ... OK
+* checking for hidden files and directories ... OK
+* checking for portable file names ... OK
+* checking for sufficient/correct file permissions ... OK
+* checking whether package ‘dtatools’ can be installed ... WARNING
+Found the following significant warnings:
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[209](44ff4c55aa9e5133-entropy_common.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[210](44ff4c55aa9e5133-error_private.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[211](44ff4c55aa9e5133-fse_decompress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[214](44ff4c55aa9e5133-zstd_common.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[215](fb80479a5fb81f6a-fse_compress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[216](fb80479a5fb81f6a-hist.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[217](fb80479a5fb81f6a-huf_compress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[218](fb80479a5fb81f6a-zstd_compress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[219](fb80479a5fb81f6a-zstd_compress_literals.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[220](fb80479a5fb81f6a-zstd_compress_sequences.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[221](fb80479a5fb81f6a-zstd_compress_superblock.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[222](fb80479a5fb81f6a-zstd_double_fast.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[223](fb80479a5fb81f6a-zstd_fast.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[224](fb80479a5fb81f6a-zstd_lazy.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[225](fb80479a5fb81f6a-zstd_ldm.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[226](fb80479a5fb81f6a-zstd_opt.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[227](fb80479a5fb81f6a-zstd_preSplit.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[229](88f362f13b0528ed-huf_decompress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[230](88f362f13b0528ed-zstd_ddict.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[231](88f362f13b0528ed-zstd_decompress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[232](88f362f13b0528ed-zstd_decompress_block.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[237](3f451b2306bc13c8-zstd_v01.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[238](3f451b2306bc13c8-zstd_v02.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[239](3f451b2306bc13c8-zstd_v03.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[240](3f451b2306bc13c8-zstd_v04.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[241](3f451b2306bc13c8-zstd_v05.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[242](3f451b2306bc13c8-zstd_v06.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+  ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00_pkg_src/dtatools/src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a[243](3f451b2306bc13c8-zstd_v07.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+See ‘/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00install.out’ for details.
+* used C compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+* used SDK: ‘MacOSX26.5.sdk’
+* checking installed package size ... INFO
+  installed size is 10.2Mb
+  sub-directories of 1Mb or more:
+    libs   8.6Mb
+* checking package directory ... OK
+* checking DESCRIPTION meta-information ... OK
+* checking top-level files ... OK
+* checking for left-over files ... OK
+* checking index information ... OK
+* checking package subdirectories ... NOTE
+Found the following CITATION file in a non-standard place:
+  src/rust/v/chrono/CITATION.cff
+Most likely ‘inst/CITATION’ should be used instead.
+* checking code files for non-ASCII characters ... OK
+* checking R files for syntax errors ... OK
+* checking whether the package can be loaded ... OK
+* checking whether the package can be loaded with stated dependencies ... OK
+* checking whether the package can be unloaded cleanly ... OK
+* checking whether the namespace can be loaded with stated dependencies ... OK
+* checking whether the namespace can be unloaded cleanly ... OK
+* checking loading without being on the library search path ... OK
+* checking whether startup messages can be suppressed ... OK
+* checking dependencies in R code ... OK
+* checking S3 generic/method consistency ... OK
+* checking replacement functions ... OK
+* checking foreign function calls ... OK
+* checking R code for possible problems ... OK
+* checking Rd files ... OK
+* checking Rd metadata ... OK
+* checking Rd cross-references ... OK
+* checking for missing documentation entries ... OK
+* checking for code/documentation mismatches ... OK
+* checking Rd \usage sections ... OK
+* checking Rd contents ... OK
+* checking for unstated dependencies in examples ... OK
+* checking line endings in shell scripts ... OK
+* checking line endings in C/C++/Fortran sources/headers ... NOTE
+Found the following sources/headers not terminated with a newline:
+  src/rust/target/9afdb67dc2ada661818d6e1929b1e316/release/build/zstd-sys-c96b5299f8b2fb23/out/flag_check.c
+Some compilers warn on such files.
+* checking line endings in Makefiles ... OK
+* checking compilation flags in Makevars ... OK
+* checking for GNU extensions in Makefiles ... WARNING
+Found the following file(s) containing GNU extensions:
+  src/rust/v/r-efi-5.3.0/Makefile
+  src/rust/v/r-efi/Makefile
+  src/rust/v/unicode-general-category/Makefile
+Portable Makefiles do not use GNU extensions such as +=, :=, $(shell),
+$(wildcard), ifeq ... endif, .NOTPARALLEL See section ‘Writing portable
+packages’ in the ‘Writing R Extensions’ manual.
+* checking for portable use of $(BLAS_LIBS) and $(LAPACK_LIBS) ... OK
+* checking use of PKG_*FLAGS in Makefiles ... OK
+* checking include directives in Makefiles ... OK
+* checking compiled code ... WARNING
+File ‘dtatools/libs/dtatools.so’:
+  Found ‘_abort’, possibly from ‘abort’ (C)
+    Object:
+      ‘rust/target/9afdb67dc2ada661818d6e1929b1e316/release/libdtatools_r.a’
+
+Compiled code should not call entry points which might terminate R nor
+write to stdout/stderr instead of to the console, nor use Fortran I/O
+nor system RNGs nor [v]sprintf.
+
+See ‘Writing portable packages’ in the ‘Writing R Extensions’ manual.
+* checking examples ... OK
+* checking for unstated dependencies in ‘tests’ ... OK
+* checking tests ...
+  Running ‘testthat.R’
+ OK
+* DONE
+
+Status: 3 WARNINGs, 2 NOTEs
+See
+  ‘/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/tmp.M3Jqe68QE8/dtatools.Rcheck/00check.log’
+for details.
+
+R package conformance: PASS (current source built and checked with offline Cargo archive)

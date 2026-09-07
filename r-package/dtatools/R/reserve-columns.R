@@ -2,8 +2,8 @@
 #'
 #' See [mutation-containers] for supported classes, grouping and conversion.
 #' `reserve_columns()` returns an isolated table with `n` spare column
-#' pointer slots. Compact columns use copy-on-write backing; ordinary columns
-#' are copied. Assign the returned
+#' pointer slots. Compact columns and owned ordinary doubles share backing
+#' until a write needs isolation. Other ordinary columns are copied. Assign the returned
 #' table. The container and column storage are preserved. Legacy tables with
 #' columns stored outside their physical list are rebuilt into one complete
 #' list, and serialized dibbles get fresh current-object bookkeeping.

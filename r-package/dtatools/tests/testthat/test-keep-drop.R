@@ -87,6 +87,7 @@ test_that("legacy serialized reference state remains readable", {
     data <- reserve_columns(data.frame(a = 1:2, b = 3:4))
     gen(data, generated, a + b)
     state <- attr(data, ".dtatools_ref_state", exact = TRUE)
+    state$physical_names <- names(data)
     rm("physical_names", "physical_overlay", envir = state)
     data <- unserialize(serialize(data, NULL))
 

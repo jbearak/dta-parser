@@ -1,0 +1,46 @@
+{
+  "source_sha": "fd069a36832ed7c1bdedeed52a4281ecabb36e25",
+  "library": "/private/tmp/dta-direct-stage3-validation/baseline-library",
+  "mode": "baseline",
+  "iterations": 7,
+  "run_order": 1,
+  "run_order_design": "fresh sequential baseline/corrected-candidate after main candidate and memory measurements",
+  "runner_sha256": {
+    "owned-double-helpers.R": "bee37bbc62457b1e6af4a7ac96d8a8eb6c7e64bb17094342b19812cae4bd7bee",
+    "owned-double.R": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685",
+    "owned-double-memory.R": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416"
+  },
+  "outputs": {
+    "arithmetic-where-cost-100000.csv": {
+      "rows": 1,
+      "sha256": "d3f5ea158d65da0b48e7a5c19061b2313ab6831f56f44083f3a008c38e80afa4"
+    },
+    "arithmetic-where-cost-1000000.csv": {
+      "rows": 1,
+      "sha256": "fe79b560275fd01010977fca5f5042e04caac5ebdc3afa12816fd7379a244dbd"
+    },
+    "owned-after-read.csv": {
+      "rows": 30,
+      "sha256": "fc7656ed71aaf31aebb3e7bef8b6cdccd053553ffde9a0a8e0a085363454d78b"
+    },
+    "owned-double-writes.csv": {
+      "rows": 6,
+      "sha256": "1a407ce42dd9fd69715cb4ddfadcc9b668ba4cbef33679bfba050675878cbd3e"
+    },
+    "owned-double.csv": {
+      "rows": 46,
+      "sha256": "9afbe319735b4c23a07e0c222af5fb916b717b530008f3832a36688d56117b7f"
+    },
+    "snapshot-cost-100000.csv": {
+      "rows": 1,
+      "sha256": "f015cafc498bd2c90dc6d1d70056aadd123140a9d0a1b02474ae789f70593d65"
+    },
+    "snapshot-cost-1000000.csv": {
+      "rows": 1,
+      "sha256": "78db2e9e9eb12387b86ff3f00a2f75b6f5276e53b50e476ec566ede6bc7fbe7f"
+    }
+  },
+  "run_exit_code": 0,
+  "measurement_window": "Implementation/reviewers paused heavy builds/tests; root processes sequential.",
+  "manifest_utc": "2026-09-06T23:39:07.454132+00:00"
+}

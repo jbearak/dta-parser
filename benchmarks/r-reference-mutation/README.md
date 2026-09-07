@@ -9,12 +9,43 @@ Rscript benchmarks/r-reference-mutation/run.R
 The package dependencies and the suggested `callr` package must be installed.
 The R build must report `capabilities("profmem") == TRUE`.
 
-The runner installs `r-package/dtatools` into a temporary library, starts a
-clean R child process with that library first, and records the source commit
-and clean worktree state. It refuses tracked or untracked source changes. This
-prevents an older installed package or an uncommitted file from satisfying the
-gates. Pass `--markdown=PATH` to write the same metric registry as a Markdown
-table in addition to the tab-separated standard output.
+The runner exports the current clean git revision, builds its source archive,
+and installs it into a temporary library through the shared dibble benchmark
+installer. The child validates source provenance and installed-file hashes,
+then checks the loaded package and native-library paths. The normal entry point
+refuses tracked or untracked changes. Explicit development child runs remain
+labelled diagnostic and cannot establish source-bound qualification. Pass
+`--markdown=PATH` to write the same metric registry as a Markdown table.
+
+Stage 3 retains all 159 original assertion expressions and every numerical
+bound. Fixtures now assign `reserve_columns()` before generation, outside the
+measured operation, and verify the original base-frame dispatch and capacity.
+Borrowed numeric fixtures measure a same-value capture separately before the
+strict private-write gates. Native diagnostics verify that those physical
+handles and backing are private without exporting or serializing a column.
+The first write after native generation remains cold. Shared proxy/dictionary
+and foreign integer ALTREP cases retain their original first-write aliases.
+The ordinary character target for sparse dictionary RHS decoding also reports
+its borrowed first capture separately. That fixture retains its plain frame
+and character representation and checks physical handle privacy before the
+sparse write; numeric backing-ownership checks do not apply to ordinary strings.
+
+Two operand fixtures move outside timing: the second proxy row index and the
+sparse dictionary RHS column handle. Their measured operations begin with
+prepared operands and retain all original source/cache assertions. Arbitrary
+arithmetic and nested-member expressions can retain their full evaluation
+mask; their separate snapshot allocation and lifetime costs are measured by
+`benchmarks/r-dibble-dplyr/owned-double.R`. The near-unique dictionary source
+explicitly uses `read_arrow(..., output = "tibble")`, preserving the ordinary
+character target expected by the historical assertions. Its attribute-free
+character representation, dictionary backing and untouched cache are checked
+before timing. Other reader fixtures keep their Stata typing.
+
+Each profiled operation reports R allocations and the native capture, target
+copy, staged-value, journal and scratch counters separately. Native byte
+categories describe overlapping work and must not be added together as one
+memory total. No fixture change waives alias isolation, rollback or allocation
+bounds; the byte-identical historical runner is not claimed to pass.
 
 The workload times repeated one-row changes in a five-million-row compact Stata
 byte column. It fails if the direct target materializes or if R reports one
@@ -34,10 +65,11 @@ selector, and a compact explicit-position sequence. Row planning must stay
 below one compact byte payload of profiled allocation. An empty logical
 selection must stop after its counting pass instead of scanning the selector a
 second time.
-Full-length integer and compact-byte replacements then verify that the patcher
-consumes source vectors directly instead of constructing a double or a second
-encoded column. Their targets keep native rollback bytes outside the R heap so
-an interrupt can restore the original payload without materializing it.
+Full-length integer and compact-byte replacements verify direct reading and
+native encoding without full R double or logical validation temporaries. Numeric
+table transactions stage new bytes before the final write boundary. Legacy
+direct-vector and materialized transactions retain their separate after-write
+interruption and rollback tests.
 The full-length integer case also runs through a compact position sequence.
 The native patcher must gather each source value by its selected row without
 turning that sequence into a full R double index.
@@ -108,11 +140,14 @@ proxy reuses its private native storage. Direct targets do not pay the initial
 detachment cost.
 
 Finally, the benchmark profiles 400 and 1,600 consecutive `gen()` calls on the
-same dataset. The larger run must remain within the linear time and allocation
-budgets; rebuilding every prior generated binding on each call fails these
-gates.
+same dataset. The larger run must remain within the original eightfold time
+and allocation budgets. This qualifies the stated 400/1,600-column fixtures,
+not arbitrary widths: the direct scalar shape check has a fixed 2,048-name
+bound and uses the complete R path beyond it.
 
-`Rprofmem()` reports individual R allocations. Native compact backing appears
-as its raw-vector allocation, but the profiler does not measure allocator
-overhead or Rust-owned memory. This benchmark is a regression gate for the two
-specific promises in #86, not a process-wide peak-memory measurement.
+`Rprofmem(threshold = 1000)` reports individual R allocations above its
+1,000-byte threshold. Zero profiled bytes does not mean zero total allocation.
+Native compact backing appears
+as its raw-vector allocation. Native counters expose additional staging and
+journal work, but neither source measures allocator overhead or process peak
+memory. Separate isolated-process measurements cover those memory lifetimes.

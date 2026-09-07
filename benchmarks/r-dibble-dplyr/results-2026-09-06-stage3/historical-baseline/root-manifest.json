@@ -1,0 +1,23 @@
+{
+  "source_sha": "fd069a36832ed7c1bdedeed52a4281ecabb36e25",
+  "library": "/private/tmp/dta-direct-stage3-validation/baseline-library",
+  "environment": {
+    "DTATOOLS_BENCH_KINDS": "double"
+  },
+  "iterations": 7,
+  "runner_sha256": {
+    "benchmarks/r-dibble-dplyr/run.R": "820817d17e9769bfda9a30f6dd14c1836e40360c2bbf7a6dfa24bdd566448b83",
+    "benchmarks/r-dibble-dplyr/helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+  },
+  "measurement_window": "Implementation and reviewers paused builds/tests; one sequential benchmark process.",
+  "outputs": {
+    "operations.csv": {
+      "rows": 36,
+      "sha256": "28ec1aae2c25ba353abd941db3563e35ef958bb4dae3db6948e44e784b064737"
+    },
+    "stages.csv": {
+      "rows": 12,
+      "sha256": "148fb6eb2175d507204daca14785f77262e8cac80db43048c58735581af26551"
+    }
+  }
+}

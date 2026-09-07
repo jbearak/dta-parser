@@ -1,0 +1,47 @@
+{
+  "source_sha": "6dcb9af279237402eedd7ca4147bfb8ecdc76337",
+  "library": "/private/tmp/dta-direct-stage3-validation/exact-library-6dcb9af",
+  "mode": "candidate",
+  "iterations": 7,
+  "run_order": 2,
+  "run_order_design": "baseline/candidate/candidate/baseline, sequential processes",
+  "runner_sha256": {
+    "owned-double-helpers.R": "bee37bbc62457b1e6af4a7ac96d8a8eb6c7e64bb17094342b19812cae4bd7bee",
+    "owned-double.R": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685",
+    "owned-double-memory.R": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416"
+  },
+  "outputs": {
+    "arithmetic-where-cost-100000.csv": {
+      "rows": 1,
+      "sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28"
+    },
+    "arithmetic-where-cost-1000000.csv": {
+      "rows": 1,
+      "sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77"
+    },
+    "owned-after-read.csv": {
+      "rows": 30,
+      "sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb"
+    },
+    "owned-double-writes.csv": {
+      "rows": 6,
+      "sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea"
+    },
+    "owned-double.csv": {
+      "rows": 46,
+      "sha256": "183346b8919e137a471111bf4f9e9a1e051191b6051b2ffbeb0f047ad2b939f0"
+    },
+    "snapshot-cost-100000.csv": {
+      "rows": 1,
+      "sha256": "391efa7a5588df4f3f0e38eddd6df23af2188534e20ac970afe7beb43a9e6d27"
+    },
+    "snapshot-cost-1000000.csv": {
+      "rows": 1,
+      "sha256": "88dd94b983e9165d2b1ce4b6d6ee959d7459d240e63e8573b82373dac0ee4da7"
+    }
+  },
+  "measurement_window": "Implementation and reviewers paused heavy builds/tests; root processes sequential.",
+  "qualification": "Pre-fix evidence: correctness/allocation guards pass; seven read performance regressions confirmed.",
+  "memory_scope": "No process-memory repeats in this ABBA block. Separate original baseline/candidate memory logs remain authoritative.",
+  "manifest_utc": "2026-09-06T23:16:32.927853+00:00"
+}

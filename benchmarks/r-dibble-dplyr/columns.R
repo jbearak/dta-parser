@@ -30,7 +30,7 @@ for (kind in c("double", "string", "declared_character")) {
                   identical(lapply(actual, attributes), lapply(expected, attributes)),
                   identical(names(actual), names(expected)), is_dibble(actual))
         # This is R's nominal retained object size, not native payload accounting
-        # or a measurement of sharing. Stage 1 retains ordinary copied payloads.
+        # or a measurement of sharing.
         retained[[length(retained) + 1L]] <- data.frame(
             kind, operation = name,
             nominal_result_bytes = as.numeric(utils::object.size(actual)))
@@ -52,8 +52,8 @@ for (kind in c("double", "string", "declared_character")) {
             allocated_bytes = as.numeric(mark$mem_alloc),
             iterations = mark$n_itr, gc_count = mark$n_gc)
         print(rows)
-        # This gate belongs to stage 1; the separate <1MB future ownership gate
-        # remains intentionally disabled until owned backing lands.
+        # Stage 1's string gate remains here. owned-double.R owns Stage 3's
+        # <1MB double selector gates; shared owned strings remain Stage 4.
         if (kind %in% c("string", "declared_character") && name == "rename") {
             stopifnot(rows$allocated_bytes[rows$path == "direct"] <= 130000000)
         }

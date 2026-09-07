@@ -1,0 +1,6 @@
+Untimed original-backing qualification; source 45f2ba489a6e0a2f25d1728eef0a84a6b2fde7b7
+Runner MD5 ee0e2fa5ef4e447efaebbf89199e9939
+Error in run_size(rows) :
+  fork$metrics[["r_allocated_bytes"]] < 1e+06 is not TRUE
+Calls: run_size -> stopifnot
+Execution halted

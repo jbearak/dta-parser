@@ -1,0 +1,15 @@
+{
+  "source_sha": "45f2ba489a6e0a2f25d1728eef0a84a6b2fde7b7",
+  "baseline_source_sha": "fd069a36832ed7c1bdedeed52a4281ecabb36e25",
+  "test_exit_code": 1,
+  "tests": 499,
+  "known_failed_or_errored_blocks": 4,
+  "skipped": 2,
+  "complete_test_log_matches_baseline": true,
+  "column_reallocation_warning_present": false,
+  "tracked_and_untracked_files_verified": 454,
+  "state_changes": {},
+  "file_changes": [],
+  "integration_output_stat_changes": [],
+  "unchanged": true
+}

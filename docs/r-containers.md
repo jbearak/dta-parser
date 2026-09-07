@@ -43,6 +43,14 @@ mutation. The other supported containers do not require data.table.
 
 Ordinary replacement uses copy-and-rebind semantics in every container. For metadata writes that must reach a caller, use `set_var_format()`, `set_var_label()`, `set_val_labels()`, or the note and characteristic helpers. Converting with `data <- as_dibble(data)` does not make function-local nested replacement mutate the caller.
 
+Supported ordinary double columns can use package-owned backing without changing
+their R type or classes. Independent dibble results share those values until a
+write needs isolation. Explicit helpers still modify the supplied physical table
+in every supported container. Capturing a borrowed column can cost one column
+copy; later private sparse writes reuse that backing. A source table and a result
+remain independent in either direction. This storage change requires no new
+mutation API or conversion step.
+
 `[i, y := v]` is a dibble form. A data table runs its own bracket implementation, with its own storage and promotion rules; plain tibbles and data frames have no `:=` form. `gen()` and `repl()` are the explicit spellings shared by all four containers.
 
 Grouping works the same way everywhere: `by = ` groups in current row order, `bysort = ` sorts by reference and then groups, and a grouped tibble or dibble supplies its dplyr groups. The order of operations is Stata's — groups first, then row selection and values per group, with `.n` and `.N` as the within-group row number and count — rather than data.table's, which applies `i` before grouping.

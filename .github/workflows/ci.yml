@@ -171,6 +171,54 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: DTA_REQUIRE_R_CONFORMANCE=1 scripts/conformance.sh
+      - name: Print complete R check failure logs
+        if: failure()
+        shell: Rscript {0}
+        run: |
+          check_dirs <- list.dirs(".", recursive = FALSE, full.names = TRUE)
+          check_dirs <- check_dirs[endsWith(check_dirs, ".Rcheck")]
+          for (check_dir in check_dirs) {
+            logs <- list.files(check_dir, pattern = "\\.(log|Rout(\\.fail)?)$",
+                               recursive = TRUE, full.names = TRUE)
+            for (path in logs) {
+              cat("\n--- ", path, " ---\n", sep = "")
+              writeLines(readLines(path, warn = FALSE))
+            }
+          }
+      - name: Preserve R check failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: r-check-failure-${{ matrix.os }}
+          path: |
+            *.Rcheck/00*.log
+            *.Rcheck/tests/*.Rout*
+            *.Rcheck/tests/testthat-problems.rds
+          if-no-files-found: ignore
+      - name: Locate failed Windows owned-column tests
+        if: failure() && runner.os == 'Windows'
+        shell: Rscript {0}
+        run: |
+          check_dir <- "dtatools.Rcheck"
+          test_dir <- file.path(check_dir, "tests", "testthat")
+          if (dir.exists(file.path(check_dir, "dtatools")) && dir.exists(test_dir)) {
+            .libPaths(c(normalizePath(check_dir), .libPaths()))
+            package_path <- getNamespaceInfo(loadNamespace("dtatools"), "path")
+            stopifnot(identical(normalizePath(package_path),
+                                normalizePath(file.path(check_dir, "dtatools"))))
+            reporter <- R6::R6Class("FlushedLocationReporter",
+              inherit = testthat::LocationReporter,
+              public = list(cat_line = function(...) {
+                super$cat_line(...)
+                flush(self$out)
+              }))$new(file = stderr())
+            cat("Starting installed Windows owned-column diagnostics\n", file = stderr())
+            flush(stderr())
+            testthat::test_dir(test_dir, filter = "owned", reporter = reporter,
+                               package = "dtatools", load_package = "installed")
+            cat("Completed installed Windows owned-column diagnostics\n", file = stderr())
+            flush(stderr())
+          }
       - name: Install pinned interoperability baselines
         shell: Rscript {0}
         run: |

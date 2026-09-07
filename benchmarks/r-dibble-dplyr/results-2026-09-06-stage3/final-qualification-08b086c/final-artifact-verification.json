@@ -1,0 +1,20 @@
+{
+  "source_sha": "08b086ccd338d394420112cf9f550d355e94cb24",
+  "original_export_files": 832,
+  "modified_original_export_files": [],
+  "source_archive_sha256": "44b3bf577b8b04bd9ec45a951dcaa2f3684fc7d1c5f61becfd42fe876d1f3d35",
+  "binary_archive_sha256": "49e1bdfdc401c9d2d2095a7fa83dee40434bab229b7a49bf3f69dd7773aa36b6",
+  "notice_sha256": "cb10d953915805ff500057719c165e302e3e244cf7831110abbcfbba648c2131",
+  "notice_locations": [
+    "source archive",
+    "exact installed library",
+    "binary archive",
+    "source-built binary library",
+    "binary-installed library"
+  ],
+  "notice_identical": true,
+  "checked_package_R_and_man_sources_identical": true,
+  "namespace_byte_identical_to_stage2": true,
+  "checked_package_sources_identical": true,
+  "checked_source_files": 161
+}

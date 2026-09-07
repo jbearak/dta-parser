@@ -1,0 +1,97 @@
+{
+  "source_sha": "fd069a36832ed7c1bdedeed52a4281ecabb36e25",
+  "library": "/private/tmp/dta-direct-stage3-validation/baseline-library",
+  "mode": "baseline",
+  "iterations": 7,
+  "runner_source_sha": "08b086ccd338d394420112cf9f550d355e94cb24",
+  "runner_sha256": {
+    "helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "owned-double-helpers.R": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2",
+    "owned-double.R": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685",
+    "owned-double-memory.R": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416"
+  },
+  "started_utc": "2026-09-07T00:45:47.496150+00:00",
+  "measurement_window": "Implementation and reviewers paused builds/tests; benchmark processes ran sequentially.",
+  "outputs": {
+    "arithmetic-where-cost-100000.csv": {
+      "rows": 1,
+      "sha256": "d3f5ea158d65da0b48e7a5c19061b2313ab6831f56f44083f3a008c38e80afa4"
+    },
+    "arithmetic-where-cost-1000000.csv": {
+      "rows": 1,
+      "sha256": "fe79b560275fd01010977fca5f5042e04caac5ebdc3afa12816fd7379a244dbd"
+    },
+    "owned-after-read.csv": {
+      "rows": 30,
+      "sha256": "fc7656ed71aaf31aebb3e7bef8b6cdccd053553ffde9a0a8e0a085363454d78b"
+    },
+    "owned-double-writes.csv": {
+      "rows": 6,
+      "sha256": "1a407ce42dd9fd69715cb4ddfadcc9b668ba4cbef33679bfba050675878cbd3e"
+    },
+    "owned-double.csv": {
+      "rows": 46,
+      "sha256": "005e65c57aefe7bbd8c1121c7ddbf9953dc138e90124577a99c81ca592c0c105"
+    },
+    "snapshot-cost-100000.csv": {
+      "rows": 1,
+      "sha256": "f015cafc498bd2c90dc6d1d70056aadd123140a9d0a1b02474ae789f70593d65"
+    },
+    "snapshot-cost-1000000.csv": {
+      "rows": 1,
+      "sha256": "78db2e9e9eb12387b86ff3f00a2f75b6f5276e53b50e476ec566ede6bc7fbe7f"
+    }
+  },
+  "manifest_utc": "2026-09-07T00:47:12.670371+00:00",
+  "memory_scope": "Whole-process RSS includes startup, fixtures and validation; retained vector heap is separate.",
+  "memory_cases": [
+    {
+      "operation": "rename",
+      "rows": 100000,
+      "file": "memory-rename-100000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 239370240,
+      "sha256": "75713993b0d4d6f3c3d49b866894fb3053961a068e87e009939bbed704da5fc6"
+    },
+    {
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "memory-pipeline_five-100000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 238551040,
+      "sha256": "149883ceed9f207188ae3a4954bd1a35fb5d6225e1fda00dd98fc9d0da2963fe"
+    },
+    {
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "memory-pipeline_50-100000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 279805952,
+      "sha256": "66efdcca80e6eb4a01c54937b4d30196165c56f249f730a9c47c79f55dc3c0e5"
+    },
+    {
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "memory-rename-1000000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 1268449280,
+      "sha256": "a299aee9e29bd7beefb8ab59fe726a6ecd5e42857eb418fd02c4bdadaed2eac5"
+    },
+    {
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "memory-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 1186136064,
+      "sha256": "ea2c7cde471ba6edf1934558aa7c780bed6a7856dac85c1e8b7ebf78caf979b8"
+    },
+    {
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "memory-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 1374011392,
+      "sha256": "984a1f390aa989dc2fa3d8af7abc898dbb869d107976dae6c1146cfea0cce113"
+    }
+  ]
+}

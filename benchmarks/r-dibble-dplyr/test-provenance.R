@@ -6,6 +6,27 @@ source("benchmarks/r-dibble-dplyr/helpers.R")
 library_path <- normalizePath(args[[1L]], mustWork = TRUE)
 source_sha <- args[[2L]]
 validate_benchmark_install(library_path, source_sha)
+check_owned_runner_identity <- function(temporary) {
+    paths <- c("helpers.R", "owned-double-helpers.R", "owned-double.R", "owned-double-memory.R")
+    runner_dir <- file.path("benchmarks", "r-dibble-dplyr")
+    copy_root <- file.path(temporary, "runner-identity")
+    dir.create(file.path(copy_root, runner_dir), recursive = TRUE)
+    stopifnot(file.copy(file.path(runner_dir, paths), file.path(copy_root, runner_dir)))
+    runner <- new.env(parent = globalenv())
+    sys.source(file.path(runner_dir, "owned-double-helpers.R"), envir = runner)
+    previous <- setwd(copy_root)
+    on.exit(setwd(previous), add = TRUE)
+    identity <- function() grep("^runner_md5 ",
+        runner$owned_runner_identity(source_sha, library_path, "candidate"), value = TRUE)
+    before <- identity()
+    expected <- paste("runner_md5", file.path(runner_dir, paths),
+                      unname(tools::md5sum(file.path(runner_dir, paths))))
+    stopifnot(identical(before, expected))
+    cat("\n# runner identity change probe\n", file = file.path(runner_dir, "helpers.R"), append = TRUE)
+    after <- identity()
+    stopifnot(length(after) == length(before), identical(which(before != after), 1L),
+              identical(after[-1L], before[-1L]))
+}
 main <- function() {
     prior_locale <- Sys.getlocale("LC_COLLATE")
     on.exit(Sys.setlocale("LC_COLLATE", prior_locale), add = TRUE)
@@ -15,6 +36,7 @@ main <- function() {
     temporary <- tempfile("benchmark-provenance-test-")
     dir.create(temporary)
     on.exit(unlink(temporary, recursive = TRUE), add = TRUE)
+    check_owned_runner_identity(temporary)
     copied_library <- file.path(temporary, "copied-library")
     dir.create(copied_library)
     stopifnot(file.copy(file.path(library_path, "dtatools"), copied_library, recursive = TRUE))
@@ -24,7 +46,8 @@ main <- function() {
     saved_sidecar <- readBin(sidecar, "raw", n = file.info(sidecar)$size)
     description <- file.path(package_path, "DESCRIPTION")
     saved_description <- readBin(description, "raw", n = file.info(description)$size)
-    runners <- c("run.R", "columns.R", "run-rows.R", "row-memory.R", "repeat-group-reconstruct.R")
+    runners <- c("run.R", "columns.R", "run-rows.R", "row-memory.R", "repeat-group-reconstruct.R",
+                 "owned-double.R", "owned-double-memory.R")
     expected_errors <- c(
         mismatch = "Benchmark SOURCE_SHA does not match installation provenance",
         missing = "Missing benchmark installation provenance; use install.R",
@@ -45,10 +68,14 @@ main <- function() {
             output <- file.path(temporary, paste(mode, runner, sep = "-"))
             stdout <- tempfile(tmpdir = temporary)
             stderr <- tempfile(tmpdir = temporary)
-            second <- if (runner == "row-memory.R") "double" else output
+            arguments <- switch(runner,
+                "row-memory.R" = c(copied_library, "double", claimed),
+                "owned-double.R" = c(copied_library, output, claimed, "candidate", "3"),
+                "owned-double-memory.R" = c(copied_library, claimed, "candidate", "rename", "100"),
+                c(copied_library, output, claimed))
             status <- system2(file.path(R.home("bin"), "Rscript"),
                 vapply(c("--vanilla", file.path("benchmarks/r-dibble-dplyr", runner),
-                         copied_library, second, claimed), shQuote, character(1)),
+                         arguments), shQuote, character(1)),
                 stdout = stdout, stderr = stderr)
             stopifnot(status != 0L, file.info(stdout)$size == 0, !file.exists(output),
                 guard_diagnostic(stderr, expected_errors[[mode]]))
@@ -80,6 +107,7 @@ main <- function() {
     stopifnot(status == 0L, file.exists(output))
     result <- read.csv(output)
     stopifnot(nrow(result) == 3L, all(result$source_sha == source_sha))
-    cat(checks, "exact-diagnostic rejection/no-output cases, five usage counterchecks, matching CSV and locale/copy checks passed\n")
+    cat(checks, "exact-diagnostic rejection/no-output cases,", length(runners),
+        "usage counterchecks, matching CSV, locale/copy and runner dependency identity checks passed\n")
 }
 main()

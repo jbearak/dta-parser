@@ -1,0 +1,16 @@
+{
+  "source_sha": "45f2ba489a6e0a2f25d1728eef0a84a6b2fde7b7",
+  "original_export_files": 686,
+  "modified_original_export_files": [],
+  "source_archive_sha256": "a95b3e9b574e949dc7a01f21ff19632bbf2900f54bdc92b49cab774f0f8e050c",
+  "binary_archive_sha256": "dd351930ef1733966e463da1f1bbf5c9732846da4ba06f4d650436b685c0f149",
+  "notice_sha256": "259948dd65d8db6c24c37c3b8235b49da12234e43e091e803f594cb3ab9f90f2",
+  "notice_locations": [
+    "source archive",
+    "exact installed library",
+    "binary archive",
+    "binary installed library"
+  ],
+  "notice_identical": true,
+  "checked_package_sources_identical": true
+}

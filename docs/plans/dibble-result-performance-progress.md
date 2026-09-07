@@ -7,7 +7,353 @@ authorized sequential PR, independent-review, CI and CodeRabbit process. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stage 1 complete, Stage 2 active
+## Stages 1 and 2 complete, Stage 3 active
+
+Stage 3 implementation and local acceptance use source
+`08b086ccd338d394420112cf9f550d355e94cb24`. The
+[measured report](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage3.md)
+retains the exact Stage 2 baseline, rejected first candidate and earlier
+`45f2ba4` qualification. The corrected final operation pair and all twelve
+isolated memory runs pass with complete four-file runner identities. No final
+operation exceeds both read-regression thresholds. The earlier historical
+matrix and all original evidence retain their measured source labels.
+
+The exact native runner passes every original 159 assertion and all 15 added
+provenance/readiness conditions. Original budgets remain unchanged. Repeated
+generation at 400 and 1,600 columns takes 0.122 and 0.816 seconds and profiles
+3,256 and 12,856 R bytes above the original 1,000-byte threshold. The saved rename
+allocation gate passes, with its largest dibble allocation at 40,056 bytes and
+summed recorded allocations at 80,112 bytes.
+Root's 237 ownership/compatibility cases and 30 separate before/after read-backing
+checks pass. Independent API and storage reviews close the actual source,
+tests and benchmark fixtures. Both round 20 reviews also verify all 201 evidence
+artifacts, report calculations, provenance and unchanged historical records.
+
+The final source archive passes the complete R suite with 15,482 assertions,
+four established test warnings and no failures or skips. Required conformance
+passes 22 TypeScript fixtures with 32,085 cell comparisons, ten deterministic
+native cases, the fixture oracle and a fresh R build/check. The standard check
+has the established three warnings and two notes. The earlier `45f2ba4`
+`--as-cran` check returned no errors, five warnings and four notes; it is a separate check
+mode, not a clean or same-mode baseline result. Its extra diagnostics include
+the unavailable `checkbashisms` tool and inherited undeclared test imports.
+
+Rust and vendor sources are unchanged from the earlier passing formatting,
+Clippy, 278 workspace tests, documentation, packaging, isolated bridge checks
+and 17 bridge tests. The same applies to all 32 archive/vendor unit checks,
+vendor integrity, Rust source-hash checks and the corpus framework. On final
+source, Haven conformance passes without skips with permitted loopback access;
+Haven 2.5.5 helper and labelled 2.16.0 interoperability pass. Pinned roxygen2
+8.1.0 leaves manuals unchanged. Earlier blocked or skipped attempts remain
+retained as diagnostics rather than acceptance evidence.
+
+Fresh source and macOS binary archives contain the same NOTICE as their
+installed packages. All 106 exports are unchanged. Every one of the 832 original
+git-export files remains byte-identical after checking. The provenance driver
+now tests both owned-double runners and passes 28 rejection/no-output cases,
+seven usage counterchecks, matching output, locale/copy and runner dependency
+identity checks. Full logs
+and artifact hashes are under
+`/private/tmp/dta-direct-stage3-validation/checks-08b086c/`.
+
+The downstream comparison on exact source is byte-identical to the preserved
+Stage 2 output: 499 tests, the same four existing integration failure blocks
+and two skips, with no column-reallocation warning. All 454 tracked/untracked
+source hashes, branch/HEAD/status/diff and the ignored output file's size and
+mtime remain unchanged. This closes Stage 3 compatibility comparison; it does
+not turn that downstream suite into a passing suite or replace the final
+integrated epic validation.
+
+The original evidence and reproduction instructions are retained in commit
+`53571eb92d3c4296e0d95b1824724dee5c8fa68a`. Corrected source is committed as
+`08b086c`; reviewed final evidence is published as
+`4172613921597b4be11b7b44ebe5c5fd1fe01a94`.
+[PR #194](https://github.com/jbearak/dta-parser/pull/194) is open from
+`codex/direct-dibble-owned-doubles`. Latest-head external CI/CodeRabbit review
+and normal merge remain pending. Stage 3 stays active until those gates finish;
+stages 4 through 9 have not begun.
+
+### Stage 3 external-review corrections
+
+Windows CI on `6140a05` builds the package but terminates during its tests.
+The reviewed diagnostics-only head `86d1db1` retains the full failed output and
+locates exit status 3 at the first native append interrupt injection. The
+preceding error-injection case restores all state successfully. A bounded local
+subprocess reproduction confirms that CRT `SIGINT` delivery terminates R when
+its usual POSIX handler is absent.
+
+The correction enters R's documented native interrupt handler in the
+two armed test controls and retains their disarm order and fallback errors.
+The older native-write rollback matrix now also runs on Windows; separate
+POSIX asynchronous signal tests are unchanged. The focused owned-column,
+owned-read and mutation suite passes. The complete working suite passes 15,482
+assertions with four established warnings and no failures or skips. Both
+independent round 19 reviews close the native, test, documentation and benchmark
+corrections. Exact-source checks pass. On published head `4172613`, Windows
+job `101592812344` passes the package build/check that previously terminated,
+and its failure-only diagnostic steps are skipped. Windows interoperability
+steps are still running; the whole Windows job and checks on the next published
+head remain pending. Linux and macOS jobs on `4172613` pass.
+
+External review also prompted explicit writable access to the private ordinary
+string-view copy, while preserving allocation-free reads from its ordinary
+source. The temporary view does not support direct element assignment or escape
+into public evaluation. Independent native and public callback probes preserve
+source and snapshot isolation. Serialization's writable exposure is the
+materializing fallback explicitly allowed by the handoff; version 2/3 byte,
+metadata, tag, alias and retained-pointer comparisons pass, and restored values
+contain no live owned state. Permanent tests now cover both serialization
+versions. CodeRabbit [acknowledged and resolved this finding](https://github.com/jbearak/dta-parser/pull/194#discussion_r3945814759),
+accepting the later-copy cost as a Stage 3 tradeoff. No custom serialized class
+format is introduced.
+
+The saved rename checker now also checks summed recorded allocation while
+retaining its original maximum-event bound and profiling threshold. Runner
+identity includes the sourced shared `helpers.R`; a regression test changes
+only that file in a copied runner and verifies that its identity changes.
+Historical measurements retain their original identities. CodeRabbit
+[agreed to preserve that history](https://github.com/jbearak/dta-parser/pull/194#discussion_r3945821144).
+Fresh corrected baseline/candidate measurements pass with identities checked
+against committed runner bytes and the actual runtime records. Both final
+round 20 reviews are clean. The qualified head and three follow-up replies are
+published. CodeRabbit resolved the allocation, serialization and internal
+string-view findings. The original runner-identity finding awaits acknowledgment
+of the complete new evidence.
+
+The substantive review of `4172613` raised two further evidence issues. The
+report now names the nine earlier owned-run directories and distinguishes the
+three `historical-*` manifests, which already record `helpers.R`. The archived
+Python execution driver uses integrity assertions that Python optimization can
+disable. All 201 indexed artifacts, including that actual execution driver,
+remain unchanged. The separate reusable driver uses explicit exceptions and
+exclusive log creation. Its synthetic CLI suite passes 51 success and rejection
+cases under normal execution, `-O` and `PYTHONOPTIMIZE=1`, including source
+mismatch, subprocess failure, malformed identities and preservation of existing
+output. These checks do not run timed R workloads. Both independent round 21
+reviews are clean. The measured R runners and package source remain unchanged.
+
+CodeRabbit [confirmed that its docstring metric is advisory](https://github.com/jbearak/dta-parser/pull/194#issuecomment-5563799860):
+its active configuration uses warning mode and does not fail commit status. It
+identified no concrete missing documentation or unmet merge requirement. No
+review threshold or configuration changed.
+
+### Earlier Stage 3 checkpoints
+
+The working native runner round 9 passes every original
+159 condition plus 15 provenance/readiness conditions, with no bound changes. On working
+DLL `c3a298572b15a23671572d51b5778951`, 400 and 1,600 repeated generations take
+0.123 and 0.855 seconds and profile 3,256 and 12,856 bytes above the original
+1,000-byte threshold. These are modified-build diagnostics, not committed-source
+qualification. The runner logs and Markdown are retained under
+`/private/tmp/dta-direct-stage3-validation/native-runner-working-round9.*`.
+
+The repeated-generation repair uses bounded native shape validation, direct
+already-evaluated scalar generation and genuinely private resizable names.
+A temporary length-only names value lets the public setter release the removed
+attribute cell's reference before resizing. An unwind journal restores shape,
+attribute order, names privacy and reference-state identity. ADR 0032 records
+its small attribute allocations and catastrophic cleanup-allocation limitation.
+Independent reviews closed names loss, a foreign class callback, a journal root
+mistake and conservative copying caused by detached attribute cells. Storage
+round 13 and the API reviewer inspect the final names fixes; root's 219 exact-baseline
+compatibility cases and 18 strict reuse/copy/capture cases pass. Permanent tests
+include 36 immediate-privacy rollback combinations and 60 private appends.
+
+A final API probe then found method dispatch on an attributed `.env[[literal]]`
+member during scalar eligibility checking. Both direct-read recognizers now
+decline attributed or ALTREP literal members before generic operations; public
+generation and replacement regression tests pass. Independent API round 11
+and storage round 15 reviews close the fix, and native round 9 passes after
+that final R change. The installed R database hash is
+`af0a8331d16b5fefc4d90ee18b4f49df`; its unchanged DLL hash alone cannot identify
+the R-only fix. Exact-source provenance will bind both before release.
+
+Initial source commit `6dcb9af279237402eedd7ca4147bfb8ecdc76337` has a fresh
+provenance-validated installation. Root's 237 behavior cases, the full owned
+operation/read matrix, historical double matrix, and six isolated memory cases
+pass their correctness and preservation guards. Performance does not pass.
+Controlled ABBA repeats confirm seven read regressions: range and filter at
+100,000 and 1,000,000 rows, and integer coercion, arithmetic and arithmetic
+mutation at 1,000,000 rows. Exact pre-fix results and manifests remain under
+`/private/tmp/dta-direct-stage3-validation/root-owned-repeat-*6dcb9af`.
+
+Read fixes are in progress. The measured causes include repeated owned scalar
+dispatch during validation and repeated writable pointer requests in base
+range's argument concatenation. An independent ordinary range snapshot and
+rooted native read/conversion paths are being qualified against the same
+baseline behavior and performance gates. Complete checks on the final exact
+source, final evidence reviews and PR remain pending. Nothing in this checkpoint
+closes Stage 3 or substitutes a working build for qualification.
+
+The corrected working DLL `bde1e78a7bb52f2a6284110364a47f72` and R database
+`df00ab77aceccc2a628d9ebbe0edbf93` pass the new focused read suite and all 237
+root compatibility/ownership checks. Independent API round 14 and storage
+round 16 reviews inspect the final source, permanent tests and attribution
+without remaining findings. Their bounded comparisons cover coercion warning
+and argument behavior, constructor and missingness dispatch, range results,
+pointer writes, aliases and callback collection. A diagnostic twelve-iteration
+run reports 1,000,000-row filter at 27.16 ms and 50.10 MB allocated, arithmetic
+at 18.42 ms, range at 6.50 ms and integer conversion at 0.57 ms. These working
+measurements are feedback, not the final source-bound paired acceptance.
+The complete working R suite passes 15,478 assertions with the four recorded
+baseline warnings, no failures, errors or skips. Pinned roxygen2 8.1.0 leaves
+the manual pages unchanged. Logs are `read-fix2-full-suite.log` and
+`read-fix2-roxygen.log` in the same validation directory.
+
+Stage 2 merged normally as [PR #193](https://github.com/jbearak/dta-parser/pull/193)
+at 2026-09-06 18:20:48 UTC, producing
+[`fd069a36832ed7c1bdedeed52a4281ecabb36e25`](https://github.com/jbearak/dta-parser/commit/fd069a36832ed7c1bdedeed52a4281ecabb36e25).
+Root verified that its tree exactly matches reviewed head
+`fc130fd722ec9428f451339fd77a689c7c6ad2ac`. All 16 checks passed; CodeRabbit
+completed run `072b0e19-c200-4cb8-862d-f2bc14f1ea1d` with no actionable findings,
+and all three threads are resolved. The withdrawn singleton/drop claim has
+[explicit acknowledgment](https://github.com/jbearak/dta-parser/pull/193#discussion_r3944777128).
+The retained evidence is in `/private/tmp/dta-direct-stage2-validation/`, under
+`root-final-fc130fd` and `final-fc130fd-external/manifest.json`.
+
+Stage 3 is active on `codex/direct-dibble-owned-doubles`, in the isolated
+`/private/tmp/dta-direct-stage3` worktree based on that exact merge. It owns
+ordinary-double capture, backing forks, native adoption and private writes,
+including complete compact mutation/rollback qualification. Stages 4 through 9
+remain pending. A fresh exact-source baseline installation reproduces both
+prerequisites: 5,000,048 bytes copied on each sparse compact write, and a column
+alias exported during private-seam expression evaluation changing unexpectedly.
+Logs and the isolated library are in `/private/tmp/dta-direct-stage3-validation`.
+The working implementation has owned double capture/forks, native adoption after
+R/Rust/DTA/Arrow fills, read-only access, and staged numeric table transactions.
+The development focused suite reached 1,816 passing assertions with no warnings
+after native Stata-double RHS validation removed unnecessary scalar capture.
+This is working-build evidence, not exact-source release qualification. The log
+is `owned-ingress-green-1816.log` in the validation directory.
+
+Correctness review round 1 found three actionable defects: a foreign ALTREP
+callback could escape after the fused sharing guard; fallback prototype creation
+forced repeated plain-double payload copies; and fused no-op/error work leaked
+an original compact ownership claim. The independent reviewer inspected and
+reran all fixes, closing those findings against development DLL MD5
+`d9d238fa05de97c4c459b74692f56f06`, with a further direct fused-slot check against
+`b8ad95063403c946e2416af1007783f6`. Actual callback preparation now precedes the
+effective guard; native empty prototypes avoid sharing target values; working
+compact captures do not revoke original claims. Retained red/fixed probes are
+`review-fused-callback`, `review-fused-noop-claim` and `review-plain-private`.
+The earlier root length-method escape and its comparison fallback variant also
+have retained red/green evidence. These closures do not approve the final diff.
+
+The next working full R suite passed 14,179 assertions with the four existing
+warnings and no failures or skips (`working-full-suite.log`). A new independent
+API review then found that constructor capture split identical owned-double
+slots. Permanent constructor/conversion tests reproduced the changed explicit
+write behavior; capture now reuses one handle per normalized input handle. The
+focused ownership, row and reference suite passed 1,217 assertions, including
+foreign-double ingress and public export tests, without warnings or skips.
+
+Root's foreign-index callback probe also exposed an incorrect subset after the
+callback detached the source and invoked GC. The permanent test reproduced
+`c(11,12,13)` instead of `c(1,2,3)` before the fix. Owned subsetting now roots the
+exact payload; compact subsetting freezes its descriptor and retains the raw
+payload through index callbacks. Combined operand-callback tests cover new
+aliases followed by no-match, error and interrupt paths. Separate native and
+public materialized partial-write tests exercise journal restoration and
+discarding detached work. A genuine noncanonical-NaN comparison decline tests
+the remaining R fallback and isolation after its error and a later valid write.
+
+Two attempts to resume the original correctness reviewer failed at the review
+service with an automated cybersecurity classification. Exact requests and
+returned errors are retained in `review-service-status.md`; neither failure is
+an approval. A fresh independent numeric reviewer is reviewing the actual diff,
+and the API reviewer is reviewing its fixes. Both final reviews remain required.
+
+At that review point, migration of the native runner's 159 assertions and the
+ordinary-string sparse-write prerequisite were unresolved. The resume update
+below records their subsequent fixes and remaining qualification work. Final
+checks, measurements and PR gates are pending. Stages 4 through 9 remain pending.
+
+Resume review and implementation update, 2026-09-06: two new independent agents
+reviewed the actual Stage 3 diff. The grouped Date proxy finding now has a
+permanent red/green regression. A second review found that an unread captured
+mutation environment could observe later writes, and that restoring an empty
+mask parent broke deferred base/lexical lookup. Arbitrary expressions now receive
+complete snapshot column lists; only literal values, direct symbol reads and
+literal `.env` members bypass creation of a data mask. Root's independently
+constructed shared/private delayed-capture matrices match the exact Stage 2
+baseline in all 144 cases. A separate 30-case private active-binding matrix
+matches baseline across numeric, logical, integer and string columns. These
+results use development DLL `1b3591a6c153969f8976f8bfdc7bdd0a` and are not final
+source-bound qualification.
+
+The shared ordinary-string prerequisite now uses temporary internal read handles
+whose source references are released after preflight/evaluation. Exposed masks
+retain ordinary physical handles, and direct column reads receive an isolated
+copy. Public string columns keep their ordinary representation; shared ordinary
+string ownership remains Stage 4. Plain atomic table writes stage operands before
+the late physical sharing check, closing the independent integer RHS callback
+finding. The legacy direct-vector paths still retain journaled after-write
+interrupt coverage. Three consecutive private string writes now keep the same
+physical handle without the former 800,048-byte copies on a 100,000-row probe.
+The latest working full suite passes with the four established warnings. A
+further API review found a full string copy per group in the Date isolation fix.
+The reviewed fix uses the common exposure boundary; independent measurements
+show 12.94, 12.50 and 12.53 MB for 1, 10 and 100 groups, instead of growth with
+group count.
+
+The first native-runner fixture migration assigns column preparation before
+generation and measures borrowed first capture separately from proven private
+writes. The original first native-generated patch remains cold, and the shared
+proxy, dictionary and foreign integer ALTREP fixtures retain their original
+alias cases. The original 159 assertion expressions remain unchanged and in
+order; a root-provided AST comparison confirms this. The sparse dictionary RHS
+handle is acquired before timing, with all cache/source checks preserved. A
+separate arbitrary-expression snapshot measurement must disclose its full
+changed-column cost. Runner execution, complete timing/retained/peak evidence,
+source-bound builds, full required gates and both final independent reviews
+remain pending. No assertion bound has been weakened and no PR is open.
+
+Further native-runner diagnostics found full R temporaries in numeric promotion
+validation. A selected-value native fit scan preserves all five Stata numeric
+storage boundaries and missing-value rules without those temporaries. Independent
+reviews passed 500 and 1,175 paired fit cases, including fallback classes. Review
+also found mutable foreign row indices and unrooted generic target handles.
+The fixed fit loop checks each consumed row bound, and remaining detached generic
+transactions root and revalidate the original handle and ALTREP state after
+callbacks. Both findings were independently reproduced and closed against DLL
+`b77634597474c97704b2ef9af4401041`.
+
+The runner now precomputes the second proxy row index before timing. Its
+near-unique dictionary target explicitly uses `read_arrow(output = "tibble")`
+to retain the ordinary character representation required by the unchanged
+value assertions. The default reader now produces typed dibbles; exact Stage 2
+baseline evidence confirms the same class mismatch there. A later allocation
+failure traced to decoding a full dictionary target solely for its empty cast
+prototype. Known unclassed dictionary prototypes now use attributes alone; the
+full changed-column destination remains measured. A further readiness check
+confirmed that an ordinary R `data.frame(text = rep.int("", n))` enters shared,
+so its first isolation capture is now measured before the private sparse RHS
+kernel. Both reviewers accepted the actual migration. It retains physical
+plain-string privacy checks and reports the first-capture cost separately.
+
+The corresponding integer/logical cast prototype now also avoids old target
+reads, and generic ALTREP full replacements allocate their result without
+reading overwritten values. Bounded independent foreign ALTREP probes cover
+prototype, full/sparse replacement, callbacks, alias preservation and interrupted
+detached work; permanent tests retain the callback-count distinction. Working
+native-runner round 7 passes all preceding original checks and reaches only the
+last repeated-generation scaling gate. That gate remains failed: 400 appends
+allocate 10.22 MB in 0.151 seconds, while 1,600 allocate 188.66 MB in 1.866 seconds.
+Repeated whole-table preflight/view creation, name validation/lookup and append
+names reconstruction account for the growth. The shared structural prerequisite
+is under investigation; neither the allocation nor time bound has been relaxed.
+This is development evidence only. Exact-source builds and final reviews remain
+pending.
+
+Source audit: Stage 3 studied R 4.6.1 ALTREP, garbage-collection and reference-count
+interfaces, including `memory.c`, `subscript.c`, `subset.c` and `Defn.h`, as
+reference only. No additional upstream implementation was copied or adapted in
+this stage. Existing installed NOTICE and README attribution retain their pinned
+Stage 1/2 adaptations and full required licenses. Final archives still require
+NOTICE verification.
+
+The entries below retain earlier implementation and review history; their
+then-pending statements do not override the confirmed merge state above.
 
 Branch `codex/direct-dibble-columns`, implemented in an isolated worktree. Direct select, rename and relocate share result
 context/finalization and a private validated constructor. Ordinary payloads still

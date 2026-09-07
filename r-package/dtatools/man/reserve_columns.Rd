@@ -18,8 +18,8 @@ A rebuilt table with the same container and \code{n} spare slots.
 \description{
 See \link{mutation-containers} for supported classes, grouping and conversion.
 \code{reserve_columns()} returns an isolated table with \code{n} spare column
-pointer slots. Compact columns use copy-on-write backing; ordinary columns
-are copied. Assign the returned
+pointer slots. Compact columns and owned ordinary doubles share backing
+until a write needs isolation. Other ordinary columns are copied. Assign the returned
 table. The container and column storage are preserved. Legacy tables with
 columns stored outside their physical list are rebuilt into one complete
 list, and serialized dibbles get fresh current-object bookkeeping.

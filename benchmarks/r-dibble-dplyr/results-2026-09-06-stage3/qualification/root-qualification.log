@@ -1,0 +1,7 @@
+Exact source 45f2ba489a6e0a2f25d1728eef0a84a6b2fde7b7
+generation-names 45 exact baseline comparisons passed
+delayed-mask 72 exact baseline comparisons passed
+delayed-private-mask 72 exact baseline comparisons passed
+symbol-private-callback 30 exact baseline comparisons passed
+names-private-reuse 18 private reuse / isolation checks passed
+All 237 root qualification cases passed

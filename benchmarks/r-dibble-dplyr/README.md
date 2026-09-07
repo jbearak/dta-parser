@@ -55,8 +55,10 @@ isolation. It verifies output metadata and both directions of later mutation.
 It is an experiment for column-only operations, not a general implementation.
 
 `check-rename-allocation.R LIBRARY` intentionally fails on the baseline. It
-expresses the future goal that renaming a column must not allocate its complete
-retained numeric payload. It is not enabled as a current CI gate.
+bounds both the largest and summed recorded allocations below one retained
+double payload. This small check records allocations above 10,000 bytes;
+`owned-double.R` separately checks unthresholded cumulative allocation.
+Stage 3 requires this check to pass; it remains separate from the CI workflow.
 
 The dated result directory contains raw CSV files and package versions. The
 package build/check result and exact baseline revision are recorded in the report.
@@ -108,5 +110,91 @@ Run `test-provenance.R LIBRARY SOURCE_SHA` against a fresh `install.R` library
 for the bounded guard checks. It exercises every SOURCE_SHA runner with missing,
 mismatched, malformed and changed installation metadata, asserts no result
 output on rejection, and checks locale-independent fingerprints and matching
-result output. Older dated artifacts keep their recorded runner versions and
-manual exact-install verification; do not add provenance to an old library.
+result output. It also checks all owned-runner dependency identities and detects
+a change confined to the shared `helpers.R`. Older dated artifacts keep their
+recorded runner versions and manual exact-install verification; do not add
+provenance to an old library.
+
+## Owned ordinary-double stage
+
+The [Stage 3 report](results-2026-09-06-stage3.md) records the exact final pair,
+the rejected first candidate and its read regressions, native mutation gates,
+retained heap and process peaks. Run the following from a clean checkout with
+the runner files from the candidate revision. Each library is created by the
+provenance installer described above; the reported comparison uses Stage 2
+`fd069a36832ed7c1bdedeed52a4281ecabb36e25` and candidate
+`08b086ccd338d394420112cf9f550d355e94cb24`. The final runner identities include
+`helpers.R`, both entry points and `owned-double-helpers.R`. Earlier owned-run
+records listed in the report omitted `helpers.R`; the separate `historical-*`
+manifests already include it. The report preserves those records and distinguishes
+them from the final qualification.
+
+```sh
+owned_bench_root=$(mktemp -d /tmp/dibble-owned-benchmark.XXXXXX)
+owned_baseline=fd069a36832ed7c1bdedeed52a4281ecabb36e25
+owned_candidate=08b086ccd338d394420112cf9f550d355e94cb24
+Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
+  "$owned_bench_root/baseline-library" "$owned_baseline"
+Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
+  "$owned_bench_root/candidate-library" "$owned_candidate"
+Rscript --vanilla benchmarks/r-dibble-dplyr/owned-double.R \
+  "$owned_bench_root/baseline-library" "$owned_bench_root/baseline" \
+  "$owned_baseline" baseline 7
+Rscript --vanilla benchmarks/r-dibble-dplyr/owned-double.R \
+  "$owned_bench_root/candidate-library" "$owned_bench_root/candidate" \
+  "$owned_candidate" candidate 7
+Rscript --vanilla benchmarks/r-dibble-dplyr/check-rename-allocation.R \
+  "$owned_bench_root/candidate-library"
+```
+
+`owned-double.R` checks tenfold row scaling for selectors, direct and safe
+delegated five-verb pipelines, aggregates, arithmetic, filtering, coercion and
+DTA/Arrow reads and writes. Every read/export is followed by a selector that
+checks backing and allocation. First shared capture, subsequent private sparse
+writes and full replacement are measured separately. Nested string RHS and
+arithmetic row expressions retain their separate snapshot cost and alias checks.
+Fixtures and independent source/result checks stay outside measurements.
+
+`owned-double-memory.R LIBRARY SOURCE_SHA baseline|candidate OPERATION ROWS`
+measures retained heap and release after rename, `pipeline_five` or `pipeline_50`.
+Run each operation at 100,000 and 1,000,000 rows in its own process, for both
+libraries. On macOS, one case is:
+
+```sh
+/usr/bin/time -l Rscript --vanilla benchmarks/r-dibble-dplyr/owned-double-memory.R \
+  "$owned_bench_root/candidate-library" "$owned_candidate" candidate \
+  pipeline_50 1000000
+```
+
+Run timed processes serially, without concurrent builds or tests. Retained heap,
+nominal object sizes and whole-process peak RSS answer different questions.
+Native copy counters overlap R allocation and one another; do not add them into
+a total. The [reference-mutation runner](../r-reference-mutation/README.md)
+also qualifies assigned capacity preparation and separately measured borrowed
+capture before strict private writes. It preserves all 159 original assertions
+and their original numerical limits. Zero Rprofmem bytes above a threshold does
+not mean zero total allocation.
+
+The [current qualification driver](run-owned-qualification.py) records complete
+runner identities and output manifests for the same workloads. It checks
+committed runner bytes, process results and runtime identities with explicit
+exceptions that remain active under Python optimization. It refuses existing
+operation output and opens each memory log exclusively. Failed attempts retain
+their diagnostic files; use a new output directory when retrying. For the
+candidate, after installing the library above and arranging a quiet window:
+
+```sh
+python3 benchmarks/r-dibble-dplyr/run-owned-qualification.py operations . \
+  "$owned_bench_root/qualified-candidate" "$owned_bench_root/candidate-library" \
+  "$owned_candidate" "$owned_candidate" candidate
+python3 benchmarks/r-dibble-dplyr/run-owned-qualification.py memory . \
+  "$owned_bench_root/qualified-candidate" "$owned_bench_root/candidate-library" \
+  "$owned_candidate" "$owned_candidate" candidate
+```
+
+Use the baseline library and source with a separate output directory for the
+paired baseline, keeping the candidate runner revision. The memory command uses
+macOS `/usr/bin/time -l`. Run the driver's CLI regression checks with
+`python3 benchmarks/r-dibble-dplyr/test-owned-qualification.py`. They exercise
+normal Python, `-O` and `PYTHONOPTIMIZE=1` using disposable Git fixtures and
+synthetic subprocess output; they do not run R workloads.
