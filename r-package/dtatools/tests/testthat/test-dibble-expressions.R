@@ -423,4 +423,6 @@ test_that("mutate preserves existing group order until a key changes", {
     expect_identical(attr(dplyr::transmute(data, y = x), "groups"), original)
     regrouped <- dplyr::mutate(data, g = g + 1)
     expect_identical(as.double(dplyr::group_keys(regrouped)$g), c(2, 3))
+    rowwise <- dplyr::rowwise(dibble(a = 1:2, b = 3:4), b, a)
+    expect_identical(dplyr::group_vars(dplyr::mutate(rowwise, a = a + 1)), c("a", "b"))
 })
