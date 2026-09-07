@@ -57,6 +57,7 @@ extern int dtatools_gather_numeric_columns(
     const void *, size_t, const int *, const int *, size_t
 );
 extern void dtatools_dictstring_free(void *);
+extern int dtatools_dictstring_retain(void *);
 extern int dtatools_dictstring_bytes(
     void *, uint32_t, const char **, int *
 );
@@ -628,7 +629,7 @@ enum {
    Retaining only an ALTREP handle is insufficient if the callback changes its
    data1/data2 state. This function neither copies nor marks backing shared. */
 static SEXP numeric_payload_root(SEXP value) {
-    if (owned_real(value)) return owned_values(value);
+    if (owned_column(value)) return owned_values(value);
     if (unmaterialized_numeric_storage(value) != NULL) {
         SEXP source = value;
         while (R_altrep_inherits(source, dtatools_metadata_real_class)) source = metadata_proxy_source(source);
@@ -2755,6 +2756,22 @@ static SEXP unmaterialized_dictstring_source(SEXP value) {
         ? value : R_NilValue;
 }
 
+/* A native reader owns a reference to the immutable Rust descriptor and its
+   exact cache. Materialization may release the original external pointer while
+   a later callback runs, but cannot free this pinned allocation. A finalizer
+   releases the pin on normal return or unwind, without changing sharing flags. */
+static SEXP dictstring_read_root(SEXP value) {
+    SEXP source = unmaterialized_dictstring_source(value);
+    if (source == R_NilValue) return R_NilValue;
+    SEXP root = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, dictstring_cache(source)));
+    R_RegisterCFinalizerEx(root, dictstring_finalize, TRUE);
+    void *data = dictstring_storage(source);
+    if (!dtatools_dictstring_retain(data)) Rf_error("could not retain dictionary read storage");
+    R_SetExternalPtrAddr(root, data);
+    UNPROTECT(1);
+    return root;
+}
+
 static SEXP dictstring_cached_value(
     dictstring_data *data, SEXP cache, uint32_t id
 ) {
@@ -3405,6 +3422,8 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
     SEXP string_roots = PROTECT(Rf_allocVector(
         VECSXP, (R_xlen_t) (4 + 4 * column_count + 2 * table_count)
     ));
+    SEXP payload_roots = PROTECT(Rf_allocVector(VECSXP, (R_xlen_t) (column_count + table_count)));
+    numeric_data *encodings = (numeric_data *) R_alloc((R_SIZE_T) (column_count + table_count), sizeof(numeric_data));
     R_xlen_t root_index = 0;
     const char *output_path = write_rooted_scalar_string(
         string_roots, root_index++, path, "path"
@@ -3467,6 +3486,11 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         if (descriptor->label_count > 0) {
             numeric_reader *reader = &label_readers[index];
             *reader = numeric_reader_create(label_values, XLENGTH(label_values));
+            SET_VECTOR_ELT(payload_roots, (R_xlen_t) index, numeric_payload_root(label_values));
+            if (reader->storage != NULL) {
+                encodings[index] = *reader->storage;
+                reader->storage = &encodings[index];
+            }
             descriptor->label_values = reader;
         }
     }
@@ -3528,6 +3552,11 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         if (descriptor->dta_type <= 4) {
             numeric_reader *reader = &value_readers[value_reader_index++];
             *reader = numeric_reader_create(values, (R_xlen_t) row_count);
+            SET_VECTOR_ELT(payload_roots, (R_xlen_t) (table_count + index), numeric_payload_root(values));
+            if (reader->storage != NULL) {
+                encodings[table_count + index] = *reader->storage;
+                reader->storage = &encodings[table_count + index];
+            }
             descriptor->numeric_values = reader;
             if (reader->storage != NULL) {
                 descriptor->direct_numeric_values = reader->storage->values;
@@ -3552,7 +3581,10 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
             descriptor->string_values = values;
             SEXP dictionary_source = unmaterialized_dictstring_source(values);
             if (dictionary_source != R_NilValue) {
-                descriptor->direct_string_data = dictstring_storage(dictionary_source);
+                SEXP root = PROTECT(dictstring_read_root(dictionary_source));
+                SET_VECTOR_ELT(payload_roots, (R_xlen_t) (table_count + index), root);
+                descriptor->direct_string_data = R_ExternalPtrAddr(root);
+                UNPROTECT(1);
             }
         }
     }
@@ -3564,12 +3596,12 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         row_count, timestamp, &rust_error
     );
     if (ok < 0) {
-        UNPROTECT(2);
+        UNPROTECT(3);
         Rf_onintr();
         Rf_error("write interrupted");
     }
     if (!ok) fail_from_rust(rust_error);
-    UNPROTECT(2);
+    UNPROTECT(3);
     return numeric_replacements;
 }
 
@@ -3657,19 +3689,24 @@ static void arrow_write_column_descriptor(
     );
     descriptor->haven_labelled = LOGICAL(haven_labelled)[0];
 
+    /* Later column metadata and foreign readers may detach this handle. */
+    SEXP dictionary_root = PROTECT(dictstring_read_root(values));
+    SET_VECTOR_ELT(string_roots, (*root_index)++, dictionary_root != R_NilValue ?
+                   dictionary_root : numeric_payload_root(values));
+    UNPROTECT(1);
     switch (descriptor->kind) {
     case 0: /* logical */
         if (TYPEOF(values) != LGLSXP) {
             Rf_error("internal Arrow logical column has the wrong type");
         }
-        descriptor->values = LOGICAL(values);
+        descriptor->values = DATAPTR_RO(values);
         break;
     case 1: /* integer */
     case 10: /* labelled integer written as Float64 */
         if (TYPEOF(values) != INTSXP) {
             Rf_error("internal Arrow integer column has the wrong type");
         }
-        descriptor->values = INTEGER(values);
+        descriptor->values = DATAPTR_RO(values);
         break;
     case 2: /* double */
     case 6: /* date */
@@ -3688,7 +3725,7 @@ static void arrow_write_column_descriptor(
         descriptor->string_count = row_count;
         SEXP dictionary_source = unmaterialized_dictstring_source(values);
         if (dictionary_source != R_NilValue) {
-            descriptor->dictstring = dictstring_storage(dictionary_source);
+            descriptor->dictstring = R_ExternalPtrAddr(dictionary_root);
         }
         break;
     }
@@ -3702,7 +3739,7 @@ static void arrow_write_column_descriptor(
         if (TYPEOF(values) != INTSXP || TYPEOF(levels) != STRSXP) {
             Rf_error("internal Arrow factor column has the wrong type");
         }
-        descriptor->values = INTEGER(values);
+        descriptor->values = DATAPTR_RO(values);
         descriptor->strings = write_rooted_optional_strings(
             string_roots, (*root_index)++, levels, "factor levels"
         );
@@ -3846,8 +3883,9 @@ static arrow_write_specification prepare_arrow_write_specification(
             string_roots, (*root_index)++, label_texts, "value-label text"
         );
         descriptor->label_count = (size_t) XLENGTH(label_values);
+        SET_VECTOR_ELT(string_roots, (*root_index)++, numeric_payload_root(label_values));
         descriptor->label_values = descriptor->label_count > 0
-            ? REAL(label_values) : NULL;
+            ? (const double *) DATAPTR_RO(label_values) : NULL;
     }
     result.columns = (dtatools_arrow_column *) R_alloc(
         (R_SIZE_T) column_count, (int) sizeof(dtatools_arrow_column)
@@ -3878,12 +3916,12 @@ SEXP C_dtatools_save_arrow(
     arrow_write_specification_sizes(
         specification, &column_count, &table_count
     );
-    if (column_count > ((size_t) R_XLEN_T_MAX - 5) / 7 ||
-        table_count > ((size_t) R_XLEN_T_MAX - 5 - 7 * column_count) / 2) {
+    if (column_count > ((size_t) R_XLEN_T_MAX - 5) / 8 ||
+        table_count > ((size_t) R_XLEN_T_MAX - 5 - 8 * column_count) / 3) {
         Rf_error("too many internal Arrow columns");
     }
     SEXP string_roots = PROTECT(Rf_allocVector(
-        VECSXP, (R_xlen_t) (5 + 7 * column_count + 2 * table_count)
+        VECSXP, (R_xlen_t) (5 + 8 * column_count + 3 * table_count)
     ));
     R_xlen_t root_index = 0;
     const char *output_path = write_rooted_scalar_string(
@@ -3930,12 +3968,12 @@ SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
     arrow_write_specification_sizes(
         specification, &column_count, &table_count
     );
-    if (column_count > ((size_t) R_XLEN_T_MAX - 3) / 7 ||
-        table_count > ((size_t) R_XLEN_T_MAX - 3 - 7 * column_count) / 2) {
+    if (column_count > ((size_t) R_XLEN_T_MAX - 3) / 8 ||
+        table_count > ((size_t) R_XLEN_T_MAX - 3 - 8 * column_count) / 3) {
         Rf_error("too many internal Arrow columns");
     }
     SEXP string_roots = PROTECT(Rf_allocVector(
-        VECSXP, (R_xlen_t) (3 + 7 * column_count + 2 * table_count)
+        VECSXP, (R_xlen_t) (3 + 8 * column_count + 3 * table_count)
     ));
     R_xlen_t root_index = 0;
     arrow_write_specification prepared = prepare_arrow_write_specification(
@@ -4171,7 +4209,7 @@ static SEXP C_dtatools_mutation_prototype(SEXP value) {
         (!ALTREP(value) || mutation_string_view(value) ||
          unmaterialized_dictstring_source(value) != R_NilValue) &&
         Rf_getAttrib(value, R_DimSymbol) == R_NilValue && !Rf_isObject(value);
-    if ((!owned_real(value) || !owned_real_supported(value)) &&
+    if ((!owned_column(value) || !owned_supported(value)) &&
         !ordinary_string && !ordinary_discrete) return R_NilValue;
     SEXP result = PROTECT(Rf_allocVector(TYPEOF(value), 0));
     SHALLOW_DUPLICATE_ATTRIB(result, value);
@@ -4530,7 +4568,7 @@ static SEXP metadata_string_duplicate(SEXP value, Rboolean deep) {
  */
 SEXP C_dtatools_metadata_copy(SEXP value) {
     if (mutation_string_view(value)) return mutation_string_duplicate(value, FALSE);
-    if (owned_real_supported(value)) return owned_fork_real(value);
+    if (owned_supported(value)) return owned_fork(value);
     if (!ALTREP(value)) return Rf_shallow_duplicate(value);
     if (R_altrep_inherits(value, dtatools_numeric_class) ||
         R_altrep_inherits(value, dtatools_metadata_real_class)) {
@@ -4549,7 +4587,7 @@ SEXP C_dtatools_metadata_copy(SEXP value) {
  */
 SEXP C_dtatools_metadata_view(SEXP value) {
     if (mutation_string_view(value)) return mutation_string_duplicate(value, FALSE);
-    if (owned_real(value)) return owned_fork_real(value);
+    if (owned_column(value)) return owned_fork(value);
     if (!ALTREP(value)) return Rf_shallow_duplicate(value);
     if (R_altrep_inherits(value, dtatools_numeric_class) ||
         R_altrep_inherits(value, dtatools_metadata_real_class)) {
@@ -4574,9 +4612,9 @@ static SEXP mutation_column_view(SEXP value) {
         UNPROTECT(1);
         return view;
     }
-    if (owned_real(value) && owned_real_supported(value)) {
+    if (owned_column(value) && owned_supported(value)) {
         SEXP view = PROTECT(R_new_altrep(
-            dtatools_owned_real_class, R_altrep_data1(value), R_BaseEnv));
+            owned_class(TYPEOF(value)), R_altrep_data1(value), R_BaseEnv));
         SHALLOW_DUPLICATE_ATTRIB(view, value);
         UNPROTECT(1);
         return view;
@@ -4642,7 +4680,7 @@ static SEXP C_dtatools_release_mutation_views(SEXP columns) {
 
 static SEXP C_dtatools_expose_mutation_column(SEXP value) {
     if (mutation_string_view(value)) return mutation_string_source(value);
-    if (owned_real(value) || unmaterialized_numeric_storage(value) != NULL) {
+    if (owned_column(value) || unmaterialized_numeric_storage(value) != NULL) {
         return C_dtatools_metadata_copy(value);
     }
     return value;
@@ -4704,7 +4742,7 @@ static SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count) {
     for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
         SEXP value = VECTOR_ELT(data, i);
         if (ALTREP(Rf_getAttrib(value, R_ClassSymbol))) return Rf_ScalarLogical(0);
-        int known = owned_real_supported(value) ||
+        int known = owned_supported(value) ||
             (unmaterialized_numeric_storage(value) != NULL && known_numeric_classes(value, 1)) ||
             (!ALTREP(value) && !Rf_isObject(value) &&
              (TYPEOF(value) == REALSXP || TYPEOF(value) == INTSXP ||
@@ -4845,7 +4883,8 @@ static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
         (TYPEOF(index) != INTSXP && TYPEOF(index) != REALSXP)) {
         return NULL;
     }
-    dictstring_data *data = dictstring_storage(value);
+    SEXP root = PROTECT(dictstring_read_root(value));
+    dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
     R_xlen_t length = XLENGTH(index);
     if ((size_t) length > SIZE_MAX / sizeof(uint32_t)) {
         Rf_error("compact dictionary-string subset is too long");
@@ -4869,12 +4908,12 @@ static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
             }
         }
         if (source < 0) {
-            UNPROTECT(1);
+            UNPROTECT(2);
             return NULL;
         }
         output[i] = data->value_ids[source];
     }
-    SEXP source_cache = dictstring_cache(value);
+    SEXP source_cache = R_ExternalPtrProtected(root);
     R_xlen_t cardinality = XLENGTH(source_cache);
     SEXP cache = PROTECT(Rf_allocVector(VECSXP, cardinality));
     for (R_xlen_t id = 0; id < cardinality; id++) {
@@ -4893,12 +4932,18 @@ static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
     SEXP result = R_new_altrep(
         dtatools_dictstring_class, external, R_NilValue
     );
-    UNPROTECT(3);
+    UNPROTECT(4);
     return result;
 }
 
+static SEXP C_dtatools_dictstring_subset(SEXP value, SEXP index) {
+    if (unmaterialized_dictstring_source(value) == R_NilValue) Rf_error("compact dictionary required");
+    SEXP result = dictstring_extract_subset(unmaterialized_dictstring_source(value), index, R_NilValue);
+    return result == NULL ? R_NilValue : result;
+}
+
 SEXP C_dtatools_deep_copy_value(SEXP value) {
-    if (owned_real(value)) return owned_capture_real(value);
+    if (owned_column(value)) return owned_capture(value);
     numeric_data *numeric = unmaterialized_numeric_storage(value);
     if (numeric != NULL) {
         SEXP result = PROTECT(numeric_compact_copy(numeric));
@@ -4954,10 +4999,16 @@ SEXP C_dtatools_reference_contents(SEXP value) {
 
 static int reference_mutable_altrep(SEXP value) {
     return ALTREP(value) &&
-        (owned_real(value) || R_altrep_inherits(value, dtatools_numeric_class) ||
+        (owned_column(value) || R_altrep_inherits(value, dtatools_numeric_class) ||
          R_altrep_inherits(value, dtatools_dictstring_class) ||
          R_altrep_inherits(value, dtatools_metadata_real_class) ||
          R_altrep_inherits(value, dtatools_metadata_string_class));
+}
+
+/* Only ordinary storage and our native ownership wrappers have callback-free
+   element reads. S3 classes do not certify an unknown ALTREP implementation. */
+static int reference_callback_free_operand(SEXP value) {
+    return !ALTREP(value) || reference_mutable_altrep(value);
 }
 
 static SEXP plain_column(SEXP value, int copy_values) {
@@ -5146,6 +5197,7 @@ typedef struct {
     const int *integer_values;
     numeric_reader real_reader;
     R_xlen_t *snapshot;
+    R_xlen_t limit;
     int real;
     int snapshot_required;
 } reference_rows;
@@ -5187,6 +5239,7 @@ static reference_rows reference_rows_create(
     reference_rows rows;
     memset(&rows, 0, sizeof(rows));
     rows.value = value;
+    rows.limit = limit;
     if (value == R_NilValue) return rows;
     if (TYPEOF(value) == INTSXP) {
         rows.integer_values = (const int *) DATAPTR_OR_NULL(value);
@@ -5257,7 +5310,9 @@ static R_xlen_t reference_patch_row(
     const reference_rows *rows, R_xlen_t index
 ) {
     if (rows->value == R_NilValue) return index;
-    return reference_row_at(rows, index) - 1;
+    R_xlen_t row = reference_row_at(rows, index);
+    if (row > rows->limit) Rf_error("invalid reference mutation row");
+    return row - 1;
 }
 
 typedef enum {
@@ -5295,7 +5350,10 @@ static R_xlen_t reference_value_index(
     const reference_value_plan *plan, R_xlen_t index, R_xlen_t row
 ) {
     if (plan->mode == REFERENCE_VALUES_SCALAR) return 0;
-    if (plan->mode == REFERENCE_VALUES_BY_ROW) return row;
+    if (plan->mode == REFERENCE_VALUES_BY_ROW) {
+        if (row >= plan->value_count) Rf_error("invalid reference mutation row");
+        return row;
+    }
     return index;
 }
 
@@ -5431,7 +5489,7 @@ typedef struct {
 
 static compact_replacement_plan compact_replacement_plan_create(
     const numeric_data *target, SEXP values, const reference_rows *rows,
-    reference_value_plan value_plan, int prevalidate
+    reference_value_plan value_plan, int prevalidate, numeric_data *reader_encoding
 ) {
     compact_replacement_plan plan;
     memset(&plan, 0, sizeof(plan));
@@ -5439,6 +5497,10 @@ static compact_replacement_plan compact_replacement_plan_create(
     plan.scalar_missing_code = -1;
     plan.validate_on_apply = !prevalidate;
     plan.reader = numeric_reader_create(values, value_plan.value_count);
+    if (plan.reader.storage != NULL) {
+        *reader_encoding = *plan.reader.storage;
+        plan.reader.storage = reader_encoding;
+    }
     if (value_plan.mode == REFERENCE_VALUES_SCALAR) {
         double value = numeric_reader_at(
             &plan.reader, 0, &plan.scalar_missing_code
@@ -5951,17 +6013,32 @@ static SEXP patch_owned_vector(SEXP target, SEXP rows, SEXP replacement);
 static SEXP patch_vector(
     SEXP target, SEXP rows, SEXP replacement, int rollback_required
 ) {
-    if (owned_real(target)) return patch_owned_vector(target, rows, replacement);
+    if (owned_column(target)) return patch_owned_vector(target, rows, replacement);
     if (rows != R_NilValue &&
         TYPEOF(rows) != INTSXP && TYPEOF(rows) != REALSXP) {
         Rf_error("invalid reference replacement plan");
     }
+    SEXP entry_data1 = PROTECT(ALTREP(target) ? R_altrep_data1(target) : R_NilValue);
+    SEXP entry_data2 = PROTECT(ALTREP(target) ? R_altrep_data2(target) : R_NilValue);
     R_xlen_t target_length = XLENGTH(target);
+    /* Unknown ALTREP operands may call R on every read. Finish those reads
+       before native descriptors, journaling or writable target pointers live. */
+    rows = PROTECT(rows != R_NilValue && !reference_callback_free_operand(rows)
+        ? plain_column(rows, 1) : rows);
     R_xlen_t count = rows == R_NilValue ? target_length : XLENGTH(rows);
     reference_rows row_plan = reference_patch_rows_create(
         rows, target, target_length
     );
 
+    PROTECT(numeric_payload_root(rows));
+    numeric_data row_encoding;
+    if (row_plan.real_reader.storage != NULL) {
+        row_encoding = *row_plan.real_reader.storage;
+        row_plan.real_reader.storage = &row_encoding;
+    }
+    replacement = PROTECT(!reference_callback_free_operand(replacement)
+        ? plain_column(replacement, 1) : replacement);
+    PROTECT(numeric_payload_root(replacement));
     numeric_data *compact = unmaterialized_numeric_storage(target);
     numeric_data materialized_storage;
     numeric_data *materialized = materialized_numeric_storage(
@@ -5973,13 +6050,26 @@ static SEXP patch_vector(
         replacement, &row_plan, count, target_length, native_by_row,
         "invalid reference replacement plan"
     );
+    /* Replacement Length is a callback boundary. Materializing target there
+       may explicitly free the compact descriptor even while data1 is rooted. */
+    if ((ALTREP(target) && (R_altrep_data1(target) != entry_data1 ||
+                           R_altrep_data2(target) != entry_data2)) ||
+        XLENGTH(target) != target_length) {
+        Rf_error("reference mutation target changed while preparing replacement");
+    }
     if (compact != NULL) {
+        numeric_data target_encoding = *compact, replacement_encoding;
         compact_replacement_plan replacement_plan =
             compact_replacement_plan_create(
-                compact, replacement, &row_plan, value_plan, 1
+                &target_encoding, replacement, &row_plan, value_plan, 1, &replacement_encoding
             );
+        if (R_altrep_data1(target) != entry_data1 || R_altrep_data2(target) != entry_data2 ||
+            XLENGTH(target) != target_length) {
+            Rf_error("reference mutation target changed while preparing replacement");
+        }
         if (count == 0) {
             release_reference_rows(&row_plan);
+            UNPROTECT(6);
             return Rf_ScalarLogical(0);
         }
         size_t width = numeric_kind_width(compact->kind);
@@ -5995,7 +6085,7 @@ static SEXP patch_vector(
             undo_bytes == 0 ? 1 : undo_bytes
         );
         if (undo == NULL) {
-            UNPROTECT(2);
+            UNPROTECT(8);
             Rf_error("could not allocate reference replacement rollback data");
         }
         native_scratch_allocated += (double) undo_bytes;
@@ -6017,16 +6107,21 @@ static SEXP patch_vector(
             cleanup_compact_patch_transaction, &transaction,
             continuation
         );
-        UNPROTECT(2);
+        UNPROTECT(8);
         return result;
     }
 
+    numeric_data materialized_replacement_encoding;
     numeric_reader materialized_reader;
     memset(&materialized_reader, 0, sizeof(materialized_reader));
     if (materialized != NULL) {
         materialized_reader = numeric_reader_create(
             replacement, value_plan.value_count
         );
+        if (materialized_reader.storage != NULL) {
+            materialized_replacement_encoding = *materialized_reader.storage;
+            materialized_reader.storage = &materialized_replacement_encoding;
+        }
         validate_materialized_numeric_replacement(
             materialized, &materialized_reader, &row_plan, value_plan
         );
@@ -6041,6 +6136,7 @@ static SEXP patch_vector(
     if (count == 0) {
         if (type == STRSXP &&
             value_plan.mode == REFERENCE_VALUES_SCALAR) {
+            PROTECT(dictstring_read_root(replacement));
             reference_string_reader reader =
                 reference_string_reader_create(replacement, R_NilValue);
             int declared_width = string_declared_width(
@@ -6052,8 +6148,10 @@ static SEXP patch_vector(
             validate_reference_replacement_string(
                 reference_string_reader_at(&reader, 0), declared_width
             );
+            UNPROTECT(1);
         }
         release_reference_rows(&row_plan);
+        UNPROTECT(6);
         return Rf_ScalarLogical(0);
     }
     if (ALTREP(target) && !reference_mutable_altrep(target)) {
@@ -6070,6 +6168,7 @@ static SEXP patch_vector(
          (dictstring_source == target &&
           replacement_dictstring_source == target))) {
         release_reference_rows(&row_plan);
+        UNPROTECT(6);
         return Rf_ScalarLogical(0);
     }
     int delayed_dictstring_finalize = dictstring_source == target;
@@ -6102,6 +6201,7 @@ static SEXP patch_vector(
             )
             : R_NilValue
     );
+    PROTECT(dictstring_read_root(replacement));
     reference_string_reader replacement_reader =
         reference_string_reader_create(
             replacement, replacement_reader_cache
@@ -6120,13 +6220,13 @@ static SEXP patch_vector(
     unsigned char *undo = NULL;
     if (rollback_required && type != STRSXP) {
         if ((size_t) count > SIZE_MAX / width) {
-            UNPROTECT(7);
+            UNPROTECT(14);
             Rf_error("reference replacement plan is too large");
         }
         size_t bytes = (size_t) count * width;
         undo = (unsigned char *) malloc(bytes == 0 ? 1 : bytes);
         if (undo == NULL) {
-            UNPROTECT(7);
+            UNPROTECT(14);
             Rf_error("could not allocate reference replacement rollback data");
         }
         native_scratch_allocated += (double) bytes;
@@ -6161,13 +6261,21 @@ static SEXP patch_vector(
             )
             : -1
     };
+    /* The declared storage attribute can itself be a foreign ALTSTRING. All
+       its callbacks must finish before journal/apply retain native state. */
+    if ((ALTREP(target) && (R_altrep_data1(target) != entry_data1 ||
+                           R_altrep_data2(target) != entry_data2)) ||
+        XLENGTH(target) != target_length) {
+        free(undo);
+        Rf_error("reference mutation target changed while preparing replacement");
+    }
     SEXP result = R_UnwindProtect(
         apply_vector_patch_transaction, &transaction,
         cleanup_vector_patch_transaction, &transaction,
         continuation
     );
     commit_vector_patch_transaction(&transaction);
-    UNPROTECT(7);
+    UNPROTECT(14);
     return result;
 }
 
@@ -6255,7 +6363,7 @@ static SEXP mutation_detached_handle(SEXP target, int copy_values) {
     if (ALTREP(target) && !reference_mutable_altrep(target)) {
         return plain_column(target, copy_values);
     }
-    if (owned_real(target)) return owned_capture_real(target);
+    if (owned_column(target)) return owned_capture(target);
     /* These working proxies stay inside the native transaction. Their patch
        paths allocate independent decoded values, so preparation need not mark
        original backing shared or revoke a claim that an error must preserve. */
@@ -6810,6 +6918,9 @@ static SEXP generate_double_numeric(
     numeric_reader reader = numeric_reader_create(
         values, value_plan->value_count
     );
+    PROTECT(numeric_payload_root(values));
+    numeric_data encoding;
+    if (reader.storage != NULL) { encoding = *reader.storage; reader.storage = &encoding; }
     SEXP result = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) row_count));
     double *output = REAL(result);
     if (rows->value != R_NilValue) {
@@ -6845,7 +6956,7 @@ static SEXP generate_double_numeric(
             );
         }
     }
-    UNPROTECT(1);
+    UNPROTECT(2);
     return result;
 }
 
@@ -6934,6 +7045,12 @@ SEXP C_dtatools_generate_character(
     R_xlen_t row_count = (R_xlen_t) row_count_double;
     R_xlen_t count = rows == R_NilValue ? row_count : XLENGTH(rows);
     reference_rows row_plan = reference_rows_create(rows, row_count);
+    PROTECT(numeric_payload_root(rows));
+    numeric_data row_encoding;
+    if (row_plan.real_reader.storage != NULL) {
+        row_encoding = *row_plan.real_reader.storage;
+        row_plan.real_reader.storage = &row_encoding;
+    }
     reference_value_plan value_plan = reference_value_plan_create(
         values, &row_plan, count, row_count, 1,
         "invalid reference string generation plan"
@@ -6946,6 +7063,7 @@ SEXP C_dtatools_generate_character(
                 ? 1 : count
         )
     );
+    PROTECT(dictstring_read_root(values));
     reference_string_reader reader = reference_string_reader_create(
         values, reader_cache
     );
@@ -7033,8 +7151,12 @@ SEXP C_dtatools_generate_character(
     Rf_setAttrib(
         result, Rf_install("stata.string.storage"), storage_value
     );
-    UNPROTECT(5);
-    return result;
+    SEXP owned = PROTECT(owned_adopt(result));
+    owned_flags(owned)[OWNED_NO_NA] = 1;
+    owned_flags(owned)[OWNED_MAX_WIDTH] = (int) maximum;
+    owned_flags(owned)[OWNED_WIDTH_EXACT] = 1;
+    UNPROTECT(8);
+    return owned;
 }
 
 SEXP C_dtatools_generate_numeric(
@@ -7065,6 +7187,12 @@ SEXP C_dtatools_generate_numeric(
     reference_rows row_plan = reference_rows_create(
         rows, (R_xlen_t) row_count
     );
+    PROTECT(numeric_payload_root(rows));
+    numeric_data row_encoding;
+    if (row_plan.real_reader.storage != NULL) {
+        row_encoding = *row_plan.real_reader.storage;
+        row_plan.real_reader.storage = &row_encoding;
+    }
     reference_value_plan value_plan = reference_value_plan_create(
         values, &row_plan, count, (R_xlen_t) row_count, 1,
         "invalid reference generation plan"
@@ -7076,16 +7204,18 @@ SEXP C_dtatools_generate_numeric(
         ));
         set_generated_attributes(result, attributes);
         SEXP owned = PROTECT(owned_adopt_real(result));
-        UNPROTECT(2);
+        UNPROTECT(3);
         return owned;
     }
 
     numeric_data plan = {
         NULL, row_count, kind, temporal, 119, row_count
     };
+    PROTECT(numeric_payload_root(values));
+    numeric_data value_encoding;
     compact_replacement_plan replacement_plan =
         compact_replacement_plan_create(
-            &plan, values, &row_plan, value_plan, 0
+            &plan, values, &row_plan, value_plan, 0, &value_encoding
         );
 
     size_t width = numeric_kind_width(kind);
@@ -7118,7 +7248,7 @@ SEXP C_dtatools_generate_numeric(
         backing, row_count, kind, temporal, 119, plan.missing_count
     ));
     set_generated_attributes(result, attributes);
-    UNPROTECT(2);
+    UNPROTECT(4);
     return result;
 }
 
@@ -8133,10 +8263,19 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_arm_callback_character", (DL_FUNC) &C_dtatools_arm_callback_character, 2},
     {"C_dtatools_callback_character", (DL_FUNC) &C_dtatools_callback_character, 2},
     {"C_dtatools_callback_integer", (DL_FUNC) &C_dtatools_callback_integer, 2},
+    {"C_dtatools_callback_integer_after", (DL_FUNC) &C_dtatools_callback_integer_after, 3},
+    {"C_dtatools_owned_no_na", (DL_FUNC) &C_dtatools_owned_no_na, 1},
     {"C_dtatools_patch_slot", (DL_FUNC) &C_dtatools_patch_slot, 5},
     {"C_dtatools_fused_patch_slot", (DL_FUNC) &C_dtatools_fused_patch_slot, 10},
     {"C_dtatools_identical_slot_names", (DL_FUNC) &C_dtatools_identical_slot_names, 2},
     {"C_dtatools_capture_column", (DL_FUNC) &C_dtatools_capture_column, 1},
+    {"C_dtatools_owned_string_fits", (DL_FUNC) &C_dtatools_owned_string_fits, 2},
+    {"C_dtatools_owned_string_width", (DL_FUNC) &C_dtatools_owned_string_width, 1},
+    {"C_dtatools_owned_scan_stats", (DL_FUNC) &C_dtatools_owned_scan_stats, 1},
+    {"C_dtatools_callback_length", (DL_FUNC) &C_dtatools_callback_length, 2},
+    {"C_dtatools_dictstring_subset", (DL_FUNC) &C_dtatools_dictstring_subset, 2},
+    {"C_dtatools_owned_subset", (DL_FUNC) &C_dtatools_owned_subset, 2},
+    {"C_dtatools_owned_set_string", (DL_FUNC) &C_dtatools_owned_set_string, 3},
     {"C_dtatools_owned_info", (DL_FUNC) &C_dtatools_owned_info, 1},
     {"C_dtatools_owned_pointer", (DL_FUNC) &C_dtatools_owned_pointer, 2},
     {"C_dtatools_owned_pointer_write", (DL_FUNC) &C_dtatools_owned_pointer_write, 3},

@@ -69,13 +69,14 @@ unchanged, and a by-reference write on either the input or the result
 leaves the other as it was, and leaves any other frame the operation
 drew columns from as it was. Columns an operation leaves alone are
 isolated for later writes, using copy-on-write for compact columns and
-package-owned ordinary doubles.
+package-owned ordinary atomic columns.
 \code{dplyr::select()}, \code{dplyr::rename()}, and \code{dplyr::relocate()} resolve
 selectors against the actual Stata columns and build their dibble result
-directly. Owned ordinary doubles share value backing with distinct metadata
-handles. Borrowed doubles are captured before sharing. Ordinary strings are
-still copied and their storage declarations are checked against current
-values, including borrowed data.
+directly. Owned ordinary doubles, strings, logicals and integer/factor
+columns share value backing with distinct metadata handles. Borrowed values
+are captured before sharing. String declarations are checked against backing
+facts; unchanged owned values need no repeated scan. Unknown or externally
+writable values are checked again before their declarations are trusted.
 Ordinary row brackets and \code{\link[=slice_dta_rows]{slice_dta_rows()}} share batch row gathering with
 the dplyr row-slicing hook. Package-owned grouping validation and rebuilding
 retain sorted groups, empty factor groups and rowwise identifiers. Row
@@ -113,8 +114,8 @@ subclass it returns a new dibble without that subclass, retaining recognized
 grouped or rowwise structure and dataset metadata. The removed subclass's
 invariants are not retained. Otherwise it returns a new object
 and leaves its argument unchanged: a tibble or data frame is shallow
-copied. Borrowed ordinary doubles are captured into independent backing;
-owned doubles and compact columns can share until a write needs to detach
+copied. Supported borrowed atomic columns are captured into independent backing;
+owned atomic and compact columns can share until a write needs to detach
 them. A data table is
 copied into a fresh tibble, because a dibble cannot share data.table's
 self-reference or its over-allocated column slots; keys, indexes, and

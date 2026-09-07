@@ -28,6 +28,8 @@ dta_string <- function(x = character(), storage = NULL) {
 }
 
 .dta_string_required_width <- function(x) {
+    owned_width <- .Call(C_dtatools_owned_string_width, x)
+    if (!is.null(owned_width)) return(owned_width)
     if (!length(x)) return(1L)
     max(nchar(enc2utf8(x), type = "bytes"))
 }
@@ -70,7 +72,7 @@ dta_string <- function(x = character(), storage = NULL) {
     attr(x, "stata.string.storage") <- storage
     attr(x, "class") <- c("dta_string", "vctrs_vctr", "character")
     if (!is.null(value_names)) names(x) <- value_names
-    x
+    .Call(C_dtatools_capture_column, x)
 }
 
 # The bare character data behind a Stata string, read through a metadata

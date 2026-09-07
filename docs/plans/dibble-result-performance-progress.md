@@ -7,7 +7,87 @@ authorized sequential PR, independent-review, CI and CodeRabbit process. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stages 1 and 2 complete, Stage 3 active
+## Stages 1 through 3 complete, Stage 4 active
+
+Stage 3 merged normally as [PR #194](https://github.com/jbearak/dta-parser/pull/194)
+at 2026-09-07 02:14:48 UTC, producing
+[`ec10a6ac34602f3bd691e8043019c1b479babda4`](https://github.com/jbearak/dta-parser/commit/ec10a6ac34602f3bd691e8043019c1b479babda4).
+Root verified that its tree exactly matches reviewed head
+`aa72adc490383934f32732653fce73d54195dc9d`. All 16 checks passed, including
+Windows package and interoperability checks. CodeRabbit completed substantive
+review `5127382991`, run `4c8772f2-896c-4674-bde5-6c96e308a611`, on that exact
+head. All seven threads are resolved. The final provenance claim received
+[explicit withdrawal](https://github.com/jbearak/dta-parser/pull/194#discussion_r3946004031)
+after both independent round 22 reviews and the reviewer checked the unchanged
+historical manifest blobs. No historical evidence was relabeled. The separate
+docstring metric remains advisory under its unchanged review configuration.
+The final audit and merge proof are retained in
+`/private/tmp/dta-direct-stage3-validation/final-aa72adc-external/manifest.json`
+and `stage3-merge-verification.json` in the same validation directory.
+
+Stage 4 is active on `codex/direct-dibble-owned-atoms`, in the isolated
+`/private/tmp/dta-direct-stage4` worktree based on that merge. It extends owned
+backing to ordinary strings, logicals and integer/factor columns, with reusable
+storage facts, writable-pointer handling and transactional invalidation.
+The implementation agent has both nested independent actual-diff review roles,
+`storage_review` and `api_review`, under `/root/stage4_implementation`. Root owns paired benchmarks and independent acceptance. Stages 5
+through 9 and final integrated/downstream validation remain required; issue #172
+stays open. Stage 4 implementation is in progress; no Stage 4 acceptance result is claimed
+yet. Root's exact merged baseline install is in
+`/private/tmp/dta-direct-stage4-validation/baseline-library`. The working library
+and focused logs are under the same validation directory. The new atom suite
+passes its current representation, pointer, storage-fact, alias, ingress,
+serialization and callback-row cases. These development builds are not measured
+source identities.
+
+The first nested storage review found stale subset facts across foreign index
+callbacks and unrooted native row/writer payloads. The fix discards subset facts
+for callback-capable indices, roots exact ordinary allocations and compact
+numeric descriptors, and checks consumed rows against their original bounds.
+A further dictionary lifetime review found that materialization can explicitly
+free a descriptor even when the original ALTREP is rooted. The candidate adds
+call-local native descriptor pins with a Rust reference count; qualification of
+this fix is underway. No column/table registry or table back-pointer is added.
+The API review requested broader export, factor, borrowed-representation and
+serialization coverage, now present in `test-owned-atoms.R`. Public factor
+replacement restrictions remain unchanged.
+
+The full development run (`working-install-9.log` and `full-working-9.log`
+in the validation directory) passes all R tests, including the new callback,
+missingness-counter and export cases. It retains the four established warnings:
+factor conversion, temporal comparison methods, and two tibble row-name
+warnings. The earlier five failures in a borrowed-string fixture are corrected
+by installing and proving an actual foreign slot through the native interface,
+while separately preserving the public capture-isolation check and every
+stale-width/missing-value expectation. The intermediate run 8 exposed only an
+incorrect test assumption that R's string `anyNA` calls `STRING_NO_NA`; the test
+now invokes that public native API directly and separately checks `anyNA`.
+
+Legacy transactions now capture unknown ALTREP operands before native reader
+retention, journaling and writes. Their original-target checks also cover
+replacement-length, row and declared-width callbacks. The revised regressions
+and existing rollback suite pass. Both the Rust workspace (278 tests,
+formatting, Clippy, documentation and packaging) and isolated bridge (18 tests,
+formatting and check) pass. Exact committed-source gates remain required.
+
+Root owns the new `owned-atomic` benchmark family and its guarded Python driver.
+Development smoke at 8/40 rows passed 206 operation/read cases, 126 post-read
+selector checks and 18 public write cases. The driver CLI guard suite passed 87
+cases under ordinary Python, `-O` and `PYTHONOPTIMIZE=1`; these are runner checks,
+not full-size allocation/timing acceptance. The exact-source pair, required local
+gates, final nested reviews, PR and latest-head external review/CI remain pending.
+Both nested reviews clear the benchmark executable files committed as
+`b259ad5a521dbb867a0b8563e3a0c2262e298671`. Root completed the exact merged
+Stage 3 baseline: 206 atomic operation/read cases, 126 post-read selectors,
+18 writes and 30 isolated memory processes. A fresh existing owned-double
+baseline also passes 46 operation/read cases, 30 post-read selectors, six writes,
+four snapshot/where rows and six isolated memory processes. The successful
+atomic memory retry used permitted system access for peak RSS; the earlier
+sandbox-denied attempt remains preserved separately. Durable
+review reports and exact diff identities are under
+`/private/tmp/dta-direct-stage4-validation`; package acceptance remains pending.
+
+### Stage 3 accepted qualification
 
 Stage 3 implementation and local acceptance use source
 `08b086ccd338d394420112cf9f550d355e94cb24`. The
@@ -68,10 +148,9 @@ The original evidence and reproduction instructions are retained in commit
 `53571eb92d3c4296e0d95b1824724dee5c8fa68a`. Corrected source is committed as
 `08b086c`; reviewed final evidence is published as
 `4172613921597b4be11b7b44ebe5c5fd1fe01a94`.
-[PR #194](https://github.com/jbearak/dta-parser/pull/194) is open from
-`codex/direct-dibble-owned-doubles`. Latest-head external CI/CodeRabbit review
-and normal merge remain pending. Stage 3 stays active until those gates finish;
-stages 4 through 9 have not begun.
+The final guarded reproduction update is `aa72adc`. PR #194 and its latest-head
+external gates completed as recorded above. The qualification below preserves
+its original source labels.
 
 ### Stage 3 external-review corrections
 
@@ -91,9 +170,9 @@ assertions with four established warnings and no failures or skips. Both
 independent round 19 reviews close the native, test, documentation and benchmark
 corrections. Exact-source checks pass. On published head `4172613`, Windows
 job `101592812344` passes the package build/check that previously terminated,
-and its failure-only diagnostic steps are skipped. Windows interoperability
-steps are still running; the whole Windows job and checks on the next published
-head remain pending. Linux and macOS jobs on `4172613` pass.
+and its failure-only diagnostic steps are skipped. All jobs on `4172613` later
+passed, including Windows interoperability. All jobs on final head `aa72adc`
+also passed before the normal merge.
 
 External review also prompted explicit writable access to the private ordinary
 string-view copy, while preserving allocation-free reads from its ordinary
@@ -117,8 +196,8 @@ Fresh corrected baseline/candidate measurements pass with identities checked
 against committed runner bytes and the actual runtime records. Both final
 round 20 reviews are clean. The qualified head and three follow-up replies are
 published. CodeRabbit resolved the allocation, serialization and internal
-string-view findings. The original runner-identity finding awaits acknowledgment
-of the complete new evidence.
+string-view findings. It later [verified the complete new runner identities](https://github.com/jbearak/dta-parser/pull/194#discussion_r3945997284)
+and resolved that finding too.
 
 The substantive review of `4172613` raised two further evidence issues. The
 report now names the nine earlier owned-run directories and distinguishes the
@@ -131,6 +210,9 @@ cases under normal execution, `-O` and `PYTHONOPTIMIZE=1`, including source
 mismatch, subprocess failure, malformed identities and preservation of existing
 output. These checks do not run timed R workloads. Both independent round 21
 reviews are clean. The measured R runners and package source remain unchanged.
+CodeRabbit [accepted the guarded reproduction driver](https://github.com/jbearak/dta-parser/pull/194#discussion_r3945997064)
+and the historical-directory distinction. The final conflated provenance claim
+was withdrawn as recorded in the merge entry above.
 
 CodeRabbit [confirmed that its docstring metric is advisory](https://github.com/jbearak/dta-parser/pull/194#issuecomment-5563799860):
 its active configuration uses warning mode and does not fail commit status. It

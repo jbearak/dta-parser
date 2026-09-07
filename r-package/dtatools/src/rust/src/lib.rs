@@ -1526,6 +1526,9 @@ struct DictStringData {
     // Owns the string buffers referenced by `value_views`. Declared after the
     // views so it is dropped after them.
     _values: AHashMap<String, u32>,
+    // Native readers can outlive materialization of the original R handle.
+    // Pins own this same immutable allocation without changing column sharing.
+    references: std::sync::atomic::AtomicUsize,
 }
 
 impl DictStringData {
@@ -1542,8 +1545,32 @@ impl DictStringData {
             length,
             value_views,
             _values: values,
+            references: std::sync::atomic::AtomicUsize::new(1),
         }
     }
+}
+
+#[no_mangle]
+/// Retain an immutable dictionary descriptor for one native read scope.
+///
+/// # Safety
+///
+/// `data` must be null or a live `DictStringData`. On success the caller owns
+/// one additional reference and must release it with `dtatools_dictstring_free`.
+pub unsafe extern "C" fn dtatools_dictstring_retain(data: *mut c_void) -> c_int {
+    if data.is_null() {
+        return 0;
+    }
+    let data = &*data.cast::<DictStringData>();
+    i32::from(
+        data.references
+            .fetch_update(
+                std::sync::atomic::Ordering::Relaxed,
+                std::sync::atomic::Ordering::Relaxed,
+                |count| count.checked_add(1),
+            )
+            .is_ok(),
+    )
 }
 
 #[no_mangle]
@@ -1674,10 +1701,19 @@ pub unsafe extern "C" fn dtatools_dictstring_gather(
 ///
 /// # Safety
 ///
-/// `data` must be null or a live pointer created by `ProtectGuard::dictstring`,
-/// and it must not have been freed previously.
+/// `data` must be null or a live dictionary pointer for which the caller owns
+/// one reference, from creation or `dtatools_dictstring_retain`. Releasing the
+/// final reference invalidates the pointer.
 pub unsafe extern "C" fn dtatools_dictstring_free(data: *mut c_void) {
     if data.is_null() {
+        return;
+    }
+    let retained = &*data.cast::<DictStringData>();
+    if retained
+        .references
+        .fetch_sub(1, std::sync::atomic::Ordering::AcqRel)
+        != 1
+    {
         return;
     }
     let data = Box::from_raw(data.cast::<DictStringData>());
@@ -5479,5 +5515,36 @@ mod tests {
         assert!(threaded_replacements.iter().any(|&count| count > 0));
 
         unsafe { dtatools_dictstring_free(dictionary_data.cast()) };
+    }
+    #[test]
+    fn dictionary_pin_survives_release_of_original_owner() {
+        let mut dictionary = AHashMap::new();
+        dictionary.insert("alpha".to_owned(), 0_u32);
+        let value = dictionary.keys().next().unwrap();
+        let views = vec![(value.as_ptr(), value.len())];
+        let data = Box::into_raw(Box::new(DictStringData::new(vec![0, 0], dictionary, views)));
+        unsafe {
+            assert_eq!(super::dtatools_dictstring_retain(data.cast()), 1);
+            assert_eq!(super::dtatools_dictstring_retain(ptr::null_mut()), 0);
+            dtatools_dictstring_free(data.cast());
+            let mut bytes = ptr::null();
+            let mut length = 0;
+            assert_eq!(
+                super::dtatools_dictstring_bytes(data.cast(), 0, &mut bytes, &mut length),
+                1
+            );
+            assert_eq!(
+                std::slice::from_raw_parts(bytes.cast::<u8>(), length as usize),
+                b"alpha"
+            );
+            assert_eq!((*data).length, 2);
+            assert_eq!(
+                (*data)
+                    .references
+                    .load(std::sync::atomic::Ordering::Relaxed),
+                1
+            );
+            dtatools_dictstring_free(data.cast());
+        }
     }
 }

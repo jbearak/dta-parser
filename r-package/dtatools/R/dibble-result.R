@@ -89,7 +89,10 @@
         if (!is.null(copied) && identical(column, copied)) return(copied)
     }
     value <- if (isolate) .metadata_copy(column) else column
-    .typed_column_named(value, row_count, caller, name)
+    typed <- .typed_column_named(value, row_count, caller, name)
+    # Unknown callback and bind outputs can already carry a valid declaration
+    # while borrowing foreign payload. Capture them at the same ingress seam.
+    if (isolate) typed else .Call(C_dtatools_capture_column, typed)
 }
 
 # Selector planning is adapted from dplyr 1.2.1's select.R, rename.R and

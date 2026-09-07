@@ -2324,7 +2324,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         filled
     }
     if (length(value_attributes)) attributes(result) <- value_attributes
-    result
+    .Call(C_dtatools_capture_column, result)
 }
 
 .deep_copy_value <- function(value) {
@@ -2911,6 +2911,9 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         return(.dta_string_storage_width(declared) >=
             max(1L, .dictstring_max_width(column)))
     }
+    owned_fits <- .Call(C_dtatools_owned_string_fits, column,
+                        .dta_string_storage_width(declared))
+    if (!is.null(owned_fits)) return(owned_fits)
     if (anyNA(column)) return(FALSE)
     .dta_string_storage_width(declared) >=
         .dta_string_required_width(column)

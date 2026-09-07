@@ -113,6 +113,12 @@ static int numeric_private_handle(const numeric_slot_transaction *transaction) {
 
 static void stage_numeric_slot(numeric_slot_transaction *transaction) {
     reference_rows rows = reference_rows_create(transaction->rows, transaction->length);
+    PROTECT(numeric_payload_root(transaction->rows));
+    numeric_data row_encoding;
+    if (rows.real_reader.storage != NULL) {
+        row_encoding = *rows.real_reader.storage;
+        rows.real_reader.storage = &row_encoding;
+    }
     reference_value_plan values = reference_value_plan_create(
         transaction->replacement, &rows, transaction->count, transaction->length,
         transaction->is_compact || transaction->is_materialized || transaction->stata_double,
@@ -195,6 +201,7 @@ static void stage_numeric_slot(numeric_slot_transaction *transaction) {
     if (invalid_range) Rf_error("No Stata numeric storage can represent `x`");
     staged_new_bytes += (double) transaction->staged_size;
     if (transaction->scalar && transaction->new_missing) transaction->new_missing = transaction->count;
+    UNPROTECT(1);
 }
 
 /* These routines receive only plain backing and staged C buffers. There are
@@ -394,24 +401,28 @@ static SEXP patch_numeric_slot(SEXP data, R_xlen_t slot, SEXP rows,
                                 replacement, entry_shared, 0);
 }
 
-static SEXP patch_owned_vector(SEXP target, SEXP rows, SEXP replacement) {
-    return patch_numeric_target(R_NilValue, 0, target, rows, replacement, 0, 1);
-}
-
-/* Plain atomic table targets use the same late-commit rule as owned numerics.
-   This qualifies existing private string/integer writes without introducing
-   shared string or integer backing. The legacy direct-vector seam keeps its
-   journaled after-write interrupt and rollback behavior. */
-static SEXP patch_plain_slot(SEXP data, R_xlen_t slot, SEXP rows,
-                             SEXP replacement, int entry_shared) {
-    SEXP target = VECTOR_ELT(data, slot);
+/* Ordinary atomic targets stage rooted values before a final private write.
+   Owned handles use their plain payload only after the last callback and
+   allocation. Public pointer exposure always forces a separate destination. */
+static SEXP patch_atomic_target(SEXP data, R_xlen_t slot, SEXP target, SEXP rows,
+                                SEXP replacement, int entry_shared, int direct) {
     int type = TYPEOF(target);
-    if (ALTREP(target) || (type != REALSXP && type != INTSXP &&
-                          type != LGLSXP && type != STRSXP)) return R_NilValue;
+    int is_owned = owned_column(target);
+    if ((ALTREP(target) && (!is_owned || (!direct && !owned_supported(target)))) ||
+        (type != REALSXP && type != INTSXP && type != LGLSXP && type != STRSXP)) return R_NilValue;
     PROTECT(target);
+    SEXP saved_data1 = PROTECT(is_owned ? R_altrep_data1(target) : R_NilValue);
+    SEXP saved_data2 = PROTECT(is_owned ? R_altrep_data2(target) : R_NilValue);
+    SEXP result = PROTECT(direct ? Rf_ScalarLogical(0) : data);
     R_xlen_t length = XLENGTH(target);
     R_xlen_t count = rows == R_NilValue ? length : XLENGTH(rows);
     reference_rows row_plan = reference_rows_create(rows, length);
+    PROTECT(numeric_payload_root(rows));
+    numeric_data row_encoding;
+    if (row_plan.real_reader.storage != NULL) {
+        row_encoding = *row_plan.real_reader.storage;
+        row_plan.real_reader.storage = &row_encoding;
+    }
     reference_value_plan values = reference_value_plan_create(
         replacement, &row_plan, count, length,
         unmaterialized_dictstring_source(replacement) != R_NilValue,
@@ -426,6 +437,7 @@ static SEXP patch_plain_slot(SEXP data, R_xlen_t slot, SEXP rows,
     SEXP staged = PROTECT(Rf_allocVector(type, staged_count));
     SEXP cache = PROTECT(type == STRSXP
         ? reference_string_reader_private_cache(replacement, staged_count) : R_NilValue);
+    PROTECT(dictstring_read_root(replacement));
     reference_string_reader strings = reference_string_reader_create(replacement, cache);
     SEXP empty = PROTECT(type == STRSXP ? Rf_mkChar("") : R_NilValue);
     int declared_width = type == STRSXP ? string_declared_width(
@@ -450,26 +462,34 @@ static SEXP patch_plain_slot(SEXP data, R_xlen_t slot, SEXP rows,
     }
     size_t width = type == REALSXP ? sizeof(double) : type == STRSXP ? sizeof(SEXP) : sizeof(int);
     staged_new_bytes += (double) staged_count * width;
-    if (count == 0) { UNPROTECT(5); return data; }
+    if (count == 0) { UNPROTECT(10); return result; }
     maybe_inject_reference_write_interrupt();
     R_CheckUserInterrupt();
-    if (slot >= XLENGTH(data) || VECTOR_ELT(data, slot) != target || XLENGTH(target) != length) {
+    if ((!direct && (slot >= XLENGTH(data) || VECTOR_ELT(data, slot) != target)) ||
+        XLENGTH(target) != length || (is_owned &&
+        (R_altrep_data1(target) != saved_data1 || R_altrep_data2(target) != saved_data2))) {
         Rf_error("reference mutation target changed while preparing replacement");
     }
-    int detach = entry_shared || MAYBE_SHARED(target);
+    int detach = (!direct && (entry_shared || MAYBE_SHARED(target))) ||
+        (is_owned && (owned_flags(target)[OWNED_SHARED] || owned_flags(target)[OWNED_EXPOSED] ||
+                      saved_data2 == R_BaseEnv));
     int complete_staged = rows == R_NilValue && values.mode != REFERENCE_VALUES_SCALAR;
-    SEXP column = PROTECT(detach ? (complete_staged ? staged : Rf_allocVector(type, length)) : target);
+    SEXP column = PROTECT(detach ? (complete_staged ? staged : Rf_allocVector(type, length)) :
+        is_owned ? owned_values(target) : target);
+    SEXP destination = PROTECT(detach && is_owned ? owned_adopt(column) : column);
     if (detach) {
-        SHALLOW_DUPLICATE_ATTRIB(column, target);
-        if (slot >= XLENGTH(data) || VECTOR_ELT(data, slot) != target || XLENGTH(target) != length) {
+        SHALLOW_DUPLICATE_ATTRIB(destination, target);
+        if ((!direct && (slot >= XLENGTH(data) || VECTOR_ELT(data, slot) != target)) ||
+        XLENGTH(target) != length || (is_owned &&
+        (R_altrep_data1(target) != saved_data1 || R_altrep_data2(target) != saved_data2))) {
             Rf_error("reference mutation target changed while preparing replacement");
         }
         if (rows != R_NilValue) {
             if (type == STRSXP) {
                 for (R_xlen_t i = 0; i < length; i++) SET_STRING_ELT(column, i, STRING_ELT(target, i));
-            } else if (type == REALSXP) memcpy(REAL(column), REAL(target), (size_t) length * width);
-            else if (type == INTSXP) memcpy(INTEGER(column), INTEGER(target), (size_t) length * width);
-            else memcpy(LOGICAL(column), LOGICAL(target), (size_t) length * width);
+            } else if (type == REALSXP) memcpy(REAL(column), DATAPTR_RO(target), (size_t) length * width);
+            else if (type == INTSXP) memcpy(INTEGER(column), DATAPTR_RO(target), (size_t) length * width);
+            else memcpy(LOGICAL(column), DATAPTR_RO(target), (size_t) length * width);
             mutation_target_copy_bytes += (double) length * width;
         }
     }
@@ -484,9 +504,30 @@ static SEXP patch_plain_slot(SEXP data, R_xlen_t slot, SEXP rows,
         case STRSXP: SET_STRING_ELT(column, row, STRING_ELT(staged, from)); break;
         }
     }
-    if (detach) commit_identical_slots(data, target, column);
-    UNPROTECT(6);
-    return data;
+    if (is_owned) {
+        SEXP updated = detach ? destination : target;
+        owned_flags(updated)[OWNED_NO_NA] = -1;
+        owned_flags(updated)[OWNED_MAX_WIDTH] = -1;
+        owned_flags(updated)[OWNED_WIDTH_EXACT] = 0;
+    }
+    if (detach) {
+        if (direct) {
+            R_set_altrep_data1(target, R_altrep_data1(destination));
+            R_set_altrep_data2(target, R_NilValue);
+        } else commit_identical_slots(data, target, destination);
+    }
+    UNPROTECT(12);
+    return result;
+}
+
+static SEXP patch_plain_slot(SEXP data, R_xlen_t slot, SEXP rows,
+                             SEXP replacement, int entry_shared) {
+    return patch_atomic_target(data, slot, VECTOR_ELT(data, slot), rows, replacement, entry_shared, 0);
+}
+
+static SEXP patch_owned_vector(SEXP target, SEXP rows, SEXP replacement) {
+    return owned_real(target) ? patch_numeric_target(R_NilValue, 0, target, rows, replacement, 0, 1) :
+        patch_atomic_target(R_NilValue, 0, target, rows, replacement, 0, 1);
 }
 
 /* Inspect through the table so qualification does not itself retain a column
@@ -500,7 +541,7 @@ static SEXP C_dtatools_mutation_info(SEXP data, SEXP location) {
     for (int i = 0; i < 7; i++) SET_STRING_ELT(names, i, Rf_mkChar(fields[i]));
     SET_VECTOR_ELT(result, 0, Rf_ScalarLogical(MAYBE_SHARED(target)));
     numeric_data *compact = unmaterialized_numeric_storage(target);
-    int is_owned = owned_real(target);
+    int is_owned = owned_column(target);
     numeric_data materialized;
     int is_materialized = materialized_numeric_storage(target, &materialized);
     int private = compact != NULL ? compact_private_handle(target) :

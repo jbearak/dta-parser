@@ -234,9 +234,14 @@ test_that("borrowed and stale strings are checked on every column result", {
     foreign <- data.table::data.table(s = structure(c("a", "b"),
         stata.string.storage = "str1"))
     borrowed <- dibble(s = foreign$s)
-    # Ingress can borrow an already-declared vector. A foreign write does not
-    # call any dtatools invalidation hook and can leave a stale declaration.
+    captured <- dplyr::select(borrowed, s)
+    # Public ingress now captures ordinary strings. Install a genuinely
+    # borrowed slot directly to retain the legacy/stale-input recovery case.
+    .Call(dtatools:::C_dtatools_set_data_column, borrowed, 1L, foreign$s)
+    expect_null(.Call(dtatools:::C_dtatools_owned_info, borrowed$s))
+    expect_identical(rlang::obj_address(borrowed$s), rlang::obj_address(foreign$s))
     data.table::set(foreign, i = 1L, j = "s", value = "longer")
+    expect_identical(as.character(captured$s), c("a", "b"))
     before <- dplyr::rename(borrowed, text = s)
     expect_identical(as.character(before$text), c("longer", "b"))
     expect_identical(attr(before$text, "stata.string.storage"), "str6")
