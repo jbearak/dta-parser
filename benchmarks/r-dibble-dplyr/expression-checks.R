@@ -12,7 +12,10 @@ main <- function() {
     validate_benchmark_install(library, revision)
     on.exit({
         namespaces <- sort(loadedNamespaces())
-        paths <- vapply(namespaces, function(name) getNamespaceInfo(asNamespace(name), "path"), character(1))
+        paths <- vapply(namespaces, function(name) {
+            if (name == "base") file.path(R.home("library"), "base") else
+                getNamespaceInfo(asNamespace(name), "path")
+        }, character(1))
         write.table(data.frame(name = namespaces, path = paths),
             file.path(output, "namespaces.tsv"), sep = "\t", row.names = FALSE, quote = FALSE)
         dput(lapply(getLoadedDLLs(), function(dll) dll[["path"]]),
