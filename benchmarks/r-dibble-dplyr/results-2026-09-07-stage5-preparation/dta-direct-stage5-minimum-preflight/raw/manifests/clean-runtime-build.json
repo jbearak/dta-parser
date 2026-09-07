@@ -1,0 +1,26 @@
+{
+  "actual_configure_command": "/private/tmp/dta-direct-stage5-minimum-preflight/r46-source/R-4.6.0/configure --prefix=/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install --enable-R-shlib --without-recommended-packages --with-x=no --with-aqua=no --with-readline=no --with-cairo=no --with-ICU=no --disable-java",
+  "actual_build_commands": [
+    [
+      "make",
+      "-j4"
+    ],
+    [
+      "make",
+      "install"
+    ]
+  ],
+  "build_directory": "r460-clean-build",
+  "configuration_log": "r460-clean-build/config.log",
+  "configuration_log_sha256": "22615e206e3eadb65f4b0ffda9424bdb46985ed98d7eecb7c984372cf61da0f6",
+  "config_status_sha256": "6e72d0d6045e52e2a7a1f4873037d1f70166643725a15213f370156f2197594e",
+  "specific_external_library_search": "-L/opt/homebrew/opt/gettext/lib -L/opt/homebrew/opt/pcre2/lib -L/opt/homebrew/opt/libdeflate/lib -L/opt/homebrew/opt/zstd/lib -L/opt/homebrew/opt/xz/lib",
+  "cppflags": "-I/opt/homebrew/include",
+  "make_log_sha256": "1dbe86ae307b1f65aa15666a7fa3bfcb6ebde5beaf720dcbf37df07203ea6875",
+  "make_install_log_sha256": "af07091b9b93a78e3cf91f5c199e20ff1c81a106f7a9fd386a85db7541c87d94",
+  "compiler_and_link_flags_from_installed_file": "r460-clean-install/lib/R/etc/Makeconf",
+  "installed_makeconf_sha256": "6d45d0346a3ffbac96ec85125de913295523dd015879e154a41961a69ef55740",
+  "runtime_guard_before": "logs/r460-clean-loaded-library-before.log",
+  "runtime_guard_after": "logs/r460-clean-loaded-library-after.log",
+  "scope": "Local isolated source runtime; no system/framework or global package library installation."
+}

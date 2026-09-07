@@ -1,0 +1,26 @@
+* installing *source* package ‘tibble’ ...
+** this is package ‘tibble’ version ‘3.3.1’
+** package ‘tibble’ successfully unpacked and MD5 sums checked
+** using staged installation
+** libs
+using C compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG   -I/opt/homebrew/include    -fPIC  -g -O2  -c attributes.c -o attributes.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG   -I/opt/homebrew/include    -fPIC  -g -O2  -c coerce.c -o coerce.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG   -I/opt/homebrew/include    -fPIC  -g -O2  -c init.c -o init.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG   -I/opt/homebrew/include    -fPIC  -g -O2  -c matrixToDataFrame.c -o matrixToDataFrame.o
+gcc -std=gnu23 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib -L/opt/homebrew/opt/gettext/lib -L/opt/homebrew/opt/pcre2/lib -L/opt/homebrew/opt/libdeflate/lib -L/opt/homebrew/opt/zstd/lib -L/opt/homebrew/opt/xz/lib -o tibble.so attributes.o coerce.o init.o matrixToDataFrame.o -L/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib -lR
+installing to /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/00LOCK-tibble/00new/tibble/libs
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+*** copying figures
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+** checking absolute paths in shared objects and dynamic libraries
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (tibble)

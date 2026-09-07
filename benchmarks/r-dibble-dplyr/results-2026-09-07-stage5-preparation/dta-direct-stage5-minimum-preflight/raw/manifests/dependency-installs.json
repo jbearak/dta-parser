@@ -1,0 +1,212 @@
+[
+  {
+    "package": "cli",
+    "version": "3.6.6",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/cli_3.6.6.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:40.136847+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-cli.log",
+    "log_sha256": "0352eca60af182de78936757f9a8cb8614acc967eb46a9044543ae11ba3ffcb3"
+  },
+  {
+    "package": "generics",
+    "version": "0.1.4",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/generics_0.1.4.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:43.345422+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-generics.log",
+    "log_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97"
+  },
+  {
+    "package": "glue",
+    "version": "1.8.1",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/glue_1.8.1.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:43.859955+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-glue.log",
+    "log_sha256": "7c82278acf54f9fafde36e8b0fc97a0b52b387d86be4694c26f1aa14d378fd3f"
+  },
+  {
+    "package": "magrittr",
+    "version": "2.0.5",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/magrittr_2.0.5.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:44.842920+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-magrittr.log",
+    "log_sha256": "1c4d8922fd0e209e5002f52b16e829483c8787d75e0ac9e4dc871b6df3dea69c"
+  },
+  {
+    "package": "R6",
+    "version": "2.6.1",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/R6_2.6.1.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:45.711183+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-R6.log",
+    "log_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf"
+  },
+  {
+    "package": "rlang",
+    "version": "1.3.0",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/rlang_1.3.0.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:46.204680+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-rlang.log",
+    "log_sha256": "4310a49fbd8074c5368c7fd62a67af1bc8c0a5d9d800f76032634d913999e73d"
+  },
+  {
+    "package": "utf8",
+    "version": "1.2.6",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/utf8_1.2.6.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:49.472124+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-utf8.log",
+    "log_sha256": "28e63e32b46bc3c2cfee4787f2bd5035d508d79ba635dbc512eeda661a7f23dd"
+  },
+  {
+    "package": "pkgconfig",
+    "version": "2.0.3",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/pkgconfig_2.0.3.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:50.691510+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-pkgconfig.log",
+    "log_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb"
+  },
+  {
+    "package": "withr",
+    "version": "3.0.3",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/withr_3.0.3.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:51.105453+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-withr.log",
+    "log_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032"
+  },
+  {
+    "package": "lifecycle",
+    "version": "1.0.5",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/lifecycle_1.0.5.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:51.728941+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-lifecycle.log",
+    "log_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7"
+  },
+  {
+    "package": "vctrs",
+    "version": "0.7.3",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/vctrs_0.7.3.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:52.376415+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-vctrs.log",
+    "log_sha256": "8f6f54de157ab15bbcd171ec78a13a978a9c63d82649ac9ff4465104e4454b93"
+  },
+  {
+    "package": "pillar",
+    "version": "1.11.1",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/pillar_1.11.1.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:56.485417+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-pillar.log",
+    "log_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5"
+  },
+  {
+    "package": "tibble",
+    "version": "3.3.1",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/tibble_3.3.1.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:57.729106+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-tibble.log",
+    "log_sha256": "3d4aab2b6762e41edfa95ab90cb6931ea77362cc6680d5bab7d8d0a2c0059fb3"
+  },
+  {
+    "package": "tidyselect",
+    "version": "1.2.1",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dependencies/tidyselect_1.2.1.tar.gz"
+    ],
+    "started_utc": "2026-09-07T08:44:59.233440+00:00",
+    "exit_code": 0,
+    "log": "logs/dependency-tidyselect.log",
+    "log_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a"
+  }
+]

@@ -1,0 +1,111 @@
+[
+  {
+    "version": "1.1.0",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.1.0",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/dplyr-pristine/1.1.0/dplyr"
+    ],
+    "exit_code": 1,
+    "log": "logs/r460-dplyr-1.1.0-install.log",
+    "log_sha256": "59f75513b0bd7f9a01e36cd0bda09616a1cac57fa1a54dc4f2af887c30edff9c",
+    "installed_directory_exists": false
+  },
+  {
+    "version": "1.1.1",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.1.1",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/dplyr-pristine/1.1.1/dplyr"
+    ],
+    "exit_code": 1,
+    "log": "logs/r460-dplyr-1.1.1-install.log",
+    "log_sha256": "7227a53ec69a77170fff9c0c4c214548b5775f6730d9a9d953ed3a32c4a620d0",
+    "installed_directory_exists": false
+  },
+  {
+    "version": "1.1.2",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.1.2",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/dplyr-pristine/1.1.2/dplyr"
+    ],
+    "exit_code": 1,
+    "log": "logs/r460-dplyr-1.1.2-install.log",
+    "log_sha256": "f40b85797536d3b80d03fc8d9415210b37e9e4e03559f5c38d812a33b10d0890",
+    "installed_directory_exists": false
+  },
+  {
+    "version": "1.1.3",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.1.3",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/dplyr-pristine/1.1.3/dplyr"
+    ],
+    "exit_code": 1,
+    "log": "logs/r460-dplyr-1.1.3-install.log",
+    "log_sha256": "7e1e58d61775deccada143ce083fdaff6f842c685e3674328ee8038857af0c4f",
+    "installed_directory_exists": false
+  },
+  {
+    "version": "1.1.4",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.1.4",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/dplyr-pristine/1.1.4/dplyr"
+    ],
+    "exit_code": 1,
+    "log": "logs/r460-dplyr-1.1.4-install.log",
+    "log_sha256": "9d9605fc975f16cd14d8fb3323df0cd882de0c939c58b152b1d7864167111f24",
+    "installed_directory_exists": false
+  },
+  {
+    "version": "1.2.0",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.2.0",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/dplyr-pristine/1.2.0/dplyr"
+    ],
+    "exit_code": 1,
+    "log": "logs/r460-dplyr-1.2.0-install.log",
+    "log_sha256": "87c06b0aeb9cade5cc0f0f1214d84518d06d0ea4aff48a0f779f6712b9855d61",
+    "installed_directory_exists": false
+  },
+  {
+    "version": "1.2.1",
+    "command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/R",
+      "CMD",
+      "INSTALL",
+      "--library=/private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.2.1",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/dplyr-pristine/1.2.1/dplyr"
+    ],
+    "exit_code": 0,
+    "log": "logs/r460-dplyr-1.2.1-install.log",
+    "log_sha256": "e3975ce90dd21f743961f0111d118cb1653ff529e63a7e13922e4c23baa9c53b",
+    "installed_directory_exists": true,
+    "smoke_command": [
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/bin/Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/runtime-smoke.R",
+      "/private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.2.1",
+      "1.2.1",
+      "4.6.0"
+    ],
+    "smoke_exit_code": 1,
+    "smoke_log": "logs/r460-dplyr-1.2.1-smoke.log",
+    "smoke_sha256": "f384d442901de1c5a2c554096f5b4c1954f7b66bb7a9118adfda302e42d9ad05"
+  }
+]

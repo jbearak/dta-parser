@@ -1,0 +1,120 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+               _                           
+platform       aarch64-apple-darwin25.6.0  
+arch           aarch64                     
+os             darwin25.6.0                
+system         aarch64, darwin25.6.0       
+status                                     
+major          4                           
+minor          6.0                         
+year           2026                        
+month          04                          
+day            24                          
+svn rev        89956                       
+language       R                           
+version.string R version 4.6.0 (2026-04-24)
+nickname       Because it was There        
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dplyr-libraries/1.2.1"
+[2] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies"         
+[3] "/private/tmp/dta-direct-stage5-minimum-preflight/empty-user-library"              
+[4] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library"
+Version: 1.2.1
+Built: R 4.6.0; aarch64-apple-darwin25.6.0; 2026-09-07 08:54:37 UTC;
+        unix
+
+-- File: /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dplyr-libraries/1.2.1/dplyr/Meta/package.rds 
+-- Fields read: Version, Built
+                                                                                   tidyselect 
+        "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/tidyselect" 
+                                                                                     compiler 
+ "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/compiler" 
+                                                                                     magrittr 
+          "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/magrittr" 
+                                                                                           R6 
+                "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/R6" 
+                                                                                     generics 
+          "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/generics" 
+                                                                                          cli 
+               "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/cli" 
+                                                                                     graphics 
+ "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/graphics" 
+                                                                                        withr 
+             "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/withr" 
+                                                                                       pillar 
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/pillar" 
+                                                                                         glue 
+              "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/glue" 
+                                                                                        dplyr 
+    "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dplyr-libraries/1.2.1/dplyr" 
+                                                                                        utils 
+    "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/utils" 
+                                                                                       tibble 
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/tibble" 
+                                                                                    grDevices 
+"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/grDevices" 
+                                                                                        stats 
+    "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/stats" 
+                                                                                     datasets 
+ "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/datasets" 
+                                                                                        vctrs 
+             "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/vctrs" 
+                                                                                      methods 
+  "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/methods" 
+                                                                                    lifecycle 
+         "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/lifecycle" 
+                                                                                    pkgconfig 
+         "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/pkgconfig" 
+                                                                                        rlang 
+             "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/rlang" 
+                                                                                         base 
+     "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/base" 
+$base
+[1] "base"
+
+$methods
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/methods/libs/methods.so"
+
+$utils
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/utils/libs/utils.so"
+
+$grDevices
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/grDevices/libs/grDevices.so"
+
+$graphics
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/graphics/libs/graphics.so"
+
+$stats
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/stats/libs/stats.so"
+
+$rlang
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/rlang/libs/rlang.so"
+
+$cli
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/cli/libs/cli.so"
+
+$vctrs
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/vctrs/libs/vctrs.so"
+
+$glue
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/glue/libs/glue.so"
+
+$magrittr
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/magrittr/libs/magrittr.so"
+
+$tibble
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/tibble/libs/tibble.so"
+
+$dplyr
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dplyr-libraries/1.2.1/dplyr/libs/dplyr.so"
+
+PASS: isolated install/load and four small dplyr smoke cases; no dtatools adapter proof.

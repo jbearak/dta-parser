@@ -1,0 +1,25 @@
+               _                           
+platform       aarch64-apple-darwin25.6.0  
+arch           aarch64                     
+os             darwin25.6.0                
+system         aarch64, darwin25.6.0       
+status                                     
+major          4                           
+minor          6.0                         
+year           2026                        
+month          04                          
+day            24                          
+svn rev        89956                       
+language       R                           
+version.string R version 4.6.0 (2026-04-24)
+nickname       Because it was There        
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R"
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/library"
+       jpeg         png        tiff       tcltk         X11        aqua 
+      FALSE       FALSE       FALSE       FALSE       FALSE       FALSE 
+   http/ftp     sockets      libxml        fifo      cledit       iconv 
+       TRUE        TRUE       FALSE        TRUE       FALSE        TRUE 
+        NLS       Rprof     profmem       cairo         ICU long.double 
+       TRUE        TRUE       FALSE       FALSE       FALSE       FALSE 
+    libcurl 
+       TRUE 

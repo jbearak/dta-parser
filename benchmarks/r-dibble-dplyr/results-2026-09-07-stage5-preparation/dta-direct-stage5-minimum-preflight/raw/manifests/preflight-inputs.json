@@ -1,0 +1,27 @@
+{
+  "date_utc": "2026-09-07T08:38:53.084924+00:00",
+  "inputs": [
+    {
+      "path": "/private/tmp/dta-direct-stage5-handoff-draft.md",
+      "sha256": "72fa1efccea15fa523974ea2d36ce15e82c1794309f47147ca46b7db86c82c55"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-runtime-inventory.json",
+      "sha256": "36a42e44d7f08e2fd60b2d1697be9872333d57d328520e0dcfc4c9a22be0826f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-dplyr-api-preflight.json",
+      "sha256": "5b35716fd678a108b3be9db314f3c7396613faff04352f34a31943e9655a0cf2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-context-source-preparation.json",
+      "sha256": "b6310bcad4082da714ddd8545d480be8c58d281926e81a86c0e0275ab30e0c5c"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/r-package/dtatools/DESCRIPTION",
+      "sha256": "7156a0c39a26f1cd0e851643eed4f8fad1b4d89e889181f062ef6f77e589ae77",
+      "git_head": "c52866071ac6b1baa75b7bb04c51dd5b254835d7"
+    }
+  ],
+  "scope": "Preparatory source/build research only. No production or evidence worktree writes."
+}

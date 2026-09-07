@@ -1,0 +1,21 @@
+{
+  "time_utc": "2026-09-07T09:09:56.549962+00:00",
+  "binary_version": "1.1.4",
+  "binary_repository": "CRAN big-sur-arm64 R4.3",
+  "archive_sha256": "f78dbdaaeebed0c314b54a8c632fcba5952954ada924286eceeadbec691c9876",
+  "archive_md5": "a6947da6f967548ce5f1877503179df9",
+  "matching_repository_checksums": true,
+  "unmodified_extracted_files": 68,
+  "single_R460_before_and_after": true,
+  "namespace_load_exit_code": 1,
+  "namespace_load_failure": "Symbol not found: _R_shallow_duplicate_attr",
+  "all_accepted_installed_files_unchanged": 2447,
+  "accepted_installed_manifest_sha256": "b165221eee1f2565817198f94e391304eae7b291f6c6359b9ffc6738d411e429",
+  "current_r46_binary_version": "1.2.1",
+  "older_current_series_urls_checked": [
+    "1.1.0",
+    "1.1.4",
+    "1.2.0"
+  ],
+  "scope": "One verified cross-series binary failure, not proof all older installations can never run; no source/binary/runtime patch or second R runtime."
+}

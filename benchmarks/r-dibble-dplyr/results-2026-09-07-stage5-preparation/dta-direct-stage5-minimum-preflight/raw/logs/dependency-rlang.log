@@ -1,0 +1,25 @@
+* installing *source* package ‘rlang’ ...
+** this is package ‘rlang’ version ‘1.3.0’
+** package ‘rlang’ successfully unpacked and MD5 sums checked
+** using staged installation
+** libs
+using C compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include" -DNDEBUG -I./rlang/  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c capture.c -o capture.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include" -DNDEBUG -I./rlang/  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c internal.c -o internal.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include" -DNDEBUG -I./rlang/  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c rlang.c -o rlang.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include" -DNDEBUG -I./rlang/  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c version.c -o version.o
+gcc -std=gnu23 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/lib -L/opt/homebrew/lib -o rlang.so capture.o internal.o rlang.o version.o -L/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/lib -lR
+installing to /private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies/00LOCK-rlang/00new/rlang/libs
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+*** copying figures
+** building package indices
+** testing if installed package can be loaded from temporary location
+** checking absolute paths in shared objects and dynamic libraries
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (rlang)

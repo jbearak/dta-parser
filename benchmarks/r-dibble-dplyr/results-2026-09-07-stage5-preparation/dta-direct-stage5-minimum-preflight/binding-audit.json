@@ -1,0 +1,1940 @@
+{
+  "scope": "Read-only current byte checks against retained manifests; no experiment rerun",
+  "bindings": [
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-R6.log",
+      "expected_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "current_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-cli.log",
+      "expected_sha256": "5bc735ab69c8745c4e98662055434adfd5c7e59d897c49c947e499f325f50f8d",
+      "current_sha256": "5bc735ab69c8745c4e98662055434adfd5c7e59d897c49c947e499f325f50f8d",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-driver.log",
+      "expected_sha256": "dcf662275b3d9cdf3056a436cd906bb741873c08ab168a67811e5ec893a3cea7",
+      "current_sha256": "dcf662275b3d9cdf3056a436cd906bb741873c08ab168a67811e5ec893a3cea7",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-generics.log",
+      "expected_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "current_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-glue.log",
+      "expected_sha256": "1be79b86abaaa51f8457b83054b51b44bf54c364d41b53fc4fc8ddc6b471ed9b",
+      "current_sha256": "1be79b86abaaa51f8457b83054b51b44bf54c364d41b53fc4fc8ddc6b471ed9b",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-lifecycle.log",
+      "expected_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "current_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-magrittr.log",
+      "expected_sha256": "f5dea1db0b046c288698cbca791c641d30f232e5ebcba7489ead9de0822e64ea",
+      "current_sha256": "f5dea1db0b046c288698cbca791c641d30f232e5ebcba7489ead9de0822e64ea",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-pillar.log",
+      "expected_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "current_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-pkgconfig.log",
+      "expected_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "current_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-rlang.log",
+      "expected_sha256": "80a9eac97343ead41a1a5bee2c39a20961914223b054bd13bb8edbb67f1d68bb",
+      "current_sha256": "80a9eac97343ead41a1a5bee2c39a20961914223b054bd13bb8edbb67f1d68bb",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-tibble.log",
+      "expected_sha256": "1d212b52b335da23c8f7ee8768cec73d515f274c2558a4e5e27cb4401f54fe12",
+      "current_sha256": "1d212b52b335da23c8f7ee8768cec73d515f274c2558a4e5e27cb4401f54fe12",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-tidyselect.log",
+      "expected_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "current_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-utf8.log",
+      "expected_sha256": "429f20265ee83dd24eb405f3d4d247e749105f06d1a517d1559fef40a8280bbf",
+      "current_sha256": "429f20265ee83dd24eb405f3d4d247e749105f06d1a517d1559fef40a8280bbf",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-vctrs.log",
+      "expected_sha256": "c456c7fd1f5352f2aa7d43bc5e9e91136e9bb58ba69965b628a38d2c0a115544",
+      "current_sha256": "c456c7fd1f5352f2aa7d43bc5e9e91136e9bb58ba69965b628a38d2c0a115544",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-withr.log",
+      "expected_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "current_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dplyr-matrix-driver.log",
+      "expected_sha256": "f104aade48ee0c934d99da15bc239192966166d70ee1c51d6ce2459e4e88e4d0",
+      "current_sha256": "f104aade48ee0c934d99da15bc239192966166d70ee1c51d6ce2459e4e88e4d0",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/current-r-dependencies.log",
+      "expected_sha256": "281ab78f47da4d2bdfd66eb7360f1414711d460743a0d67be552d861a3f4a73b",
+      "current_sha256": "281ab78f47da4d2bdfd66eb7360f1414711d460743a0d67be552d861a3f4a73b",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-R6.log",
+      "expected_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "current_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-cli.log",
+      "expected_sha256": "0352eca60af182de78936757f9a8cb8614acc967eb46a9044543ae11ba3ffcb3",
+      "current_sha256": "0352eca60af182de78936757f9a8cb8614acc967eb46a9044543ae11ba3ffcb3",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-driver.log",
+      "expected_sha256": "dcf662275b3d9cdf3056a436cd906bb741873c08ab168a67811e5ec893a3cea7",
+      "current_sha256": "dcf662275b3d9cdf3056a436cd906bb741873c08ab168a67811e5ec893a3cea7",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-generics.log",
+      "expected_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "current_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-glue.log",
+      "expected_sha256": "7c82278acf54f9fafde36e8b0fc97a0b52b387d86be4694c26f1aa14d378fd3f",
+      "current_sha256": "7c82278acf54f9fafde36e8b0fc97a0b52b387d86be4694c26f1aa14d378fd3f",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-lifecycle.log",
+      "expected_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "current_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-magrittr.log",
+      "expected_sha256": "1c4d8922fd0e209e5002f52b16e829483c8787d75e0ac9e4dc871b6df3dea69c",
+      "current_sha256": "1c4d8922fd0e209e5002f52b16e829483c8787d75e0ac9e4dc871b6df3dea69c",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-pillar.log",
+      "expected_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "current_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-pkgconfig.log",
+      "expected_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "current_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-rlang.log",
+      "expected_sha256": "4310a49fbd8074c5368c7fd62a67af1bc8c0a5d9d800f76032634d913999e73d",
+      "current_sha256": "4310a49fbd8074c5368c7fd62a67af1bc8c0a5d9d800f76032634d913999e73d",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-tibble.log",
+      "expected_sha256": "3d4aab2b6762e41edfa95ab90cb6931ea77362cc6680d5bab7d8d0a2c0059fb3",
+      "current_sha256": "3d4aab2b6762e41edfa95ab90cb6931ea77362cc6680d5bab7d8d0a2c0059fb3",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-tidyselect.log",
+      "expected_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "current_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-utf8.log",
+      "expected_sha256": "28e63e32b46bc3c2cfee4787f2bd5035d508d79ba635dbc512eeda661a7f23dd",
+      "current_sha256": "28e63e32b46bc3c2cfee4787f2bd5035d508d79ba635dbc512eeda661a7f23dd",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-vctrs.log",
+      "expected_sha256": "8f6f54de157ab15bbcd171ec78a13a978a9c63d82649ac9ff4465104e4454b93",
+      "current_sha256": "8f6f54de157ab15bbcd171ec78a13a978a9c63d82649ac9ff4465104e4454b93",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-withr.log",
+      "expected_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "current_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/dplyr-matrix-driver.log",
+      "expected_sha256": "285f97ee1d804f9f8ccfeaf3d22d34b963ccc362cdc031b3c6a74754fee0ce55",
+      "current_sha256": "285f97ee1d804f9f8ccfeaf3d22d34b963ccc362cdc031b3c6a74754fee0ce55",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/older-binary-load-commands.log",
+      "expected_sha256": "99cb75bfdc107583259e3604847324bf5e135b244688431600c322b1f5ec5e51",
+      "current_sha256": "99cb75bfdc107583259e3604847324bf5e135b244688431600c322b1f5ec5e51",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/older-binary-r43-on-r460-smoke.log",
+      "expected_sha256": "bf23b270f14d8c3eaa5a20e1f17b4fd6843e5e55d94f4e1637810f632db84820",
+      "current_sha256": "bf23b270f14d8c3eaa5a20e1f17b4fd6843e5e55d94f4e1637810f632db84820",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-configure.log",
+      "expected_sha256": "5bae1bbde937b0d08cb6dac1d1a7438f9036c34d44c8f19a3802af5a1751cc0d",
+      "current_sha256": "5bae1bbde937b0d08cb6dac1d1a7438f9036c34d44c8f19a3802af5a1751cc0d",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.0-install.log",
+      "expected_sha256": "5f4d0e6add306cd48ca1e06d0385caaa6a6a30539d4967cebdd1bf98af278be5",
+      "current_sha256": "5f4d0e6add306cd48ca1e06d0385caaa6a6a30539d4967cebdd1bf98af278be5",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.1-install.log",
+      "expected_sha256": "302ab37c2b7b770d2b8210b93c505c01272c5c708cca85547afbaa93b95501aa",
+      "current_sha256": "302ab37c2b7b770d2b8210b93c505c01272c5c708cca85547afbaa93b95501aa",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.2-install.log",
+      "expected_sha256": "87f756b5caf39243562c75768f86317559ab15786b6d28def76bf9182f86e719",
+      "current_sha256": "87f756b5caf39243562c75768f86317559ab15786b6d28def76bf9182f86e719",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.3-install.log",
+      "expected_sha256": "ec57c516708957e0b48775bb0d391b08a55b53d70f9d8b044d2f5c115d9d532c",
+      "current_sha256": "ec57c516708957e0b48775bb0d391b08a55b53d70f9d8b044d2f5c115d9d532c",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.4-install.log",
+      "expected_sha256": "26ebaf59b456bb80f7fe124ac2e5c4d8627f9fe0578c1e3e287113c060e7d710",
+      "current_sha256": "26ebaf59b456bb80f7fe124ac2e5c4d8627f9fe0578c1e3e287113c060e7d710",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.2.0-install.log",
+      "expected_sha256": "47ed9da1eab98808242998921294503eab19e44a76567a825b479264d93ba670",
+      "current_sha256": "47ed9da1eab98808242998921294503eab19e44a76567a825b479264d93ba670",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.2.1-install.log",
+      "expected_sha256": "f9facc1f72f1d111a6169f941dcc94e8296e3e4cc310509497922591109f4e9c",
+      "current_sha256": "f9facc1f72f1d111a6169f941dcc94e8296e3e4cc310509497922591109f4e9c",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.2.1-smoke.log",
+      "expected_sha256": "a5ec475b7b5bae79d17c95d9509382a7c7fb8281408cb92f75b3eba455924fb9",
+      "current_sha256": "a5ec475b7b5bae79d17c95d9509382a7c7fb8281408cb92f75b3eba455924fb9",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-image-probe-build.log",
+      "expected_sha256": "a5fd1c5a1b2f9c52b8dfb9b2c01a317ba9978966447f28048b557df04fa2856a",
+      "current_sha256": "a5fd1c5a1b2f9c52b8dfb9b2c01a317ba9978966447f28048b557df04fa2856a",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-loaded-library-after.log",
+      "expected_sha256": "341ba028769714064c8805f8059a08bdbad049a93d5049bb40452108788f9c24",
+      "current_sha256": "341ba028769714064c8805f8059a08bdbad049a93d5049bb40452108788f9c24",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-loaded-library-before.log",
+      "expected_sha256": "5144f67e938152bc93a88cc3d516f5066026040b08abc4461ef628ab553e82b8",
+      "current_sha256": "5144f67e938152bc93a88cc3d516f5066026040b08abc4461ef628ab553e82b8",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-make-install.log",
+      "expected_sha256": "af07091b9b93a78e3cf91f5c199e20ff1c81a106f7a9fd386a85db7541c87d94",
+      "current_sha256": "af07091b9b93a78e3cf91f5c199e20ff1c81a106f7a9fd386a85db7541c87d94",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-make.log",
+      "expected_sha256": "1dbe86ae307b1f65aa15666a7fa3bfcb6ebde5beaf720dcbf37df07203ea6875",
+      "current_sha256": "1dbe86ae307b1f65aa15666a7fa3bfcb6ebde5beaf720dcbf37df07203ea6875",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-configure-missing-lzma.log",
+      "expected_sha256": "ce29a11425e3dd52b91e6d43d2cd3be8fd11cf0698739e346aec827969058fee",
+      "current_sha256": "ce29a11425e3dd52b91e6d43d2cd3be8fd11cf0698739e346aec827969058fee",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-configure.log",
+      "expected_sha256": "5ea0709e016e1239bbba8756bd1054f5897a52016f99be115a5910f1d506ad52",
+      "current_sha256": "5ea0709e016e1239bbba8756bd1054f5897a52016f99be115a5910f1d506ad52",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.0-install.log",
+      "expected_sha256": "59f75513b0bd7f9a01e36cd0bda09616a1cac57fa1a54dc4f2af887c30edff9c",
+      "current_sha256": "59f75513b0bd7f9a01e36cd0bda09616a1cac57fa1a54dc4f2af887c30edff9c",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.1-install.log",
+      "expected_sha256": "7227a53ec69a77170fff9c0c4c214548b5775f6730d9a9d953ed3a32c4a620d0",
+      "current_sha256": "7227a53ec69a77170fff9c0c4c214548b5775f6730d9a9d953ed3a32c4a620d0",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.2-install.log",
+      "expected_sha256": "f40b85797536d3b80d03fc8d9415210b37e9e4e03559f5c38d812a33b10d0890",
+      "current_sha256": "f40b85797536d3b80d03fc8d9415210b37e9e4e03559f5c38d812a33b10d0890",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.3-install.log",
+      "expected_sha256": "7e1e58d61775deccada143ce083fdaff6f842c685e3674328ee8038857af0c4f",
+      "current_sha256": "7e1e58d61775deccada143ce083fdaff6f842c685e3674328ee8038857af0c4f",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.4-install.log",
+      "expected_sha256": "9d9605fc975f16cd14d8fb3323df0cd882de0c939c58b152b1d7864167111f24",
+      "current_sha256": "9d9605fc975f16cd14d8fb3323df0cd882de0c939c58b152b1d7864167111f24",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.2.0-install.log",
+      "expected_sha256": "87c06b0aeb9cade5cc0f0f1214d84518d06d0ea4aff48a0f779f6712b9855d61",
+      "current_sha256": "87c06b0aeb9cade5cc0f0f1214d84518d06d0ea4aff48a0f779f6712b9855d61",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.2.1-install.log",
+      "expected_sha256": "e3975ce90dd21f743961f0111d118cb1653ff529e63a7e13922e4c23baa9c53b",
+      "current_sha256": "e3975ce90dd21f743961f0111d118cb1653ff529e63a7e13922e4c23baa9c53b",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.2.1-smoke-final.log",
+      "expected_sha256": "d057ad1c5b097d37ce76c4c1ceb807dd18ac67f81783c9cf62a93c85a9ac9fcb",
+      "current_sha256": "d057ad1c5b097d37ce76c4c1ceb807dd18ac67f81783c9cf62a93c85a9ac9fcb",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.2.1-smoke.log",
+      "expected_sha256": "f384d442901de1c5a2c554096f5b4c1954f7b66bb7a9118adfda302e42d9ad05",
+      "current_sha256": "f384d442901de1c5a2c554096f5b4c1954f7b66bb7a9118adfda302e42d9ad05",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-exported-symbols.log",
+      "expected_sha256": "5e4afdf39d11de523f7ff064a65602b5d39f0dbb0c9d182b2f78da2e62e1d8ac",
+      "current_sha256": "5e4afdf39d11de523f7ff064a65602b5d39f0dbb0c9d182b2f78da2e62e1d8ac",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-image-probe-build.log",
+      "expected_sha256": "991a64e5816b7ec396bc39eb7c85c7c1b820fab7c39fabb113c9ae7a0c816086",
+      "current_sha256": "991a64e5816b7ec396bc39eb7c85c7c1b820fab7c39fabb113c9ae7a0c816086",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-image-probe-header-conflict.log",
+      "expected_sha256": "84b04565bc851a9e6c24d87ca775dfbb9998e8c2c06b266d58fb51a565dfc0f5",
+      "current_sha256": "84b04565bc851a9e6c24d87ca775dfbb9998e8c2c06b266d58fb51a565dfc0f5",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-legacy-export-symbols.log",
+      "expected_sha256": "44f61dcaec96ede9b8d0f0b318b25a6ad1cf668e9494cb69bfe5a09e650f4485",
+      "current_sha256": "44f61dcaec96ede9b8d0f0b318b25a6ad1cf668e9494cb69bfe5a09e650f4485",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-loaded-images-diagnostic.log",
+      "expected_sha256": "90b722b2a35b06b35cbd049f664a159403067a6e4711a6b09bdf5084ca671097",
+      "current_sha256": "90b722b2a35b06b35cbd049f664a159403067a6e4711a6b09bdf5084ca671097",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-loaded-library-initial-query.log",
+      "expected_sha256": "39faa715fc00791efdf8f963d85356e90c3f5fc176c4cc3d376be748346cfa49",
+      "current_sha256": "39faa715fc00791efdf8f963d85356e90c3f5fc176c4cc3d376be748346cfa49",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-loaded-library-proof.log",
+      "expected_sha256": "39faa715fc00791efdf8f963d85356e90c3f5fc176c4cc3d376be748346cfa49",
+      "current_sha256": "39faa715fc00791efdf8f963d85356e90c3f5fc176c4cc3d376be748346cfa49",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-make-install.log",
+      "expected_sha256": "1cf6a25c99c82334d858b8bcabe03e07551589a547937dce713090a3736bcd35",
+      "current_sha256": "1cf6a25c99c82334d858b8bcabe03e07551589a547937dce713090a3736bcd35",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-make.log",
+      "expected_sha256": "0ea9fd4c0ffd46932ac822de39572d53c644ade6bf5c423901f95b1cb0bc0bcf",
+      "current_sha256": "0ea9fd4c0ffd46932ac822de39572d53c644ade6bf5c423901f95b1cb0bc0bcf",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-package-signature.log",
+      "expected_sha256": "ca045da25cc6ea75887b9c56dda9ccf7550dbdff278ed367a52f5aea70efd8f6",
+      "current_sha256": "ca045da25cc6ea75887b9c56dda9ccf7550dbdff278ed367a52f5aea70efd8f6",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r460-runtime-initial.log",
+      "expected_sha256": "dab653542616e923b2ac3130aebdc4dc36fc1db3821b6520a239c9847d1faed1",
+      "current_sha256": "dab653542616e923b2ac3130aebdc4dc36fc1db3821b6520a239c9847d1faed1",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "log_sha256",
+      "path": "logs/r461-current-dplyr-smoke.log",
+      "expected_sha256": "790d87b9c34801c69376d60d74f7204113a3c5d6bf10e27f028e6e12e47d067c",
+      "current_sha256": "790d87b9c34801c69376d60d74f7204113a3c5d6bf10e27f028e6e12e47d067c",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "install-clean-dplyr-matrix.py",
+      "expected_sha256": "c10d3b3031521a5e673df4d0f98d44ceff1bddf2e13e682da10ceb2e3f81871f",
+      "current_sha256": "c10d3b3031521a5e673df4d0f98d44ceff1bddf2e13e682da10ceb2e3f81871f",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "install-dplyr-matrix.py",
+      "expected_sha256": "edec55322cd9e911b4c36e516dfe0233d3155dda21def61f3408cc6415634509",
+      "current_sha256": "edec55322cd9e911b4c36e516dfe0233d3155dda21def61f3408cc6415634509",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "install-clean-dependencies.py",
+      "expected_sha256": "ec772d5a45502b685a64ca7c07c7cd42bf1e85104566ef6b42ddb03e94f90cbc",
+      "current_sha256": "ec772d5a45502b685a64ca7c07c7cd42bf1e85104566ef6b42ddb03e94f90cbc",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "install-dependencies.py",
+      "expected_sha256": "af49d47a2892e1dab8d262ad2a25e04a49fda08da3ba04577ac9fb46d36cc652",
+      "current_sha256": "af49d47a2892e1dab8d262ad2a25e04a49fda08da3ba04577ac9fb46d36cc652",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "verify-final-preflight.py",
+      "expected_sha256": "b8f9e5142d7078d6533a1e646186edf0601072457d670e5d521b1bbaf3dfb87e",
+      "current_sha256": "b8f9e5142d7078d6533a1e646186edf0601072457d670e5d521b1bbaf3dfb87e",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "runtime-smoke.R",
+      "expected_sha256": "99f080c744e49d328c79b7597a001a041fe269a32993b6ec2494d224f9f98ed5",
+      "current_sha256": "99f080c744e49d328c79b7597a001a041fe269a32993b6ec2494d224f9f98ed5",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "older-binary-smoke.R",
+      "expected_sha256": "cd068e24b2a951548927ff48c324e6a6252c1bbece1e756a70bf83c20b41099f",
+      "current_sha256": "cd068e24b2a951548927ff48c324e6a6252c1bbece1e756a70bf83c20b41099f",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "runtime-smoke-initial-diagnostic.R",
+      "expected_sha256": "6423750d5d4d7e5775faff67cca86df4a6716da87ea27e43959884953fadda0a",
+      "current_sha256": "6423750d5d4d7e5775faff67cca86df4a6716da87ea27e43959884953fadda0a",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "runtime-clean-probe/images.so",
+      "expected_sha256": "23e3f098c2725266e75bd45e6410d462fa267ab16fd6227b23d85782513a3155",
+      "current_sha256": "23e3f098c2725266e75bd45e6410d462fa267ab16fd6227b23d85782513a3155",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "runtime-clean-probe/images.c",
+      "expected_sha256": "a5b2aa065d2c9e1c67fef8a796442b1f561ad782f934239511c1ea332b8599c5",
+      "current_sha256": "a5b2aa065d2c9e1c67fef8a796442b1f561ad782f934239511c1ea332b8599c5",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "runtime-clean-probe/images.o",
+      "expected_sha256": "df8b3a611813f9701474ade31107626c2ab77d0dbc30f59190ef2c56d6780cd9",
+      "current_sha256": "df8b3a611813f9701474ade31107626c2ab77d0dbc30f59190ef2c56d6780cd9",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification.json",
+      "field": "recipe_sha256",
+      "path": "runtime-clean-probe/check.R",
+      "expected_sha256": "883f0eff437260537d8f0283984b421c1a9a25849ed2847712a525c9ce0b79d8",
+      "current_sha256": "883f0eff437260537d8f0283984b421c1a9a25849ed2847712a525c9ce0b79d8",
+      "matches": true,
+      "disposition": "Final accepted binding"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-R6.log",
+      "expected_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "current_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-cli.log",
+      "expected_sha256": "5bc735ab69c8745c4e98662055434adfd5c7e59d897c49c947e499f325f50f8d",
+      "current_sha256": "5bc735ab69c8745c4e98662055434adfd5c7e59d897c49c947e499f325f50f8d",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-driver.log",
+      "expected_sha256": "dcf662275b3d9cdf3056a436cd906bb741873c08ab168a67811e5ec893a3cea7",
+      "current_sha256": "dcf662275b3d9cdf3056a436cd906bb741873c08ab168a67811e5ec893a3cea7",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-generics.log",
+      "expected_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "current_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-glue.log",
+      "expected_sha256": "1be79b86abaaa51f8457b83054b51b44bf54c364d41b53fc4fc8ddc6b471ed9b",
+      "current_sha256": "1be79b86abaaa51f8457b83054b51b44bf54c364d41b53fc4fc8ddc6b471ed9b",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-lifecycle.log",
+      "expected_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "current_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-magrittr.log",
+      "expected_sha256": "f5dea1db0b046c288698cbca791c641d30f232e5ebcba7489ead9de0822e64ea",
+      "current_sha256": "f5dea1db0b046c288698cbca791c641d30f232e5ebcba7489ead9de0822e64ea",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-pillar.log",
+      "expected_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "current_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-pkgconfig.log",
+      "expected_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "current_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-rlang.log",
+      "expected_sha256": "80a9eac97343ead41a1a5bee2c39a20961914223b054bd13bb8edbb67f1d68bb",
+      "current_sha256": "80a9eac97343ead41a1a5bee2c39a20961914223b054bd13bb8edbb67f1d68bb",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-tibble.log",
+      "expected_sha256": "1d212b52b335da23c8f7ee8768cec73d515f274c2558a4e5e27cb4401f54fe12",
+      "current_sha256": "1d212b52b335da23c8f7ee8768cec73d515f274c2558a4e5e27cb4401f54fe12",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-tidyselect.log",
+      "expected_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "current_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-utf8.log",
+      "expected_sha256": "429f20265ee83dd24eb405f3d4d247e749105f06d1a517d1559fef40a8280bbf",
+      "current_sha256": "429f20265ee83dd24eb405f3d4d247e749105f06d1a517d1559fef40a8280bbf",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-vctrs.log",
+      "expected_sha256": "c456c7fd1f5352f2aa7d43bc5e9e91136e9bb58ba69965b628a38d2c0a115544",
+      "current_sha256": "c456c7fd1f5352f2aa7d43bc5e9e91136e9bb58ba69965b628a38d2c0a115544",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-withr.log",
+      "expected_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "current_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dplyr-matrix-driver.log",
+      "expected_sha256": "f104aade48ee0c934d99da15bc239192966166d70ee1c51d6ce2459e4e88e4d0",
+      "current_sha256": "f104aade48ee0c934d99da15bc239192966166d70ee1c51d6ce2459e4e88e4d0",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/current-r-dependencies.log",
+      "expected_sha256": "281ab78f47da4d2bdfd66eb7360f1414711d460743a0d67be552d861a3f4a73b",
+      "current_sha256": "281ab78f47da4d2bdfd66eb7360f1414711d460743a0d67be552d861a3f4a73b",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-R6.log",
+      "expected_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "current_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-cli.log",
+      "expected_sha256": "0352eca60af182de78936757f9a8cb8614acc967eb46a9044543ae11ba3ffcb3",
+      "current_sha256": "0352eca60af182de78936757f9a8cb8614acc967eb46a9044543ae11ba3ffcb3",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-driver.log",
+      "expected_sha256": "dcf662275b3d9cdf3056a436cd906bb741873c08ab168a67811e5ec893a3cea7",
+      "current_sha256": "dcf662275b3d9cdf3056a436cd906bb741873c08ab168a67811e5ec893a3cea7",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-generics.log",
+      "expected_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "current_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-glue.log",
+      "expected_sha256": "7c82278acf54f9fafde36e8b0fc97a0b52b387d86be4694c26f1aa14d378fd3f",
+      "current_sha256": "7c82278acf54f9fafde36e8b0fc97a0b52b387d86be4694c26f1aa14d378fd3f",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-lifecycle.log",
+      "expected_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "current_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-magrittr.log",
+      "expected_sha256": "1c4d8922fd0e209e5002f52b16e829483c8787d75e0ac9e4dc871b6df3dea69c",
+      "current_sha256": "1c4d8922fd0e209e5002f52b16e829483c8787d75e0ac9e4dc871b6df3dea69c",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-pillar.log",
+      "expected_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "current_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-pkgconfig.log",
+      "expected_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "current_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-rlang.log",
+      "expected_sha256": "4310a49fbd8074c5368c7fd62a67af1bc8c0a5d9d800f76032634d913999e73d",
+      "current_sha256": "4310a49fbd8074c5368c7fd62a67af1bc8c0a5d9d800f76032634d913999e73d",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-tibble.log",
+      "expected_sha256": "3d4aab2b6762e41edfa95ab90cb6931ea77362cc6680d5bab7d8d0a2c0059fb3",
+      "current_sha256": "3d4aab2b6762e41edfa95ab90cb6931ea77362cc6680d5bab7d8d0a2c0059fb3",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-tidyselect.log",
+      "expected_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "current_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-utf8.log",
+      "expected_sha256": "28e63e32b46bc3c2cfee4787f2bd5035d508d79ba635dbc512eeda661a7f23dd",
+      "current_sha256": "28e63e32b46bc3c2cfee4787f2bd5035d508d79ba635dbc512eeda661a7f23dd",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-vctrs.log",
+      "expected_sha256": "8f6f54de157ab15bbcd171ec78a13a978a9c63d82649ac9ff4465104e4454b93",
+      "current_sha256": "8f6f54de157ab15bbcd171ec78a13a978a9c63d82649ac9ff4465104e4454b93",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-withr.log",
+      "expected_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "current_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/dplyr-matrix-driver.log",
+      "expected_sha256": "285f97ee1d804f9f8ccfeaf3d22d34b963ccc362cdc031b3c6a74754fee0ce55",
+      "current_sha256": "285f97ee1d804f9f8ccfeaf3d22d34b963ccc362cdc031b3c6a74754fee0ce55",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/final-preflight-verification.log",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "current_sha256": "7a4b4394e8e1273e5e6b4e6ea772e11b6933576469effa5ceca1b8bd909730e6",
+      "matches": false,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-configure.log",
+      "expected_sha256": "5bae1bbde937b0d08cb6dac1d1a7438f9036c34d44c8f19a3802af5a1751cc0d",
+      "current_sha256": "5bae1bbde937b0d08cb6dac1d1a7438f9036c34d44c8f19a3802af5a1751cc0d",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.0-install.log",
+      "expected_sha256": "5f4d0e6add306cd48ca1e06d0385caaa6a6a30539d4967cebdd1bf98af278be5",
+      "current_sha256": "5f4d0e6add306cd48ca1e06d0385caaa6a6a30539d4967cebdd1bf98af278be5",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.1-install.log",
+      "expected_sha256": "302ab37c2b7b770d2b8210b93c505c01272c5c708cca85547afbaa93b95501aa",
+      "current_sha256": "302ab37c2b7b770d2b8210b93c505c01272c5c708cca85547afbaa93b95501aa",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.2-install.log",
+      "expected_sha256": "87f756b5caf39243562c75768f86317559ab15786b6d28def76bf9182f86e719",
+      "current_sha256": "87f756b5caf39243562c75768f86317559ab15786b6d28def76bf9182f86e719",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.3-install.log",
+      "expected_sha256": "ec57c516708957e0b48775bb0d391b08a55b53d70f9d8b044d2f5c115d9d532c",
+      "current_sha256": "ec57c516708957e0b48775bb0d391b08a55b53d70f9d8b044d2f5c115d9d532c",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.4-install.log",
+      "expected_sha256": "26ebaf59b456bb80f7fe124ac2e5c4d8627f9fe0578c1e3e287113c060e7d710",
+      "current_sha256": "26ebaf59b456bb80f7fe124ac2e5c4d8627f9fe0578c1e3e287113c060e7d710",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.2.0-install.log",
+      "expected_sha256": "47ed9da1eab98808242998921294503eab19e44a76567a825b479264d93ba670",
+      "current_sha256": "47ed9da1eab98808242998921294503eab19e44a76567a825b479264d93ba670",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.2.1-install.log",
+      "expected_sha256": "f9facc1f72f1d111a6169f941dcc94e8296e3e4cc310509497922591109f4e9c",
+      "current_sha256": "f9facc1f72f1d111a6169f941dcc94e8296e3e4cc310509497922591109f4e9c",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.2.1-smoke.log",
+      "expected_sha256": "a5ec475b7b5bae79d17c95d9509382a7c7fb8281408cb92f75b3eba455924fb9",
+      "current_sha256": "a5ec475b7b5bae79d17c95d9509382a7c7fb8281408cb92f75b3eba455924fb9",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-image-probe-build.log",
+      "expected_sha256": "a5fd1c5a1b2f9c52b8dfb9b2c01a317ba9978966447f28048b557df04fa2856a",
+      "current_sha256": "a5fd1c5a1b2f9c52b8dfb9b2c01a317ba9978966447f28048b557df04fa2856a",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-loaded-library-after.log",
+      "expected_sha256": "341ba028769714064c8805f8059a08bdbad049a93d5049bb40452108788f9c24",
+      "current_sha256": "341ba028769714064c8805f8059a08bdbad049a93d5049bb40452108788f9c24",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-loaded-library-before.log",
+      "expected_sha256": "5144f67e938152bc93a88cc3d516f5066026040b08abc4461ef628ab553e82b8",
+      "current_sha256": "5144f67e938152bc93a88cc3d516f5066026040b08abc4461ef628ab553e82b8",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-make-install.log",
+      "expected_sha256": "af07091b9b93a78e3cf91f5c199e20ff1c81a106f7a9fd386a85db7541c87d94",
+      "current_sha256": "af07091b9b93a78e3cf91f5c199e20ff1c81a106f7a9fd386a85db7541c87d94",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-make.log",
+      "expected_sha256": "1dbe86ae307b1f65aa15666a7fa3bfcb6ebde5beaf720dcbf37df07203ea6875",
+      "current_sha256": "1dbe86ae307b1f65aa15666a7fa3bfcb6ebde5beaf720dcbf37df07203ea6875",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-configure-missing-lzma.log",
+      "expected_sha256": "ce29a11425e3dd52b91e6d43d2cd3be8fd11cf0698739e346aec827969058fee",
+      "current_sha256": "ce29a11425e3dd52b91e6d43d2cd3be8fd11cf0698739e346aec827969058fee",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-configure.log",
+      "expected_sha256": "5ea0709e016e1239bbba8756bd1054f5897a52016f99be115a5910f1d506ad52",
+      "current_sha256": "5ea0709e016e1239bbba8756bd1054f5897a52016f99be115a5910f1d506ad52",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.0-install.log",
+      "expected_sha256": "59f75513b0bd7f9a01e36cd0bda09616a1cac57fa1a54dc4f2af887c30edff9c",
+      "current_sha256": "59f75513b0bd7f9a01e36cd0bda09616a1cac57fa1a54dc4f2af887c30edff9c",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.1-install.log",
+      "expected_sha256": "7227a53ec69a77170fff9c0c4c214548b5775f6730d9a9d953ed3a32c4a620d0",
+      "current_sha256": "7227a53ec69a77170fff9c0c4c214548b5775f6730d9a9d953ed3a32c4a620d0",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.2-install.log",
+      "expected_sha256": "f40b85797536d3b80d03fc8d9415210b37e9e4e03559f5c38d812a33b10d0890",
+      "current_sha256": "f40b85797536d3b80d03fc8d9415210b37e9e4e03559f5c38d812a33b10d0890",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.3-install.log",
+      "expected_sha256": "7e1e58d61775deccada143ce083fdaff6f842c685e3674328ee8038857af0c4f",
+      "current_sha256": "7e1e58d61775deccada143ce083fdaff6f842c685e3674328ee8038857af0c4f",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.4-install.log",
+      "expected_sha256": "9d9605fc975f16cd14d8fb3323df0cd882de0c939c58b152b1d7864167111f24",
+      "current_sha256": "9d9605fc975f16cd14d8fb3323df0cd882de0c939c58b152b1d7864167111f24",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.2.0-install.log",
+      "expected_sha256": "87c06b0aeb9cade5cc0f0f1214d84518d06d0ea4aff48a0f779f6712b9855d61",
+      "current_sha256": "87c06b0aeb9cade5cc0f0f1214d84518d06d0ea4aff48a0f779f6712b9855d61",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.2.1-install.log",
+      "expected_sha256": "e3975ce90dd21f743961f0111d118cb1653ff529e63a7e13922e4c23baa9c53b",
+      "current_sha256": "e3975ce90dd21f743961f0111d118cb1653ff529e63a7e13922e4c23baa9c53b",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.2.1-smoke-final.log",
+      "expected_sha256": "d057ad1c5b097d37ce76c4c1ceb807dd18ac67f81783c9cf62a93c85a9ac9fcb",
+      "current_sha256": "d057ad1c5b097d37ce76c4c1ceb807dd18ac67f81783c9cf62a93c85a9ac9fcb",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.2.1-smoke.log",
+      "expected_sha256": "f384d442901de1c5a2c554096f5b4c1954f7b66bb7a9118adfda302e42d9ad05",
+      "current_sha256": "f384d442901de1c5a2c554096f5b4c1954f7b66bb7a9118adfda302e42d9ad05",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-image-probe-build.log",
+      "expected_sha256": "991a64e5816b7ec396bc39eb7c85c7c1b820fab7c39fabb113c9ae7a0c816086",
+      "current_sha256": "991a64e5816b7ec396bc39eb7c85c7c1b820fab7c39fabb113c9ae7a0c816086",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-image-probe-header-conflict.log",
+      "expected_sha256": "84b04565bc851a9e6c24d87ca775dfbb9998e8c2c06b266d58fb51a565dfc0f5",
+      "current_sha256": "84b04565bc851a9e6c24d87ca775dfbb9998e8c2c06b266d58fb51a565dfc0f5",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-loaded-images-diagnostic.log",
+      "expected_sha256": "90b722b2a35b06b35cbd049f664a159403067a6e4711a6b09bdf5084ca671097",
+      "current_sha256": "90b722b2a35b06b35cbd049f664a159403067a6e4711a6b09bdf5084ca671097",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-loaded-library-initial-query.log",
+      "expected_sha256": "39faa715fc00791efdf8f963d85356e90c3f5fc176c4cc3d376be748346cfa49",
+      "current_sha256": "39faa715fc00791efdf8f963d85356e90c3f5fc176c4cc3d376be748346cfa49",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-loaded-library-proof.log",
+      "expected_sha256": "39faa715fc00791efdf8f963d85356e90c3f5fc176c4cc3d376be748346cfa49",
+      "current_sha256": "39faa715fc00791efdf8f963d85356e90c3f5fc176c4cc3d376be748346cfa49",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-make-install.log",
+      "expected_sha256": "1cf6a25c99c82334d858b8bcabe03e07551589a547937dce713090a3736bcd35",
+      "current_sha256": "1cf6a25c99c82334d858b8bcabe03e07551589a547937dce713090a3736bcd35",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-make.log",
+      "expected_sha256": "0ea9fd4c0ffd46932ac822de39572d53c644ade6bf5c423901f95b1cb0bc0bcf",
+      "current_sha256": "0ea9fd4c0ffd46932ac822de39572d53c644ade6bf5c423901f95b1cb0bc0bcf",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-package-signature.log",
+      "expected_sha256": "ca045da25cc6ea75887b9c56dda9ccf7550dbdff278ed367a52f5aea70efd8f6",
+      "current_sha256": "ca045da25cc6ea75887b9c56dda9ccf7550dbdff278ed367a52f5aea70efd8f6",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r460-runtime-initial.log",
+      "expected_sha256": "dab653542616e923b2ac3130aebdc4dc36fc1db3821b6520a239c9847d1faed1",
+      "current_sha256": "dab653542616e923b2ac3130aebdc4dc36fc1db3821b6520a239c9847d1faed1",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/r461-current-dplyr-smoke.log",
+      "expected_sha256": "790d87b9c34801c69376d60d74f7204113a3c5d6bf10e27f028e6e12e47d067c",
+      "current_sha256": "790d87b9c34801c69376d60d74f7204113a3c5d6bf10e27f028e6e12e47d067c",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "install-clean-dplyr-matrix.py",
+      "expected_sha256": "c10d3b3031521a5e673df4d0f98d44ceff1bddf2e13e682da10ceb2e3f81871f",
+      "current_sha256": "c10d3b3031521a5e673df4d0f98d44ceff1bddf2e13e682da10ceb2e3f81871f",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "install-dplyr-matrix.py",
+      "expected_sha256": "edec55322cd9e911b4c36e516dfe0233d3155dda21def61f3408cc6415634509",
+      "current_sha256": "edec55322cd9e911b4c36e516dfe0233d3155dda21def61f3408cc6415634509",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "install-clean-dependencies.py",
+      "expected_sha256": "ec772d5a45502b685a64ca7c07c7cd42bf1e85104566ef6b42ddb03e94f90cbc",
+      "current_sha256": "ec772d5a45502b685a64ca7c07c7cd42bf1e85104566ef6b42ddb03e94f90cbc",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "install-dependencies.py",
+      "expected_sha256": "af49d47a2892e1dab8d262ad2a25e04a49fda08da3ba04577ac9fb46d36cc652",
+      "current_sha256": "af49d47a2892e1dab8d262ad2a25e04a49fda08da3ba04577ac9fb46d36cc652",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "verify-final-preflight.py",
+      "expected_sha256": "498330446ccb43acf245a327b0dc6d1f3fb6b9c663649a297e6bc7ccfe0192a2",
+      "current_sha256": "b8f9e5142d7078d6533a1e646186edf0601072457d670e5d521b1bbaf3dfb87e",
+      "matches": false,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "runtime-smoke.R",
+      "expected_sha256": "99f080c744e49d328c79b7597a001a041fe269a32993b6ec2494d224f9f98ed5",
+      "current_sha256": "99f080c744e49d328c79b7597a001a041fe269a32993b6ec2494d224f9f98ed5",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "runtime-smoke-initial-diagnostic.R",
+      "expected_sha256": "6423750d5d4d7e5775faff67cca86df4a6716da87ea27e43959884953fadda0a",
+      "current_sha256": "6423750d5d4d7e5775faff67cca86df4a6716da87ea27e43959884953fadda0a",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "runtime-clean-probe/images.so",
+      "expected_sha256": "23e3f098c2725266e75bd45e6410d462fa267ab16fd6227b23d85782513a3155",
+      "current_sha256": "23e3f098c2725266e75bd45e6410d462fa267ab16fd6227b23d85782513a3155",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "runtime-clean-probe/images.c",
+      "expected_sha256": "a5b2aa065d2c9e1c67fef8a796442b1f561ad782f934239511c1ea332b8599c5",
+      "current_sha256": "a5b2aa065d2c9e1c67fef8a796442b1f561ad782f934239511c1ea332b8599c5",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "runtime-clean-probe/images.o",
+      "expected_sha256": "df8b3a611813f9701474ade31107626c2ab77d0dbc30f59190ef2c56d6780cd9",
+      "current_sha256": "df8b3a611813f9701474ade31107626c2ab77d0dbc30f59190ef2c56d6780cd9",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "runtime-clean-probe/check.R",
+      "expected_sha256": "883f0eff437260537d8f0283984b421c1a9a25849ed2847712a525c9ce0b79d8",
+      "current_sha256": "883f0eff437260537d8f0283984b421c1a9a25849ed2847712a525c9ce0b79d8",
+      "matches": true,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-cli.log",
+      "expected_sha256": "5bc735ab69c8745c4e98662055434adfd5c7e59d897c49c947e499f325f50f8d",
+      "current_sha256": "5bc735ab69c8745c4e98662055434adfd5c7e59d897c49c947e499f325f50f8d",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-generics.log",
+      "expected_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "current_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-glue.log",
+      "expected_sha256": "1be79b86abaaa51f8457b83054b51b44bf54c364d41b53fc4fc8ddc6b471ed9b",
+      "current_sha256": "1be79b86abaaa51f8457b83054b51b44bf54c364d41b53fc4fc8ddc6b471ed9b",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-magrittr.log",
+      "expected_sha256": "f5dea1db0b046c288698cbca791c641d30f232e5ebcba7489ead9de0822e64ea",
+      "current_sha256": "f5dea1db0b046c288698cbca791c641d30f232e5ebcba7489ead9de0822e64ea",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-R6.log",
+      "expected_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "current_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-rlang.log",
+      "expected_sha256": "80a9eac97343ead41a1a5bee2c39a20961914223b054bd13bb8edbb67f1d68bb",
+      "current_sha256": "80a9eac97343ead41a1a5bee2c39a20961914223b054bd13bb8edbb67f1d68bb",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-utf8.log",
+      "expected_sha256": "429f20265ee83dd24eb405f3d4d247e749105f06d1a517d1559fef40a8280bbf",
+      "current_sha256": "429f20265ee83dd24eb405f3d4d247e749105f06d1a517d1559fef40a8280bbf",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-pkgconfig.log",
+      "expected_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "current_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-withr.log",
+      "expected_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "current_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-lifecycle.log",
+      "expected_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "current_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-vctrs.log",
+      "expected_sha256": "c456c7fd1f5352f2aa7d43bc5e9e91136e9bb58ba69965b628a38d2c0a115544",
+      "current_sha256": "c456c7fd1f5352f2aa7d43bc5e9e91136e9bb58ba69965b628a38d2c0a115544",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-pillar.log",
+      "expected_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "current_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-tibble.log",
+      "expected_sha256": "1d212b52b335da23c8f7ee8768cec73d515f274c2558a4e5e27cb4401f54fe12",
+      "current_sha256": "1d212b52b335da23c8f7ee8768cec73d515f274c2558a4e5e27cb4401f54fe12",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/clean-dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/clean-dependency-tidyselect.log",
+      "expected_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "current_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-cli.log",
+      "expected_sha256": "0352eca60af182de78936757f9a8cb8614acc967eb46a9044543ae11ba3ffcb3",
+      "current_sha256": "0352eca60af182de78936757f9a8cb8614acc967eb46a9044543ae11ba3ffcb3",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-generics.log",
+      "expected_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "current_sha256": "3a14fd6ac3eff951d1c60b04122a8dd14f3387e71649d6e0a3f408b7985efa97",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-glue.log",
+      "expected_sha256": "7c82278acf54f9fafde36e8b0fc97a0b52b387d86be4694c26f1aa14d378fd3f",
+      "current_sha256": "7c82278acf54f9fafde36e8b0fc97a0b52b387d86be4694c26f1aa14d378fd3f",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-magrittr.log",
+      "expected_sha256": "1c4d8922fd0e209e5002f52b16e829483c8787d75e0ac9e4dc871b6df3dea69c",
+      "current_sha256": "1c4d8922fd0e209e5002f52b16e829483c8787d75e0ac9e4dc871b6df3dea69c",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-R6.log",
+      "expected_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "current_sha256": "bf8ee38b4430d9bdedec01b4d69a21cbb25c94c90edd2739086ab6311afbeedf",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-rlang.log",
+      "expected_sha256": "4310a49fbd8074c5368c7fd62a67af1bc8c0a5d9d800f76032634d913999e73d",
+      "current_sha256": "4310a49fbd8074c5368c7fd62a67af1bc8c0a5d9d800f76032634d913999e73d",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-utf8.log",
+      "expected_sha256": "28e63e32b46bc3c2cfee4787f2bd5035d508d79ba635dbc512eeda661a7f23dd",
+      "current_sha256": "28e63e32b46bc3c2cfee4787f2bd5035d508d79ba635dbc512eeda661a7f23dd",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-pkgconfig.log",
+      "expected_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "current_sha256": "56f8d7fc882d737ecb91af89559c3997d09540335652a6b48ff796a6a6108ceb",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-withr.log",
+      "expected_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "current_sha256": "928237a9b4868b95e5db6a4026df318a21002ca1c2a35d354589062acaec5032",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-lifecycle.log",
+      "expected_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "current_sha256": "7a3c2e9bb56ec7d553bd9d62a202deaea97e0165ef5dd9bfc3991b439348cee7",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-vctrs.log",
+      "expected_sha256": "8f6f54de157ab15bbcd171ec78a13a978a9c63d82649ac9ff4465104e4454b93",
+      "current_sha256": "8f6f54de157ab15bbcd171ec78a13a978a9c63d82649ac9ff4465104e4454b93",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-pillar.log",
+      "expected_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "current_sha256": "6f9be8e0b18d7fdb4d9eca75d0427888f9301227052ad695a0db27896f2d5bb5",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-tibble.log",
+      "expected_sha256": "3d4aab2b6762e41edfa95ab90cb6931ea77362cc6680d5bab7d8d0a2c0059fb3",
+      "current_sha256": "3d4aab2b6762e41edfa95ab90cb6931ea77362cc6680d5bab7d8d0a2c0059fb3",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/dependency-installs.json",
+      "field": "log_sha256",
+      "path": "logs/dependency-tidyselect.log",
+      "expected_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "current_sha256": "0af561b3cf93cee74d53860d0caab5826b8f67bcd1514fdf64a2cd7abff8112a",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/r460-clean-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.0-install.log",
+      "expected_sha256": "5f4d0e6add306cd48ca1e06d0385caaa6a6a30539d4967cebdd1bf98af278be5",
+      "current_sha256": "5f4d0e6add306cd48ca1e06d0385caaa6a6a30539d4967cebdd1bf98af278be5",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-clean-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.1-install.log",
+      "expected_sha256": "302ab37c2b7b770d2b8210b93c505c01272c5c708cca85547afbaa93b95501aa",
+      "current_sha256": "302ab37c2b7b770d2b8210b93c505c01272c5c708cca85547afbaa93b95501aa",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-clean-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.2-install.log",
+      "expected_sha256": "87f756b5caf39243562c75768f86317559ab15786b6d28def76bf9182f86e719",
+      "current_sha256": "87f756b5caf39243562c75768f86317559ab15786b6d28def76bf9182f86e719",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-clean-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.3-install.log",
+      "expected_sha256": "ec57c516708957e0b48775bb0d391b08a55b53d70f9d8b044d2f5c115d9d532c",
+      "current_sha256": "ec57c516708957e0b48775bb0d391b08a55b53d70f9d8b044d2f5c115d9d532c",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-clean-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.1.4-install.log",
+      "expected_sha256": "26ebaf59b456bb80f7fe124ac2e5c4d8627f9fe0578c1e3e287113c060e7d710",
+      "current_sha256": "26ebaf59b456bb80f7fe124ac2e5c4d8627f9fe0578c1e3e287113c060e7d710",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-clean-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.2.0-install.log",
+      "expected_sha256": "47ed9da1eab98808242998921294503eab19e44a76567a825b479264d93ba670",
+      "current_sha256": "47ed9da1eab98808242998921294503eab19e44a76567a825b479264d93ba670",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-clean-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-clean-dplyr-1.2.1-install.log",
+      "expected_sha256": "f9facc1f72f1d111a6169f941dcc94e8296e3e4cc310509497922591109f4e9c",
+      "current_sha256": "f9facc1f72f1d111a6169f941dcc94e8296e3e4cc310509497922591109f4e9c",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/r460-clean-dplyr-installs.json",
+      "field": "smoke_sha256",
+      "path": "logs/r460-clean-dplyr-1.2.1-smoke.log",
+      "expected_sha256": "a5ec475b7b5bae79d17c95d9509382a7c7fb8281408cb92f75b3eba455924fb9",
+      "current_sha256": "a5ec475b7b5bae79d17c95d9509382a7c7fb8281408cb92f75b3eba455924fb9",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/r460-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.0-install.log",
+      "expected_sha256": "59f75513b0bd7f9a01e36cd0bda09616a1cac57fa1a54dc4f2af887c30edff9c",
+      "current_sha256": "59f75513b0bd7f9a01e36cd0bda09616a1cac57fa1a54dc4f2af887c30edff9c",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.1-install.log",
+      "expected_sha256": "7227a53ec69a77170fff9c0c4c214548b5775f6730d9a9d953ed3a32c4a620d0",
+      "current_sha256": "7227a53ec69a77170fff9c0c4c214548b5775f6730d9a9d953ed3a32c4a620d0",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.2-install.log",
+      "expected_sha256": "f40b85797536d3b80d03fc8d9415210b37e9e4e03559f5c38d812a33b10d0890",
+      "current_sha256": "f40b85797536d3b80d03fc8d9415210b37e9e4e03559f5c38d812a33b10d0890",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.3-install.log",
+      "expected_sha256": "7e1e58d61775deccada143ce083fdaff6f842c685e3674328ee8038857af0c4f",
+      "current_sha256": "7e1e58d61775deccada143ce083fdaff6f842c685e3674328ee8038857af0c4f",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.1.4-install.log",
+      "expected_sha256": "9d9605fc975f16cd14d8fb3323df0cd882de0c939c58b152b1d7864167111f24",
+      "current_sha256": "9d9605fc975f16cd14d8fb3323df0cd882de0c939c58b152b1d7864167111f24",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.2.0-install.log",
+      "expected_sha256": "87c06b0aeb9cade5cc0f0f1214d84518d06d0ea4aff48a0f779f6712b9855d61",
+      "current_sha256": "87c06b0aeb9cade5cc0f0f1214d84518d06d0ea4aff48a0f779f6712b9855d61",
+      "matches": true,
+      "exit_code": 1
+    },
+    {
+      "manifest": "manifests/r460-dplyr-installs.json",
+      "field": "log_sha256",
+      "path": "logs/r460-dplyr-1.2.1-install.log",
+      "expected_sha256": "e3975ce90dd21f743961f0111d118cb1653ff529e63a7e13922e4c23baa9c53b",
+      "current_sha256": "e3975ce90dd21f743961f0111d118cb1653ff529e63a7e13922e4c23baa9c53b",
+      "matches": true,
+      "exit_code": 0
+    },
+    {
+      "manifest": "manifests/r460-dplyr-installs.json",
+      "field": "smoke_sha256",
+      "path": "logs/r460-dplyr-1.2.1-smoke.log",
+      "expected_sha256": "f384d442901de1c5a2c554096f5b4c1954f7b66bb7a9118adfda302e42d9ad05",
+      "current_sha256": "f384d442901de1c5a2c554096f5b4c1954f7b66bb7a9118adfda302e42d9ad05",
+      "matches": true,
+      "exit_code": 1
+    }
+  ],
+  "known_initial_diagnostic_mismatches": [
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "log_sha256",
+      "path": "logs/final-preflight-verification.log",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "current_sha256": "7a4b4394e8e1273e5e6b4e6ea772e11b6933576469effa5ceca1b8bd909730e6",
+      "matches": false,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    },
+    {
+      "manifest": "manifests/final-qualification-initial-self-log-diagnostic.json",
+      "field": "recipe_sha256",
+      "path": "verify-final-preflight.py",
+      "expected_sha256": "498330446ccb43acf245a327b0dc6d1f3fb6b9c663649a297e6bc7ccfe0192a2",
+      "current_sha256": "b8f9e5142d7078d6533a1e646186edf0601072457d670e5d521b1bbaf3dfb87e",
+      "matches": false,
+      "disposition": "Retained historical metadata-writer diagnostic; known stale entries are not final evidence"
+    }
+  ],
+  "preflight_context_inputs": [
+    {
+      "path": "/private/tmp/dta-direct-stage5-handoff-draft.md",
+      "sha256": "72fa1efccea15fa523974ea2d36ce15e82c1794309f47147ca46b7db86c82c55",
+      "current_sha256": "40acf753f623e6b58871d56c007b417e2c7f6f94a4ecb967707bb6f65ff85698",
+      "matches_recorded_bytes": false,
+      "selected": false,
+      "role": "Preparatory context, not an input consumed by install/smoke recipes"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-runtime-inventory.json",
+      "sha256": "36a42e44d7f08e2fd60b2d1697be9872333d57d328520e0dcfc4c9a22be0826f",
+      "current_sha256": "36a42e44d7f08e2fd60b2d1697be9872333d57d328520e0dcfc4c9a22be0826f",
+      "matches_recorded_bytes": true,
+      "selected": false,
+      "role": "Preparatory context, not an input consumed by install/smoke recipes"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-dplyr-api-preflight.json",
+      "sha256": "5b35716fd678a108b3be9db314f3c7396613faff04352f34a31943e9655a0cf2",
+      "current_sha256": "5b35716fd678a108b3be9db314f3c7396613faff04352f34a31943e9655a0cf2",
+      "matches_recorded_bytes": true,
+      "selected": false,
+      "role": "Preparatory context, not an input consumed by install/smoke recipes"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-context-source-preparation.json",
+      "sha256": "b6310bcad4082da714ddd8545d480be8c58d281926e81a86c0e0275ab30e0c5c",
+      "current_sha256": "b6310bcad4082da714ddd8545d480be8c58d281926e81a86c0e0275ab30e0c5c",
+      "matches_recorded_bytes": true,
+      "selected": false,
+      "role": "Preparatory context, not an input consumed by install/smoke recipes"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/r-package/dtatools/DESCRIPTION",
+      "sha256": "7156a0c39a26f1cd0e851643eed4f8fad1b4d89e889181f062ef6f77e589ae77",
+      "git_head": "c52866071ac6b1baa75b7bb04c51dd5b254835d7",
+      "current_sha256": "7156a0c39a26f1cd0e851643eed4f8fad1b4d89e889181f062ef6f77e589ae77",
+      "matches_recorded_bytes": true,
+      "selected": false,
+      "role": "Preparatory context, not an input consumed by install/smoke recipes"
+    }
+  ]
+}

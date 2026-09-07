@@ -1,0 +1,12 @@
+[
+  {
+    "tag": "v1.1.0",
+    "commit": "b67769f92c32583ba7b5522f07fcd3790df39021",
+    "source_url": "https://github.com/tidyverse/dplyr/tree/b67769f92c32583ba7b5522f07fcd3790df39021"
+  },
+  {
+    "tag": "v1.2.0",
+    "commit": "6aee1cbaa6ee8c666fa45a8bdf48a8ca008c5a2c",
+    "source_url": "https://github.com/tidyverse/dplyr/tree/6aee1cbaa6ee8c666fa45a8bdf48a8ca008c5a2c"
+  }
+]

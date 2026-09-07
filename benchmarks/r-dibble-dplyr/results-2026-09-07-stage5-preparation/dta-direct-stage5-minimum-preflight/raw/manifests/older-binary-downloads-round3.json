@@ -1,0 +1,20 @@
+[
+  {
+    "url": "https://cran.r-project.org/bin/macosx/big-sur-arm64/contrib/4.3/dplyr_1.1.4.tgz",
+    "file": "downloads/binary-preflight/dplyr-cran-r43-1.1.4.tgz",
+    "size": 1595883,
+    "sha256": "f78dbdaaeebed0c314b54a8c632fcba5952954ada924286eceeadbec691c9876",
+    "http_status": 200
+  },
+  {
+    "url": "https://cran.r-project.org/bin/macosx/big-sur-arm64/contrib/4.4/dplyr_1.1.4.tgz",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "url": "https://cran.r-project.org/bin/macosx/big-sur-arm64/contrib/4.3/PACKAGES.gz",
+    "file": "downloads/binary-preflight/cran-r43-packages.gz",
+    "size": 2648886,
+    "sha256": "14c3a90956ff7cfec9ab972f2e3eed07f0eb7b9f7f63236fd31d022320910be0",
+    "http_status": 200
+  }
+]

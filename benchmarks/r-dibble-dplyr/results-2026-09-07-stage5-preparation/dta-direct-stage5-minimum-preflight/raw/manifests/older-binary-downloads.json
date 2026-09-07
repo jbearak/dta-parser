@@ -1,0 +1,17 @@
+[
+  {
+    "url": "https://cran.r-project.org/bin/macosx/sonoma-arm64/contrib/4.6/PACKAGES.gz",
+    "file": "downloads/binary-preflight/r46-packages.gz",
+    "size": 2985980,
+    "sha256": "6821cb4cdf8aff84ff7378e7e9bcc1aa017003600fa8af699e977769a7f8daa0",
+    "http_status": 200
+  },
+  {
+    "url": "https://cran-archive.r-project.org/bin/macosx/big-sur-arm64/contrib/4.4/dplyr_1.1.4.tgz",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "url": "https://cran.r-project.org/bin/macosx/big-sur-arm64/contrib/4.5/dplyr_1.2.0.tgz",
+    "error": "HTTP Error 404: Not Found"
+  }
+]

@@ -1,0 +1,48 @@
+* installing *source* package ‘dplyr’ ...
+** this is package ‘dplyr’ version ‘1.2.0’
+** package ‘dplyr’ successfully unpacked and MD5 sums checked
+** using staged installation
+** libs
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -std=gnu++20 -I"/opt/homebrew/Cellar/r/4.6.1/lib/R/include" -DNDEBUG   -I/opt/homebrew/opt/gettext/include -I/opt/homebrew/opt/readline/include -I/opt/homebrew/opt/xz/include -I/opt/homebrew/include -I/opt/homebrew/include -DTBB_INTERFACE_NEW=1    -fPIC  -g -O2   -c chop.cpp -o chop.o
+chop.cpp:17:25: error: use of undeclared identifier 'Rf_allocSExp'
+   17 |     SEXP prom = PROTECT(Rf_allocSExp(PROMSXP));
+      |                         ^~~~~~~~~~~~
+chop.cpp:18:5: error: use of undeclared identifier 'SET_PRENV'
+   18 |     SET_PRENV(prom, R_EmptyEnv);
+      |     ^~~~~~~~~
+chop.cpp:31:9: error: use of undeclared identifier 'SET_PRCODE'
+   31 |         SET_PRCODE(prom, column);
+      |         ^~~~~~~~~~
+chop.cpp:34:9: error: use of undeclared identifier 'SET_PRCODE'
+   34 |         SET_PRCODE(prom, column);
+      |         ^~~~~~~~~~
+chop.cpp:37:7: error: use of undeclared identifier 'SET_PRCODE'
+   37 |       SET_PRCODE(prom, Rf_lang3(dplyr::functions::vec_chop, column, rows));
+      |       ^~~~~~~~~~
+chop.cpp:40:5: error: use of undeclared identifier 'SET_PRVALUE'
+   40 |     SET_PRVALUE(prom, R_UnboundValue);
+      |     ^~~~~~~~~~~
+chop.cpp:56:25: error: use of undeclared identifier 'Rf_allocSExp'
+   56 |     SEXP prom = PROTECT(Rf_allocSExp(PROMSXP));
+      |                         ^~~~~~~~~~~~
+chop.cpp:57:5: error: use of undeclared identifier 'SET_PRENV'
+   57 |     SET_PRENV(prom, R_EmptyEnv);
+      |     ^~~~~~~~~
+chop.cpp:58:5: error: use of undeclared identifier 'SET_PRCODE'
+   58 |     SET_PRCODE(prom, Rf_lang2(dplyr::functions::list, p_data[i]));
+      |     ^~~~~~~~~~
+chop.cpp:59:5: error: use of undeclared identifier 'SET_PRVALUE'
+   59 |     SET_PRVALUE(prom, R_UnboundValue);
+      |     ^~~~~~~~~~~
+chop.cpp:133:25: error: use of undeclared identifier 'Rf_findVarInFrame'
+  133 |     SEXP prom = PROTECT(Rf_findVarInFrame(env, name));
+      |                         ^~~~~~~~~~~~~~~~~
+chop.cpp:134:42: error: use of undeclared identifier 'PRVALUE'
+  134 |     SEXP val = TYPEOF(prom) == PROMSXP ? PRVALUE(prom) : prom;
+      |                                          ^~~~~~~
+12 errors generated.
+make: *** [chop.o] Error 1
+ERROR: compilation failed for package ‘dplyr’
+* removing ‘/private/tmp/dta-direct-stage1-validation/dplyr-1.2.0/library/dplyr’

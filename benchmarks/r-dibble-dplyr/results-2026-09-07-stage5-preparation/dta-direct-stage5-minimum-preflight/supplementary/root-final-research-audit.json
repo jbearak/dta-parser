@@ -1,0 +1,9 @@
+{
+  "time_utc": "2026-09-07T09:14:09.728606+00:00",
+  "scope": "Read entire final research note; independently verified all 189 artifact sizes/hashes, accepted/rejected distinctions and concrete older-binary load failure. Earlier root validation separately checked clean before/after one-libR image records and seven install/smoke logs. No workloads rerun.",
+  "artifact_index_sha256": "f1b76e34ba9e53cf0e4dffb3413c213f87bb02fc342b13ee487a0287c8ec9d85",
+  "research_note_sha256": "d566bc40493651d9c752b657a6a3fff088e72a98728dcf43b8d3faa8260b2deb",
+  "verified_artifacts": 189,
+  "all_artifact_hashes_pass": true,
+  "minimum_conclusion": "First pristine source-installable release in tested declared range on clean R4.6.0 is1.2.1; older-binary universality not proved and actual adapter matrix/minimum decision remains Stage5/9."
+}
