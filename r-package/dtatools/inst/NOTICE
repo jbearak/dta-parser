@@ -48,6 +48,32 @@ Adapted from dplyr 1.2.1:
     rowwise identifier and reconstruction cases from test-group-by.R,
     test-grouped-df.R, test-generics.R and test-rowwise.R, with package-specific
     storage, metadata, indexing and later-write isolation assertions.
+  Additional Stage 5 sources:
+    R/context.R: context_env, public context helpers and restoration contract
+    R/conditions.R: warning record fields and signal_warnings integration
+    R/data-mask.R: DataMask helper methods, fresh lexical masks, used columns,
+      rowwise extraction and obsolete-mask lifetime
+    R/mutate.R: mutate_cols, mutate_col, mutate_keep and mutate_relocate policies
+    R/transmute.R: transmute.data.frame and check_transmute_args policies
+    R/by.R: compute_by and compute_by_groups ordering policies
+    R/group-by.R: group_by_prepare and add_computed_columns
+    R/rowwise.R: rowwise.data.frame and rowwise.grouped_df
+    src/chop.cpp: zero-row list/list-of prototype rule
+  Destinations: R/dibble-expressions.R, R/dibble-dplyr-context.R and the
+    mutate/transmute/group_by/rowwise/ungroup methods in R/mutate-data.R.
+  Changes: one package-owned R evaluator replaces dplyr whole-verb evaluation.
+    Column generations use isolated public handles and fixed-group bindings,
+    with call-local invalidation of deferred reads. Public vctrs operations
+    perform recycling and chunk assembly. Stata typing and conservative capture
+    precede dependent expressions. Group metadata uses the existing module.
+    Private context_env, expand_pick, expand_across and signal_warnings calls are confined to
+    the optional adapter; their function bodies are not copied or patched.
+    Expanded selections use full current columns; public fallback helpers use
+    real dplyr against the current group. Minimum supported dplyr is 1.2.1.
+  Additional tests: tests/testthat/test-dibble-expressions.R adapts helper,
+    empty-group, capture and expansion cases from test-mutate.R, test-across.R,
+    test-pick.R, test-group-by.R and test-rowwise.R and the standalone Stage 5
+    helper proof, adding Stata sequencing and symmetric write-isolation checks.
   The inspected files contain no separate file-level copyright or license.
 
 Adapted from R 4.6.1, released 2026-06-24 (SVN revision 90187):

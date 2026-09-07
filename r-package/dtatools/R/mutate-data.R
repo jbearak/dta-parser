@@ -2828,6 +2828,9 @@ mutate.dtatools_ref_data <- function(
     .data, ..., .by = NULL, .keep = c("all", "used", "unused", "none"),
     .before = NULL, .after = NULL
 ) {
+    if (is_dibble(.data)) return(.dibble_mutate(
+        .data, rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by),
+        .keep, rlang::enquo(.before), rlang::enquo(.after)))
     .typed_mask_verb(
         .data, "mutate", rlang::enquos(..., .ignore_empty = "all"),
         list(
@@ -2840,6 +2843,13 @@ mutate.dtatools_ref_data <- function(
 
 #' @export
 transmute.dtatools_ref_data <- function(.data, ...) {
+    if (is_dibble(.data)) {
+        dots <- rlang::enquos(..., .ignore_empty = "all")
+        unsupported <- intersect(names(dots), c(".keep", ".before", ".after"))
+        if (length(unsupported)) rlang::abort(paste0(
+            "The `", unsupported[[1L]], "` argument is not supported."))
+        return(.dibble_mutate(.data, dots, transmute = TRUE))
+    }
     .typed_mask_verb(
         .data, "transmute", rlang::enquos(..., .ignore_empty = "all"),
         list(), "transmute()"
@@ -3569,6 +3579,8 @@ group_by.dtatools_ref_data <- function(
     .data, ..., .add = FALSE,
     .drop = .group_drop_default(.data)
 ) {
+    if (is_dibble(.data)) return(.dibble_group_by(
+        .data, rlang::enquos(..., .ignore_empty = "all"), .add, .drop))
     # `group_by(d, g = x > 1)` computes a key as `mutate()` would, and
     # the key is typed before the groups form, so `NA` and `""` in a
     # computed string key make one group.
@@ -3634,6 +3646,16 @@ group_nest.dtatools_ref_data <- function(.tbl, ..., .key = "data",
 
 #' @export
 ungroup.dtatools_ref_data <- function(x, ...) {
+    if (is_dibble(x)) {
+        context <- .begin_dibble_result(x, "ungroup()", "columns")
+        keys <- character()
+        if (inherits(x, "grouped_df") && !missing(...)) {
+            removed <- names(tidyselect::eval_select(rlang::expr(c(...)), x))
+            keys <- setdiff(.group_vars(x), removed)
+        } else rlang::check_dots_empty()
+        return(.dibble_group_result(x, context, context$columns, keys,
+                                    .group_drop_default(x)))
+    }
     .regroup_reference_data(x, .reference_delegate(
         x, sys.call(), dplyr::ungroup, parent.frame()
     ))
@@ -3641,6 +3663,18 @@ ungroup.dtatools_ref_data <- function(x, ...) {
 
 #' @export
 rowwise.dtatools_ref_data <- function(data, ...) {
+    if (is_dibble(data)) {
+        context <- .begin_dibble_result(data, "rowwise()", "columns")
+        if (inherits(data, "grouped_df")) {
+            if (!missing(...)) rlang::abort(c("Can't re-group when creating rowwise data.",
+                i = "Either first `ungroup()` or call `rowwise()` without arguments."))
+            keys <- .group_vars(data)
+        } else {
+            locations <- tidyselect::eval_select(rlang::expr(c(...)), data)
+            keys <- names(context$columns)[unname(locations)]
+        }
+        return(.dibble_group_result(data, context, context$columns, keys, rowwise = TRUE))
+    }
     .regroup_reference_data(data, .reference_delegate(
         data, sys.call(), dplyr::rowwise, parent.frame()
     ))

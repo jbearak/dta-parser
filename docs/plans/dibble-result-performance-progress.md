@@ -7,7 +7,31 @@ authorized sequential PR, independent-review, CI and CodeRabbit process. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stages 1 through 3 complete, Stage 4 active
+## Stages 1 through 4 complete, Stage 5 active
+
+Stage 4 [PR #195](https://github.com/jbearak/dta-parser/pull/195) merged normally
+at 2026-09-07 15:23:12 UTC as
+`f622f1ddba04b2bb7ac07415faccf2b417aab0e6`. Root verified the remote merge,
+its exact match to final reviewed head `443e548ac3280d279587ad5024d200cf15ccedb0`,
+all 15 passing CI checks and completed substantive CodeRabbit review. The package
+tree remains `f88005766aee9b9dd5827b33a3930feff6672008`, identical to qualified
+`c8ca0a4`. The receipt is retained at
+`/private/tmp/dta-direct-stage4-validation/pr195-verified-normal-merge.json`.
+
+Stage 5 is active on `codex/direct-dibble-expressions` in
+`/private/tmp/dta-direct-stage5`, based on that verified merge. The implementation
+covers a shared expression evaluator, direct mutate/transmute and computed
+grouping, including rowwise/ungroup assembly. The standalone helper proof passes
+35 bounded cases on real dplyr 1.2.1 under R 4.6.1 and qualified clean R 4.6.0.
+It proves context feasibility, not production evaluation, ownership or capture
+parity. Stage 5 must retain obsolete-mask errors for deferred reads and type
+each expression before dependent expressions. Both independent actual-diff
+reviews, exact-source integration qualification and external gates remain open.
+The twelve base-R read costs remain open for final assessment, and the three
+filter timing flags remain mandatory Stage 6 work. Stages 6 through 9 and the
+final actual downstream renv validation remain required; issue #172 stays open.
+
+The following Stage 4 record retains its historical premerge status and evidence.
 
 The original evidence and additive review supplement merged as
 [PR #196](https://github.com/jbearak/dta-parser/pull/196) and
