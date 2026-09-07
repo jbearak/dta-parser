@@ -18,6 +18,8 @@ parser.add_argument('output', type=Path)
 parser.add_argument('revision')
 args = parser.parse_args()
 GIT_ROOT = args.repo.resolve()
+if args.output.exists() or args.output.is_symlink():
+    raise RuntimeError('Fresh output required before any work')
 ROOT = args.output.resolve()
 REVISION = args.revision
 TREE = subprocess.check_output(['git', '-C', str(GIT_ROOT), 'rev-parse',
@@ -51,6 +53,18 @@ def write(path, value):
     payload = json.dumps(value, indent=2, sort_keys=True) + '\n'
     with path.open('x') as stream:
         stream.write(payload)
+
+def input_changes(before):
+    changes = []
+    for item in before:
+        try:
+            current = record(Path(item['path']))
+        except (OSError, RuntimeError) as error:
+            changes.append({'path': item['path'], 'error': str(error)})
+        else:
+            if current != item:
+                changes.append({'path': item['path'], 'current': current})
+    return changes
 
 def git(*arguments):
     return subprocess.check_output(['/opt/homebrew/bin/git', '-C', str(GIT_ROOT), *arguments])
@@ -171,7 +185,17 @@ def main():
           'scope': 'Exact Git export and committed installer/helpers; installed R/Rust and required R dependency trees. '
                    'Full SDK/system dynamic-library and Python runtime closures are not frozen.'})
     commands = []
+    consumed = []
+    def guard():
+        changes = input_changes(before + consumed)
+        if changes:
+            raise RuntimeError('Bound inputs changed: ' + repr(changes))
+        current = {str(path.relative_to(export)) for path in export.rglob('*')
+                   if path.is_file() or path.is_symlink()}
+        if current != expected_paths:
+            raise RuntimeError('Export inventory changed: ' + repr(sorted(current.symmetric_difference(expected_paths))))
     def run(label, command, cwd):
+        guard()
         log = ROOT / (label + '.log')
         item = {'label': label, 'command': command, 'cwd': str(cwd), 'started_utc': stamp()}
         with log.open('x') as stream:
@@ -181,6 +205,7 @@ def main():
         item['log'] = record(log)
         commands.append(item)
         write(ROOT / (label + '-command.json'), item)
+        guard()
         if item['returncode'] != 0:
             raise RuntimeError(f'{label} failed; retained at {log}')
     status = 'failed'
@@ -195,7 +220,8 @@ def main():
         tarball = ROOT / 'build' / ('dtatools_' + version + '.tar.gz')
         if not tarball.is_file():
             raise RuntimeError('R CMD build did not produce expected source archive')
-        write(ROOT / 'built-source-before-install.json', record(tarball))
+        consumed.append(record(tarball))
+        write(ROOT / 'built-source-before-install.json', consumed[-1])
         run('install', [str(R_INSTALL / 'bin/R'), 'CMD', 'INSTALL',
                          '--library=' + str(ROOT / 'library'), str(tarball)], ROOT / 'build')
         run('finish-install', [str(R_INSTALL / 'bin/Rscript'), '--vanilla', str(export / 'benchmarks/r-dibble-dplyr/expression-install-finish.R'),
@@ -208,11 +234,11 @@ def main():
                     raise RuntimeError(f'Unbound loaded dependency: {item}')
         status = 'complete'
     finally:
-        for item in before:
-            if record(Path(item['path'])) != item:
-                changed.append(item['path'])
+        changed = input_changes(before + consumed)
         generated = [str(path.relative_to(export)) for path in export.rglob('*')
                      if path.is_file() and str(path.relative_to(export)) not in expected_paths]
+        if changed or generated:
+            status = 'failed'
         write(ROOT / 'execution-result.json', {'status': status, 'commands': commands,
               'changed_bound_inputs': changed, 'generated_export_files': generated})
         installed = ROOT / 'library/dtatools'

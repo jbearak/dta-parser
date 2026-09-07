@@ -42,6 +42,29 @@ def write(path, value):
         stream.write(payload)
 
 
+def require_fresh(path):
+    require(not path.exists() and not path.is_symlink(), 'Fresh output required before any work')
+
+
+def input_changes(before):
+    changes = []
+    for row in before:
+        try:
+            current = identity(Path(row['path']))
+        except (OSError, RuntimeError) as error:
+            changes.append(dict(path=row['path'], error=str(error)))
+        else:
+            if current != row:
+                changes.append(dict(path=row['path'], current=current))
+    return changes
+
+
+def require_package_inventory(package, expected):
+    current = {p for p in package.rglob('*') if p.is_file() or p.is_symlink()}
+    require(current == expected, 'Package source inventory changed: ' +
+            repr(sorted(str(p) for p in current.symmetric_difference(expected))))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('phase', choices=['focused', 'full', 'package', 'native', 'rust'])
@@ -51,8 +74,9 @@ def main():
     parser.add_argument('library', type=Path)
     parser.add_argument('output', type=Path)
     args = parser.parse_args()
+    require_fresh(args.output)
     repo, library, output = args.repo.resolve(), args.library.resolve(), args.output.resolve()
-    require(not output.exists() and not output.is_symlink(), 'Fresh output required before any work')
+    require_fresh(output)
     driver = 'benchmarks/r-dibble-dplyr/run-expression-checks.py'
     git = lambda *a: subprocess.check_output(['git', '-C', str(repo), *a])
     require(Path(__file__).read_bytes() == git('show', args.runner_sha + ':' + driver),
@@ -105,6 +129,8 @@ def main():
     if args.phase == 'native':
         inputs.update(repo/file for file in ['benchmarks/r-reference-mutation/owned-atoms.R', 'benchmarks/r-dibble-dplyr/helpers.R'])
     before = [identity(p) for p in sorted(inputs)]
+    package_root = source/'r-package/dtatools'
+    package_inventory = {p for p in expected if p.is_relative_to(package_root)}
     write(output / 'inputs-before.json', dict(source_sha=args.source_sha,
         runner_sha=args.runner_sha, phase=args.phase, inputs=before,
         scope='Exact Git sources plus complete visible R/site/candidate library files. '
@@ -117,8 +143,9 @@ def main():
         environment.pop(variable, None)
     records = []
     def guard():
-        for row in before:
-            require(identity(Path(row['path'])) == row, 'Bound input changed: ' + row['path'])
+        changes = input_changes(before)
+        require(not changes, 'Bound inputs changed: ' + repr(changes))
+        require_package_inventory(package_root, package_inventory)
     def run(label, command, cwd=source, env=None):
         guard()
         record = dict(label=label, command=command, cwd=str(cwd),
@@ -136,6 +163,8 @@ def main():
     status = 'failed'
     changed = []
     try:
+        run('preflight', ['Rscript', '--vanilla', 'benchmarks/r-dibble-dplyr/expression-preflight.R',
+            str(library), args.source_sha, str(source), str(output)])
         if args.phase in ('focused', 'full'):
             pattern = 'dibble|owned|reference|group|mutat|replac' if args.phase == 'focused' else 'all'
             run('tests', ['Rscript', '--vanilla', 'benchmarks/r-dibble-dplyr/expression-checks.R',
@@ -167,6 +196,9 @@ def main():
             version = next(line.split(': ', 1)[1] for line in (source/'r-package/dtatools/DESCRIPTION').read_text().splitlines() if line.startswith('Version: '))
             package = output / ('dtatools_' + version + '.tar.gz')
             run('archive', ['sh', 'scripts/check-r-package-archive.sh', str(package)])
+            # Keep this archive's complete check tree even when check fails.
+            # The shared conformance gate also checks its own temporary copy.
+            run('check', ['R', 'CMD', 'check', '--no-manual', str(package)], output)
             binary = output/'binary'
             binary.mkdir()
             binary_library = binary/'library'
@@ -201,7 +233,13 @@ def main():
                 run(label, command, env=dict(environment, RUSTDOCFLAGS='-D warnings'))
         status = 'complete'
     finally:
-        changed = [row['path'] for row in before if identity(Path(row['path'])) != row]
+        changed = input_changes(before)
+        try:
+            require_package_inventory(package_root, package_inventory)
+        except RuntimeError as error:
+            changed.append(dict(package_inventory_error=str(error)))
+        if changed:
+            status = 'failed'
         write(output/'execution-result.json', dict(status=status, records=records, changed_inputs=changed))
         # Deliberately list before opening either of these two destinations.
         products = [identity(p) for p in sorted(output.rglob('*')) if p.is_file()

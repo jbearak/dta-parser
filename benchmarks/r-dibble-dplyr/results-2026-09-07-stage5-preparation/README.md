@@ -30,6 +30,13 @@ wrapper and the two inclusion records are new documentation, separate from
 those copied historical bytes. Historical absolute-path recipes are review
 records and must not be executed against this archive in place.
 
+The additive [inclusion correction](inclusion-correction.json) qualifies the
+new manifest's phrase “historical bytes/modes preserved.” Historical indexes
+establish the copied bytes; file modes were observed when this archive was
+made. The original minimum-study index did not record historical modes, so
+those observations cannot establish equality with its earlier modes. The
+original manifest, receipt and copy recipe remain unchanged.
+
 The original minimum study's missing historical writer/context bytes and
 unfrozen host binaries remain explicit limits. The later R 4.6.0 helper run
 adds new external dylib observations; it does not strengthen older records
