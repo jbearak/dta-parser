@@ -1,0 +1,289 @@
+{
+  "utc": "2026-09-07T16:26:50.356989+00:00",
+  "scope": "Frozen output inventories and contents independently audited. Execution receipts report unchanged inputs; no claim is made about later live-path immutability.",
+  "records": [
+    {
+      "directory": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3",
+      "products": 320,
+      "bytes": 52193312,
+      "receipt": {
+        "bytes": 567,
+        "mode": "0o644",
+        "sha256": "fb58470fed907ab79d527bc9bc7fd1f2eda784481fc464b90f68fcb1801aa026"
+      },
+      "manifest": {
+        "bytes": 141787,
+        "mode": "0o644",
+        "sha256": "e89af5d16252b024718171c2ec2875157e151f7804d7cbeb1144ded6d7b3bf8b"
+      },
+      "issues": [],
+      "missing": [],
+      "extra": [],
+      "acceptance": {
+        "changed_bound_inputs": [],
+        "manifest": {
+          "bytes": 141787,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3/output-manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3/output-manifest.json",
+          "sha256": "e89af5d16252b024718171c2ec2875157e151f7804d7cbeb1144ded6d7b3bf8b"
+        },
+        "package_tree": "f6331813d211255b4c949e04f34ce74537b142e2",
+        "revision": "4900dc831a0df2307146a7425b6c84633fd30db4",
+        "status": "complete"
+      }
+    },
+    {
+      "directory": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-behavior",
+      "products": 14,
+      "bytes": 1877099,
+      "receipt": {
+        "bytes": 907,
+        "mode": "0o644",
+        "sha256": "fb0b1ed29c2ab7fb0a94ac866fcfa29ad64591a010b73b362a2fa8a9b6276335"
+      },
+      "manifest": {
+        "bytes": 5853,
+        "mode": "0o644",
+        "sha256": "806477894841b973314411c2327f5911a785b64894bec0f366d0eb481ae154e0"
+      },
+      "issues": [],
+      "missing": [],
+      "extra": [],
+      "acceptance": {
+        "manifest": {
+          "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-behavior/output-manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-behavior/output-manifest.json",
+          "bytes": 5853,
+          "mode": "0o644",
+          "sha256": "806477894841b973314411c2327f5911a785b64894bec0f366d0eb481ae154e0"
+        },
+        "returncode": 0,
+        "changed_inputs": [],
+        "runtime_coverage": {
+          "before": {
+            "namespaces": 8,
+            "images": 364,
+            "libR": [
+              "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+            ]
+          },
+          "after": {
+            "namespaces": 25,
+            "images": 378,
+            "libR": [
+              "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+            ]
+          }
+        },
+        "integrity_error": null,
+        "accepted": true
+      }
+    },
+    {
+      "directory": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-observe",
+      "products": 14,
+      "bytes": 1876956,
+      "receipt": {
+        "bytes": 905,
+        "mode": "0o644",
+        "sha256": "043246270124fc7f2a39400373e9a5f82ac943205f5602250ba5eb4c9c679d1c"
+      },
+      "manifest": {
+        "bytes": 5843,
+        "mode": "0o644",
+        "sha256": "79eca8a54ec37d315ff7f0461dabb7f3ee5ee9c528b7a1591de402fb75cb8896"
+      },
+      "issues": [],
+      "missing": [],
+      "extra": [],
+      "acceptance": {
+        "manifest": {
+          "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-observe/output-manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-observe/output-manifest.json",
+          "bytes": 5843,
+          "mode": "0o644",
+          "sha256": "79eca8a54ec37d315ff7f0461dabb7f3ee5ee9c528b7a1591de402fb75cb8896"
+        },
+        "returncode": 0,
+        "changed_inputs": [],
+        "runtime_coverage": {
+          "before": {
+            "namespaces": 8,
+            "images": 364,
+            "libR": [
+              "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+            ]
+          },
+          "after": {
+            "namespaces": 24,
+            "images": 376,
+            "libR": [
+              "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+            ]
+          }
+        },
+        "integrity_error": null,
+        "accepted": true
+      }
+    },
+    {
+      "directory": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-focused",
+      "products": 15,
+      "bytes": 2400124,
+      "receipt": {
+        "bytes": 905,
+        "mode": "0o644",
+        "sha256": "ca0273e12cd66526304c904dc4dfd15e99c11b70918513fafa22a235357dda8f"
+      },
+      "manifest": {
+        "bytes": 6246,
+        "mode": "0o644",
+        "sha256": "19bda0217334c0211af0b0d8d04a4fd0138ff80eea5dc86abb807036add9bd3b"
+      },
+      "issues": [],
+      "missing": [],
+      "extra": [],
+      "acceptance": {
+        "manifest": {
+          "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-focused/output-manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-focused/output-manifest.json",
+          "bytes": 6246,
+          "mode": "0o644",
+          "sha256": "19bda0217334c0211af0b0d8d04a4fd0138ff80eea5dc86abb807036add9bd3b"
+        },
+        "returncode": 0,
+        "changed_inputs": [],
+        "runtime_coverage": {
+          "before": {
+            "namespaces": 8,
+            "images": 364,
+            "libR": [
+              "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+            ]
+          },
+          "after": {
+            "namespaces": 38,
+            "images": 388,
+            "libR": [
+              "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+            ]
+          }
+        },
+        "integrity_error": null,
+        "accepted": true
+      }
+    },
+    {
+      "directory": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-expressions",
+      "products": 15,
+      "bytes": 1892111,
+      "receipt": {
+        "bytes": 913,
+        "mode": "0o644",
+        "sha256": "ae18f2a44a0e3d728f3580d9893ac609ef6cd0820aa20e6402a813f83d69a186"
+      },
+      "manifest": {
+        "bytes": 6366,
+        "mode": "0o644",
+        "sha256": "30acb849a6d2f61a3b19868c1738bc8102df99852fbcd21961a20c3c67946132"
+      },
+      "issues": [],
+      "missing": [],
+      "extra": [],
+      "acceptance": {
+        "manifest": {
+          "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-expressions/output-manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-4900dc8-v3-expressions/output-manifest.json",
+          "bytes": 6366,
+          "mode": "0o644",
+          "sha256": "30acb849a6d2f61a3b19868c1738bc8102df99852fbcd21961a20c3c67946132"
+        },
+        "returncode": 0,
+        "changed_inputs": [],
+        "runtime_coverage": {
+          "before": {
+            "namespaces": 8,
+            "images": 364,
+            "libR": [
+              "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+            ]
+          },
+          "after": {
+            "namespaces": 32,
+            "images": 380,
+            "libR": [
+              "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+            ]
+          }
+        },
+        "integrity_error": null,
+        "accepted": true
+      }
+    },
+    {
+      "directory": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-14",
+      "products": 6,
+      "bytes": 1113564,
+      "receipt": {
+        "bytes": 529,
+        "mode": "0o644",
+        "sha256": "de980bb2a0e615e8dad0acc2272d1e4c8c0750ae4064e30c640379fe5a6ef8b3"
+      },
+      "manifest": {
+        "bytes": 2550,
+        "mode": "0o644",
+        "sha256": "d853dbf6ea8659d8501855948286c7731aa93d9bc7da7b15514163454b004b33"
+      },
+      "issues": [],
+      "missing": [],
+      "extra": [],
+      "acceptance": {
+        "manifest": {
+          "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-14/manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-14/manifest.json",
+          "bytes": 2550,
+          "mode": "0o644",
+          "sha256": "d853dbf6ea8659d8501855948286c7731aa93d9bc7da7b15514163454b004b33"
+        },
+        "returncode": 0,
+        "changed_inputs": [],
+        "namespace_coverage": true,
+        "integrity_error": null,
+        "accepted": true
+      }
+    },
+    {
+      "directory": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-4427a9b-qualification-14",
+      "products": 6,
+      "bytes": 1115378,
+      "receipt": {
+        "bytes": 537,
+        "mode": "0o644",
+        "sha256": "fd1cb9878ba29bc90143f1e96311108bbb84ecfeab9ec264a1e738d6efb2967b"
+      },
+      "manifest": {
+        "bytes": 2598,
+        "mode": "0o644",
+        "sha256": "11c2df47f1df9ab360ea0306ea7e12d602cab0abc1ca4dfc554260fe2be74056"
+      },
+      "issues": [],
+      "missing": [],
+      "extra": [],
+      "acceptance": {
+        "manifest": {
+          "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-4427a9b-qualification-14/manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-4427a9b-qualification-14/manifest.json",
+          "bytes": 2598,
+          "mode": "0o644",
+          "sha256": "11c2df47f1df9ab360ea0306ea7e12d602cab0abc1ca4dfc554260fe2be74056"
+        },
+        "returncode": 0,
+        "changed_inputs": [],
+        "namespace_coverage": true,
+        "integrity_error": null,
+        "accepted": true
+      }
+    }
+  ]
+}

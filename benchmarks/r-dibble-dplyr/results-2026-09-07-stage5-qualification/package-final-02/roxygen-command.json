@@ -1,0 +1,20 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "-e",
+    "stopifnot(as.character(packageVersion(\"roxygen2\")) == read.dcf(\"DESCRIPTION\", \"Config/roxygen2/version\")[[1L]]); roxygen2::roxygenise(\".\", load_code=\"source\")"
+  ],
+  "completed_utc": "2026-09-07T16:41:16.931461+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/source/r-package/dtatools",
+  "exit_code": 0,
+  "label": "roxygen",
+  "log": {
+    "bytes": 1350,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/roxygen.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/roxygen.log",
+    "sha256": "16e3425b8678292cf954d544d247f55e123a8635383369c62b8a8b23b19faa3f"
+  },
+  "started_utc": "2026-09-07T16:41:16.017134+00:00"
+}

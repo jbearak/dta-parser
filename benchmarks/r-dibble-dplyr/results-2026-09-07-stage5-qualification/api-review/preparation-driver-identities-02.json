@@ -1,0 +1,77 @@
+{
+  "scope": "Driver bytes observed at completed review; measurement launchers may later be updated for the separately prepared write experiment.",
+  "files": [
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure.py",
+      "bytes": 6464,
+      "sha256": "f05163a9ac197c84d4043fe9d5ea004126e5484d04ef2c36d907dfebc15f33a4",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure.R",
+      "bytes": 4420,
+      "sha256": "81f06d40241cd8610ba0c8f2d4f0ef8fb7a1777b305446f3823f2b0ee0abf29d",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/memory.py",
+      "bytes": 6745,
+      "sha256": "f22129fc8d306b41c90321f186b6a90e9f3732e30cbc33352fc41f9ca93918e1",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/memory.R",
+      "bytes": 3474,
+      "sha256": "dd8327472c009a22aa210f2e2f2ad7cc08baddf62fba70d0af548bae259acdd3",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/cases-v10.R",
+      "bytes": 8150,
+      "sha256": "cb6ca67c6a71a5cc6aac68847e1e2d6f73754777f6fbdec8a99d2fd23f54ca8d",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/qualify-v14.py",
+      "bytes": 5967,
+      "sha256": "d9c7fcb7cca039f3347f8961d04f54b811065fb5298699b80182d24616ae0008",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/qualify-v5.R",
+      "bytes": 5304,
+      "sha256": "bca00ca931c48e1724a3ea77ccd712f20a06b994fe3affebdb0f305fad5247b2",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/install-candidate-v3.py",
+      "bytes": 14909,
+      "sha256": "d0b5b900da1d23bfc1e05f35b5140c19efad9de83563b9520f3626e3cedbbcdb",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/finish-minimum-install.R",
+      "bytes": 2545,
+      "sha256": "fb6a75db580ad5752f9fa4f6899405977f048707a75bfc34e174951b3ea90dbe",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/runtime-guard.R",
+      "bytes": 2201,
+      "sha256": "1412019583c18e941cc9f0aa12e945f55bfd5596c431d9b78d5976182ac03754",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/check-candidate-v3.py",
+      "bytes": 9322,
+      "sha256": "7afea86c39a71364fb8d9ee766368e1cf2f7b62d760ace12890ad41fd0af47d3",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/check-candidate.R",
+      "bytes": 2263,
+      "sha256": "2828c031e65b919b205b9e99fea3c1f7d620479b5f7188e546799524135cf814",
+      "mode": "0o644"
+    }
+  ]
+}

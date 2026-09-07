@@ -1,0 +1,19 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "scripts/test-haven-helper-interop.R"
+  ],
+  "completed_utc": "2026-09-07T16:19:15.842706+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+  "exit_code": 0,
+  "label": "haven",
+  "log": {
+    "bytes": 53,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/haven.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/haven.log",
+    "sha256": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264"
+  },
+  "started_utc": "2026-09-07T16:19:15.581216+00:00"
+}

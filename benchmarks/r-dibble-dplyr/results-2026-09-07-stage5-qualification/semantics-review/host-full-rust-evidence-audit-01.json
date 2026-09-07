@@ -1,0 +1,65 @@
+{
+  "created_utc": "2026-09-07T16:25:00.421657+00:00",
+  "runs": [
+    {
+      "name": "full-final-01",
+      "receipt": {
+        "bytes": 520,
+        "sha256": "71c15a8f4440a056c74ddb2d7e7ea8728932f08835a9ac78cea4e47daf2f0153",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 1531714,
+        "sha256": "c5ac82b34ee81d20c144bf7f695dd1f94a56681d972395071e375fcf5ba2d1f9",
+        "mode": "0o644"
+      },
+      "products_verified": 2855,
+      "product_bytes": 129161679,
+      "errors": [],
+      "unexpected_files": [],
+      "missing_files": [],
+      "status": "complete",
+      "changed_inputs_reported": [],
+      "source_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+      "runner_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+      "command_exits": {
+        "preflight": 0,
+        "tests": 0
+      },
+      "limits": "Current product bytes and manifest receipt independently verified. Historical consumed-input guard results inspected, not rerun; full current dependency/runtime closure not independently rehashed.",
+      "counts_R": "c(failed = 0, skipped = 0, error = 0, warning = 4, passed = 16624\n)"
+    },
+    {
+      "name": "rust-final-01",
+      "receipt": {
+        "bytes": 520,
+        "sha256": "06f4b372f364efef4be99f927db37d2ac4b705e5a215bfde968acd2568575879",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 4651821,
+        "sha256": "bbcc87c760c53301e3fc8d3469d0657728b39517a94cc43be6e1f698f9a53f3c",
+        "mode": "0o644"
+      },
+      "products_verified": 8869,
+      "product_bytes": 1528379961,
+      "errors": [],
+      "unexpected_files": [],
+      "missing_files": [],
+      "status": "complete",
+      "changed_inputs_reported": [],
+      "source_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+      "runner_sha": "8f6caf78ab0c87ea7ed6db2c07a0f0d6ca46750b",
+      "command_exits": {
+        "preflight": 0,
+        "fmt": 0,
+        "clippy": 0,
+        "tests": 0,
+        "docs": 0,
+        "package": 0
+      },
+      "limits": "Current product bytes and manifest receipt independently verified. Historical consumed-input guard results inspected, not rerun; full current dependency/runtime closure not independently rehashed.",
+      "test_count": 278
+    }
+  ]
+}

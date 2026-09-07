@@ -1,0 +1,144 @@
+{
+  "changed_bound_inputs": [],
+  "commands": [
+    {
+      "command": [
+        "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+        "--version"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02",
+      "finished_utc": "2026-09-07T16:11:20.369812+00:00",
+      "label": "r-version",
+      "log": {
+        "bytes": 381,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/r-version.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/r-version.log",
+        "sha256": "d5edd22a6841d31ea0be9e6fef9a2b7cbcb8f1bfa6c650a827dfe9138712e752"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T16:11:20.359496+00:00"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/rust/1.98.0/bin/rustc",
+        "-vV"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02",
+      "finished_utc": "2026-09-07T16:11:21.742457+00:00",
+      "label": "rustc-version",
+      "log": {
+        "bytes": 203,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/rustc-version.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/rustc-version.log",
+        "sha256": "75d92da7b8174054e6c19a9a80df6ccb5077af573190ddcc9cbfbe9f5c600c50"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T16:11:21.731697+00:00"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/rust/1.98.0/bin/cargo",
+        "-vV"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02",
+      "finished_utc": "2026-09-07T16:11:23.112813+00:00",
+      "label": "cargo-version",
+      "log": {
+        "bytes": 314,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/cargo-version.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/cargo-version.log",
+        "sha256": "30a8ffbf5019e716b5592ff2a57ead71e42015b7b082bb9a8e76aae1d85b34df"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T16:11:23.103708+00:00"
+    },
+    {
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/clang",
+        "--version"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02",
+      "finished_utc": "2026-09-07T16:11:24.481361+00:00",
+      "label": "clang-version",
+      "log": {
+        "bytes": 159,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/clang-version.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/clang-version.log",
+        "sha256": "55f7662ee66d47566d9f08f35a12158ac9588e4852f788eed57fa3bf625c9a5d"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T16:11:24.475711+00:00"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+        "CMD",
+        "build",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build",
+      "finished_utc": "2026-09-07T16:11:26.925353+00:00",
+      "label": "build",
+      "log": {
+        "bytes": 420,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build.log",
+        "sha256": "cc13dbed5c6a713870c82ca60dcfdfe67dc4c41a5d7f2f3edbf918e5850f6ed6"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T16:11:25.847167+00:00"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+        "CMD",
+        "INSTALL",
+        "--library=/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build/dtatools_0.7.1.tar.gz"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build",
+      "finished_utc": "2026-09-07T16:11:52.856799+00:00",
+      "label": "install",
+      "log": {
+        "bytes": 13443,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/install.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/install.log",
+        "sha256": "d10ed038a764f265d4d4d4baca7cab55bfd395e3df94ef73a398329c865a81d8"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T16:11:28.324815+00:00"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library",
+        "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+        "f6331813d211255b4c949e04f34ce74537b142e2",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build/dtatools_0.7.1.tar.gz",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/benchmarks/r-dibble-dplyr/helpers.R"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02",
+      "finished_utc": "2026-09-07T16:11:54.707077+00:00",
+      "label": "finish-install",
+      "log": {
+        "bytes": 280,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/finish-install.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/finish-install.log",
+        "sha256": "39a4d7840c7a8809fbb2d4f24bf9db960d095f0db7bdb0f0e703fff659102b54"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T16:11:54.390515+00:00"
+    }
+  ],
+  "generated_export_files": [],
+  "status": "complete"
+}

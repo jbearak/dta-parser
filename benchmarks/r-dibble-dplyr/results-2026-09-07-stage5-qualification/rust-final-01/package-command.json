@@ -1,0 +1,22 @@
+{
+  "command": [
+    "cargo",
+    "package",
+    "-p",
+    "dta-tools",
+    "--locked",
+    "--allow-dirty"
+  ],
+  "completed_utc": "2026-09-07T16:19:52.355989+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/source",
+  "exit_code": 0,
+  "label": "package",
+  "log": {
+    "bytes": 1625,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/package.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/package.log",
+    "sha256": "0df21d8910f492ba44ab84de03b06d35c00589dea0c709aa96b990237bb99ce3"
+  },
+  "started_utc": "2026-09-07T16:19:50.361165+00:00"
+}

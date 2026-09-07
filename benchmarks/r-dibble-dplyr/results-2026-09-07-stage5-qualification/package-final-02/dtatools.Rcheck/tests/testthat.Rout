@@ -1,0 +1,55 @@
+
+R version 4.6.1 (2026-06-24) -- "Happy Hop"
+Copyright (C) 2026 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin25.4.0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(testthat)
+> library(dtatools)
+> 
+> test_check("dtatools")
+
+tracemem[0x8c5148078 -> 0x8c441c628]: unname .prepare_write_value_labels prepare_table .new_write_value_label_plan .prepare_arrow_write save_arrow eval eval withCallingHandlers doTryCatch tryCatchOne tryCatchList tryCatch doWithOneRestart withOneRestart withRestarts test_code test_that eval eval withCallingHandlers doTryCatch tryCatchOne tryCatchList tryCatch doWithOneRestart withOneRestart withRestarts test_code source_file FUN lapply doTryCatch tryCatchOne tryCatchList tryCatch with_reporter test_files_serial test_files test_dir test_check 
+New names:
+* `x` -> `x...1`
+* `x` -> `x...2`
+New names:
+* `x` -> `x...1`
+* `x` -> `x...2`
+New names:
+* `v` -> `v...1`
+* `v` -> `v...2`
+New names:
+* `v` -> `v...1`
+* `v` -> `v...2`
+Tracing function "enc2utf8" in package "base"
+Tracing function ".arrow_reject_bytes" in package
+"namespace:dtatools"
+Untracing function ".arrow_reject_bytes" in package
+"namespace:dtatools"
+Untracing function "enc2utf8" in package "base"
+variable `x` was byte now double
+Tracing function "as.integer" in package "base"
+Untracing function "as.integer" in package "base"
+Tracing function "as.logical" in package "base"
+Untracing function "as.logical" in package "base"
+Tracing function "is.na" in package "base"
+Untracing function "is.na" in package "base"
+[ FAIL 0 | WARN 4 | SKIP 0 | PASS 16624 ]
+
+[ FAIL 0 | WARN 4 | SKIP 0 | PASS 16624 ]
+> 
+> proc.time()
+   user  system elapsed 
+154.724   3.861 159.400 

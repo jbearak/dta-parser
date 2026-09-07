@@ -1,0 +1,18 @@
+{
+  "cargo": {
+    "bytes": 31148800,
+    "mode": "0o555",
+    "path": "/opt/homebrew/Cellar/rust/1.98.0/bin/cargo",
+    "resolved": "/opt/homebrew/Cellar/rust/1.98.0/bin/cargo",
+    "sha256": "ceeebafffeb09b83e6b9751588edace5e1dcea0f93d420a0490fe31c81d04090"
+  },
+  "command": [
+    "/opt/homebrew/Cellar/rust/1.98.0/bin/cargo",
+    "metadata",
+    "--locked",
+    "--offline",
+    "--format-version=1"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+  "exit_code": 0
+}

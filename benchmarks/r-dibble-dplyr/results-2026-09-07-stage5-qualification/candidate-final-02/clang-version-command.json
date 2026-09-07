@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/Library/Developer/CommandLineTools/usr/bin/clang",
+    "--version"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02",
+  "finished_utc": "2026-09-07T16:11:24.481361+00:00",
+  "label": "clang-version",
+  "log": {
+    "bytes": 159,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/clang-version.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/clang-version.log",
+    "sha256": "55f7662ee66d47566d9f08f35a12158ac9588e4852f788eed57fa3bf625c9a5d"
+  },
+  "returncode": 0,
+  "started_utc": "2026-09-07T16:11:24.475711+00:00"
+}

@@ -1,0 +1,21 @@
+{
+  "command": [
+    "R",
+    "CMD",
+    "check",
+    "--no-manual",
+    "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/dtatools_0.7.1.tar.gz"
+  ],
+  "completed_utc": "2026-09-07T16:26:53.957614+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01",
+  "exit_code": 0,
+  "label": "check",
+  "log": {
+    "bytes": 14418,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/check.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/check.log",
+    "sha256": "fd6173b2b672f33278aae0dec1d88c764ed5cb564976c3fb0ef6ec8c50f5004b"
+  },
+  "started_utc": "2026-09-07T16:23:42.447937+00:00"
+}

@@ -1,0 +1,337 @@
+{
+  "changed_inputs": [],
+  "records": [
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "benchmarks/r-dibble-dplyr/expression-preflight.R",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library",
+        "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+        "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+        "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01"
+      ],
+      "completed_utc": "2026-09-07T16:18:35.859489+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "preflight",
+      "log": {
+        "bytes": 60,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/preflight.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/preflight.log",
+        "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27"
+      },
+      "started_utc": "2026-09-07T16:18:35.652669+00:00"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts",
+        "-p",
+        "test_check_r_package_archive.py",
+        "-v"
+      ],
+      "completed_utc": "2026-09-07T16:18:41.652856+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "archive-unit",
+      "log": {
+        "bytes": 912,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/archive-unit.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/archive-unit.log",
+        "sha256": "3a86db2b9f808506e23c7c696fa5b5f6f3b8ba039c56226dbae54067854795c7"
+      },
+      "started_utc": "2026-09-07T16:18:41.602095+00:00"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts",
+        "-p",
+        "test_check_r_cargo_vendor.py",
+        "-v"
+      ],
+      "completed_utc": "2026-09-07T16:18:47.941343+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "vendor-unit",
+      "log": {
+        "bytes": 3313,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/vendor-unit.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/vendor-unit.log",
+        "sha256": "d46194add4720cdbcb100fe0dee92c820b97a0945aba3c2c45eb8dec48c3c97d"
+      },
+      "started_utc": "2026-09-07T16:18:47.854920+00:00"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts",
+        "-p",
+        "test_rebuild_r_vendor.py",
+        "-v"
+      ],
+      "completed_utc": "2026-09-07T16:18:54.154297+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "vendor-rebuild-unit",
+      "log": {
+        "bytes": 674,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/vendor-rebuild-unit.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/vendor-rebuild-unit.log",
+        "sha256": "a26bda261b56851b5ce9f8721adbfb7ef74490fbb47e7dc912cb533603bee47e"
+      },
+      "started_utc": "2026-09-07T16:18:54.116216+00:00"
+    },
+    {
+      "command": [
+        "sh",
+        "scripts/check-r-cargo-vendor.sh"
+      ],
+      "completed_utc": "2026-09-07T16:19:00.863790+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "vendor",
+      "log": {
+        "bytes": 21,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/vendor.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/vendor.log",
+        "sha256": "d2f91f77d5bdd8552331c0b457f2d0aab6c9eccb0a00d29a47f6c7294216720b"
+      },
+      "started_utc": "2026-09-07T16:19:00.540096+00:00"
+    },
+    {
+      "command": [
+        "sh",
+        "scripts/test-rust-source-hash.sh"
+      ],
+      "completed_utc": "2026-09-07T16:19:09.317511+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "rust-source-hash",
+      "log": {
+        "bytes": 34,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/rust-source-hash.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/rust-source-hash.log",
+        "sha256": "64412b90a734c68397b590ede544730f4b115e07f82cedc84ae791452eab888c"
+      },
+      "started_utc": "2026-09-07T16:19:07.383524+00:00"
+    },
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "scripts/test-haven-helper-interop.R"
+      ],
+      "completed_utc": "2026-09-07T16:19:15.842706+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "haven",
+      "log": {
+        "bytes": 53,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/haven.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/haven.log",
+        "sha256": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264"
+      },
+      "started_utc": "2026-09-07T16:19:15.581216+00:00"
+    },
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "scripts/test-labelled-interop.R"
+      ],
+      "completed_utc": "2026-09-07T16:19:24.158663+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "labelled",
+      "log": {
+        "bytes": 69,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/labelled.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/labelled.log",
+        "sha256": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81"
+      },
+      "started_utc": "2026-09-07T16:19:22.621263+00:00"
+    },
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "scripts/test-haven-conformance.R"
+      ],
+      "completed_utc": "2026-09-07T16:19:33.067007+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "haven-conformance",
+      "log": {
+        "bytes": 3083,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/haven-conformance.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/haven-conformance.log",
+        "sha256": "34fe99c59b88a98176d7e8ca6bb74a077e89c62d6a12eb5bb828c1ad6e2d2c78"
+      },
+      "started_utc": "2026-09-07T16:19:29.923973+00:00"
+    },
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "benchmarks/r-corpus-performance/test-framework.R"
+      ],
+      "completed_utc": "2026-09-07T16:19:39.039487+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "corpus-framework",
+      "log": {
+        "bytes": 37,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/corpus-framework.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/corpus-framework.log",
+        "sha256": "a499c3b4bd2e3d8b7bc2046a17390505991ee20afbc91aac5d96864fde7c028b"
+      },
+      "started_utc": "2026-09-07T16:19:38.918158+00:00"
+    },
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "-e",
+        "stopifnot(as.character(packageVersion(\"roxygen2\")) == read.dcf(\"DESCRIPTION\", \"Config/roxygen2/version\")[[1L]]); roxygen2::roxygenise(\".\", load_code=\"source\")"
+      ],
+      "completed_utc": "2026-09-07T16:19:46.082513+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source/r-package/dtatools",
+      "exit_code": 0,
+      "label": "roxygen",
+      "log": {
+        "bytes": 1350,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/roxygen.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/roxygen.log",
+        "sha256": "647e8494126d1a4cc6ddd9393d7d3b875aae423961feec2951a94767001d8314"
+      },
+      "started_utc": "2026-09-07T16:19:45.077938+00:00"
+    },
+    {
+      "command": [
+        "sh",
+        "scripts/conformance.sh"
+      ],
+      "completed_utc": "2026-09-07T16:23:24.512484+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "conformance",
+      "log": {
+        "bytes": 25205,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/conformance.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/conformance.log",
+        "sha256": "2ee9d3bcbac1f434e6ba0da0fb52072d4e4604812b3a01a8819841254a58b316"
+      },
+      "started_utc": "2026-09-07T16:19:52.138066+00:00"
+    },
+    {
+      "command": [
+        "R",
+        "CMD",
+        "build",
+        "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source/r-package/dtatools"
+      ],
+      "completed_utc": "2026-09-07T16:23:31.112888+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01",
+      "exit_code": 0,
+      "label": "build",
+      "log": {
+        "bytes": 418,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/build.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/build.log",
+        "sha256": "003fd79d934464019a4c413f22f5894d6dccd3b90ba8e4ea7118075f8b1d7fe5"
+      },
+      "started_utc": "2026-09-07T16:23:30.161170+00:00"
+    },
+    {
+      "command": [
+        "sh",
+        "scripts/check-r-package-archive.sh",
+        "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/dtatools_0.7.1.tar.gz"
+      ],
+      "completed_utc": "2026-09-07T16:23:36.828334+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+      "exit_code": 0,
+      "label": "archive",
+      "log": {
+        "bytes": 24,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/archive.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/archive.log",
+        "sha256": "4c3587b6438c2471618364e967342b11f88e0d0484fb6f8f64e2ce8a0b3b1351"
+      },
+      "started_utc": "2026-09-07T16:23:36.779660+00:00"
+    },
+    {
+      "command": [
+        "R",
+        "CMD",
+        "check",
+        "--no-manual",
+        "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/dtatools_0.7.1.tar.gz"
+      ],
+      "completed_utc": "2026-09-07T16:26:53.957614+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01",
+      "exit_code": 0,
+      "label": "check",
+      "log": {
+        "bytes": 14418,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/check.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/check.log",
+        "sha256": "fd6173b2b672f33278aae0dec1d88c764ed5cb564976c3fb0ef6ec8c50f5004b"
+      },
+      "started_utc": "2026-09-07T16:23:42.447937+00:00"
+    },
+    {
+      "command": [
+        "R",
+        "CMD",
+        "INSTALL",
+        "--build",
+        "--clean",
+        "--library=/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/binary/library",
+        "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/dtatools_0.7.1.tar.gz"
+      ],
+      "completed_utc": "2026-09-07T16:27:21.135496+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/binary",
+      "exit_code": 0,
+      "label": "binary",
+      "log": {
+        "bytes": 12619,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/binary.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/binary.log",
+        "sha256": "8e2c809781e7f2ed4422b571cd51b69a976b7412659b0768ee2a83cee8bd8476"
+      },
+      "started_utc": "2026-09-07T16:26:59.605041+00:00"
+    }
+  ],
+  "status": "complete"
+}

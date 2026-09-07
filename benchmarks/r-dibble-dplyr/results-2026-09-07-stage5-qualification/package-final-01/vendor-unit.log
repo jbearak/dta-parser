@@ -1,0 +1,27 @@
+test_archive_checksum_must_match_the_bridge_lock (test_check_r_cargo_vendor.CargoVendorTests.test_archive_checksum_must_match_the_bridge_lock) ... ok
+test_archive_digest_must_match_integrity_file (test_check_r_cargo_vendor.CargoVendorTests.test_archive_digest_must_match_integrity_file) ... ok
+test_archive_inventory_must_match_the_bridge_lock (test_check_r_cargo_vendor.CargoVendorTests.test_archive_inventory_must_match_the_bridge_lock) ... ok
+test_archive_members_must_be_canonical_and_beneath_vendor_root (test_check_r_cargo_vendor.CargoVendorTests.test_archive_members_must_be_canonical_and_beneath_vendor_root) ... ok
+test_archive_must_not_contain_unlocked_packages (test_check_r_cargo_vendor.CargoVendorTests.test_archive_must_not_contain_unlocked_packages) ... ok
+test_archive_parent_file_conflict_fails (test_check_r_cargo_vendor.CargoVendorTests.test_archive_parent_file_conflict_fails) ... ok
+test_archive_rejects_cross_platform_path_aliases (test_check_r_cargo_vendor.CargoVendorTests.test_archive_rejects_cross_platform_path_aliases) ... ok
+test_archive_rejects_special_and_duplicate_entries (test_check_r_cargo_vendor.CargoVendorTests.test_archive_rejects_special_and_duplicate_entries) ... ok
+test_archive_version_must_match_the_bridge_lock (test_check_r_cargo_vendor.CargoVendorTests.test_archive_version_must_match_the_bridge_lock) ... ok
+test_archived_checksum_must_be_lowercase_sha256 (test_check_r_cargo_vendor.CargoVendorTests.test_archived_checksum_must_be_lowercase_sha256) ... ok
+test_duplicate_checksum_metadata_keys_fail (test_check_r_cargo_vendor.CargoVendorTests.test_duplicate_checksum_metadata_keys_fail) ... ok
+test_integrity_file_must_contain_one_archive_digest (test_check_r_cargo_vendor.CargoVendorTests.test_integrity_file_must_contain_one_archive_digest) ... ok
+test_locked_checksum_must_be_lowercase_sha256 (test_check_r_cargo_vendor.CargoVendorTests.test_locked_checksum_must_be_lowercase_sha256) ... ok
+test_malformed_checksum_metadata_fails_clearly (test_check_r_cargo_vendor.CargoVendorTests.test_malformed_checksum_metadata_fails_clearly) ... ok
+test_malformed_lock_fails_clearly (test_check_r_cargo_vendor.CargoVendorTests.test_malformed_lock_fails_clearly) ... ok
+test_malformed_manifest_fails_clearly (test_check_r_cargo_vendor.CargoVendorTests.test_malformed_manifest_fails_clearly) ... ok
+test_matching_archive_and_lock_pass (test_check_r_cargo_vendor.CargoVendorTests.test_matching_archive_and_lock_pass) ... ok
+test_multiple_locked_versions_of_one_package_pass (test_check_r_cargo_vendor.CargoVendorTests.test_multiple_locked_versions_of_one_package_pass) ... ok
+test_non_crates_io_dependency_sources_fail_clearly (test_check_r_cargo_vendor.CargoVendorTests.test_non_crates_io_dependency_sources_fail_clearly) ... ok
+test_package_roots_must_be_explicit_directories (test_check_r_cargo_vendor.CargoVendorTests.test_package_roots_must_be_explicit_directories) ... ok
+test_required_checksum_must_be_a_regular_file (test_check_r_cargo_vendor.CargoVendorTests.test_required_checksum_must_be_a_regular_file) ... ok
+test_vendored_file_inventory_and_digests_must_match (test_check_r_cargo_vendor.CargoVendorTests.test_vendored_file_inventory_and_digests_must_match) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.040s
+
+OK

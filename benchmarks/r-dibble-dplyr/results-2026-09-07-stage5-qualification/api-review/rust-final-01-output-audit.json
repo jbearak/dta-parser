@@ -1,0 +1,188 @@
+{
+  "products": 8869,
+  "bytes": 1528379961,
+  "manifest": {
+    "bytes": 4651821,
+    "sha256": "bbcc87c760c53301e3fc8d3469d0657728b39517a94cc43be6e1f698f9a53f3c",
+    "mode": "0o644"
+  },
+  "receipt": {
+    "bytes": 520,
+    "sha256": "06f4b372f364efef4be99f927db37d2ac4b705e5a215bfde968acd2568575879",
+    "mode": "0o644"
+  },
+  "status": "complete",
+  "source_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+  "runner_sha": "8f6caf78ab0c87ea7ed6db2c07a0f0d6ca46750b",
+  "issues": [],
+  "missing": [],
+  "extra": [],
+  "crate": {
+    "bytes": 172554,
+    "sha256": "aa8b8ea9fc3bb9c0c48cc72700b49bbb9b53e90b935bb7dedb368821554c510c",
+    "mode": "0o644"
+  },
+  "crate_inventory": [
+    {
+      "path": "dta-tools-0.7.1/Cargo.lock",
+      "bytes": 23507,
+      "sha256": "96d0650214fc8c018749d6f3b2de3f0ae9fb6e1fda54c678fa37698c22c7af80"
+    },
+    {
+      "path": "dta-tools-0.7.1/Cargo.toml",
+      "bytes": 1950,
+      "sha256": "15dd1beb4c57208ecd1eb1a3355b469ddf8d31a660649db2c083c67639640f32"
+    },
+    {
+      "path": "dta-tools-0.7.1/Cargo.toml.orig",
+      "bytes": 820,
+      "sha256": "d68c81106cc10f6c33b6cbef0c0f722ce0c284208b1f44d759bed25e5d4d8bcf"
+    },
+    {
+      "path": "dta-tools-0.7.1/LICENSE",
+      "bytes": 35149,
+      "sha256": "3fb86ad2fc6f9ee1bada36000b8a6905b492caab81e3601c2592a3d6504d803a"
+    },
+    {
+      "path": "dta-tools-0.7.1/examples/bench.rs",
+      "bytes": 4718,
+      "sha256": "9ef961da13517fd8b9a611b4c3dc20a28d05c3814894cabbe94856492aa0bc97"
+    },
+    {
+      "path": "dta-tools-0.7.1/examples/typescript_arrow_fixtures.rs",
+      "bytes": 18768,
+      "sha256": "487939221c686da1015714fb25815f4c5719374b76987002d7e9fc89363b54db"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/arrow/checksum.rs",
+      "bytes": 7741,
+      "sha256": "610bd2b3c25029df5057c7bb1ec0d4fcb81bab51767deb5af92bca2b3af4779a"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/arrow/mod.rs",
+      "bytes": 2811,
+      "sha256": "36d33918bc76c176bad240fc0dfac971616081f81fe7d606070b907a42fd42ce"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/arrow/profile.rs",
+      "bytes": 71075,
+      "sha256": "caa8af362db65435add3bc8c670028b7cf4b36a70d3cf87ce8d692a8e0bf5a0b"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/arrow/read.rs",
+      "bytes": 112474,
+      "sha256": "80ab1e50fa19c7808f87e9cb192929a1193e537f5242ff8ccfeb68c09c0583d7"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/arrow/write.rs",
+      "bytes": 57921,
+      "sha256": "6bc26a47f5f5d043251c605d6138dcc681767716b0c65a60a509c2312acb4a55"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/data_reader.rs",
+      "bytes": 15421,
+      "sha256": "e872eb4f68cd7941a3064c0a299541bf0395a1346e991cedb45b49eed0d90668"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/dta_metadata.rs",
+      "bytes": 26830,
+      "sha256": "fc823940eae74be61cd86667a367a620efff8145b9fca72acaf4b47f3be69543"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/endian.rs",
+      "bytes": 6675,
+      "sha256": "fd0bca2750f1eec6a3951e3d3768399b2602ffe8b6a65a7b2e2bdd8c8078225f"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/error.rs",
+      "bytes": 9038,
+      "sha256": "d716541fedca39464baa8a97f74b7e9cef7e8506828e183b4a9e49b0ebd39378"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/file.rs",
+      "bytes": 273789,
+      "sha256": "ae4f8fafafef80183364588abcd32c32e09167f7e480f161bc1be94cc1cd7138"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/legacy.rs",
+      "bytes": 21244,
+      "sha256": "987ce81dbb1ed3f7481e1b6a13f380502eed5d2dc21add8395af0d7790a17e5c"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/lib.rs",
+      "bytes": 3892,
+      "sha256": "a4c5e7289893a89c28bb03d2a49543892c872ad96286a7cc691db8073b78f8db"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/metadata.rs",
+      "bytes": 29553,
+      "sha256": "e4ab8183377b4e813a2177a300560549a5712073fae415939e261aca23f722ac"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/missing.rs",
+      "bytes": 10602,
+      "sha256": "74bf2fc1aaeb8192fd5c2dc58720fb286477a236bcc9c3bc4611216399191f1e"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/selection.rs",
+      "bytes": 3191,
+      "sha256": "41139e996a585c67993c5b9f2b8bb735d661261006a0169473ddc496826ab209"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/strl.rs",
+      "bytes": 15132,
+      "sha256": "f456ba74f4313a0d2e64a373c1f83242d4f1e9a505950b009535bc9106dea8fc"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/text.rs",
+      "bytes": 6164,
+      "sha256": "7a7b01c06a665b0f601df44c097411e1792476960c79f31aadefb1de9171a60d"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/types.rs",
+      "bytes": 17872,
+      "sha256": "46cb44d58cfd9fbb559c88ed501fc006cd004734f724835978e44c36dfebc20a"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/value_labels.rs",
+      "bytes": 29583,
+      "sha256": "f8c025db968ef91e09b968ffcaf29e6d140fb7dde337820c9eabe03392abcd40"
+    },
+    {
+      "path": "dta-tools-0.7.1/src/write.rs",
+      "bytes": 76042,
+      "sha256": "c23f70b4e60f4c34269dd47e02f5706db7dc32adf19e7d0d3a65952a5b4d47ce"
+    }
+  ],
+  "crate_source_mismatch_except_cargo_metadata": [],
+  "test_summaries": [
+    "test result: ok. 113 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.57s",
+    "test result: ok. 45 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.25s",
+    "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+    "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s",
+    "test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s",
+    "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+  ],
+  "package_warnings": [
+    "warning: ignoring test `arrow` as `tests/arrow.rs` is not included in the published package",
+    "warning: ignoring test `conformance` as `tests/conformance.rs` is not included in the published package",
+    "warning: ignoring test `encoding` as `tests/encoding.rs` is not included in the published package",
+    "warning: ignoring test `file` as `tests/file.rs` is not included in the published package",
+    "warning: ignoring test `fuzz_smoke` as `tests/fuzz_smoke.rs` is not included in the published package",
+    "warning: ignoring test `legacy` as `tests/legacy.rs` is not included in the published package",
+    "warning: ignoring test `metadata` as `tests/metadata.rs` is not included in the published package",
+    "warning: ignoring test `observations` as `tests/observations.rs` is not included in the published package",
+    "warning: ignoring test `strl` as `tests/strl.rs` is not included in the published package",
+    "warning: ignoring test `value_labels` as `tests/value_labels.rs` is not included in the published package",
+    "warning: ignoring test `write` as `tests/write.rs` is not included in the published package"
+  ],
+  "scope": "Frozen completed output inventory and bytes audited. Runner reports no changed inputs at execution endpoints; this audit does not rebind later live input paths."
+}

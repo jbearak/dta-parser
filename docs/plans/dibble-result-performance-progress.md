@@ -46,7 +46,33 @@ grouping keys unchanged. Independent probes compare nine expired reads and
 eight payload-lifetime cases. The original exact `985e26b` focused run passed
 7,608 assertions with four established warnings, then failed in its namespace
 reporter; that failed record remains retained. The reporter fix and subsequent
-source changes require fresh exact-installed qualification.
+source changes required fresh exact-installed qualification.
+
+Those local gates now pass. The final package source is `57309d4`; its fresh
+Git-archive installation and corrected package checks are preserved in the
+[qualification archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-qualification/README.md).
+The final R checks pass 16,624 assertions with no failures or skips and the four
+established test warnings. The three R check warnings and two notes retain their
+prior categories; a new NEWS parser sub-note found during review was fixed and
+the earlier record remains unchanged. Full installed tests, five fresh Cargo
+gates, unchanged native mutation gates, 18 atomic allocation cases, rename
+allocation, interoperability, pinned roxygen, source/binary archive and NOTICE
+checks passed. NAMESPACE remains identical with 106 exports.
+
+The exact clean R 4.6.0 evaluator source `4900dc8` passes 179 expression
+assertions without failures, skips or warnings. Its broader focused run passes
+4,960 assertions with three classified Arrow/profmem capability skips and four
+known warnings. Both reviewers verified that NEWS is the only package byte
+difference between this source and `57309d4`; the earlier runtime results keep
+their original identities. An optional clean-runtime NEWS parse probe lacks
+commonmark and remains a retained setup failure, separate from the successful
+host parser and final package checks.
+
+The [diagnostic archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-diagnostics/README.md)
+preserves prior implementation failures and source-review reproductions. Final
+qualification inclusion and the separate root-owned performance/write-cost
+evidence remain under review. Paired timing, external substantive review, CI
+and normal merge remain required before Stage 5 completes.
 
 The [preparation archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/README.md)
 preserves the 181-file selective minimum preview and both complete indexed
