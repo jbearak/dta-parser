@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "owned-columns.h"
 
@@ -6960,6 +6961,40 @@ SEXP C_dtatools_select_data_columns(
     return data;
 }
 
+/* Test-only, one-shot control at the native generation boundary. Consume it
+   on entry so validation errors cannot leave a later generation armed. */
+static int generation_interrupt_mode = 0;
+
+static SEXP C_dtatools_inject_generation_interrupt(SEXP mode) {
+    generation_interrupt_mode = 0;
+    if (TYPEOF(mode) != INTSXP || XLENGTH(mode) != 1 ||
+        INTEGER(mode)[0] < 0 || INTEGER(mode)[0] > 2)
+        Rf_error("invalid generation interrupt injection");
+    generation_interrupt_mode = INTEGER(mode)[0];
+    return R_NilValue;
+}
+
+static void interrupt_generated_column(int mode) {
+    if (!mode) return;
+    if (mode == 1) {
+        Rf_onintr();
+        Rf_error("generation interrupt handler returned");
+    }
+    /* POSIX tests send SIGINT only after observing this readiness marker.
+       Poll inside the native call while its staged column is still private. */
+    Rprintf("[dtatools-test-generation-ready]\n");
+    R_FlushConsole();
+    clock_t began = clock();
+    if (began == (clock_t) -1) Rf_error("generation interrupt clock unavailable");
+    for (;;) {
+        R_CheckUserInterrupt();
+        clock_t now = clock();
+        if (now == (clock_t) -1 ||
+            (double) (now - began) / CLOCKS_PER_SEC >= 10.0)
+            Rf_error("generation interrupt signal was not delivered");
+    }
+}
+
 static double generated_double_value(
     const numeric_reader *reader, R_xlen_t index, int temporal
 ) {
@@ -7101,6 +7136,8 @@ SEXP C_dtatools_generate_character(
     SEXP values, SEXP rows, SEXP row_count_value,
     SEXP declared, SEXP attributes
 ) {
+    int interrupt_mode = generation_interrupt_mode;
+    generation_interrupt_mode = 0;
     if (TYPEOF(values) != STRSXP ||
         (rows != R_NilValue &&
          TYPEOF(rows) != INTSXP && TYPEOF(rows) != REALSXP)) {
@@ -7197,6 +7234,7 @@ SEXP C_dtatools_generate_character(
             }
         }
     }
+    interrupt_generated_column(interrupt_mode);
     if (declared_width > 0 && maximum > (size_t) declared_width) {
         Rf_error("Generated values do not fit their declared Stata string storage");
     }
@@ -7233,6 +7271,8 @@ SEXP C_dtatools_generate_numeric(
     SEXP values, SEXP rows, SEXP row_count_value,
     SEXP kind_value, SEXP temporal_value, SEXP attributes
 ) {
+    int interrupt_mode = generation_interrupt_mode;
+    generation_interrupt_mode = 0;
     if (rows != R_NilValue &&
         TYPEOF(rows) != INTSXP && TYPEOF(rows) != REALSXP) {
         Rf_error("invalid reference generation plan");
@@ -7272,6 +7312,7 @@ SEXP C_dtatools_generate_numeric(
         SEXP result = PROTECT(generate_double_numeric(
             values, &row_plan, row_count, &value_plan, temporal
         ));
+        interrupt_generated_column(interrupt_mode);
         set_generated_attributes(result, attributes);
         SEXP owned = PROTECT(owned_adopt_real(result));
         UNPROTECT(3);
@@ -7313,6 +7354,7 @@ SEXP C_dtatools_generate_numeric(
         }
     }
     apply_compact_replacement(&plan, &row_plan, &replacement_plan);
+    interrupt_generated_column(interrupt_mode);
 
     SEXP result = PROTECT(numeric_from_backing(
         backing, row_count, kind, temporal, 119, plan.missing_count
@@ -8431,6 +8473,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_select_data_columns, 6},
     {"C_dtatools_generate_numeric",
      (DL_FUNC) &C_dtatools_generate_numeric, 6},
+    {"C_dtatools_inject_generation_interrupt",
+     (DL_FUNC) &C_dtatools_inject_generation_interrupt, 1},
     {"C_dtatools_generate_character",
      (DL_FUNC) &C_dtatools_generate_character, 5},
     {"C_dtatools_is_unmaterialized_numeric_altrep",
