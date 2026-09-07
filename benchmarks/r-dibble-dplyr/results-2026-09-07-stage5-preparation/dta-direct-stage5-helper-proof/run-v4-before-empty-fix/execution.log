@@ -1,0 +1,141 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+PASS plain rlang mask lacks qualified helper context 
+PASS qualified and arbitrary helper context 
+PASS data and environment pronouns with lexical aliases 
+PASS arbitrary helper-created selection quosure 
+PASS pick fallback and expansion have deliberately different selections 
+PASS pick uses caller selection environment across lexical mask assignments 
+PASS pick empty selection has one row before recycling 
+PASS public across alias and nested cur_column helper 
+PASS if_any if_all and c_across use adapter methods 
+PASS unnamed across expansion preserves column-major group order 
+PASS runtime across alias preserves group-major column order 
+SETUP_EXPANDED 1 REFERENCE 1 
+SETUP_FALLBACK 4 REFERENCE 4 
+PASS across function setup matches one expanded call and two calls per runtime group 
+PASS across dots evaluate once per group and prevent expansion 
+PASS across unpack prevents expansion and keeps helper context 
+PASS rowwise list extraction and pick preservation match real helper paths 
+PASS empty groups execute and expose zero size 
+PASS zero grouped rows still execute once 
+PASS ungrouped empty and nonempty contexts 
+PASS nested real dplyr inside owned evaluation restores group and column 
+PASS owned evaluation nested inside real dplyr restores outer state 
+PASS nested owned evaluation maintains independent scalar state 
+PASS errors and warnings restore nested real-dplyr context 
+PASS R interrupt condition unwinds adapter context 
+PASS saved group scalars keys and rows survive later groups 
+PASS captured lexical masks stay group-specific and retain columns 
+PASS upstream late captures are invalidated but prototype snapshots remain readable 
+PASS lexical side effects do not contaminate the next group 
+PASS helper context is unavailable after evaluation 
+PASS by context keeps first-appearance keys 
+FAIL zero-row rowwise context executes once 
+$pass
+[1] FALSE
+
+$context_restored
+[1] TRUE
+
+$binding_presence_before
+$binding_presence_before$mask
+[1] TRUE
+
+$binding_presence_before$column
+[1] TRUE
+
+$binding_presence_before$across_if_fn
+[1] TRUE
+
+$binding_presence_before$across_frame
+[1] TRUE
+
+
+$binding_presence_after
+$binding_presence_after$mask
+[1] TRUE
+
+$binding_presence_after$column
+[1] TRUE
+
+$binding_presence_after$across_if_fn
+[1] TRUE
+
+$binding_presence_after$across_frame
+[1] TRUE
+
+
+$warnings
+character(0)
+
+$value
+$value$class
+[1] "simpleError" "error"       "condition"  
+
+$value$message
+[1] "Different values:\nlist(list(size = 0L, id = 1L, rows = integer(0), key = structure(list(\n    id = integer(0)), row.names = c(NA, 0L), class = c(\"tbl_df\", \n\"tbl\", \"data.frame\")), x = list(), pick = structure(list(x = list()), row.names = integer(0), class = c(\"tbl_df\", \n\"tbl\", \"data.frame\"))))\nExpected:\nlist(list(size = 0L, id = 1L, rows = integer(0), key = structure(list(\n    id = integer(0)), row.names = c(NA, 0L), class = c(\"tbl_df\", \n\"tbl\", \"data.frame\")), x = logical(0), pick = structure(list(\n    x = logical(0)), row.names = integer(0), class = c(\"tbl_df\", \n\"tbl\", \"data.frame\"))))"
+
+
+FAIL zero-row rowwise list-of uses the declared element prototype 
+$pass
+[1] FALSE
+
+$context_restored
+[1] TRUE
+
+$binding_presence_before
+$binding_presence_before$mask
+[1] TRUE
+
+$binding_presence_before$column
+[1] TRUE
+
+$binding_presence_before$across_if_fn
+[1] TRUE
+
+$binding_presence_before$across_frame
+[1] TRUE
+
+
+$binding_presence_after
+$binding_presence_after$mask
+[1] TRUE
+
+$binding_presence_after$column
+[1] TRUE
+
+$binding_presence_after$across_if_fn
+[1] TRUE
+
+$binding_presence_after$across_frame
+[1] TRUE
+
+
+$warnings
+character(0)
+
+$value
+$value$class
+[1] "simpleError" "error"       "condition"  
+
+$value$message
+[1] "Different values:\nlist(list(value = structure(list(), ptype = character(0), class = c(\"vctrs_list_of\", \n\"vctrs_vctr\", \"list\")), picked = structure(list(x = structure(list(), ptype = character(0), class = c(\"vctrs_list_of\", \n\"vctrs_vctr\", \"list\"))), row.names = integer(0), class = c(\"tbl_df\", \n\"tbl\", \"data.frame\"))))\nExpected:\nlist(list(value = character(0), picked = structure(list(x = character(0)), row.names = integer(0), class = c(\"tbl_df\", \n\"tbl\", \"data.frame\"))))"
+
+
+PASS deferred ordinary column promise retains group snapshot with explicit upstream difference 
+PASS installed helper bodies and formals match 51 pristine source definitions 
+PASS all namespace function objects bodies formals environments and locks unchanged 
+PASS managed context values restored and real-dplyr binding presence recorded 
+TOTAL 35 FAILED 2 
+Error: Failed cases: zero-row rowwise context executes once; zero-row rowwise list-of uses the declared element prototype
+Execution halted

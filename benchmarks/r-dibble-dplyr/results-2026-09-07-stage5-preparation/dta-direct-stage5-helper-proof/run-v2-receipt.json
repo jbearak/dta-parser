@@ -1,0 +1,12 @@
+{
+  "changed_inputs": [],
+  "manifest": {
+    "bytes": 1699,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v2/output-manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v2/output-manifest.json",
+    "sha256": "bb75f40416e5fb9dc1f16d412acd35faa68e005a7c376dc1f27c67924de40b9e"
+  },
+  "output": "/private/tmp/dta-direct-stage5-helper-proof/run-v2",
+  "returncode": 1
+}

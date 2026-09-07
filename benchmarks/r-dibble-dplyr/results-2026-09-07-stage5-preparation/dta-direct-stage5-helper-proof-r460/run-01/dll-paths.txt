@@ -1,0 +1,15 @@
+base
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/methods/libs/methods.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/utils/libs/utils.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/grDevices/libs/grDevices.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/graphics/libs/graphics.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/stats/libs/stats.so
+/private/tmp/dta-direct-stage5-minimum-preflight/runtime-clean-probe/images.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/rlang/libs/rlang.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/cli/libs/cli.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/vctrs/libs/vctrs.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/glue/libs/glue.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/magrittr/libs/magrittr.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/tibble/libs/tibble.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dplyr-libraries/1.2.1/dplyr/libs/dplyr.so
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/modules//lapack.so

@@ -1,0 +1,10 @@
+{
+  "scope": "Exact bytes of all serialized observation records and method inventory before the separately recorded runtime list. Full original files preserved without normalization.",
+  "r461_prefix_bytes": 27399,
+  "r460_prefix_bytes": 27399,
+  "r461_prefix_sha256": "c815e9614b5723491b0ba1276e07ac9cb0f2700e351e49fa0545f3212719353a",
+  "r460_prefix_sha256": "c815e9614b5723491b0ba1276e07ac9cb0f2700e351e49fa0545f3212719353a",
+  "identical": true,
+  "r461_full_sha256": "4c186de862ab7dd199dcbe7738a08209e5774a911f3b54297cd441a02b3cb059",
+  "r460_full_sha256": "ca994a4d66aef73c58b281e02661e123f4bc12e80fb4b2538e58a8f0c676d460"
+}

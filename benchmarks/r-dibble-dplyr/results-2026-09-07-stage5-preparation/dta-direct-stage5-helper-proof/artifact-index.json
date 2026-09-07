@@ -1,0 +1,401 @@
+{
+  "files": [
+    {
+      "bytes": 3990,
+      "mode": "0o644",
+      "path": "PROVENANCE.md",
+      "sha256": "3f3387c2825ae2e7ecdd7c1a80061f7db0daa7b70717329081141943827e42cc"
+    },
+    {
+      "bytes": 10888,
+      "mode": "0o644",
+      "path": "README.md",
+      "sha256": "f8c0635764e73e5cfe086587191e26c78ec5c15e6dcac97ae5c4c8255e095203"
+    },
+    {
+      "bytes": 5432,
+      "mode": "0o644",
+      "path": "adapter-v1.R",
+      "sha256": "d3723262201e2e3e4ecc104619c1f8d6aff3f8516c40ab81f0da5f9eb77ffcfc"
+    },
+    {
+      "bytes": 5645,
+      "mode": "0o644",
+      "path": "adapter-v2.R",
+      "sha256": "c17300a7ff1f30a2389c8ac033c2982ef14f8dd0601c460783bd372182445d0d"
+    },
+    {
+      "bytes": 5468,
+      "mode": "0o644",
+      "path": "audit-proof-v2.py",
+      "sha256": "6bf249e033651016aa7540605fee35da4c569ddd47d09e669d31781cdbf9eb49"
+    },
+    {
+      "bytes": 5459,
+      "mode": "0o644",
+      "path": "audit-proof.py",
+      "sha256": "16e21c4aac9f9e3635f8a7713f756b239ea18a35c49f7e916df38f3282640eca"
+    },
+    {
+      "bytes": 5022,
+      "mode": "0o644",
+      "path": "audit-result-v2.json",
+      "sha256": "e43a7938fe49afd196ebf035d0fbfdaffda667e1818cf1856c31ea961981a6dc"
+    },
+    {
+      "bytes": 5022,
+      "mode": "0o644",
+      "path": "audit-result.json",
+      "sha256": "e43a7938fe49afd196ebf035d0fbfdaffda667e1818cf1856c31ea961981a6dc"
+    },
+    {
+      "bytes": 12436,
+      "mode": "0o644",
+      "path": "audit-v2-inputs-before.json",
+      "sha256": "225b2218ea7bf08cf62424c42d58bdbf294a9a65cf07e3d1ff6a3c54e85dae4a"
+    },
+    {
+      "bytes": 172,
+      "mode": "0o644",
+      "path": "audit-v2-launch.log",
+      "sha256": "505bb68ae9c61602557b6b6ce69cc0f489441354020e63a4478f0d633b43ea34"
+    },
+    {
+      "bytes": 965,
+      "mode": "0o644",
+      "path": "audit-v2-output-manifest.json",
+      "sha256": "c7481e520a3202b883aebb15bbd8257f48291eb2da0b3a6e0952eb8cca3bd734"
+    },
+    {
+      "bytes": 249,
+      "mode": "0o644",
+      "path": "audit-v2-receipt.json",
+      "sha256": "c6f127ec9d3a86f7c80acaa626f664ff3b6f2c9ce2dfede4b542e9213f1dc00c"
+    },
+    {
+      "bytes": 16965,
+      "mode": "0o644",
+      "path": "cases-v1.R",
+      "sha256": "c3669a379c8a1d69f6f5f1e989d2618133a46e64310ce648ae27f0ad32fa88be"
+    },
+    {
+      "bytes": 17556,
+      "mode": "0o644",
+      "path": "cases-v2.R",
+      "sha256": "89941330fce68d64f31302023bd6d99945b85e3cb6e8d35136f0793ef8f646f5"
+    },
+    {
+      "bytes": 20570,
+      "mode": "0o644",
+      "path": "cases-v3.R",
+      "sha256": "d7d014fa1bbb73673327004fe6faefb6a31cc36701260e2965020949999363ad"
+    },
+    {
+      "bytes": 21013,
+      "mode": "0o644",
+      "path": "cases-v4.R",
+      "sha256": "3f4540ad6e931127d652382790017fbc11e07265992982542a609a487d1e2ce9"
+    },
+    {
+      "bytes": 388,
+      "mode": "0o644",
+      "path": "existing-output-guard-v2.log",
+      "sha256": "7701e1ce327136533ebab51c6178e8c2b7ea7ab5c475e4386fff07cc96015a74"
+    },
+    {
+      "bytes": 388,
+      "mode": "0o644",
+      "path": "existing-output-guard.log",
+      "sha256": "7701e1ce327136533ebab51c6178e8c2b7ea7ab5c475e4386fff07cc96015a74"
+    },
+    {
+      "bytes": 1624,
+      "mode": "0o644",
+      "path": "factory-diagnostic.R",
+      "sha256": "7be88ea92de7104f36023a95d3758339cccba7602bd11a1ca947b21d9f0b7c32"
+    },
+    {
+      "bytes": 2000,
+      "mode": "0o644",
+      "path": "run-audit.py",
+      "sha256": "a69add1c791d44472b511614ef02a52333b364dce564f6cb606b7c3c567fa6f1"
+    },
+    {
+      "bytes": 153,
+      "mode": "0o644",
+      "path": "run-factory-diagnostic/execution-result.json",
+      "sha256": "71041e3f018145e6d837af93d465df53c098f32a7efc00fd5aa8fb594e21056e"
+    },
+    {
+      "bytes": 313,
+      "mode": "0o644",
+      "path": "run-factory-diagnostic/execution.log",
+      "sha256": "49e1d0b20a91eb6b4a91718410b0c746f7e43c2564770fbcff2b71efc192eeef"
+    },
+    {
+      "bytes": 13336,
+      "mode": "0o644",
+      "path": "run-factory-diagnostic/factory-calls.R",
+      "sha256": "3c7fc1dfadb809af843d2cad46d7a87dcc0f01290a6a0d75078036f21a420b18"
+    },
+    {
+      "bytes": 1140208,
+      "mode": "0o644",
+      "path": "run-factory-diagnostic/inputs-before.json",
+      "sha256": "c57fb4a72037b0d05776e6c890b28e726688c391e12a8908656ad6f815807cb4"
+    },
+    {
+      "bytes": 1525,
+      "mode": "0o644",
+      "path": "run-factory-diagnostic/output-manifest.json",
+      "sha256": "efd7b94e76ea16bb9dfd86f879db0726be0a5a6c98336f4d86bc85e2f9aa1be1"
+    },
+    {
+      "bytes": 480,
+      "mode": "0o644",
+      "path": "run-factory-diagnostic-receipt.json",
+      "sha256": "de8ba798854f24af5e16dddb026b71d0719cc4456104b4074e06921005e27bee"
+    },
+    {
+      "bytes": 5675,
+      "mode": "0o644",
+      "path": "run-proof.py",
+      "sha256": "bb8f42b8087e4b4c042d880310d5bb4a4c7bdc2976ad355ab555b27f1274cfee"
+    },
+    {
+      "bytes": 153,
+      "mode": "0o644",
+      "path": "run-v1/execution-result.json",
+      "sha256": "65d5f42e8477c9aa53407960ea916292701ae42e21c1b38962367345131b50ca"
+    },
+    {
+      "bytes": 3685,
+      "mode": "0o644",
+      "path": "run-v1/execution.log",
+      "sha256": "24d441fd4101bc520553c8ad1121401340633c7a111defb7835cc2c63572f985"
+    },
+    {
+      "bytes": 1140163,
+      "mode": "0o644",
+      "path": "run-v1/inputs-before.json",
+      "sha256": "0d229153ef10003463d799e177caec6db177df25cfd9e2941734eaed14f16d25"
+    },
+    {
+      "bytes": 1069,
+      "mode": "0o644",
+      "path": "run-v1/output-manifest.json",
+      "sha256": "d53e6b2f491c939da242177c7f2ba5c31f55a6e8bc67e5dc636a698e7054a91e"
+    },
+    {
+      "bytes": 432,
+      "mode": "0o644",
+      "path": "run-v1-receipt.json",
+      "sha256": "b91da84c701c37986c69e2cfd40f7b47aa610e8f1f11065dc3cac93580efacf9"
+    },
+    {
+      "bytes": 153,
+      "mode": "0o644",
+      "path": "run-v2/execution-result.json",
+      "sha256": "cbac5f3d443d6157d25468ce3402cab1af007bf30816b1a38e80934842e4d1f4"
+    },
+    {
+      "bytes": 2880,
+      "mode": "0o644",
+      "path": "run-v2/execution.log",
+      "sha256": "28780b6eec177700e5df3d4fd73d0d906284f0766f6a45e9a64a4f10303699b3"
+    },
+    {
+      "bytes": 1140163,
+      "mode": "0o644",
+      "path": "run-v2/inputs-before.json",
+      "sha256": "65b0f1fa3758ff99b6c8e965357430b02bcd3651996c3758a2e6f33b5efe80b1"
+    },
+    {
+      "bytes": 11674,
+      "mode": "0o644",
+      "path": "run-v2/observations.rds",
+      "sha256": "c6643b8fae0551bca1f05c980837d192f5f4ef683eae768085d793bb6af589a0"
+    },
+    {
+      "bytes": 62280,
+      "mode": "0o644",
+      "path": "run-v2/observations.txt",
+      "sha256": "5f8c8fcd9a003b0bceb6095f0800e882d5358a150448d40685604d6d1706d0ef"
+    },
+    {
+      "bytes": 1699,
+      "mode": "0o644",
+      "path": "run-v2/output-manifest.json",
+      "sha256": "bb75f40416e5fb9dc1f16d412acd35faa68e005a7c376dc1f27c67924de40b9e"
+    },
+    {
+      "bytes": 432,
+      "mode": "0o644",
+      "path": "run-v2-receipt.json",
+      "sha256": "2b2db145e10e7bc3f0c7563570b2f7e3c1ab45c0dacda94f51e9cbf69049698d"
+    },
+    {
+      "bytes": 793,
+      "mode": "0o644",
+      "path": "run-v3/dll-paths.txt",
+      "sha256": "040c0ec5a22ef018006fc20109f88267b239601e8ccdc19bc28501ddf9d2a41c"
+    },
+    {
+      "bytes": 153,
+      "mode": "0o644",
+      "path": "run-v3/execution-result.json",
+      "sha256": "176dfd7933be205a14f57c7ec510c5c0c14655ed7bc2fe5268d1b43201503e58"
+    },
+    {
+      "bytes": 3705,
+      "mode": "0o644",
+      "path": "run-v3/execution.log",
+      "sha256": "a125403056f606a55b898125925c8019f96fa697a2b33335788c3ae707ae5d46"
+    },
+    {
+      "bytes": 1140163,
+      "mode": "0o644",
+      "path": "run-v3/inputs-before.json",
+      "sha256": "6312800dcf160b5aa26179bab68aead1ee8823e52254a15c09f6805bf169916b"
+    },
+    {
+      "bytes": 1335,
+      "mode": "0o644",
+      "path": "run-v3/namespaces.tsv",
+      "sha256": "590218029782a89bcd0990065ff82210aa4ccc6ba20316e7519bd952646c142e"
+    },
+    {
+      "bytes": 12487,
+      "mode": "0o644",
+      "path": "run-v3/observations.rds",
+      "sha256": "7c394986dc0d5fd0fbeb997ba964b0a943cc22520cac76d238ccb3a1df8291a8"
+    },
+    {
+      "bytes": 67573,
+      "mode": "0o644",
+      "path": "run-v3/observations.txt",
+      "sha256": "6b645e8fedd74a0667216ee092f9c702582e36b2534fa4168acf029dbe6077ea"
+    },
+    {
+      "bytes": 2316,
+      "mode": "0o644",
+      "path": "run-v3/output-manifest.json",
+      "sha256": "970dec27f9949520d84a03b41545fa45624c993a471d0f313c088bd564fafa03"
+    },
+    {
+      "bytes": 432,
+      "mode": "0o644",
+      "path": "run-v3-receipt.json",
+      "sha256": "e12c35b96d7c9047ef34f9d14dc25cce09c20d3d34a094ace4b5b3d4d2f6c255"
+    },
+    {
+      "bytes": 793,
+      "mode": "0o644",
+      "path": "run-v4-after-empty-fix/dll-paths.txt",
+      "sha256": "040c0ec5a22ef018006fc20109f88267b239601e8ccdc19bc28501ddf9d2a41c"
+    },
+    {
+      "bytes": 153,
+      "mode": "0o644",
+      "path": "run-v4-after-empty-fix/execution-result.json",
+      "sha256": "4e9bedbe604d547c22cedcc5767c8631f06b5f86aed7f475cb7ff969edbc3f24"
+    },
+    {
+      "bytes": 2505,
+      "mode": "0o644",
+      "path": "run-v4-after-empty-fix/execution.log",
+      "sha256": "39ca6e228f9a0ce414d5fda93d3cf3b111b2d5ad1376079d895d24e203ef3c47"
+    },
+    {
+      "bytes": 1140179,
+      "mode": "0o644",
+      "path": "run-v4-after-empty-fix/inputs-before.json",
+      "sha256": "52bcd015f61f7943a5788b49ee1130980861afa9320150bdfd2455d439948da7"
+    },
+    {
+      "bytes": 1335,
+      "mode": "0o644",
+      "path": "run-v4-after-empty-fix/namespaces.tsv",
+      "sha256": "590218029782a89bcd0990065ff82210aa4ccc6ba20316e7519bd952646c142e"
+    },
+    {
+      "bytes": 12426,
+      "mode": "0o644",
+      "path": "run-v4-after-empty-fix/observations.rds",
+      "sha256": "af46aa6dec041815cb352fdda8f000c2026da210a62261323e11931e11fb3b85"
+    },
+    {
+      "bytes": 67803,
+      "mode": "0o644",
+      "path": "run-v4-after-empty-fix/observations.txt",
+      "sha256": "4c186de862ab7dd199dcbe7738a08209e5774a911f3b54297cd441a02b3cb059"
+    },
+    {
+      "bytes": 2556,
+      "mode": "0o644",
+      "path": "run-v4-after-empty-fix/output-manifest.json",
+      "sha256": "6ba23701a9e7b1ca3e8a4c0855eb54b33ef0f4ecfd430c663a6ffa716dc9f5ce"
+    },
+    {
+      "bytes": 480,
+      "mode": "0o644",
+      "path": "run-v4-after-empty-fix-receipt.json",
+      "sha256": "bf0aaa716db4c4b860f11265378bd09c6dcad0f52849f5295fa0eb6b6c738cbe"
+    },
+    {
+      "bytes": 793,
+      "mode": "0o644",
+      "path": "run-v4-before-empty-fix/dll-paths.txt",
+      "sha256": "040c0ec5a22ef018006fc20109f88267b239601e8ccdc19bc28501ddf9d2a41c"
+    },
+    {
+      "bytes": 153,
+      "mode": "0o644",
+      "path": "run-v4-before-empty-fix/execution-result.json",
+      "sha256": "9b6755fa5ed76bb4eb46ff8bf4c66205342f49be2930bcd269e8d885893a6673"
+    },
+    {
+      "bytes": 4898,
+      "mode": "0o644",
+      "path": "run-v4-before-empty-fix/execution.log",
+      "sha256": "fdbc64b54d0520749d70a321b2d565cfaa5ae83adc5bf3cf639e016631dd66cc"
+    },
+    {
+      "bytes": 1140180,
+      "mode": "0o644",
+      "path": "run-v4-before-empty-fix/inputs-before.json",
+      "sha256": "493be14bc31dd17e53305df223afff4f127b83305a6fb88ae4073ff3746191de"
+    },
+    {
+      "bytes": 1335,
+      "mode": "0o644",
+      "path": "run-v4-before-empty-fix/namespaces.tsv",
+      "sha256": "590218029782a89bcd0990065ff82210aa4ccc6ba20316e7519bd952646c142e"
+    },
+    {
+      "bytes": 12583,
+      "mode": "0o644",
+      "path": "run-v4-before-empty-fix/observations.rds",
+      "sha256": "d2d968681e1aa693fd1e29903115f75abb29dd4f1daa269ec21bc9be3cd40cee"
+    },
+    {
+      "bytes": 68567,
+      "mode": "0o644",
+      "path": "run-v4-before-empty-fix/observations.txt",
+      "sha256": "2638ed35cf37d25d08beb593cf164da0dbe3df5a6d0478c5226a06618f82dafd"
+    },
+    {
+      "bytes": 2571,
+      "mode": "0o644",
+      "path": "run-v4-before-empty-fix/output-manifest.json",
+      "sha256": "ae0c0da0c7e3e6de0e4f1d9c5601e1028365254bcaf9556ca1159bc760feb9ac"
+    },
+    {
+      "bytes": 483,
+      "mode": "0o644",
+      "path": "run-v4-before-empty-fix-receipt.json",
+      "sha256": "1816521bcf9979ff099d046d7bd1918a1be096cfe1d368db06c3536133431c69"
+    }
+  ],
+  "scope": "Complete local helper-proof artifact inventory, excluding this index and its separate completed-index receipt. Installed inputs remain externally located and are bound in run manifests."
+}

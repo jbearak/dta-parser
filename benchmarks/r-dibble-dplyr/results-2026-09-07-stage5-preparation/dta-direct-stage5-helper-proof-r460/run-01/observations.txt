@@ -1,0 +1,652 @@
+list(records = list(`plain rlang mask lacks qualified helper context` = list(
+    pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+        mask = FALSE, column = FALSE, across_if_fn = FALSE, across_frame = FALSE), 
+    binding_presence_after = list(mask = FALSE, column = FALSE, 
+        across_if_fn = FALSE, across_frame = FALSE), warnings = character(0), 
+    value = "Must only be used inside data-masking verbs like `mutate()`, `filter()`,\nand `group_by()`."), 
+    `qualified and arbitrary helper context` = list(pass = TRUE, 
+        context_restored = TRUE, binding_presence_before = list(
+            mask = FALSE, column = FALSE, across_if_fn = FALSE, 
+            across_frame = FALSE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), warnings = character(0), value = list(
+            list(n = 2L, id = 1L, key = structure(list(g = "a"), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")), 
+                rows = 1:2), list(n = 1L, id = 2L, key = structure(list(
+                g = "b"), row.names = c(NA, -1L), class = c("tbl_df", 
+            "tbl", "data.frame")), rows = 3L))), `data and environment pronouns with lexical aliases` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), warnings = character(0), value = list(
+            103:104, 104L)), `arbitrary helper-created selection quosure` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), warnings = character(0), value = list(
+            structure(list(x = 1:2, y = 4:5), row.names = c(NA, 
+            -2L), class = c("tbl_df", "tbl", "data.frame")), 
+            structure(list(x = 3L, y = 6L), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")))), 
+    `pick fallback and expansion have deliberately different selections` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), warnings = character(0), value = list(
+            expanded = list(structure(list(), names = character(0), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")), 
+                structure(list(), names = character(0), row.names = c(NA, 
+                -1L), class = c("tbl_df", "tbl", "data.frame"
+                ))), fallback = list(structure(list(x = c(0, 
+            0)), row.names = c(NA, -2L), class = c("tbl_df", 
+            "tbl", "data.frame")), structure(list(y = c(0, 0)), row.names = c(NA, 
+            -2L), class = c("tbl_df", "tbl", "data.frame"))))), 
+    `pick uses caller selection environment across lexical mask assignments` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), warnings = character(0), value = list(
+            direct = list(structure(list(y = 4:5), row.names = c(NA, 
+            -2L), class = c("tbl_df", "tbl", "data.frame")), 
+                structure(list(y = 6L), row.names = c(NA, -1L
+                ), class = c("tbl_df", "tbl", "data.frame"))), 
+            alias = list(structure(list(y = 4:5), row.names = c(NA, 
+            -2L), class = c("tbl_df", "tbl", "data.frame")), 
+                structure(list(y = 6L), row.names = c(NA, -1L
+                ), class = c("tbl_df", "tbl", "data.frame"))))), 
+    `pick empty selection has one row before recycling` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), warnings = character(0), value = list(
+            structure(list(), names = character(0), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")), 
+            structure(list(), names = character(0), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")))), 
+    `public across alias and nested cur_column helper` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), warnings = character(0), value = list(
+            structure(list(x = c("x 1 2", "x 2 2"), y = c("y 4 2", 
+            "y 5 2")), row.names = c(NA, -2L), class = c("tbl_df", 
+            "tbl", "data.frame")), structure(list(x = "x 3 1", 
+                y = "y 6 1"), row.names = c(NA, -1L), class = c("tbl_df", 
+            "tbl", "data.frame")))), `if_any if_all and c_across use adapter methods` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = FALSE, 
+            across_frame = FALSE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(any = c(TRUE, TRUE), all = c(TRUE, TRUE), values = c(1L, 
+            2L, 4L, 5L)), list(any = TRUE, all = TRUE, values = c(3L, 
+            6L)))), `unnamed across expansion preserves column-major group order` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            events = c("x:1", "x:2", "y:1", "y:2"), columns = structure(list(
+                x = list(3:4, 4L), y = list(6:7, 7L)), methods = c("get_rlang_mask", 
+            "get_current_data", "get_current_group_id", "get_current_group_size"
+            ), expanded = TRUE))), `runtime across alias preserves group-major column order` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            events = c("x:1", "y:1", "x:2", "y:2"), columns = structure(list(
+                list(structure(list(x = 1:2, y = 4:5), row.names = c(NA, 
+                -2L), class = c("tbl_df", "tbl", "data.frame"
+                )), structure(list(x = 3L, y = 6L), row.names = c(NA, 
+                -1L), class = c("tbl_df", "tbl", "data.frame"
+                )))), methods = c("get_current_data", "current_cols", 
+            "get_current_group_id"), expanded = FALSE))), `across function setup matches one expanded call and two calls per runtime group` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            expansion = 1L, fallback = 4L)), `across dots evaluate once per group and prevent expansion` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = "The `...` argument of `across()` is deprecated as of dplyr 1.1.0.\nSupply arguments directly to `.fns` through an anonymous function instead.\n\n  # Previously\n  across(a:b, mean, na.rm = TRUE)\n\n  # Now\n  across(a:b, \\(x) mean(x, na.rm = TRUE))", 
+        value = list(count = 2L, result = structure(list(list(
+            structure(list(x = 11:12, y = 14:15), row.names = c(NA, 
+            -2L), class = c("tbl_df", "tbl", "data.frame")), 
+            structure(list(x = 13L, y = 16L), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")))), methods = c("get_current_data", 
+        "current_cols"), expanded = FALSE))), `across unpack prevents expansion and keeps helper context` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = structure(list(
+            list(structure(list(x_value = 1:2, x_size = c(2L, 
+            2L), y_value = 4:5, y_size = c(2L, 2L)), row.names = c(NA, 
+            -2L), class = c("tbl_df", "tbl", "data.frame")), 
+                structure(list(x_value = 3L, x_size = 1L, y_value = 6L, 
+                  y_size = 1L), row.names = c(NA, -1L), class = c("tbl_df", 
+                "tbl", "data.frame")))), methods = c("get_rlang_mask", 
+        "get_current_data", "current_cols", "get_current_group_size"
+        ), expanded = FALSE)), `rowwise list extraction and pick preservation match real helper paths` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(value = 1:2, length = 2L, size = 1L, rows = 1L, 
+                key = structure(list(id = 1L), row.names = c(NA, 
+                -1L), class = c("tbl_df", "tbl", "data.frame"
+                )), picked = structure(list(x = 1:2), row.names = c(NA, 
+                -2L), class = c("tbl_df", "tbl", "data.frame"
+                )), legacy = structure(list(x = list(1:2)), row.names = c(NA, 
+                -1L), class = c("tbl_df", "tbl", "data.frame"
+                ))), list(value = 3:5, length = 3L, size = 1L, 
+                rows = 2L, key = structure(list(id = 2L), row.names = c(NA, 
+                -1L), class = c("tbl_df", "tbl", "data.frame"
+                )), picked = structure(list(x = 3:5), row.names = c(NA, 
+                -3L), class = c("tbl_df", "tbl", "data.frame"
+                )), legacy = structure(list(x = list(3:5)), row.names = c(NA, 
+                -1L), class = c("tbl_df", "tbl", "data.frame"
+                ))))), `empty groups execute and expose zero size` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(size = 1L, id = 1L, rows = 1L, key = structure(list(
+                g = structure(1L, levels = c("a", "b"), class = "factor")), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")), 
+                x = 1L), list(size = 0L, id = 2L, rows = integer(0), 
+                key = structure(list(g = structure(2L, levels = c("a", 
+                "b"), class = "factor")), row.names = c(NA, -1L
+                ), class = c("tbl_df", "tbl", "data.frame")), 
+                x = integer(0)))), `zero grouped rows still execute once` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(size = 0L, id = 1L, rows = integer(0), key = structure(list(
+                g = character(0)), row.names = integer(0), class = c("tbl_df", 
+            "tbl", "data.frame"))))), `ungrouped empty and nonempty contexts` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(list(size = 3L, id = 1L, key = structure(list(), names = character(0), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")), 
+                rows = 1:3)), list(list(size = 0L, id = 1L, key = structure(list(), names = character(0), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")), 
+                rows = integer(0))))), `nested real dplyr inside owned evaluation restores group and column` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            structure(list(x = 1:2, y = 4:5), row.names = c(NA, 
+            -2L), class = c("tbl_df", "tbl", "data.frame")), 
+            structure(list(x = 3L, y = 6L), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")))), 
+    `owned evaluation nested inside real dplyr restores outer state` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = structure(list(
+            g = c("a", "a", "b"), x = 1:3, y = 4:6), groups = structure(list(
+            g = c("a", "b"), .rows = structure(list(1:2, 3L), ptype = integer(0), class = c("vctrs_list_of", 
+            "vctrs_vctr", "list"))), row.names = c(NA, -2L), class = c("tbl_df", 
+        "tbl", "data.frame"), .drop = TRUE), row.names = c(NA, 
+        -3L), class = c("grouped_df", "tbl_df", "tbl", "data.frame"
+        ))), `nested owned evaluation maintains independent scalar state` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(n = 2L, id = 1L, inner = list(2L, 1L)), list(
+                n = 1L, id = 2L, inner = list(2L, 1L)))), `errors and warnings restore nested real-dplyr context` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = "There were 2 warnings in `dplyr::mutate()`.\nThe first warning was:\nℹ In argument: `across(x, witness)`.\nℹ In group 1: `g = \"a\"`.\nCaused by warning:\n! owned warning\nℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.", 
+        value = structure(list(g = c("a", "a", "b"), x = 1:3, 
+            y = 4:6), groups = structure(list(g = c("a", "b"), 
+            .rows = structure(list(1:2, 3L), ptype = integer(0), class = c("vctrs_list_of", 
+            "vctrs_vctr", "list"))), row.names = c(NA, -2L), class = c("tbl_df", 
+        "tbl", "data.frame"), .drop = TRUE), row.names = c(NA, 
+        -3L), class = c("grouped_df", "tbl_df", "tbl", "data.frame"
+        ))), `R interrupt condition unwinds adapter context` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            class = c("interrupt", "condition"), message = "controlled proof interrupt")), 
+    `saved group scalars keys and rows survive later groups` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(n = 2L, id = 1L, key = structure(list(g = "a"), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")), 
+                rows = 1:2), list(n = 1L, id = 2L, key = structure(list(
+                g = "b"), row.names = c(NA, -1L), class = c("tbl_df", 
+            "tbl", "data.frame")), rows = 3L))), `captured lexical masks stay group-specific and retain columns` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            retained_values = list(1:2, 3L), limit = "Ordinary R slices only. No native writes or foreign storage adoption proved.")), 
+    `upstream late captures are invalidated but prototype snapshots remain readable` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            upstream_error = "Obsolete data mask.\n✖ Too late to resolve `x` after the end of `dplyr::mutate()`.\nℹ Did you save an object that uses `x` lazily in a column in the\n  `dplyr::mutate()` expression ?", 
+            decision = "Prototype deliberately snapshots per group. Production capture policy remains to be reviewed.")), 
+    `lexical side effects do not contaminate the next group` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(before = 1:2, local = 99L, underlying = 1:2), 
+            list(before = 3L, local = 99L, underlying = 3L))), 
+    `helper context is unavailable after evaluation` = list(pass = TRUE, 
+        context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            n = "Must only be used inside data-masking verbs like `mutate()`, `filter()`,\nand `group_by()`.", 
+            column = "Must only be used inside `across()`.")), 
+    `by context keeps first-appearance keys` = list(pass = TRUE, 
+        context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(size = 2L, id = 1L, key = structure(list(g = "b"), row.names = c(NA, 
+            -1L), class = c("tbl_df", "tbl", "data.frame")), 
+                rows = c(1L, 3L)), list(size = 1L, id = 2L, key = structure(list(
+                g = "a"), row.names = c(NA, -1L), class = c("tbl_df", 
+            "tbl", "data.frame")), rows = 2L))), `zero-row rowwise context executes once` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(size = 0L, id = 1L, rows = integer(0), key = structure(list(
+                id = integer(0)), row.names = c(NA, 0L), class = c("tbl_df", 
+            "tbl", "data.frame")), x = logical(0), pick = structure(list(
+                x = logical(0)), row.names = integer(0), class = c("tbl_df", 
+            "tbl", "data.frame"))))), `zero-row rowwise list-of uses the declared element prototype` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            list(value = character(0), picked = structure(list(
+                x = character(0)), row.names = integer(0), class = c("tbl_df", 
+            "tbl", "data.frame"))))), `deferred ordinary column promise retains group snapshot with explicit upstream difference` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            prototype = list(1:2, 3L), upstream_error = "Obsolete data mask.\n✖ Too late to resolve `x` after the end of `dplyr::mutate()`.\nℹ Did you save an object that uses `x` lazily in a column in the\n  `dplyr::mutate()` expression ?", 
+            limit = "The existing dtatools policy is also obsolete-mask errors. Snapshot readability is a prototype difference, not proposed production parity.")), 
+    `installed helper bodies and formals match 51 pristine source definitions` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            `R/context.R::n` = TRUE, `R/context.R::cur_group` = TRUE, 
+            `R/context.R::cur_group_id` = TRUE, `R/context.R::cur_group_rows` = TRUE, 
+            `R/context.R::group_labels_details` = TRUE, `R/context.R::cur_group_label` = TRUE, 
+            `R/context.R::cur_group_data` = TRUE, `R/context.R::stop_mask_type` = TRUE, 
+            `R/context.R::cnd_data` = TRUE, `R/context.R::cur_column` = TRUE, 
+            `R/context.R::context_poke` = TRUE, `R/context.R::context_peek_bare` = TRUE, 
+            `R/context.R::context_peek` = TRUE, `R/context.R::context_local` = TRUE, 
+            `R/context.R::peek_column` = TRUE, `R/context.R::local_column` = TRUE, 
+            `R/context.R::peek_mask` = TRUE, `R/context.R::local_mask` = TRUE, 
+            `R/across.R::across` = TRUE, `R/across.R::if_any` = TRUE, 
+            `R/across.R::if_all` = TRUE, `R/across.R::c_across` = TRUE, 
+            `R/across.R::across_glue_mask` = TRUE, `R/across.R::across_setup` = TRUE, 
+            `R/across.R::uninline` = TRUE, `R/across.R::data_mask_top` = TRUE, 
+            `R/across.R::quo_set_env_to_data_mask_top` = TRUE, 
+            `R/across.R::c_across_setup` = TRUE, `R/across.R::new_dplyr_quosure` = TRUE, 
+            `R/across.R::dplyr_quosure_name` = TRUE, `R/across.R::dplyr_quosures` = TRUE, 
+            `R/across.R::expand_if_across` = TRUE, `R/across.R::expand_across` = TRUE, 
+            `R/across.R::as_across_fn_call` = TRUE, `R/across.R::is_inlinable_lambda` = TRUE, 
+            `R/across.R::across_missing_cols_deprecate_warn` = TRUE, 
+            `R/across.R::c_across_missing_cols_deprecate_warn` = TRUE, 
+            `R/across.R::df_unpack` = TRUE, `R/across.R::apply_unpack_spec` = TRUE, 
+            `R/across.R::quo_eval_fns` = TRUE, `R/across.R::is_inlinable_function` = TRUE, 
+            `R/across.R::is_inlinable_formula` = TRUE, `R/pick.R::pick` = TRUE, 
+            `R/pick.R::expand_pick` = TRUE, `R/pick.R::expand_pick_quo` = TRUE, 
+            `R/pick.R::expand_pick_call` = TRUE, `R/pick.R::eval_pick` = TRUE, 
+            `R/pick.R::as_pick_selection` = TRUE, `R/pick.R::as_pick_expansion` = TRUE, 
+            `R/pick.R::dplyr_pick_tibble` = TRUE, `R/pick.R::stop_pick_empty` = TRUE)), 
+    `all namespace function objects bodies formals environments and locks unchanged` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = list(
+            functions = 828L, locked = 828L)), `managed context values restored and real-dplyr binding presence recorded` = list(
+        pass = TRUE, context_restored = TRUE, binding_presence_before = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), binding_presence_after = list(
+            mask = TRUE, column = TRUE, across_if_fn = TRUE, 
+            across_frame = TRUE), warnings = character(0), value = TRUE)), 
+    methods = c("current_cols", "current_key", "current_non_group_vars", 
+    "current_rows", "get_current_data", "get_current_group_id", 
+    "get_current_group_size", "get_rlang_mask", "pick_current"
+    ), runtime = list(R = structure(list(platform = "aarch64-apple-darwin25.6.0", 
+        arch = "aarch64", os = "darwin25.6.0", system = "aarch64, darwin25.6.0", 
+        status = "", major = "4", minor = "6.0", year = "2026", 
+        month = "04", day = "24", `svn rev` = "89956", language = "R", 
+        version.string = "R version 4.6.0 (2026-04-24)", nickname = "Because it was There"), class = "simple.list"), 
+        libPaths = c("/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dplyr-libraries/1.2.1", 
+        "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies", 
+        "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library"
+        ), session = structure(list(R.version = list(platform = "aarch64-apple-darwin25.6.0", 
+            arch = "aarch64", os = "darwin25.6.0", system = "aarch64, darwin25.6.0", 
+            status = "", major = "4", minor = "6.0", year = "2026", 
+            month = "04", day = "24", `svn rev` = "89956", language = "R", 
+            version.string = "R version 4.6.0 (2026-04-24)", 
+            nickname = "Because it was There"), platform = "aarch64-apple-darwin25.6.0", 
+            locale = "C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8", 
+            tzone = "America/New_York", tzcode_type = "internal", 
+            running = "macOS Tahoe 26.6.2", RNGkind = c("Mersenne-Twister", 
+            "Inversion", "Rejection"), basePkgs = c("stats", 
+            "graphics", "grDevices", "utils", "datasets", "methods", 
+            "base"), otherPkgs = list(dplyr = structure(list(
+                Type = "Package", Package = "dplyr", Title = "A Grammar of Data Manipulation", 
+                Version = "1.2.1", `Authors@R` = "c(\n    person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = c(\"aut\", \"cre\"),\n           comment = c(ORCID = \"0000-0003-4757-117X\")),\n    person(\"Romain\", \"François\", role = \"aut\",\n           comment = c(ORCID = \"0000-0002-2444-4226\")),\n    person(\"Lionel\", \"Henry\", role = \"aut\"),\n    person(\"Kirill\", \"Müller\", role = \"aut\",\n           comment = c(ORCID = \"0000-0002-1416-3412\")),\n    person(\"Davis\", \"Vaughan\", , \"davis@posit.co\", role = \"aut\",\n           comment = c(ORCID = \"0000-0003-4777-038X\")),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"))\n  )", 
+                Description = "A fast, consistent tool for working with data frame like\n    objects, both in memory and out of memory.", 
+                License = "MIT + file LICENSE", URL = "https://dplyr.tidyverse.org, https://github.com/tidyverse/dplyr", 
+                BugReports = "https://github.com/tidyverse/dplyr/issues", 
+                Depends = "R (>= 4.1.0)", Imports = "cli (>= 3.6.2),\ngenerics,\nglue (>= 1.3.2),\nlifecycle (>= 1.0.5),\nmagrittr (>= 1.5),\nmethods,\npillar (>= 1.9.0),\nR6,\nrlang (>= 1.1.7),\ntibble (>= 3.2.0),\ntidyselect (>= 1.2.0),\nutils,\nvctrs (>= 0.7.1)", 
+                Suggests = "broom,\ncovr,\nDBI,\ndbplyr (>= 2.2.1),\nggplot2,\nknitr,\nLahman,\nlobstr,\nnycflights13,\npurrr,\nrmarkdown,\nRSQLite,\nstringi (>= 1.7.6),\ntestthat (>= 3.1.5),\ntidyr (>= 1.3.0),\nwithr", 
+                VignetteBuilder = "knitr", `Config/build/compilation-database` = "true", 
+                `Config/Needs/website` = "tidyverse/tidytemplate", 
+                `Config/testthat/edition` = "3", Encoding = "UTF-8", 
+                LazyData = "true", Roxygen = "list(markdown = TRUE)", 
+                RoxygenNote = "7.3.3", Author = "Hadley Wickham [aut, cre] (ORCID:\n    <https://orcid.org/0000-0003-4757-117X>),\n  Romain François [aut] (ORCID: <https://orcid.org/0000-0002-2444-4226>),\n  Lionel Henry [aut],\n  Kirill Müller [aut] (ORCID: <https://orcid.org/0000-0002-1416-3412>),\n  Davis Vaughan [aut] (ORCID: <https://orcid.org/0000-0003-4777-038X>),\n  Posit Software, PBC [cph, fnd]", 
+                Maintainer = "Hadley Wickham <hadley@posit.co>", 
+                Built = "R 4.6.0; aarch64-apple-darwin25.6.0; 2026-09-07 08:54:37 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dplyr-libraries/1.2.1/dplyr/Meta/package.rds")), 
+            loadedOnly = list(tidyselect = structure(list(Package = "tidyselect", 
+                Title = "Select from a Set of Strings", Version = "1.2.1", 
+                `Authors@R` = "c(\n    person(\"Lionel\", \"Henry\", , \"lionel@posit.co\", role = c(\"aut\", \"cre\")),\n    person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = \"aut\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"))\n  )", 
+                Description = "A backend for the selecting functions of the 'tidyverse'.  It\n    makes it easy to implement select-like functions in your own packages\n    in a way that is consistent with other 'tidyverse' interfaces for\n    selection.", 
+                License = "MIT + file LICENSE", URL = "https://tidyselect.r-lib.org, https://github.com/r-lib/tidyselect", 
+                BugReports = "https://github.com/r-lib/tidyselect/issues", 
+                Depends = "R (>= 3.4)", Imports = "cli (>= 3.3.0), glue (>= 1.3.0), lifecycle (>= 1.0.3), rlang\n(>= 1.0.4), vctrs (>= 0.5.2), withr", 
+                Suggests = "covr, crayon, dplyr, knitr, magrittr, rmarkdown, stringr,\ntestthat (>= 3.1.1), tibble (>= 2.1.3)", 
+                VignetteBuilder = "knitr", ByteCompile = "true", 
+                `Config/testthat/edition` = "3", `Config/Needs/website` = "tidyverse/tidytemplate", 
+                Encoding = "UTF-8", RoxygenNote = "7.3.0.9000", 
+                NeedsCompilation = "yes", Packaged = "2024-03-11 11:46:04 UTC; lionel", 
+                Author = "Lionel Henry [aut, cre],\n  Hadley Wickham [aut],\n  Posit Software, PBC [cph, fnd]", 
+                Maintainer = "Lionel Henry <lionel@posit.co>", 
+                Repository = "CRAN", `Date/Publication` = "2024-03-11 14:10:02 UTC", 
+                Built = "R 4.6.0; ; 2026-09-07 08:54:34 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/tidyselect/Meta/package.rds"), 
+                compiler = structure(list(Package = "compiler", 
+                  Version = "4.6.0", Priority = "base", Title = "The R Compiler Package", 
+                  Author = "Luke Tierney <luke-tierney@uiowa.edu>", 
+                  Maintainer = "R Core Team <do-use-Contact-address@r-project.org>", 
+                  Contact = "R-help mailing list <r-help@r-project.org>", 
+                  Description = "Byte code compiler for R.", 
+                  License = "Part of R 4.6.0", Built = "R 4.6.0; ; 2026-09-07 08:53:04 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/compiler/Meta/package.rds"), 
+                magrittr = structure(list(Type = "Package", Package = "magrittr", 
+                  Title = "A Forward-Pipe Operator for R", Version = "2.0.5", 
+                  `Authors@R` = "c(\n    person(\"Stefan Milton\", \"Bache\", , \"stefan@stefanbache.dk\", role = c(\"aut\", \"cph\"),\n           comment = \"Original author and creator of magrittr\"),\n    person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = \"aut\"),\n    person(\"Lionel\", \"Henry\", , \"lionel@posit.co\", role = \"cre\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"),\n            comment = c(ROR = \"03wc8by49\"))\n  )", 
+                  Description = "Provides a mechanism for chaining commands with a new\n    forward-pipe operator, %>%. This operator will forward a value, or the\n    result of an expression, into the next function call/expression.\n    There is flexible support for the type of right-hand side expressions.\n    For more information, see package vignette.  To quote Rene Magritte,\n    \"Ceci n'est pas un pipe.\"", 
+                  License = "MIT + file LICENSE", URL = "https://magrittr.tidyverse.org,\nhttps://github.com/tidyverse/magrittr", 
+                  BugReports = "https://github.com/tidyverse/magrittr/issues", 
+                  Depends = "R (>= 3.4.0)", Suggests = "covr, knitr, rlang, rmarkdown, testthat", 
+                  VignetteBuilder = "knitr", ByteCompile = "Yes", 
+                  `Config/Needs/website` = "tidyverse/tidytemplate", 
+                  Encoding = "UTF-8", RoxygenNote = "7.3.3", 
+                  NeedsCompilation = "yes", Packaged = "2026-04-03 08:09:48 UTC; lionel", 
+                  Author = "Stefan Milton Bache [aut, cph] (Original author and creator of\n    magrittr),\n  Hadley Wickham [aut],\n  Lionel Henry [cre],\n  Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)", 
+                  Maintainer = "Lionel Henry <lionel@posit.co>", 
+                  Repository = "CRAN", `Date/Publication` = "2026-04-04 08:00:02 UTC", 
+                  Built = "R 4.6.0; aarch64-apple-darwin25.6.0; 2026-09-07 08:54:19 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/magrittr/Meta/package.rds"), 
+                R6 = structure(list(Package = "R6", Title = "Encapsulated Classes with Reference Semantics", 
+                  Version = "2.6.1", `Authors@R` = "c(\n    person(\"Winston\", \"Chang\", , \"winston@posit.co\", role = c(\"aut\", \"cre\")),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"))\n  )", 
+                  Description = "Creates classes with reference semantics, similar to R's\n    built-in reference classes. Compared to reference classes, R6 classes\n    are simpler and lighter-weight, and they are not built on S4 classes\n    so they do not require the methods package. These classes allow public\n    and private members, and they support inheritance, even when the\n    classes are defined in different packages.", 
+                  License = "MIT + file LICENSE", URL = "https://r6.r-lib.org, https://github.com/r-lib/R6", 
+                  BugReports = "https://github.com/r-lib/R6/issues", 
+                  Depends = "R (>= 3.6)", Suggests = "lobstr, testthat (>= 3.0.0)", 
+                  `Config/Needs/website` = "tidyverse/tidytemplate, ggplot2, microbenchmark,\nscales", 
+                  `Config/testthat/edition` = "3", Encoding = "UTF-8", 
+                  RoxygenNote = "7.3.2", NeedsCompilation = "no", 
+                  Packaged = "2025-02-14 21:15:19 UTC; winston", 
+                  Author = "Winston Chang [aut, cre],\n  Posit Software, PBC [cph, fnd]", 
+                  Maintainer = "Winston Chang <winston@posit.co>", 
+                  Repository = "CRAN", `Date/Publication` = "2025-02-15 00:50:02 UTC", 
+                  Built = "R 4.6.0; ; 2026-09-07 08:54:20 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/R6/Meta/package.rds"), 
+                generics = structure(list(Package = "generics", 
+                  Title = "Common S3 Generics not Provided by Base R Methods Related to\nModel Fitting", 
+                  Version = "0.1.4", `Authors@R` = "c(\n    person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = c(\"aut\", \"cre\"),\n           comment = c(ORCID = \"0000-0003-4757-117X\")),\n    person(\"Max\", \"Kuhn\", , \"max@posit.co\", role = \"aut\"),\n    person(\"Davis\", \"Vaughan\", , \"davis@posit.co\", role = \"aut\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"),\n           comment = c(ROR = \"https://ror.org/03wc8by49\"))\n  )", 
+                  Description = "In order to reduce potential package dependencies and\n    conflicts, generics provides a number of commonly used S3 generics.", 
+                  License = "MIT + file LICENSE", URL = "https://generics.r-lib.org, https://github.com/r-lib/generics", 
+                  BugReports = "https://github.com/r-lib/generics/issues", 
+                  Depends = "R (>= 3.6)", Imports = "methods", 
+                  Suggests = "covr, pkgload, testthat (>= 3.0.0), tibble, withr", 
+                  `Config/Needs/website` = "tidyverse/tidytemplate", 
+                  `Config/testthat/edition` = "3", Encoding = "UTF-8", 
+                  RoxygenNote = "7.3.2", NeedsCompilation = "no", 
+                  Packaged = "2025-05-09 18:17:41 UTC; hadleywickham", 
+                  Author = "Hadley Wickham [aut, cre] (ORCID:\n    <https://orcid.org/0000-0003-4757-117X>),\n  Max Kuhn [aut],\n  Davis Vaughan [aut],\n  Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)", 
+                  Maintainer = "Hadley Wickham <hadley@posit.co>", 
+                  Repository = "CRAN", `Date/Publication` = "2025-05-09 23:50:06 UTC", 
+                  Built = "R 4.6.0; ; 2026-09-07 08:54:18 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/generics/Meta/package.rds"), 
+                cli = structure(list(Package = "cli", Title = "Helpers for Developing Command Line Interfaces", 
+                  Version = "3.6.6", `Authors@R` = "c(\n    person(\"Gábor\", \"Csárdi\", , \"gabor@posit.co\", role = c(\"aut\", \"cre\")),\n    person(\"Hadley\", \"Wickham\", role = \"ctb\"),\n    person(\"Kirill\", \"Müller\", role = \"ctb\"),\n    person(\"Salim\", \"Brüggemann\", , \"salim-b@pm.me\", role = \"ctb\",\n           comment = c(ORCID = \"0000-0002-5329-5987\")),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"),\n           comment = c(ROR = \"03wc8by49\"))\n  )", 
+                  Description = "A suite of tools to build attractive command line interfaces\n    ('CLIs'), from semantic elements: headings, lists, alerts, paragraphs,\n    etc. Supports custom themes via a 'CSS'-like language. It also\n    contains a number of lower level 'CLI' elements: rules, boxes, trees,\n    and 'Unicode' symbols with 'ASCII' alternatives. It support ANSI\n    colors and text styles as well.", 
+                  License = "MIT + file LICENSE", URL = "https://cli.r-lib.org, https://github.com/r-lib/cli", 
+                  BugReports = "https://github.com/r-lib/cli/issues", 
+                  Depends = "R (>= 3.4)", Imports = "utils", 
+                  Suggests = "callr, covr, crayon, digest, glue (>= 1.6.0), grDevices,\nhtmltools, htmlwidgets, knitr, methods, processx, ps (>=\n1.3.4.9000), rlang (>= 1.0.2.9003), rmarkdown, rprojroot,\nrstudioapi, testthat (>= 3.2.0), tibble, whoami, withr", 
+                  `Config/Needs/website` = "r-lib/asciicast, bench, brio, cpp11, decor, desc,\nfansi, prettyunits, sessioninfo, tidyverse/tidytemplate,\nusethis, vctrs", 
+                  `Config/testthat/edition` = "3", `Config/usethis/last-upkeep` = "2025-04-25", 
+                  Encoding = "UTF-8", RoxygenNote = "7.3.2.9000", 
+                  NeedsCompilation = "yes", Packaged = "2026-04-08 18:14:45 UTC; gaborcsardi", 
+                  Author = "Gábor Csárdi [aut, cre],\n  Hadley Wickham [ctb],\n  Kirill Müller [ctb],\n  Salim Brüggemann [ctb] (ORCID: <https://orcid.org/0000-0002-5329-5987>),\n  Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)", 
+                  Maintainer = "Gábor Csárdi <gabor@posit.co>", 
+                  Repository = "CRAN", `Date/Publication` = "2026-04-09 09:50:18 UTC", 
+                  Built = "R 4.6.0; aarch64-apple-darwin25.6.0; 2026-09-07 08:54:15 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/cli/Meta/package.rds"), 
+                withr = structure(list(Package = "withr", Title = "Run Code 'With' Temporarily Modified Global State", 
+                  Version = "3.0.3", `Authors@R` = "c(\n    person(\"Jim\", \"Hester\", role = \"aut\"),\n    person(\"Lionel\", \"Henry\", , \"lionel@posit.co\", role = c(\"aut\", \"cre\")),\n    person(\"Kirill\", \"Müller\", , \"krlmlr+r@mailbox.org\", role = \"aut\"),\n    person(\"Kevin\", \"Ushey\", , \"kevinushey@gmail.com\", role = \"aut\"),\n    person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = \"aut\"),\n    person(\"Winston\", \"Chang\", role = \"aut\"),\n    person(\"Jennifer\", \"Bryan\", role = \"ctb\"),\n    person(\"Richard\", \"Cotton\", role = \"ctb\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"))\n  )", 
+                  Description = "A set of functions to run code 'with' safely and temporarily\n    modified global state. Many of these functions were originally a part\n    of the 'devtools' package, this provides a simple package with limited\n    dependencies to provide access to these functions.", 
+                  License = "MIT + file LICENSE", URL = "https://withr.r-lib.org, https://github.com/r-lib/withr#readme", 
+                  BugReports = "https://github.com/r-lib/withr/issues", 
+                  Depends = "R (>= 3.6.0)", Imports = "graphics, grDevices", 
+                  Suggests = "callr, DBI, knitr, methods, rlang, rmarkdown (>= 2.12),\nRSQLite, testthat (>= 3.0.0)", 
+                  VignetteBuilder = "knitr", `Config/Needs/website` = "tidyverse/tidytemplate", 
+                  `Config/testthat/edition` = "3", Encoding = "UTF-8", 
+                  RoxygenNote = "7.3.2", Collate = "'aaa.R' 'collate.R' 'connection.R' 'db.R' 'defer-exit.R'\n'standalone-defer.R' 'defer.R' 'devices.R' 'local_.R' 'with_.R'\n'dir.R' 'env.R' 'file.R' 'language.R' 'libpaths.R' 'locale.R'\n'makevars.R' 'namespace.R' 'options.R' 'par.R' 'path.R' 'rng.R'\n'seed.R' 'wrap.R' 'sink.R' 'tempfile.R' 'timezone.R'\n'torture.R' 'utils.R' 'with.R'", 
+                  NeedsCompilation = "no", Packaged = "2026-06-17 11:51:00 UTC; lionel", 
+                  Author = "Jim Hester [aut],\n  Lionel Henry [aut, cre],\n  Kirill Müller [aut],\n  Kevin Ushey [aut],\n  Hadley Wickham [aut],\n  Winston Chang [aut],\n  Jennifer Bryan [ctb],\n  Richard Cotton [ctb],\n  Posit Software, PBC [cph, fnd]", 
+                  Maintainer = "Lionel Henry <lionel@posit.co>", 
+                  Repository = "CRAN", `Date/Publication` = "2026-06-19 05:30:02 UTC", 
+                  Built = "R 4.6.0; ; 2026-09-07 08:54:26 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/withr/Meta/package.rds"), 
+                pillar = structure(list(Package = "pillar", Title = "Coloured Formatting for Columns", 
+                  Version = "1.11.1", `Authors@R` = "\n    c(person(given = \"Kirill\",\n             family = \"M\\u00fcller\",\n             role = c(\"aut\", \"cre\"),\n             email = \"kirill@cynkra.com\",\n             comment = c(ORCID = \"0000-0002-1416-3412\")),\n      person(given = \"Hadley\",\n             family = \"Wickham\",\n             role = \"aut\"),\n      person(given = \"RStudio\",\n             role = \"cph\"))", 
+                  Description = "Provides 'pillar' and 'colonnade' generics designed\n    for formatting columns of data using the full range of colours\n    provided by modern terminals.", 
+                  License = "MIT + file LICENSE", URL = "https://pillar.r-lib.org/, https://github.com/r-lib/pillar", 
+                  BugReports = "https://github.com/r-lib/pillar/issues", 
+                  Imports = "cli (>= 2.3.0), glue, lifecycle, rlang (>= 1.0.2), utf8 (>=\n1.1.0), utils, vctrs (>= 0.5.0)", 
+                  Suggests = "bit64, DBI, debugme, DiagrammeR, dplyr, formattable, ggplot2,\nknitr, lubridate, nanotime, nycflights13, palmerpenguins,\nrmarkdown, scales, stringi, survival, testthat (>= 3.1.1),\ntibble, units (>= 0.7.2), vdiffr, withr", 
+                  VignetteBuilder = "knitr", Encoding = "UTF-8", 
+                  RoxygenNote = "7.3.3.9000", `Config/testthat/edition` = "3", 
+                  `Config/testthat/parallel` = "true", `Config/testthat/start-first` = "format_multi_fuzz, format_multi_fuzz_2,\nformat_multi, ctl_colonnade, ctl_colonnade_1, ctl_colonnade_2", 
+                  `Config/autostyle/scope` = "line_breaks", `Config/autostyle/strict` = "true", 
+                  `Config/gha/extra-packages` = "units=?ignore-before-r=4.3.0", 
+                  `Config/Needs/website` = "tidyverse/tidytemplate", 
+                  NeedsCompilation = "no", Packaged = "2025-09-17 03:59:12 UTC; kirill", 
+                  Author = "Kirill Müller [aut, cre] (ORCID:\n    <https://orcid.org/0000-0002-1416-3412>),\n  Hadley Wickham [aut],\n  RStudio [cph]", 
+                  Maintainer = "Kirill Müller <kirill@cynkra.com>", 
+                  Repository = "CRAN", `Date/Publication` = "2025-09-17 11:20:02 UTC", 
+                  Built = "R 4.6.0; ; 2026-09-07 08:54:31 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/pillar/Meta/package.rds"), 
+                glue = structure(list(Package = "glue", Title = "Interpreted String Literals", 
+                  Version = "1.8.1", `Authors@R` = "c(\n    person(\"Jim\", \"Hester\", role = \"aut\",\n           comment = c(ORCID = \"0000-0002-2739-7082\")),\n    person(\"Jennifer\", \"Bryan\", , \"jenny@posit.co\", role = c(\"aut\", \"cre\"),\n           comment = c(ORCID = \"0000-0002-6983-2759\")),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"),\n           comment = c(ROR = \"03wc8by49\"))\n  )", 
+                  Description = "An implementation of interpreted string literals, inspired by\n    Python's Literal String Interpolation\n    <https://www.python.org/dev/peps/pep-0498/> and Docstrings\n    <https://www.python.org/dev/peps/pep-0257/> and Julia's Triple-Quoted\n    String Literals\n    <https://docs.julialang.org/en/v1.3/manual/strings/#Triple-Quoted-String-Literals-1>.", 
+                  License = "MIT + file LICENSE", URL = "https://glue.tidyverse.org/, https://github.com/tidyverse/glue", 
+                  BugReports = "https://github.com/tidyverse/glue/issues", 
+                  Depends = "R (>= 4.1)", Imports = "methods", 
+                  Suggests = "crayon, DBI (>= 1.2.0), dplyr, knitr, rlang, rmarkdown,\nRSQLite, testthat (>= 3.2.0), vctrs (>= 0.3.0), waldo (>=\n0.5.3), withr", 
+                  VignetteBuilder = "knitr", ByteCompile = "true", 
+                  `Config/Needs/website` = "bench, forcats, ggbeeswarm, ggplot2, R.utils,\nrprintf, tidyr, tidyverse/tidytemplate", 
+                  `Config/testthat/edition` = "3", `Config/usethis/last-upkeep` = "2026-04-16", 
+                  Encoding = "UTF-8", RoxygenNote = "7.3.3", 
+                  NeedsCompilation = "yes", Packaged = "2026-04-16 22:53:02 UTC; jenny", 
+                  Author = "Jim Hester [aut] (ORCID: <https://orcid.org/0000-0002-2739-7082>),\n  Jennifer Bryan [aut, cre] (ORCID:\n    <https://orcid.org/0000-0002-6983-2759>),\n  Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)", 
+                  Maintainer = "Jennifer Bryan <jenny@posit.co>", 
+                  Repository = "CRAN", `Date/Publication` = "2026-04-17 05:11:01 UTC", 
+                  Built = "R 4.6.0; aarch64-apple-darwin25.6.0; 2026-09-07 08:54:19 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/glue/Meta/package.rds"), 
+                tibble = structure(list(Package = "tibble", Title = "Simple Data Frames", 
+                  Version = "3.3.1", `Authors@R` = "c(\n    person(\"Kirill\", \"Müller\", , \"kirill@cynkra.com\", role = c(\"aut\", \"cre\"),\n           comment = c(ORCID = \"0000-0002-1416-3412\")),\n    person(\"Hadley\", \"Wickham\", , \"hadley@rstudio.com\", role = \"aut\"),\n    person(\"Romain\", \"Francois\", , \"romain@r-enthusiasts.com\", role = \"ctb\"),\n    person(\"Jennifer\", \"Bryan\", , \"jenny@rstudio.com\", role = \"ctb\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"),\n           comment = c(ROR = \"03wc8by49\"))\n  )", 
+                  Description = "Provides a 'tbl_df' class (the 'tibble') with stricter\n    checking and better formatting than the traditional data frame.", 
+                  License = "MIT + file LICENSE", URL = "https://tibble.tidyverse.org/, https://github.com/tidyverse/tibble", 
+                  BugReports = "https://github.com/tidyverse/tibble/issues", 
+                  Depends = "R (>= 3.4.0)", Imports = "cli, lifecycle (>= 1.0.0), magrittr, methods, pillar (>=\n1.8.1), pkgconfig, rlang (>= 1.0.2), utils, vctrs (>= 0.5.0)", 
+                  Suggests = "bench, bit64, blob, brio, callr, DiagrammeR, dplyr, evaluate,\nformattable, ggplot2, here, hms, htmltools, knitr, lubridate,\nnycflights13, pkgload, purrr, rmarkdown, stringi, testthat (>=\n3.0.2), tidyr, withr", 
+                  VignetteBuilder = "knitr", `Config/autostyle/rmd` = "false", 
+                  `Config/autostyle/scope` = "line_breaks", `Config/autostyle/strict` = "true", 
+                  `Config/Needs/website` = "tidyverse/tidytemplate", 
+                  `Config/testthat/edition` = "3", `Config/testthat/parallel` = "true", 
+                  `Config/testthat/start-first` = "vignette-formats, as_tibble, add,\ninvariants", 
+                  `Config/usethis/last-upkeep` = "2025-06-07", 
+                  Encoding = "UTF-8", RoxygenNote = "7.3.3.9000", 
+                  NeedsCompilation = "yes", Packaged = "2026-01-10 18:28:47 UTC; kirill", 
+                  Author = "Kirill Müller [aut, cre] (ORCID:\n    <https://orcid.org/0000-0002-1416-3412>),\n  Hadley Wickham [aut],\n  Romain Francois [ctb],\n  Jennifer Bryan [ctb],\n  Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)", 
+                  Maintainer = "Kirill Müller <kirill@cynkra.com>", 
+                  Repository = "CRAN", `Date/Publication` = "2026-01-11 10:10:02 UTC", 
+                  Built = "R 4.6.0; aarch64-apple-darwin25.6.0; 2026-09-07 08:54:32 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/tibble/Meta/package.rds"), 
+                vctrs = structure(list(Package = "vctrs", Title = "Vector Helpers", 
+                  Version = "0.7.3", `Authors@R` = "c(\n    person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = \"aut\"),\n    person(\"Lionel\", \"Henry\", , \"lionel@posit.co\", role = \"aut\"),\n    person(\"Davis\", \"Vaughan\", , \"davis@posit.co\", role = c(\"aut\", \"cre\")),\n    person(\"data.table team\", role = \"cph\",\n           comment = \"Radix sort based on data.table's forder() and their contribution to R's order()\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"))\n  )", 
+                  Description = "Defines new notions of prototype and size that are used to\n    provide tools for consistent and well-founded type-coercion and\n    size-recycling, and are in turn connected to ideas of type- and\n    size-stability useful for analysing function interfaces.", 
+                  License = "MIT + file LICENSE", URL = "https://vctrs.r-lib.org/, https://github.com/r-lib/vctrs", 
+                  BugReports = "https://github.com/r-lib/vctrs/issues", 
+                  Depends = "R (>= 4.0.0)", Imports = "cli (>= 3.4.0), glue, lifecycle (>= 1.0.3), rlang (>= 1.1.7)", 
+                  Suggests = "bit64, covr, crayon, dplyr (>= 0.8.5), generics, knitr,\npillar (>= 1.4.4), pkgdown (>= 2.0.1), rmarkdown, testthat (>=\n3.0.0), tibble (>= 3.1.3), waldo (>= 0.2.0), withr, xml2,\nzeallot", 
+                  VignetteBuilder = "knitr", `Config/build/compilation-database` = "true", 
+                  `Config/Needs/website` = "tidyverse/tidytemplate", 
+                  `Config/testthat/edition` = "3", `Config/testthat/parallel` = "true", 
+                  Encoding = "UTF-8", KeepSource = "true", Language = "en-GB", 
+                  RoxygenNote = "7.3.3", NeedsCompilation = "yes", 
+                  Packaged = "2026-04-10 14:27:17 UTC; davis", 
+                  Author = "Hadley Wickham [aut],\n  Lionel Henry [aut],\n  Davis Vaughan [aut, cre],\n  data.table team [cph] (Radix sort based on data.table's forder() and\n    their contribution to R's order()),\n  Posit Software, PBC [cph, fnd]", 
+                  Maintainer = "Davis Vaughan <davis@posit.co>", 
+                  Repository = "CRAN", `Date/Publication` = "2026-04-11 06:20:03 UTC", 
+                  Built = "R 4.6.0; aarch64-apple-darwin25.6.0; 2026-09-07 08:54:27 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/vctrs/Meta/package.rds"), 
+                lifecycle = structure(list(Package = "lifecycle", 
+                  Title = "Manage the Life Cycle of your Package Functions", 
+                  Version = "1.0.5", `Authors@R` = "c(\n    person(\"Lionel\", \"Henry\", , \"lionel@posit.co\", role = c(\"aut\", \"cre\")),\n    person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = \"aut\",\n           comment = c(ORCID = \"0000-0003-4757-117X\")),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"))\n  )", 
+                  Description = "Manage the life cycle of your exported functions with shared\n    conventions, documentation badges, and user-friendly deprecation\n    warnings.", 
+                  License = "MIT + file LICENSE", URL = "https://lifecycle.r-lib.org/, https://github.com/r-lib/lifecycle", 
+                  BugReports = "https://github.com/r-lib/lifecycle/issues", 
+                  Depends = "R (>= 3.6)", Imports = "cli (>= 3.4.0), rlang (>= 1.1.0)", 
+                  Suggests = "covr, knitr, lintr (>= 3.1.0), rmarkdown, testthat (>=\n3.0.1), tibble, tidyverse, tools, vctrs, withr, xml2", 
+                  VignetteBuilder = "knitr", `Config/Needs/website` = "tidyverse/tidytemplate, usethis", 
+                  `Config/testthat/edition` = "3", Encoding = "UTF-8", 
+                  RoxygenNote = "7.3.3", NeedsCompilation = "no", 
+                  Packaged = "2026-01-07 15:00:49 UTC; lionel", 
+                  Author = "Lionel Henry [aut, cre],\n  Hadley Wickham [aut] (ORCID: <https://orcid.org/0000-0003-4757-117X>),\n  Posit Software, PBC [cph, fnd]", 
+                  Maintainer = "Lionel Henry <lionel@posit.co>", 
+                  Repository = "CRAN", `Date/Publication` = "2026-01-08 08:00:02 UTC", 
+                  Built = "R 4.6.0; ; 2026-09-07 08:54:26 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/lifecycle/Meta/package.rds"), 
+                pkgconfig = structure(list(Package = "pkgconfig", 
+                  Title = "Private Configuration for 'R' Packages", 
+                  Version = "2.0.3", Author = "Gábor Csárdi", 
+                  Maintainer = "Gábor Csárdi <csardi.gabor@gmail.com>", 
+                  Description = "Set configuration options on a per-package basis.\n    Options set by a given package only apply to that package,\n    other packages are unaffected.", 
+                  License = "MIT + file LICENSE", LazyData = "true", 
+                  Imports = "utils", Suggests = "covr, testthat, disposables (>= 1.0.3)", 
+                  URL = "https://github.com/r-lib/pkgconfig#readme", 
+                  BugReports = "https://github.com/r-lib/pkgconfig/issues", 
+                  Encoding = "UTF-8", NeedsCompilation = "no", 
+                  Packaged = "2019-09-22 08:42:40 UTC; gaborcsardi", 
+                  Repository = "CRAN", `Date/Publication` = "2019-09-22 09:20:02 UTC", 
+                  Built = "R 4.6.0; ; 2026-09-07 08:54:25 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/pkgconfig/Meta/package.rds"), 
+                rlang = structure(list(Package = "rlang", Version = "1.3.0", 
+                  Title = "Functions for Base Types and Core R and 'Tidyverse' Features", 
+                  `Authors@R` = "c(\n    person(\"Lionel\", \"Henry\", , \"lionel@posit.co\", role = c(\"aut\", \"cre\")),\n    person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = \"aut\"),\n    person(\"mikefc\", , , \"mikefc@coolbutuseless.com\", role = \"cph\",\n           comment = \"Hash implementation based on Mike's xxhashlite\"),\n    person(\"Yann\", \"Collet\", role = \"cph\",\n           comment = \"Author of the embedded xxHash library\"),\n    person(\"Posit, PBC\", role = c(\"cph\", \"fnd\"))\n  )", 
+                  Description = "A toolbox for working with base types, core R features like\n    the condition system, and core 'Tidyverse' features like tidy\n    evaluation.", 
+                  License = "MIT + file LICENSE", URL = "https://rlang.r-lib.org, https://github.com/r-lib/rlang", 
+                  BugReports = "https://github.com/r-lib/rlang/issues", 
+                  Depends = "R (>= 4.0.0)", Imports = "utils", 
+                  Suggests = "cli (>= 3.1.0), covr, crayon, desc, fs, glue, knitr,\nmagrittr, methods, pillar, pkgload, rmarkdown, stats, testthat\n(>= 3.3.2), tibble, usethis, vctrs (>= 0.2.3), withr", 
+                  Enhances = "winch", Biarch = "true", ByteCompile = "true", 
+                  `Config/build/compilation-database` = "true", 
+                  `Config/Needs/website` = "dplyr, tidyverse/tidytemplate", 
+                  `Config/roxygen2/version` = "8.0.0", `Config/testthat/edition` = "3", 
+                  `Config/testthat/parallel` = "true", Encoding = "UTF-8", 
+                  NeedsCompilation = "yes", Packaged = "2026-07-01 15:54:09 UTC; lionel", 
+                  Author = "Lionel Henry [aut, cre],\n  Hadley Wickham [aut],\n  mikefc [cph] (Hash implementation based on Mike's xxhashlite),\n  Yann Collet [cph] (Author of the embedded xxHash library),\n  Posit, PBC [cph, fnd]", 
+                  Maintainer = "Lionel Henry <lionel@posit.co>", 
+                  Repository = "CRAN", `Date/Publication` = "2026-07-05 08:40:02 UTC", 
+                  Built = "R 4.6.0; aarch64-apple-darwin25.6.0; 2026-09-07 08:54:21 UTC; unix"), class = "packageDescription", file = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/rlang/Meta/package.rds")), 
+            matprod = "default", BLAS = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libRblas.dylib", 
+            LAPACK = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libRlapack.dylib", 
+            LA_version = "3.12.1"), class = "sessionInfo"), namespaces = list(
+            list(name = "tidyselect", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/tidyselect"), 
+            list(name = "compiler", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/compiler"), 
+            list(name = "magrittr", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/magrittr"), 
+            list(name = "R6", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/R6"), 
+            list(name = "generics", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/generics"), 
+            list(name = "cli", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/cli"), 
+            list(name = "graphics", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/graphics"), 
+            list(name = "withr", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/withr"), 
+            list(name = "pillar", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/pillar"), 
+            list(name = "glue", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/glue"), 
+            list(name = "dplyr", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dplyr-libraries/1.2.1/dplyr"), 
+            list(name = "utils", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/utils"), 
+            list(name = "tibble", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/tibble"), 
+            list(name = "grDevices", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/grDevices"), 
+            list(name = "stats", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/stats"), 
+            list(name = "datasets", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/datasets"), 
+            list(name = "vctrs", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/vctrs"), 
+            list(name = "methods", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/methods"), 
+            list(name = "lifecycle", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/lifecycle"), 
+            list(name = "pkgconfig", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/pkgconfig"), 
+            list(name = "rlang", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/rlang"), 
+            list(name = "base", path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/base")), 
+        dlls = list(base = "base", methods = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/methods/libs/methods.so", 
+            utils = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/utils/libs/utils.so", 
+            grDevices = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/grDevices/libs/grDevices.so", 
+            graphics = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/graphics/libs/graphics.so", 
+            stats = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library/stats/libs/stats.so", 
+            images = "/private/tmp/dta-direct-stage5-minimum-preflight/runtime-clean-probe/images.so", 
+            rlang = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/rlang/libs/rlang.so", 
+            cli = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/cli/libs/cli.so", 
+            vctrs = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/vctrs/libs/vctrs.so", 
+            glue = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/glue/libs/glue.so", 
+            magrittr = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/magrittr/libs/magrittr.so", 
+            tibble = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/tibble/libs/tibble.so", 
+            dplyr = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dplyr-libraries/1.2.1/dplyr/libs/dplyr.so", 
+            lapack = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/modules//lapack.so"), 
+        dplyr_path = "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dplyr-libraries/1.2.1/dplyr", 
+        dplyr_version = "1.2.1"))

@@ -1,0 +1,157 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+PASS plain rlang mask lacks qualified helper context 
+FAIL qualified and arbitrary helper context 
+$pass
+[1] FALSE
+
+$context_restored
+[1] FALSE
+
+$warnings
+character(0)
+
+$value
+$value[[1]]
+$value[[1]]$n
+[1] 2
+
+$value[[1]]$id
+[1] 1
+
+$value[[1]]$key
+# A tibble: 1 × 1
+  g    
+  <chr>
+1 a    
+
+$value[[1]]$rows
+[1] 1 2
+
+
+$value[[2]]
+$value[[2]]$n
+[1] 1
+
+$value[[2]]$id
+[1] 2
+
+$value[[2]]$key
+# A tibble: 1 × 1
+  g    
+  <chr>
+1 b    
+
+$value[[2]]$rows
+[1] 3
+
+
+
+PASS data and environment pronouns with lexical aliases 
+PASS arbitrary helper-created selection quosure 
+PASS pick fallback and expansion have deliberately different selections 
+PASS pick uses caller selection environment across lexical mask assignments 
+PASS pick empty selection has one row before recycling 
+PASS public across alias and nested cur_column helper 
+FAIL if_any if_all and c_across use adapter methods 
+$pass
+[1] FALSE
+
+$context_restored
+[1] FALSE
+
+$warnings
+character(0)
+
+$value
+$value[[1]]
+$value[[1]]$any
+[1] TRUE TRUE
+
+$value[[1]]$all
+[1] TRUE TRUE
+
+$value[[1]]$values
+[1] 1 2 4 5
+
+
+$value[[2]]
+$value[[2]]$any
+[1] TRUE
+
+$value[[2]]$all
+[1] TRUE
+
+$value[[2]]$values
+[1] 3 6
+
+
+
+PASS unnamed across expansion preserves column-major group order 
+PASS runtime across alias preserves group-major column order 
+FAIL across function setup runs once for expansion and once per group for alias 
+$pass
+[1] FALSE
+
+$context_restored
+[1] TRUE
+
+$warnings
+character(0)
+
+$value
+$value$class
+[1] "simpleError" "error"       "condition"  
+
+$value$message
+[1] "Different values:\n4L\nExpected:\n2L"
+
+
+PASS across dots evaluate once per group and prevent expansion 
+PASS across unpack prevents expansion and keeps helper context 
+PASS rowwise list extraction and pick preservation match real helper paths 
+PASS empty groups execute and expose zero size 
+PASS zero grouped rows still execute once 
+PASS ungrouped empty and nonempty contexts 
+PASS nested real dplyr inside owned evaluation restores group and column 
+PASS owned evaluation nested inside real dplyr restores outer state 
+PASS nested owned evaluation maintains independent scalar state 
+PASS errors and warnings restore nested real-dplyr context 
+PASS R interrupt condition unwinds adapter context 
+PASS saved group scalars keys and rows survive later groups 
+PASS captured lexical masks stay group-specific and retain columns 
+PASS upstream late captures are invalidated but prototype snapshots remain readable 
+PASS lexical side effects do not contaminate the next group 
+PASS helper context is unavailable after evaluation 
+PASS all namespace function objects bodies formals environments and locks unchanged 
+FAIL managed context slot values and original binding presence restored 
+$pass
+[1] FALSE
+
+$context_restored
+[1] TRUE
+
+$warnings
+character(0)
+
+$value
+$value$class
+[1] "simpleError" "error"       "condition"  
+
+$value$message
+[1] "Different values:\nlist(mask = list(present = TRUE, value = NULL), column = list(\n    present = TRUE, value = NULL), across_if_fn = list(present = TRUE, \n    value = NULL), across_frame = list(present = TRUE, value = NULL))\nExpected:\nlist(mask = list(present = FALSE, value = NULL), column = list(\n    present = FALSE, value = NULL), across_if_fn = list(present = FALSE, \n    value = NULL), across_frame = list(present = FALSE, value = NULL))"
+
+
+Error in asNamespace(ns, base.OK = FALSE) : 
+  operation not allowed on base namespace
+Calls: lapply -> FUN -> getNamespaceInfo -> asNamespace
+Execution halted

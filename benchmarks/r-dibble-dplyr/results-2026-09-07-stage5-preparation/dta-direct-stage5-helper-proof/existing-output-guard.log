@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/private/tmp/dta-direct-stage5-helper-proof/run-proof.py", line 112, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/dta-direct-stage5-helper-proof/run-proof.py", line 52, in main
+    raise RuntimeError('Refusing existing output or receipt before any R execution')
+RuntimeError: Refusing existing output or receipt before any R execution
