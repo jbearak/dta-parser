@@ -49,7 +49,9 @@ Its pins preserve the reviewed record; they are not an external authenticity
 anchor. [Bounded tests](review-fixes/test-note-consistency.py) alter temporary
 copies to exercise corruption and missing/link inputs without changing this
 archive. The [new check record](review-fixes/note-checks-01/execution-result.json)
-retains the actual command results and bound inputs. No experiment was rerun.
+retains the actual command results. The
+[input record](review-fixes/note-checks-01/inputs-before.json) retains the bound
+input identities. No experiment was rerun.
 
 The additive [inclusion correction](inclusion-correction.json) qualifies the
 new manifest's phrase “historical bytes/modes preserved.” Historical indexes
