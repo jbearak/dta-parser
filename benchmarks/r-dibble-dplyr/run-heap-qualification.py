@@ -33,6 +33,12 @@ CHECKPOINTS = ["prefixture", "prior", "after_result", "after_drop_source", "afte
 
 
 def verify_metrics(text, log):
+    """Recompute retained heap from five ordered checkpoints and raw cell counts.
+
+    Infer the unique header-cell size consistent with R's rounded MB reports,
+    then verify every reported delta independently. These retained-heap values
+    do not measure peak RSS or elapsed time.
+    """
     metrics = {}
     for field in METRICS:
         found = re.findall(rf"^heap_{field} ([-+0-9.eE]+)\s*$", text, re.MULTILINE)
@@ -65,6 +71,12 @@ def verify_metrics(text, log):
 
 
 def main():
+    """Bind source/runner identities and retain all 36 fresh-process heap cases.
+
+    Each R child checks the requested installation and emits its dependency
+    identity. Failed logs survive; a manifest is published only after the full
+    case matrix, derived metrics and unchanged source/output hashes pass.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("repo", type=Path)
     parser.add_argument("output", type=Path)

@@ -729,6 +729,97 @@ test_that("Arrow readers adopt fresh logical and factor allocations", {
     }
 })
 
+test_that("fresh unnamed string construction keeps its first write private", {
+    for (rows in c(1L, 64L, 1000L)) for (collect in c(FALSE, TRUE)) {
+        raw <- rep("aa", rows)
+        value <- dta_string(raw, "str4")
+        if (collect) gc()
+        before <- owned_atom_info(value)
+        expect_false(before$shared)
+        .Call(C_dtatools_native_copy_stats, TRUE)
+        .Call(C_dtatools_owned_set_string, value, 1L, "zz")
+        copies <- .Call(C_dtatools_native_copy_stats, FALSE)
+        expect_identical(copies[["owned_capture"]], 0)
+        expect_identical(owned_atom_info(value)$backing, before$backing)
+        expect_identical(as.character(value), c("zz", rep("aa", rows - 1L)))
+        expect_identical(raw, rep("aa", rows))
+        expect_identical(attributes(value), list(stata.string.storage = "str4",
+            class = c("dta_string", "vctrs_vctr", "character")))
+    }
+})
+
+test_that("constructing from an owned string preserves real aliases in both directions", {
+    source <- dta_string(rep("aa", 64L), "str4")
+    result <- dta_string(source, "str8")
+    expect_identical(owned_atom_info(result)$backing, owned_atom_info(source)$backing)
+    expect_true(owned_atom_info(result)$shared)
+    .Call(C_dtatools_owned_set_string, result, 1L, "longer")
+    expect_identical(as.character(source), rep("aa", 64L))
+    .Call(C_dtatools_owned_set_string, source, 2L, "bb")
+    expect_identical(as.character(result), c("longer", rep("aa", 63L)))
+    expect_identical(attr(source, "stata.string.storage"), "str4")
+    expect_identical(attr(result, "stata.string.storage"), "str8")
+})
+
+test_that("internal string construction captures before forcing metadata promises", {
+    skip_if_not_installed("data.table")
+    for (argument in c("storage", "prototype")) {
+        foreign <- data.table::data.table(x = rep("aa", 64L))
+        change <- function(result) {
+            data.table::set(foreign, i = 1L, j = "x", value = "bb")
+            gc()
+            result
+        }
+        value <- if (argument == "storage") .new_dta_string(foreign$x, change("str4")) else
+            .new_dta_string(foreign$x, "str4", prototype = change(NULL))
+        expect_identical(as.character(value), rep("aa", 64L))
+        expect_identical(foreign$x, c("bb", rep("aa", 63L)))
+        .Call(C_dtatools_owned_set_string, value, 2L, "cc")
+        expect_identical(foreign$x, c("bb", rep("aa", 63L)))
+    }
+})
+
+test_that("named string construction preserves replacement dispatch and escaped aliases", {
+    escaped <- NULL
+    calls <- 0L
+    method <- function(x, value) {
+        calls <<- calls + 1L
+        if (is.null(escaped)) escaped <<- x
+        attr(x, "names") <- paste0("custom-", value)
+        x
+    }
+    table <- get(".__S3MethodsTable__.", envir = baseenv())
+    registerS3method("names<-", "dta_string", method, envir = baseenv())
+    withr::defer(rm(list = "names<-.dta_string", envir = table))
+    raw <- stats::setNames(rep("aa", 64L), as.character(seq_len(64L)))
+    value <- dta_string(raw, "str4")
+    expect_identical(calls, 1L)
+    expect_identical(names(value), paste0("custom-", names(raw)))
+    # Generic names assignment can return R's foreign metadata wrapper, whose
+    # established mutation API is ordinary R replacement.
+    value[1L] <- "bb"
+    expect_identical(unname(as.character(escaped)), rep("aa", 64L))
+    escaped[2L] <- "cc"
+    expect_identical(unname(as.character(value)), c("bb", rep("aa", 63L)))
+    expect_identical(unname(raw), rep("aa", 64L))
+})
+
+test_that("owned width scans preserve encoded bytes and missingness", {
+    latin <- iconv("\u00e9\u00f1", to = "latin1")
+    Encoding(latin) <- "latin1"
+    bytes <- latin
+    Encoding(bytes) <- "bytes"
+    for (text in list("ascii", enc2utf8(latin), latin, bytes)) {
+        raw <- rep(text, 1000L)
+        value <- owned_atom_capture(raw)
+        expected <- max(nchar(enc2utf8(raw), type = "bytes"))
+        expect_identical(.Call(C_dtatools_owned_string_width, value), expected)
+        expect_identical(value, raw)
+        .Call(C_dtatools_owned_set_string, value, 1L, NA_character_)
+        expect_true(is.na(.Call(C_dtatools_owned_string_width, value)))
+    }
+})
+
 test_that("large string constructors and restoration retain owned facts", {
     for (rows in c(63L, 64L, 1000L)) {
         raw <- rep(c("alpha", "", "\u00e9"), length.out = rows)

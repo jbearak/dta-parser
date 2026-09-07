@@ -145,8 +145,14 @@ static int owned_supported(SEXP value) {
 /* Match nchar(enc2utf8(x), type = "bytes"), including byte-marked strings.
    The ordinary payload cannot call back while these facts are computed. */
 static int owned_string_width(SEXP value) {
-    return Rf_getCharCE(value) == CE_BYTES ? LENGTH(value) :
-        (int) strlen(Rf_translateCharUTF8(value));
+    if (Rf_getCharCE(value) == CE_BYTES) return LENGTH(value);
+    /* Translation can allocate R temporary storage for each encoded element.
+       Only the byte count escapes, so release that storage before the next
+       element instead of retaining every conversion until .Call returns. */
+    const void *marker = vmaxget();
+    int width = (int) strlen(Rf_translateCharUTF8(value));
+    vmaxset(marker);
+    return width;
 }
 
 static void owned_scan_strings(SEXP value) {
@@ -168,6 +174,9 @@ static void owned_scan_strings(SEXP value) {
     UNPROTECT(1);
 }
 
+/* Copy values into a new private record, retaining metadata only on its handle.
+   Foreign element/region readers may call R; the source remains rooted by the
+   caller and facts are inherited only from unexposed internal owned storage. */
 static SEXP owned_capture(SEXP value) {
     R_xlen_t length = XLENGTH(value);
     SEXP values = PROTECT(Rf_allocVector(TYPEOF(value), length));
@@ -205,6 +214,9 @@ static SEXP owned_capture(SEXP value) {
 
 static SEXP owned_capture_real(SEXP value) { return owned_capture(value); }
 
+/* Return an isolated metadata handle. Share only tracked, unexposed backing and
+   permanently mark that record shared; otherwise capture values. Dropping a
+   temporary fork cannot prove that every other handle has disappeared. */
 static SEXP owned_fork(SEXP value) {
     if (!owned_column(value) || owned_flags(value)[OWNED_EXPOSED]) return owned_capture(value);
     SEXP result = PROTECT(R_new_altrep(owned_class(TYPEOF(value)), R_altrep_data1(value), R_NilValue));

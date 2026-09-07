@@ -24,7 +24,7 @@ dta_string <- function(x = character(), storage = NULL) {
     x <- enc2utf8(x)
     required <- .dta_string_required_width(x)
     storage <- .normalize_dta_string_storage(storage, required)
-    result <- .new_dta_string(x, storage)
+    result <- .new_dta_string(x, storage, .validated_storage = TRUE)
     # A foreign reader or declaration callback can change borrowed values
     # after the initial validation. Check the values actually captured.
     if (!.is_unmaterialized_dictstring(result)) {
@@ -67,8 +67,16 @@ dta_string <- function(x = character(), storage = NULL) {
     storage
 }
 
-.new_dta_string <- function(x, storage, prototype = NULL) {
+.new_dta_string <- function(x, storage, prototype = NULL, .validated_storage = FALSE) {
     value_names <- names(x)
+    if (.validated_storage && missing(prototype) && is.null(value_names)) {
+        # Keep a fresh constructor's metadata edits inside one native call.
+        # Only dta_string() supplies this proof: storage is already evaluated
+        # by normalization and no prototype promise can precede capture.
+        # Internal restoration keeps its original promise/callback order.
+        constructed <- .Call(C_dtatools_construct_string, x, storage)
+        if (!is.null(constructed)) return(constructed)
+    }
     x <- .Call(C_dtatools_capture_string, x)
     if (!is.null(prototype)) {
         # Attribute replacement materializes the dictionary-string ALTREP used

@@ -3,6 +3,7 @@
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
 #include <R_ext/Altrep.h>
+#include <R_ext/Memory.h>
 #include <R_ext/GraphicsEngine.h>
 #include <R_ext/Utils.h>
 #include <R_ext/Visibility.h>
@@ -1182,6 +1183,34 @@ SEXP C_dtatools_capture_string(SEXP value) {
     if (TYPEOF(value) != STRSXP) Rf_error("string construction requires character values");
     if (unmaterialized_dictstring_source(value) != R_NilValue) return value;
     return owned_fork(value);
+}
+
+/* Complete callback-free, unnamed construction on one unpublished handle.
+   Borrowed values are captured before metadata is removed; existing owned
+   inputs still fork, retaining their real aliases. NULL declines cases whose
+   names dispatch, prototype restoration or foreign readers belong to R's
+   existing constructor path. Foreign reads could also change metadata after
+   qualification. Never clear sharing on a published record. */
+SEXP C_dtatools_construct_string(SEXP value, SEXP storage) {
+    if (TYPEOF(value) != STRSXP || Rf_isS4(value) ||
+        (ALTREP(value) && !owned_column(value)) ||
+        Rf_getAttrib(value, R_NamesSymbol) != R_NilValue ||
+        TYPEOF(storage) != STRSXP || ALTREP(storage) || ANY_ATTRIB(storage) ||
+        XLENGTH(storage) != 1 || STRING_ELT(storage, 0) == NA_STRING ||
+        unmaterialized_dictstring_source(value) != R_NilValue) return R_NilValue;
+    SEXP result = PROTECT(owned_fork(value));
+    Rf_setAttrib(result, R_ClassSymbol, R_NilValue);
+    CLEAR_ATTRIB(result);
+    Rf_setAttrib(result, Rf_install("stata.string.storage"), storage);
+    SEXP classes = PROTECT(Rf_allocVector(STRSXP, 3));
+    SET_STRING_ELT(classes, 0, Rf_mkChar("dta_string"));
+    SET_STRING_ELT(classes, 1, Rf_mkChar("vctrs_vctr"));
+    SET_STRING_ELT(classes, 2, Rf_mkChar("character"));
+    Rf_setAttrib(result, R_ClassSymbol, classes);
+    if (owned_flags(result)[OWNED_MAX_WIDTH] < 0 ||
+        owned_flags(result)[OWNED_NO_NA] < 0) owned_scan_strings(result);
+    UNPROTECT(2);
+    return result;
 }
 
 SEXP C_dtatools_write_string_plan(SEXP value) {
@@ -8314,6 +8343,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_owned_string_width", (DL_FUNC) &C_dtatools_owned_string_width, 1},
     {"C_dtatools_owned_string_attribute", (DL_FUNC) &C_dtatools_owned_string_attribute, 3},
     {"C_dtatools_capture_string", (DL_FUNC) &C_dtatools_capture_string, 1},
+    {"C_dtatools_construct_string", (DL_FUNC) &C_dtatools_construct_string, 2},
     {"C_dtatools_owned_utf8_ready", (DL_FUNC) &C_dtatools_owned_utf8_ready, 1},
     {"C_dtatools_owned_scan_stats", (DL_FUNC) &C_dtatools_owned_scan_stats, 1},
     {"C_dtatools_callback_length", (DL_FUNC) &C_dtatools_callback_length, 2},

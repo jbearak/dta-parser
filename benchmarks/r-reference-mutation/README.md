@@ -31,6 +31,15 @@ lower-level native integer writes; public factor replacement retains its
 existing rejection. Public strings/logicals and table selectors for all new
 types are qualified by `benchmarks/r-dibble-dplyr/owned-atomic.R`.
 
+The output preflight rejects every existing entry, including unrelated files,
+hidden files and empty child directories, before writing identity or results.
+`python3 benchmarks/r-reference-mutation/test-owned-atoms-preflight.py LIBRARY
+SOURCE_SHA NEW_EVIDENCE_DIRECTORY` checks that boundary with the real R runner
+and exact installed package. A clearly labelled synthetic git command stops an
+admitted empty-directory control before any measured workload. Rejected cases
+must leave every fixture byte and mode unchanged; child logs and a manifest are
+retained. This is a preflight test, not native performance qualification.
+
 Stage 3 retains all 159 original assertion expressions and every numerical
 bound. Fixtures now assign `reserve_columns()` before generation, outside the
 measured operation, and verify the original base-frame dispatch and capacity.

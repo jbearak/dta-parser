@@ -56,6 +56,17 @@ Names replacement with object dispatch or attributed names retains the R setter.
 Declined assignments remain in the original caller frame; a fallback setter
 helper would add a live binding and copy compact dictionary storage again.
 Public attribute replacement and conservative foreign fallbacks are unchanged.
+The public constructor can complete unnamed construction in one native call
+after storage normalization has evaluated its declaration. It captures ordinary
+borrowed values before replacing metadata, and forks an existing owned input
+without clearing its real sharing state. The new handle remains unpublished
+through these callback-free edits, so temporary metadata handles do not impose
+a full-payload copy on its first private write. Names, prototypes, foreign
+ALTREP readers, S4 values and callback-capable declarations retain the original
+path. Internal restoration still captures before forcing storage or prototype
+promises. A width calculation releases UTF-8 translation's temporary R storage
+after computing the integer byte count; no translated pointer escapes the
+helper or accumulates across the column scan.
 Native readers adopt completed ordinary logical, integer/factor and character
 buffers without an additional capture. Writers retain exact owned string
 allocations across later metadata callbacks; their internal pointers never

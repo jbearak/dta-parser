@@ -38,6 +38,11 @@ def digest(path):
 
 
 def verify_csv(path, fields, expected):
+    """Require the complete unique case set and finite allocation/timing data.
+
+    This establishes measurement integrity. Comparing revisions and deciding
+    performance acceptance remain separate from a structurally valid matrix.
+    """
     with path.open() as file:
         rows = list(csv.DictReader(file))
     observed = [tuple(row[field] for field in fields) for row in rows]
@@ -55,6 +60,13 @@ def verify_csv(path, fields, expected):
 
 
 def main():
+    """Run fresh operations or append memory evidence to a verified operation set.
+
+    Package source and runner commits are separate identities. Each R process
+    verifies its installation/DLL; this driver binds committed executable bytes
+    and checks emitted identities and results before publishing its manifest.
+    Failed child logs remain intact, and existing memory logs cannot be reused.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("kind", choices=["operations", "memory"])
     parser.add_argument("repo", type=Path)
@@ -80,6 +92,7 @@ def main():
     started = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     def check_identity(text):
+        """Require one exact runtime identity and every expected R dependency."""
         require(re.findall(r"^runner_md5 .*", text, re.MULTILINE) == md5_lines,
                 "Runtime runner dependency identity mismatch")
         for key, value in [("source_sha", args.source_sha), ("library", str(library)), ("mode", args.mode)]:
@@ -87,6 +100,7 @@ def main():
                     f"Runtime {key} identity mismatch")
 
     def run(command, log):
+        """Preserve a new combined child log even when its command fails."""
         with log.open("x") as file:
             result = subprocess.run(command, cwd=repo, stdout=file, stderr=subprocess.STDOUT)
         require(result.returncode == 0, f"Exit {result.returncode}; see {log}")

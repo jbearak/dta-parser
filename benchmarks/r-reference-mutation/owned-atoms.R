@@ -15,6 +15,10 @@ stopifnot(identical(normalizePath(find.package("dtatools")), package_path),
 output <- file.path(args[[3L]], "owned-native-atoms.csv")
 identity <- file.path(args[[3L]], "owned-native-atoms-session.txt")
 stopifnot(!file.exists(output), !file.exists(identity))
+if (file.access(args[[3L]], 4L) != 0L ||
+    length(list.files(args[[3L]], all.files = TRUE, no.. = TRUE)) != 0L) {
+    stop("Output directory must be readable and empty before qualification")
+}
 paths <- c("benchmarks/r-reference-mutation/owned-atoms.R", "benchmarks/r-dibble-dplyr/helpers.R")
 checked_line <- function(command, arguments, pattern) {
     value <- suppressWarnings(system2(command, arguments, stdout = TRUE))

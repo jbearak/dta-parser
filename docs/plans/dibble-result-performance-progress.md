@@ -9,6 +9,30 @@ decisions are recorded in that plan.
 
 ## Stages 1 through 3 complete, Stage 4 active
 
+The evidence and additive review supplement have merged as
+[PR #196](https://github.com/jbearak/dta-parser/pull/196) and
+[PR #197](https://github.com/jbearak/dta-parser/pull/197). The implementation
+[PR #195](https://github.com/jbearak/dta-parser/pull/195) remains open. Its actual
+34-file review at `75b0c54` found an incomplete native-runner output guard and
+an unnecessary first-write copy in fresh unnamed string construction. A width
+conversion lifetime comment also reproduced: Latin-1 scans retained temporary
+R conversion buffers until the enclosing native call returned. The focused
+fixes reject all nonempty destinations, construct callback-free public strings
+on one unpublished native handle, and release each width conversion buffer.
+Internal promise ordering, names dispatch and conservative dictionary/foreign
+fallbacks remain required. Both nested reviewers assess these changes; a new
+exact source archive, local gates and affected performance qualification are
+required before their acceptance. Existing dated reports and both merged
+evidence trees remain unchanged.
+
+Useful ownership, temporary-memory and runner-integrity documentation is being
+added to active code. CodeRabbit could not provide the function list underlying
+its advisory 20.15% docstring report; this work does not invent that inventory
+or change the configured threshold. The eleven existing Cargo package warnings,
+three R check warnings and two notes remain disclosed. The twelve measured
+base-R read costs, three required Stage 6 filter fixes, remaining stages and
+final actual downstream renv install/test/original-lock restore are still open.
+
 Stage 3 merged normally as [PR #194](https://github.com/jbearak/dta-parser/pull/194)
 at 2026-09-07 02:14:48 UTC, producing
 [`ec10a6ac34602f3bd691e8043019c1b479babda4`](https://github.com/jbearak/dta-parser/commit/ec10a6ac34602f3bd691e8043019c1b479babda4).
