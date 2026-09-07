@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 4398,
+      "sha256": "b5abbc4385d8be5e0b9ace1d6695171edfc7187957b005cb8eefeb0496a8c996",
+      "git_mode": "100644"
+    },
+    {
+      "path": "actual-audit.json",
+      "bytes": 5048,
+      "sha256": "2e08c84305460bdc26c285989f2214384276e74808275cdfc2021e958e0e23dd",
+      "git_mode": "100644",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/actual-audit-v1.json",
+      "source_mode": "0o644"
+    },
+    {
+      "path": "audit-comparison-bindings.py",
+      "bytes": 7265,
+      "sha256": "97709832d0b5599e96038c09fd1dd8f9d0adb7d0b4df89fa397be6f944a8e51e",
+      "git_mode": "100644",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py",
+      "source_mode": "0o644"
+    },
+    {
+      "path": "guards/dash-O.json",
+      "bytes": 35047,
+      "sha256": "2c28716d6a3d257c355d2dc09d1223c6e7ecc77330bc0b00dbefd9eb1f4b6406",
+      "git_mode": "100644",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/guard-results-v3/dash-O.json",
+      "source_mode": "0o644"
+    },
+    {
+      "path": "guards/default.json",
+      "bytes": 35049,
+      "sha256": "9202904bab4ff1027bddc712a935201e8ab1cb8b6285fcfc84f7dcce85e47996",
+      "git_mode": "100644",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/guard-results-v3/default.json",
+      "source_mode": "0o644"
+    },
+    {
+      "path": "guards/env-optimize.json",
+      "bytes": 35053,
+      "sha256": "979dab82ee8952d538a830f9f2aa888bc44871b87b3a4752b56b811fe39925be",
+      "git_mode": "100644",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/guard-results-v3/env-optimize.json",
+      "source_mode": "0o644"
+    },
+    {
+      "path": "guards/summary.json",
+      "bytes": 616,
+      "sha256": "a656b5e1c75106acd5e7dd91bc13b7f3dc5facd68a6135ebe6b3a1b7d4506eca",
+      "git_mode": "100644",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/guard-results-v3/summary.json",
+      "source_mode": "0o644"
+    },
+    {
+      "path": "test-comparison-bindings.py",
+      "bytes": 11892,
+      "sha256": "0143dc7a0d62c0346f7136a47e61096e384ebd7458059c4376b4e8b28acd8d2b",
+      "git_mode": "100644",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/test-comparison-bindings.py",
+      "source_mode": "0o644"
+    },
+    {
+      "path": "verify.py",
+      "bytes": 4286,
+      "sha256": "8872e75004e821c78b9f2f7a9cd2af961d952f563f06eb5e4db599bcf307937f",
+      "git_mode": "100644"
+    }
+  ],
+  "scope": "Additive current comparison-identity audit; unchanged historical evidence and no measured rerun.",
+  "historical_revision": "f28c5fd481ad15586e013066e385cbf363354526",
+  "candidate_source": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+}

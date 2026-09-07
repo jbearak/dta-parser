@@ -5,6 +5,1511 @@
   "baseline_source": "ec10a6ac34602f3bd691e8043019c1b479babda4",
   "files": [
     {
+      "path": "benchmark/atomic-baseline-memory.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline-memory.log",
+      "bytes": 1498,
+      "mode": "0o644",
+      "sha256": "6c964f641a0916d9241f6e33386ac6fe26fa2351dde1957f314dea3474b68b86"
+    },
+    {
+      "path": "benchmark/atomic-baseline-operations.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline-operations.log",
+      "bytes": 113,
+      "mode": "0o644",
+      "sha256": "c63fd636a1b1a4b30aca036bbcc445f2ccc8951bfbc2a488b3017cf51dcb5250"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-declared_character-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-pipeline_50-100000.log",
+      "bytes": 2565,
+      "mode": "0o644",
+      "sha256": "992f1b97c08c194f80edcd74808efe0c683d83741d7c4125dd6e6eece3b6f031"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-declared_character-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-pipeline_50-1000000.log",
+      "bytes": 2570,
+      "mode": "0o644",
+      "sha256": "8c744742a6f2c302a36118f4c87d6d7ae28fc51178d8c9f0642dce5754a2e803"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-declared_character-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-pipeline_five-100000.log",
+      "bytes": 2567,
+      "mode": "0o644",
+      "sha256": "f978aee476e72850358a7e9e1b8f853c2d207bf0244ebbdf0882b59da5cd562e"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-declared_character-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-pipeline_five-1000000.log",
+      "bytes": 2572,
+      "mode": "0o644",
+      "sha256": "9fea613e59370a7df1f8bfc28f984cb52720ae6683728d1c7d43325befd08318"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-declared_character-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-rename-100000.log",
+      "bytes": 2560,
+      "mode": "0o644",
+      "sha256": "33e6090e2abe3ef2a1cb36da769a1818c336c201b72ded22ebd788314e299a95"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-declared_character-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-rename-1000000.log",
+      "bytes": 2565,
+      "mode": "0o644",
+      "sha256": "0af0eb30cb27bd354186c32695cbf5ca3a5b0f75a1b026affeb08cc68f9c6e25"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-factor-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-pipeline_50-100000.log",
+      "bytes": 2550,
+      "mode": "0o644",
+      "sha256": "258eccb31d9290f5195299bdc96d12f760f6a05aeb03046f9934318c5c868d18"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-factor-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-pipeline_50-1000000.log",
+      "bytes": 2554,
+      "mode": "0o644",
+      "sha256": "43998b0eabdf9bc679a642829d7855b9c20e072f19313c7b2670a8467950a5ff"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-factor-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-pipeline_five-100000.log",
+      "bytes": 2552,
+      "mode": "0o644",
+      "sha256": "cda167d36686ca81c82afea62b064db54440756fd9b7a08e04418f211ae6a8a8"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-factor-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-pipeline_five-1000000.log",
+      "bytes": 2556,
+      "mode": "0o644",
+      "sha256": "da1166d035fee541e5f5a17b404ffa4959904bd8c17bdb0b1c6d4e6ed8df6cd2"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-factor-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-rename-100000.log",
+      "bytes": 2545,
+      "mode": "0o644",
+      "sha256": "2162ca8d0c456a2daa1f1e2f6e8d3c14c6aa44c0ed130bfbbcc901fb3e0ce776"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-factor-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-rename-1000000.log",
+      "bytes": 2549,
+      "mode": "0o644",
+      "sha256": "0acad6e3708b4c3d0d9eb49e83620a3ac27fb18a2e98e4fb41066878c1a3bf8e"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-logical-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-pipeline_50-100000.log",
+      "bytes": 2551,
+      "mode": "0o644",
+      "sha256": "f10445c034804820fc74f7cfdb50acee23c50dc58652060ea472b5809700ea0c"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-logical-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-pipeline_50-1000000.log",
+      "bytes": 2555,
+      "mode": "0o644",
+      "sha256": "e74f599b5b44f81a93d4cd29ab49c7c1375028a23045b5b0f796a558583b7abd"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-logical-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-pipeline_five-100000.log",
+      "bytes": 2553,
+      "mode": "0o644",
+      "sha256": "70dcfb78d02b5ee399efbcbbcccf61064a0283b69d97aba1809420b612f56982"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-logical-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-pipeline_five-1000000.log",
+      "bytes": 2557,
+      "mode": "0o644",
+      "sha256": "f3bde904d89906163e440b379a72815abbf8b3e3b194107f4f00e9b71817b05f"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-logical-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-rename-100000.log",
+      "bytes": 2546,
+      "mode": "0o644",
+      "sha256": "ee10db4ce4011d9192d974dfbd6b257ea47134f7a55c296b54e8d7ecd3a8efe7"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-logical-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-rename-1000000.log",
+      "bytes": 2550,
+      "mode": "0o644",
+      "sha256": "97a9465852b6c9c6fd3786d9b120fbf04cb0b5021b181ac7fb696ec671cc09cc"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-ordered-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-pipeline_50-100000.log",
+      "bytes": 2551,
+      "mode": "0o644",
+      "sha256": "9a77cf34539c35473658742e6e3b6e4ae4852215e761e924389d74ca27df9a57"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-ordered-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-pipeline_50-1000000.log",
+      "bytes": 2555,
+      "mode": "0o644",
+      "sha256": "bf4797bcc307e30b8b7985e40d85019e66f75145976bc7c92515605779d5b2a0"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-ordered-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-pipeline_five-100000.log",
+      "bytes": 2553,
+      "mode": "0o644",
+      "sha256": "b4dc02b7538f1ef9d33cace45acb949e03891227ea13f683064c03350b0056c5"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-ordered-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-pipeline_five-1000000.log",
+      "bytes": 2557,
+      "mode": "0o644",
+      "sha256": "73c430be52e95d1af58ee991798545449c0fbe2f11093b858133913443a8e32f"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-ordered-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-rename-100000.log",
+      "bytes": 2546,
+      "mode": "0o644",
+      "sha256": "5f2eb22759880374b06c973eca249a90948b4655667827d6111f5535e2dd74cb"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-ordered-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-rename-1000000.log",
+      "bytes": 2550,
+      "mode": "0o644",
+      "sha256": "40fc3444f3a78189ac6f2b62eaa084225d061814dcebe18ab4c1c48d7731618a"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-string-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-pipeline_50-100000.log",
+      "bytes": 2553,
+      "mode": "0o644",
+      "sha256": "c5ebe856173fe0fcc0d479598c50dfbe07d9c4f26e5dd73df6c302ce9bc8f1ce"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-string-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-pipeline_50-1000000.log",
+      "bytes": 2558,
+      "mode": "0o644",
+      "sha256": "d19b62558ddbad48b3d69317be92bcced39c26ed695974483d19587cedbb4758"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-string-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-pipeline_five-100000.log",
+      "bytes": 2555,
+      "mode": "0o644",
+      "sha256": "075531adfd7a0386b9174e88dc18648c225773c8c4f5c991034e5a19f3c68396"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-string-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-pipeline_five-1000000.log",
+      "bytes": 2560,
+      "mode": "0o644",
+      "sha256": "e1485cfc83e44b0dcd7c08f2e819d293443b932f048fb423dc5e73e4e9eae7df"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-string-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-rename-100000.log",
+      "bytes": 2548,
+      "mode": "0o644",
+      "sha256": "40eb6ce1784c3305946ed2728b6f1516362598bd9366832cb775a8f811f39e95"
+    },
+    {
+      "path": "benchmark/atomic-baseline/memory-string-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-rename-1000000.log",
+      "bytes": 2553,
+      "mode": "0o644",
+      "sha256": "48f7804a59b1a5b74a3315206195599abcbe95224bdde8e02490c53f9c3d023e"
+    },
+    {
+      "path": "benchmark/atomic-baseline/owned-atomic-after-read.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic-after-read.csv",
+      "bytes": 8852,
+      "mode": "0o644",
+      "sha256": "76d17161b93fe0cabfbaca8ee34e66a33e4ac87ee20fbe502edce9eddb480f97"
+    },
+    {
+      "path": "benchmark/atomic-baseline/owned-atomic-session.txt",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic-session.txt",
+      "bytes": 1436,
+      "mode": "0o644",
+      "sha256": "87a31ddc4c686ceecbcebd927f1bbc55d3f5e1f68ab5f683a25962a66be05fd8"
+    },
+    {
+      "path": "benchmark/atomic-baseline/owned-atomic-writes.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic-writes.csv",
+      "bytes": 1626,
+      "mode": "0o644",
+      "sha256": "28b300e4d2486cae9aa3328201c4918cb66ceb734a9c57ab1aabb79d9c46e67c"
+    },
+    {
+      "path": "benchmark/atomic-baseline/owned-atomic.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic.csv",
+      "bytes": 22030,
+      "mode": "0o644",
+      "sha256": "999a185279e66a21bb20b5155a6651b42ded2cb55ad187e526951242370c1928"
+    },
+    {
+      "path": "benchmark/atomic-baseline/root-manifest.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/root-manifest.json",
+      "bytes": 16659,
+      "mode": "0o644",
+      "sha256": "cc066b4f708cc07a9aafcd1ad5763922ce1bb042383cdfc657822a9f27b2ced9"
+    },
+    {
+      "path": "benchmark/atomic-baseline/runner.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/runner.log",
+      "bytes": 39797,
+      "mode": "0o644",
+      "sha256": "83caa08b0be8a60dd6717d285e084e60ee7fd329cb592f543bcef409c38f95d9"
+    },
+    {
+      "path": "benchmark/atomic-candidate-memory.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate-memory.log",
+      "bytes": 1500,
+      "mode": "0o644",
+      "sha256": "7445037991d78c54da0da3c7deaa5fc9c24b1f982ad10381b0c5a65d85c0beba"
+    },
+    {
+      "path": "benchmark/atomic-candidate-operations.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate-operations.log",
+      "bytes": 115,
+      "mode": "0o644",
+      "sha256": "8385818386189f7c514dae88b50b34b8a47497da7c08c97efa53b138ee2388a9"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-declared_character-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-declared_character-pipeline_50-100000.log",
+      "bytes": 2572,
+      "mode": "0o644",
+      "sha256": "3f61ea8ed4417893199691fdee3be1422dafafa0286f0c06c41e0b8d00aba86f"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-declared_character-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-declared_character-pipeline_50-1000000.log",
+      "bytes": 2576,
+      "mode": "0o644",
+      "sha256": "59ecf7b3ba8765a293b547ffc241b255db4927523879581f9bbe03a4486954aa"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-declared_character-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-declared_character-pipeline_five-100000.log",
+      "bytes": 2574,
+      "mode": "0o644",
+      "sha256": "b014d6ef1336d8577aa78c7c1e80070568da418cbe3a8d10cb5b23700905ac87"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-declared_character-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-declared_character-pipeline_five-1000000.log",
+      "bytes": 2578,
+      "mode": "0o644",
+      "sha256": "f3736f40474c2800fe77f719125b81e3cff433b404701a6a8f88e01d64c63ac1"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-declared_character-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-declared_character-rename-100000.log",
+      "bytes": 2567,
+      "mode": "0o644",
+      "sha256": "1bdc68521d0751c4fe4f9f2b4793a77409a99225ea64b65ec0e737ac1b641510"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-declared_character-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-declared_character-rename-1000000.log",
+      "bytes": 2571,
+      "mode": "0o644",
+      "sha256": "96dd84f6c53983759d47d10d1006829efa2e2ab5975a6ef8496bace2127ae837"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-factor-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-factor-pipeline_50-100000.log",
+      "bytes": 2558,
+      "mode": "0o644",
+      "sha256": "4a6739c7b0fc767af979d1b2e6cd38c118f1c829b6b0d3930676549a6ffd9979"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-factor-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-factor-pipeline_50-1000000.log",
+      "bytes": 2561,
+      "mode": "0o644",
+      "sha256": "bcb835f1bce8816c61aac67fd3d167023ffa92bb29a52dabf7c24c8f129f3a82"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-factor-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-factor-pipeline_five-100000.log",
+      "bytes": 2560,
+      "mode": "0o644",
+      "sha256": "fc32afcee51a446b53f2bcefe120848bab115e7a6f15eae482e24ed787e548bc"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-factor-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-factor-pipeline_five-1000000.log",
+      "bytes": 2563,
+      "mode": "0o644",
+      "sha256": "46e6163237634a80a78352b563ce81f0c2f78ebe1cf0f333e7f31295f4d52d5b"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-factor-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-factor-rename-100000.log",
+      "bytes": 2553,
+      "mode": "0o644",
+      "sha256": "e6900700b76d6f8b0e9123ff359e255dfb9e45615c2051762c1d35d98d9046c2"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-factor-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-factor-rename-1000000.log",
+      "bytes": 2556,
+      "mode": "0o644",
+      "sha256": "f52f63cd9dbb7f58a45f4136a2a0acff0d3182d1648b8f7e44607934d591da25"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-logical-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-logical-pipeline_50-100000.log",
+      "bytes": 2559,
+      "mode": "0o644",
+      "sha256": "b8fb451255fa38cdf5ae5baa1478906bec7b08b1002d109046cd38591ea7ef0e"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-logical-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-logical-pipeline_50-1000000.log",
+      "bytes": 2562,
+      "mode": "0o644",
+      "sha256": "ef2ee2619f2c993fd88c5b0ba812337754d84123a56e654d708c8fa77a993138"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-logical-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-logical-pipeline_five-100000.log",
+      "bytes": 2561,
+      "mode": "0o644",
+      "sha256": "fa7166e610066388cea7ea32ab643a45a055a0641a272574c3ff7adfe4faa907"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-logical-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-logical-pipeline_five-1000000.log",
+      "bytes": 2564,
+      "mode": "0o644",
+      "sha256": "290af7e9e60a818daae27ffee45d055042afb6f2bbb8708d20f1aec5c0ac4aca"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-logical-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-logical-rename-100000.log",
+      "bytes": 2554,
+      "mode": "0o644",
+      "sha256": "97ec82ac0b7db0035c33c56b60d128822c6c915a5c5b5b06a39ecd97ace1f106"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-logical-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-logical-rename-1000000.log",
+      "bytes": 2557,
+      "mode": "0o644",
+      "sha256": "105ddb0d5aab6f884ecaf38c0a6d12433763022b7172a6051789ccbf1fd1c3b4"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-ordered-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-ordered-pipeline_50-100000.log",
+      "bytes": 2559,
+      "mode": "0o644",
+      "sha256": "33b693440ece533a2eabf84f69eafd3659ca469d3c437dbcf0de088d7d2fcb65"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-ordered-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-ordered-pipeline_50-1000000.log",
+      "bytes": 2562,
+      "mode": "0o644",
+      "sha256": "50b2227fff6fa44d81872878f5077b5e6076802ccc95601e547d469acd20c82b"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-ordered-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-ordered-pipeline_five-100000.log",
+      "bytes": 2561,
+      "mode": "0o644",
+      "sha256": "ff32030b187861e0537f6472a3f2a1d950a97295683292db13a8da5746ba6ddf"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-ordered-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-ordered-pipeline_five-1000000.log",
+      "bytes": 2564,
+      "mode": "0o644",
+      "sha256": "ebd5d679a5e3ae176678696c77b8e3064b72cdd4ae4a30fdbc8b65299cce7122"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-ordered-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-ordered-rename-100000.log",
+      "bytes": 2554,
+      "mode": "0o644",
+      "sha256": "886df655b204a183fe9d2d0a21287de5c0e11c65c313e8ee0af7e154e5bf85ea"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-ordered-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-ordered-rename-1000000.log",
+      "bytes": 2557,
+      "mode": "0o644",
+      "sha256": "3800e02ccbc514a697f22bc076e901295ca91374e091e99f37d79f6582c94574"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-string-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-string-pipeline_50-100000.log",
+      "bytes": 2560,
+      "mode": "0o644",
+      "sha256": "59e5aebfd1dbbde86cebfc21c66ffd58d515434c4fb267a53d5440c582d867c4"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-string-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-string-pipeline_50-1000000.log",
+      "bytes": 2564,
+      "mode": "0o644",
+      "sha256": "fa440726c1edd10afb4c6ce446577c19ead7f04748b191a69e6ad37331b9cb79"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-string-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-string-pipeline_five-100000.log",
+      "bytes": 2562,
+      "mode": "0o644",
+      "sha256": "ff7016782bcc098f5f226f86b33f5499781ac886390c6c8745710aa71c07386b"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-string-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-string-pipeline_five-1000000.log",
+      "bytes": 2566,
+      "mode": "0o644",
+      "sha256": "729809a5dcd42e3c76cb09c4d0e6d05db7f69a5a79bd172f678216896abc3207"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-string-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-string-rename-100000.log",
+      "bytes": 2555,
+      "mode": "0o644",
+      "sha256": "e5f12415395eae768f999d14b1053577cc8e5ff7ca2d1f5f32312bcb02b466bb"
+    },
+    {
+      "path": "benchmark/atomic-candidate/memory-string-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/memory-string-rename-1000000.log",
+      "bytes": 2559,
+      "mode": "0o644",
+      "sha256": "436ba49b74ee7c0298b97cc089b4e83d8d97ba446e103d8d88fe9b523f8ad715"
+    },
+    {
+      "path": "benchmark/atomic-candidate/owned-atomic-after-read.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/owned-atomic-after-read.csv",
+      "bytes": 8096,
+      "mode": "0o644",
+      "sha256": "7a0cef9bd97da828ff6a2fbb4b5b1e96f9a9931a644a93424a05f05a69382682"
+    },
+    {
+      "path": "benchmark/atomic-candidate/owned-atomic-session.txt",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/owned-atomic-session.txt",
+      "bytes": 1446,
+      "mode": "0o644",
+      "sha256": "de698e45025df3f90a56a6b93a41bb58dec771adcb9cff57861a10eaa16fe249"
+    },
+    {
+      "path": "benchmark/atomic-candidate/owned-atomic-writes.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/owned-atomic-writes.csv",
+      "bytes": 1541,
+      "mode": "0o644",
+      "sha256": "84ecd1b4f05a7a0c9c2c19dffd2b108d397c82e74db5b7cf3c197778fda1aaf8"
+    },
+    {
+      "path": "benchmark/atomic-candidate/owned-atomic.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/owned-atomic.csv",
+      "bytes": 21000,
+      "mode": "0o644",
+      "sha256": "dff9b476ba7f43557d5603969ea36767e9b6cb3bb3715cf04676ccc31060bb93"
+    },
+    {
+      "path": "benchmark/atomic-candidate/root-manifest.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/root-manifest.json",
+      "bytes": 16576,
+      "mode": "0o644",
+      "sha256": "d713382ebeac521689745beee906eebc0a520fa792ce65717784e95516d73d9f"
+    },
+    {
+      "path": "benchmark/atomic-candidate/runner.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/runner.log",
+      "bytes": 39810,
+      "mode": "0o644",
+      "sha256": "cde7de76280074b0038042338eb387101277b67a7ec59ad65018cd68c6bd831c"
+    },
+    {
+      "path": "benchmark/atomic-comparison/derivation.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-comparison/derivation.json",
+      "bytes": 852,
+      "mode": "0o644",
+      "sha256": "2b6bbb87fbd54ab00e1759abfc9070eb53a3e4b17ad28bb2c1df229bc7a4b90d"
+    },
+    {
+      "path": "benchmark/atomic-comparison/investigate.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-comparison/investigate.json",
+      "bytes": 9361,
+      "mode": "0o644",
+      "sha256": "632c2758ed3ab4f667d30a9cf2acd0567af05110fda8fe55c94976740f492d96"
+    },
+    {
+      "path": "benchmark/atomic-comparison/memory-comparison.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-comparison/memory-comparison.csv",
+      "bytes": 3251,
+      "mode": "0o644",
+      "sha256": "6cb0d53c809de845cfb373df42535b6ffa774f80c393ee738b4bd30ccf2e80da"
+    },
+    {
+      "path": "benchmark/atomic-comparison/operation-comparison.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-comparison/operation-comparison.csv",
+      "bytes": 35420,
+      "mode": "0o644",
+      "sha256": "cb012d19156b18ded1a426ab8e7dce896ab03cc62415aab4f67033bbf7e8da71"
+    },
+    {
+      "path": "benchmark/compare-atomic.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/compare-atomic.log",
+      "bytes": 8429,
+      "mode": "0o644",
+      "sha256": "869a1648fd3c571e7509f97a103b8cfd4eb004e47262242339fb092dc9fe17c8"
+    },
+    {
+      "path": "benchmark/compare-double.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/compare-double.log",
+      "bytes": 65,
+      "mode": "0o644",
+      "sha256": "b2fefddd0d4f2bddb3b60d1a8f68b17a79fc35bf2cca055b7972ab4e478f7261"
+    },
+    {
+      "path": "benchmark/compare-heap.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/compare-heap.log",
+      "bytes": 107,
+      "mode": "0o644",
+      "sha256": "c6f6ea5d01ae7e8c3521bd565e5c4504b3cdafa0057130bb034d70fe53034a3c"
+    },
+    {
+      "path": "benchmark/double-baseline-memory.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline-memory.log",
+      "bytes": 328,
+      "mode": "0o644",
+      "sha256": "1f219ca457dbe2c1be8030e17338b657d9c03bd27a406d7d35d7335e92b2e6db"
+    },
+    {
+      "path": "benchmark/double-baseline-operations.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline-operations.log",
+      "bytes": 113,
+      "mode": "0o644",
+      "sha256": "39cbbf2aff05d656e33522f5c867cf0a843fe8f19855377e3693d2225b21601d"
+    },
+    {
+      "path": "benchmark/double-baseline/arithmetic-where-cost-100000.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/arithmetic-where-cost-100000.csv",
+      "bytes": 314,
+      "mode": "0o644",
+      "sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28"
+    },
+    {
+      "path": "benchmark/double-baseline/arithmetic-where-cost-1000000.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/arithmetic-where-cost-1000000.csv",
+      "bytes": 317,
+      "mode": "0o644",
+      "sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77"
+    },
+    {
+      "path": "benchmark/double-baseline/memory-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-pipeline_50-100000.log",
+      "bytes": 2444,
+      "mode": "0o644",
+      "sha256": "130e3ab1901726a886eed0a2b9711c126dcae7d535d8a4556da791198c4d4f94"
+    },
+    {
+      "path": "benchmark/double-baseline/memory-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-pipeline_50-1000000.log",
+      "bytes": 2448,
+      "mode": "0o644",
+      "sha256": "c5a727594303d16aa8f8c08a31df34b4a4628e51a8db0c8ac08d9e499f1795c7"
+    },
+    {
+      "path": "benchmark/double-baseline/memory-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-pipeline_five-100000.log",
+      "bytes": 2446,
+      "mode": "0o644",
+      "sha256": "5fbf39246abf60464846052f7c6608ca25819d88041e88e390892532ac47cc5b"
+    },
+    {
+      "path": "benchmark/double-baseline/memory-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-pipeline_five-1000000.log",
+      "bytes": 2450,
+      "mode": "0o644",
+      "sha256": "f4e4bbf890ab45cc253a527d202021aae1deaa7f7a0c6b8010c793538c594dc6"
+    },
+    {
+      "path": "benchmark/double-baseline/memory-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-rename-100000.log",
+      "bytes": 2439,
+      "mode": "0o644",
+      "sha256": "70c4675aee4f0aab03cef53ce0df278dd9f4dc47c1d44413beb3606094afb6a7"
+    },
+    {
+      "path": "benchmark/double-baseline/memory-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-rename-1000000.log",
+      "bytes": 2443,
+      "mode": "0o644",
+      "sha256": "f63eccbed489d1a932cdbf2d0e43bef2a7d5a2976c560508efb8e430f4dc1df2"
+    },
+    {
+      "path": "benchmark/double-baseline/owned-after-read.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/owned-after-read.csv",
+      "bytes": 1613,
+      "mode": "0o644",
+      "sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb"
+    },
+    {
+      "path": "benchmark/double-baseline/owned-double-session.txt",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/owned-double-session.txt",
+      "bytes": 1343,
+      "mode": "0o644",
+      "sha256": "dca9fa336a3ea22fa6b3613b8b0791583e87590c368ff4d46b7dbddd42a93cbe"
+    },
+    {
+      "path": "benchmark/double-baseline/owned-double-writes.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/owned-double-writes.csv",
+      "bytes": 564,
+      "mode": "0o644",
+      "sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea"
+    },
+    {
+      "path": "benchmark/double-baseline/owned-double.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/owned-double.csv",
+      "bytes": 4173,
+      "mode": "0o644",
+      "sha256": "12950c096a0e72f3efb9a2451508171540a777890a2f2348b1e4ec5d76f5e3ce"
+    },
+    {
+      "path": "benchmark/double-baseline/root-manifest.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/root-manifest.json",
+      "bytes": 3651,
+      "mode": "0o644",
+      "sha256": "d84653f0af2036281dee521560461cfc6a8b3851c7f467df93219a6d4048c3aa"
+    },
+    {
+      "path": "benchmark/double-baseline/runner.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/runner.log",
+      "bytes": 5433,
+      "mode": "0o644",
+      "sha256": "ef390470f0f2e1538743ef664361a99a7df9374c53407a15385b5d048738fa73"
+    },
+    {
+      "path": "benchmark/double-baseline/snapshot-cost-100000.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/snapshot-cost-100000.csv",
+      "bytes": 321,
+      "mode": "0o644",
+      "sha256": "391efa7a5588df4f3f0e38eddd6df23af2188534e20ac970afe7beb43a9e6d27"
+    },
+    {
+      "path": "benchmark/double-baseline/snapshot-cost-1000000.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/snapshot-cost-1000000.csv",
+      "bytes": 324,
+      "mode": "0o644",
+      "sha256": "88dd94b983e9165d2b1ce4b6d6ee959d7459d240e63e8573b82373dac0ee4da7"
+    },
+    {
+      "path": "benchmark/double-candidate-memory.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate-memory.log",
+      "bytes": 330,
+      "mode": "0o644",
+      "sha256": "877f5d12fc352f38eb80ed63dba1f368e025d365d2059310832d753ec177986b"
+    },
+    {
+      "path": "benchmark/double-candidate-operations.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate-operations.log",
+      "bytes": 115,
+      "mode": "0o644",
+      "sha256": "c7b0f3df0abded7fb29d0488564903405ab37dcc94d73eaab9e44587293da674"
+    },
+    {
+      "path": "benchmark/double-candidate/arithmetic-where-cost-100000.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/arithmetic-where-cost-100000.csv",
+      "bytes": 314,
+      "mode": "0o644",
+      "sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28"
+    },
+    {
+      "path": "benchmark/double-candidate/arithmetic-where-cost-1000000.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/arithmetic-where-cost-1000000.csv",
+      "bytes": 317,
+      "mode": "0o644",
+      "sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77"
+    },
+    {
+      "path": "benchmark/double-candidate/memory-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/memory-pipeline_50-100000.log",
+      "bytes": 2454,
+      "mode": "0o644",
+      "sha256": "d33efe1c2cb0a4ca47708ac793357b3ba92052f78c63b103fdd0e51ce6b7ae6a"
+    },
+    {
+      "path": "benchmark/double-candidate/memory-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/memory-pipeline_50-1000000.log",
+      "bytes": 2458,
+      "mode": "0o644",
+      "sha256": "ecc698d3504ca7c3463b0159cd243fc6d9e82bf314e9d20961c40d8f807d865b"
+    },
+    {
+      "path": "benchmark/double-candidate/memory-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/memory-pipeline_five-100000.log",
+      "bytes": 2456,
+      "mode": "0o644",
+      "sha256": "a2c9750faa1f929ab650a0f559cc2269a25731b0b9f1ef4a33e6e74b3775664a"
+    },
+    {
+      "path": "benchmark/double-candidate/memory-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/memory-pipeline_five-1000000.log",
+      "bytes": 2460,
+      "mode": "0o644",
+      "sha256": "d913d4f4a912e5195ce4c5ee246dceb36783a8b8cdf94c686a087c8d965df247"
+    },
+    {
+      "path": "benchmark/double-candidate/memory-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/memory-rename-100000.log",
+      "bytes": 2449,
+      "mode": "0o644",
+      "sha256": "1935dc51a48e5c76b63588c091de7f55ed7a4e3ccb3b39cd123a74890e011c7b"
+    },
+    {
+      "path": "benchmark/double-candidate/memory-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/memory-rename-1000000.log",
+      "bytes": 2453,
+      "mode": "0o644",
+      "sha256": "e2bfcde4ee3c6689056c445db4a4017ba17db585c94c9a5d7d4fee7bdb48c67b"
+    },
+    {
+      "path": "benchmark/double-candidate/owned-after-read.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/owned-after-read.csv",
+      "bytes": 1613,
+      "mode": "0o644",
+      "sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb"
+    },
+    {
+      "path": "benchmark/double-candidate/owned-double-session.txt",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/owned-double-session.txt",
+      "bytes": 1353,
+      "mode": "0o644",
+      "sha256": "f01c8f332206d21a80e4c6d630dc7fd7fe8698c8ac668040cfac3568f2a10226"
+    },
+    {
+      "path": "benchmark/double-candidate/owned-double-writes.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/owned-double-writes.csv",
+      "bytes": 564,
+      "mode": "0o644",
+      "sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea"
+    },
+    {
+      "path": "benchmark/double-candidate/owned-double.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/owned-double.csv",
+      "bytes": 4172,
+      "mode": "0o644",
+      "sha256": "671a401a7d3ceb589f67eab1b1472b792d0a215861a84e314025da30f4ea0667"
+    },
+    {
+      "path": "benchmark/double-candidate/root-manifest.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/root-manifest.json",
+      "bytes": 3661,
+      "mode": "0o644",
+      "sha256": "9621eed3eadd2002e28c19be32c566d245e69dd84fb85f20a24fa2a2be2d2fe0"
+    },
+    {
+      "path": "benchmark/double-candidate/runner.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/runner.log",
+      "bytes": 5486,
+      "mode": "0o644",
+      "sha256": "918e7b9d697f329f522dc2068931af7a7a0d11db8c856bc8eee924ef7a261eea"
+    },
+    {
+      "path": "benchmark/double-candidate/snapshot-cost-100000.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/snapshot-cost-100000.csv",
+      "bytes": 320,
+      "mode": "0o644",
+      "sha256": "2657d2b5fe722c5eb2fdfb816ecdcb19ad967a990df896f6d3170bb83f154c9e"
+    },
+    {
+      "path": "benchmark/double-candidate/snapshot-cost-1000000.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate/snapshot-cost-1000000.csv",
+      "bytes": 323,
+      "mode": "0o644",
+      "sha256": "7b0f366d7d6d6a79280a60444b4b7c68eda655598914c8b1baf31f06e17d8cc4"
+    },
+    {
+      "path": "benchmark/double-comparison/derivation.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-comparison/derivation.json",
+      "bytes": 852,
+      "mode": "0o644",
+      "sha256": "a7418b25926e57931bb363842be7c9202ec0b939718956fe6883e39167142860"
+    },
+    {
+      "path": "benchmark/double-comparison/investigate.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-comparison/investigate.json",
+      "bytes": 3,
+      "mode": "0o644",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "benchmark/double-comparison/memory-comparison.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-comparison/memory-comparison.csv",
+      "bytes": 873,
+      "mode": "0o644",
+      "sha256": "29017df8b39902dbc6c355cd7fd25abb57d35cc0aa3ef1db7e5659fab197f273"
+    },
+    {
+      "path": "benchmark/double-comparison/operation-comparison.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-comparison/operation-comparison.csv",
+      "bytes": 7524,
+      "mode": "0o644",
+      "sha256": "54ebd083061c888c4457ef193cca36521251f12e36cfce98ae19d73fcd071806"
+    },
+    {
+      "path": "benchmark/heap-baseline.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline.log",
+      "bytes": 1694,
+      "mode": "0o644",
+      "sha256": "9d8898e807fcf0616b2a1ef0ae88a1c20a3092f8d85864005a19e4796cc6c0ee"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-declared_character-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-declared_character-pipeline_50-100000.log",
+      "bytes": 3609,
+      "mode": "0o644",
+      "sha256": "5733e28d09bb021a349a44b2150eba0e21bd71a60052f85843a6a6103f5687d4"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-declared_character-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-declared_character-pipeline_50-1000000.log",
+      "bytes": 3620,
+      "mode": "0o644",
+      "sha256": "b4e4d9686b3f45e5bcd5cbb306922e9b173150a3e9ff2b8542898d280f749aa6"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-declared_character-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-declared_character-pipeline_five-100000.log",
+      "bytes": 3613,
+      "mode": "0o644",
+      "sha256": "099a79487ab8145ce62cd6a9548aad784e56a8e273f11a2109137f571f4536df"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-declared_character-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-declared_character-pipeline_five-1000000.log",
+      "bytes": 3624,
+      "mode": "0o644",
+      "sha256": "72783b62ba365021ebbd05eb1f9459605eabdaf17a1cc660b58617577cae751d"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-declared_character-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-declared_character-rename-100000.log",
+      "bytes": 3597,
+      "mode": "0o644",
+      "sha256": "e064ef7703e45788c767cd5739a21ba8430cb7ea0739e7acf9448655d2edc1b7"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-declared_character-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-declared_character-rename-1000000.log",
+      "bytes": 3608,
+      "mode": "0o644",
+      "sha256": "105146365f925a54fb1e6fdeb0501ff91f39a2d86e9b0c0cb167f0e9a66ef05a"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-double-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-double-pipeline_50-100000.log",
+      "bytes": 3474,
+      "mode": "0o644",
+      "sha256": "347eec7a6cd76866d2692e068cf151bdb37726641663cd1d1c69dd5a97a7e595"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-double-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-double-pipeline_50-1000000.log",
+      "bytes": 3483,
+      "mode": "0o644",
+      "sha256": "a049d6a609f7433aab2b4712e3d3ca79cdd386012fe218efe844b71d45f10f14"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-double-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-double-pipeline_five-100000.log",
+      "bytes": 3477,
+      "mode": "0o644",
+      "sha256": "8fd0b2a4f446c7b9be38a54a73508153268951dde2d56bb94e6d1b5b18154d94"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-double-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-double-pipeline_five-1000000.log",
+      "bytes": 3486,
+      "mode": "0o644",
+      "sha256": "07879dea4c79bc77233ffea9ad39a6ef9b0d1461f569d730065315e890030e20"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-double-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-double-rename-100000.log",
+      "bytes": 3462,
+      "mode": "0o644",
+      "sha256": "828f2e9f3fe4ab529cc3b2ac25f82bd6562ed6a2c9460ee3be3104a3ef459797"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-double-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-double-rename-1000000.log",
+      "bytes": 3471,
+      "mode": "0o644",
+      "sha256": "030ae63ed7bf9165042560ce6e0311d3c3a616c0278640023a3357e84f87efc7"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-factor-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-factor-pipeline_50-100000.log",
+      "bytes": 3581,
+      "mode": "0o644",
+      "sha256": "60375593aefab221defe6e13c829562508c4288cb524f10b314f8e8c16e03a79"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-factor-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-factor-pipeline_50-1000000.log",
+      "bytes": 3589,
+      "mode": "0o644",
+      "sha256": "82d8710789889f17783569881386ec54ae1efcce018416c10a44d10d7e491bbb"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-factor-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-factor-pipeline_five-100000.log",
+      "bytes": 3584,
+      "mode": "0o644",
+      "sha256": "1a5c3ae2f4feb51165dacfb67390514998276d7cdd642e6093a2ad6c2f9b1739"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-factor-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-factor-pipeline_five-1000000.log",
+      "bytes": 3593,
+      "mode": "0o644",
+      "sha256": "c1040a8c2de6d7d3bb49cfc4629abb3fedd30ea49e4a9d9bffa7b0bba30e8d9b"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-factor-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-factor-rename-100000.log",
+      "bytes": 3568,
+      "mode": "0o644",
+      "sha256": "f1272bf2a66ac3931214f04636ced54ea07dc09c5b128659dc45f5afadec275f"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-factor-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-factor-rename-1000000.log",
+      "bytes": 3577,
+      "mode": "0o644",
+      "sha256": "43bf8653cbad7af679fd5c95d0e4f46a05eadf77c8ac8539ebc91949d5ee0115"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-logical-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-logical-pipeline_50-100000.log",
+      "bytes": 3582,
+      "mode": "0o644",
+      "sha256": "3139823dc4404dc4df6f5cc01f22406da7e5221a2d1a6d036b24f03d7297abb3"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-logical-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-logical-pipeline_50-1000000.log",
+      "bytes": 3591,
+      "mode": "0o644",
+      "sha256": "324f505fc426f0cb27738959da3bbf7780674fa97e98ee2a79013ca95aaa9b3b"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-logical-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-logical-pipeline_five-100000.log",
+      "bytes": 3586,
+      "mode": "0o644",
+      "sha256": "6a5f8830c7c62428800828cf6fcacf92ac7a4be403cd2768aea3107cc0f6e950"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-logical-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-logical-pipeline_five-1000000.log",
+      "bytes": 3595,
+      "mode": "0o644",
+      "sha256": "4b8c76f4a1e6f06bef0689b13a2bb93be7e15f76f5cfb938ebf451455e435761"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-logical-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-logical-rename-100000.log",
+      "bytes": 3570,
+      "mode": "0o644",
+      "sha256": "3421bd4191e792aaee2ad11c11cd06adb4096bbb4a9e4ad7670dcf4a238f7ae3"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-logical-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-logical-rename-1000000.log",
+      "bytes": 3579,
+      "mode": "0o644",
+      "sha256": "fa1a7c7086ec0c5612656d0d032ab35f58cc0a8e5a2134a9bb219c883fc73722"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-ordered-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-ordered-pipeline_50-100000.log",
+      "bytes": 3583,
+      "mode": "0o644",
+      "sha256": "7113b970f64ce221d147ee09d37ba5d547b377fdb15f9b001be76f2ab747df07"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-ordered-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-ordered-pipeline_50-1000000.log",
+      "bytes": 3591,
+      "mode": "0o644",
+      "sha256": "97c1e16833e941a8468ef2705ccdd7e8abcd56a59d1b98b902381999e81307fb"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-ordered-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-ordered-pipeline_five-100000.log",
+      "bytes": 3586,
+      "mode": "0o644",
+      "sha256": "1ce6a741a44f4f7637f96dd0ad70acb015dbe991171d184cbc1f8eb94274f5cc"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-ordered-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-ordered-pipeline_five-1000000.log",
+      "bytes": 3595,
+      "mode": "0o644",
+      "sha256": "581206d9687f8b6afa00eca1541b94d63d5d0521c4914643ae5482593b76d9dd"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-ordered-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-ordered-rename-100000.log",
+      "bytes": 3570,
+      "mode": "0o644",
+      "sha256": "d2cad64f8b6882aaa41577da21a19b41b252733b236c243cb72c64a59d5c21c2"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-ordered-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-ordered-rename-1000000.log",
+      "bytes": 3579,
+      "mode": "0o644",
+      "sha256": "9d91d2f00b4b4012131bf208b0bc3c63659d9969b6f4c217d248d30806676621"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-string-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-string-pipeline_50-100000.log",
+      "bytes": 3585,
+      "mode": "0o644",
+      "sha256": "11cb7084a23d29f3a2038e30be59ebe817e028cc9de8eb59ba253126021e655c"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-string-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-string-pipeline_50-1000000.log",
+      "bytes": 3596,
+      "mode": "0o644",
+      "sha256": "8c7694c670f4579784ccfa12453a899a7402abcd591fd0019def568b60bb42d5"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-string-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-string-pipeline_five-100000.log",
+      "bytes": 3589,
+      "mode": "0o644",
+      "sha256": "93c604fe505e83f3f7358cc3ae40a15314e712d31a7681c1a6d3358236bf3b06"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-string-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-string-pipeline_five-1000000.log",
+      "bytes": 3600,
+      "mode": "0o644",
+      "sha256": "e73395023193bfa31bef6991fe4b188cf38213d3e47df50d491b7f81180d788b"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-string-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-string-rename-100000.log",
+      "bytes": 3574,
+      "mode": "0o644",
+      "sha256": "6a17f6dcf03b70b2c5ab20bdbe948c9e5b90610b6bb9ae78c48994481ec80953"
+    },
+    {
+      "path": "benchmark/heap-baseline/heap-string-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/heap-string-rename-1000000.log",
+      "bytes": 3585,
+      "mode": "0o644",
+      "sha256": "2e1d4aed522197e7e411c45df64dba61064af10faaff08d26189ae8ce10f96fc"
+    },
+    {
+      "path": "benchmark/heap-baseline/root-manifest.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/root-manifest.json",
+      "bytes": 57334,
+      "mode": "0o644",
+      "sha256": "5dba6b5e9cd8b355ebeebf348211d9689a997fc82782f64114ffe8b4f98743fb"
+    },
+    {
+      "path": "benchmark/heap-candidate.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate.log",
+      "bytes": 1696,
+      "mode": "0o644",
+      "sha256": "7a37bd5b9e0e7f05bec07a7f47dde5927e5f534f6d7728b566e48f67dc1bb7fa"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-declared_character-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-declared_character-pipeline_50-100000.log",
+      "bytes": 3626,
+      "mode": "0o644",
+      "sha256": "4af4e78784b3ad7b30fcea4d23d01fc60d1d9c1508f8aaa107230b45accda3db"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-declared_character-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-declared_character-pipeline_50-1000000.log",
+      "bytes": 3635,
+      "mode": "0o644",
+      "sha256": "f314c4d96cabcf978ae9560a232e572a3fb7297eb4db36bfe47964214b8b50db"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-declared_character-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-declared_character-pipeline_five-100000.log",
+      "bytes": 3629,
+      "mode": "0o644",
+      "sha256": "6ee42ddc95a81cd0b04ed8b68d6359b6b116dba23618cb40e248d6ca3897ae35"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-declared_character-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-declared_character-pipeline_five-1000000.log",
+      "bytes": 3638,
+      "mode": "0o644",
+      "sha256": "67472ff63de37a588e581dcdcc2d7673bfeb537df415c524fd43e11f221f9fbf"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-declared_character-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-declared_character-rename-100000.log",
+      "bytes": 3613,
+      "mode": "0o644",
+      "sha256": "6ef592f713866d7286c6859c8e5c5a587b0c582ad36698a0e5ca63e3a62a1631"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-declared_character-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-declared_character-rename-1000000.log",
+      "bytes": 3622,
+      "mode": "0o644",
+      "sha256": "2d41580da713404762ba1e4cdf2e10d22fbed1dbf1f5099899a479220ed5fad4"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-double-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-double-pipeline_50-100000.log",
+      "bytes": 3492,
+      "mode": "0o644",
+      "sha256": "3032d941087ad5f304681eb83fd409ef48450feedef45af89c7dc205ed799050"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-double-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-double-pipeline_50-1000000.log",
+      "bytes": 3501,
+      "mode": "0o644",
+      "sha256": "23e806f69e74590e5496a9ce43bb09833ff9db32628a85037da73b07da37cdde"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-double-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-double-pipeline_five-100000.log",
+      "bytes": 3498,
+      "mode": "0o644",
+      "sha256": "d141751362de99837fcb5cb5a4761c2451586fe6d5da0133184567727ec763e1"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-double-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-double-pipeline_five-1000000.log",
+      "bytes": 3507,
+      "mode": "0o644",
+      "sha256": "8913219fb4493039ffa2f00f11297b5d2c475c368d1c0a7a16cbdfe50b9a5e36"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-double-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-double-rename-100000.log",
+      "bytes": 3482,
+      "mode": "0o644",
+      "sha256": "3ff022e66b8616e67a77e7ec755ce8da280f4cae679bc664b1dadaa06f89a200"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-double-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-double-rename-1000000.log",
+      "bytes": 3491,
+      "mode": "0o644",
+      "sha256": "ba03d061e13c570b274eb21f8c29a01d9223d7998823ec05f0dac0838d489292"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-factor-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-factor-pipeline_50-100000.log",
+      "bytes": 3599,
+      "mode": "0o644",
+      "sha256": "c6ef99f2150cdf9e1a4d935aa69db3238c078a5f061476ef9848f1473a838331"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-factor-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-factor-pipeline_50-1000000.log",
+      "bytes": 3606,
+      "mode": "0o644",
+      "sha256": "8c49c64391ec141c990b7c0df914b26dc3ab4d7fdd9a72bd74cab7c9754e15c9"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-factor-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-factor-pipeline_five-100000.log",
+      "bytes": 3602,
+      "mode": "0o644",
+      "sha256": "ce39872692b3a560e40e2b16a857f4e742d1c055172d5b09efbcc6071d3744f1"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-factor-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-factor-pipeline_five-1000000.log",
+      "bytes": 3609,
+      "mode": "0o644",
+      "sha256": "109d743ef0e3de96983776d8e3abcf07c95cf7bf2d243a8fab5bd1cc8efc2cd6"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-factor-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-factor-rename-100000.log",
+      "bytes": 3586,
+      "mode": "0o644",
+      "sha256": "263d6cf90464b2e9611be4cf3593e14130b7c7bbbfe49051940b5c3e27ac529c"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-factor-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-factor-rename-1000000.log",
+      "bytes": 3593,
+      "mode": "0o644",
+      "sha256": "b171d5bbcb7191cda4858700c2e158303f04627ad78768beb64006c98a383966"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-logical-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-logical-pipeline_50-100000.log",
+      "bytes": 3601,
+      "mode": "0o644",
+      "sha256": "5009c90d398e6121a2b7d9335e49e5c791b4587c2c87dec5daece5b2311a67d9"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-logical-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-logical-pipeline_50-1000000.log",
+      "bytes": 3608,
+      "mode": "0o644",
+      "sha256": "c2f005583e28853ae583fc1f42660184a9655dff7087a947825686e09d8ecff2"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-logical-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-logical-pipeline_five-100000.log",
+      "bytes": 3604,
+      "mode": "0o644",
+      "sha256": "ffdbe806bea90020f78b04a935910c21f1994564b5e8f23c620128a5bcb2afaf"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-logical-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-logical-pipeline_five-1000000.log",
+      "bytes": 3611,
+      "mode": "0o644",
+      "sha256": "e9f68ad1d622132620510b3a60d71cdf263fa7b501603224c18f9e739e8abe0b"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-logical-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-logical-rename-100000.log",
+      "bytes": 3587,
+      "mode": "0o644",
+      "sha256": "f06718efdbbfca4a38643a3b0f4ec58f6480dbdd775804c68a2d32175bf89d2e"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-logical-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-logical-rename-1000000.log",
+      "bytes": 3594,
+      "mode": "0o644",
+      "sha256": "2f5aae14307c93f146a9283734e843ef25887c9473c4482d10d235b2d20dcd74"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-ordered-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-ordered-pipeline_50-100000.log",
+      "bytes": 3601,
+      "mode": "0o644",
+      "sha256": "96689803a22cec7e4e22b9a062f6e1fad63dbb22e702b5be701d768f345738b8"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-ordered-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-ordered-pipeline_50-1000000.log",
+      "bytes": 3608,
+      "mode": "0o644",
+      "sha256": "40a5cf44c5077ccef43ce1d475ed36faccd3990ab542dd2c81201087a358592d"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-ordered-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-ordered-pipeline_five-100000.log",
+      "bytes": 3604,
+      "mode": "0o644",
+      "sha256": "5c9aa2af31c6dea56cfbaf5d31adf0ab61a8b83319ad7d80eb1c7b97c354947e"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-ordered-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-ordered-pipeline_five-1000000.log",
+      "bytes": 3610,
+      "mode": "0o644",
+      "sha256": "e9fd164ad0394e8ea8b35228eacb4f7284a8e6fd2839702c71bb240a04240a5a"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-ordered-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-ordered-rename-100000.log",
+      "bytes": 3588,
+      "mode": "0o644",
+      "sha256": "53ea617215aee5777021fa686f50a63da354ab9a29f53f23048a609699e0ceb0"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-ordered-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-ordered-rename-1000000.log",
+      "bytes": 3595,
+      "mode": "0o644",
+      "sha256": "2b5d45cefb02270f98545f1d29599d31925796e4fa0efbe5d9c06c12bc8ce516"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-string-pipeline_50-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-string-pipeline_50-100000.log",
+      "bytes": 3602,
+      "mode": "0o644",
+      "sha256": "8e107dcdb0c8ebf7c82dbfb6f197fe87bcd3443b31f3e41851a7000b649eeead"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-string-pipeline_50-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-string-pipeline_50-1000000.log",
+      "bytes": 3611,
+      "mode": "0o644",
+      "sha256": "8bcd868adc65ae4a83f9a1fe147c62db2941d1d84dba4f97f4d0c5822395cf56"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-string-pipeline_five-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-string-pipeline_five-100000.log",
+      "bytes": 3605,
+      "mode": "0o644",
+      "sha256": "0a124181b08ae6af632965a96a6f7c183dd7b19483c7d4c912429ba2b0d886b1"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-string-pipeline_five-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-string-pipeline_five-1000000.log",
+      "bytes": 3614,
+      "mode": "0o644",
+      "sha256": "601134cd86be81575aff116aa4a98dcea94c1a2e8247eea3896fbd53aa4c625d"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-string-rename-100000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-string-rename-100000.log",
+      "bytes": 3588,
+      "mode": "0o644",
+      "sha256": "08b7f28053db1f3454c6963737c67bd240c83a680631dea0f1894679f21181bb"
+    },
+    {
+      "path": "benchmark/heap-candidate/heap-string-rename-1000000.log",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/heap-string-rename-1000000.log",
+      "bytes": 3598,
+      "mode": "0o644",
+      "sha256": "b59af29d59359eeb84101844b09a7502c529a4dd713b2fc36cec33d230ca5cfc"
+    },
+    {
+      "path": "benchmark/heap-candidate/root-manifest.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/root-manifest.json",
+      "bytes": 57321,
+      "mode": "0o644",
+      "sha256": "75a0601133b27d4ca1a4765124bec72b1b01f596e9fbec276d91b6d013ed4fb2"
+    },
+    {
+      "path": "benchmark/heap-comparison/derivation.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-comparison/derivation.json",
+      "bytes": 895,
+      "mode": "0o644",
+      "sha256": "a7251f096fff910139777b0629f6ff862dbf3c317ce098ebbaa78866e039fd8d"
+    },
+    {
+      "path": "benchmark/heap-comparison/heap-comparison.csv",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-comparison/heap-comparison.csv",
+      "bytes": 4074,
+      "mode": "0o644",
+      "sha256": "4ad547ea89137cb5f9dbb8596aa54ca3f72668511e292df3db05a2184c86b4ee"
+    },
+    {
+      "path": "benchmark/input-identities.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/input-identities.json",
+      "bytes": 2446,
+      "mode": "0o644",
+      "sha256": "17683641a25af2224b4676ba1343338f724ed0005885a135200720b61848f9d5"
+    },
+    {
+      "path": "benchmark/progress.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/progress.json",
+      "bytes": 11770,
+      "mode": "0o644",
+      "sha256": "e8b6c22c250a26bb620bf66e0b08f78a7c53e754da517ea0bbe744b7f4fc98f1"
+    },
+    {
+      "path": "benchmark/qualification.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/qualification.json",
+      "bytes": 15011,
+      "mode": "0o644",
+      "sha256": "85a2af0bc5c3d72d605f8e9d85d3a0611cce71ec9f4aa7ca5fcc925ede1d69dd"
+    },
+    {
+      "path": "benchmark/source/api-c8ca0a4-performance-preexecution-identities.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/api-c8ca0a4-performance-preexecution-identities.json",
+      "bytes": 7282,
+      "mode": "0o644",
+      "sha256": "2185b2c3552a977687e60f0d55a02a25f52c695f609fdb78f3427a21ce18f761"
+    },
+    {
+      "path": "benchmark/source/api-c8ca0a4-performance-preexecution.md",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/api-c8ca0a4-performance-preexecution.md",
+      "bytes": 3759,
+      "mode": "0o644",
+      "sha256": "45ec22383597c27eb7c83389442ec18aaa35454df63c1c51c08bbca471231a3b"
+    },
+    {
+      "path": "benchmark/source/c8ca0a4-performance-summary.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/c8ca0a4-performance-summary.json",
+      "bytes": 21200,
+      "mode": "0o644",
+      "sha256": "d83614a69f235b31dc4c7202097f789c60420251b055277e44c2c3ced046f89c"
+    },
+    {
+      "path": "benchmark/source/c8ca0a4-results-draft.md",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/c8ca0a4-results-draft.md",
+      "bytes": 6283,
+      "mode": "0o644",
+      "sha256": "76d7dc30cf02264c602444edf179ccd5a51d8183e0275aa48f19cbbd789b6a87"
+    },
+    {
+      "path": "benchmark/source/compare-atomic.py",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/compare-atomic.py",
+      "bytes": 4340,
+      "mode": "0o644",
+      "sha256": "4a9051ce97c5a84ff580f0ddda4cce2692c847695d0500ad8c239618e312b9bf"
+    },
+    {
+      "path": "benchmark/source/compare-double.py",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/compare-double.py",
+      "bytes": 4780,
+      "mode": "0o644",
+      "sha256": "6da73e867e3d33cbb8469bc253058a4044ae8011220d6f539f43107f2d9867ad"
+    },
+    {
+      "path": "benchmark/source/compare-heap-c8ca0a4-derivation.json",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/compare-heap-c8ca0a4-derivation.json",
+      "bytes": 893,
+      "mode": "0o644",
+      "sha256": "bfb25739564189f733f7ea55dae0ad755a15e7c7476a537c135ca184e5501735"
+    },
+    {
+      "path": "benchmark/source/compare-heap-c8ca0a4.py",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/compare-heap-c8ca0a4.py",
+      "bytes": 3858,
+      "mode": "0o644",
+      "sha256": "3b7e989f6e15589c7e83f5e418eed572345533afaa0de00462fdec2d4f62d802"
+    },
+    {
+      "path": "benchmark/source/compare-heap.py",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/compare-heap.py",
+      "bytes": 3858,
+      "mode": "0o644",
+      "sha256": "d30c84133f1893b7fe7f76ef6d7c580cbc48962dd9aba0e253a628f4eb93a4ad"
+    },
+    {
+      "path": "benchmark/source/run-c8ca0a4-performance.py",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/run-c8ca0a4-performance.py",
+      "bytes": 5235,
+      "mode": "0o644",
+      "sha256": "191153050d0977e18137d156fec0150f6bc9fd7dfa59f54b8cbb45779596f2b9"
+    },
+    {
+      "path": "benchmark/source/summarize-c8ca0a4-performance.py",
+      "source_path": "/private/tmp/dta-direct-stage4-validation/summarize-c8ca0a4-performance.py",
+      "bytes": 11848,
+      "mode": "0o644",
+      "sha256": "aa17acd39392b5fff4760af064be36199cf29ee861b013f84608860097c3a488"
+    },
+    {
       "path": "diagnosis/external-review/comments.json",
       "source_path": "/private/tmp/dta-direct-stage4-validation/external-75b0c54-04/comments.json",
       "bytes": 20077,
@@ -2490,14 +3995,14 @@
       "sha256": "6343353a1e751309d6c6361fdb715be29a1500beaa6855d54d191c53939c0a62"
     }
   ],
-  "copied_count": 355,
-  "copied_bytes": 10297289,
+  "copied_count": 570,
+  "copied_bytes": 11249395,
   "authored_files": [
     {
       "path": "README.md",
-      "bytes": 6900,
+      "bytes": 7466,
       "mode": "0o644",
-      "sha256": "942ec404a3de02a5e5d1c3b75f37caf6fd8ee7c475f73fbdbae5e36d954c8ca6"
+      "sha256": "5b1258b50d9095ca7526913602a872c99545da1158f9faf125f68723f11336e5"
     },
     {
       "path": "verify.py",
@@ -2764,8 +4269,8 @@
     "Copied evidence retains its original bytes, measured revision and Unix mode. Each source_path maps the execution path to this archive path.",
     "Review snapshot paths that contain the same c8 source bytes resolve to fixed Git blobs listed here; no additional source copies are required.",
     "The default verifier checks all archive bytes and executable bits. Full Unix permission bits are forensic records because Git stores only the executable distinction.",
+    "The dated report is a separate authored document, reviewed and committed with its own exact identity; index.json deliberately does not hash itself.",
     "Large external products remain optional verification inputs, not bundled installations. Source inventories and execution/build recipes record their provenance.",
-    "Current reusable runner sources are fixed Git inputs at c8ca0a4. Archived execution and diagnosis scripts retain their historical path assumptions and should not be run blindly.",
-    "This first partition contains diagnosis and local qualification only. Its complete inventory is 355 copied inputs, the scoped README and unchanged verifier, plus this index. The paired benchmark tree and dated report will be added in a separate focused evidence PR, expanding only authored bookkeeping and preserving all first-partition copied bytes and modes."
+    "Current reusable runner sources are fixed Git inputs at c8ca0a4. Archived execution and diagnosis scripts retain their historical path assumptions and should not be run blindly."
   ]
 }

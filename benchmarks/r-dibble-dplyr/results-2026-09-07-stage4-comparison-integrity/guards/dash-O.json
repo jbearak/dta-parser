@@ -1,0 +1,273 @@
+{
+  "scope": "Synthetic guard tests only; no R, benchmarks, actual comparison edits, or report regeneration.",
+  "auditor_sha256": "97709832d0b5599e96038c09fd1dd8f9d0adb7d0b4df89fa397be6f944a8e51e",
+  "historical_source_sha256": "aa17acd39392b5fff4760af064be36199cf29ee861b013f84608860097c3a488",
+  "historical_loop_ast_sha256": "214f2a3f7a3208ca8ed983f0abb3bfc5f1b26a0f02ae28a5d8ab636b803a95d3",
+  "optimization": 1,
+  "auditor_mode": "dash-O",
+  "auditor_dash_O": true,
+  "auditor_PYTHONOPTIMIZE": null,
+  "cases": [
+    {
+      "case": "valid",
+      "exit_code": 0,
+      "stdout": "PASS: nine manifest/comparator bindings, heap verifier, and seven result files\n",
+      "stderr": "",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": false
+    },
+    {
+      "case": "atomic-baseline_manifest_sha256",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 73, in audit\n    require(derivation[mode + '_manifest_sha256'] == digest(raw),\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest hash mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: atomic: baseline manifest hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": true,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "atomic-candidate_manifest_sha256",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 73, in audit\n    require(derivation[mode + '_manifest_sha256'] == digest(raw),\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest hash mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: atomic: candidate manifest hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": true,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "atomic-deriver_sha256",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 85, in audit\n    require(derivation['deriver_sha256'] == qualified_hash, family + ': deriver hash mismatch')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: atomic: deriver hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": true,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "atomic-baseline_manifest",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 71, in audit\n    require(derivation[mode + '_manifest'] == expected_path,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest path mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: atomic: baseline manifest path mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "atomic-candidate_manifest",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 71, in audit\n    require(derivation[mode + '_manifest'] == expected_path,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest path mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: atomic: candidate manifest path mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "atomic-source-bytes",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 84, in audit\n    require(digest(source) == qualified_hash, family + ': comparator source hash mismatch')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: atomic: comparator source hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "atomic-result-bytes",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 106, in audit\n    require(digest(raw) == expected, family + ': derived result hash mismatch: ' + name)\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: atomic: derived result hash mismatch: investigate.json\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "double-baseline_manifest_sha256",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 73, in audit\n    require(derivation[mode + '_manifest_sha256'] == digest(raw),\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest hash mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: double: baseline manifest hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": true,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "double-candidate_manifest_sha256",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 73, in audit\n    require(derivation[mode + '_manifest_sha256'] == digest(raw),\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest hash mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: double: candidate manifest hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": true,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "double-deriver_sha256",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 85, in audit\n    require(derivation['deriver_sha256'] == qualified_hash, family + ': deriver hash mismatch')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: double: deriver hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": true,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "double-baseline_manifest",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 71, in audit\n    require(derivation[mode + '_manifest'] == expected_path,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest path mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: double: baseline manifest path mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "double-candidate_manifest",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 71, in audit\n    require(derivation[mode + '_manifest'] == expected_path,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest path mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: double: candidate manifest path mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "double-source-bytes",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 84, in audit\n    require(digest(source) == qualified_hash, family + ': comparator source hash mismatch')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: double: comparator source hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "double-result-bytes",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 106, in audit\n    require(digest(raw) == expected, family + ': derived result hash mismatch: ' + name)\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: double: derived result hash mismatch: investigate.json\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "heap-baseline_manifest_sha256",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 73, in audit\n    require(derivation[mode + '_manifest_sha256'] == digest(raw),\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest hash mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: heap: baseline manifest hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": true,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "heap-candidate_manifest_sha256",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 73, in audit\n    require(derivation[mode + '_manifest_sha256'] == digest(raw),\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest hash mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: heap: candidate manifest hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": true,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "heap-deriver_sha256",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 85, in audit\n    require(derivation['deriver_sha256'] == qualified_hash, family + ': deriver hash mismatch')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: heap: deriver hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": true,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "heap-baseline_manifest",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 71, in audit\n    require(derivation[mode + '_manifest'] == expected_path,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest path mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: heap: baseline manifest path mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "heap-candidate_manifest",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 71, in audit\n    require(derivation[mode + '_manifest'] == expected_path,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': ' + mode + ' manifest path mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: heap: candidate manifest path mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "heap-source-bytes",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 84, in audit\n    require(digest(source) == qualified_hash, family + ': comparator source hash mismatch')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: heap: comparator source hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "heap-result-bytes",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 106, in audit\n    require(digest(raw) == expected, family + ': derived result hash mismatch: ' + name)\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: heap: derived result hash mismatch: heap-comparison.csv\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "heap-metric",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 92, in audit\n    require(derivation['metric_verifier_sha256'] == metric_hash, 'heap: metric verifier hash mismatch')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: heap: metric verifier hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "heap-baseline-runner",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 94, in audit\n    require(manifest['runner_sha256']['benchmarks/r-dibble-dplyr/run-heap-qualification.py'] == metric_hash,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            'heap: ' + mode + ' metric runner hash mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: heap: baseline metric runner hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "heap-candidate-runner",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 94, in audit\n    require(manifest['runner_sha256']['benchmarks/r-dibble-dplyr/run-heap-qualification.py'] == metric_hash,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            'heap: ' + mode + ' metric runner hash mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: heap: candidate metric runner hash mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "missing-qualified-deriver",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 82, in audit\n    qualified_hash = qualified_sources[source_key]\n                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^\nKeyError: '/private/tmp/dta-direct-stage4-validation/compare-atomic.py'\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "wrong-qualified-command",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 130, in main\n    result = audit(archive)\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 87, in audit\n    require(len(commands) == 1 and commands[0]['command'][1] == source_key,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            family + ': qualified comparator command mismatch')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: atomic: qualified comparator command mismatch\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "inside-output",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 128, in main\n    require(not output.is_relative_to(archive), 'Output must be outside the immutable archive')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: Output must be outside the immutable archive\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    },
+    {
+      "case": "existing-output",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 139, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 129, in main\n    require(not output.exists(), 'Output already exists')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-final-review/comparison-bindings/audit-comparison-bindings.py\", line 27, in require\n    raise RuntimeError(message)\nRuntimeError: Output already exists\n",
+      "historical_exact_loop_admits_stale_identity": null,
+      "inputs_unchanged": true,
+      "rejected_output_preserved": true
+    }
+  ]
+}
