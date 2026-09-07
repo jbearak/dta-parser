@@ -1,0 +1,3 @@
+#!/bin/sh
+printf "invalid-hash\n"
+exit 0

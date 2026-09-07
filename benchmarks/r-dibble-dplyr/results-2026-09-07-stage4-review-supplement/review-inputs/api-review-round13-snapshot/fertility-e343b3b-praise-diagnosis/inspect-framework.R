@@ -1,0 +1,1 @@
+ns <- asNamespace("testthat"); cat("testthat", as.character(utils::packageVersion("testthat")), "\n"); print(get("SummaryReporter", ns)$public_methods$end_reporter); print(get("encourage", ns)); cat("namespace", getNamespaceInfo(ns,"path"), "\n")

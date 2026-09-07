@@ -1,0 +1,942 @@
+{
+  "recorded_utc": "2026-09-07T05:35:39.119187+00:00",
+  "errors": [],
+  "scope": "Saved current-source wrapper smoke and explicitly synthetic CLI evidence only; no reviewer R/probe execution",
+  "files": [
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-current-smoke/double.log",
+      "sha256": "f33c8622b7f2f68940397f69c927356c790b26a95861d93f6d0bc68a160fd859",
+      "bytes": 3471
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-current-smoke/logical.log",
+      "sha256": "9b62ee4cb10ce035d27a9f592280b9396381dc42bac0e1a8d1117cdd2558d2fd",
+      "bytes": 3582
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-current-smoke/manifest.json",
+      "sha256": "cbbfc7f29bdd4e8be1656d8c3883481b3c8e9efa45ee9817cf6d98bf41713404",
+      "bytes": 2620
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-current-smoke/source-mismatch.stderr",
+      "sha256": "e9fea767653405423fe02ed84fd2ed75ca72dc3fa09975612b0ad26c5aa566e1",
+      "bytes": 84
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-current-smoke/source-mismatch.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-changed_dependency.outer.log",
+      "sha256": "4fbfc904747a565e77baecf899bc415b23ecc53561f0409a2358dd9fa1bda15b",
+      "bytes": 826
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-changed_driver.outer.log",
+      "sha256": "354569f54dd51f93ed8e2823c4a2f8f5682086d9bf8dfa82a3a30cc5676ec812",
+      "bytes": 842
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-duplicate_identity/heap-double-rename-100000.log",
+      "sha256": "dec4bc1a101eabe7b4a5d1c4cb0cf9b39b6a97a8aac3664306af424b0d9331d6",
+      "bytes": 1772
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-duplicate_identity.calls",
+      "sha256": "9a4785a5bc1ae0b755ce8b0cfedf87d4b18637e7751510eca5250f89d651c241",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-duplicate_identity.outer.log",
+      "sha256": "4c72f1d5605382578e865128c0cd62fbeff8f5bb0dea63302b7cb2cbe3c38e52",
+      "bytes": 1007
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-existing_output/sentinel",
+      "sha256": "79bc492108b5bbbce6f07580c45c97d2b06318fcb28546ee49c56b66988360ef",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-existing_output.outer.log",
+      "sha256": "edfcdb14fbf42674612aa0d4b2b7dc01f67fd0839189a533248d655dae8468a1",
+      "bytes": 870
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-failed_git.outer.log",
+      "sha256": "c5ca92a7cf83225f84c9dcb2639735aa8d9faa6bf0df75d70f7f9613d0a2652c",
+      "bytes": 1252
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-missing_checkpoint/heap-double-rename-100000.log",
+      "sha256": "435129a2421a2cfd49052c4ca84f72fbee3fd145ff7bc6432030a1cad4026e78",
+      "bytes": 1627
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-missing_checkpoint.calls",
+      "sha256": "9a4785a5bc1ae0b755ce8b0cfedf87d4b18637e7751510eca5250f89d651c241",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-missing_checkpoint.outer.log",
+      "sha256": "bda9d75d87ec63a048dd97befbfd209fc4bbb3185b09ad698d1acdaec8365fdb",
+      "bytes": 1234
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-declared_character-pipeline_50-100000.log",
+      "sha256": "9a2aa62308b26c286a39c512655593f7c459166ee9541a66d12d66bb02551bed",
+      "bytes": 1732
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-declared_character-pipeline_50-1000000.log",
+      "sha256": "ea6882994d928959725ef33d2b0052bdfbbea2dfa4f1047157386d9dce8dee9b",
+      "bytes": 1733
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-declared_character-pipeline_five-100000.log",
+      "sha256": "8b1a0044940d3ec6e6e1cd244caf73115ddb50fd9366fe2838b0c65125e857d5",
+      "bytes": 1734
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-declared_character-pipeline_five-1000000.log",
+      "sha256": "011534978cc20d602a9b06ba0f07c57460995b68162b21643b2e224ea6a9645c",
+      "bytes": 1735
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-declared_character-rename-100000.log",
+      "sha256": "9912d9012f42330a4daf6b6922284e5df28f266d8c9cdf7cb00ea6131c8b6085",
+      "bytes": 1727
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-declared_character-rename-1000000.log",
+      "sha256": "16ce564252cb93ebc5e0e485a63a2a87ea55545dc3da791de1b81d2b8842a7d7",
+      "bytes": 1728
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-double-pipeline_50-100000.log",
+      "sha256": "daaa3119406cf8488d27e3b0d9b3b844b019f2cc25f8cf691aa557a8a86adfc7",
+      "bytes": 1720
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-double-pipeline_50-1000000.log",
+      "sha256": "912238c48743e922bc2fa49bfe81a8ec2eef90f0a5779284d5a9b9ceb4502a97",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-double-pipeline_five-100000.log",
+      "sha256": "63bee7c54a008fc42aa2ec69f991b371c0e937b1cb04dc475056b84f9d6eb073",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-double-pipeline_five-1000000.log",
+      "sha256": "ddada619558cd8034e445c5e866c03eeb5a0ef670e75d1fd0ae009364f63d4e3",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-double-rename-100000.log",
+      "sha256": "3c4e87bb9c1bb1ef21883282d5a66f26c658231fb38487cb70f2e658ecc797ba",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-double-rename-1000000.log",
+      "sha256": "d40adbde351444abce5ddb41b2f206985b6e9ca92e617419f9c6ef51b14b2837",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-factor-pipeline_50-100000.log",
+      "sha256": "3b397cea57026aee4c31db7d042d1eed64ae1c5cb8749b114c2070116c6d1d76",
+      "bytes": 1720
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-factor-pipeline_50-1000000.log",
+      "sha256": "67812b13673c5cec1153888934e4d2c585962745c5c5050f18bef5c176003a87",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-factor-pipeline_five-100000.log",
+      "sha256": "4acc8c857eb6f21304ec857bce453fc0c5062c1ad1f4a6c1590d9ed19f3e0c26",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-factor-pipeline_five-1000000.log",
+      "sha256": "31e171c3437adb9c8df50660676745abccacc3532c401a1c9869519c066cdde4",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-factor-rename-100000.log",
+      "sha256": "635b55ac970e321b37c751367d8f345f4513248442060991041353ef61e0bd3b",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-factor-rename-1000000.log",
+      "sha256": "c090912fbdb0af24df283e289bf084a40a3f219eedea93af7ba79b49dd23d19b",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-logical-pipeline_50-100000.log",
+      "sha256": "4472f1b7f64e833c5e8b1f24615f429da1a16a6b4ed3f38c08a04521d85415a0",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-logical-pipeline_50-1000000.log",
+      "sha256": "5cc63853eb126d2c12f129185cc710473df3f79fe5e49882516e7807e16ff067",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-logical-pipeline_five-100000.log",
+      "sha256": "10896d27017a7e7e2129b93799fe27bbd3cb7a252e3a945bcdfca63db111f922",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-logical-pipeline_five-1000000.log",
+      "sha256": "a60e22cc4cdfd492df093085e544c18c5b2fd96daf77fc2a6d448b56be78b2ea",
+      "bytes": 1724
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-logical-rename-100000.log",
+      "sha256": "dae4af93c43cfbb89bf80feb4e8946d4e943fa453a8ff4fb19f3afd4891d7001",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-logical-rename-1000000.log",
+      "sha256": "f444caa4afc22a9f4cb32b0b64fa439e0b2c51b160dd6a2766a602ab6d18629b",
+      "bytes": 1717
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-ordered-pipeline_50-100000.log",
+      "sha256": "b74ea7d836b43778beca84ea69cdc97431a2b63f3c96a0b48c783b618c786af7",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-ordered-pipeline_50-1000000.log",
+      "sha256": "6fd65481f4ffad3409f3fc8e8cafa5ac2d564e59d0cd49b19cbf5f7e6c78a3fd",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-ordered-pipeline_five-100000.log",
+      "sha256": "ff07af5990c09d68018ec832f21f80c99f71af66147f6e6f93241734751ac7b3",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-ordered-pipeline_five-1000000.log",
+      "sha256": "19f12a095146a2baa31af587bfd79ccd021476897a698c64db6b6192f69ace04",
+      "bytes": 1724
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-ordered-rename-100000.log",
+      "sha256": "d87550a1ee0cac793d8d99f7c51aea78273d7b2bbd43ea7647314ab27342b7df",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-ordered-rename-1000000.log",
+      "sha256": "9fa8b697e20da380d8198d0e74e3ecbee296f04a562ac7bf5d1707bc40e0bc38",
+      "bytes": 1717
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-string-pipeline_50-100000.log",
+      "sha256": "0db8a91877edd12e218879c62a6ef909b9facbeb2dc1c6a995ac32646e6b2a58",
+      "bytes": 1720
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-string-pipeline_50-1000000.log",
+      "sha256": "0ded853e058748cbb929d2210f345d206b7f072e60fdd26543bfb1a46f5b4d12",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-string-pipeline_five-100000.log",
+      "sha256": "71080310ec41563e8b9c5b51355e593b6c93fc73b4134ae67a502344306dcdc2",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-string-pipeline_five-1000000.log",
+      "sha256": "cd56c1283e6cd92ef915cc8693162dbfce5bdb5ebc5c21a9c7941a2b64fec0f5",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-string-rename-100000.log",
+      "sha256": "ee63d4d840c29a5368628c0d5be82fa1d10e4ed120e344d8698f44ad5392693c",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/heap-string-rename-1000000.log",
+      "sha256": "e686017b69f6ddfb48659b5f1c43e816c982e93b17008c8118dfb74a3560b914",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol/root-manifest.json",
+      "sha256": "b073b3513ef5b4aaa8c72b3a9386fb415c224b409eb2f306e50284f6abfdade4",
+      "bytes": 57081
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol.calls",
+      "sha256": "ea5706e19f245c00cd90bc5a7cc4677bbfb22b98f823c155580ffd71705f1250",
+      "bytes": 828
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-valid_protocol.outer.log",
+      "sha256": "8118f55961a8e4b958ca924a468d576888e19f8cf26703ed74097cf6043cd3ee",
+      "bytes": 1701
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-wrong_runtime_dependency/heap-double-rename-100000.log",
+      "sha256": "c86d8e487a5a084ad924b698ffaca814b26f1edd792d9ee8e2635ffea9e582c4",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-wrong_runtime_dependency.calls",
+      "sha256": "9a4785a5bc1ae0b755ce8b0cfedf87d4b18637e7751510eca5250f89d651c241",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/-O-wrong_runtime_dependency.outer.log",
+      "sha256": "2867d8a45c6ef62d5aefc0e529395533215ecad2ee26a94557d4d794f770e7a3",
+      "bytes": 1036
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-changed_dependency.outer.log",
+      "sha256": "4fbfc904747a565e77baecf899bc415b23ecc53561f0409a2358dd9fa1bda15b",
+      "bytes": 826
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-changed_driver.outer.log",
+      "sha256": "354569f54dd51f93ed8e2823c4a2f8f5682086d9bf8dfa82a3a30cc5676ec812",
+      "bytes": 842
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-duplicate_identity/heap-double-rename-100000.log",
+      "sha256": "dec4bc1a101eabe7b4a5d1c4cb0cf9b39b6a97a8aac3664306af424b0d9331d6",
+      "bytes": 1772
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-duplicate_identity.calls",
+      "sha256": "9a4785a5bc1ae0b755ce8b0cfedf87d4b18637e7751510eca5250f89d651c241",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-duplicate_identity.outer.log",
+      "sha256": "da4790c3e2f05632a6a8d64cd21aa3bd7845e2e0a02a439b0a6627e6ac946b29",
+      "bytes": 1021
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-existing_output/sentinel",
+      "sha256": "79bc492108b5bbbce6f07580c45c97d2b06318fcb28546ee49c56b66988360ef",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-existing_output.outer.log",
+      "sha256": "6a8c949561be2a99643bd1f7cbf9babfe421eff8bc06a5327ae32f56034aba0d",
+      "bytes": 884
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-failed_git.outer.log",
+      "sha256": "c5ca92a7cf83225f84c9dcb2639735aa8d9faa6bf0df75d70f7f9613d0a2652c",
+      "bytes": 1252
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-missing_checkpoint/heap-double-rename-100000.log",
+      "sha256": "435129a2421a2cfd49052c4ca84f72fbee3fd145ff7bc6432030a1cad4026e78",
+      "bytes": 1627
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-missing_checkpoint.calls",
+      "sha256": "9a4785a5bc1ae0b755ce8b0cfedf87d4b18637e7751510eca5250f89d651c241",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-missing_checkpoint.outer.log",
+      "sha256": "4659228dea3a80a8768920c3dc02c19a42161ea7607ab86171e9d5886cf03654",
+      "bytes": 1248
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-declared_character-pipeline_50-100000.log",
+      "sha256": "9a2aa62308b26c286a39c512655593f7c459166ee9541a66d12d66bb02551bed",
+      "bytes": 1732
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-declared_character-pipeline_50-1000000.log",
+      "sha256": "ea6882994d928959725ef33d2b0052bdfbbea2dfa4f1047157386d9dce8dee9b",
+      "bytes": 1733
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-declared_character-pipeline_five-100000.log",
+      "sha256": "8b1a0044940d3ec6e6e1cd244caf73115ddb50fd9366fe2838b0c65125e857d5",
+      "bytes": 1734
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-declared_character-pipeline_five-1000000.log",
+      "sha256": "011534978cc20d602a9b06ba0f07c57460995b68162b21643b2e224ea6a9645c",
+      "bytes": 1735
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-declared_character-rename-100000.log",
+      "sha256": "9912d9012f42330a4daf6b6922284e5df28f266d8c9cdf7cb00ea6131c8b6085",
+      "bytes": 1727
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-declared_character-rename-1000000.log",
+      "sha256": "16ce564252cb93ebc5e0e485a63a2a87ea55545dc3da791de1b81d2b8842a7d7",
+      "bytes": 1728
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-double-pipeline_50-100000.log",
+      "sha256": "daaa3119406cf8488d27e3b0d9b3b844b019f2cc25f8cf691aa557a8a86adfc7",
+      "bytes": 1720
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-double-pipeline_50-1000000.log",
+      "sha256": "912238c48743e922bc2fa49bfe81a8ec2eef90f0a5779284d5a9b9ceb4502a97",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-double-pipeline_five-100000.log",
+      "sha256": "63bee7c54a008fc42aa2ec69f991b371c0e937b1cb04dc475056b84f9d6eb073",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-double-pipeline_five-1000000.log",
+      "sha256": "ddada619558cd8034e445c5e866c03eeb5a0ef670e75d1fd0ae009364f63d4e3",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-double-rename-100000.log",
+      "sha256": "3c4e87bb9c1bb1ef21883282d5a66f26c658231fb38487cb70f2e658ecc797ba",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-double-rename-1000000.log",
+      "sha256": "d40adbde351444abce5ddb41b2f206985b6e9ca92e617419f9c6ef51b14b2837",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-factor-pipeline_50-100000.log",
+      "sha256": "3b397cea57026aee4c31db7d042d1eed64ae1c5cb8749b114c2070116c6d1d76",
+      "bytes": 1720
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-factor-pipeline_50-1000000.log",
+      "sha256": "67812b13673c5cec1153888934e4d2c585962745c5c5050f18bef5c176003a87",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-factor-pipeline_five-100000.log",
+      "sha256": "4acc8c857eb6f21304ec857bce453fc0c5062c1ad1f4a6c1590d9ed19f3e0c26",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-factor-pipeline_five-1000000.log",
+      "sha256": "31e171c3437adb9c8df50660676745abccacc3532c401a1c9869519c066cdde4",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-factor-rename-100000.log",
+      "sha256": "635b55ac970e321b37c751367d8f345f4513248442060991041353ef61e0bd3b",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-factor-rename-1000000.log",
+      "sha256": "c090912fbdb0af24df283e289bf084a40a3f219eedea93af7ba79b49dd23d19b",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-logical-pipeline_50-100000.log",
+      "sha256": "4472f1b7f64e833c5e8b1f24615f429da1a16a6b4ed3f38c08a04521d85415a0",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-logical-pipeline_50-1000000.log",
+      "sha256": "5cc63853eb126d2c12f129185cc710473df3f79fe5e49882516e7807e16ff067",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-logical-pipeline_five-100000.log",
+      "sha256": "10896d27017a7e7e2129b93799fe27bbd3cb7a252e3a945bcdfca63db111f922",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-logical-pipeline_five-1000000.log",
+      "sha256": "a60e22cc4cdfd492df093085e544c18c5b2fd96daf77fc2a6d448b56be78b2ea",
+      "bytes": 1724
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-logical-rename-100000.log",
+      "sha256": "dae4af93c43cfbb89bf80feb4e8946d4e943fa453a8ff4fb19f3afd4891d7001",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-logical-rename-1000000.log",
+      "sha256": "f444caa4afc22a9f4cb32b0b64fa439e0b2c51b160dd6a2766a602ab6d18629b",
+      "bytes": 1717
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-ordered-pipeline_50-100000.log",
+      "sha256": "b74ea7d836b43778beca84ea69cdc97431a2b63f3c96a0b48c783b618c786af7",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-ordered-pipeline_50-1000000.log",
+      "sha256": "6fd65481f4ffad3409f3fc8e8cafa5ac2d564e59d0cd49b19cbf5f7e6c78a3fd",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-ordered-pipeline_five-100000.log",
+      "sha256": "ff07af5990c09d68018ec832f21f80c99f71af66147f6e6f93241734751ac7b3",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-ordered-pipeline_five-1000000.log",
+      "sha256": "19f12a095146a2baa31af587bfd79ccd021476897a698c64db6b6192f69ace04",
+      "bytes": 1724
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-ordered-rename-100000.log",
+      "sha256": "d87550a1ee0cac793d8d99f7c51aea78273d7b2bbd43ea7647314ab27342b7df",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-ordered-rename-1000000.log",
+      "sha256": "9fa8b697e20da380d8198d0e74e3ecbee296f04a562ac7bf5d1707bc40e0bc38",
+      "bytes": 1717
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-string-pipeline_50-100000.log",
+      "sha256": "0db8a91877edd12e218879c62a6ef909b9facbeb2dc1c6a995ac32646e6b2a58",
+      "bytes": 1720
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-string-pipeline_50-1000000.log",
+      "sha256": "0ded853e058748cbb929d2210f345d206b7f072e60fdd26543bfb1a46f5b4d12",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-string-pipeline_five-100000.log",
+      "sha256": "71080310ec41563e8b9c5b51355e593b6c93fc73b4134ae67a502344306dcdc2",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-string-pipeline_five-1000000.log",
+      "sha256": "cd56c1283e6cd92ef915cc8693162dbfce5bdb5ebc5c21a9c7941a2b64fec0f5",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-string-rename-100000.log",
+      "sha256": "ee63d4d840c29a5368628c0d5be82fa1d10e4ed120e344d8698f44ad5392693c",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/heap-string-rename-1000000.log",
+      "sha256": "e686017b69f6ddfb48659b5f1c43e816c982e93b17008c8118dfb74a3560b914",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol/root-manifest.json",
+      "sha256": "dda0c9fe7d7f23208bcfc8bd3cd87d464785ee47519304d93302dd0b550db908",
+      "bytes": 57081
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol.calls",
+      "sha256": "ea5706e19f245c00cd90bc5a7cc4677bbfb22b98f823c155580ffd71705f1250",
+      "bytes": 828
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-valid_protocol.outer.log",
+      "sha256": "4806f99929a4d1205c42959ad599bf4e236011790b9c9513f23b05ec56a15296",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-wrong_runtime_dependency/heap-double-rename-100000.log",
+      "sha256": "c86d8e487a5a084ad924b698ffaca814b26f1edd792d9ee8e2635ffea9e582c4",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-wrong_runtime_dependency.calls",
+      "sha256": "9a4785a5bc1ae0b755ce8b0cfedf87d4b18637e7751510eca5250f89d651c241",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/PYTHONOPTIMIZE-1-wrong_runtime_dependency.outer.log",
+      "sha256": "3bbd4abdc7a591151edfeccc845c4eb1c8707d4764e439bb1712d0945043da45",
+      "bytes": 1050
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-changed_dependency.outer.log",
+      "sha256": "4fbfc904747a565e77baecf899bc415b23ecc53561f0409a2358dd9fa1bda15b",
+      "bytes": 826
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-changed_driver.outer.log",
+      "sha256": "354569f54dd51f93ed8e2823c4a2f8f5682086d9bf8dfa82a3a30cc5676ec812",
+      "bytes": 842
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-duplicate_identity/heap-double-rename-100000.log",
+      "sha256": "dec4bc1a101eabe7b4a5d1c4cb0cf9b39b6a97a8aac3664306af424b0d9331d6",
+      "bytes": 1772
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-duplicate_identity.calls",
+      "sha256": "9a4785a5bc1ae0b755ce8b0cfedf87d4b18637e7751510eca5250f89d651c241",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-duplicate_identity.outer.log",
+      "sha256": "22710fc5032f0f15e76b1b16e5a72dac15e0c4fea30fe765d0e8ea8a20ea75c1",
+      "bytes": 1012
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-existing_output/sentinel",
+      "sha256": "79bc492108b5bbbce6f07580c45c97d2b06318fcb28546ee49c56b66988360ef",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-existing_output.outer.log",
+      "sha256": "10db384951cba4693df2a3803b05a75f0d317bb35e75b3d70c16234c88ada7c5",
+      "bytes": 875
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-failed_git.outer.log",
+      "sha256": "c5ca92a7cf83225f84c9dcb2639735aa8d9faa6bf0df75d70f7f9613d0a2652c",
+      "bytes": 1252
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-missing_checkpoint/heap-double-rename-100000.log",
+      "sha256": "435129a2421a2cfd49052c4ca84f72fbee3fd145ff7bc6432030a1cad4026e78",
+      "bytes": 1627
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-missing_checkpoint.calls",
+      "sha256": "9a4785a5bc1ae0b755ce8b0cfedf87d4b18637e7751510eca5250f89d651c241",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-missing_checkpoint.outer.log",
+      "sha256": "a0205d378a86afa270eabbe9fefb97951076f6f306a0156edd5d15a11c551e5c",
+      "bytes": 1239
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-declared_character-pipeline_50-100000.log",
+      "sha256": "9a2aa62308b26c286a39c512655593f7c459166ee9541a66d12d66bb02551bed",
+      "bytes": 1732
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-declared_character-pipeline_50-1000000.log",
+      "sha256": "ea6882994d928959725ef33d2b0052bdfbbea2dfa4f1047157386d9dce8dee9b",
+      "bytes": 1733
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-declared_character-pipeline_five-100000.log",
+      "sha256": "8b1a0044940d3ec6e6e1cd244caf73115ddb50fd9366fe2838b0c65125e857d5",
+      "bytes": 1734
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-declared_character-pipeline_five-1000000.log",
+      "sha256": "011534978cc20d602a9b06ba0f07c57460995b68162b21643b2e224ea6a9645c",
+      "bytes": 1735
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-declared_character-rename-100000.log",
+      "sha256": "9912d9012f42330a4daf6b6922284e5df28f266d8c9cdf7cb00ea6131c8b6085",
+      "bytes": 1727
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-declared_character-rename-1000000.log",
+      "sha256": "16ce564252cb93ebc5e0e485a63a2a87ea55545dc3da791de1b81d2b8842a7d7",
+      "bytes": 1728
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-double-pipeline_50-100000.log",
+      "sha256": "daaa3119406cf8488d27e3b0d9b3b844b019f2cc25f8cf691aa557a8a86adfc7",
+      "bytes": 1720
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-double-pipeline_50-1000000.log",
+      "sha256": "912238c48743e922bc2fa49bfe81a8ec2eef90f0a5779284d5a9b9ceb4502a97",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-double-pipeline_five-100000.log",
+      "sha256": "63bee7c54a008fc42aa2ec69f991b371c0e937b1cb04dc475056b84f9d6eb073",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-double-pipeline_five-1000000.log",
+      "sha256": "ddada619558cd8034e445c5e866c03eeb5a0ef670e75d1fd0ae009364f63d4e3",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-double-rename-100000.log",
+      "sha256": "3c4e87bb9c1bb1ef21883282d5a66f26c658231fb38487cb70f2e658ecc797ba",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-double-rename-1000000.log",
+      "sha256": "d40adbde351444abce5ddb41b2f206985b6e9ca92e617419f9c6ef51b14b2837",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-factor-pipeline_50-100000.log",
+      "sha256": "3b397cea57026aee4c31db7d042d1eed64ae1c5cb8749b114c2070116c6d1d76",
+      "bytes": 1720
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-factor-pipeline_50-1000000.log",
+      "sha256": "67812b13673c5cec1153888934e4d2c585962745c5c5050f18bef5c176003a87",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-factor-pipeline_five-100000.log",
+      "sha256": "4acc8c857eb6f21304ec857bce453fc0c5062c1ad1f4a6c1590d9ed19f3e0c26",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-factor-pipeline_five-1000000.log",
+      "sha256": "31e171c3437adb9c8df50660676745abccacc3532c401a1c9869519c066cdde4",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-factor-rename-100000.log",
+      "sha256": "635b55ac970e321b37c751367d8f345f4513248442060991041353ef61e0bd3b",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-factor-rename-1000000.log",
+      "sha256": "c090912fbdb0af24df283e289bf084a40a3f219eedea93af7ba79b49dd23d19b",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-logical-pipeline_50-100000.log",
+      "sha256": "4472f1b7f64e833c5e8b1f24615f429da1a16a6b4ed3f38c08a04521d85415a0",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-logical-pipeline_50-1000000.log",
+      "sha256": "5cc63853eb126d2c12f129185cc710473df3f79fe5e49882516e7807e16ff067",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-logical-pipeline_five-100000.log",
+      "sha256": "10896d27017a7e7e2129b93799fe27bbd3cb7a252e3a945bcdfca63db111f922",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-logical-pipeline_five-1000000.log",
+      "sha256": "a60e22cc4cdfd492df093085e544c18c5b2fd96daf77fc2a6d448b56be78b2ea",
+      "bytes": 1724
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-logical-rename-100000.log",
+      "sha256": "dae4af93c43cfbb89bf80feb4e8946d4e943fa453a8ff4fb19f3afd4891d7001",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-logical-rename-1000000.log",
+      "sha256": "f444caa4afc22a9f4cb32b0b64fa439e0b2c51b160dd6a2766a602ab6d18629b",
+      "bytes": 1717
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-ordered-pipeline_50-100000.log",
+      "sha256": "b74ea7d836b43778beca84ea69cdc97431a2b63f3c96a0b48c783b618c786af7",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-ordered-pipeline_50-1000000.log",
+      "sha256": "6fd65481f4ffad3409f3fc8e8cafa5ac2d564e59d0cd49b19cbf5f7e6c78a3fd",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-ordered-pipeline_five-100000.log",
+      "sha256": "ff07af5990c09d68018ec832f21f80c99f71af66147f6e6f93241734751ac7b3",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-ordered-pipeline_five-1000000.log",
+      "sha256": "19f12a095146a2baa31af587bfd79ccd021476897a698c64db6b6192f69ace04",
+      "bytes": 1724
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-ordered-rename-100000.log",
+      "sha256": "d87550a1ee0cac793d8d99f7c51aea78273d7b2bbd43ea7647314ab27342b7df",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-ordered-rename-1000000.log",
+      "sha256": "9fa8b697e20da380d8198d0e74e3ecbee296f04a562ac7bf5d1707bc40e0bc38",
+      "bytes": 1717
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-string-pipeline_50-100000.log",
+      "sha256": "0db8a91877edd12e218879c62a6ef909b9facbeb2dc1c6a995ac32646e6b2a58",
+      "bytes": 1720
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-string-pipeline_50-1000000.log",
+      "sha256": "0ded853e058748cbb929d2210f345d206b7f072e60fdd26543bfb1a46f5b4d12",
+      "bytes": 1721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-string-pipeline_five-100000.log",
+      "sha256": "71080310ec41563e8b9c5b51355e593b6c93fc73b4134ae67a502344306dcdc2",
+      "bytes": 1722
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-string-pipeline_five-1000000.log",
+      "sha256": "cd56c1283e6cd92ef915cc8693162dbfce5bdb5ebc5c21a9c7941a2b64fec0f5",
+      "bytes": 1723
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-string-rename-100000.log",
+      "sha256": "ee63d4d840c29a5368628c0d5be82fa1d10e4ed120e344d8698f44ad5392693c",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/heap-string-rename-1000000.log",
+      "sha256": "e686017b69f6ddfb48659b5f1c43e816c982e93b17008c8118dfb74a3560b914",
+      "bytes": 1716
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol/root-manifest.json",
+      "sha256": "9a18098f3c0783ee11050171e923ebac9db00eb44cba1b66f46fe57b08df4718",
+      "bytes": 57081
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol.calls",
+      "sha256": "ea5706e19f245c00cd90bc5a7cc4677bbfb22b98f823c155580ffd71705f1250",
+      "bytes": 828
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-valid_protocol.outer.log",
+      "sha256": "cfdadd4eba6bf22167df2096f78b0e7dd3ba92ff7e94fdc7d0e2f961aa88331c",
+      "bytes": 1706
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-wrong_runtime_dependency/heap-double-rename-100000.log",
+      "sha256": "c86d8e487a5a084ad924b698ffaca814b26f1edd792d9ee8e2635ffea9e582c4",
+      "bytes": 1715
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-wrong_runtime_dependency.calls",
+      "sha256": "9a4785a5bc1ae0b755ce8b0cfedf87d4b18637e7751510eca5250f89d651c241",
+      "bytes": 23
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-wrong_runtime_dependency.outer.log",
+      "sha256": "4c18f0128ea5dfb63007d13b0b3a32b05b0c74a37e1600b26202fb0ef628a854",
+      "bytes": 1041
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/guard-summary.json",
+      "sha256": "2413790c6ea860787bd216589486c00b1c15b598f7d662cd17383ea0eb9cea74",
+      "bytes": 8273
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-bin/Rscript",
+      "sha256": "fddcdbb2f67543198b08f3aef1ba667c84b3b7e61996e1d6da54400ada5d82ba",
+      "bytes": 1093
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-bin/git",
+      "sha256": "e6d33926a87595e615dc529e3863d6201581654a4a524b9a42202cc30119327d",
+      "bytes": 431
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-committed-bytes/benchmarks/r-dibble-dplyr/helpers.R",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+      "bytes": 4098
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-committed-bytes/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+      "bytes": 8386
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-committed-bytes/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2",
+      "bytes": 2620
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-committed-bytes/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012",
+      "bytes": 12810
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-committed-bytes/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2",
+      "bytes": 6118
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-committed-bytes/benchmarks/r-dibble-dplyr/owned-double-memory.R",
+      "sha256": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416",
+      "bytes": 3198
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-committed-bytes/benchmarks/r-dibble-dplyr/owned-double.R",
+      "sha256": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685",
+      "bytes": 13771
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-committed-bytes/benchmarks/r-dibble-dplyr/owned-heap.R",
+      "sha256": "cfe7259861d558b6ffdd48f0b05921269ca209aea0cd28d8d3ebe82808dd5f58",
+      "bytes": 3906
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-committed-bytes/benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "sha256": "39fd4814b59eec2e3fcbc8ff4cc7af608c8ef76b52f71e70f794e6a4d75fe9f3",
+      "bytes": 7787
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-heap-body.txt",
+      "sha256": "13beac9c415a75a5aa20f1b0d2f4273ea0bd0d046b087cacf550a341a4562cba",
+      "bytes": 739
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/helpers.R",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+      "bytes": 4098
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+      "bytes": 8386
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2",
+      "bytes": 2620
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012",
+      "bytes": 12810
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2",
+      "bytes": 6118
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/owned-double-memory.R",
+      "sha256": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416",
+      "bytes": 3198
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/owned-double.R",
+      "sha256": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685",
+      "bytes": 13771
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/owned-heap.R",
+      "sha256": "cfe7259861d558b6ffdd48f0b05921269ca209aea0cd28d8d3ebe82808dd5f58",
+      "bytes": 3906
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "sha256": "39fd4814b59eec2e3fcbc8ff4cc7af608c8ef76b52f71e70f794e6a4d75fe9f3",
+      "bytes": 7787
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards.py",
+      "sha256": "43de94456b24785aa60cfff27d569577d670690cea3326bc1773c1c7476b7001",
+      "bytes": 7555
+    }
+  ]
+}

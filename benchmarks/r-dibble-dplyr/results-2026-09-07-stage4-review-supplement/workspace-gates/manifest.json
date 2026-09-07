@@ -1,0 +1,117 @@
+{
+  "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "source_directory": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-e343b3b",
+  "driver_sha256": "d1d451c2ba0ba8e08a193bec8d1860b7c2a177395e629b144f9e4b708246004e",
+  "versions": {
+    "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05) (Homebrew)\nrelease: 1.98.0\ncommit-hash: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9d\ncommit-date: 2026-08-05\nhost: aarch64-apple-darwin\nlibgit2: 1.9.7 (sys:0.21.0 system)\nlibcurl: 8.7.1 (sys:0.4.90+curl-8.21.0 system ssl:(SecureTransport) LibreSSL/3.3.6)\nos: Mac OS 26.6.2 [64-bit]\n",
+    "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew)\nbinary: rustc\ncommit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea\ncommit-date: 2026-08-18\nhost: aarch64-apple-darwin\nrelease: 1.98.0\nLLVM version: 22.1.8\n"
+  },
+  "environment": {
+    "CARGO_TARGET_DIR": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-target",
+    "CARGO_HOME": null,
+    "RUSTUP_TOOLCHAIN": null,
+    "RUSTFLAGS": null,
+    "RUSTDOCFLAGS": "-D warnings"
+  },
+  "source_inputs_sha256": "9700f3106c99ad05ff7d871f8248eeb1c5a402935bc5a849ee24518fac9f37e5",
+  "commands": [
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "started_utc": "2026-09-07T08:24:06.184328+00:00",
+      "elapsed_seconds": 0.27864466699247714,
+      "exit_code": 0,
+      "before_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "after_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "log_bytes": 0,
+      "inputs_identical": true
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_utc": "2026-09-07T08:24:06.570314+00:00",
+      "elapsed_seconds": 7.396476875001099,
+      "exit_code": 0,
+      "before_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "after_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "log_sha256": "8a07185483c58709a9ad53fbfef7cac6e62f7ebe98e8d454db8f8715fb678e4a",
+      "log_bytes": 2300,
+      "inputs_identical": true
+    },
+    {
+      "name": "tests",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--offline"
+      ],
+      "started_utc": "2026-09-07T08:24:14.075388+00:00",
+      "elapsed_seconds": 23.801625416002935,
+      "exit_code": 0,
+      "before_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "after_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "log_sha256": "1325ed0eeeb15adef39b2800bdf5843dd0c61aa7d94813d6cfbe02223862097b",
+      "log_bytes": 26406,
+      "inputs_identical": true
+    },
+    {
+      "name": "doc",
+      "command": [
+        "cargo",
+        "doc",
+        "--workspace",
+        "--locked",
+        "--offline",
+        "--no-deps"
+      ],
+      "started_utc": "2026-09-07T08:24:37.985926+00:00",
+      "elapsed_seconds": 0.6340375839936314,
+      "exit_code": 0,
+      "before_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "after_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "log_sha256": "360ede8e5d6e8cd236f9a948465458f6fff65b27610d194a6c061ea32203c4cf",
+      "log_bytes": 344,
+      "inputs_identical": true
+    },
+    {
+      "name": "package",
+      "command": [
+        "cargo",
+        "package",
+        "-p",
+        "dta-tools",
+        "--locked",
+        "--offline"
+      ],
+      "started_utc": "2026-09-07T08:24:38.727616+00:00",
+      "elapsed_seconds": 2.027906165996683,
+      "exit_code": 0,
+      "before_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "after_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "log_sha256": "17313dc1a5f76565db662919b742a1b832f9816891df2736f7cf02b7e8c80f06",
+      "log_bytes": 1638,
+      "inputs_identical": true
+    }
+  ],
+  "disposition": "Fresh final-source supplemental qualification; historical reuse proof is preserved separately."
+}
