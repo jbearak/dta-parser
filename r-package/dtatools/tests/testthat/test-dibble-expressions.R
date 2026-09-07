@@ -410,3 +410,17 @@ test_that("expired column promises retain repeated-resolution warnings", {
     expect_match(conditionMessage(first), "Obsolete data mask", fixed = TRUE)
     expect_match(conditionMessage(second), "Obsolete data mask", fixed = TRUE)
 })
+
+test_that("mutate preserves existing group order until a key changes", {
+    data <- dplyr::group_by(dibble(g = c(1, 1, 2), x = 1:3), g)
+    attr(data, "groups") <- attr(data, "groups")[2:1, ]
+    original <- attr(data, "groups")
+    result <- dplyr::mutate(data, first = dplyr::cur_group_id())
+    expect_identical(attr(result, "groups"), original)
+    result <- dplyr::mutate(result, second = dplyr::cur_group_id())
+    expect_identical(as.double(result$first), c(2, 2, 1))
+    expect_identical(as.double(result$second), c(2, 2, 1))
+    expect_identical(attr(dplyr::transmute(data, y = x), "groups"), original)
+    regrouped <- dplyr::mutate(data, g = g + 1)
+    expect_identical(as.double(dplyr::group_keys(regrouped)$g), c(2, 3))
+})

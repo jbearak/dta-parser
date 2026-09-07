@@ -341,7 +341,8 @@
     metadata$groups <- NULL
     attributes(columns) <- metadata
     .finish_dibble_result(context, columns, grouping = function(result) {
-        .restore_group_metadata(result, data, policy = "rebuild")
+        policy <- if (any(.group_vars(data) %in% evaluated$modified)) "rebuild" else "columns"
+        .restore_group_metadata(result, data, policy = policy)
     })
 }
 

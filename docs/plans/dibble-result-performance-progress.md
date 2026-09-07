@@ -40,6 +40,14 @@ renamed ungroup selectors, custom row names and expired-mask payload retention.
 Weak references retain cleanup access without owning superseded uncaptured
 column generations. Exact-source focused/full/package checks are underway.
 
+Final source review also restored repeated interrupted-promise warnings after
+mask expiry and preserved validated group ordering when mutate/transmute leave
+grouping keys unchanged. Independent probes compare nine expired reads and
+eight payload-lifetime cases. The original exact `985e26b` focused run passed
+7,608 assertions with four established warnings, then failed in its namespace
+reporter; that failed record remains retained. The reporter fix and subsequent
+source changes require fresh exact-installed qualification.
+
 The [preparation archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/README.md)
 preserves the 181-file selective minimum preview and both complete indexed
 helper proofs. Production and evidence will use focused review scopes. ADR 0034
