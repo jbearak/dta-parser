@@ -1,0 +1,56 @@
+{
+  "archive_sha256": "83229c200ecc83f408ccc44a38740def4174d7f25c871efe48a900c501aa1910",
+  "inputs": [
+    {
+      "bytes": 5033,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/run-checks.py",
+      "resolved": "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/run-checks.py",
+      "sha256": "cb70dd9cebb71ab25c64eb466a1a9928b4beb452481540adb8d38f01e9e983f2"
+    },
+    {
+      "bytes": 4794,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/test-verify-pristine-tree.py",
+      "resolved": "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/test-verify-pristine-tree.py",
+      "sha256": "901c73e447d6011ff3673de2745a5e86bf45246b7b890a50cf3fe91730881db2"
+    },
+    {
+      "bytes": 5085,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/verify-pristine-tree.py",
+      "resolved": "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/verify-pristine-tree.py",
+      "sha256": "b97b5d3b81e767e5ddd82c7758732f4a898ac1652f5a236a31f03a5bc727f815"
+    },
+    {
+      "bytes": 3620,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/verify-current-evidence.py",
+      "resolved": "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/verify-current-evidence.py",
+      "sha256": "3b8498829f0c845f0c7fd9975a025ff78a2a45b16dff8a7d4473141d53e4d48e"
+    },
+    {
+      "bytes": 3268,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/test-verify-current-evidence.py",
+      "resolved": "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/test-verify-current-evidence.py",
+      "sha256": "ac44384f09f08347f69d0301bced17811d4bb5756fcc0505b996013465a3f06a"
+    },
+    {
+      "bytes": 34640,
+      "mode": "0o755",
+      "path": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+    },
+    {
+      "bytes": 4218880,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dplyr-git-1.2.1.tar",
+      "resolved": "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dplyr-git-1.2.1.tar",
+      "sha256": "83229c200ecc83f408ccc44a38740def4174d7f25c871efe48a900c501aa1910"
+    }
+  ],
+  "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "scope": "New synthetic guard tests and fresh dplyr source extraction check. Exact scripts, Python executable and archive are bound; full Python/OS runtime closures are not frozen."
+}

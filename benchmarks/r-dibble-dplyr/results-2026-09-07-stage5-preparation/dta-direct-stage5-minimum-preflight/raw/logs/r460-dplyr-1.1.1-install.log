@@ -1,0 +1,89 @@
+* installing *source* package ‘dplyr’ ...
+** this is package ‘dplyr’ version ‘1.1.1’
+** using staged installation
+** libs
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+g++ -std=gnu++20 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include" -DNDEBUG   -I/opt/homebrew/include    -fPIC  -g -O2   -c chop.cpp -o chop.o
+g++ -std=gnu++20 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include" -DNDEBUG   -I/opt/homebrew/include    -fPIC  -g -O2   -c filter.cpp -o filter.o
+g++ -std=gnu++20 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include" -DNDEBUG   -I/opt/homebrew/include    -fPIC  -g -O2   -c funs.cpp -o funs.o
+g++ -std=gnu++20 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include" -DNDEBUG   -I/opt/homebrew/include    -fPIC  -g -O2   -c group_by.cpp -o group_by.o
+chop.cpp:17:25: error: use of undeclared identifier 'Rf_allocSExp'
+   17 |     SEXP prom = PROTECT(Rf_allocSExp(PROMSXP));
+      |                         ^~~~~~~~~~~~
+chop.cpp:18:5: error: use of undeclared identifier 'SET_PRENV'
+   18 |     SET_PRENV(prom, R_EmptyEnv);
+      |     ^~~~~~~~~
+filter.cpp:194:3: error: use of undeclared identifier 'Rf_findVarInFrame'
+  194 |   DPLYR_MASK_INIT();
+      |   ^~~~~~~~~~~~~~~~~
+./dplyr.h:124:23: note: expanded from macro 'DPLYR_MASK_INIT'
+  124 |   SEXP rows = PROTECT(Rf_findVarInFrame(env_private, dplyr::symbols::rows));                                         \
+      |                       ^~~~~~~~~~~~~~~~~
+chop.cpp:31:9: error: use of undeclared identifier 'SET_PRCODE'
+   31 |         SET_PRCODE(prom, column);
+      |         ^~~~~~~~~~
+chop.cpp:34:9: error: use of undeclared identifier 'SET_PRCODE'
+   34 |         SET_PRCODE(prom, column);
+      |         ^~~~~~~~~~
+chop.cpp:37:7: error: use of undeclared identifier 'SET_PRCODE'
+   37 |       SET_PRCODE(prom, Rf_lang3(dplyr::functions::vec_chop, column, rows));
+      |       ^~~~~~~~~~
+filter.cpp:194:3: error: use of undeclared identifier 'Rf_findVarInFrame'
+  194 |   DPLYR_MASK_INIT();
+      |   ^~~~~~~~~~~~~~~~~
+./dplyr.h:127:25: note: expanded from macro 'DPLYR_MASK_INIT'
+  127 |   SEXP caller = PROTECT(Rf_findVarInFrame(env_private, dplyr::symbols::caller));                                     \
+      |                         ^~~~~~~~~~~~~~~~~
+chop.cpp:40:5: error: use of undeclared identifier 'SET_PRVALUE'
+   40 |     SET_PRVALUE(prom, R_UnboundValue);
+      |     ^~~~~~~~~~~
+chop.cpp:56:25: error: use of undeclared identifier 'Rf_allocSExp'
+   56 |     SEXP prom = PROTECT(Rf_allocSExp(PROMSXP));
+      |                         ^~~~~~~~~~~~
+filter.cpp:194:3: error: use of undeclared identifier 'Rf_findVarInFrame'
+  194 |   DPLYR_MASK_INIT();
+      |   ^~~~~~~~~~~~~~~~~
+./dplyr.h:128:36: note: expanded from macro 'DPLYR_MASK_INIT'
+  128 |   SEXP env_mask_bindings = PROTECT(Rf_findVarInFrame(env_private, dplyr::symbols::env_mask_bindings));               \
+      |                                    ^~~~~~~~~~~~~~~~~
+chop.cpp:57:5: error: use of undeclared identifier 'SET_PRENV'
+   57 |     SET_PRENV(prom, R_EmptyEnv);
+      |     ^~~~~~~~~
+chop.cpp:58:5: error: use of undeclared identifier 'SET_PRCODE'
+   58 |     SET_PRCODE(prom, Rf_lang2(dplyr::functions::list, p_data[i]));
+      |     ^~~~~~~~~~
+chop.cpp:59:5: error: use of undeclared identifier 'SET_PRVALUE'
+   59 |     SET_PRVALUE(prom, R_UnboundValue);
+      |     ^~~~~~~~~~~
+filter.cpp:194:3: error: use of undeclared identifier 'Rf_findVarInFrame'
+  194 |   DPLYR_MASK_INIT();
+      |   ^~~~~~~~~~~~~~~~~
+./dplyr.h:130:41: note: expanded from macro 'DPLYR_MASK_INIT'
+  130 |   SEXP env_current_group_info = PROTECT(Rf_findVarInFrame(env_private, dplyr::symbols::env_current_group_info));     \
+      |                                         ^~~~~~~~~~~~~~~~~
+chop.cpp:133:25: error: use of undeclared identifier 'Rf_findVarInFrame'
+  133 |     SEXP prom = Pfilter.cpp:194:3:ROTECT(Rf_findVa error: use of undeclared identifier 'Rf_findVarInFrame'
+  194rInFrame |   DPLYR_(env, name));MASK_INIT
+      |                         ^~~~~~~~~~~~~~~~~
+();
+      |   ^~~~~~~~~~~~~~~~~
+./dplyr.h:131:35: note: expanded from macro 'DPLYR_MASK_INIT'
+  131 |   SEXP current_group_id = PROTECT(Rf_findVarInFrame(env_current_group_info, dplyr::symbols::current_group_id));      \
+      |                                   ^~~~~~~~~~~~~~~~~
+chop.cpp:134:42: error: use of undeclared identifier 'PRVALUE'
+  134 |     SEXP val = TYPEOF(prom) == PROMSXP ? PRVALUE(prom) : prom;
+      |                                          ^~~~~~~
+12 errors generated.
+filter.cpp:194:3: error: use of undeclared identifier 'Rf_findVarInFrame'
+  194 |   DPLYR_MASK_INIT();
+      |   ^~~~~~~~~~~~~~~~~
+./dplyr.h:134:37: note: expanded from macro 'DPLYR_MASK_INIT'
+  134 |   SEXP current_group_size = PROTECT(Rf_findVarInFrame(env_current_group_info, dplyr::symbols::current_group_size));  \
+      |                                     ^~~~~~~~~~~~~~~~~
+6 errors generated.
+make: *** [chop.o] Error 1
+make: *** Waiting for unfinished jobs....
+make: *** [filter.o] Error 1
+ERROR: compilation failed for package ‘dplyr’
+* removing ‘/private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.1.1/dplyr’

@@ -1,0 +1,19 @@
+using C compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include" -DNDEBUG   -I/opt/homebrew/include    -fPIC  -g -O2  -c images.c -o images.o
+In file included from images.c:4:
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/mach-o/dyld.h:153:20: error: redefinition of enumerator 'FALSE'
+  153 |   enum DYLD_BOOL { FALSE, TRUE };
+      |                    ^
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include/R_ext/Boolean.h:66:23: note: previous definition is here
+   66 |   typedef enum :int { FALSE = 0, TRUE } Rboolean;  // so NOT NA
+      |                       ^
+In file included from images.c:4:
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/mach-o/dyld.h:153:27: error: redefinition of enumerator 'TRUE'
+  153 |   enum DYLD_BOOL { FALSE, TRUE };
+      |                           ^
+/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/include/R_ext/Boolean.h:66:34: note: previous definition is here
+   66 |   typedef enum :int { FALSE = 0, TRUE } Rboolean;  // so NOT NA
+      |                                  ^
+2 errors generated.
+make: *** [images.o] Error 1

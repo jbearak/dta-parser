@@ -1,0 +1,55 @@
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R
+make[1]: Nothing to be done for `install'.
+make[1]: Nothing to be done for `install'.
+installing doc ...
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/doc
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/share
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/share/man
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/share/man/man1
+installing doc/html ...
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/doc/html
+installing doc/manual ...
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/doc/manual
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/doc/manual/images
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/etc
+installing etc ...
+installing share ...
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/R
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/bibliographies
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/dictionaries
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/encodings
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/java
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/licenses
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/make
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/Rd
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/Rd/macros
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/sh
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/texmf
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/texmf/bibtex
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/texmf/bibtex/bib
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/texmf/bibtex/bst
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/texmf/tex
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/share/texmf/tex/latex
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/bin
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/bin
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include/R_ext
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib
+make[3]: Nothing to be done for `install'.
+make[3]: Nothing to be done for `install'.
+make[3]: Nothing to be done for `install'.
+make[3]: Nothing to be done for `install'.
+make[2]: Nothing to be done for `install'.
+make[2]: Nothing to be done for `install'.
+gcc -std=gnu23 -I. -I../../src/include -I/private/tmp/dta-direct-stage5-minimum-preflight/r46-source/R-4.6.0/src/include  -I/opt/homebrew/include -DHAVE_CONFIG_H    -g -O2  -L/opt/homebrew/opt/gettext/lib -L/opt/homebrew/opt/pcre2/lib -L/opt/homebrew/opt/libdeflate/lib -L/opt/homebrew/opt/zstd/lib -L/opt/homebrew/opt/xz/lib -DR_HOME='"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R"' \
+	  -o Rscript /private/tmp/dta-direct-stage5-minimum-preflight/r46-source/R-4.6.0/src/unix/Rscript.c
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/pkgconfig
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/bin/exec
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/modules
+mkdir /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/library
+installing packages ...
+  building HTML index ...
+make[1]: Nothing to be done for `install'.

@@ -1,0 +1,23 @@
+               _                           
+platform       aarch64-apple-darwin25.4.0  
+arch           aarch64                     
+os             darwin25.4.0                
+system         aarch64, darwin25.4.0       
+status                                     
+major          4                           
+minor          6.1                         
+year           2026                        
+month          06                          
+day            24                          
+svn rev        90187                       
+language       R                           
+version.string R version 4.6.1 (2026-06-24)
+nickname       Happy Hop                   
+Version: 1.2.1
+Built: R 4.6.0; aarch64-apple-darwin25.4.0; 2026-04-29 20:22:33 UTC;
+        unix
+
+-- File: /opt/homebrew/lib/R/4.6/site-library/dplyr/Meta/package.rds 
+-- Fields read: Version, Built
+[1] "/opt/homebrew/lib/R/4.6/site-library/dplyr/libs/dplyr.so"
+PASS current installed dplyr1.2.1 load/small public mutate onR4.6.1; not a fresh install or adapter proof.

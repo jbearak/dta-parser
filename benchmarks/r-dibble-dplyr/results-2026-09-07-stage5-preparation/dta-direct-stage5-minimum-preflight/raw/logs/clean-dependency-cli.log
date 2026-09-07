@@ -1,0 +1,48 @@
+* installing *source* package ‘cli’ ...
+** this is package ‘cli’ version ‘3.6.6’
+** package ‘cli’ successfully unpacked and MD5 sums checked
+** using staged installation
+** libs
+using C compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c ansi.c -o ansi.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c cleancall.c -o cleancall.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c diff.c -o diff.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c errors.c -o errors.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c glue.c -o glue.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c init.c -o init.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c inst.c -o inst.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c keypress-unix.c -o keypress-unix.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c keypress-win.c -o keypress-win.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c keypress.c -o keypress.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c md5.c -o md5.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c progress-altrep.c -o progress-altrep.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c progress.c -o progress.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c sha1.c -o sha1.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c sha256.c -o sha256.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c thread.c -o thread.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c tty.c -o tty.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c utf8.c -o utf8.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c utils.c -o utils.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c vt.c -o vt.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c vtparse.c -o vtparse.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c vtparse_table.c -o vtparse_table.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c win-utf8.c -o win-utf8.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c winfiles.c -o winfiles.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c xxhash.c -o xxhash.o
+gcc -std=gnu23 -I"/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/include" -DNDEBUG -I../inst/include  -I/opt/homebrew/include   -fvisibility=hidden -fPIC  -g -O2  -c xxhash2.c -o xxhash2.o
+gcc -std=gnu23 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib -L/opt/homebrew/opt/gettext/lib -L/opt/homebrew/opt/pcre2/lib -L/opt/homebrew/opt/libdeflate/lib -L/opt/homebrew/opt/zstd/lib -L/opt/homebrew/opt/xz/lib -o cli.so ansi.o cleancall.o diff.o errors.o glue.o init.o inst.o keypress-unix.o keypress-win.o keypress.o md5.o progress-altrep.o progress.o sha1.o sha256.o thread.o tty.o utf8.o utils.o vt.o vtparse.o vtparse_table.o win-utf8.o winfiles.o xxhash.o xxhash2.o -lpthread -L/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib -lR
+installing to /private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies/00LOCK-cli/00new/cli/libs
+** R
+** exec
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+*** copying figures
+** building package indices
+** testing if installed package can be loaded from temporary location
+** checking absolute paths in shared objects and dynamic libraries
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (cli)

@@ -1,0 +1,17 @@
+[
+  {
+    "version": "1.1.0",
+    "url": "https://cran.r-project.org/bin/macosx/sonoma-arm64/contrib/4.6/dplyr_1.1.0.tgz",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "version": "1.1.4",
+    "url": "https://cran.r-project.org/bin/macosx/sonoma-arm64/contrib/4.6/dplyr_1.1.4.tgz",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "version": "1.2.0",
+    "url": "https://cran.r-project.org/bin/macosx/sonoma-arm64/contrib/4.6/dplyr_1.2.0.tgz",
+    "error": "HTTP Error 404: Not Found"
+  }
+]

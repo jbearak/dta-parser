@@ -1,0 +1,12 @@
+{
+  "files": 217,
+  "index": {
+    "bytes": 64643,
+    "mode": "0o644",
+    "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/current-archive-index.json",
+    "sha256": "7fe3afb36703e1c9717d28d823bfeee2442b7ca6fea009412f60cf9d132985a3"
+  },
+  "python_executable": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "scope": "Separate current-index completion binding; no historical or runtime qualification claim.",
+  "status": "complete"
+}

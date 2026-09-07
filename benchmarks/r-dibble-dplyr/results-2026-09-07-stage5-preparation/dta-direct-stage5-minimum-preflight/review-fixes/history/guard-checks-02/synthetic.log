@@ -1,0 +1,20 @@
+test_archive_path_escape (__main__.TreeChecks.test_archive_path_escape) ... ok
+test_archive_symlink (__main__.TreeChecks.test_archive_symlink) ... ok
+test_broken_symlink (__main__.TreeChecks.test_broken_symlink) ... ok
+test_changed_bytes_same_length (__main__.TreeChecks.test_changed_bytes_same_length) ... ok
+test_changed_mode (__main__.TreeChecks.test_changed_mode) ... ok
+test_directory_symlink (__main__.TreeChecks.test_directory_symlink) ... ok
+test_duplicate_archive_member (__main__.TreeChecks.test_duplicate_archive_member) ... ok
+test_exact_tree (__main__.TreeChecks.test_exact_tree) ... ok
+test_extra_empty_directory (__main__.TreeChecks.test_extra_empty_directory) ... ok
+test_extra_makevars (__main__.TreeChecks.test_extra_makevars) ... ok
+test_extra_r_source (__main__.TreeChecks.test_extra_r_source) ... ok
+test_missing_member (__main__.TreeChecks.test_missing_member) ... ok
+test_symlink_to_identical_external_bytes (__main__.TreeChecks.test_symlink_to_identical_external_bytes) ... ok
+test_symlink_tree_root (__main__.TreeChecks.test_symlink_tree_root) ... ok
+test_wrong_archive_digest (__main__.TreeChecks.test_wrong_archive_digest) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.013s
+
+OK
