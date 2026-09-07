@@ -167,8 +167,10 @@ package tree `f12a2a1dd430636a33b7f6e953023d90d1ff2589`. A fresh archive install
 passes every local gate, including the unchanged 159 native assertions and 15
 readiness checks, all 18 integer/factor allocation cases, and the saved rename
 gate. Exact R check retains the established three warnings and two notes. The
-final bridge has 18 passing tests; unchanged core workspace gates are retained
-with a Git-object equality proof. Guarded replays fail on `7d56080` and pass on
+final bridge has 18 passing tests. The earlier core workspace reuse argument
+based on three Git objects was insufficient to establish the commands' working
+inputs; the fresh five-gate qualification below supersedes that claim. Guarded
+replays fail on `7d56080` and pass on
 the final source for the writer callback and foreign constructor defects.
 The [qualification archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/README.md)
 records exact identities, original failures and gate scopes. The
@@ -177,6 +179,33 @@ retains prototype source, raw profiles, corrected fixtures and stale-build
 disclosure. Both nested evidence reviews clear the 252-file qualification and
 diagnosis snapshot, including the 247 original copied artifacts. Later filter
 diagnosis and its staged disposition have a separate review scope.
+
+
+The [review supplement](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/README.md)
+is submitted as [PR #197](https://github.com/jbearak/dta-parser/pull/197) at
+`0bb559e80af119264f87c4fcd06a65287230db0d`. Its
+[fresh workspace manifest](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/workspace-gates/manifest.json)
+records formatting, Clippy, 278 tests, documentation and verified packaging from
+a clean detached checkout of exact `e343b3b`. Full 1,060-file byte/mode inventories
+and empty status including ignored files match before and after all five
+commands. Packaging used no `--allow-dirty` and retains eleven existing warnings
+about excluded test targets. The verified crate and its 27 members have separate
+identities. This new qualification replaces the insufficient historical workspace
+binding; the original proof, logs and dated report remain unchanged. The three
+R check warnings and two notes remain part of the earlier exact R qualification.
+
+The supplement also supplies 29 missing review inputs, restores executable
+copies of sixteen command fixtures, and qualifies explicit-library diagnostic
+replay without upgrading historical development logs. Both nested reviews clear
+its final 161-file scope. The local normal merge `3323149695552dbddb62af60ad8c1027f911cef0`
+adds the supplement to the implementation branch and leaves package tree
+`f12a2a1dd430636a33b7f6e953023d90d1ff2589` unchanged. This is local ancestry,
+not a completed main merge. Implementation [PR #195](https://github.com/jbearak/dta-parser/pull/195),
+historical evidence [PR #196](https://github.com/jbearak/dta-parser/pull/196) and
+the supplement still require their substantive external review, CI and normal
+merge gates. Fresh merged-main installation and tests in the actual fertility
+renv, followed by restoration from the original lockfile, remain final epic
+obligations.
 
 The exact `e343b3b` atomic matrix passes its value, allocation and memory guards.
 Both the original and fresh baseline comparisons flag the same 15 reads at one
@@ -197,9 +226,9 @@ native and memory qualification, while the three filter regressions remain an
 explicit required Stage 6 criterion before epic acceptance. The twelve
 per-element costs remain visible measured tradeoffs, with no claim of broad
 read-performance acceptance or universally negligible slowdown. Stage 4's final
-evidence review, PR, latest-head external review/CI and normal merge are still
-pending; all subsequent stages and final integrated performance qualification
-remain required.
+external review/CI and normal merge gates are still pending across the focused
+PRs; all subsequent stages and final integrated performance qualification remain
+required.
 
 ### Stage 3 accepted qualification
 

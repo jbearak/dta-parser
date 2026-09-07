@@ -10,6 +10,35 @@ validation prototype. The [implementation plan](../../docs/plans/dibble-result-p
 describes the staged architecture. Later dated reports record production changes
 and keep their exact source revisions separate from the initial prototype.
 
+
+## Stage 4 review supplement
+
+The [review supplement](results-2026-09-07-stage4-review-supplement/README.md),
+submitted as [PR #197](https://github.com/jbearak/dta-parser/pull/197) at
+`0bb559e80af119264f87c4fcd06a65287230db0d`, adds missing review inputs,
+executable command fixtures and guarded diagnostic replay. The original
+[Stage 4 report](results-2026-09-07-stage4.md) and historical artifacts retain
+their bytes and measured-source labels.
+
+The earlier three-Git-object comparison did not prove which working files the
+reused Rust workspace commands read. The supplement's
+[fresh five-gate manifest](results-2026-09-07-stage4-review-supplement/workspace-gates/manifest.json)
+supersedes that insufficient binding. Formatting, Clippy, 278 tests,
+documentation and verified packaging passed on a clean checkout of
+`e343b3b56a8529e9ee0ac40f8bd88beebcd2be15`, with complete 1,060-file
+byte/mode inventories and clean status checked before and after every command.
+Packaging used no `--allow-dirty`; its eleven existing warnings concern excluded
+test targets. The [crate record](results-2026-09-07-stage4-review-supplement/workspace-gates/package-artifact.json)
+binds the actual verified artifact and all 27 members. The separate R check
+retains three established warnings and two notes.
+
+These additions do not resolve the fifteen disclosed read flags. The three
+filter regressions remain required Stage 6 work; twelve per-element costs remain
+visible, with integrated performance acceptance still open. Stages 5–9, a fresh
+merged-main installation and tests in the actual fertility renv, and restoration
+from its original lockfile remain required. Issue #172 stays open. Substantive
+external review, CI and normal merges are separate gates.
+
 ## Reproduce
 
 Run from the repository root. Install `bench`, `dplyr`, and the package's test
