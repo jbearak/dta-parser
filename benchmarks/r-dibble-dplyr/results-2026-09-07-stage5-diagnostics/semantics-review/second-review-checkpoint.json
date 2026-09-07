@@ -1,0 +1,25 @@
+{
+  "head": "403ff08c2536bc349f8f74706e9cacdee5f170a4",
+  "sources": {
+    "r-package/dtatools/R/dibble-expressions.R": "9785851c45f203c902a9cccb6dda17500e7e138ac5199184b3891825e9c3bd8f",
+    "r-package/dtatools/R/dibble-dplyr-context.R": "0fa7b1a317c8d7b4dbec7a561dc9704c46c50b13407b05fdee6a2e11ae8f0e05",
+    "r-package/dtatools/R/mutate-data.R": "afda9ab258515e423d9e6e852ce99030d892b66df876894316093ee1e3263020",
+    "benchmarks/r-dibble-dplyr/run-expression-checks.py": "2c272f8c4638cd7afd136284ff8d17e4cc1d1d03614313a4dc2766aba7dadc46",
+    "benchmarks/r-dibble-dplyr/install-expression-source.py": "fdfe7b03303ed6c4a7e95d63945207f7c636b0ca88b3fde4f2ba21076116b0fd",
+    "benchmarks/r-dibble-dplyr/expression-checks.R": "187c52a94dec2c85d0317ee52a54b9654c458eb8fb07880401f113338eea0a9c"
+  },
+  "new_witnesses": {
+    "expired-read-01.R": "f0e0b9be0bbfbfbb755416740b9b6e7b3a8509a868c4c3f62d1cf514451b1e43",
+    "expired-read-01.log": "0aa76018068393027031208c5c10deed0f53a1a81e5ddbb0c34096bb519cfb4c",
+    "lifetime-captures-02.log": "8e3307c45f3fa0594ddaf810bebe4f17ba30d0e8284145403899bd41f8b6d564",
+    "driver-integrity-tests-01.log": "79c24b7feee117206029338bc4c3514e0a0d9be203fce29fe0a37a6ab271af18",
+    "inclusion-audit-01.json": "e18edf64c3207124d25eea8eda3efcecf13e246d2a5faf575f4c9deae09065cd",
+    "group-order-01.R": "ec65a90df0473f09652f53d387bacfa47991b4b5aa06596539d6aaab13ed2c8e",
+    "group-order-01.log": "7d2df91b3ecf07b8ec107d58a9af98d55ec8f3c70abbbd6b2829635c90322e09"
+  },
+  "open_findings": [
+    "Unmodified persistent group metadata ordering rebuilt during mutate/transmute",
+    "Installer missing-input failure finalization and built-tar after-identity guard pending"
+  ],
+  "verified": "Delayed expired reads and all272 inclusion copies plus exact275-file inclusion inventory"
+}

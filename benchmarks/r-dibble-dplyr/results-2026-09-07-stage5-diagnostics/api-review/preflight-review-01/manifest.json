@@ -1,0 +1,27 @@
+[
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/preflight-review-01/inputs-before.json",
+    "bytes": 13944,
+    "sha256": "f6f3602138eecf70c296fc5bd59e8e4172ca487912ce57004678576a97e06e30"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/preflight-review-01/result.json",
+    "bytes": 1857,
+    "sha256": "7820612c0ea5fb43d9e8e9f159ad01c28b8f0a627b6d527adb0c30fa2bca32fe"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/preflight-review-01/valid/execution.log",
+    "bytes": 60,
+    "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/preflight-review-01/valid/preflight-identity.R",
+    "bytes": 5176,
+    "sha256": "c07f61cc9a8ba468700ee141ca7f06b7347b655d749d774b131874272c112bd9"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/preflight-review-01/wrong-source/execution.log",
+    "bytes": 84,
+    "sha256": "e9fea767653405423fe02ed84fd2ed75ca72dc3fa09975612b0ad26c5aa566e1"
+  }
+]

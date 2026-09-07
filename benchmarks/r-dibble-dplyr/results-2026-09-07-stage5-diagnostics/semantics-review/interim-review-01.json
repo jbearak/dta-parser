@@ -1,0 +1,30 @@
+{
+  "kind": "interim actual-diff semantic review, development overlays only",
+  "base": "f622f1ddba04b2bb7ac07415faccf2b417aab0e6",
+  "head_at_review": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+  "files": {
+    "r-package/dtatools/R/dibble-expressions.R": "c3157e6c180271b22930f15006893acfa14ccb3299a4cfccc02ef67dd35bc7f9",
+    "r-package/dtatools/R/dibble-dplyr-context.R": "0fa7b1a317c8d7b4dbec7a561dc9704c46c50b13407b05fdee6a2e11ae8f0e05",
+    "r-package/dtatools/R/mutate-data.R": "afda9ab258515e423d9e6e852ce99030d892b66df876894316093ee1e3263020",
+    "r-package/dtatools/tests/testthat/test-dibble-expressions.R": "067d5994cfd97cab2b3c460cbf8c5bbef95d496b51e403f56dbca9e633348b52",
+    "docs/adr/0034-evaluate-dibble-expressions-with-call-local-group-context.md": "f8bade0efbd67a7154e000306bcfec5da2025e6a61822680e271f206f187b663",
+    "r-package/dtatools/NEWS.md": "9ad3700aff7742c7913d1e9a8baf3ca1823376e658461036c28ba583fd7c35a5"
+  },
+  "proof_inputs": {
+    "probe-04.R": "9ba9d3d0f9db406190b2539395806c06da9ee8db9d068d8dab821e6ac8268462",
+    "probe-01.log": "0e45a233eca0fd7a5863402077f71266b1b437373c3838f29a81f057475652ee",
+    "probe-03.log": "c533983a267386bd3096b1b69a23d3903731cd640fd8b890085828d5588b738e",
+    "probe-02.log": "bc6dce2aceee2c888ba85db89d8f7e4209f858a64e4de1fbec7af94ede72cb59",
+    "lifetime-captures-01.log": "8e3307c45f3fa0594ddaf810bebe4f17ba30d0e8284145403899bd41f8b6d564",
+    "probe-03.R": "e6d36672d0996ec9fab8ffd4f429cca5bd0d0dadc28188d51280aa6c4acb78e0",
+    "probe-05.log": "7f07ad65bb864389fcd1af9f60a8333d1727f510b3a9793d5d33db78c180a48a",
+    "probe-04.log": "bed721c6946b0b8f0b3cbfce0f393731e028a3a67f8af7fe4223e6936c4645b8",
+    "lifetime-01.log": "ca43e5cd18de16bee3ea8fe9dcb49990e89077473b268079b3323a275e43f1f7",
+    "lifetime-01.R": "69f38d1920c21fd1e34fcd0f00ecd0f90cdc89346721c3b838169ee5d69ed1b7",
+    "lifetime-02.log": "9c778da99d87855d20c131f62efdb14ed8a2ba36d73e2b642845a5cf631060ed",
+    "lifetime-captures-01.R": "ede090b1e32328d5ff3f79e025c8786d66fe1b9f501801d5a3ccfd5acc5fde3c",
+    "probe-02.R": "35604113bc767d60676265eb28c380c566baaf083b176d6043e6f95af46ee5c1",
+    "probe-01.R": "dca942f797713467e58488595d1e7f830dcd1824a6236cca763cc62e39f81fd2",
+    "probe-05.R": "0a3bddd02169c5727005c87d7affa839ad81d185d32dd90c4e48e14ab789b967"
+  }
+}

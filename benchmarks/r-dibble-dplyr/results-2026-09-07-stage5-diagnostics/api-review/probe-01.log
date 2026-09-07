@@ -1,0 +1,204 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+CASE ungroup_rename
+BASELINE
+$value
+$value$error
+[1] "Can't rename variables in this context."
+
+$value$call
+(function (x, ...) 
+{
+    UseMethod("ungroup")
+})(list(g = c(1, 2), x = c(3, 4)), renamed = g)
+
+
+$warnings
+character(0)
+
+CANDIDATE DEVELOPMENT OVERLAY
+$value
+[1] "g"
+
+$warnings
+character(0)
+
+
+CASE rowwise_rename
+BASELINE
+$value
+[1] "g"
+
+$warnings
+character(0)
+
+CANDIDATE DEVELOPMENT OVERLAY
+$value
+[1] "g"
+
+$warnings
+character(0)
+
+
+CASE ungroup_selection
+BASELINE
+$value
+[1] "x"
+
+$warnings
+character(0)
+
+CANDIDATE DEVELOPMENT OVERLAY
+$value
+[1] "x"
+
+$warnings
+character(0)
+
+
+CASE external_group_ref
+BASELINE
+$value
+[1] "external"
+
+$warnings
+character(0)
+
+CANDIDATE DEVELOPMENT OVERLAY
+$value
+[1] "external"
+
+$warnings
+character(0)
+
+
+CASE data_group_ref
+BASELINE
+$value
+[1] "g"
+
+$warnings
+character(0)
+
+CANDIDATE DEVELOPMENT OVERLAY
+$value
+[1] "g"
+
+$warnings
+character(0)
+
+
+CASE transmute_error
+BASELINE
+$value
+transmute(list(x = c(1, 2)), y = (stop("expected")))
+
+$warnings
+character(0)
+
+CANDIDATE DEVELOPMENT OVERLAY
+$value
+transmute()
+
+$warnings
+character(0)
+
+
+CASE groupby_error
+BASELINE
+$value
+group_by(list(x = c(1, 2)), y = (stop("expected")), .add = FALSE, 
+    .drop = TRUE)
+
+$warnings
+character(0)
+
+CANDIDATE DEVELOPMENT OVERLAY
+$value
+group_by()
+
+$warnings
+character(0)
+
+
+CASE transmute_repeated
+BASELINE
+$value
+[1] "g" "y" "x"
+
+$warnings
+character(0)
+
+CANDIDATE DEVELOPMENT OVERLAY
+$value
+[1] "g" "y" "x"
+
+$warnings
+character(0)
+
+
+CASE group_by_null
+BASELINE
+$value
+$value$error
+[1] "`vars` missing from `data`: `g`."
+
+$value$call
+compute_groups(data, vars, drop = drop)
+
+
+$warnings
+character(0)
+
+CANDIDATE DEVELOPMENT OVERLAY
+$value
+$value$error
+[1] "Must group by variables found in `.data`.\n✖ Column `g` is not found."
+
+$value$call
+.dibble_group_result(data, context, columns, keys, drop)
+
+
+$warnings
+character(0)
+
+
+CASE group_by_rowwise
+BASELINE
+$value
+$value$k
+[1] 2 2
+
+$value$groups
+[1] "k"
+
+
+$warnings
+character(0)
+
+CANDIDATE DEVELOPMENT OVERLAY
+$value
+$value$k
+[1] 2 2
+
+$value$groups
+[1] "k"
+
+
+$warnings
+character(0)
+

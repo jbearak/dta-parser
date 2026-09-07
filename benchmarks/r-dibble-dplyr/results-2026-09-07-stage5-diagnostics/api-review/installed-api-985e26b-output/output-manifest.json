@@ -1,0 +1,17 @@
+[
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/installed-api-985e26b-output/execution.log",
+    "bytes": 663,
+    "sha256": "4af4dd9b0e1febe66e2e62fb9fa4e36f4f45a26cf44c598c4928539ceea72c67"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/installed-api-985e26b-output/inputs-before.json",
+    "bytes": 14449,
+    "sha256": "70a8e233364b0a3e92436eaf6c7de57a375278eff0d28a2e4681930af9a46a34"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/installed-api-985e26b-output/result.json",
+    "bytes": 1204,
+    "sha256": "bfe49481c25dde6e813be97e069e1851ccd5d025934fd163e89e651368d405e4"
+  }
+]

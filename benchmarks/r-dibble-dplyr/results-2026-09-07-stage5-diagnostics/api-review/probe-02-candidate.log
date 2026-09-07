@@ -1,0 +1,27 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+mutate  c(NA, -2L)
+transmute  c(NA, -2L)
+group_by  c(NA, -2L)
+rowwise  c(NA, -2L)
+ungroup  c(NA, -2L)
+zero-column size  0  # A dibble: 0 × 1
+# ℹ 1 variable: x <double>
+zero-column size  2  # A dibble: 2 × 1
+         x
+  <double>
+1        1
+2        1

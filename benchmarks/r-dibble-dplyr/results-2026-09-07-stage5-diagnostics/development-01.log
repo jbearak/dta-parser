@@ -1,0 +1,169 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+dibble: ...........................................................................1..................................................................23......................................................4.....................................................................................................W.....5......W........6.....................7..........................8...........................................................................9.............................a..b..........................................W..W.....c............d....e................................
+
+══ Warnings ════════════════════════════════════════════════════════════════════
+1. gen and := accept factors as mutate does ('test-dibble.R:853:5') - Converted factor columns to labelled Stata long integers: `f`, `g`, `h`. Factor class and orderedness will not be restored on read.
+
+2. a logical overwriting a Stata numeric keeps its storage ('test-dibble.R:889:5') - There was a warning in `mutate()`.
+i In argument: `day = day > as.Date("2024-01-01")`.
+Caused by warning:
+! Incompatible methods (">.dta_temporal", "Ops.Date") for ">"
+
+3. copying replacement isolates vectors and preserves grouping ('test-dibble.R:1590:5') - Setting row names on a tibble is deprecated.
+
+4. copying replacement isolates vectors and preserves grouping ('test-dibble.R:1593:5') - Setting row names on a tibble is deprecated.
+
+══ Failed ══════════════════════════════════════════════════════════════════════
+── 1. Error ('test-dibble.R:174:5'): grouping keeps a dibble a dibble ──────────
+Error: `data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again
+Backtrace:
+    ▆
+ 1. ├─dplyr::group_by(data, group) at test-dibble.R:174:5
+ 2. └─dtatools:::group_by.dtatools_ref_data(data, group)
+ 3.   └─dtatools (local) .dibble_group_by(...)
+ 4.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 5.       └─dtatools:::.finish_dibble_result(...)
+ 6.         └─dtatools:::.prepare_dibble_frame(result)
+ 7.           └─dtatools:::.as_mutation_data(x, allow_grouped = TRUE)
+ 8.             └─dtatools:::.validate_group_metadata(...)
+
+── 2. Error ('test-dibble.R:444:5'): slicing a grouped dibble keeps dataset meta
+Error: `data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again
+Backtrace:
+    ▆
+ 1. ├─dplyr::group_by(read_dta(fixture("auto_v118.dta")), foreign) at test-dibble.R:444:5
+ 2. └─dtatools:::group_by.dtatools_ref_data(...)
+ 3.   └─dtatools (local) .dibble_group_by(...)
+ 4.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 5.       └─dtatools:::.finish_dibble_result(...)
+ 6.         └─dtatools:::.prepare_dibble_frame(result)
+ 7.           └─dtatools:::.as_mutation_data(x, allow_grouped = TRUE)
+ 8.             └─dtatools:::.validate_group_metadata(...)
+
+── 3. Error ('test-dibble.R:454:5'): slice_dta_rows keeps a grouped dibble's gro
+Error: `data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again
+Backtrace:
+    ▆
+ 1. ├─dplyr::group_by(dibble(g = c(1, 1, 2, 2), x = 1:4), g) at test-dibble.R:454:5
+ 2. └─dtatools:::group_by.dtatools_ref_data(...)
+ 3.   └─dtatools (local) .dibble_group_by(...)
+ 4.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 5.       └─dtatools:::.finish_dibble_result(...)
+ 6.         └─dtatools:::.prepare_dibble_frame(result)
+ 7.           └─dtatools:::.as_mutation_data(x, allow_grouped = TRUE)
+ 8.             └─dtatools:::.validate_group_metadata(...)
+
+── 4. Error ('test-dibble.R:611:5'): mutate and transmute type new columns by th
+Error: `data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again
+Backtrace:
+    ▆
+ 1. ├─dplyr::group_by(dibble(g = c(1, 1, 2), v = c(1, 2, 3)), g) at test-dibble.R:611:5
+ 2. └─dtatools:::group_by.dtatools_ref_data(...)
+ 3.   └─dtatools (local) .dibble_group_by(...)
+ 4.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 5.       └─dtatools:::.finish_dibble_result(...)
+ 6.         └─dtatools:::.prepare_dibble_frame(result)
+ 7.           └─dtatools:::.as_mutation_data(x, allow_grouped = TRUE)
+ 8.             └─dtatools:::.validate_group_metadata(...)
+
+── 5. Error ('test-dibble.R:865:5'): computed distinct and group_by type columns
+Error: `data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again
+Backtrace:
+    ▆
+ 1. ├─dplyr::group_by(data, x = 1000L) at test-dibble.R:865:5
+ 2. └─dtatools:::group_by.dtatools_ref_data(data, x = 1000L)
+ 3.   └─dtatools (local) .dibble_group_by(...)
+ 4.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 5.       └─dtatools:::.finish_dibble_result(...)
+ 6.         └─dtatools:::.prepare_dibble_frame(result)
+ 7.           └─dtatools:::.as_mutation_data(x, allow_grouped = TRUE)
+ 8.             └─dtatools:::.validate_group_metadata(...)
+
+── 6. Error ('test-dibble.R:914:5'): reframe, group_modify, and nest_by return d
+Error: `data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again
+Backtrace:
+    ▆
+ 1. ├─dplyr::group_by(data, g) at test-dibble.R:914:5
+ 2. └─dtatools:::group_by.dtatools_ref_data(data, g)
+ 3.   └─dtatools (local) .dibble_group_by(...)
+ 4.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 5.       └─dtatools:::.finish_dibble_result(...)
+ 6.         └─dtatools:::.prepare_dibble_frame(result)
+ 7.           └─dtatools:::.as_mutation_data(x, allow_grouped = TRUE)
+ 8.             └─dtatools:::.validate_group_metadata(...)
+
+── 7. Error ('test-dibble.R:998:5'): grouped and rowwise row verbs return dibble
+Error: `data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again
+Backtrace:
+    ▆
+ 1. ├─dplyr::group_by(dibble(g = c("a", "b"), v = 1:2), g) at test-dibble.R:998:5
+ 2. └─dtatools:::group_by.dtatools_ref_data(...)
+ 3.   └─dtatools (local) .dibble_group_by(...)
+ 4.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 5.       └─dtatools:::.finish_dibble_result(...)
+ 6.         └─dtatools:::.prepare_dibble_frame(result)
+ 7.           └─dtatools:::.as_mutation_data(x, allow_grouped = TRUE)
+ 8.             └─dtatools:::.validate_group_metadata(...)
+
+── 8. Error ('test-dibble.R:1102:5'): a derived dibble owns its columns ────────
+Error: `data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again
+Backtrace:
+    ▆
+ 1. ├─dplyr::group_by(source, flag) at test-dibble.R:1102:5
+ 2. └─dtatools:::group_by.dtatools_ref_data(source, flag)
+ 3.   └─dtatools (local) .dibble_group_by(...)
+ 4.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 5.       └─dtatools:::.finish_dibble_result(...)
+ 6.         └─dtatools:::.prepare_dibble_frame(result)
+ 7.           └─dtatools:::.as_mutation_data(x, allow_grouped = TRUE)
+ 8.             └─dtatools:::.validate_group_metadata(...)
+
+── 9. Error ('test-dibble.R:1312:5'): column binding isolates every input, not o
+Error: `data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again
+Backtrace:
+    ▆
+ 1. ├─dplyr::group_by(left, g = right$flag) at test-dibble.R:1312:5
+ 2. └─dtatools:::group_by.dtatools_ref_data(left, g = right$flag)
+ 3.   └─dtatools (local) .dibble_group_by(...)
+ 4.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 5.       └─dtatools:::.finish_dibble_result(...)
+ 6.         └─dtatools:::.prepare_dibble_frame(result)
+ 7.           └─dtatools:::.as_mutation_data(x, allow_grouped = TRUE)
+ 8.             └─dtatools:::.validate_group_metadata(...)
+
+── 10. Error ('test-dibble.R:1436:5'): data-masking verbs type each result as it
+Error: `data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again
+Backtrace:
+    ▆
+ 1. ├─dplyr::group_by(...) at test-dibble.R:1436:5
+ 2. └─dtatools:::group_by.dtatools_ref_data(...)
+ 3.   └─dtatools (local) .dibble_group_by(...)
+ 4.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 5.       └─dtatools:::.finish_dibble_result(...)
+ 6.         └─dtatools:::.prepare_dibble_frame(result)
+ 7.           └─dtatools:::.as_mutation_data(x, allow_grouped = TRUE)
+ 8.             └─dtatools:::.validate_group_metadata(...)
+  ... and 4 more
+
+
+Maximum number of 10 failures reached, some test results may be missing.
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+Keep trying!
+Error:
+! Test failures.
+Execution halted

@@ -1,0 +1,950 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+CASE unknown_group
+BASELINE
+$value
+[1] "k"
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+[1] "k"
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE pronoun_group
+BASELINE
+$value
+[1] "x"
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+[1] "x"
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE literal_pronoun
+BASELINE
+$value
+[1] "x"
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+[1] "x"
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE zero_cols
+BASELINE
+$value
+# A dibble: 3 × 1
+       x
+  <long>
+1      1
+2      1
+3      1
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 1
+       x
+  <long>
+1      1
+2      1
+3      1
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE zero_rows
+BASELINE
+$value
+# A dibble: 0 × 1
+# ℹ 1 variable: x <long>
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 0 × 1
+# ℹ 1 variable: x <long>
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE zero_named
+BASELINE
+$value
+# A dibble: 0 × 3
+# ℹ 3 variables: x <long>, y <long>, z <long>
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 0 × 3
+# ℹ 3 variables: x <long>, y <long>, z <long>
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE used_pick
+BASELINE
+$value
+[1] "y" "p"
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+[1] "y" "p"
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE across_factory
+BASELINE
+$value
+[1] 4
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+[1] 1
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE group_mix_null
+BASELINE
+$value
+$value$error
+[1] "Must group by variables found in `.data`.\n✖ Column `x` is not found."
+
+$value$class
+[1] "rlang_error" "error"       "condition"  
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$error
+[1] "Must group by variables found in `.data`.\n✖ Column `x` is not found."
+
+$value$class
+[1] "rlang_error" "error"       "condition"  
+
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE duplicate_unpack
+BASELINE
+$value
+# A dibble: 3 × 2
+       x      a
+  <long> <long>
+1      1      4
+2      2      5
+3      3      6
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 2
+       x      a
+  <long> <long>
+1      1      4
+2      2      5
+3      3      6
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE df_zero_cols
+BASELINE
+$value
+# A dibble: 3 × 1
+       x
+  <long>
+1      1
+2      2
+3      3
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 1
+       x
+  <long>
+1      1
+2      2
+3      3
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE rowwise_df
+BASELINE
+$value
+# A dibble: 3 × 2
+# Rowwise: 
+       x    z$a     $b
+  <long> <long> <long>
+1      1      1      2
+2      2      2      3
+3      3      3      4
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 2
+# Rowwise: 
+       x    z$a     $b
+  <long> <long> <long>
+1      1      1      2
+2      2      2      3
+3      3      3      4
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE rowwise_list_empty
+BASELINE
+$value
+# A dibble: 0 × 2
+# Rowwise: 
+# ℹ 2 variables: x <list>, y <list>
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 0 × 2
+# Rowwise: 
+# ℹ 2 variables: x <list>, y <list>
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE transmute_by
+BASELINE
+$value
+# A dibble: 3 × 2
+     .by      y
+  <long> <long>
+1      1      1
+2      2      1
+3      3      1
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 2
+     .by      y
+  <long> <long>
+1      1      1
+2      2      1
+3      3      1
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE transmute_control
+BASELINE
+$value
+$value$error
+[1] "The `.keep` argument is not supported."
+
+$value$class
+[1] "rlang_error" "error"       "condition"  
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$error
+[1] "The `.keep` argument is not supported."
+
+$value$class
+[1] "rlang_error" "error"       "condition"  
+
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE warning_count
+BASELINE
+$value
+# A dibble: 3 × 3
+# Groups:   g [3]
+       g      x      y
+  <long> <long> <long>
+1      1      1      1
+2      2      2      2
+3      3      3      3
+
+$warnings
+$warnings[[1]]
+[1] "There were 3 warnings in `mutate()`.\nThe first warning was:\nℹ In argument: `y = { ... }`.\nℹ In group 1: `g = 1`.\nCaused by warning in `{\n    warning(\"sample\")\n    x\n  }`:\n! sample\nℹ Run `dplyr::last_dplyr_warnings()` to see the 2 remaining warnings."
+
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 3
+# Groups:   g [3]
+       g      x      y
+  <long> <long> <long>
+1      1      1      1
+2      2      2      2
+3      3      3      3
+
+$warnings
+$warnings[[1]]
+[1] "There were 3 warnings in `mutate()`.\nThe first warning was:\nℹ In argument: `y = { ... }`.\nℹ In group 1: `g = 1`.\nCaused by warning:\n! sample\nℹ Run `dplyr::last_dplyr_warnings()` to see the 2 remaining warnings."
+
+
+$messages
+list()
+
+
+CASE group_drop_invalid
+BASELINE
+$value
+# A dibble: 3 × 1
+# Groups:   g [3]
+       g
+  <long>
+1      1
+2      2
+3      3
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 1
+# Groups:   g [3]
+       g
+  <long>
+1      1
+2      2
+3      3
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE regroup_alias
+BASELINE
+$value
+$value$source
+[1] 1 2 3
+
+$value$result
+[1] 9 9 9
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$source
+[1] 1 2 3
+
+$value$result
+[1] 9 9 9
+
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE group_rows_zero
+BASELINE
+$value
+$value$counter
+[1] 1
+
+$value$groups
+# A tibble: 0 × 2
+# ℹ 2 variables: g <long>, .rows <list<int>>
+
+$value$names
+[1] "g" "x" "y"
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$counter
+[1] 1
+
+$value$groups
+# A tibble: 0 × 2
+# ℹ 2 variables: g <long>, .rows <list<int>>
+
+$value$names
+[1] "g" "x" "y"
+
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE .keep_used_overwrite
+BASELINE
+$value
+[1] "x" "y"
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+[1] "x" "y"
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE delete_group
+BASELINE
+$value
+$value$error
+[1] "`vars` missing from `data`: `g`."
+
+$value$class
+[1] "rlang_error" "error"       "condition"  
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 1
+       x
+  <long>
+1      1
+2      2
+3      3
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE delete_rowwise
+BASELINE
+$value
+$value$error
+[1] "Can't subset columns that don't exist.\n✖ Column `g` doesn't exist."
+
+$value$class
+[1] "vctrs_error_subscript_oob" "vctrs_error_subscript"    
+[3] "rlang_error"               "error"                    
+[5] "condition"                
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 1
+# Rowwise: 
+       x
+  <long>
+1      1
+2      2
+3      3
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE transmute_delete_group
+BASELINE
+$value
+$value$error
+[1] "`vars` missing from `data`: `g`."
+
+$value$class
+[1] "rlang_error" "error"       "condition"  
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$error
+[1] "a dibble needs unique, non-missing column names; repair them first or request `output = \"tibble\"`"
+
+$value$class
+[1] "simpleError" "error"       "condition"  
+
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE rowwise_rename
+BASELINE
+$value
+[1] "x"
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+[1] "x"
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE group_symbol_missing
+BASELINE
+$value
+$value$error
+[1] "ℹ In argument: `k_missing`.\nCaused by error:\n! object 'k_missing' not found"
+
+$value$class
+[1] "dplyr:::mutate_error" "rlang_error"          "error"               
+[4] "condition"           
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$error
+[1] "ℹ In argument: `k_missing`.\nCaused by error:\n! object 'k_missing' not found"
+
+$value$class
+[1] "dplyr:::mutate_error" "rlang_error"          "error"               
+[4] "condition"           
+
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE mutate_group_df_unwrap
+BASELINE
+$value
+# A dibble: 3 × 3
+# Groups:   g [3]
+       g      x      a
+  <long> <long> <long>
+1      1      1      2
+2      2      2      2
+3      3      3      2
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 3
+# Groups:   g [3]
+       g      x      a
+  <long> <long> <long>
+1      1      1      2
+2      2      2      2
+3      3      3      2
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE grouped_names
+BASELINE
+$value
+$value$stata.storage
+[1] "double"
+
+$value$class
+[1] "dta_numeric" "dta_double"  "vctrs_vctr"  "double"     
+
+$value$names
+[1] "a" "b" "c"
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$stata.storage
+[1] "double"
+
+$value$class
+[1] "dta_numeric" "dta_double"  "vctrs_vctr"  "double"     
+
+$value$names
+[1] "a" "b" "c"
+
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE rawrownames
+BASELINE
+$value
+[1] NA -3
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+[1] NA -3
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE grouped_null_size
+BASELINE
+$value
+$value$error
+[1] "ℹ In argument: `y = if (n() == 2L) NULL else x`.\nℹ In group 1: `g = 1`.\nCaused by error:\n! `y` must return compatible vectors across groups.\n✖ Can't combine NULL and non NULL results."
+
+$value$class
+[1] "dplyr:::mutate_error" "rlang_error"          "error"               
+[4] "condition"           
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$error
+[1] "ℹ In argument: `y = if (n() == 2L) NULL else x`.\nℹ In group 2: `g = 2`.\nCaused by error in `action()`:\n! Must return compatible vectors across groups.\n✖ Can't combine NULL and non NULL results."
+
+$value$class
+[1] "dplyr:::mutate_error" "rlang_error"          "error"               
+[4] "condition"           
+
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE closure_inside
+BASELINE
+$value
+[1] 46 46 26
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+[1] 6 6 6
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE promise_inside
+BASELINE
+$value
+[1] 46 46 46
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+[1] 6 6 6
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE rowwise_list_data_frame
+BASELINE
+$value
+# A dibble: 2 × 2
+# Rowwise: 
+  x                y               
+  <list>           <list>          
+1 <tibble [1 × 2]> <tibble [1 × 1]>
+2 <tibble [1 × 2]> <tibble [1 × 1]>
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 2 × 2
+# Rowwise: 
+  x                y               
+  <list>           <list>          
+1 <tibble [1 × 2]> <tibble [1 × 1]>
+2 <tibble [1 × 2]> <tibble [1 × 1]>
+
+$warnings
+list()
+
+$messages
+list()
+

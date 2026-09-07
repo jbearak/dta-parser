@@ -1,0 +1,222 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+$baseline
+$baseline$first_promise
+$baseline$first_promise$warnings
+character(0)
+
+$baseline$first_promise$obsolete
+[1] TRUE
+
+$baseline$first_promise$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$baseline$second_promise
+$baseline$second_promise$warnings
+[1] "restarting interrupted promise evaluation"
+
+$baseline$second_promise$obsolete
+[1] TRUE
+
+$baseline$second_promise$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$baseline$first_closure
+$baseline$first_closure$warnings
+[1] "restarting interrupted promise evaluation"
+
+$baseline$first_closure$obsolete
+[1] TRUE
+
+$baseline$first_closure$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$baseline$second_closure
+$baseline$second_closure$warnings
+[1] "restarting interrupted promise evaluation"
+
+$baseline$second_closure$obsolete
+[1] TRUE
+
+$baseline$second_closure$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$baseline$repeated_user_promise
+$baseline$repeated_user_promise$warnings
+[1] "restarting interrupted promise evaluation"
+[2] "restarting interrupted promise evaluation"
+[3] "restarting interrupted promise evaluation"
+
+$baseline$repeated_user_promise$obsolete
+[1] TRUE
+
+$baseline$repeated_user_promise$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$baseline$other_column_first
+$baseline$other_column_first$warnings
+character(0)
+
+$baseline$other_column_first$obsolete
+[1] TRUE
+
+$baseline$other_column_first$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$baseline$other_column_second
+$baseline$other_column_second$warnings
+[1] "restarting interrupted promise evaluation"
+
+$baseline$other_column_second$obsolete
+[1] TRUE
+
+$baseline$other_column_second$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$baseline$pronoun
+$baseline$pronoun$warnings
+[1] "restarting interrupted promise evaluation"
+
+$baseline$pronoun$obsolete
+[1] TRUE
+
+$baseline$pronoun$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$baseline$quosure
+$baseline$quosure$warnings
+[1] "restarting interrupted promise evaluation"
+
+$baseline$quosure$obsolete
+[1] TRUE
+
+$baseline$quosure$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+
+$candidate
+$candidate$first_promise
+$candidate$first_promise$warnings
+character(0)
+
+$candidate$first_promise$obsolete
+[1] TRUE
+
+$candidate$first_promise$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$candidate$second_promise
+$candidate$second_promise$warnings
+[1] "restarting interrupted promise evaluation"
+
+$candidate$second_promise$obsolete
+[1] TRUE
+
+$candidate$second_promise$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$candidate$first_closure
+$candidate$first_closure$warnings
+[1] "restarting interrupted promise evaluation"
+
+$candidate$first_closure$obsolete
+[1] TRUE
+
+$candidate$first_closure$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$candidate$second_closure
+$candidate$second_closure$warnings
+[1] "restarting interrupted promise evaluation"
+
+$candidate$second_closure$obsolete
+[1] TRUE
+
+$candidate$second_closure$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$candidate$repeated_user_promise
+$candidate$repeated_user_promise$warnings
+[1] "restarting interrupted promise evaluation"
+[2] "restarting interrupted promise evaluation"
+[3] "restarting interrupted promise evaluation"
+
+$candidate$repeated_user_promise$obsolete
+[1] TRUE
+
+$candidate$repeated_user_promise$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$candidate$other_column_first
+$candidate$other_column_first$warnings
+character(0)
+
+$candidate$other_column_first$obsolete
+[1] TRUE
+
+$candidate$other_column_first$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$candidate$other_column_second
+$candidate$other_column_second$warnings
+[1] "restarting interrupted promise evaluation"
+
+$candidate$other_column_second$obsolete
+[1] TRUE
+
+$candidate$other_column_second$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$candidate$pronoun
+$candidate$pronoun$warnings
+[1] "restarting interrupted promise evaluation"
+
+$candidate$pronoun$obsolete
+[1] TRUE
+
+$candidate$pronoun$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+$candidate$quosure
+$candidate$quosure$warnings
+[1] "restarting interrupted promise evaluation"
+
+$candidate$quosure$obsolete
+[1] TRUE
+
+$candidate$quosure$classes
+[1] "rlang_error" "error"       "condition"  
+
+
+
+Exact error classes, obsolete outcomes and interrupted-promise warning vectors match for 9 repeated-read cases.

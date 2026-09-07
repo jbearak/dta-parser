@@ -1,0 +1,72 @@
+{
+  "scope": "Static independent API/docs/test/provenance checkpoint review; development probe is not an installed candidate qualification. Pending final source, evidence inclusion, package checks and fixes.",
+  "base": "f622f1ddba04b2bb7ac07415faccf2b417aab0e6",
+  "reviewed_head": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+  "exports": 106,
+  "exports_unchanged": true,
+  "namespace_bytes_unchanged": true,
+  "reviewed_files": [
+    {
+      "path": "r-package/dtatools/R/dibble-dplyr-context.R",
+      "revision": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+      "sha256": "0fa7b1a317c8d7b4dbec7a561dc9704c46c50b13407b05fdee6a2e11ae8f0e05"
+    },
+    {
+      "path": "r-package/dtatools/R/dibble-expressions.R",
+      "revision": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+      "sha256": "4a526b0ba1b494f844a540ac081af351effbb33f457c5f82eeba3fa941d6b219"
+    },
+    {
+      "path": "r-package/dtatools/R/mutate-data.R",
+      "revision": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+      "sha256": "afda9ab258515e423d9e6e852ce99030d892b66df876894316093ee1e3263020"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dibble-expressions.R",
+      "revision": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+      "sha256": "8c426d8d07773be7feb4b183800245c346c29e28d9446e0b4e84042dd84a0fdd"
+    },
+    {
+      "path": "docs/adr/0034-evaluate-dibble-expressions-with-call-local-group-context.md",
+      "revision": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+      "sha256": "f8bade0efbd67a7154e000306bcfec5da2025e6a61822680e271f206f187b663"
+    },
+    {
+      "path": "r-package/dtatools/NEWS.md",
+      "revision": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+      "sha256": "9ad3700aff7742c7913d1e9a8baf3ca1823376e658461036c28ba583fd7c35a5"
+    },
+    {
+      "path": "r-package/dtatools/inst/NOTICE",
+      "revision": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+      "sha256": "4dbd5915f6f1e0b16dfa13fc75d3d2a0c092aa51654185a80aad6880388db88d"
+    },
+    {
+      "path": "r-package/dtatools/DESCRIPTION",
+      "revision": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+      "sha256": "004c512b525091ab7e051691f1c41253918596850fc9e16b6305444ff7e4d076"
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/install-expression-source.py",
+      "revision": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+      "sha256": "f0f3d5c35383dae11530aae5f90638b4f366774cbe2d57ec925a516f9dc5fbb4"
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/expression-install-finish.R",
+      "revision": "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+      "sha256": "78e344576d77566925c1751d10959e132fac10231c6763400c7536d12fd44b41"
+    }
+  ],
+  "findings": [
+    "Incorrect transmute/group_by caller labels fixed and regression tests read",
+    "Renamed ungroup selector now rejected at committed checkpoint with regression test",
+    "Old generations now use weak references to permit obsolete uncaptured payload collection",
+    "Within-call capture behavior disclosure and new regression test read",
+    "Installer helper still labels candidate load check baseline; parent notified",
+    "NOTICE needs ungroup source-function inventory; parent notified"
+  ],
+  "probe": {
+    "file": "probe-01.R",
+    "result": "10 cases reviewed; ungroup bug reproduced in pre-fix working overlay; other value cases match predecessor. No full input closure frozen before probe."
+  }
+}

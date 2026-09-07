@@ -1,0 +1,35 @@
+{
+  "status": "review findings sent, no execution",
+  "inputs": {
+    "performance": {
+      "measure.py": "0c3dcebb947eda1674c236ca76e55fc40cad98300fd52adc6cdab4517f0cf35f",
+      "measure.R": "75e2e1a85d16228b95295de72d20445f51e689e174157d48331f9daf3451fafd",
+      "memory.py": "69820881941b3345ac2e6fb98b8f5cc9add46e9fa5798846794f652a5777601b",
+      "memory.R": "418532a6a3475fb61b8f14608c035f289c9823b0426baf74c9eb0d53ae7eeaf2",
+      "cases-v7.R": "f3588f784c0fc0d28b951d1410c748802cd52165a1251956317dbb9a90e7ae53",
+      "qualify-v10.py": "90684684c350f7d8615d0b70dcafe2b39681f2b6330bfed8469f4c5d5f2270d8",
+      "qualify-v3.R": "5fae343488c493e8f456ceeda415ac011481ff7c4d72d248fe865ece7963b48a"
+    },
+    "minimum": {
+      "install-candidate-v2.py": "5029459a65cf3446ad482b9454dd3604023e5d0bd684629b2ad9e12aaa3f4bad",
+      "finish-minimum-install.R": "fb6a75db580ad5752f9fa4f6899405977f048707a75bfc34e174951b3ea90dbe",
+      "runtime-guard.R": "1412019583c18e941cc9f0aa12e945f55bfd5596c431d9b78d5976182ac03754",
+      "check-candidate-v2.py": "25b234187b9613ebad9b4392627a9cd8eddd483a8379f88ccdca83a2f3cb9768",
+      "check-candidate.R": "2828c031e65b919b205b9e99fea3c1f7d620479b5f7188e546799524135cf814"
+    }
+  },
+  "findings": [
+    "Rowwise repl checks exercise freshly ungrouped derivatives; add supported original-pair metadata writes and label conversion scope",
+    "First/shared/private write costs absent from current performance grid; separate experiment or explicit outstanding coverage",
+    "Missing-input finalization can prevent retained receipts in five Python wrappers",
+    "Minimum installer must guard consumed tar and reject generated source additions",
+    "Minimum checker must authenticate installed-files and inputs-before via parent manifest before trusting entries"
+  ],
+  "approved_design": [
+    "Independent deterministic arithmetic/value/metadata checks plus full corpus parity to legacy and optimized safe reference",
+    "Fixture construction and explicit validation outside timed operation",
+    "Rprofmem/native counters explicitly overlap and are not added",
+    "Retained Ncell/Vcell counts and rounded R heap separate from whole-process RSS",
+    "Minimum-runtime one-libR, exact libPaths, namespace and native-image coverage guards"
+  ]
+}

@@ -1,0 +1,51 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+dibble: ...............................................................................................................................................................................................................................................................................................................................................W.................W...................................................................................................................................................................................................................................................................................................................W..W..............................................1................................
+
+══ Warnings ════════════════════════════════════════════════════════════════════
+1. gen and := accept factors as mutate does ('test-dibble.R:853:5') - Converted factor columns to labelled Stata long integers: `f`, `g`, `h`. Factor class and orderedness will not be restored on read.
+
+2. a logical overwriting a Stata numeric keeps its storage ('test-dibble.R:889:5') - There was a warning in `mutate()`.
+i In argument: `day = day > as.Date("2024-01-01")`.
+Caused by warning:
+! Incompatible methods (">.dta_temporal", "Ops.Date") for ">"
+
+3. copying replacement isolates vectors and preserves grouping ('test-dibble.R:1590:5') - Setting row names on a tibble is deprecated.
+
+4. copying replacement isolates vectors and preserves grouping ('test-dibble.R:1593:5') - Setting row names on a tibble is deprecated.
+
+══ Failed ══════════════════════════════════════════════════════════════════════
+── 1. Error ('test-dibble.R:1710:5'): caller-backed symbols are typed on entry t
+Error in `.dibble_group_result(data, context, columns, keys, drop)`: Must group by variables found in `.data`.
+x Column `strings` is not found.
+Backtrace:
+     ▆
+  1. ├─testthat::expect_identical(...) at test-dibble.R:1710:5
+  2. │ └─testthat::quasi_label(enquo(object), label) at testthat/R/expect-equality.R:105:3
+  3. │   └─rlang::eval_bare(expr, quo_get_env(quo)) at testthat/R/quasi-label.R:55:3
+  4. ├─base::nrow(dplyr::group_keys(dplyr::group_by(data, strings))) at rlang/R/eval.R:96:3
+  5. ├─dplyr::group_keys(dplyr::group_by(data, strings))
+  6. ├─dplyr::group_by(data, strings)
+  7. └─dtatools:::group_by.dtatools_ref_data(data, strings)
+  8.   └─dtatools (local) .dibble_group_by(...)
+  9.     └─dtatools (local) .dibble_group_result(data, context, columns, keys, drop)
+ 10.       └─rlang::abort(...)
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+Keep trying!
+Error:
+! Test failures.
+Execution halted

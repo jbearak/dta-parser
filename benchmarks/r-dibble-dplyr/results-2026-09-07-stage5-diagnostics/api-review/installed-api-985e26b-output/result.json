@@ -1,0 +1,21 @@
+{
+  "revision": "985e26b42590da400466a40ea6a41e7032e96cf4",
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "--vanilla",
+    "/private/tmp/dta-direct-stage5-validation/implementation/api-review/installed-api-985e26b.R",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library",
+    "985e26b42590da400466a40ea6a41e7032e96cf4",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/export/benchmarks/r-dibble-dplyr/helpers.R"
+  ],
+  "exit_code": 0,
+  "changed_bound_files": [],
+  "source_and_installed_notice_match": true,
+  "notice_sha256": "2b7092d0e91ef0012dc4496edfcef267781ef8a4c9165c2bfee72691408cda98",
+  "source_archive": {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/build/dtatools_0.7.1.tar.gz",
+    "bytes": 9577022,
+    "sha256": "64886e0e926008e0d59b02c38137b50305b131230ed19c7be27dfa8925d3e3ea"
+  },
+  "scope": "Bounded installed API and NOTICE-distribution check. Exact installer receipt supplies artifact source identity. Runtime and dependency closures are not newly frozen by this API probe; full package/minimum-runtime/performance/external gates remain separate."
+}

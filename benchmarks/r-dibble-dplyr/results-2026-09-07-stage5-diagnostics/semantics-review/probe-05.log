@@ -1,0 +1,193 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+CASE ungroup_rename
+BASELINE
+$value
+$value$error
+[1] "Can't rename variables in this context."
+
+$value$class
+[1] "tidyselect:::error_disallowed_rename"
+[2] "rlang_error"                         
+[3] "error"                               
+[4] "condition"                           
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 2
+# Groups:   g [3]
+       g      x
+  <long> <long>
+1      1      4
+2      2      5
+3      3      6
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE across_logical_predicate
+BASELINE
+$value
+$value$error
+[1] "ℹ In argument: `z = cur_column()`.\nℹ In group 1: `g = 1`.\nCaused by error in `cur_column()` at rlang/R/eval-tidy.R:125:3:\n! Must only be used inside `across()`."
+
+$value$class
+[1] "dplyr:::mutate_error" "rlang_error"          "error"               
+[4] "condition"           
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$error
+[1] "ℹ In argument: `z = cur_column()`.\nℹ In group 1: `g = 1`.\nCaused by error in `cur_column()` at rlang/R/eval-tidy.R:121:3:\n! Must only be used inside `across()`."
+
+$value$class
+[1] "dplyr:::mutate_error" "rlang_error"          "error"               
+[4] "condition"           
+
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE rowwise_nested_df
+BASELINE
+$value
+# A dibble: 3 × 2
+# Rowwise: 
+    x$a    $b y           
+  <int> <int> <list>      
+1     1     4 <df [1 × 2]>
+2     2     5 <df [1 × 2]>
+3     3     6 <df [1 × 2]>
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+# A dibble: 3 × 2
+# Rowwise: 
+    x$a    $b y           
+  <int> <int> <list>      
+1     1     4 <df [1 × 2]>
+2     2     5 <df [1 × 2]>
+3     3     6 <df [1 × 2]>
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE delete_group
+BASELINE
+$value
+$value$error
+[1] "`vars` missing from `data`: `g`."
+
+$value$class
+[1] "rlang_error" "error"       "condition"  
+
+
+$warnings
+list()
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$error
+[1] "Grouping variables must remain in the data. Missing column `g`."
+
+$value$class
+[1] "rlang_error" "error"       "condition"  
+
+
+$warnings
+list()
+
+$messages
+list()
+
+
+CASE grouped_full_value
+BASELINE
+$value
+$value$stata.storage
+[1] "double"
+
+$value$class
+[1] "dta_numeric" "dta_double"  "vctrs_vctr"  "double"     
+
+$value$other
+[1] "kept"
+
+
+$warnings
+$warnings[[1]]
+[1] "There were 2 warnings in `mutate()`.\nThe first warning was:\nℹ In argument: `y = x`.\nCaused by warning:\n! Dropped unknown attribute during Stata vector restoration: other\nℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning."
+
+
+$messages
+list()
+
+CANDIDATE
+$value
+$value$stata.storage
+[1] "double"
+
+$value$class
+[1] "dta_numeric" "dta_double"  "vctrs_vctr"  "double"     
+
+$value$other
+[1] "kept"
+
+
+$warnings
+$warnings[[1]]
+[1] "There was 1 warning in `mutate()`.\nℹ In argument: `y = x`.\nCaused by warning:\n! Dropped unknown attribute during Stata vector restoration: other"
+
+
+$messages
+list()
+

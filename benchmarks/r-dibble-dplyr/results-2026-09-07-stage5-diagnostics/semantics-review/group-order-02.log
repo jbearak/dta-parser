@@ -1,0 +1,43 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+$baseline
+$baseline$input_keys
+[1] 2 1
+
+$baseline$output_keys
+[1] 2 1
+
+$baseline$ids
+[1] 2 2 1
+
+$baseline$later_ids
+[1] 2 2 1
+
+
+$candidate
+$candidate$input_keys
+[1] 2 1
+
+$candidate$output_keys
+[1] 2 1
+
+$candidate$ids
+[1] 2 2 1
+
+$candidate$later_ids
+[1] 2 2 1
+
+
