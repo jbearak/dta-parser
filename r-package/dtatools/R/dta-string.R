@@ -77,20 +77,26 @@ dta_string <- function(x = character(), storage = NULL) {
         x <- .restore_dta_variable_metadata(x, prototype, names = value_names)
     } else {
         for (name in setdiff(names(attributes(x)), "names")) {
-            x <- .set_dta_string_attribute(x, name, NULL)
+            owned <- .set_dta_string_attribute(x, name, NULL)
+            if (is.null(owned)) attr(x, name) <- NULL else x <- owned
         }
     }
-    x <- .set_dta_string_attribute(x, "stata.string.storage", storage)
-    x <- .set_dta_string_attribute(x, "class", c("dta_string", "vctrs_vctr", "character"))
-    if (!is.null(value_names)) x <- .set_dta_string_attribute(x, "names", value_names)
+    owned <- .set_dta_string_attribute(x, "stata.string.storage", storage)
+    if (is.null(owned)) attr(x, "stata.string.storage") <- storage else x <- owned
+    classes <- c("dta_string", "vctrs_vctr", "character")
+    owned <- .set_dta_string_attribute(x, "class", classes)
+    if (is.null(owned)) attr(x, "class") <- classes else x <- owned
+    if (!is.null(value_names)) {
+        owned <- .set_dta_string_attribute(x, "names", value_names)
+        if (is.null(owned)) names(x) <- value_names else x <- owned
+    }
     .Call(C_dtatools_capture_column, x)
 }
 
 .set_dta_string_attribute <- function(value, name, replacement) {
-    result <- .Call(C_dtatools_owned_string_attribute, value, name, replacement)
-    if (!is.null(result)) return(result)
-    if (identical(name, "names")) names(value) <- replacement else attr(value, name) <- replacement
-    value
+    # NULL declines. Keep ordinary assignment in the original caller frame:
+    # a fallback here adds a live binding and copies dictionary payload again.
+    .Call(C_dtatools_owned_string_attribute, value, name, replacement)
 }
 
 # The bare character data behind a Stata string, read through a metadata

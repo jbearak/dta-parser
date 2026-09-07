@@ -143,6 +143,24 @@ tests are development evidence; final exact-source paired measurements remain
 required. The separate heap supplement reports Ncells as well as Vcells so the
 new record representation cannot hide header allocation.
 
+Reviewed source `976cc40` passed a fresh archive installation, standard full R
+check with the established three warnings and two notes, interoperability,
+roxygen and source/binary NOTICE checks. Root's 219-case and downstream baseline
+comparisons also passed. Its original native runner then failed the unchanged
+dictionary replacement timing bound. A retained diagnostic run reached the
+strict four-times-fill boundary, and paired allocation profiles found two
+additional 2,000,048-byte dictionary buffers in the new attribute helper's
+fallback. Source `976cc40` is therefore not accepted. The fix keeps declined R
+attribute assignment in its original caller frame; development profiling removes
+both extra buffers. No native assertion or numerical budget changed. Final
+review, fresh source qualification and paired performance acceptance remain
+required for this follow-up.
+The corrected working build 21b passes the unchanged 159 native assertions and
+15 readiness checks. Dictionary replacement takes 32 ms against a 12 ms fill
+reference and allocates 44,017,136 bytes, matching the earlier allocation.
+Those logs are explicitly development evidence, separate from `976cc40`'s
+failed exact run.
+
 These edits require focused/full qualification, both independent actual-diff
 reviews and a new committed-source comparison. The latest development build is
 not a final measured source. Stage 4's PR, latest-head external review/CI and

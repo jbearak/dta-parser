@@ -766,11 +766,36 @@ test_that("owned string metadata leaves names replacement dispatch to R", {
     registerS3method("names<-", "stage4_owned_names", method, envir = baseenv())
     withr::defer(rm(list = "names<-.stage4_owned_names", envir = table))
     value <- .set_dta_string_attribute(owned_atom_capture(c("a", "b")), "class", "stage4_owned_names")
-    result <- .set_dta_string_attribute(value, "names", c("first", "second"))
+    expect_null(.set_dta_string_attribute(value, "names", c("first", "second")))
+    expect_identical(calls, 0L)
+    result <- .restore_dta_variable_metadata(value, character(), names = c("first", "second"))
     expect_identical(calls, 1L)
     expect_identical(names(result), c("custom-first", "custom-second"))
     expect_null(names(value))
     expect_identical(class(value), "stage4_owned_names")
+})
+
+test_that("string metadata declines compact storage without changing its source", {
+    path <- tempfile(fileext = ".arrow")
+    withr::defer(unlink(path))
+    raw <- rep(sprintf("text-%03d", seq_len(128L)), 4L)
+    save_arrow(data.frame(x = raw), path)
+    value <- read_arrow(path)$x
+    expect_true(.is_unmaterialized_dictstring(value))
+    cache <- .dictstring_cached_count(value)
+    expect_null(.set_dta_string_attribute(value, "label", "later"))
+    expect_null(attr(value, "label", exact = TRUE))
+    expect_identical(.dictstring_cached_count(value), cache)
+    prototype <- set_var_labels(value, "source label")
+    result <- .new_dta_string(value[integer()], "str8", prototype)
+    ordinary <- .new_dta_string(character(), "str8", prototype)
+    expect_identical(result, ordinary)
+    # Compact restoration keeps the existing class position before the label.
+    expect_identical(attributes(result), list(stata.string.storage = "str8",
+        class = c("dta_string", "vctrs_vctr", "character"), label = "source label"))
+    expect_true(.is_unmaterialized_dictstring(value))
+    expect_identical(.dictstring_cached_count(value), cache)
+    expect_identical(as.character(value), raw)
 })
 
 test_that("large string construction captures borrowed values before removing metadata", {

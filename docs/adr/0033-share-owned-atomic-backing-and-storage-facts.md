@@ -53,6 +53,8 @@ String construction captures borrowed character values before removing incoming
 classes or attributes. Internal attribute copies fork the owned handle and use
 R's attribute setter, preserving facts without a generic R metadata wrapper.
 Names replacement with object dispatch or attributed names retains the R setter.
+Declined assignments remain in the original caller frame; a fallback setter
+helper would add a live binding and copy compact dictionary storage again.
 Public attribute replacement and conservative foreign fallbacks are unchanged.
 Native readers adopt completed ordinary logical, integer/factor and character
 buffers without an additional capture. Writers retain exact owned string
