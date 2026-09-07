@@ -1,0 +1,25 @@
+heap_library /private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-library
+heap_source_sha 1111111111111111111111111111111111111111
+heap_mode candidate
+heap_kind ordered
+heap_operation rename
+heap_rows 1000000
+heap_runner_md5 benchmarks/r-dibble-dplyr/helpers.R d6c0341379dd025e4e0492d6b14f4d22
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-double-helpers.R 4d31109f49d89bbcdbfbb989dccf5334
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-atomic-helpers.R df5f3183107290847a82415124d44d49
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-double.R ee0e2fa5ef4e447efaebbf89199e9939
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-double-memory.R 5edf6459397ea2166f0b578ed549a6de
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-atomic.R 7e87cb5f50a51ea4c571f27d3a329bca
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-atomic-memory.R d8bd50bb040618201a2817031b47100c
+heap_runner_md5 benchmarks/r-dibble-dplyr/owned-heap.R afa138d1036683b4b27ace1c77d970e6
+heap_header_bytes_per_cell 56 
+heap_retained_header_cells 2329
+heap_excess_header_cells_after_drop_result 3107
+heap_retained_tracked_heap_bytes 223544
+heap_excess_tracked_heap_bytes_after_drop_result 209720
+heap_released_tracked_heap_bytes_with_last_result 88744
+heap_checkpoint prefixture header_cells 686190 vector_bytes 9343928 header_reported_mb 36.7 
+heap_checkpoint prior header_cells 686922 vector_bytes 9448368 header_reported_mb 36.7 
+heap_checkpoint after_result header_cells 689251 vector_bytes 9541488 header_reported_mb 36.9 
+heap_checkpoint after_drop_source header_cells 689393 vector_bytes 9463024 header_reported_mb 36.9 
+heap_checkpoint after_drop_result header_cells 689297 vector_bytes 9379656 header_reported_mb 36.9 

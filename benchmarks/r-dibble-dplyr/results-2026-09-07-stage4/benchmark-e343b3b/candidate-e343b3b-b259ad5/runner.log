@@ -1,0 +1,825 @@
+    kind family operation   rows median_ms r_allocated_bytes
+1 string direct    rename 100000  0.621519             88984
+  validation_scanned_values
+1                         0
+    kind          family operation   rows median_ms r_allocated_bytes
+1 string safe_delegation    rename 100000   0.58794             83776
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 string direct    select 100000  0.574615             90400
+  validation_scanned_values
+1                         0
+    kind          family operation   rows median_ms r_allocated_bytes
+1 string safe_delegation    select 100000  0.609588             83928
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 string direct  relocate 100000  0.694745             91448
+  validation_scanned_values
+1                         0
+    kind          family operation   rows median_ms r_allocated_bytes
+1 string safe_delegation  relocate 100000  0.689702             86424
+  validation_scanned_values
+1                         0
+    kind family     operation   rows median_ms r_allocated_bytes
+1 string direct pipeline_five 100000  3.326494            449360
+  validation_scanned_values
+1                         0
+    kind          family     operation   rows median_ms r_allocated_bytes
+1 string safe_delegation pipeline_five 100000  1.543404             98248
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 string direct    rename 1000000  0.607661             84056
+  validation_scanned_values
+1                         0
+    kind          family operation    rows median_ms r_allocated_bytes
+1 string safe_delegation    rename 1000000  0.587325             83776
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 string direct    select 1000000  0.570474             84208
+  validation_scanned_values
+1                         0
+    kind          family operation    rows median_ms r_allocated_bytes
+1 string safe_delegation    select 1000000  0.600322             83928
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 string direct  relocate 1000000  0.695975             86488
+  validation_scanned_values
+1                         0
+    kind          family operation    rows median_ms r_allocated_bytes
+1 string safe_delegation  relocate 1000000  0.692572             86424
+  validation_scanned_values
+1                         0
+    kind family     operation    rows median_ms r_allocated_bytes
+1 string direct pipeline_five 1000000   3.34683            422240
+  validation_scanned_values
+1                         0
+    kind          family     operation    rows median_ms r_allocated_bytes
+1 string safe_delegation pipeline_five 1000000   1.54857             98248
+  validation_scanned_values
+1                         0
+                kind family operation   rows median_ms r_allocated_bytes
+1 declared_character direct    rename 100000  0.595197             84056
+  validation_scanned_values
+1                         0
+                kind          family operation   rows median_ms
+1 declared_character safe_delegation    rename 100000  0.572729
+  r_allocated_bytes validation_scanned_values
+1             83776                         0
+                kind family operation   rows median_ms r_allocated_bytes
+1 declared_character direct    select 100000  0.573836             84208
+  validation_scanned_values
+1                         0
+                kind          family operation   rows median_ms
+1 declared_character safe_delegation    select 100000  0.590154
+  r_allocated_bytes validation_scanned_values
+1             83928                         0
+                kind family operation   rows median_ms r_allocated_bytes
+1 declared_character direct  relocate 100000  0.697738             86488
+  validation_scanned_values
+1                         0
+                kind          family operation   rows median_ms
+1 declared_character safe_delegation  relocate 100000  0.676541
+  r_allocated_bytes validation_scanned_values
+1             86424                         0
+                kind family     operation   rows median_ms r_allocated_bytes
+1 declared_character direct pipeline_five 100000  3.175122            422240
+  validation_scanned_values
+1                         0
+                kind          family     operation   rows median_ms
+1 declared_character safe_delegation pipeline_five 100000  1.538279
+  r_allocated_bytes validation_scanned_values
+1             98248                         0
+                kind family operation    rows median_ms r_allocated_bytes
+1 declared_character direct    rename 1000000  0.589621             84056
+  validation_scanned_values
+1                         0
+                kind          family operation    rows median_ms
+1 declared_character safe_delegation    rename 1000000  0.579494
+  r_allocated_bytes validation_scanned_values
+1             83776                         0
+                kind family operation    rows median_ms r_allocated_bytes
+1 declared_character direct    select 1000000  0.564529             84208
+  validation_scanned_values
+1                         0
+                kind          family operation    rows median_ms
+1 declared_character safe_delegation    select 1000000  0.681994
+  r_allocated_bytes validation_scanned_values
+1             83928                         0
+                kind family operation    rows median_ms r_allocated_bytes
+1 declared_character direct  relocate 1000000  0.693105             86488
+  validation_scanned_values
+1                         0
+                kind          family operation    rows median_ms
+1 declared_character safe_delegation  relocate 1000000  0.677402
+  r_allocated_bytes validation_scanned_values
+1             86424                         0
+                kind family     operation    rows median_ms r_allocated_bytes
+1 declared_character direct pipeline_five 1000000  3.299065            422240
+  validation_scanned_values
+1                         0
+                kind          family     operation    rows median_ms
+1 declared_character safe_delegation pipeline_five 1000000  1.495475
+  r_allocated_bytes validation_scanned_values
+1             98248                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 logical direct    rename 100000  0.477363             84056
+  validation_scanned_values
+1                         0
+     kind          family operation   rows median_ms r_allocated_bytes
+1 logical safe_delegation    rename 100000  0.470393             83776
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 logical direct    select 100000  0.453665             84208
+  validation_scanned_values
+1                         0
+     kind          family operation   rows median_ms r_allocated_bytes
+1 logical safe_delegation    select 100000  0.483062             83928
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 logical direct  relocate 100000  0.575066             86488
+  validation_scanned_values
+1                         0
+     kind          family operation   rows median_ms r_allocated_bytes
+1 logical safe_delegation  relocate 100000  0.568588             86424
+  validation_scanned_values
+1                         0
+     kind family     operation   rows median_ms r_allocated_bytes
+1 logical direct pipeline_five 100000  2.669551            422240
+  validation_scanned_values
+1                         0
+     kind          family     operation   rows median_ms r_allocated_bytes
+1 logical safe_delegation pipeline_five 100000  1.354148             98248
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 logical direct    rename 1000000  0.480315             84056
+  validation_scanned_values
+1                         0
+     kind          family operation    rows median_ms r_allocated_bytes
+1 logical safe_delegation    rename 1000000  0.463751             83776
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 logical direct    select 1000000  0.450713             84208
+  validation_scanned_values
+1                         0
+     kind          family operation    rows median_ms r_allocated_bytes
+1 logical safe_delegation    select 1000000   0.48011             83928
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 logical direct  relocate 1000000  0.578469             86488
+  validation_scanned_values
+1                         0
+     kind          family operation    rows median_ms r_allocated_bytes
+1 logical safe_delegation  relocate 1000000  0.565226             86424
+  validation_scanned_values
+1                         0
+     kind family     operation    rows median_ms r_allocated_bytes
+1 logical direct pipeline_five 1000000  2.673651            422240
+  validation_scanned_values
+1                         0
+     kind          family     operation    rows median_ms r_allocated_bytes
+1 logical safe_delegation pipeline_five 1000000   1.39769             98248
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 factor direct    rename 100000   0.48749             84056
+  validation_scanned_values
+1                         0
+    kind          family operation   rows median_ms r_allocated_bytes
+1 factor safe_delegation    rename 100000   0.46945             83776
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 factor direct    select 100000  0.454444             84208
+  validation_scanned_values
+1                         0
+    kind          family operation   rows median_ms r_allocated_bytes
+1 factor safe_delegation    select 100000  0.480192             83928
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 factor direct  relocate 100000  0.576009             86488
+  validation_scanned_values
+1                         0
+    kind          family operation   rows median_ms r_allocated_bytes
+1 factor safe_delegation  relocate 100000  0.563258             86424
+  validation_scanned_values
+1                         0
+    kind family     operation   rows median_ms r_allocated_bytes
+1 factor direct pipeline_five 100000   2.66623            422240
+  validation_scanned_values
+1                         0
+    kind          family     operation   rows median_ms r_allocated_bytes
+1 factor safe_delegation pipeline_five 100000  1.356362             98248
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 factor direct    rename 1000000  0.478921             84056
+  validation_scanned_values
+1                         0
+    kind          family operation    rows median_ms r_allocated_bytes
+1 factor safe_delegation    rename 1000000  0.465801             83776
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 factor direct    select 1000000  0.464407             84208
+  validation_scanned_values
+1                         0
+    kind          family operation    rows median_ms r_allocated_bytes
+1 factor safe_delegation    select 1000000  0.480971             83928
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 factor direct  relocate 1000000  0.575353             86488
+  validation_scanned_values
+1                         0
+    kind          family operation    rows median_ms r_allocated_bytes
+1 factor safe_delegation  relocate 1000000  0.565554             86424
+  validation_scanned_values
+1                         0
+    kind family     operation    rows median_ms r_allocated_bytes
+1 factor direct pipeline_five 1000000   2.70067            422240
+  validation_scanned_values
+1                         0
+    kind          family     operation    rows median_ms r_allocated_bytes
+1 factor safe_delegation pipeline_five 1000000   1.39769             98248
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 ordered direct    rename 100000  0.487162             84056
+  validation_scanned_values
+1                         0
+     kind          family operation   rows median_ms r_allocated_bytes
+1 ordered safe_delegation    rename 100000  0.471951             83776
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 ordered direct    select 100000  0.458257             84208
+  validation_scanned_values
+1                         0
+     kind          family operation   rows median_ms r_allocated_bytes
+1 ordered safe_delegation    select 100000  0.484989             83928
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 ordered direct  relocate 100000  0.590236             86488
+  validation_scanned_values
+1                         0
+     kind          family operation   rows median_ms r_allocated_bytes
+1 ordered safe_delegation  relocate 100000  0.571499             86424
+  validation_scanned_values
+1                         0
+     kind family     operation   rows median_ms r_allocated_bytes
+1 ordered direct pipeline_five 100000    2.7675            422240
+  validation_scanned_values
+1                         0
+     kind          family     operation   rows median_ms r_allocated_bytes
+1 ordered safe_delegation pipeline_five 100000  1.378625             98248
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 ordered direct    rename 1000000  0.486793             84056
+  validation_scanned_values
+1                         0
+     kind          family operation    rows median_ms r_allocated_bytes
+1 ordered safe_delegation    rename 1000000  0.471992             83776
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 ordered direct    select 1000000  0.454198             84208
+  validation_scanned_values
+1                         0
+     kind          family operation    rows median_ms r_allocated_bytes
+1 ordered safe_delegation    select 1000000  0.495239             83928
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 ordered direct  relocate 1000000  0.586013             86488
+  validation_scanned_values
+1                         0
+     kind          family operation    rows median_ms r_allocated_bytes
+1 ordered safe_delegation  relocate 1000000  0.573467             86424
+  validation_scanned_values
+1                         0
+     kind family     operation    rows median_ms r_allocated_bytes
+1 ordered direct pipeline_five 1000000  2.767787            422240
+  validation_scanned_values
+1                         0
+     kind          family     operation    rows median_ms r_allocated_bytes
+1 ordered safe_delegation pipeline_five 1000000  1.412286             98248
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 string   read    any_na 100000  0.080688            400048
+  validation_scanned_values
+1                         0
+    kind family        operation   rows median_ms r_allocated_bytes
+1 string   read nonmissing_count 100000  0.113242            800096
+  validation_scanned_values
+1                         0
+    kind family          operation   rows   median_ms r_allocated_bytes
+1 string   read coercion_character 100000 0.003403009                 0
+  validation_scanned_values
+1                         0
+    kind family         operation   rows  median_ms r_allocated_bytes
+1 string   read export_data_frame 100000 0.06941301                 0
+  validation_scanned_values
+1                         0
+    kind family     operation   rows  median_ms r_allocated_bytes
+1 string   read export_tibble 100000 0.05924501                 0
+  validation_scanned_values
+1                         0
+    kind family   operation   rows median_ms r_allocated_bytes
+1 string   read filter_half 100000  3.240968           5883192
+  validation_scanned_values
+1                         0
+    kind family  operation   rows median_ms r_allocated_bytes
+1 string   read row_subset 100000   3.15823           4489544
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 string   read  read_dta 100000  4.809628             80784
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 string   read write_dta 100000  19.25294              2552
+  validation_scanned_values
+1                         0
+    kind family  operation   rows median_ms r_allocated_bytes
+1 string   read read_arrow 100000  5.608595             80784
+  validation_scanned_values
+1                         0
+    kind family   operation   rows median_ms r_allocated_bytes
+1 string   read write_arrow 100000  24.56913              1744
+  validation_scanned_values
+1                         0
+    kind family  operation   rows median_ms r_allocated_bytes
+1 string   read byte_width 100000  0.376052            400048
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 string   read    any_na 1000000  0.750259           4000048
+  validation_scanned_values
+1                         0
+    kind family        operation    rows median_ms r_allocated_bytes
+1 string   read nonmissing_count 1000000   0.86264           8000096
+  validation_scanned_values
+1                         0
+    kind family          operation    rows   median_ms r_allocated_bytes
+1 string   read coercion_character 1000000 0.003321009                 0
+  validation_scanned_values
+1                         0
+    kind family         operation    rows  median_ms r_allocated_bytes
+1 string   read export_data_frame 1000000 0.06793701                 0
+  validation_scanned_values
+1                         0
+    kind family     operation    rows median_ms r_allocated_bytes
+1 string   read export_tibble 1000000   0.05904                 0
+  validation_scanned_values
+1                         0
+    kind family   operation    rows median_ms r_allocated_bytes
+1 string   read filter_half 1000000  27.70374          58083192
+  validation_scanned_values
+1                         0
+    kind family  operation    rows median_ms r_allocated_bytes
+1 string   read row_subset 1000000  26.77616          44089544
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 string   read  read_dta 1000000  8.408239             80784
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 string   read write_dta 1000000  182.4567              2552
+  validation_scanned_values
+1                         0
+    kind family  operation    rows median_ms r_allocated_bytes
+1 string   read read_arrow 1000000  52.70571             80784
+  validation_scanned_values
+1                         0
+    kind family   operation    rows median_ms r_allocated_bytes
+1 string   read write_arrow 1000000  189.2644              1744
+  validation_scanned_values
+1                         0
+    kind family  operation    rows median_ms r_allocated_bytes
+1 string   read byte_width 1000000  3.731902           4000048
+  validation_scanned_values
+1                         0
+                kind family operation   rows median_ms r_allocated_bytes
+1 declared_character   read    any_na 100000  0.265188                 0
+  validation_scanned_values
+1                         0
+                kind family        operation   rows median_ms r_allocated_bytes
+1 declared_character   read nonmissing_count 100000  0.342391            800096
+  validation_scanned_values
+1                         0
+                kind family          operation   rows   median_ms
+1 declared_character   read coercion_character 100000 0.002009008
+  r_allocated_bytes validation_scanned_values
+1                 0                         0
+                kind family         operation   rows  median_ms
+1 declared_character   read export_data_frame 100000 0.04341902
+  r_allocated_bytes validation_scanned_values
+1                 0                         0
+                kind family     operation   rows median_ms r_allocated_bytes
+1 declared_character   read export_tibble 100000  0.048626                 0
+  validation_scanned_values
+1                         0
+                kind family   operation   rows median_ms r_allocated_bytes
+1 declared_character   read filter_half 100000  2.063981           5883192
+  validation_scanned_values
+1                         0
+                kind family  operation   rows median_ms r_allocated_bytes
+1 declared_character   read row_subset 100000  1.975257           4489544
+  validation_scanned_values
+1                         0
+                kind family operation   rows median_ms r_allocated_bytes
+1 declared_character   read  read_dta 100000  4.591467             80784
+  validation_scanned_values
+1                         0
+                kind family operation   rows median_ms r_allocated_bytes
+1 declared_character   read write_dta 100000  19.31805              2552
+  validation_scanned_values
+1                         0
+                kind family  operation   rows median_ms r_allocated_bytes
+1 declared_character   read read_arrow 100000  5.398347             80784
+  validation_scanned_values
+1                         0
+                kind family   operation   rows median_ms r_allocated_bytes
+1 declared_character   read write_arrow 100000  25.60442              1744
+  validation_scanned_values
+1                         0
+                kind family  operation   rows median_ms r_allocated_bytes
+1 declared_character   read byte_width 100000  0.375273            400048
+  validation_scanned_values
+1                         0
+                kind family operation    rows median_ms r_allocated_bytes
+1 declared_character   read    any_na 1000000  2.624861                 0
+  validation_scanned_values
+1                         0
+                kind family        operation    rows median_ms
+1 declared_character   read nonmissing_count 1000000  3.403205
+  r_allocated_bytes validation_scanned_values
+1           8000096                         0
+                kind family          operation    rows   median_ms
+1 declared_character   read coercion_character 1000000 0.002131987
+  r_allocated_bytes validation_scanned_values
+1                 0                         0
+                kind family         operation    rows  median_ms
+1 declared_character   read export_data_frame 1000000 0.04313201
+  r_allocated_bytes validation_scanned_values
+1                 0                         0
+                kind family     operation    rows  median_ms r_allocated_bytes
+1 declared_character   read export_tibble 1000000 0.04739601                 0
+  validation_scanned_values
+1                         0
+                kind family   operation    rows median_ms r_allocated_bytes
+1 declared_character   read filter_half 1000000  17.37215          58083192
+  validation_scanned_values
+1                         0
+                kind family  operation    rows median_ms r_allocated_bytes
+1 declared_character   read row_subset 1000000  16.51656          44089544
+  validation_scanned_values
+1                         0
+                kind family operation    rows median_ms r_allocated_bytes
+1 declared_character   read  read_dta 1000000  8.542432             80784
+  validation_scanned_values
+1                         0
+                kind family operation    rows median_ms r_allocated_bytes
+1 declared_character   read write_dta 1000000  180.3653              2552
+  validation_scanned_values
+1                         0
+                kind family  operation    rows median_ms r_allocated_bytes
+1 declared_character   read read_arrow 1000000  50.58834             80784
+  validation_scanned_values
+1                         0
+                kind family   operation    rows median_ms r_allocated_bytes
+1 declared_character   read write_arrow 1000000  190.4428              1744
+  validation_scanned_values
+1                         0
+                kind family  operation    rows median_ms r_allocated_bytes
+1 declared_character   read byte_width 1000000  3.731082           4000048
+  validation_scanned_values
+1                         0
+     kind family operation   rows   median_ms r_allocated_bytes
+1 logical   read    any_na 100000 0.002173008                 0
+  validation_scanned_values
+1                         0
+     kind family        operation   rows median_ms r_allocated_bytes
+1 logical   read nonmissing_count 100000  0.322547            800096
+  validation_scanned_values
+1                         0
+     kind family          operation   rows median_ms r_allocated_bytes
+1 logical   read coercion_character 100000  0.497453            800048
+  validation_scanned_values
+1                         0
+     kind family         operation   rows  median_ms r_allocated_bytes
+1 logical   read export_data_frame 100000 0.04542801                 0
+  validation_scanned_values
+1                         0
+     kind family     operation   rows median_ms r_allocated_bytes
+1 logical   read export_tibble 100000  0.048503                 0
+  validation_scanned_values
+1                         0
+     kind family   operation   rows median_ms r_allocated_bytes
+1 logical   read filter_half 100000  1.243202           5883576
+  validation_scanned_values
+1                         0
+     kind family  operation   rows median_ms r_allocated_bytes
+1 logical   read row_subset 100000  0.718812           2889544
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 logical   read  read_dta 100000  2.730682            881168
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 logical   read write_dta 100000  2.618793              2928
+  validation_scanned_values
+1                         0
+     kind family  operation   rows median_ms r_allocated_bytes
+1 logical   read read_arrow 100000  0.933201           3281168
+  validation_scanned_values
+1                         0
+     kind family   operation   rows median_ms r_allocated_bytes
+1 logical   read write_arrow 100000  8.095081              1744
+  validation_scanned_values
+1                         0
+     kind family        operation   rows median_ms r_allocated_bytes
+1 logical   read coercion_integer 100000  0.247886            400048
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 logical   read       sum 100000  0.078474                 0
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 logical   read      mean 100000  0.386712           1800248
+  validation_scanned_values
+1                         0
+     kind family operation    rows   median_ms r_allocated_bytes
+1 logical   read    any_na 1000000 0.001886001                 0
+  validation_scanned_values
+1                         0
+     kind family        operation    rows median_ms r_allocated_bytes
+1 logical   read nonmissing_count 1000000      3.28           8000096
+  validation_scanned_values
+1                         0
+     kind family          operation    rows median_ms r_allocated_bytes
+1 logical   read coercion_character 1000000  4.998925           8000048
+  validation_scanned_values
+1                         0
+     kind family         operation    rows  median_ms r_allocated_bytes
+1 logical   read export_data_frame 1000000 0.04354201                 0
+  validation_scanned_values
+1                         0
+     kind family     operation    rows median_ms r_allocated_bytes
+1 logical   read export_tibble 1000000  0.048052                 0
+  validation_scanned_values
+1                         0
+     kind family   operation    rows median_ms r_allocated_bytes
+1 logical   read filter_half 1000000  9.188961          58083576
+  validation_scanned_values
+1                         0
+     kind family  operation    rows median_ms r_allocated_bytes
+1 logical   read row_subset 1000000   4.88966          28089544
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 logical   read  read_dta 1000000  4.178925           8081168
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 logical   read write_dta 1000000  6.513916              2928
+  validation_scanned_values
+1                         0
+     kind family  operation    rows median_ms r_allocated_bytes
+1 logical   read read_arrow 1000000  6.333803          32081168
+  validation_scanned_values
+1                         0
+     kind family   operation    rows median_ms r_allocated_bytes
+1 logical   read write_arrow 1000000  30.92523              1744
+  validation_scanned_values
+1                         0
+     kind family        operation    rows median_ms r_allocated_bytes
+1 logical   read coercion_integer 1000000  2.434129           4000048
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 logical   read       sum 1000000  0.602126                 0
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 logical   read      mean 1000000  3.824275          18000248
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 factor   read    any_na 100000  0.282162            400048
+  validation_scanned_values
+1                         0
+    kind family        operation   rows median_ms r_allocated_bytes
+1 factor   read nonmissing_count 100000  0.323121            800096
+  validation_scanned_values
+1                         0
+    kind family          operation   rows median_ms r_allocated_bytes
+1 factor   read coercion_character 100000  0.458462            800048
+  validation_scanned_values
+1                         0
+    kind family         operation   rows  median_ms r_allocated_bytes
+1 factor   read export_data_frame 100000 0.05309501                 0
+  validation_scanned_values
+1                         0
+    kind family     operation   rows  median_ms r_allocated_bytes
+1 factor   read export_tibble 100000 0.05092201                 0
+  validation_scanned_values
+1                         0
+    kind family   operation   rows median_ms r_allocated_bytes
+1 factor   read filter_half 100000  1.152715           4283192
+  validation_scanned_values
+1                         0
+    kind family  operation   rows median_ms r_allocated_bytes
+1 factor   read row_subset 100000  0.706553           2889544
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 factor   read  read_dta 100000  2.719571           3281168
+  validation_scanned_values
+1                         0
+    kind family operation   rows median_ms r_allocated_bytes
+1 factor   read write_dta 100000  2.545198              5184
+  validation_scanned_values
+1                         0
+    kind family  operation   rows median_ms r_allocated_bytes
+1 factor   read read_arrow 100000  1.731717           3281168
+  validation_scanned_values
+1                         0
+    kind family   operation   rows median_ms r_allocated_bytes
+1 factor   read write_arrow 100000  7.708574              1744
+  validation_scanned_values
+1                         0
+    kind family        operation   rows   median_ms r_allocated_bytes
+1 factor   read coercion_integer 100000 0.008036004            400048
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 factor   read    any_na 1000000  2.443641           4000048
+  validation_scanned_values
+1                         0
+    kind family        operation    rows median_ms r_allocated_bytes
+1 factor   read nonmissing_count 1000000   3.21194           8000096
+  validation_scanned_values
+1                         0
+    kind family          operation    rows median_ms r_allocated_bytes
+1 factor   read coercion_character 1000000  4.594993           8000048
+  validation_scanned_values
+1                         0
+    kind family         operation    rows  median_ms r_allocated_bytes
+1 factor   read export_data_frame 1000000 0.05231601                 0
+  validation_scanned_values
+1                         0
+    kind family     operation    rows  median_ms r_allocated_bytes
+1 factor   read export_tibble 1000000 0.05116801                 0
+  validation_scanned_values
+1                         0
+    kind family   operation    rows median_ms r_allocated_bytes
+1 factor   read filter_half 1000000  7.979912          42083192
+  validation_scanned_values
+1                         0
+    kind family  operation    rows median_ms r_allocated_bytes
+1 factor   read row_subset 1000000  5.137751          28089544
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 factor   read  read_dta 1000000  4.635337          32081168
+  validation_scanned_values
+1                         0
+    kind family operation    rows median_ms r_allocated_bytes
+1 factor   read write_dta 1000000  9.532295              5408
+  validation_scanned_values
+1                         0
+    kind family  operation    rows median_ms r_allocated_bytes
+1 factor   read read_arrow 1000000  14.39465          32081168
+  validation_scanned_values
+1                         0
+    kind family   operation    rows median_ms r_allocated_bytes
+1 factor   read write_arrow 1000000  21.80819              1744
+  validation_scanned_values
+1                         0
+    kind family        operation    rows median_ms r_allocated_bytes
+1 factor   read coercion_integer 1000000  0.050553           4000048
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 ordered   read    any_na 100000  0.247066            400048
+  validation_scanned_values
+1                         0
+     kind family        operation   rows median_ms r_allocated_bytes
+1 ordered   read nonmissing_count 100000  0.323285            800096
+  validation_scanned_values
+1                         0
+     kind family          operation   rows median_ms r_allocated_bytes
+1 ordered   read coercion_character 100000  0.458831            800048
+  validation_scanned_values
+1                         0
+     kind family         operation   rows  median_ms r_allocated_bytes
+1 ordered   read export_data_frame 100000 0.05284901                 0
+  validation_scanned_values
+1                         0
+     kind family     operation   rows  median_ms r_allocated_bytes
+1 ordered   read export_tibble 100000 0.05100398                 0
+  validation_scanned_values
+1                         0
+     kind family   operation   rows median_ms r_allocated_bytes
+1 ordered   read filter_half 100000  1.148738           4283192
+  validation_scanned_values
+1                         0
+     kind family  operation   rows median_ms r_allocated_bytes
+1 ordered   read row_subset 100000  0.719919           2889544
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 ordered   read  read_dta 100000  2.787426           3281168
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 ordered   read write_dta 100000  2.466314              5184
+  validation_scanned_values
+1                         0
+     kind family  operation   rows median_ms r_allocated_bytes
+1 ordered   read read_arrow 100000  1.719171           3281168
+  validation_scanned_values
+1                         0
+     kind family   operation   rows median_ms r_allocated_bytes
+1 ordered   read write_arrow 100000  8.585113              1744
+  validation_scanned_values
+1                         0
+     kind family        operation   rows   median_ms r_allocated_bytes
+1 ordered   read coercion_integer 100000 0.007913011            400048
+  validation_scanned_values
+1                         0
+     kind family operation   rows median_ms r_allocated_bytes
+1 ordered   read     range 100000  0.269862           2600344
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 ordered   read    any_na 1000000  2.440976           4000048
+  validation_scanned_values
+1                         0
+     kind family        operation    rows median_ms r_allocated_bytes
+1 ordered   read nonmissing_count 1000000  3.189185           8000096
+  validation_scanned_values
+1                         0
+     kind family          operation    rows median_ms r_allocated_bytes
+1 ordered   read coercion_character 1000000  4.627014           8000048
+  validation_scanned_values
+1                         0
+     kind family         operation    rows  median_ms r_allocated_bytes
+1 ordered   read export_data_frame 1000000 0.05334101                 0
+  validation_scanned_values
+1                         0
+     kind family     operation    rows median_ms r_allocated_bytes
+1 ordered   read export_tibble 1000000  0.051086                 0
+  validation_scanned_values
+1                         0
+     kind family   operation    rows median_ms r_allocated_bytes
+1 ordered   read filter_half 1000000  8.656084          42083192
+  validation_scanned_values
+1                         0
+     kind family  operation    rows median_ms r_allocated_bytes
+1 ordered   read row_subset 1000000  5.169198          28089544
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 ordered   read  read_dta 1000000   4.72115          32081168
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 ordered   read write_dta 1000000  9.323154              5184
+  validation_scanned_values
+1                         0
+     kind family  operation    rows median_ms r_allocated_bytes
+1 ordered   read read_arrow 1000000  14.27001          32081168
+  validation_scanned_values
+1                         0
+     kind family   operation    rows median_ms r_allocated_bytes
+1 ordered   read write_arrow 1000000  23.20842              1744
+  validation_scanned_values
+1                         0
+     kind family        operation    rows median_ms r_allocated_bytes
+1 ordered   read coercion_integer 1000000  0.048872           4000048
+  validation_scanned_values
+1                         0
+     kind family operation    rows median_ms r_allocated_bytes
+1 ordered   read     range 1000000  2.757619          26000344
+  validation_scanned_values
+1                         0
+All candidate atomic operation, value, metadata, alias, backing and scan checks passed.

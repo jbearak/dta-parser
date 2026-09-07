@@ -1,0 +1,48 @@
+testthat 3.3.2 
+function() {
+      skips <- self$skips$as_list()
+      failures <- self$failures$as_list()
+      warnings <- self$warnings$as_list()
+
+      self$cat_line()
+      private$cat_reports("Skipped", skips, Inf, skip_summary)
+      private$cat_reports("Warnings", warnings, Inf, skip_summary)
+      private$cat_reports("Failed", failures, self$max_reports, failure_summary)
+
+      if (self$failures$size() >= self$max_reports) {
+        self$cat_line(
+          "Maximum number of ",
+          self$max_reports,
+          " failures reached, ",
+          "some test results may be missing."
+        )
+        self$cat_line()
+      }
+
+      self$rule("DONE", line = 2)
+      if (self$show_praise) {
+        if (length(failures) == 0 && stats::runif(1) < 0.1) {
+          self$cat_line(colourise(praise(), "success"))
+        }
+        if (length(failures) > 0 && stats::runif(1) < 0.25) {
+          self$cat_line(colourise(encourage(), "error"))
+        }
+      }
+    }
+<bytecode: 0x737d61850>
+<environment: namespace:testthat>
+function() {
+  x <- c(
+    "Keep trying!",
+    "Don't worry, you'll get it.",
+    "No one is perfect!",
+    "No one gets it right on their first try",
+    "Frustration is a natural part of programming :)",
+    "I believe in you!"
+  )
+
+  sample(x, 1)
+}
+<bytecode: 0x737fb0c80>
+<environment: namespace:testthat>
+namespace /opt/homebrew/lib/R/4.6/site-library/testthat 

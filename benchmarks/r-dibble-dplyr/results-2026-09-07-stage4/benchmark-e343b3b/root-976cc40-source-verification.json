@@ -1,0 +1,10 @@
+{
+  "recorded_utc": "2026-09-07T06:05:37.192518+00:00",
+  "source_sha": "976cc403f21b9adbb454d39c9c3447717b67c29f",
+  "package_tree": "5918bf611151f8a2b78dbf3e704e67f70b1fb9a5",
+  "source_manifest_sha256": "af2669c8aad3bcf5682ea2d51881605f394b9eff2308b89265b573184a0603b2",
+  "archive_sha256": "d96a322219e3753f0c79881e69dda417874f8196c095e9e7d13550b3a9e77e3d",
+  "file_count": 1060,
+  "archive_member_hashes_and_current_export_files_match": true,
+  "root_219_manifest_sha256": "c2c853728a33cad1c9b845649f28d5151488c09cd0c381c0bf9e279135940519"
+}

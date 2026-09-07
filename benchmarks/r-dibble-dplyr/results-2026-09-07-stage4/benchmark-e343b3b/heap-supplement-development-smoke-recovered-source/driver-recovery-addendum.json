@@ -1,0 +1,6 @@
+{
+  "scope": "Exact original driver bytes recovered by reversing subsequent parser edits and restoring its original blank-line separator; verified against preexisting smoke manifest SHA256. First inverse edit attempt did not match and was not written.",
+  "sha256": "17c2fd1371f30a6532dff4cdade14675bd815b8f8884a34fc1e173f564b42e7e",
+  "expected_sha256": "17c2fd1371f30a6532dff4cdade14675bd815b8f8884a34fc1e173f564b42e7e",
+  "first_attempt_unwritten_sha256": "5effffd9fba2e49b20c160b8666e4e42fb39f2a91210b6674bc9e7f23844e7a9"
+}

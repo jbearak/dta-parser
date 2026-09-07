@@ -1,0 +1,27 @@
+{
+  "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "baseline_sha256": "f85c076a6d20983a155305522d11fa3da1c038f20283ee1a979f4726521d8708",
+  "auditor_sha256": "515880d04a39a7a995d324d3fdca27bb91de039afa7a9be83d087ee4fc049ae9",
+  "cases": [
+    {
+      "directory": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b",
+      "verification_sha256": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4",
+      "raw_log_sha256": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69",
+      "strict_driver_result": "rejected and preserved",
+      "test_outcomes_and_all_other_backend_bytes_match": true,
+      "only_difference": "One exact testthat encouragement line immediately after DONE and before backend counts",
+      "full_raw_log_matches_baseline": false
+    },
+    {
+      "directory": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-retry",
+      "verification_sha256": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4",
+      "raw_log_sha256": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69",
+      "strict_driver_result": "rejected and preserved",
+      "test_outcomes_and_all_other_backend_bytes_match": true,
+      "only_difference": "One exact testthat encouragement line immediately after DONE and before backend counts",
+      "full_raw_log_matches_baseline": false
+    }
+  ],
+  "scope": "Read-only semantic/output parity audit of two existing runs; no R rerun, no raw evidence edits, no driver normalization or changed guards",
+  "framework_source_log_sha256": "ab5c6f674990880d0312ff5c09e868762a2e458bf44889d685ec658d8ef0b79b"
+}

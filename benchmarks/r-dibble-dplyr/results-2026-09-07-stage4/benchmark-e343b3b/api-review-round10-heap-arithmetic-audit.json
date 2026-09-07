@@ -1,0 +1,127 @@
+{
+  "method": "Independent read-only arithmetic over saved logs; no wrapper/driver/R/probe execution",
+  "case_count": 12,
+  "errors": [],
+  "cases": [
+    {
+      "file": "baseline-double.log",
+      "derived": {
+        "retained_header_cells": 2385,
+        "excess_header_cells_after_drop_result": 2776,
+        "retained_tracked_heap_bytes": 226920,
+        "excess_tracked_heap_bytes_after_drop_result": 183688,
+        "released_tracked_heap_bytes_with_last_result": 94744
+      }
+    },
+    {
+      "file": "baseline-string.log",
+      "derived": {
+        "retained_header_cells": 1922,
+        "excess_header_cells_after_drop_result": 2610,
+        "retained_tracked_heap_bytes": 203432,
+        "excess_tracked_heap_bytes_after_drop_result": 178512,
+        "released_tracked_heap_bytes_with_last_result": 93784
+      }
+    },
+    {
+      "file": "baseline-declared_character.log",
+      "derived": {
+        "retained_header_cells": 1919,
+        "excess_header_cells_after_drop_result": 2622,
+        "retained_tracked_heap_bytes": 203328,
+        "excess_tracked_heap_bytes_after_drop_result": 179248,
+        "released_tracked_heap_bytes_with_last_result": 91624
+      }
+    },
+    {
+      "file": "baseline-logical.log",
+      "derived": {
+        "retained_header_cells": 1589,
+        "excess_header_cells_after_drop_result": 2322,
+        "retained_tracked_heap_bytes": 180728,
+        "excess_tracked_heap_bytes_after_drop_result": 160848,
+        "released_tracked_heap_bytes_with_last_result": 85504
+      }
+    },
+    {
+      "file": "baseline-factor.log",
+      "derived": {
+        "retained_header_cells": 1625,
+        "excess_header_cells_after_drop_result": 2328,
+        "retained_tracked_heap_bytes": 182776,
+        "excess_tracked_heap_bytes_after_drop_result": 161216,
+        "released_tracked_heap_bytes_with_last_result": 89464
+      }
+    },
+    {
+      "file": "baseline-ordered.log",
+      "derived": {
+        "retained_header_cells": 1628,
+        "excess_header_cells_after_drop_result": 2331,
+        "retained_tracked_heap_bytes": 182960,
+        "excess_tracked_heap_bytes_after_drop_result": 161400,
+        "released_tracked_heap_bytes_with_last_result": 89584
+      }
+    },
+    {
+      "file": "candidate-double.log",
+      "derived": {
+        "retained_header_cells": 2382,
+        "excess_header_cells_after_drop_result": 2889,
+        "retained_tracked_heap_bytes": 226736,
+        "excess_tracked_heap_bytes_after_drop_result": 193272,
+        "released_tracked_heap_bytes_with_last_result": 94984
+      }
+    },
+    {
+      "file": "candidate-string.log",
+      "derived": {
+        "retained_header_cells": 2356,
+        "excess_header_cells_after_drop_result": 3105,
+        "retained_tracked_heap_bytes": 225040,
+        "excess_tracked_heap_bytes_after_drop_result": 209592,
+        "released_tracked_heap_bytes_with_last_result": 96064
+      }
+    },
+    {
+      "file": "candidate-declared_character.log",
+      "derived": {
+        "retained_header_cells": 2311,
+        "excess_header_cells_after_drop_result": 3075,
+        "retained_tracked_heap_bytes": 222360,
+        "excess_tracked_heap_bytes_after_drop_result": 207752,
+        "released_tracked_heap_bytes_with_last_result": 93904
+      }
+    },
+    {
+      "file": "candidate-logical.log",
+      "derived": {
+        "retained_header_cells": 2329,
+        "excess_header_cells_after_drop_result": 3107,
+        "retained_tracked_heap_bytes": 223544,
+        "excess_tracked_heap_bytes_after_drop_result": 209720,
+        "released_tracked_heap_bytes_with_last_result": 88744
+      }
+    },
+    {
+      "file": "candidate-factor.log",
+      "derived": {
+        "retained_header_cells": 2356,
+        "excess_header_cells_after_drop_result": 3104,
+        "retained_tracked_heap_bytes": 225040,
+        "excess_tracked_heap_bytes_after_drop_result": 209536,
+        "released_tracked_heap_bytes_with_last_result": 92704
+      }
+    },
+    {
+      "file": "candidate-ordered.log",
+      "derived": {
+        "retained_header_cells": 2356,
+        "excess_header_cells_after_drop_result": 3104,
+        "retained_tracked_heap_bytes": 225040,
+        "excess_tracked_heap_bytes_after_drop_result": 209536,
+        "released_tracked_heap_bytes_with_last_result": 92824
+      }
+    }
+  ]
+}

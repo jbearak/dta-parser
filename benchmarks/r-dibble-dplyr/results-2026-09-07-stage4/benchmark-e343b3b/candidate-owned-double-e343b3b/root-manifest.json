@@ -1,0 +1,97 @@
+{
+  "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+  "mode": "candidate",
+  "iterations": 7,
+  "runner_source_sha": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+  "runner_sha256": {
+    "helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "owned-double-helpers.R": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2",
+    "owned-double.R": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685",
+    "owned-double-memory.R": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416"
+  },
+  "started_utc": "2026-09-07T06:53:54.656856+00:00",
+  "measurement_window": "Implementation and reviewers paused builds/tests; benchmark processes ran sequentially.",
+  "outputs": {
+    "arithmetic-where-cost-100000.csv": {
+      "rows": 1,
+      "sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28"
+    },
+    "arithmetic-where-cost-1000000.csv": {
+      "rows": 1,
+      "sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77"
+    },
+    "owned-after-read.csv": {
+      "rows": 30,
+      "sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb"
+    },
+    "owned-double-writes.csv": {
+      "rows": 6,
+      "sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea"
+    },
+    "owned-double.csv": {
+      "rows": 46,
+      "sha256": "f5778e0bb53732131a52423736e05805a2c0da5edfca0b1289bd1468b80ffa3b"
+    },
+    "snapshot-cost-100000.csv": {
+      "rows": 1,
+      "sha256": "2657d2b5fe722c5eb2fdfb816ecdcb19ad967a990df896f6d3170bb83f154c9e"
+    },
+    "snapshot-cost-1000000.csv": {
+      "rows": 1,
+      "sha256": "7b0f366d7d6d6a79280a60444b4b7c68eda655598914c8b1baf31f06e17d8cc4"
+    }
+  },
+  "manifest_utc": "2026-09-07T06:57:10.140673+00:00",
+  "memory_scope": "Whole-process RSS includes startup, fixtures and validation; retained vector heap is separate.",
+  "memory_cases": [
+    {
+      "operation": "rename",
+      "rows": 100000,
+      "file": "memory-rename-100000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 230342656,
+      "sha256": "db3f01c4254a8b336e5840100e26bc58e6da1bea5c7b1a0ed8cc2b7ef77d24c6"
+    },
+    {
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "memory-pipeline_five-100000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 231096320,
+      "sha256": "758075c0ec3b7b9e5e21c01d16b8222386a7a71179134d507216b34ae77e0d60"
+    },
+    {
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "memory-pipeline_50-100000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 232046592,
+      "sha256": "442356453c3502f9a11c54d06924c52137c0f4aca4292f5698b15af9ca01937c"
+    },
+    {
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "memory-rename-1000000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 1244381184,
+      "sha256": "f02d01dc47b254d6ff836594c5ce02c0ae5d29fe60b226f5aaa3659a047ab666"
+    },
+    {
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "memory-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 1232830464,
+      "sha256": "60568d0b56db58721ca2b981610fb9295aa0395f5bb133344c1b9d0c75d57055"
+    },
+    {
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "memory-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "maximum_resident_set_size_bytes": 1256767488,
+      "sha256": "50e24f7df88c69a94e50cab039cb727171a1d732ab913c6fe54a780a3d405bc7"
+    }
+  ]
+}
