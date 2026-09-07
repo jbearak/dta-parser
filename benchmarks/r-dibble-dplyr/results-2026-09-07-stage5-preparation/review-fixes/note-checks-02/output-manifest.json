@@ -1,0 +1,34 @@
+{
+  "excluded_receipt": "completed-receipt.json",
+  "excluded_self": "output-manifest.json",
+  "files": [
+    {
+      "bytes": 848,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-02/corruption-tests.log",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-02/corruption-tests.log",
+      "sha256": "beb6534884635096c9105021018c30ed335b6ffede1fba65b28b3df6cbdb13ad"
+    },
+    {
+      "bytes": 352,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-02/current-note-check.log",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-02/current-note-check.log",
+      "sha256": "e545b15840326eb5cc866a4d115571de06298efec4d13e7fb874076cfcc18940"
+    },
+    {
+      "bytes": 960,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-02/execution-result.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-02/execution-result.json",
+      "sha256": "f97bae61046add96587ee3bf102497e0fa88d7e9ba746b5d49fff0f760f43580"
+    },
+    {
+      "bytes": 5821,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-02/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-02/inputs-before.json",
+      "sha256": "7f90720ed53b821bb4178e146911e13776ff5f414309800c12e51762219fa445"
+    }
+  ]
+}

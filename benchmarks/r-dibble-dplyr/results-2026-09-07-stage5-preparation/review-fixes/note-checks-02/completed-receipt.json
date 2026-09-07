@@ -1,0 +1,11 @@
+{
+  "changed_inputs": [],
+  "manifest": {
+    "bytes": 2054,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-02/output-manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-02/output-manifest.json",
+    "sha256": "3b6e60379a15fd1a67b8f6b630d2a191f904936c4868cd0ea7e61657848b87e0"
+  },
+  "status": "complete"
+}

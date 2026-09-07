@@ -1,0 +1,13 @@
+test_both_notes_changed_identically (__main__.NoteConsistencyTests.test_both_notes_changed_identically) ... ok
+test_changed_note_mode (__main__.NoteConsistencyTests.test_changed_note_mode) ... ok
+test_changed_promoted_note (__main__.NoteConsistencyTests.test_changed_promoted_note) ... ok
+test_changed_raw_note (__main__.NoteConsistencyTests.test_changed_raw_note) ... ok
+test_current_notes_pass (__main__.NoteConsistencyTests.test_current_notes_pass) ... ok
+test_each_pinned_record_changed (__main__.NoteConsistencyTests.test_each_pinned_record_changed) ... ok
+test_identical_note_symlink (__main__.NoteConsistencyTests.test_identical_note_symlink) ... ok
+test_missing_promoted_note (__main__.NoteConsistencyTests.test_missing_promoted_note) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.017s
+
+OK
