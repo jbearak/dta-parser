@@ -1,0 +1,33 @@
+{
+  "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "baseline_source_sha": "fd069a36832ed7c1bdedeed52a4281ecabb36e25",
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+  "test_exit_code": 1,
+  "post_install_guard_exit_code": 0,
+  "tests_failed_blocks_skips": [
+    499,
+    4,
+    2
+  ],
+  "baseline_tests_failed_blocks_skips": [
+    499,
+    4,
+    2
+  ],
+  "complete_test_log_matches_baseline": true,
+  "prefix_matches_exact_identity_header": true,
+  "column_reallocation_warning_present": false,
+  "source_file_count": 454,
+  "downstream_state_unchanged": true,
+  "input_files_unchanged": true,
+  "driver_sha256": "903e681950f0f43bd99a099bb21697be58c40f3552e6a21d98fe80167846424a",
+  "files": {
+    "after.json": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+    "before.json": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+    "driver.R": "138abec9dffd56adad85aca1fe16466443bd19a8264b553b7003ec5a9acca111",
+    "input-identities.json": "1e6c1f93193c520e6069eb97b6dc3998ea38197f01a540529ceea513216d354b",
+    "post-install-guard.log": "ce3eceb79d2eafb8aa6810785bfb14ecd189503efeb1a7c286016c01fad642c9",
+    "test.log": "9a5c621075c938c6b09721280b8bd594a7e1f7bcada30091cfae83b28a1c9f78"
+  },
+  "scope": "Isolated-library R shadow-backend parity only; no renv activation/install/restore or source modification"
+}
