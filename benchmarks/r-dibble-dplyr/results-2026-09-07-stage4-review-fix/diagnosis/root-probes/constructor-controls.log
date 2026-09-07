@@ -1,0 +1,209 @@
+$one_element
+$one_element$before
+$one_element$before$backing
+[1] "0xbf1217188"
+
+$one_element$before$shared
+[1] TRUE
+
+$one_element$before$exposed
+[1] FALSE
+
+$one_element$before$bytes
+[1] 8
+
+$one_element$before$depth
+[1] 1
+
+
+$one_element$after
+$one_element$after$backing
+[1] "0xbf2d0ccf0"
+
+$one_element$after$shared
+[1] FALSE
+
+$one_element$after$exposed
+[1] FALSE
+
+$one_element$after$bytes
+[1] 8
+
+$one_element$after$depth
+[1] 1
+
+
+$one_element$copied_bytes
+[1] 8
+
+$one_element$backing_stable
+[1] FALSE
+
+$one_element$correct
+[1] TRUE
+
+
+$private_capture
+$private_capture$before
+$private_capture$before$backing
+[1] "0xbf0e5c000"
+
+$private_capture$before$shared
+[1] FALSE
+
+$private_capture$before$exposed
+[1] FALSE
+
+$private_capture$before$bytes
+[1] 8e+05
+
+$private_capture$before$depth
+[1] 1
+
+
+$private_capture$after
+$private_capture$after$backing
+[1] "0xbf0e5c000"
+
+$private_capture$after$shared
+[1] FALSE
+
+$private_capture$after$exposed
+[1] FALSE
+
+$private_capture$after$bytes
+[1] 8e+05
+
+$private_capture$after$depth
+[1] 1
+
+
+$private_capture$copied_bytes
+[1] 0
+
+$private_capture$backing_stable
+[1] TRUE
+
+$private_capture$correct
+[1] TRUE
+
+
+$retained_caller
+$retained_caller$before
+$retained_caller$before$backing
+[1] "0xbf0f20000"
+
+$retained_caller$before$shared
+[1] TRUE
+
+$retained_caller$before$exposed
+[1] FALSE
+
+$retained_caller$before$bytes
+[1] 8e+05
+
+$retained_caller$before$depth
+[1] 1
+
+
+$retained_caller$after
+$retained_caller$after$backing
+[1] "0xbf0800000"
+
+$retained_caller$after$shared
+[1] FALSE
+
+$retained_caller$after$exposed
+[1] FALSE
+
+$retained_caller$after$bytes
+[1] 8e+05
+
+$retained_caller$after$depth
+[1] 1
+
+
+$retained_caller$copied_bytes
+[1] 8e+05
+
+$retained_caller$backing_stable
+[1] FALSE
+
+$retained_caller$correct
+[1] TRUE
+
+
+$attribute_steps
+$attribute_steps$capture
+$attribute_steps$capture$backing
+[1] "0xbf1000468"
+
+$attribute_steps$capture$shared
+[1] FALSE
+
+$attribute_steps$capture$exposed
+[1] FALSE
+
+$attribute_steps$capture$bytes
+[1] 8
+
+$attribute_steps$capture$depth
+[1] 1
+
+
+$attribute_steps$storage
+$attribute_steps$storage$backing
+[1] "0xbf1000468"
+
+$attribute_steps$storage$shared
+[1] TRUE
+
+$attribute_steps$storage$exposed
+[1] FALSE
+
+$attribute_steps$storage$bytes
+[1] 8
+
+$attribute_steps$storage$depth
+[1] 1
+
+
+$attribute_steps$class
+$attribute_steps$class$backing
+[1] "0xbf1000468"
+
+$attribute_steps$class$shared
+[1] TRUE
+
+$attribute_steps$class$exposed
+[1] FALSE
+
+$attribute_steps$class$bytes
+[1] 8
+
+$attribute_steps$class$depth
+[1] 1
+
+
+$attribute_steps$final_capture
+$attribute_steps$final_capture$backing
+[1] "0xbf1000468"
+
+$attribute_steps$final_capture$shared
+[1] TRUE
+
+$attribute_steps$final_capture$exposed
+[1] FALSE
+
+$attribute_steps$final_capture$bytes
+[1] 8
+
+$attribute_steps$final_capture$depth
+[1] 1
+
+
+
+$retained_input_unchanged
+[1] TRUE
+
+PASS: constructor-specific sticky sharing reproduced; generic private capture stays private.

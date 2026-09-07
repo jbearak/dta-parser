@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "/private/tmp/dta-direct-stage4-validation/check-fertility-candidate.py",
+    "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+    "/private/tmp/dta-direct-stage4-validation/fertility-c8ca0a4"
+  ],
+  "log": "/private/tmp/dta-direct-stage4-validation/fertility-c8ca0a4-launch.log",
+  "scope": "Previously reviewed isolated-library driver; no renv activation or installation."
+}

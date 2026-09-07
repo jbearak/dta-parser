@@ -1,0 +1,397 @@
+diff --git a/benchmarks/r-dibble-dplyr/run-atomic-qualification.py b/benchmarks/r-dibble-dplyr/run-atomic-qualification.py
+index fa46ad5..219b3c6 100644
+--- a/benchmarks/r-dibble-dplyr/run-atomic-qualification.py
++++ b/benchmarks/r-dibble-dplyr/run-atomic-qualification.py
+@@ -38,6 +38,11 @@ def digest(path):
+ 
+ 
+ def verify_csv(path, fields, expected):
++    """Require the complete unique case set and finite allocation/timing data.
++
++    This establishes measurement integrity. Comparing revisions and deciding
++    performance acceptance remain separate from a structurally valid matrix.
++    """
+     with path.open() as file:
+         rows = list(csv.DictReader(file))
+     observed = [tuple(row[field] for field in fields) for row in rows]
+@@ -55,6 +60,13 @@ def verify_csv(path, fields, expected):
+ 
+ 
+ def main():
++    """Run fresh operations or append memory evidence to a verified operation set.
++
++    Package source and runner commits are separate identities. Each R process
++    verifies its installation/DLL; this driver binds committed executable bytes
++    and checks emitted identities and results before publishing its manifest.
++    Failed child logs remain intact, and existing memory logs cannot be reused.
++    """
+     parser = argparse.ArgumentParser()
+     parser.add_argument("kind", choices=["operations", "memory"])
+     parser.add_argument("repo", type=Path)
+@@ -80,6 +92,7 @@ def main():
+     started = datetime.datetime.now(datetime.timezone.utc).isoformat()
+ 
+     def check_identity(text):
++        """Require one exact runtime identity and every expected R dependency."""
+         require(re.findall(r"^runner_md5 .*", text, re.MULTILINE) == md5_lines,
+                 "Runtime runner dependency identity mismatch")
+         for key, value in [("source_sha", args.source_sha), ("library", str(library)), ("mode", args.mode)]:
+@@ -87,6 +100,7 @@ def main():
+                     f"Runtime {key} identity mismatch")
+ 
+     def run(command, log):
++        """Preserve a new combined child log even when its command fails."""
+         with log.open("x") as file:
+             result = subprocess.run(command, cwd=repo, stdout=file, stderr=subprocess.STDOUT)
+         require(result.returncode == 0, f"Exit {result.returncode}; see {log}")
+diff --git a/benchmarks/r-dibble-dplyr/run-heap-qualification.py b/benchmarks/r-dibble-dplyr/run-heap-qualification.py
+index dbcd5fd..27a87c7 100644
+--- a/benchmarks/r-dibble-dplyr/run-heap-qualification.py
++++ b/benchmarks/r-dibble-dplyr/run-heap-qualification.py
+@@ -33,6 +33,12 @@ CHECKPOINTS = ["prefixture", "prior", "after_result", "after_drop_source", "afte
+ 
+ 
+ def verify_metrics(text, log):
++    """Recompute retained heap from five ordered checkpoints and raw cell counts.
++
++    Infer the unique header-cell size consistent with R's rounded MB reports,
++    then verify every reported delta independently. These retained-heap values
++    do not measure peak RSS or elapsed time.
++    """
+     metrics = {}
+     for field in METRICS:
+         found = re.findall(rf"^heap_{field} ([-+0-9.eE]+)\s*$", text, re.MULTILINE)
+@@ -65,6 +71,12 @@ def verify_metrics(text, log):
+ 
+ 
+ def main():
++    """Bind source/runner identities and retain all 36 fresh-process heap cases.
++
++    Each R child checks the requested installation and emits its dependency
++    identity. Failed logs survive; a manifest is published only after the full
++    case matrix, derived metrics and unchanged source/output hashes pass.
++    """
+     parser = argparse.ArgumentParser()
+     parser.add_argument("repo", type=Path)
+     parser.add_argument("output", type=Path)
+diff --git a/benchmarks/r-reference-mutation/README.md b/benchmarks/r-reference-mutation/README.md
+index dc4c2cf..f208132 100644
+--- a/benchmarks/r-reference-mutation/README.md
++++ b/benchmarks/r-reference-mutation/README.md
+@@ -31,6 +31,15 @@ lower-level native integer writes; public factor replacement retains its
+ existing rejection. Public strings/logicals and table selectors for all new
+ types are qualified by `benchmarks/r-dibble-dplyr/owned-atomic.R`.
+ 
++The output preflight rejects every existing entry, including unrelated files,
++hidden files and empty child directories, before writing identity or results.
++`python3 benchmarks/r-reference-mutation/test-owned-atoms-preflight.py LIBRARY
++SOURCE_SHA NEW_EVIDENCE_DIRECTORY` checks that boundary with the real R runner
++and exact installed package. A clearly labelled synthetic git command stops an
++admitted empty-directory control before any measured workload. Rejected cases
++must leave every fixture byte and mode unchanged; child logs and a manifest are
++retained. This is a preflight test, not native performance qualification.
++
+ Stage 3 retains all 159 original assertion expressions and every numerical
+ bound. Fixtures now assign `reserve_columns()` before generation, outside the
+ measured operation, and verify the original base-frame dispatch and capacity.
+diff --git a/benchmarks/r-reference-mutation/owned-atoms.R b/benchmarks/r-reference-mutation/owned-atoms.R
+index b4988b4..3bf59cf 100644
+--- a/benchmarks/r-reference-mutation/owned-atoms.R
++++ b/benchmarks/r-reference-mutation/owned-atoms.R
+@@ -15,6 +15,10 @@ stopifnot(identical(normalizePath(find.package("dtatools")), package_path),
+ output <- file.path(args[[3L]], "owned-native-atoms.csv")
+ identity <- file.path(args[[3L]], "owned-native-atoms-session.txt")
+ stopifnot(!file.exists(output), !file.exists(identity))
++if (file.access(args[[3L]], 4L) != 0L ||
++    length(list.files(args[[3L]], all.files = TRUE, no.. = TRUE)) != 0L) {
++    stop("Output directory must be readable and empty before qualification")
++}
+ paths <- c("benchmarks/r-reference-mutation/owned-atoms.R", "benchmarks/r-dibble-dplyr/helpers.R")
+ checked_line <- function(command, arguments, pattern) {
+     value <- suppressWarnings(system2(command, arguments, stdout = TRUE))
+diff --git a/docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md b/docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md
+index ba5ef80..6b8ead8 100644
+--- a/docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md
++++ b/docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md
+@@ -56,6 +56,17 @@ Names replacement with object dispatch or attributed names retains the R setter.
+ Declined assignments remain in the original caller frame; a fallback setter
+ helper would add a live binding and copy compact dictionary storage again.
+ Public attribute replacement and conservative foreign fallbacks are unchanged.
++The public constructor can complete unnamed construction in one native call
++after storage normalization has evaluated its declaration. It captures ordinary
++borrowed values before replacing metadata, and forks an existing owned input
++without clearing its real sharing state. The new handle remains unpublished
++through these callback-free edits, so temporary metadata handles do not impose
++a full-payload copy on its first private write. Names, prototypes, foreign
++ALTREP readers, S4 values and callback-capable declarations retain the original
++path. Internal restoration still captures before forcing storage or prototype
++promises. A width calculation releases UTF-8 translation's temporary R storage
++after computing the integer byte count; no translated pointer escapes the
++helper or accumulates across the column scan.
+ Native readers adopt completed ordinary logical, integer/factor and character
+ buffers without an additional capture. Writers retain exact owned string
+ allocations across later metadata callbacks; their internal pointers never
+diff --git a/docs/plans/dibble-result-performance-progress.md b/docs/plans/dibble-result-performance-progress.md
+index eb192e0..ee171dd 100644
+--- a/docs/plans/dibble-result-performance-progress.md
++++ b/docs/plans/dibble-result-performance-progress.md
+@@ -9,6 +9,30 @@ decisions are recorded in that plan.
+ 
+ ## Stages 1 through 3 complete, Stage 4 active
+ 
++The evidence and additive review supplement have merged as
++[PR #196](https://github.com/jbearak/dta-parser/pull/196) and
++[PR #197](https://github.com/jbearak/dta-parser/pull/197). The implementation
++[PR #195](https://github.com/jbearak/dta-parser/pull/195) remains open. Its actual
++34-file review at `75b0c54` found an incomplete native-runner output guard and
++an unnecessary first-write copy in fresh unnamed string construction. A width
++conversion lifetime comment also reproduced: Latin-1 scans retained temporary
++R conversion buffers until the enclosing native call returned. The focused
++fixes reject all nonempty destinations, construct callback-free public strings
++on one unpublished native handle, and release each width conversion buffer.
++Internal promise ordering, names dispatch and conservative dictionary/foreign
++fallbacks remain required. Both nested reviewers assess these changes; a new
++exact source archive, local gates and affected performance qualification are
++required before their acceptance. Existing dated reports and both merged
++evidence trees remain unchanged.
++
++Useful ownership, temporary-memory and runner-integrity documentation is being
++added to active code. CodeRabbit could not provide the function list underlying
++its advisory 20.15% docstring report; this work does not invent that inventory
++or change the configured threshold. The eleven existing Cargo package warnings,
++three R check warnings and two notes remain disclosed. The twelve measured
++base-R read costs, three required Stage 6 filter fixes, remaining stages and
++final actual downstream renv install/test/original-lock restore are still open.
++
+ Stage 3 merged normally as [PR #194](https://github.com/jbearak/dta-parser/pull/194)
+ at 2026-09-07 02:14:48 UTC, producing
+ [`ec10a6ac34602f3bd691e8043019c1b479babda4`](https://github.com/jbearak/dta-parser/commit/ec10a6ac34602f3bd691e8043019c1b479babda4).
+diff --git a/r-package/dtatools/R/dta-string.R b/r-package/dtatools/R/dta-string.R
+index 243094e..25ec905 100644
+--- a/r-package/dtatools/R/dta-string.R
++++ b/r-package/dtatools/R/dta-string.R
+@@ -24,7 +24,7 @@ dta_string <- function(x = character(), storage = NULL) {
+     x <- enc2utf8(x)
+     required <- .dta_string_required_width(x)
+     storage <- .normalize_dta_string_storage(storage, required)
+-    result <- .new_dta_string(x, storage)
++    result <- .new_dta_string(x, storage, .validated_storage = TRUE)
+     # A foreign reader or declaration callback can change borrowed values
+     # after the initial validation. Check the values actually captured.
+     if (!.is_unmaterialized_dictstring(result)) {
+@@ -67,8 +67,16 @@ dta_string <- function(x = character(), storage = NULL) {
+     storage
+ }
+ 
+-.new_dta_string <- function(x, storage, prototype = NULL) {
++.new_dta_string <- function(x, storage, prototype = NULL, .validated_storage = FALSE) {
+     value_names <- names(x)
++    if (.validated_storage && missing(prototype) && is.null(value_names)) {
++        # Keep a fresh constructor's metadata edits inside one native call.
++        # Only dta_string() supplies this proof: storage is already evaluated
++        # by normalization and no prototype promise can precede capture.
++        # Internal restoration keeps its original promise/callback order.
++        constructed <- .Call(C_dtatools_construct_string, x, storage)
++        if (!is.null(constructed)) return(constructed)
++    }
+     x <- .Call(C_dtatools_capture_string, x)
+     if (!is.null(prototype)) {
+         # Attribute replacement materializes the dictionary-string ALTREP used
+diff --git a/r-package/dtatools/src/init.c b/r-package/dtatools/src/init.c
+index 91cac01..667bee8 100644
+--- a/r-package/dtatools/src/init.c
++++ b/r-package/dtatools/src/init.c
+@@ -3,6 +3,7 @@
+ #include <Rinternals.h>
+ #include <R_ext/Rdynload.h>
+ #include <R_ext/Altrep.h>
++#include <R_ext/Memory.h>
+ #include <R_ext/GraphicsEngine.h>
+ #include <R_ext/Utils.h>
+ #include <R_ext/Visibility.h>
+@@ -1184,6 +1185,34 @@ SEXP C_dtatools_capture_string(SEXP value) {
+     return owned_fork(value);
+ }
+ 
++/* Complete callback-free, unnamed construction on one unpublished handle.
++   Borrowed values are captured before metadata is removed; existing owned
++   inputs still fork, retaining their real aliases. NULL declines cases whose
++   names dispatch, prototype restoration or foreign readers belong to R's
++   existing constructor path. Foreign reads could also change metadata after
++   qualification. Never clear sharing on a published record. */
++SEXP C_dtatools_construct_string(SEXP value, SEXP storage) {
++    if (TYPEOF(value) != STRSXP || Rf_isS4(value) ||
++        (ALTREP(value) && !owned_column(value)) ||
++        Rf_getAttrib(value, R_NamesSymbol) != R_NilValue ||
++        TYPEOF(storage) != STRSXP || ALTREP(storage) || ANY_ATTRIB(storage) ||
++        XLENGTH(storage) != 1 || STRING_ELT(storage, 0) == NA_STRING ||
++        unmaterialized_dictstring_source(value) != R_NilValue) return R_NilValue;
++    SEXP result = PROTECT(owned_fork(value));
++    Rf_setAttrib(result, R_ClassSymbol, R_NilValue);
++    CLEAR_ATTRIB(result);
++    Rf_setAttrib(result, Rf_install("stata.string.storage"), storage);
++    SEXP classes = PROTECT(Rf_allocVector(STRSXP, 3));
++    SET_STRING_ELT(classes, 0, Rf_mkChar("dta_string"));
++    SET_STRING_ELT(classes, 1, Rf_mkChar("vctrs_vctr"));
++    SET_STRING_ELT(classes, 2, Rf_mkChar("character"));
++    Rf_setAttrib(result, R_ClassSymbol, classes);
++    if (owned_flags(result)[OWNED_MAX_WIDTH] < 0 ||
++        owned_flags(result)[OWNED_NO_NA] < 0) owned_scan_strings(result);
++    UNPROTECT(2);
++    return result;
++}
++
+ SEXP C_dtatools_write_string_plan(SEXP value) {
+     if (TYPEOF(value) != STRSXP) {
+         Rf_error("internal string planning requires a character vector");
+@@ -8314,6 +8343,7 @@ static const R_CallMethodDef CallEntries[] = {
+     {"C_dtatools_owned_string_width", (DL_FUNC) &C_dtatools_owned_string_width, 1},
+     {"C_dtatools_owned_string_attribute", (DL_FUNC) &C_dtatools_owned_string_attribute, 3},
+     {"C_dtatools_capture_string", (DL_FUNC) &C_dtatools_capture_string, 1},
++    {"C_dtatools_construct_string", (DL_FUNC) &C_dtatools_construct_string, 2},
+     {"C_dtatools_owned_utf8_ready", (DL_FUNC) &C_dtatools_owned_utf8_ready, 1},
+     {"C_dtatools_owned_scan_stats", (DL_FUNC) &C_dtatools_owned_scan_stats, 1},
+     {"C_dtatools_callback_length", (DL_FUNC) &C_dtatools_callback_length, 2},
+diff --git a/r-package/dtatools/src/owned-columns.h b/r-package/dtatools/src/owned-columns.h
+index dd7c268..2b94fc6 100644
+--- a/r-package/dtatools/src/owned-columns.h
++++ b/r-package/dtatools/src/owned-columns.h
+@@ -145,8 +145,14 @@ static int owned_supported(SEXP value) {
+ /* Match nchar(enc2utf8(x), type = "bytes"), including byte-marked strings.
+    The ordinary payload cannot call back while these facts are computed. */
+ static int owned_string_width(SEXP value) {
+-    return Rf_getCharCE(value) == CE_BYTES ? LENGTH(value) :
+-        (int) strlen(Rf_translateCharUTF8(value));
++    if (Rf_getCharCE(value) == CE_BYTES) return LENGTH(value);
++    /* Translation can allocate R temporary storage for each encoded element.
++       Only the byte count escapes, so release that storage before the next
++       element instead of retaining every conversion until .Call returns. */
++    const void *marker = vmaxget();
++    int width = (int) strlen(Rf_translateCharUTF8(value));
++    vmaxset(marker);
++    return width;
+ }
+ 
+ static void owned_scan_strings(SEXP value) {
+@@ -168,6 +174,9 @@ static void owned_scan_strings(SEXP value) {
+     UNPROTECT(1);
+ }
+ 
++/* Copy values into a new private record, retaining metadata only on its handle.
++   Foreign element/region readers may call R; the source remains rooted by the
++   caller and facts are inherited only from unexposed internal owned storage. */
+ static SEXP owned_capture(SEXP value) {
+     R_xlen_t length = XLENGTH(value);
+     SEXP values = PROTECT(Rf_allocVector(TYPEOF(value), length));
+@@ -205,6 +214,9 @@ static SEXP owned_capture(SEXP value) {
+ 
+ static SEXP owned_capture_real(SEXP value) { return owned_capture(value); }
+ 
++/* Return an isolated metadata handle. Share only tracked, unexposed backing and
++   permanently mark that record shared; otherwise capture values. Dropping a
++   temporary fork cannot prove that every other handle has disappeared. */
+ static SEXP owned_fork(SEXP value) {
+     if (!owned_column(value) || owned_flags(value)[OWNED_EXPOSED]) return owned_capture(value);
+     SEXP result = PROTECT(R_new_altrep(owned_class(TYPEOF(value)), R_altrep_data1(value), R_NilValue));
+diff --git a/r-package/dtatools/tests/testthat/test-owned-atoms.R b/r-package/dtatools/tests/testthat/test-owned-atoms.R
+index 72c14f4..892c621 100644
+--- a/r-package/dtatools/tests/testthat/test-owned-atoms.R
++++ b/r-package/dtatools/tests/testthat/test-owned-atoms.R
+@@ -729,6 +729,97 @@ test_that("Arrow readers adopt fresh logical and factor allocations", {
+     }
+ })
+ 
++test_that("fresh unnamed string construction keeps its first write private", {
++    for (rows in c(1L, 64L, 1000L)) for (collect in c(FALSE, TRUE)) {
++        raw <- rep("aa", rows)
++        value <- dta_string(raw, "str4")
++        if (collect) gc()
++        before <- owned_atom_info(value)
++        expect_false(before$shared)
++        .Call(C_dtatools_native_copy_stats, TRUE)
++        .Call(C_dtatools_owned_set_string, value, 1L, "zz")
++        copies <- .Call(C_dtatools_native_copy_stats, FALSE)
++        expect_identical(copies[["owned_capture"]], 0)
++        expect_identical(owned_atom_info(value)$backing, before$backing)
++        expect_identical(as.character(value), c("zz", rep("aa", rows - 1L)))
++        expect_identical(raw, rep("aa", rows))
++        expect_identical(attributes(value), list(stata.string.storage = "str4",
++            class = c("dta_string", "vctrs_vctr", "character")))
++    }
++})
++
++test_that("constructing from an owned string preserves real aliases in both directions", {
++    source <- dta_string(rep("aa", 64L), "str4")
++    result <- dta_string(source, "str8")
++    expect_identical(owned_atom_info(result)$backing, owned_atom_info(source)$backing)
++    expect_true(owned_atom_info(result)$shared)
++    .Call(C_dtatools_owned_set_string, result, 1L, "longer")
++    expect_identical(as.character(source), rep("aa", 64L))
++    .Call(C_dtatools_owned_set_string, source, 2L, "bb")
++    expect_identical(as.character(result), c("longer", rep("aa", 63L)))
++    expect_identical(attr(source, "stata.string.storage"), "str4")
++    expect_identical(attr(result, "stata.string.storage"), "str8")
++})
++
++test_that("internal string construction captures before forcing metadata promises", {
++    skip_if_not_installed("data.table")
++    for (argument in c("storage", "prototype")) {
++        foreign <- data.table::data.table(x = rep("aa", 64L))
++        change <- function(result) {
++            data.table::set(foreign, i = 1L, j = "x", value = "bb")
++            gc()
++            result
++        }
++        value <- if (argument == "storage") .new_dta_string(foreign$x, change("str4")) else
++            .new_dta_string(foreign$x, "str4", prototype = change(NULL))
++        expect_identical(as.character(value), rep("aa", 64L))
++        expect_identical(foreign$x, c("bb", rep("aa", 63L)))
++        .Call(C_dtatools_owned_set_string, value, 2L, "cc")
++        expect_identical(foreign$x, c("bb", rep("aa", 63L)))
++    }
++})
++
++test_that("named string construction preserves replacement dispatch and escaped aliases", {
++    escaped <- NULL
++    calls <- 0L
++    method <- function(x, value) {
++        calls <<- calls + 1L
++        if (is.null(escaped)) escaped <<- x
++        attr(x, "names") <- paste0("custom-", value)
++        x
++    }
++    table <- get(".__S3MethodsTable__.", envir = baseenv())
++    registerS3method("names<-", "dta_string", method, envir = baseenv())
++    withr::defer(rm(list = "names<-.dta_string", envir = table))
++    raw <- stats::setNames(rep("aa", 64L), as.character(seq_len(64L)))
++    value <- dta_string(raw, "str4")
++    expect_identical(calls, 1L)
++    expect_identical(names(value), paste0("custom-", names(raw)))
++    # Generic names assignment can return R's foreign metadata wrapper, whose
++    # established mutation API is ordinary R replacement.
++    value[1L] <- "bb"
++    expect_identical(unname(as.character(escaped)), rep("aa", 64L))
++    escaped[2L] <- "cc"
++    expect_identical(unname(as.character(value)), c("bb", rep("aa", 63L)))
++    expect_identical(unname(raw), rep("aa", 64L))
++})
++
++test_that("owned width scans preserve encoded bytes and missingness", {
++    latin <- iconv("\u00e9\u00f1", to = "latin1")
++    Encoding(latin) <- "latin1"
++    bytes <- latin
++    Encoding(bytes) <- "bytes"
++    for (text in list("ascii", enc2utf8(latin), latin, bytes)) {
++        raw <- rep(text, 1000L)
++        value <- owned_atom_capture(raw)
++        expected <- max(nchar(enc2utf8(raw), type = "bytes"))
++        expect_identical(.Call(C_dtatools_owned_string_width, value), expected)
++        expect_identical(value, raw)
++        .Call(C_dtatools_owned_set_string, value, 1L, NA_character_)
++        expect_true(is.na(.Call(C_dtatools_owned_string_width, value)))
++    }
++})
++
+ test_that("large string constructors and restoration retain owned facts", {
+     for (rows in c(63L, 64L, 1000L)) {
+         raw <- rep(c("alpha", "", "\u00e9"), length.out = rows)

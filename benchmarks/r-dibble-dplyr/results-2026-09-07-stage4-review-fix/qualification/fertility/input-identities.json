@@ -1,0 +1,16 @@
+{
+  "inputs": {
+    "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "/private/tmp/dta-direct-stage4-validation/check-fertility-candidate.py": "903e681950f0f43bd99a099bb21697be58c40f3552e6a21d98fe80167846424a",
+    "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-stage2-baseline.log": "f85c076a6d20983a155305522d11fa3da1c038f20283ee1a979f4726521d8708",
+    "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-before-exact-45f2ba4.json": "44fd497ae6ff502363301c3ddc82083f7d963305b08853abfe445d88b398f0dd",
+    "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library/dtatools/libs/dtatools.so": "7839719fd30f468e9407e9378add8437eb2aa1e9c426e217b0f1967765944d1f"
+  },
+  "helper_revision": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+  "baseline_comparison_annotation": {
+    "file_changes": [],
+    "state_changes": {}
+  },
+  "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library"
+}

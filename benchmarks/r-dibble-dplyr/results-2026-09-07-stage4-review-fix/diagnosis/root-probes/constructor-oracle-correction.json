@@ -1,0 +1,14 @@
+{
+  "original_expected_type": "integer: rows is integer and .Machine$sizeof.pointer is integer",
+  "native_counter_type": "double: REALSXP copy counter",
+  "diagnostic": "identical(8, 1L * .Machine$sizeof.pointer) FALSE while numerical equality TRUE",
+  "observed_candidate": "All three original candidate cases already showed exactly 8*n initial captured bytes, zero first-write capture, stable backing, correct values and unchanged source. Only the expected type assertion failed.",
+  "correction": "Convert the expected row count to double before comparing exact native byte counts. Same assertion and all other behavior checks retained.",
+  "coordinator_change": "Distinct output path and script name; persist input identities before first child so failed attempts retain them.",
+  "files": {
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/constructor-final.R": "547b9eeda98cb312a508baa89e7ea541ff9f3197122a940b6f8e301ee22b745a",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/constructor-final-v2.R": "b3f18fb813130e03f0ece3030caa5987f7fe1e4771135e3fd0da2e85bc804296",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/run-final-probes.py": "da4cb5c5b4298b7686648e0522fa77aebe6675cceb533881fb3ae7e1e744f859",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/run-final-probes-v2.py": "9ea26575e9adae83d3a078cb08873e89ec6c3322a0a0fa20d0539bb956be94c6"
+  }
+}

@@ -1,0 +1,97 @@
+$source
+[1] "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15"
+
+$dll_md5
+[1] "18837c14dcd6597169dc0e3d99186dab"
+
+$cases
+$cases[[1]]
+$cases[[1]]$case
+[1] "ascii"
+
+$cases[[1]]$width
+[1] 3
+
+$cases[[1]]$retained_vmax
+[1] FALSE
+
+$cases[[1]]$scans
+[1]    1 1000
+
+
+$cases[[2]]
+$cases[[2]]$case
+[1] "latin1"
+
+$cases[[2]]$width
+[1] 4
+
+$cases[[2]]$retained_vmax
+[1] TRUE
+
+$cases[[2]]$scans
+[1]    1 1000
+
+
+$cases[[3]]
+$cases[[3]]$case
+[1] "utf8"
+
+$cases[[3]]$width
+[1] 4
+
+$cases[[3]]$retained_vmax
+[1] FALSE
+
+$cases[[3]]$scans
+[1]    1 1000
+
+
+$cases[[4]]
+$cases[[4]]$case
+[1] "bytes"
+
+$cases[[4]]$width
+[1] 2
+
+$cases[[4]]$retained_vmax
+[1] FALSE
+
+$cases[[4]]$scans
+[1]    1 1000
+
+
+$cases[[5]]
+$cases[[5]]$case
+[1] "latin1_na"
+
+$cases[[5]]$width
+[1] NA
+
+$cases[[5]]$retained_vmax
+[1] TRUE
+
+$cases[[5]]$scans
+[1]    1 1000
+
+
+$cases[[6]]
+$cases[[6]]$case
+[1] "empty"
+
+$cases[[6]]$width
+[1] 1
+
+$cases[[6]]$retained_vmax
+[1] FALSE
+
+$cases[[6]]$scans
+[1] 1 0
+
+
+
+$temporary_storage_released
+[1] FALSE
+
+Error: Actual package width scan retains R temporary conversion storage until .Call returns
+Execution halted

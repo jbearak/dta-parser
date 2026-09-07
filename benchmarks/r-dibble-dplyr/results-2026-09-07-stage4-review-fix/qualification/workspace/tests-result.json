@@ -1,0 +1,19 @@
+{
+  "name": "tests",
+  "command": [
+    "cargo",
+    "test",
+    "--workspace",
+    "--all-targets",
+    "--locked",
+    "--offline"
+  ],
+  "started_utc": "2026-09-07T10:41:38.560761+00:00",
+  "elapsed_seconds": 24.29418437500135,
+  "exit_code": 0,
+  "before_sha256": "6deaf41c67605bbbe5d8845125aad7e984638911843d7f2ea49e296fd97ede8d",
+  "after_sha256": "6deaf41c67605bbbe5d8845125aad7e984638911843d7f2ea49e296fd97ede8d",
+  "log_sha256": "6343353a1e751309d6c6361fdb715be29a1500beaa6855d54d191c53939c0a62",
+  "log_bytes": 26143,
+  "inputs_identical": true
+}

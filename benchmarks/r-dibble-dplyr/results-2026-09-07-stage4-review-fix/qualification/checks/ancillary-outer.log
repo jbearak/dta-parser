@@ -1,0 +1,13 @@
+archive-tests 0
+vendor-tests 0
+vendor-rebuild-tests 0
+cargo-vendor 0
+rust-source-hash 0
+corpus-framework 0
+haven-helper-interop 0
+labelled-interop 0
+haven-conformance 0
+roxygen 0
+r-build 0
+r-archive 0
+r-binary 0

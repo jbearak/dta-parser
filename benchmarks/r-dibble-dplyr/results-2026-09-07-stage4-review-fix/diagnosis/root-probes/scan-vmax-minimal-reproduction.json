@@ -1,0 +1,21 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-minimal.R",
+    "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+    "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.so",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-minimal-baseline.rds"
+  ],
+  "exit_code": 1,
+  "derivation": "Original actual-package probe with one single Latin1 encoded character in one element. Other encoding/NA/empty cases remain controls.",
+  "files": {
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-minimal.R": "0de4f5880dd710d2263caed5613c8d6981608ee52b5f9ec42a0b266300b558b2",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.c": "d53ee7b44098c11e6a1d00fb869e4f3ea91bf6f3bfaf4ad18e263e0c26a70231",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.so": "3c40b377ee8b4e1b8ceda8c722e69ba452aff35ad7833beb6f1e0e86558c9211",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/executed-benchmark-helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-minimal-baseline.log": "78bf5b54854b9e17cd6580e14885ef041f5bdadc41320744cc6b8af010c4559c",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-minimal-baseline.rds": "d148b17eff0f8219cf65729ce9e23ca8cdc08be2b72b01e4cf5efa174f4056f0"
+  }
+}

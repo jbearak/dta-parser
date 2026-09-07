@@ -1,0 +1,14 @@
+[
+  {
+    "path": "benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+    "before_sha256": "37f1aae3c103f976acfdc2d2ad2f8cf5382fef98b38a36b5aa7c4e52511185a7",
+    "after_sha256": "5ee991fdbb5e01ed5b5a5efcd1215be664db7e9d41ee82c3225655f31419f55e",
+    "root_independent_ast_check": true
+  },
+  {
+    "path": "benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+    "before_sha256": "39fd4814b59eec2e3fcbc8ff4cc7af608c8ef76b52f71e70f794e6a4d75fe9f3",
+    "after_sha256": "16c9dd392abe7fa31f074e49fc927eb05218d7b0a10b9b2d257303e01f64390b",
+    "root_independent_ast_check": true
+  }
+]

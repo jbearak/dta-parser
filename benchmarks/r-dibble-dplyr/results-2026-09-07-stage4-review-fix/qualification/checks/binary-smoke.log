@@ -1,0 +1,6 @@
+Binary package: /private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/binary-installed-library/dtatools 
+DLL: /private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/binary-installed-library/dtatools/libs/dtatools.so 
+DLL_md5: 86580a60856a931811bb9967c9a4e1da 
+Six atomic storage families preserve source/result isolation.
+NULL
+Binary constructor retains first-private-write readiness.

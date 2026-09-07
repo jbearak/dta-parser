@@ -1,0 +1,32 @@
+{
+  "source": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "command": [
+    "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+    "/private/tmp/dta-direct-stage4-validation/check-fertility-candidate.py",
+    "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+    "/private/tmp/dta-direct-stage4-validation/fertility-content-c8ca0a4/run"
+  ],
+  "child_exit_code": 0,
+  "child_started_utc": "2026-09-07T12:15:38.229582+00:00",
+  "child_finished_utc": "2026-09-07T12:16:17.757324+00:00",
+  "output_content_sha256_unchanged": true,
+  "output_stat_unchanged": true,
+  "downstream_state_unchanged": true,
+  "inputs_unchanged": true,
+  "child_complete_test_log_matches_baseline": true,
+  "scope": "Fresh isolated-c8 repeat only. SHA-256 covers every output byte at the two checkpoints of this run; it does not exclude transient writes that restore the original bytes. Historical metadata-only records are unchanged and gain no retrospective content digest. No renv activation/install/restore or project source/output edits.",
+  "files": {
+    "content-after.json": "b9be1486d012cd8b7ce4e8e900fb59239f021a596fb1de5793628941961f40b3",
+    "content-before.json": "cdc9a2eee48d06271dcdf3c41a45fff20ff519d0acc8015fbeed2ae4a2b9dd2f",
+    "input-identities.json": "ab09efea1d600a99ea48fa0119f7d4f511b971876c84fe6b3de008ad01a1d76e",
+    "launch.log": "9111cdf4857ea10e6fc3ce3e6998dc7f09b64ac521e893c59bcbc185a2bb1c8c",
+    "run/after.json": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+    "run/before.json": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+    "run/driver.R": "138abec9dffd56adad85aca1fe16466443bd19a8264b553b7003ec5a9acca111",
+    "run/input-identities.json": "1e6c1f93193c520e6069eb97b6dc3998ea38197f01a540529ceea513216d354b",
+    "run/post-install-guard.log": "ce3eceb79d2eafb8aa6810785bfb14ecd189503efeb1a7c286016c01fad642c9",
+    "run/test.log": "9a5c621075c938c6b09721280b8bd594a7e1f7bcada30091cfae83b28a1c9f78",
+    "run/verification.json": "9111cdf4857ea10e6fc3ce3e6998dc7f09b64ac521e893c59bcbc185a2bb1c8c"
+  }
+}

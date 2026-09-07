@@ -1,0 +1,5 @@
+ascii marker_changes 0 retained_vmax 0 width 3 
+utf8 marker_changes 0 retained_vmax 0 width 4 
+latin1 marker_changes 1000 retained_vmax 1 width 4 
+native marker_changes 0 retained_vmax 0 width 4 
+bytes marker_changes 0 retained_vmax 0 width 2 

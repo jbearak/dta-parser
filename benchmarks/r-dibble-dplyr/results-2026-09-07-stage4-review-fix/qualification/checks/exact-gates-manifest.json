@@ -1,0 +1,129 @@
+{
+  "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "source_tree": "0d845d94fcd1ec290ba28f116cc088cfb443ec1d",
+  "package_tree": "f88005766aee9b9dd5827b33a3930feff6672008",
+  "source_directory": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+  "source_manifest": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4-manifest.json",
+  "source_manifest_sha256": "14668a9081f5f868e7b0e058283b8f06c63ccd77dcbfc55324c821fb94ab8228",
+  "archive_sha256": "33631a12f5b5f12146ab8d0569d96db8edc314d29e0f1a1528c33c081b4cc88a",
+  "archived_files_rechecked": 1950,
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+  "dll_md5": "c655c59a09cbf1cd72a6f72e7e94758e",
+  "dll_sha256": "7839719fd30f468e9407e9378add8437eb2aa1e9c426e217b0f1967765944d1f",
+  "status": "All local gates pass; paired performance and final evidence/external reviews remain required",
+  "gates": {
+    "native": {
+      "manifest": "/private/tmp/dta-direct-stage4-validation/native-c8ca0a4/complete-qualification.json",
+      "original_assertions": 159,
+      "readiness_assertions": 15,
+      "native_atoms": 18,
+      "rename_allocation": "PASS",
+      "source_and_install_before_after": true
+    },
+    "required_conformance": {
+      "log": "conformance.log",
+      "exit_code": 0,
+      "typescript_fixtures": 22,
+      "decoded_cells": 32085,
+      "deterministic_native_cases": 10,
+      "canonical_oracle_cases": 1,
+      "r_check": "3WARNING2NOTE; sandbox loopback coverage supplemented by complete installed test run"
+    },
+    "full_installed_tests": {
+      "log": "full-installed-loopback.log",
+      "csv": "full-installed-loopback.csv",
+      "exit_code": 0,
+      "passed": 16445,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "warnings": 4,
+      "loopback_access": "explicit authorized escalation"
+    },
+    "focused_owned_atoms": {
+      "log": "owned-atoms-exact.log",
+      "passed": 956,
+      "failed": 0,
+      "warnings": 0,
+      "skipped": 0
+    },
+    "haven_conformance": {
+      "log": "haven-conformance-loopback.log",
+      "exit_code": 0,
+      "skips": 0,
+      "prior_attempt": "haven-conformance.log retains sandbox loopback skip"
+    },
+    "ancillary": "ancillary-gates.json",
+    "bridge": {
+      "manifest": "bridge-gates.json",
+      "tests": 18
+    },
+    "workspace": {
+      "manifest": "/private/tmp/dta-direct-stage4-validation/workspace-gates-c8ca0a4/manifest.json",
+      "tests": 278,
+      "failed": 0,
+      "ignored": 0,
+      "package_warnings": 11,
+      "fresh_complete_clean_before_after_inputs": 1950,
+      "crate_identity": "/private/tmp/dta-direct-stage4-validation/workspace-gates-c8ca0a4/crate-identity.json"
+    },
+    "archives_notice": "archive-notice-verification.json",
+    "binary_smoke": {
+      "log": "binary-smoke.log",
+      "storage_families": 6,
+      "new_constructor_readiness": true
+    },
+    "native_output_preflight": {
+      "cases": 24,
+      "modes": [
+        "default",
+        "-O",
+        "PYTHONOPTIMIZE=1"
+      ],
+      "no_workloads": true
+    }
+  },
+  "log_sha256": {
+    "ancillary-outer.log": "c1421497e30bd3c088ff443cb9b94b521f5c8a51a94d28edc7e50ed805356384",
+    "archive-tests.log": "3a86db2b9f808506e23c7c696fa5b5f6f3b8ba039c56226dbae54067854795c7",
+    "binary-smoke.log": "62d9e656dd21257bc2e6bab99707a1f0b6b2cfac0a0df028f487bada51f25646",
+    "bridge-check.log": "9122cdcdd0fa4d16b8c8104661e6f09747c2a5d07d064a12d848b478709b09f0",
+    "bridge-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bridge-outer.log": "9cca1865ef9fae3a49c7f50d65688489ba84ba8d78be754ce122e428089329c3",
+    "bridge-tests.log": "2dabcd6400952d26a66244b96c6005a7c02c70f55afcb7625736ed229499a3d7",
+    "cargo-vendor.log": "d2f91f77d5bdd8552331c0b457f2d0aab6c9eccb0a00d29a47f6c7294216720b",
+    "conformance.log": "83d6dc706b22b4e5fc390c9866d3bdf6cbb85205b0db8a6f7ed7b695cd3a8f68",
+    "corpus-framework.log": "a499c3b4bd2e3d8b7bc2046a17390505991ee20afbc91aac5d96864fde7c028b",
+    "full-installed-loopback.log": "9b68e86284a2f162449857a0a9a9f11330b5114d21af5cbd82a99557ffa627c0",
+    "haven-conformance-loopback.log": "9f2478e81235409b338fe7248baec50fcdc565af8cba9938996a0f15528c5465",
+    "haven-conformance.log": "34fe99c59b88a98176d7e8ca6bb74a077e89c62d6a12eb5bb828c1ad6e2d2c78",
+    "haven-helper-interop.log": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264",
+    "install-identity-after.log": "3d13749860ebf0ff96e86a0e9a1730a85f803d834291949788e5ff1542bb5eb3",
+    "labelled-interop.log": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81",
+    "native-output-preflight-env.log": "82a4dbdfad12c93da01e0e6af30b80dc4123a264e2d87a30fe528a8df3b26dbe",
+    "native-output-preflight-opt.log": "82a4dbdfad12c93da01e0e6af30b80dc4123a264e2d87a30fe528a8df3b26dbe",
+    "native-output-preflight.log": "82a4dbdfad12c93da01e0e6af30b80dc4123a264e2d87a30fe528a8df3b26dbe",
+    "owned-atoms-exact.log": "6504e42761edd48ca325c548be5b8452a4229eb80e239f19be9b17c511314659",
+    "r-archive.log": "4c3587b6438c2471618364e967342b11f88e0d0484fb6f8f64e2ce8a0b3b1351",
+    "r-binary-reinstall.log": "15a92ac9a0c29d972173787847d17aa5bcae856ffea9f6f7acf2144226f8f7e8",
+    "r-binary.log": "0f3885d7db9f949c61a7830519cc8cdce12621e4d4954ea103d56e53579836da",
+    "r-build.log": "dde8511ca3d308d578ace9cfb5a13d78d6a5996efe289a131ea42fc896eb86c6",
+    "roxygen.log": "e1a092b30f77cb7b1ea01f3c01e257b356104c0805eaf4121262d2d97435d02e",
+    "rust-source-hash.log": "64412b90a734c68397b590ede544730f4b115e07f82cedc84ae791452eab888c",
+    "vendor-rebuild-tests.log": "a26bda261b56851b5ce9f8721adbfb7ef74490fbb47e7dc912cb533603bee47e",
+    "vendor-tests.log": "8259a28052f136b2c0acb7f79bf6f603969d1ff8798d97921642089231e8c285",
+    "workspace-outer.log": "7af6081151ceef32c86658c80f7bd82ad9061a9d948f924e2c6073ba9fe20ddb"
+  },
+  "driver_sha256": {
+    "run-native-c8ca0a4.py": "84bb65d04263cff012f75abae28a736c00d0e52caca406cee4995d8b9421cd10",
+    "run-checks-c8ca0a4.py": "cf2645de15ab23c006870ffb68b3001b5728912e78f236bb3abd0a8f111b6ad6",
+    "run-bridge-c8ca0a4.py": "ae33243841fba2191070930457db631954954e5e91b775aa71d28da81a3830d3",
+    "run-clean-workspace-c8ca0a4.py": "a73b1c4f88f4f03e8b4117808514d560a49f29f6383295e140885efaf90c8b91"
+  },
+  "preserved_contract_paths": [
+    "r-package/dtatools/NAMESPACE",
+    "r-package/dtatools/DESCRIPTION",
+    "benchmarks/r-reference-mutation/run.R"
+  ],
+  "reused_checks": "None of the claimed local gates reuse earlier executions. Existing benchmark-driver AST equality is documentation-only proof, not a performance run."
+}

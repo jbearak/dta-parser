@@ -1,0 +1,22 @@
+{
+  "completed_utc": "2026-09-07T12:18:22.553365+00:00",
+  "result": "pass",
+  "auditor_sha256": "c44961ac1bfc855a6d54801b6753fd30a5ebf2c96f6092a4fc46b27baabbdc97",
+  "content_verification_sha256": "9a56580c7ce3626af586073da5d4a9bf80f087595cd6b58f09e74f67edcfb202",
+  "all_run_files": {
+    "content-after.json": "b9be1486d012cd8b7ce4e8e900fb59239f021a596fb1de5793628941961f40b3",
+    "content-before.json": "cdc9a2eee48d06271dcdf3c41a45fff20ff519d0acc8015fbeed2ae4a2b9dd2f",
+    "content-verification.json": "9a56580c7ce3626af586073da5d4a9bf80f087595cd6b58f09e74f67edcfb202",
+    "input-identities.json": "ab09efea1d600a99ea48fa0119f7d4f511b971876c84fe6b3de008ad01a1d76e",
+    "launch.log": "9111cdf4857ea10e6fc3ce3e6998dc7f09b64ac521e893c59bcbc185a2bb1c8c",
+    "run/after.json": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+    "run/before.json": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+    "run/driver.R": "138abec9dffd56adad85aca1fe16466443bd19a8264b553b7003ec5a9acca111",
+    "run/input-identities.json": "1e6c1f93193c520e6069eb97b6dc3998ea38197f01a540529ceea513216d354b",
+    "run/post-install-guard.log": "ce3eceb79d2eafb8aa6810785bfb14ecd189503efeb1a7c286016c01fad642c9",
+    "run/test.log": "9a5c621075c938c6b09721280b8bd594a7e1f7bcada30091cfae83b28a1c9f78",
+    "run/verification.json": "9111cdf4857ea10e6fc3ce3e6998dc7f09b64ac521e893c59bcbc185a2bb1c8c"
+  },
+  "outer_launch_log_sha256": "646855fe348caf3e45e5a69eca6a62ae91afb5b7a3db7ba4d3c065b52f56a3eb",
+  "scope": "Independent retained-record and current-input audit. No R rerun, real-output rehash, renv change, or historical evidence modification."
+}

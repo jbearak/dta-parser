@@ -1,0 +1,15 @@
+{
+  "path": "/Users/jmb/repos/fertility_surveys/output/mics.dta",
+  "sha256": "1d05595054635b362cb0823b81c0290cb81e5d63a7a2c731a7de5d8f3e040588",
+  "bytes_read": 4374755735,
+  "stat": {
+    "device": 16777233,
+    "inode": 162249396,
+    "size": 4374755735,
+    "mtime_ns": 1788554538021737682,
+    "ctime_ns": 1788554538021737682,
+    "mode": "0o644"
+  },
+  "hash_started_utc": "2026-09-07T12:15:36.804524+00:00",
+  "hash_completed_utc": "2026-09-07T12:15:38.229304+00:00"
+}

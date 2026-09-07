@@ -1,0 +1,74 @@
+[
+  {
+    "name": "identity-before",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "-e",
+      "source(\"benchmarks/r-dibble-dplyr/helpers.R\"); lib <- \"/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library\"; sha <- \"c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe\"; validate_benchmark_install(lib,sha); .libPaths(c(lib,.libPaths())); library(dtatools); package <- normalizePath(file.path(lib,\"dtatools\")); dll <- normalizePath(file.path(package,\"libs\",paste0(\"dtatools\",.Platform$dynlib.ext))); stopifnot(identical(normalizePath(find.package(\"dtatools\")),package), identical(normalizePath(getLoadedDLLs()[[\"dtatools\"]][[\"path\"]]),dll)); cat(\"source\",sha,\"\npackage\",package,\"\ndll\",dll,\"\nDLL MD5\",tools::md5sum(dll),\"\n\"); validate_benchmark_install(lib,sha)"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "started": "2026-09-07T10:37:35.128540+00:00",
+    "seconds": 0.3024487910006428,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/native-c8ca0a4/identity-before.log"
+  },
+  {
+    "name": "original-native",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4/benchmarks/r-reference-mutation/run.R",
+      "--markdown=/private/tmp/dta-direct-stage4-validation/native-c8ca0a4/original-native.md"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "started": "2026-09-07T10:37:35.431340+00:00",
+    "seconds": 8.241938249993837,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/native-c8ca0a4/original-native.log"
+  },
+  {
+    "name": "native-atoms",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+      "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "/private/tmp/dta-direct-stage4-validation/native-c8ca0a4/atoms"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4",
+    "started": "2026-09-07T10:37:43.673636+00:00",
+    "seconds": 0.46466070899623446,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/native-c8ca0a4/native-atoms.log"
+  },
+  {
+    "name": "rename-allocation",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-dibble-dplyr/check-rename-allocation.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "started": "2026-09-07T10:37:44.138530+00:00",
+    "seconds": 0.23335420800140128,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/native-c8ca0a4/rename-allocation.log"
+  },
+  {
+    "name": "identity-after",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "-e",
+      "source(\"benchmarks/r-dibble-dplyr/helpers.R\"); lib <- \"/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library\"; sha <- \"c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe\"; validate_benchmark_install(lib,sha); .libPaths(c(lib,.libPaths())); library(dtatools); package <- normalizePath(file.path(lib,\"dtatools\")); dll <- normalizePath(file.path(package,\"libs\",paste0(\"dtatools\",.Platform$dynlib.ext))); stopifnot(identical(normalizePath(find.package(\"dtatools\")),package), identical(normalizePath(getLoadedDLLs()[[\"dtatools\"]][[\"path\"]]),dll)); cat(\"source\",sha,\"\npackage\",package,\"\ndll\",dll,\"\nDLL MD5\",tools::md5sum(dll),\"\n\"); validate_benchmark_install(lib,sha)"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "started": "2026-09-07T10:37:44.372129+00:00",
+    "seconds": 0.20897270800196566,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/native-c8ca0a4/identity-after.log"
+  }
+]

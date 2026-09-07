@@ -1,0 +1,66 @@
+{
+  "reviewed_base": "75b0c54c9171bdc747e35d0896611616d151138c",
+  "source_files": [
+    {
+      "path": "benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "sha256": "5ee991fdbb5e01ed5b5a5efcd1215be664db7e9d41ee82c3225655f31419f55e",
+      "mode": "0o644"
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "sha256": "16c9dd392abe7fa31f074e49fc927eb05218d7b0a10b9b2d257303e01f64390b",
+      "mode": "0o644"
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/README.md",
+      "sha256": "684c631864441f4249ab2557e4d829c2fa0a6a004951da2f9813aec39d19288e",
+      "mode": "0o644"
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/owned-atoms.R",
+      "sha256": "ac7b6364aee3cef47d6ceb35e6d45e28a8d5af24ec091c98d5b92e459c3ff190",
+      "mode": "0o644"
+    },
+    {
+      "path": "docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md",
+      "sha256": "16e3133b28faa12b3e9fdc3d5ace1c26bc1e021ee6d7b6cd7d9b9541a9a749f7",
+      "mode": "0o644"
+    },
+    {
+      "path": "docs/plans/dibble-result-performance-progress.md",
+      "sha256": "8938e2aa2e8b65c800fdd446ff775e5a14e0639507e8be00b2d080caee1c4c25",
+      "mode": "0o644"
+    },
+    {
+      "path": "r-package/dtatools/R/dta-string.R",
+      "sha256": "b958c28240e9aa0cec060d6d58d16477a3dc8e829cc2038737730ceb0fa40776",
+      "mode": "0o644"
+    },
+    {
+      "path": "r-package/dtatools/src/init.c",
+      "sha256": "50ad819f6d9547604ac009bf528b82b05c8c8fe835831d850c6cfce2c4644471",
+      "mode": "0o644"
+    },
+    {
+      "path": "r-package/dtatools/src/owned-columns.h",
+      "sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1",
+      "mode": "0o644"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-owned-atoms.R",
+      "sha256": "fa9a7c9281ba1ad55f3aac544170fde9589374e9768023672689fb08640221b8",
+      "mode": "0o644"
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/test-owned-atoms-preflight.py",
+      "sha256": "91eedf2e7a3c2119a51c31e8afb793c91c98fd1766ab268eed17a88a42cf4bf5",
+      "mode": "0o644"
+    }
+  ],
+  "reviews_read_in_full": {
+    "storage-fix-review.md": "8ce2ce4a4877d0191b5a31a9b96a63c423c4fb18cf4b62d64066906bef0c03a5",
+    "api-fix-review.md": "0b7ce7d95ea169298052235043275e46e1bd8dcfe7cf7dd445e94c0ec8c51a85"
+  },
+  "utc": "2026-09-07T10:34:26.461290+00:00",
+  "limit": "Source receipt only; exact package artifact and new performance remain pending."
+}

@@ -1,0 +1,197 @@
+{
+  "head": "75b0c54c9171bdc747e35d0896611616d151138c",
+  "base": "75b0c54c9171bdc747e35d0896611616d151138c",
+  "diff_sha256": "37133b1bec8365c97c33511245efe42f20b8c77123b1506b69285b55b6ce91a1",
+  "files": [
+    {
+      "path": "benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "sha256": "5ee991fdbb5e01ed5b5a5efcd1215be664db7e9d41ee82c3225655f31419f55e",
+      "bytes": 9934,
+      "mode": "0o644"
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "sha256": "16c9dd392abe7fa31f074e49fc927eb05218d7b0a10b9b2d257303e01f64390b",
+      "bytes": 8399,
+      "mode": "0o644"
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/README.md",
+      "sha256": "684c631864441f4249ab2557e4d829c2fa0a6a004951da2f9813aec39d19288e",
+      "bytes": 11559,
+      "mode": "0o644"
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/owned-atoms.R",
+      "sha256": "ac7b6364aee3cef47d6ceb35e6d45e28a8d5af24ec091c98d5b92e459c3ff190",
+      "bytes": 8392,
+      "mode": "0o644"
+    },
+    {
+      "path": "docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md",
+      "sha256": "16e3133b28faa12b3e9fdc3d5ace1c26bc1e021ee6d7b6cd7d9b9541a9a749f7",
+      "bytes": 7631,
+      "mode": "0o644"
+    },
+    {
+      "path": "docs/plans/dibble-result-performance-progress.md",
+      "sha256": "8938e2aa2e8b65c800fdd446ff775e5a14e0639507e8be00b2d080caee1c4c25",
+      "bytes": 61034,
+      "mode": "0o644"
+    },
+    {
+      "path": "r-package/dtatools/R/dta-string.R",
+      "sha256": "b958c28240e9aa0cec060d6d58d16477a3dc8e829cc2038737730ceb0fa40776",
+      "bytes": 11516,
+      "mode": "0o644"
+    },
+    {
+      "path": "r-package/dtatools/src/init.c",
+      "sha256": "50ad819f6d9547604ac009bf528b82b05c8c8fe835831d850c6cfce2c4644471",
+      "bytes": 335925,
+      "mode": "0o644"
+    },
+    {
+      "path": "r-package/dtatools/src/owned-columns.h",
+      "sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1",
+      "bytes": 41614,
+      "mode": "0o644"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-owned-atoms.R",
+      "sha256": "fa9a7c9281ba1ad55f3aac544170fde9589374e9768023672689fb08640221b8",
+      "bytes": 49856,
+      "mode": "0o644"
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/test-owned-atoms-preflight.py",
+      "sha256": "91eedf2e7a3c2119a51c31e8afb793c91c98fd1766ab268eed17a88a42cf4bf5",
+      "bytes": 5285,
+      "mode": "0o644"
+    }
+  ],
+  "file_count": 11,
+  "scope_note": "Final source-only snapshot includes named-dispatch fixture retaining only its first escaped handle; no production change after first snapshot.",
+  "evidence_files": [
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-private.R",
+      "bytes": 1607,
+      "sha256": "7383df768c31a4c80ceb4fd0039115882665afb4e75f51af4a4ca06fdb35e1bd"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-private-red.csv",
+      "bytes": 409,
+      "sha256": "74a0be285ccb2edafbe364576385ff947817138235ff84f36aa029b017325361"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-private-red.log",
+      "bytes": 869,
+      "sha256": "ed8c272b7ba96d0b41753e1f6c2852fc94fe290c72c89a916b360ef7bce82146"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-test-red-actual.log",
+      "bytes": 41800,
+      "sha256": "c82b98ca65a059cfe4514d58f8bcb637fdbd934a3464101985e2d4d098625113"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-red.c",
+      "bytes": 883,
+      "sha256": "195c1830cb4c03c763ed42917d60460b839dc937475b31fba1501fdd10dc5dfd"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-red.log",
+      "bytes": 244,
+      "sha256": "2f03188e5166c182b54e5f371d3c7d7223afa5d412a33cdc437aeee77f0e6cca"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-green.c",
+      "bytes": 1199,
+      "sha256": "49a0abffded5a276ffbfbc60d30502b094def84340a91e80197d71eeec0008e2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-green.log",
+      "bytes": 241,
+      "sha256": "5bf39b9f02833b0e71d0ad7a8883c88450c4e2beebdfde73e0ff25b754b05c96"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe.R",
+      "bytes": 721,
+      "sha256": "27d98f8b1bcb36897b406067468a8d7abfa018c9ceeabba1f042609c45f2ecf7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-guard-probe.py",
+      "bytes": 2513,
+      "sha256": "d813783a9fed00c3dbcdb8d0008010118caecb8b2e545e161e47ae4a3c54e250"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/manifest.json",
+      "bytes": 4245,
+      "sha256": "f7dfd88fc79c0e3956dd21b76b6a6f9c977f76b154584bb1375d9ccd1f6b6b53"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/manifest.json",
+      "bytes": 4261,
+      "sha256": "dfe7c69e4506f0177ecaa739d573de5b4249048aac3ba9885ba9c6ff57ad42dd"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/manifest.json",
+      "bytes": 9616,
+      "sha256": "210705ac1a8136177f941376c0f3119bcce64e66a2379174136882fb42f0f9b9"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/driver-docstrings-ast-proof.json",
+      "bytes": 619,
+      "sha256": "1b936c894e8164e91518e968524837f463170f7eb9457626280455744ba5d757"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/working-22b-owned-atoms.log",
+      "bytes": 38800,
+      "sha256": "4d6b72b13d33bf0167824bcb2a5e4e983faaaa13416c2a784913caaa9c1abb99"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/working-22b-owned-atoms-fixture-fixed.log",
+      "bytes": 38817,
+      "sha256": "e06de620c24b0b247b059bec513f20d396ad962f8ba92a8d5a8debfcf6f7f840"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/storage-fix-verification.json",
+      "bytes": 390833,
+      "sha256": "f2a4fb1aa78b31deffed16882379c5f4223f7669150e58f8176ce174a139de92"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.c",
+      "bytes": 956,
+      "sha256": "d53ee7b44098c11e6a1d00fb869e4f3ea91bf6f3bfaf4ad18e263e0c26a70231"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.R",
+      "bytes": 2507,
+      "sha256": "a70e41cf7f380665e120a5d0070634ceea53704ff396f87b778b48ee0248dfb5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-minimal.R",
+      "bytes": 2484,
+      "sha256": "0de4f5880dd710d2263caed5613c8d6981608ee52b5f9ec42a0b266300b558b2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-reproduction.json",
+      "bytes": 1959,
+      "sha256": "1f8b01813ba7fed06d414e7fc7887453451701d240fc792dcaa36a34aeb4ac44"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-minimal-reproduction.json",
+      "bytes": 1585,
+      "sha256": "3adf91f2eb876b7f64c313cf66ab1eb9409efef0747b7b3e5973329ebf5237be"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-baseline.log",
+      "bytes": 1086,
+      "sha256": "4116e8d4ef9b75bd8f4cf451f9c31121ae510484c45a62be6a9e2d5e0862de96"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-minimal-baseline.log",
+      "bytes": 1057,
+      "sha256": "78bf5b54854b9e17cd6580e14885ef041f5bdadc41320744cc6b8af010c4559c"
+    }
+  ]
+}
