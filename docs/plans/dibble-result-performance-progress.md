@@ -60,9 +60,12 @@ mtime remain unchanged. This closes Stage 3 compatibility comparison; it does
 not turn that downstream suite into a passing suite or replace the final
 integrated epic validation.
 
-The evidence and reproduction instructions are ready. The PR, external
-CI/CodeRabbit review and normal merge remain pending. Stage 3 stays active until
-those gates finish; stages 4 through 9 have not begun.
+The evidence and reproduction instructions are committed as
+`53571eb92d3c4296e0d95b1824724dee5c8fa68a`.
+[PR #194](https://github.com/jbearak/dta-parser/pull/194) is open from
+`codex/direct-dibble-owned-doubles`. Latest-head external CI/CodeRabbit review
+and normal merge remain pending. Stage 3 stays active until those gates finish;
+stages 4 through 9 have not begun.
 
 ### Earlier Stage 3 checkpoints
 
