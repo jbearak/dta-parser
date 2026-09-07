@@ -1,0 +1,38 @@
+{
+  "recorded_utc": "2026-09-07T06:04:18.328655+00:00",
+  "source_sha": "976cc403f21b9adbb454d39c9c3447717b67c29f",
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-976cc40-library",
+  "dll_sha256": "331d8164f9dcd9497761cfdbdb6ffcd0655fa67f5f0a51934c8fd3c487bfa29c",
+  "dll_md5": "f1b1a0fbdce2d388733638cb19d99709",
+  "provenance_sha256": "61e8b55c0eeb12b4911919e91437cdd21a5251c427051a9fb1241dd158544949",
+  "scope": "219 pure R historical behavior cases, unchanged workload/oracle bytes, R identical() before/after exact install guards; excludes historical18 native observer with unavailable C source",
+  "process_exit_code": 0,
+  "cases": {
+    "generation-names": 45,
+    "delayed-mask": 72,
+    "delayed-private-mask": 72,
+    "symbol-private-callback": 30
+  },
+  "files": {
+    "delayed-mask-baseline.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "delayed-mask-candidate.log": "dd01efef36b6aa3e486722f1f47645dbca1a081ee9c534c1b0f97c650cf1606f",
+    "delayed-mask-candidate.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "delayed-mask-matrix.R": "f01fdf0d670232e9a2bbb5249a92ed5df5303680e3430117b01156574e790091",
+    "delayed-private-mask-baseline.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "delayed-private-mask-candidate.log": "dd01efef36b6aa3e486722f1f47645dbca1a081ee9c534c1b0f97c650cf1606f",
+    "delayed-private-mask-candidate.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "delayed-private-mask-matrix.R": "53b4291399cf1bb5d2887095ecd496696ad2c7d1b5b0623f9909cbc799d238a8",
+    "driver.log": "984bf16b587e5dacfc69019c187d838232a34c7dd7aff7009dd3c7ac4c72e3d9",
+    "generation-names-baseline.rds": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5",
+    "generation-names-candidate.log": "48fc0f9211ae7d6f794736b34b0b5f2c467ba7191917fa12492028866f51e574",
+    "generation-names-candidate.rds": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5",
+    "generation-names-matrix.R": "d35583705f66c051aa7bd8ea3b2207c98ecf8c3360f727e672fd9c31b67015f6",
+    "pre-run-input-identities.json": "52e9eb136e231db7f6885d1342ed7037cbe2257fcb22395c7b3bbf7ef1d2d14f",
+    "reused-input-identities.json": "0c38e907b8c8acef3c5dccd1e056c3ab003e2deb0d55ab92d55e1f4aedb86bd1",
+    "run.R": "9f8290ab5decbb14164ac12cb4f6493260a6f5dfd04649e1813f9d03db636b87",
+    "symbol-private-callback-baseline.rds": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23",
+    "symbol-private-callback-candidate.log": "4acef5e17c03d3b71acf190646550c6967a27d385d7adfc3328e7d6866afb3c0",
+    "symbol-private-callback-candidate.rds": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23",
+    "symbol-private-callback-matrix.R": "2e67b6f6ae5dc5eb2a77f34799cc67632d78212fd7e4970eb2bc90069838ddac"
+  }
+}

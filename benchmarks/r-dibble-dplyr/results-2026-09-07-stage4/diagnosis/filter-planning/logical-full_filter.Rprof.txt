@@ -1,0 +1,81 @@
+$by.self
+                               self.time self.pct total.time total.pct
+".subset"                          0.056    38.89      0.056     38.89
+".repair_data_table_container"     0.016    11.11      0.018     12.50
+"%%"                               0.016    11.11      0.016     11.11
+"=="                               0.016    11.11      0.016     11.11
+".Call"                            0.015    10.42      0.047     32.64
+".reserve_column_capacity"         0.011     7.64      0.011      7.64
+"vec_slice"                        0.007     4.86      0.063     43.75
+"tryCatch"                         0.001     0.69      0.144    100.00
+"filter_eval"                      0.001     0.69      0.048     33.33
+".plain_data_columns"              0.001     0.69      0.001      0.69
+"dim"                              0.001     0.69      0.001      0.69
+"new_environment"                  0.001     0.69      0.001      0.69
+"new_quosures"                     0.001     0.69      0.001      0.69
+"unique.default"                   0.001     0.69      0.001      0.69
+
+$by.total
+                                total.time total.pct self.time self.pct
+"tryCatch"                           0.144    100.00     0.001     0.69
+".close_dibble"                      0.144    100.00     0.000     0.00
+".closed_reference_verb"             0.144    100.00     0.000     0.00
+"dplyr::filter"                      0.144    100.00     0.000     0.00
+"filter.dtatools_ref_data"           0.144    100.00     0.000     0.00
+"operation"                          0.144    100.00     0.000     0.00
+"tryCatchList"                       0.144    100.00     0.000     0.00
+".reference_delegate"                0.113     78.47     0.000     0.00
+"<Anonymous>"                        0.113     78.47     0.000     0.00
+"eval"                               0.113     78.47     0.000     0.00
+"filter_impl"                        0.113     78.47     0.000     0.00
+"filter.data.frame"                  0.113     78.47     0.000     0.00
+"is.data.frame"                      0.113     78.47     0.000     0.00
+"vec_slice"                          0.063     43.75     0.007     4.86
+".row_names_info"                    0.063     43.75     0.000     0.00
+"%||%"                               0.063     43.75     0.000     0.00
+"dplyr_new_data_frame"               0.063     43.75     0.000     0.00
+"dplyr_reconstruct"                  0.063     43.75     0.000     0.00
+"dplyr_row_slice.data.frame"         0.063     43.75     0.000     0.00
+"dplyr_row_slice"                    0.063     43.75     0.000     0.00
+".subset"                            0.056     38.89     0.056    38.89
+"vec_slice_altrep"                   0.056     38.89     0.000     0.00
+"filter_rows"                        0.050     34.72     0.000     0.00
+"filter_eval"                        0.048     33.33     0.001     0.69
+".Call"                              0.047     32.64     0.015    10.42
+"mask$eval_all_filter"               0.047     32.64     0.000     0.00
+"withCallingHandlers"                0.047     32.64     0.000     0.00
+".finish_dibble_result"              0.031     21.53     0.000     0.00
+".repair_data_table_container"       0.018     12.50     0.016    11.11
+".metadata_copy"                     0.018     12.50     0.000     0.00
+".prepare_dibble_result_column"      0.018     12.50     0.000     0.00
+"%%"                                 0.016     11.11     0.016    11.11
+"=="                                 0.016     11.11     0.016    11.11
+".new_validated_dibble"              0.012      8.33     0.000     0.00
+".reserve_column_capacity"           0.011      7.64     0.011     7.64
+"setdiff"                            0.003      2.08     0.000     0.00
+".ordinary_data_table"               0.002      1.39     0.000     0.00
+".set_ops_need_as_vector"            0.002      1.39     0.000     0.00
+".plain_data_columns"                0.001      0.69     0.001     0.69
+"dim"                                0.001      0.69     0.001     0.69
+"new_environment"                    0.001      0.69     0.001     0.69
+"new_quosures"                       0.001      0.69     0.001     0.69
+"unique.default"                     0.001      0.69     0.001     0.69
+".as_mutation_data"                  0.001      0.69     0.000     0.00
+".data_columns"                      0.001      0.69     0.000     0.00
+".mark_reference_data"               0.001      0.69     0.000     0.00
+".new_reference_state"               0.001      0.69     0.000     0.00
+".prepare_dibble_frame"              0.001      0.69     0.000     0.00
+".reference_base_classes"            0.001      0.69     0.000     0.00
+".reference_classes"                 0.001      0.69     0.000     0.00
+"DataMask$new"                       0.001      0.69     0.000     0.00
+"filter_expand"                      0.001      0.69     0.000     0.00
+"initialize"                         0.001      0.69     0.000     0.00
+"isTRUE"                             0.001      0.69     0.000     0.00
+"unique"                             0.001      0.69     0.000     0.00
+
+$sample.interval
+[1] 0.001
+
+$sampling.time
+[1] 0.144
+

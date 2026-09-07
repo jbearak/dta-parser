@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/private/tmp/dta-direct-stage4-validation/check-fertility-candidate.py", line 157, in <module>
+    require(metrics == baseline_metrics and actual_suffix == baseline_suffix,
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            'Downstream differs from retained baseline; inspect complete logs')
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/dta-direct-stage4-validation/check-fertility-candidate.py", line 17, in require
+    raise RuntimeError(message)
+RuntimeError: Downstream differs from retained baseline; inspect complete logs

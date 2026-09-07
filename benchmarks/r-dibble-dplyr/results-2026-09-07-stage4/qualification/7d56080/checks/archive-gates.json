@@ -1,0 +1,46 @@
+[
+  {
+    "name": "r-build",
+    "command": [
+      "R",
+      "CMD",
+      "build",
+      "/private/tmp/dta-direct-stage4-validation/source-7d56080/r-package/dtatools"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/checks-7d56080",
+    "started": "2026-09-07T03:30:54.938583+00:00",
+    "seconds": 1.0092775000011898,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/r-build.log"
+  },
+  {
+    "name": "r-archive",
+    "command": [
+      "sh",
+      "scripts/check-r-package-archive.sh",
+      "/private/tmp/dta-direct-stage4-validation/checks-7d56080/dtatools_0.7.1.tar.gz"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "started": "2026-09-07T03:30:55.947949+00:00",
+    "seconds": 0.04982937499880791,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/r-archive.log"
+  },
+  {
+    "name": "r-binary",
+    "command": [
+      "R",
+      "CMD",
+      "INSTALL",
+      "--build",
+      "--clean",
+      "--library=/private/tmp/dta-direct-stage4-validation/checks-7d56080/binary/library",
+      "/private/tmp/dta-direct-stage4-validation/checks-7d56080/dtatools_0.7.1.tar.gz"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/binary",
+    "started": "2026-09-07T03:30:55.997820+00:00",
+    "seconds": 25.03088000000571,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/r-binary.log"
+  }
+]

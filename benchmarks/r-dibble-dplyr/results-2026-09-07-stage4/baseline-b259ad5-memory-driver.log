@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-atomic-qualification.py", line 162, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-atomic-qualification.py", line 138, in main
+    text = run(["/usr/bin/time", "-l", "Rscript", "--vanilla", str(runner_dir / "owned-atomic-memory.R"),
+                str(library), args.source_sha, args.mode, kind, operation, str(rows)], log)
+  File "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-atomic-qualification.py", line 92, in run
+    require(result.returncode == 0, f"Exit {result.returncode}; see {log}")
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-atomic-qualification.py", line 20, in require
+    raise RuntimeError(message)
+RuntimeError: Exit 1; see /private/tmp/dta-direct-stage4-validation/baseline-b259ad5/memory-string-rename-100000.log

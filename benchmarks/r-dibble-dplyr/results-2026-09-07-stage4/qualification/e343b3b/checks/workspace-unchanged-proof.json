@@ -1,0 +1,108 @@
+{
+  "final_source": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "qualified_initial_source": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+  "qualification": "Reuse only unchanged workspace fmt/clippy/278tests/doc/package gates; exact final bridge gates run separately",
+  "identical_git_objects": [
+    {
+      "path": "Cargo.toml",
+      "initial_object": "2f471362ad5be7ba2ff21218cc18cd5a41bd0365",
+      "final_object": "2f471362ad5be7ba2ff21218cc18cd5a41bd0365"
+    },
+    {
+      "path": "Cargo.lock",
+      "initial_object": "9398b5e9d2fcf6a896ab6b71051ed4fea5a6f30e",
+      "final_object": "9398b5e9d2fcf6a896ab6b71051ed4fea5a6f30e"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools",
+      "initial_object": "63f05f7b08107ca8271596a269bb05d7bf8eaf73",
+      "final_object": "63f05f7b08107ca8271596a269bb05d7bf8eaf73"
+    }
+  ],
+  "commands": [
+    {
+      "name": "workspace-fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "started": "2026-09-07T03:21:33.869079+00:00",
+      "seconds": 0.18485791599960066,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/workspace-fmt-working-9.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "workspace-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started": "2026-09-07T03:21:34.054033+00:00",
+      "seconds": 7.885289208003087,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/workspace-clippy-working-9.log",
+      "log_sha256": "92d01dda1e959265585a498089f5d6960fa66c014700b23ac42570b078f99c3a"
+    },
+    {
+      "name": "workspace-tests",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--offline"
+      ],
+      "started": "2026-09-07T03:21:41.939414+00:00",
+      "seconds": 24.31460062500264,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/workspace-tests-working-9.log",
+      "log_sha256": "879cc077b7c519b651d8e00d413de1f3af2b0f93db5d4408ce886ff7864c1414"
+    },
+    {
+      "name": "workspace-doc",
+      "command": [
+        "cargo",
+        "doc",
+        "--workspace",
+        "--locked",
+        "--offline",
+        "--no-deps"
+      ],
+      "started": "2026-09-07T03:22:06.254199+00:00",
+      "seconds": 0.5565808750034194,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/workspace-doc-working-9.log",
+      "log_sha256": "e84e6eac9a96be2fff0fe1edf46df9a011ff1bd0fd4514c196cb5aced8c8030d"
+    },
+    {
+      "name": "workspace-package",
+      "command": [
+        "cargo",
+        "package",
+        "-p",
+        "dta-tools",
+        "--locked",
+        "--offline",
+        "--allow-dirty"
+      ],
+      "started": "2026-09-07T03:22:06.810836+00:00",
+      "seconds": 2.1405709169994225,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/workspace-package-working-9.log",
+      "log_sha256": "7ec5c0398d2c17da1f2708a53029fa78c09dc78055bb112ca397f5e486aeb793"
+    }
+  ],
+  "initial_exact_gate_manifest_sha256": "6fca4d2d4467510efdaa12b33866ef81cfbe8f1e0cd20338b7512aabe22a0549"
+}

@@ -1,0 +1,7 @@
+source 7d56080f3e97bc4d73a848e363d729767b9629c0 
+DLL_md5 a390cab5fd2e2e2d8a0bb57f18194c54 
+[1] 0 0
+callback_count 1 
+observed writer values:c("changed", "changed", "changed")
+Error: identical(as.character(restored$x), original) is not TRUE
+Execution halted

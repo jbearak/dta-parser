@@ -1,0 +1,7 @@
+{
+  "scope": "Recovered original smoke runner bytes by reversing the subsequent small edits; written only on exact SHA256 match to the existing smoke manifest. Not a pre-run source snapshot.",
+  "manifest": "/private/tmp/dta-direct-stage4-validation/heap-supplement-development-smoke/manifest.json",
+  "files": {
+    "owned-heap.R": "933c9eb9ed0cba676884a7f448527a2b70332f514125f1d1cac31a89458f9eb6"
+  }
+}

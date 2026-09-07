@@ -1,0 +1,13 @@
+DEVELOPMENT ONLY working18 /private/tmp/dta-direct-stage4-validation/working-library/dtatools 
+/private/tmp/dta-direct-stage4-validation/working-library/dtatools/libs/dtatools.so 
+                                                 "d1ed0790068301e6d175ca0197ac5065" 
+logical 5.186582 ms 18000248 Rbytes
+           owned_capture             compact_copy               staged_new 
+                       0                        0                        0 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                       0                        0                        0 
+ordered 11.16496 ms 26000344 Rbytes
+           owned_capture             compact_copy               staged_new 
+                   4e+06                    0e+00                    0e+00 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                   0e+00                    0e+00                    0e+00 

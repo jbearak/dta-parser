@@ -1,0 +1,116 @@
+* installing *source* package ‘dtatools’ ...
+** this is package ‘dtatools’ version ‘0.7.1’
+** using staged installation
+rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew)
+** libs
+using C compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang -std=gnu23 -I"/opt/homebrew/Cellar/r/4.6.1/lib/R/include" -DNDEBUG   -I/opt/homebrew/opt/gettext/include -I/opt/homebrew/opt/readline/include -I/opt/homebrew/opt/xz/include -I/opt/homebrew/include -I/opt/homebrew/include -DTBB_INTERFACE_NEW=1    -fPIC  -g -O2  -c init.c -o init.o
+CARGO_TARGET_DIR=rust/target/7c2b5b75090a7f45b6bcfa08922c7793 cargo build --manifest-path rust/Cargo.toml --config rust/cargo-config.toml  --release --locked --offline
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling cfg-if v1.0.4
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling libc v0.2.189
+   Compiling zerocopy v0.8.56
+   Compiling find-msvc-tools v0.1.11
+   Compiling shlex v2.0.1
+   Compiling pkg-config v0.3.34
+   Compiling rand_core v0.10.1
+   Compiling version_check v0.9.5
+   Compiling getrandom v0.4.3
+   Compiling getrandom v0.3.4
+   Compiling semver v1.0.28
+   Compiling bytes v1.12.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling chacha20 v0.10.2
+   Compiling arrow-schema v59.2.0
+   Compiling ahash v0.8.12
+   Compiling iana-time-zone v0.1.65
+   Compiling rustc_version v0.4.1
+   Compiling serde_core v1.0.229
+   Compiling num-traits v0.2.19
+   Compiling zstd-safe v7.2.4
+   Compiling once_cell v1.21.4
+   Compiling flatbuffers v25.12.19
+   Compiling hashbrown v0.17.1
+   Compiling zmij v1.0.23
+   Compiling unicode-general-category v1.1.0
+   Compiling bitflags v2.13.1
+   Compiling serde_json v1.0.151
+   Compiling serde v1.0.229
+   Compiling thiserror v2.0.19
+   Compiling memchr v2.8.3
+   Compiling syn v2.0.119
+   Compiling syn v3.0.3
+   Compiling itoa v1.0.18
+   Compiling encoding_rs v0.8.35
+   Compiling jobserver v0.1.35
+   Compiling cc v1.4.4
+   Compiling rand v0.10.2
+   Compiling twox-hash v2.1.4
+   Compiling lz4_flex v0.14.0
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling num-integer v0.1.47
+   Compiling num-complex v0.4.6
+   Compiling chrono v0.4.45
+   Compiling thiserror-impl v2.0.19
+   Compiling serde_derive v1.0.229
+   Compiling num-bigint v0.5.1
+   Compiling zerocopy-derive v0.8.56
+   Compiling half v2.7.1
+   Compiling arrow-buffer v59.2.0
+   Compiling zstd v0.13.3
+   Compiling arrow-data v59.2.0
+   Compiling arrow-array v59.2.0
+   Compiling arrow-select v59.2.0
+   Compiling arrow-ipc v59.2.0
+   Compiling dta-tools v0.7.1 (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/dta-tools)
+   Compiling dtatools-r v0.7.1 (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust)
+    Finished `release` profile [optimized] target(s) in 17.07s
+clang -std=gnu23 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/opt/homebrew/Cellar/r/4.6.1/lib/R/lib -L/opt/homebrew/opt/gettext/lib -L/opt/homebrew/opt/readline/lib -L/opt/homebrew/opt/xz/lib -L/opt/homebrew/lib -L/opt/homebrew/lib -o dtatools.so init.o rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a -liconv -framework CoreFoundation -framework Security -L/opt/homebrew/Cellar/r/4.6.1/lib/R/lib -lR
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[209](44ff4c55aa9e5133-entropy_common.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[210](44ff4c55aa9e5133-error_private.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[211](44ff4c55aa9e5133-fse_decompress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[214](44ff4c55aa9e5133-zstd_common.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[215](fb80479a5fb81f6a-fse_compress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[216](fb80479a5fb81f6a-hist.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[217](fb80479a5fb81f6a-huf_compress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[218](fb80479a5fb81f6a-zstd_compress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[219](fb80479a5fb81f6a-zstd_compress_literals.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[220](fb80479a5fb81f6a-zstd_compress_sequences.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[221](fb80479a5fb81f6a-zstd_compress_superblock.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[222](fb80479a5fb81f6a-zstd_double_fast.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[223](fb80479a5fb81f6a-zstd_fast.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[224](fb80479a5fb81f6a-zstd_lazy.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[225](fb80479a5fb81f6a-zstd_ldm.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[226](fb80479a5fb81f6a-zstd_opt.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[227](fb80479a5fb81f6a-zstd_preSplit.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[229](88f362f13b0528ed-huf_decompress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[230](88f362f13b0528ed-zstd_ddict.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[231](88f362f13b0528ed-zstd_decompress.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[232](88f362f13b0528ed-zstd_decompress_block.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[237](3f451b2306bc13c8-zstd_v01.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[238](3f451b2306bc13c8-zstd_v02.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[239](3f451b2306bc13c8-zstd_v03.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[240](3f451b2306bc13c8-zstd_v04.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[241](3f451b2306bc13c8-zstd_v05.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[242](3f451b2306bc13c8-zstd_v06.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+ld: warning: object file (/private/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/Rtmpvyfy8q/R.INSTALL2d3c46b02e02/dtatools/src/rust/target/7c2b5b75090a7f45b6bcfa08922c7793/release/libdtatools_r.a[243](3f451b2306bc13c8-zstd_v07.o)) was built for newer 'macOS' version (26.5) than being linked (26.0)
+installing to /private/tmp/dta-direct-stage4-validation/checks-976cc40/binary/library/00LOCK-dtatools/00new/dtatools/libs
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+** building package indices
+** testing if installed package can be loaded from temporary location
+** checking absolute paths in shared objects and dynamic libraries
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* SHA256 sums
+* creating tarball
+packaged installation of ‘dtatools’ as ‘dtatools_0.7.1.tgz’
+* DONE (dtatools)

@@ -1,0 +1,25 @@
+DEVELOPMENT ONLY working16 /private/tmp/dta-direct-stage4-validation/working-library/dtatools 
+/private/tmp/dta-direct-stage4-validation/working-library/dtatools/libs/dtatools.so 
+                                                 "0481edb4704ad346098f59ef6a3a6a3f" 
+                 kind  operation          ms    bytes
+1              string     any_na 0.534434999  4000048
+2              string nonmissing 0.865592003  8000096
+3              string  character 0.003444002        0
+4  declared_character     any_na 3.713616003        0
+5  declared_character nonmissing 4.270191006  8000096
+6  declared_character  character 0.001845001        0
+7             logical     any_na 0.001804001        0
+8             logical nonmissing 4.283556998  8000096
+9             logical  character 5.931797998  8000048
+10            logical    integer 3.515094002  4000048
+11            logical       mean 7.477579995 18000248
+12             factor     any_na 3.516283003  4000048
+13             factor nonmissing 4.060599000  8000096
+14             factor  character 5.659148002  8000048
+15             factor    integer 0.002050001        0
+16            ordered     any_na 3.509886999  4000048
+17            ordered nonmissing 4.288107993  8000096
+18            ordered  character 5.622001998  8000048
+19            ordered    integer 0.002132001        0
+/private/tmp/dta-direct-stage4-validation/working-library/dtatools/libs/dtatools.so 
+                                                 "0481edb4704ad346098f59ef6a3a6a3f" 

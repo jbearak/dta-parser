@@ -1,0 +1,16 @@
+source 976cc403f21b9adbb454d39c9c3447717b67c29f 
+package /private/tmp/dta-direct-stage4-validation/candidate-976cc40-library/dtatools 
+DLL /private/tmp/dta-direct-stage4-validation/candidate-976cc40-library/dtatools/libs/dtatools.so 
+DLL_md5 f1b1a0fbdce2d388733638cb19d99709 
+$format
+[1] 1
+
+$source_sha
+[1] "976cc403f21b9adbb454d39c9c3447717b67c29f"
+
+$source_tree
+[1] "5918bf611151f8a2b78dbf3e704e67f70b1fb9a5"
+
+$archive_md5
+[1] "d027ec292ab4f0e7ba52559b0c2c2d6d"
+

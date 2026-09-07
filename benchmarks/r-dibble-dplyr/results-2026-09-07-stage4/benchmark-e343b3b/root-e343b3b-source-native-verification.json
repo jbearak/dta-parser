@@ -1,0 +1,25 @@
+{
+  "recorded_utc": "2026-09-07T06:39:57.702219+00:00",
+  "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "package_tree": "f12a2a1dd430636a33b7f6e953023d90d1ff2589",
+  "source_manifest_sha256": "92f449b362d4888993e529f9994067e8b4e687a13788c4463df4419905227167",
+  "archive_sha256": "da56b2d61bbfeca9e9994d88bdf3c1d38366160f9b142c2240ca4b683f738dce",
+  "file_count": 1060,
+  "archive_member_hashes_and_current_export_files_match": true,
+  "root219_manifest_sha256": "768eae0ae91e3ac6947bb446dfd8b445f9d821d9333af4edc7fc0c8a27b211cd",
+  "native_atomic_rows": 18,
+  "native_recorded_commands_all_exit_zero": true,
+  "native_files_sha256": {
+    "atoms/owned-native-atoms-session.txt": "40108a00342e7fc9668de86ffc059d2a559fc0c89fa5ff494604ea9b2593e3ee",
+    "atoms/owned-native-atoms.csv": "d6ef2bdd65ba0e5c4821472853b548674719bcc1b45ce3ce9ebbe34643ecfc23",
+    "commands.json": "7c3b153f93ac78769ee92e3db5e34dfe5c44b12a34c40b4b4d3a498c404f0353",
+    "identity-after.log": "3f075e91fc428a9a167fbe1f01ac0590fe03a5e72310174286dc0a5d4ba35d16",
+    "identity-before.log": "3f075e91fc428a9a167fbe1f01ac0590fe03a5e72310174286dc0a5d4ba35d16",
+    "native-atoms.log": "4dc7294cda16cf77509148d3df1f9bb89287134e8a2e4434b1941b9da7575382",
+    "original-native.log": "5ef7af7c4f2007e838f386f7c161ec61dd5d34512a3c004d071e3cc42e4325d4",
+    "original-native.md": "9f9ecfc8a5d83442e6f56eb31f4ed8b8d9205a2ac3021f73bbc80a6fa827b07f",
+    "qualification.json": "ea4bf2093c4d2e97659ea92c6cdbc3763bdf351f3970c1983beec48e061e6287",
+    "rename-allocation.log": "5e1c9b94a7cda3bde2ee5c70b36d93ab5110ad31efd3ff280923fe51b06a2046"
+  },
+  "scope": "Independent source/export/runner identity and saved native artifact verification, not a new native workload"
+}

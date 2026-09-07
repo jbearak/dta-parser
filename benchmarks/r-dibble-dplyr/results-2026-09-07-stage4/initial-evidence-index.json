@@ -1,0 +1,954 @@
+{
+  "recorded_utc": "2026-09-07T03:52:07.807363+00:00",
+  "baseline_source": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+  "candidate_source": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+  "atomic_runner_source": "b259ad5a521dbb867a0b8563e3a0c2262e298671",
+  "double_runner_source": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+  "candidate_status": "Correctness, selector allocation, writes and retained-memory checks passed. Initial read-performance candidate rejected: 43 atomic read cases exceed both10% and1ms. No prior-double read case crosses both thresholds. Further diagnosis and final qualification required.",
+  "baseline_retry": "baseline-b259ad5 operations passed; first memory R case passed but macOS time sysctl was sandbox-denied. Successful operation artifacts copied byte-for-byte to baseline-b259ad5-qualified; all30 memory cases then passed with read-only sysctl permission. Original evidence and separate retry-copy proof preserved.",
+  "root_regression_scope": "219 pure R cases only; excludes historical18-case native names observer whose C source was not recovered.",
+  "files": [
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5/memory-string-rename-100000.log",
+      "copy": "baseline-b259ad5/memory-string-rename-100000.log",
+      "sha256": "441254fd4944a71e62191cfdd7bfe27bffe2424113f620abe36d84df11aee5b2",
+      "bytes": 1877
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5/owned-atomic-after-read.csv",
+      "copy": "baseline-b259ad5/owned-atomic-after-read.csv",
+      "sha256": "76d17161b93fe0cabfbaca8ee34e66a33e4ac87ee20fbe502edce9eddb480f97",
+      "bytes": 8852
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5/owned-atomic-session.txt",
+      "copy": "baseline-b259ad5/owned-atomic-session.txt",
+      "sha256": "87a31ddc4c686ceecbcebd927f1bbc55d3f5e1f68ab5f683a25962a66be05fd8",
+      "bytes": 1436
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5/owned-atomic-writes.csv",
+      "copy": "baseline-b259ad5/owned-atomic-writes.csv",
+      "sha256": "28b300e4d2486cae9aa3328201c4918cb66ceb734a9c57ab1aabb79d9c46e67c",
+      "bytes": 1626
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5/owned-atomic.csv",
+      "copy": "baseline-b259ad5/owned-atomic.csv",
+      "sha256": "e65bd8eedf5384ac1ec3942b303202625399bdff75933cfc583c19288d4dd1ed",
+      "bytes": 22034
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5/root-manifest.json",
+      "copy": "baseline-b259ad5/root-manifest.json",
+      "sha256": "e5bef084b8c760f939fdfdb32b07616186a4caada378123ff3946f982dcbf95e",
+      "bytes": 1675
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5/runner.log",
+      "copy": "baseline-b259ad5/runner.log",
+      "sha256": "6d558b3671c4ab27814529d69b7b4ca98aa04c03ee080781148382770a72344f",
+      "bytes": 39769
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-declared_character-pipeline_50-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-declared_character-pipeline_50-100000.log",
+      "sha256": "f816436b9d3bf3d6b036034e701cdc6661e23dfe1e253ba6b865882de11ad906",
+      "bytes": 2565
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-declared_character-pipeline_50-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-declared_character-pipeline_50-1000000.log",
+      "sha256": "592f97378b2789286e1bd9ac45fe18728c74ddef79353e4b1580bab91ca72bdb",
+      "bytes": 2570
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-declared_character-pipeline_five-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-declared_character-pipeline_five-100000.log",
+      "sha256": "fca27759bfbc7ace6fd26ca21a18b64bd6d6a5df5d9f4daccdf4fc5e4333f584",
+      "bytes": 2567
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-declared_character-pipeline_five-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-declared_character-pipeline_five-1000000.log",
+      "sha256": "2b6a965ae1aace7b0767ea28b976e87ce42830ae1533a0c28d7dae6717c98c80",
+      "bytes": 2572
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-declared_character-rename-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-declared_character-rename-100000.log",
+      "sha256": "027db042880f6f332a00fe8599a6c0876235e2b9db70277cb850f73b9fbe5ec4",
+      "bytes": 2560
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-declared_character-rename-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-declared_character-rename-1000000.log",
+      "sha256": "b5c8c5908ae89004cfbad9e538f040aac8191d08f49d2638831f80b6f80680d3",
+      "bytes": 2565
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-factor-pipeline_50-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-factor-pipeline_50-100000.log",
+      "sha256": "c2fc39358890700378d5052f024942ab274126b92aa970e5255b380c7f063a69",
+      "bytes": 2550
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-factor-pipeline_50-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-factor-pipeline_50-1000000.log",
+      "sha256": "dfc339578acce491e64e5bf94440d1eb1c5dc18154a69a95c82d47dc5fedf8ac",
+      "bytes": 2554
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-factor-pipeline_five-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-factor-pipeline_five-100000.log",
+      "sha256": "36a445f1ff71c0cbe8400f22885e852eecdd3774aec9d254285949a94d318f95",
+      "bytes": 2552
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-factor-pipeline_five-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-factor-pipeline_five-1000000.log",
+      "sha256": "a2fd2ef04668f886dfb87342cfdc6fd2bb0df5e615f4df321a6791777de8803c",
+      "bytes": 2556
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-factor-rename-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-factor-rename-100000.log",
+      "sha256": "7604ac9e11b751a3e81ed0a3485399efaa5619f7fe0d765ab6dbf44cb199ce08",
+      "bytes": 2545
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-factor-rename-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-factor-rename-1000000.log",
+      "sha256": "cb62b3704bcc163d7e47b791191ef0a3a62b9e05c37255820851675b7e3d2290",
+      "bytes": 2549
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-logical-pipeline_50-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-logical-pipeline_50-100000.log",
+      "sha256": "c6c85707a143437fa164568d9b61f673c66358e9338134e28bf8c8ee47c327ed",
+      "bytes": 2551
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-logical-pipeline_50-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-logical-pipeline_50-1000000.log",
+      "sha256": "2b5b6675bdeb9f191044372bea8e38544fb713280fcd9b04b2c1b88e5fa2b669",
+      "bytes": 2555
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-logical-pipeline_five-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-logical-pipeline_five-100000.log",
+      "sha256": "bd9e3b6bd3677df02f3a54cc1fc556473c19974ad4cd0c0468e894c69f6abf1a",
+      "bytes": 2553
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-logical-pipeline_five-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-logical-pipeline_five-1000000.log",
+      "sha256": "43ec2adb01ac06fbb4a2e6d52db51e663ca7e9129e338a9391068db343c9963c",
+      "bytes": 2557
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-logical-rename-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-logical-rename-100000.log",
+      "sha256": "8a78e6ba25eb96a8262292e621b0aa997f40028c95f2ed76d67bc804e7a21ecd",
+      "bytes": 2546
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-logical-rename-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-logical-rename-1000000.log",
+      "sha256": "c93a841e09973820fb5e655efe91ba252013527afa026bbaebdcbf2f6d4b1af0",
+      "bytes": 2550
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-ordered-pipeline_50-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-ordered-pipeline_50-100000.log",
+      "sha256": "0ff88db7f56fa064e9b64bd7847e7f1764da0171d0cbb21e59fd7d6458b4c6fd",
+      "bytes": 2551
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-ordered-pipeline_50-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-ordered-pipeline_50-1000000.log",
+      "sha256": "179f6743c0cc28fbace3db0016b4ac5149809eaa2f27ab5d9a9503d3314bb77a",
+      "bytes": 2555
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-ordered-pipeline_five-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-ordered-pipeline_five-100000.log",
+      "sha256": "b5c9dfd27aaf633d236668d653071fd9f19ecb05dd3104072b5ed0fd14db9fc9",
+      "bytes": 2553
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-ordered-pipeline_five-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-ordered-pipeline_five-1000000.log",
+      "sha256": "8f92ba957a2ce502ca739d2fd866e389e8bea222a703ef2a5fb919a517f43cfd",
+      "bytes": 2557
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-ordered-rename-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-ordered-rename-100000.log",
+      "sha256": "584b07714246244d6a888b790ccae4b4cf9c17d0c2eec2a9f3e5c8f44984bab6",
+      "bytes": 2546
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-ordered-rename-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-ordered-rename-1000000.log",
+      "sha256": "44333e49076f6b8622fb37280abcf07ce4de6e34313f1195b1721cb6c4703395",
+      "bytes": 2550
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-string-pipeline_50-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-string-pipeline_50-100000.log",
+      "sha256": "3e34d9e26fa17af29bfa121c7f37e071dfd9d6b424d41693fc654576e54c697a",
+      "bytes": 2553
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-string-pipeline_50-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-string-pipeline_50-1000000.log",
+      "sha256": "5b6f4d13958f1ed8b84a1ea644d22f1a956b8c07855ccd26dcbf0d2d077f87f3",
+      "bytes": 2558
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-string-pipeline_five-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-string-pipeline_five-100000.log",
+      "sha256": "768646728244a56160bafc672aa85c2d6d468618e00a902070caee25e3acaaab",
+      "bytes": 2555
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-string-pipeline_five-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-string-pipeline_five-1000000.log",
+      "sha256": "91d9caceb02e7165161ebaf24b1212b882c18f23a84c5792e4ba153b94ae304d",
+      "bytes": 2560
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-string-rename-100000.log",
+      "copy": "baseline-b259ad5-qualified/memory-string-rename-100000.log",
+      "sha256": "044467b7f4397195dd368ad7830b6acaeb1d78b46d33c32a0339850f02e262bd",
+      "bytes": 2548
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/memory-string-rename-1000000.log",
+      "copy": "baseline-b259ad5-qualified/memory-string-rename-1000000.log",
+      "sha256": "9ee01d09a6c3cdf8522d1d298ceee614e0886942522c7f003442747516477299",
+      "bytes": 2553
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/owned-atomic-after-read.csv",
+      "copy": "baseline-b259ad5-qualified/owned-atomic-after-read.csv",
+      "sha256": "76d17161b93fe0cabfbaca8ee34e66a33e4ac87ee20fbe502edce9eddb480f97",
+      "bytes": 8852
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/owned-atomic-session.txt",
+      "copy": "baseline-b259ad5-qualified/owned-atomic-session.txt",
+      "sha256": "87a31ddc4c686ceecbcebd927f1bbc55d3f5e1f68ab5f683a25962a66be05fd8",
+      "bytes": 1436
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/owned-atomic-writes.csv",
+      "copy": "baseline-b259ad5-qualified/owned-atomic-writes.csv",
+      "sha256": "28b300e4d2486cae9aa3328201c4918cb66ceb734a9c57ab1aabb79d9c46e67c",
+      "bytes": 1626
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/owned-atomic.csv",
+      "copy": "baseline-b259ad5-qualified/owned-atomic.csv",
+      "sha256": "e65bd8eedf5384ac1ec3942b303202625399bdff75933cfc583c19288d4dd1ed",
+      "bytes": 22034
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/root-manifest.json",
+      "copy": "baseline-b259ad5-qualified/root-manifest.json",
+      "sha256": "d68f755d02423ace8816115d1889c474f7f4e39567a095610eccfb88e58c253b",
+      "bytes": 16659
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/runner.log",
+      "copy": "baseline-b259ad5-qualified/runner.log",
+      "sha256": "6d558b3671c4ab27814529d69b7b4ca98aa04c03ee080781148382770a72344f",
+      "bytes": 39769
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/arithmetic-where-cost-100000.csv",
+      "copy": "baseline-owned-double-ec10a6a/arithmetic-where-cost-100000.csv",
+      "sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28",
+      "bytes": 314
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/arithmetic-where-cost-1000000.csv",
+      "copy": "baseline-owned-double-ec10a6a/arithmetic-where-cost-1000000.csv",
+      "sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77",
+      "bytes": 317
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/memory-pipeline_50-100000.log",
+      "copy": "baseline-owned-double-ec10a6a/memory-pipeline_50-100000.log",
+      "sha256": "f143e83cefd70ea8dfcaf207fca2ab84b5ff474aab38eff71b140d23728a87e5",
+      "bytes": 2444
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/memory-pipeline_50-1000000.log",
+      "copy": "baseline-owned-double-ec10a6a/memory-pipeline_50-1000000.log",
+      "sha256": "71f39f785342eb9ae968b9e13a6f76e6a4422e0ae852c8cc01565c61951ab4e5",
+      "bytes": 2448
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/memory-pipeline_five-100000.log",
+      "copy": "baseline-owned-double-ec10a6a/memory-pipeline_five-100000.log",
+      "sha256": "5b57c431333bfca88e56667b50bb501703356db6f069c992f5413f6a65d62cb2",
+      "bytes": 2446
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/memory-pipeline_five-1000000.log",
+      "copy": "baseline-owned-double-ec10a6a/memory-pipeline_five-1000000.log",
+      "sha256": "0ae02cd938b71aa4eb3726baa104ff769a2da1fa9e62ce333a302d8874086007",
+      "bytes": 2450
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/memory-rename-100000.log",
+      "copy": "baseline-owned-double-ec10a6a/memory-rename-100000.log",
+      "sha256": "7ec14c2e0cde77f84888512d0066518551c1182ef5eea26b60251e3f4e615014",
+      "bytes": 2439
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/memory-rename-1000000.log",
+      "copy": "baseline-owned-double-ec10a6a/memory-rename-1000000.log",
+      "sha256": "4cdff9bed02a52e85aef0c29d0e3e7003592ff11e07541bd8d19c9e14c48a4c0",
+      "bytes": 2443
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/owned-after-read.csv",
+      "copy": "baseline-owned-double-ec10a6a/owned-after-read.csv",
+      "sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb",
+      "bytes": 1613
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/owned-double-session.txt",
+      "copy": "baseline-owned-double-ec10a6a/owned-double-session.txt",
+      "sha256": "dca9fa336a3ea22fa6b3613b8b0791583e87590c368ff4d46b7dbddd42a93cbe",
+      "bytes": 1343
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/owned-double-writes.csv",
+      "copy": "baseline-owned-double-ec10a6a/owned-double-writes.csv",
+      "sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea",
+      "bytes": 564
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/owned-double.csv",
+      "copy": "baseline-owned-double-ec10a6a/owned-double.csv",
+      "sha256": "d81f9ebf8aec8aaaf788f39a118690df39103bd90f4f5f2da35a1f39f0efb4c9",
+      "bytes": 4175
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/root-manifest.json",
+      "copy": "baseline-owned-double-ec10a6a/root-manifest.json",
+      "sha256": "c39cf8baff675a4683923d8e1ef7a095034a89df5148fbc800c1ec348d295fb7",
+      "bytes": 3651
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/runner.log",
+      "copy": "baseline-owned-double-ec10a6a/runner.log",
+      "sha256": "aaa2913c93c1abe4f8c21865062473243d1b2cf668cc5f2084e7832da90e38ac",
+      "bytes": 5427
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/snapshot-cost-100000.csv",
+      "copy": "baseline-owned-double-ec10a6a/snapshot-cost-100000.csv",
+      "sha256": "391efa7a5588df4f3f0e38eddd6df23af2188534e20ac970afe7beb43a9e6d27",
+      "bytes": 321
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a/snapshot-cost-1000000.csv",
+      "copy": "baseline-owned-double-ec10a6a/snapshot-cost-1000000.csv",
+      "sha256": "88dd94b983e9165d2b1ce4b6d6ee959d7459d240e63e8573b82373dac0ee4da7",
+      "bytes": 324
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-declared_character-pipeline_50-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-declared_character-pipeline_50-100000.log",
+      "sha256": "37cf42ddba8cc148e5cba2fccc567be12288369653678c7a386306020fb423a8",
+      "bytes": 2572
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-declared_character-pipeline_50-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-declared_character-pipeline_50-1000000.log",
+      "sha256": "dfa1111d9eeb98577abb34cbdba8605613c00ff31de9521774a5acd57813a46d",
+      "bytes": 2576
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-declared_character-pipeline_five-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-declared_character-pipeline_five-100000.log",
+      "sha256": "3c4b029840540186e5e23d4929f36058e95c304f376e5a86492f548f20daf8cb",
+      "bytes": 2574
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-declared_character-pipeline_five-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-declared_character-pipeline_five-1000000.log",
+      "sha256": "f722dd4e51104ac47facfc0deea43c1b4159500201200019b8c5b130d24c39db",
+      "bytes": 2578
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-declared_character-rename-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-declared_character-rename-100000.log",
+      "sha256": "3d9f22fcfb7b5f446e017a20e7fef36df76db520f4990b43413b1affd8df0363",
+      "bytes": 2567
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-declared_character-rename-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-declared_character-rename-1000000.log",
+      "sha256": "3440173d7eaed63bfe907236dc3793cf8dd459916f883df8fa600f8ad3580c30",
+      "bytes": 2571
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-factor-pipeline_50-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-factor-pipeline_50-100000.log",
+      "sha256": "47bc03352a4ad819107049472d3b7cf76e651783eb3747f88c5b12185d3197d1",
+      "bytes": 2558
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-factor-pipeline_50-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-factor-pipeline_50-1000000.log",
+      "sha256": "c61b683447fa505167dee690000d58b418f517a236ad60ecc1033e6e7d25c36e",
+      "bytes": 2561
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-factor-pipeline_five-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-factor-pipeline_five-100000.log",
+      "sha256": "7da9cb58e2a5bbfce5cfcb2d0d9e7db9cd932f2ba05a9a9288cd38678c967e59",
+      "bytes": 2560
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-factor-pipeline_five-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-factor-pipeline_five-1000000.log",
+      "sha256": "c938afa1f36198bec3c4ec48889841e1ecc561aac37bc33d7c6a9ad48bafd84c",
+      "bytes": 2563
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-factor-rename-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-factor-rename-100000.log",
+      "sha256": "913c00ea0bba22546c1e0d6860918b8ba98bbacaa30f3c4e4601d9ee3902bb7c",
+      "bytes": 2553
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-factor-rename-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-factor-rename-1000000.log",
+      "sha256": "61b9f852c7f4f7e1cfb9acb71c382532bf77c2af357bb9eb190979479238dc99",
+      "bytes": 2556
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-logical-pipeline_50-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-logical-pipeline_50-100000.log",
+      "sha256": "b0d2a958f16f94849c42da2036ab3e8906ad6c0b8cc6bec30861858fa8567faf",
+      "bytes": 2559
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-logical-pipeline_50-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-logical-pipeline_50-1000000.log",
+      "sha256": "c20a4d014aaa157b75014cf185af207fec23fd6a613a5e053f0050a5aaaa6300",
+      "bytes": 2562
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-logical-pipeline_five-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-logical-pipeline_five-100000.log",
+      "sha256": "35fc4ac6009da333c15377ffabeed5448d53b836f75d28afc7f2e550d4806966",
+      "bytes": 2561
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-logical-pipeline_five-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-logical-pipeline_five-1000000.log",
+      "sha256": "5227753e6f9ee634166685dbc3a44322bd4bbf710661342150f43b688bf2860e",
+      "bytes": 2564
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-logical-rename-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-logical-rename-100000.log",
+      "sha256": "05de26d00692fa7d194682e907ad7505302f3d92abe6e9805cbbf4f73ef75ce4",
+      "bytes": 2554
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-logical-rename-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-logical-rename-1000000.log",
+      "sha256": "d425736a784d409c4b4a754ec3e84861e287e89ecd555cd49e88a04a95ab8915",
+      "bytes": 2557
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-ordered-pipeline_50-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-ordered-pipeline_50-100000.log",
+      "sha256": "f5af7d445f5defb8a28fa7a3275e71719d30f02239f1a5354cabb68163756b79",
+      "bytes": 2559
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-ordered-pipeline_50-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-ordered-pipeline_50-1000000.log",
+      "sha256": "db16359152d3f11d417f2afcdda57875e79d3445ad1c94b06886ab2420c70af6",
+      "bytes": 2562
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-ordered-pipeline_five-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-ordered-pipeline_five-100000.log",
+      "sha256": "3d136294ea6dd5cb9488bdbd9c8291eeede018c3e3b178e1bf317f7132c2eced",
+      "bytes": 2561
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-ordered-pipeline_five-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-ordered-pipeline_five-1000000.log",
+      "sha256": "d2e77964b7a49d93215ddef107f428ce39cbd4c8f442ae0166a385379cc6b09c",
+      "bytes": 2564
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-ordered-rename-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-ordered-rename-100000.log",
+      "sha256": "1904cf30decf1385eca842ca6a10983a6bc60d33bf911b883baca60a233e81dc",
+      "bytes": 2554
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-ordered-rename-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-ordered-rename-1000000.log",
+      "sha256": "7638843ebd39ef2525414b11ca559e2dce67d400e95fbb5d0daa235414642870",
+      "bytes": 2557
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-string-pipeline_50-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-string-pipeline_50-100000.log",
+      "sha256": "f106a012078e224053abf956424b2dfc432aa707937fde69db54bf3531555ee1",
+      "bytes": 2560
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-string-pipeline_50-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-string-pipeline_50-1000000.log",
+      "sha256": "c93bf4ca7784289f9d24e8c30470bddb364cb11de0cd2808faae4b585751c7ea",
+      "bytes": 2564
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-string-pipeline_five-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-string-pipeline_five-100000.log",
+      "sha256": "bf2160be43a031df30b13919c3e97053ddf2dda57584db886d773e5cbad22bb8",
+      "bytes": 2562
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-string-pipeline_five-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-string-pipeline_five-1000000.log",
+      "sha256": "5780d95a2ae992c64430f1d82b2d1f6ebd2395f854ada9029133c4bfecc29586",
+      "bytes": 2566
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-string-rename-100000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-string-rename-100000.log",
+      "sha256": "b413654626ca3159483153d5aa02ed760ceef758af07b2e12892d76e49f0d6fa",
+      "bytes": 2555
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/memory-string-rename-1000000.log",
+      "copy": "candidate-7d56080-b259ad5/memory-string-rename-1000000.log",
+      "sha256": "5fed4602d346db709dea5623a9c4b8f97b298b09d3a201e02f9bafab90f09615",
+      "bytes": 2559
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/owned-atomic-after-read.csv",
+      "copy": "candidate-7d56080-b259ad5/owned-atomic-after-read.csv",
+      "sha256": "7a0cef9bd97da828ff6a2fbb4b5b1e96f9a9931a644a93424a05f05a69382682",
+      "bytes": 8096
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/owned-atomic-session.txt",
+      "copy": "candidate-7d56080-b259ad5/owned-atomic-session.txt",
+      "sha256": "b049b865a90e862ce5a4a853a119aff78ff0108aef74750c8b2e480b6ea5e8da",
+      "bytes": 1446
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/owned-atomic-writes.csv",
+      "copy": "candidate-7d56080-b259ad5/owned-atomic-writes.csv",
+      "sha256": "45fecd920b6c941fe8caab2771eeb6d6cafff183ec6914972a6f0fbfca2bff1f",
+      "bytes": 1541
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/owned-atomic.csv",
+      "copy": "candidate-7d56080-b259ad5/owned-atomic.csv",
+      "sha256": "081eadcc0c2ecfe1bed16f056950d1869e7b997ce79d26076788672251b6f673",
+      "bytes": 20967
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/root-manifest.json",
+      "copy": "candidate-7d56080-b259ad5/root-manifest.json",
+      "sha256": "7f06a035bc05bc58cf0fb79d7fc9924df89deca2ea8587a090e58ffaf1a406c8",
+      "bytes": 16576
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/runner.log",
+      "copy": "candidate-7d56080-b259ad5/runner.log",
+      "sha256": "7cf2027d285c8e3a5a50775835c402a15c133b19cdfa3f307c53d1a99209e960",
+      "bytes": 39792
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/arithmetic-where-cost-100000.csv",
+      "copy": "candidate-owned-double-7d56080/arithmetic-where-cost-100000.csv",
+      "sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28",
+      "bytes": 314
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/arithmetic-where-cost-1000000.csv",
+      "copy": "candidate-owned-double-7d56080/arithmetic-where-cost-1000000.csv",
+      "sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77",
+      "bytes": 317
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/memory-pipeline_50-100000.log",
+      "copy": "candidate-owned-double-7d56080/memory-pipeline_50-100000.log",
+      "sha256": "9d4621cc10ca465aad3a1fd3b5a10d86f62eedd8ac95d4cf14daeefb02b26e14",
+      "bytes": 2454
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/memory-pipeline_50-1000000.log",
+      "copy": "candidate-owned-double-7d56080/memory-pipeline_50-1000000.log",
+      "sha256": "af2d8d66ba28aafb633d30f1b3d0822fcc2aa05507e933d6d4f3ae02b8f2c245",
+      "bytes": 2458
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/memory-pipeline_five-100000.log",
+      "copy": "candidate-owned-double-7d56080/memory-pipeline_five-100000.log",
+      "sha256": "b469bf65a9c926d86bf74a0d2cce87948b419987185937b3eb974af6fcbdeeff",
+      "bytes": 2456
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/memory-pipeline_five-1000000.log",
+      "copy": "candidate-owned-double-7d56080/memory-pipeline_five-1000000.log",
+      "sha256": "1612c934131d39eb8b6d66b6a54750673c6033dd00fa38ed3ba560ce1f175dd9",
+      "bytes": 2460
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/memory-rename-100000.log",
+      "copy": "candidate-owned-double-7d56080/memory-rename-100000.log",
+      "sha256": "1ed9121ae4d001123e0c3db46006c670981a1279a5928d6526c438dd3157271d",
+      "bytes": 2449
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/memory-rename-1000000.log",
+      "copy": "candidate-owned-double-7d56080/memory-rename-1000000.log",
+      "sha256": "d18a22f321a0e54594e86365e715a9a8f97799a1a9c95f556e34a95a9bb86da6",
+      "bytes": 2453
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/owned-after-read.csv",
+      "copy": "candidate-owned-double-7d56080/owned-after-read.csv",
+      "sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb",
+      "bytes": 1613
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/owned-double-session.txt",
+      "copy": "candidate-owned-double-7d56080/owned-double-session.txt",
+      "sha256": "1e789f59cb4550f53a96073c9cf77ea6cccccf589fd9198a502701b7d5629ecb",
+      "bytes": 1353
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/owned-double-writes.csv",
+      "copy": "candidate-owned-double-7d56080/owned-double-writes.csv",
+      "sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea",
+      "bytes": 564
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/owned-double.csv",
+      "copy": "candidate-owned-double-7d56080/owned-double.csv",
+      "sha256": "030f0fde8bf9c511e7570c0832d7161e2a2e015bc4791ff77e06df2fc2d07496",
+      "bytes": 4174
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/root-manifest.json",
+      "copy": "candidate-owned-double-7d56080/root-manifest.json",
+      "sha256": "574455364b2919131c5ba134a479c8473f64262204b56df66335c2326b8d952e",
+      "bytes": 3661
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/runner.log",
+      "copy": "candidate-owned-double-7d56080/runner.log",
+      "sha256": "828234696ad44c558a7519ee543d1d1dd422077ccbb06ea9d659c187dde99c63",
+      "bytes": 5482
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/snapshot-cost-100000.csv",
+      "copy": "candidate-owned-double-7d56080/snapshot-cost-100000.csv",
+      "sha256": "4ee37d305ecb301547febdbd6f9c4607254441c2ca68ff9dbd88477ac8573b2b",
+      "bytes": 326
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080/snapshot-cost-1000000.csv",
+      "copy": "candidate-owned-double-7d56080/snapshot-cost-1000000.csv",
+      "sha256": "b703bac6a09400e2b675ed259daf2b0b591a25e0f26dfa1987172ff6bf5fc621",
+      "bytes": 330
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/comparison-atomic-7d56080/derivation.json",
+      "copy": "comparison-atomic-7d56080/derivation.json",
+      "sha256": "390fda18b6a99e47bf26f4dc44ab969bc5188f735f0cd3c65922a27145c16ee1",
+      "bytes": 822
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/comparison-atomic-7d56080/investigate.json",
+      "copy": "comparison-atomic-7d56080/investigate.json",
+      "sha256": "e7f0785c888795f2568c493b0aae1cf2a0effddf49c85bf1b735e93fce1c753e",
+      "bytes": 26699
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/comparison-atomic-7d56080/memory-comparison.csv",
+      "copy": "comparison-atomic-7d56080/memory-comparison.csv",
+      "sha256": "29d3a73f86b935fa66490b274508fda6a0817be3625430fa75936515b0f168b3",
+      "bytes": 3251
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/comparison-atomic-7d56080/operation-comparison.csv",
+      "copy": "comparison-atomic-7d56080/operation-comparison.csv",
+      "sha256": "317d61432dc5d6b9525b9f4a56829d2cb4afbf0c4aaa66227c6bcdc529891722",
+      "bytes": 35238
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/comparison-double-7d56080/derivation.json",
+      "copy": "comparison-double-7d56080/derivation.json",
+      "sha256": "73dd94af755100f6983c81a774e7895536fa4d5a206d39fac2ba80b569911ccf",
+      "bytes": 830
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/comparison-double-7d56080/investigate.json",
+      "copy": "comparison-double-7d56080/investigate.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/comparison-double-7d56080/memory-comparison.csv",
+      "copy": "comparison-double-7d56080/memory-comparison.csv",
+      "sha256": "33fdf60b45f280e297a2ade1e4ab56a2cdda8961872116e1891e7f5e443a46ff",
+      "bytes": 873
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/comparison-double-7d56080/operation-comparison.csv",
+      "copy": "comparison-double-7d56080/operation-comparison.csv",
+      "sha256": "9e676cf63b577b21e7f134713f2639a81ed3104e9c9b36a598d3f3a1ed67f59f",
+      "bytes": 7524
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-mask-baseline.rds",
+      "copy": "root-acceptance-7d56080/delayed-mask-baseline.rds",
+      "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+      "bytes": 647
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-mask-candidate.log",
+      "copy": "root-acceptance-7d56080/delayed-mask-candidate.log",
+      "sha256": "588562d230d6c1fa55c726a4ebda85450e306a468a55fa77e4d5c97fed1d4e04",
+      "bytes": 73
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-mask-candidate.rds",
+      "copy": "root-acceptance-7d56080/delayed-mask-candidate.rds",
+      "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+      "bytes": 647
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-mask-matrix.R",
+      "copy": "root-acceptance-7d56080/delayed-mask-matrix.R",
+      "sha256": "f01fdf0d670232e9a2bbb5249a92ed5df5303680e3430117b01156574e790091",
+      "bytes": 2129
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-private-mask-baseline.rds",
+      "copy": "root-acceptance-7d56080/delayed-private-mask-baseline.rds",
+      "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+      "bytes": 647
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-private-mask-candidate.log",
+      "copy": "root-acceptance-7d56080/delayed-private-mask-candidate.log",
+      "sha256": "588562d230d6c1fa55c726a4ebda85450e306a468a55fa77e4d5c97fed1d4e04",
+      "bytes": 73
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-private-mask-candidate.rds",
+      "copy": "root-acceptance-7d56080/delayed-private-mask-candidate.rds",
+      "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+      "bytes": 647
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-private-mask-matrix.R",
+      "copy": "root-acceptance-7d56080/delayed-private-mask-matrix.R",
+      "sha256": "53b4291399cf1bb5d2887095ecd496696ad2c7d1b5b0623f9909cbc799d238a8",
+      "bytes": 2166
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/driver.log",
+      "copy": "root-acceptance-7d56080/driver.log",
+      "sha256": "99d7baf151bba019ef700a82a8f160828666c9538289c5726a58853e4e5bb32f",
+      "bytes": 374
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/generation-names-baseline.rds",
+      "copy": "root-acceptance-7d56080/generation-names-baseline.rds",
+      "sha256": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5",
+      "bytes": 731
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/generation-names-candidate.log",
+      "copy": "root-acceptance-7d56080/generation-names-candidate.log",
+      "sha256": "a9d461b318d2681fc60594e6d5f5df6d02b4bfad4770c159fc4a729dd3b14e1b",
+      "bytes": 166
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/generation-names-candidate.rds",
+      "copy": "root-acceptance-7d56080/generation-names-candidate.rds",
+      "sha256": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5",
+      "bytes": 731
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/generation-names-matrix.R",
+      "copy": "root-acceptance-7d56080/generation-names-matrix.R",
+      "sha256": "d35583705f66c051aa7bd8ea3b2207c98ecf8c3360f727e672fd9c31b67015f6",
+      "bytes": 3274
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/reused-input-identities.json",
+      "copy": "root-acceptance-7d56080/reused-input-identities.json",
+      "sha256": "0c38e907b8c8acef3c5dccd1e056c3ab003e2deb0d55ab92d55e1f4aedb86bd1",
+      "bytes": 1799
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/root-manifest.json",
+      "copy": "root-acceptance-7d56080/root-manifest.json",
+      "sha256": "5b6387454272272892022cea201aebc05a75006b13d536b377a44dd0ebcc0a2d",
+      "bytes": 2954
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/run.R",
+      "copy": "root-acceptance-7d56080/run.R",
+      "sha256": "682b82b93f98e79616a03a348e168c1b80a1f22c481fafcc74bfd4797ea61ab8",
+      "bytes": 1230
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/symbol-private-callback-baseline.rds",
+      "copy": "root-acceptance-7d56080/symbol-private-callback-baseline.rds",
+      "sha256": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23",
+      "bytes": 431
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/symbol-private-callback-candidate.log",
+      "copy": "root-acceptance-7d56080/symbol-private-callback-candidate.log",
+      "sha256": "c23c00a8ad2a428fc672f3ee77afc6899f5e66ace5ecadf65bd6f3133ef0980e",
+      "bytes": 53
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/symbol-private-callback-candidate.rds",
+      "copy": "root-acceptance-7d56080/symbol-private-callback-candidate.rds",
+      "sha256": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23",
+      "bytes": 431
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/symbol-private-callback-matrix.R",
+      "copy": "root-acceptance-7d56080/symbol-private-callback-matrix.R",
+      "sha256": "2e67b6f6ae5dc5eb2a77f34799cc67632d78212fd7e4970eb2bc90069838ddac",
+      "bytes": 1935
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-memory-retry-copy.json",
+      "copy": "baseline-b259ad5-memory-retry-copy.json",
+      "sha256": "074f97fc9f3e750f03af62e17833fbbbc46740477e141f91b56ff10cc5762ec5",
+      "bytes": 1248
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-driver.log",
+      "copy": "baseline-b259ad5-driver.log",
+      "sha256": "b9d9fc3f2fc6d1f9b28b2f6759cf4ebb80c43d77cfa55dc608355a64ee0a0660",
+      "bytes": 89
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-memory-driver.log",
+      "copy": "baseline-b259ad5-memory-driver.log",
+      "sha256": "0c4a00617bbe1003593cad644c6dbbd346610dfbb706c5507af2fc7ac57195f0",
+      "bytes": 1012
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified-memory-driver.log",
+      "copy": "baseline-b259ad5-qualified-memory-driver.log",
+      "sha256": "045aca1d417e35cad34372e82995bfcf0b10f5f0ed0d6710ba9b32bd23689541",
+      "bytes": 1484
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a-driver.log",
+      "copy": "baseline-owned-double-ec10a6a-driver.log",
+      "sha256": "e29cc06af3a2ca5cf3e32418e44b574473e6f60d56b293842d77e5c894bf4e31",
+      "bytes": 102
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/baseline-owned-double-ec10a6a-memory-driver.log",
+      "copy": "baseline-owned-double-ec10a6a-memory-driver.log",
+      "sha256": "63ee5630eb49684c6a20f2828ca6b5a5668da9a6ec9380f8755c851d43d16fbf",
+      "bytes": 317
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5-driver.log",
+      "copy": "candidate-7d56080-b259ad5-driver.log",
+      "sha256": "a545e8ca1f631093d2f72dbe55e929766ab49c6fb9fe24f9fb029413987fa0d0",
+      "bytes": 99
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5-memory-driver.log",
+      "copy": "candidate-7d56080-b259ad5-memory-driver.log",
+      "sha256": "bdfeabe42f289b68b4c161b7b291ea4b96a85e73eb5145688f3c36a3cf0ef71d",
+      "bytes": 1484
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080-driver.log",
+      "copy": "candidate-owned-double-7d56080-driver.log",
+      "sha256": "f72249f50b865ddd7e6dbf5eedf41c2cd28e3e96621035d4c609eb490fc9523e",
+      "bytes": 104
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/candidate-owned-double-7d56080-memory-driver.log",
+      "copy": "candidate-owned-double-7d56080-memory-driver.log",
+      "sha256": "b4f41135948d885b82edaa1c2c48606a749584f47c0e54684d9b50defd0f5ee8",
+      "bytes": 319
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/comparison-atomic-7d56080.log",
+      "copy": "comparison-atomic-7d56080.log",
+      "sha256": "07968cc7f8290b8f1e0258a1cb1c02d957b3d40bb410d94b0355c803c859039e",
+      "bytes": 23762
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/comparison-double-7d56080.log",
+      "copy": "comparison-double-7d56080.log",
+      "sha256": "b2fefddd0d4f2bddb3b60d1a8f68b17a79fc35bf2cca055b7972ab4e478f7261",
+      "bytes": 65
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/compare-atomic.py",
+      "copy": "compare-atomic.py",
+      "sha256": "4a9051ce97c5a84ff580f0ddda4cce2692c847695d0500ad8c239618e312b9bf",
+      "bytes": 4340
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/compare-double.py",
+      "copy": "compare-double.py",
+      "sha256": "6da73e867e3d33cbb8469bc253058a4044ae8011220d6f539f43107f2d9867ad",
+      "bytes": 4780
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/archive-initial-evidence.py",
+      "copy": "archive-initial-evidence.py",
+      "sha256": "d4928584efa25af8217b805507cedca99c6c63a5a5950df1dc2a0014a638921a",
+      "bytes": 4632
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/development-atomic-driver-guards.log",
+      "copy": "development-atomic-driver-guards.log",
+      "sha256": "1d8db01c7ab8e13b2d6456a24d5343968f3cd160e2c5e8b0a7a4ad445e66ef88",
+      "bytes": 2720
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/development-atomic-provenance.log",
+      "copy": "development-atomic-provenance.log",
+      "sha256": "48edb7e6825a29244e34aecd9d2b51e094387cf4af7a4cf03f276c3b093badff",
+      "bytes": 141
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage4-validation/development-attribute-order.log",
+      "copy": "development-attribute-order.log",
+      "sha256": "8a5347a5e7834ec8c1bff3164eb6ab46e2a42da136f25648603d3716837abdcd",
+      "bytes": 69
+    }
+  ]
+}

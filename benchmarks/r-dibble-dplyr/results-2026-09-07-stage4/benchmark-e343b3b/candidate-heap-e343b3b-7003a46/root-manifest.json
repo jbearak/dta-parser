@@ -1,0 +1,1750 @@
+{
+  "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "runner_source_sha": "7003a46899ed508c4068e077e3aa1af7fff541f3",
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+  "mode": "candidate",
+  "runner_sha256": {
+    "benchmarks/r-dibble-dplyr/helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "benchmarks/r-dibble-dplyr/owned-double-helpers.R": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2",
+    "benchmarks/r-dibble-dplyr/owned-atomic-helpers.R": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+    "benchmarks/r-dibble-dplyr/owned-double.R": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685",
+    "benchmarks/r-dibble-dplyr/owned-double-memory.R": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416",
+    "benchmarks/r-dibble-dplyr/owned-atomic.R": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012",
+    "benchmarks/r-dibble-dplyr/owned-atomic-memory.R": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2",
+    "benchmarks/r-dibble-dplyr/owned-heap.R": "cfe7259861d558b6ffdd48f0b05921269ca209aea0cd28d8d3ebe82808dd5f58",
+    "benchmarks/r-dibble-dplyr/run-heap-qualification.py": "39fd4814b59eec2e3fcbc8ff4cc7af608c8ef76b52f71e70f794e6a4d75fe9f3"
+  },
+  "started_utc": "2026-09-07T07:05:14.182630+00:00",
+  "scope": "Fresh-process R header-cell and vector-heap retention; no timing or peak-RSS claim",
+  "cases": [
+    {
+      "kind": "double",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "heap-double-rename-100000.log",
+      "exit_code": 0,
+      "sha256": "dfd6cfb828232911641bf5989c1beb44507595fd73874916b19d9d1d6ebd4a29",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 158,
+        "excess_header_cells_after_drop_result": 683,
+        "retained_tracked_heap_bytes": 89872,
+        "excess_tracked_heap_bytes_after_drop_result": 57936,
+        "released_tracked_heap_bytes_with_last_result": 12890648
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 662355,
+          "vector_bytes": 9001848,
+          "header_reported_mb": 35.4,
+          "tracked_heap_bytes": 46093728
+        },
+        "prior": {
+          "header_cells": 662915,
+          "vector_bytes": 34698920,
+          "header_reported_mb": 35.5,
+          "tracked_heap_bytes": 71822160
+        },
+        "after_result": {
+          "header_cells": 663073,
+          "vector_bytes": 34779944,
+          "header_reported_mb": 35.5,
+          "tracked_heap_bytes": 71912032
+        },
+        "after_drop_source": {
+          "header_cells": 663205,
+          "vector_bytes": 21902832,
+          "header_reported_mb": 35.5,
+          "tracked_heap_bytes": 59042312
+        },
+        "after_drop_result": {
+          "header_cells": 663038,
+          "vector_bytes": 9021536,
+          "header_reported_mb": 35.5,
+          "tracked_heap_bytes": 46151664
+        }
+      }
+    },
+    {
+      "kind": "double",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "heap-double-pipeline_five-100000.log",
+      "exit_code": 0,
+      "sha256": "5e1a980ac0e7cbf42430dbc17265846fb3bf14bd0d39d3e797b11a23b68705b7",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 560,
+        "excess_header_cells_after_drop_result": 1050,
+        "retained_tracked_heap_bytes": 118832,
+        "excess_tracked_heap_bytes_after_drop_result": 84176,
+        "released_tracked_heap_bytes_with_last_result": 12089888
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 688876,
+          "vector_bytes": 9424536,
+          "header_reported_mb": 36.8,
+          "tracked_heap_bytes": 48001592
+        },
+        "prior": {
+          "header_cells": 689398,
+          "vector_bytes": 35120912,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 73727200
+        },
+        "after_result": {
+          "header_cells": 689958,
+          "vector_bytes": 35208384,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 73846032
+        },
+        "after_drop_source": {
+          "header_cells": 690081,
+          "vector_bytes": 21531120,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 60175656
+        },
+        "after_drop_result": {
+          "header_cells": 689926,
+          "vector_bytes": 9449912,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 48085768
+        }
+      }
+    },
+    {
+      "kind": "double",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "heap-double-pipeline_50-100000.log",
+      "exit_code": 0,
+      "sha256": "bdb9bc4b409a04df74fa7509b99d064f75d6fdedc0b02f9500d2ba5c89cbd789",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2388,
+        "excess_header_cells_after_drop_result": 2895,
+        "retained_tracked_heap_bytes": 227104,
+        "excess_tracked_heap_bytes_after_drop_result": 193640,
+        "released_tracked_heap_bytes_with_last_result": 12089944
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 691106,
+          "vector_bytes": 9440552,
+          "header_reported_mb": 37.0,
+          "tracked_heap_bytes": 48142488
+        },
+        "prior": {
+          "header_cells": 691646,
+          "vector_bytes": 35137168,
+          "header_reported_mb": 37.0,
+          "tracked_heap_bytes": 73869344
+        },
+        "after_result": {
+          "header_cells": 694034,
+          "vector_bytes": 35230544,
+          "header_reported_mb": 37.1,
+          "tracked_heap_bytes": 74096448
+        },
+        "after_drop_source": {
+          "header_cells": 694157,
+          "vector_bytes": 21553280,
+          "header_reported_mb": 37.1,
+          "tracked_heap_bytes": 60426072
+        },
+        "after_drop_result": {
+          "header_cells": 694001,
+          "vector_bytes": 9472072,
+          "header_reported_mb": 37.1,
+          "tracked_heap_bytes": 48336128
+        }
+      }
+    },
+    {
+      "kind": "double",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "heap-double-rename-1000000.log",
+      "exit_code": 0,
+      "sha256": "b0e74ff42ee5d2c0753eb665e13cb332a906577c0e11091273c9139a9d3d1c30",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 158,
+        "excess_header_cells_after_drop_result": 683,
+        "retained_tracked_heap_bytes": 89872,
+        "excess_tracked_heap_bytes_after_drop_result": 57936,
+        "released_tracked_heap_bytes_with_last_result": 128090648
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 662355,
+          "vector_bytes": 9001848,
+          "header_reported_mb": 35.4,
+          "tracked_heap_bytes": 46093728
+        },
+        "prior": {
+          "header_cells": 662915,
+          "vector_bytes": 265098920,
+          "header_reported_mb": 35.5,
+          "tracked_heap_bytes": 302222160
+        },
+        "after_result": {
+          "header_cells": 663073,
+          "vector_bytes": 265179944,
+          "header_reported_mb": 35.5,
+          "tracked_heap_bytes": 302312032
+        },
+        "after_drop_source": {
+          "header_cells": 663205,
+          "vector_bytes": 137102832,
+          "header_reported_mb": 35.5,
+          "tracked_heap_bytes": 174242312
+        },
+        "after_drop_result": {
+          "header_cells": 663038,
+          "vector_bytes": 9021536,
+          "header_reported_mb": 35.5,
+          "tracked_heap_bytes": 46151664
+        }
+      }
+    },
+    {
+      "kind": "double",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "heap-double-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "sha256": "b40fdd1ac57ccefb667d4af7aecfc81d8485dc6bdfd57df225d8f6f52bfe2b70",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 560,
+        "excess_header_cells_after_drop_result": 1050,
+        "retained_tracked_heap_bytes": 118832,
+        "excess_tracked_heap_bytes_after_drop_result": 84176,
+        "released_tracked_heap_bytes_with_last_result": 120089888
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 688876,
+          "vector_bytes": 9424536,
+          "header_reported_mb": 36.8,
+          "tracked_heap_bytes": 48001592
+        },
+        "prior": {
+          "header_cells": 689398,
+          "vector_bytes": 265520912,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 304127200
+        },
+        "after_result": {
+          "header_cells": 689958,
+          "vector_bytes": 265608384,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 304246032
+        },
+        "after_drop_source": {
+          "header_cells": 690081,
+          "vector_bytes": 129531120,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 168175656
+        },
+        "after_drop_result": {
+          "header_cells": 689926,
+          "vector_bytes": 9449912,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 48085768
+        }
+      }
+    },
+    {
+      "kind": "double",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "heap-double-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "sha256": "ec9419aac2a4ee19b70812734bd485b3ebfffc38332351f9c8f975ef73cc65ba",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2382,
+        "excess_header_cells_after_drop_result": 2889,
+        "retained_tracked_heap_bytes": 226736,
+        "excess_tracked_heap_bytes_after_drop_result": 193272,
+        "released_tracked_heap_bytes_with_last_result": 120089944
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 691106,
+          "vector_bytes": 9440552,
+          "header_reported_mb": 37.0,
+          "tracked_heap_bytes": 48142488
+        },
+        "prior": {
+          "header_cells": 691646,
+          "vector_bytes": 265537168,
+          "header_reported_mb": 37.0,
+          "tracked_heap_bytes": 304269344
+        },
+        "after_result": {
+          "header_cells": 694028,
+          "vector_bytes": 265630512,
+          "header_reported_mb": 37.1,
+          "tracked_heap_bytes": 304496080
+        },
+        "after_drop_source": {
+          "header_cells": 694151,
+          "vector_bytes": 129553248,
+          "header_reported_mb": 37.1,
+          "tracked_heap_bytes": 168425704
+        },
+        "after_drop_result": {
+          "header_cells": 693995,
+          "vector_bytes": 9472040,
+          "header_reported_mb": 37.1,
+          "tracked_heap_bytes": 48335760
+        }
+      }
+    },
+    {
+      "kind": "string",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "heap-string-rename-100000.log",
+      "exit_code": 0,
+      "sha256": "cdc271f76eecf39ce5e3a46f09aefd1d4f3fb88afca2fece7dc08e20d9853b71",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 126,
+        "excess_header_cells_after_drop_result": 1003,
+        "retained_tracked_heap_bytes": 87824,
+        "excess_tracked_heap_bytes_after_drop_result": 82008,
+        "released_tracked_heap_bytes_with_last_result": 12891800
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 657615,
+          "vector_bytes": 8909184,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45735624
+        },
+        "prior": {
+          "header_cells": 658559,
+          "vector_bytes": 39414104,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 76293408
+        },
+        "after_result": {
+          "header_cells": 658685,
+          "vector_bytes": 39494872,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 76381232
+        },
+        "after_drop_source": {
+          "header_cells": 658801,
+          "vector_bytes": 21816576,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 58709432
+        },
+        "after_drop_result": {
+          "header_cells": 658618,
+          "vector_bytes": 8935024,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45817632
+        }
+      }
+    },
+    {
+      "kind": "string",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "heap-string-pipeline_five-100000.log",
+      "exit_code": 0,
+      "sha256": "044858c7d3568ae8a6637d94dc03d68b0ba4dbe7b5882e31f5fa4f755ba603c5",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 380,
+        "excess_header_cells_after_drop_result": 1258,
+        "retained_tracked_heap_bytes": 105824,
+        "excess_tracked_heap_bytes_after_drop_result": 100032,
+        "released_tracked_heap_bytes_with_last_result": 12090968
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 684809,
+          "vector_bytes": 9341288,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 47690592
+        },
+        "prior": {
+          "header_cells": 685753,
+          "vector_bytes": 39846208,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 78248376
+        },
+        "after_result": {
+          "header_cells": 686133,
+          "vector_bytes": 39930752,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 78354200
+        },
+        "after_drop_source": {
+          "header_cells": 686237,
+          "vector_bytes": 21452320,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 59881592
+        },
+        "after_drop_result": {
+          "header_cells": 686067,
+          "vector_bytes": 9370872,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47790624
+        }
+      }
+    },
+    {
+      "kind": "string",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "heap-string-pipeline_50-100000.log",
+      "exit_code": 0,
+      "sha256": "70a41acd4729532eb3d72e2948cab1ad118c01ead3e9530d23881d525d39ee3b",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2356,
+        "excess_header_cells_after_drop_result": 3105,
+        "retained_tracked_heap_bytes": 225040,
+        "excess_tracked_heap_bytes_after_drop_result": 209592,
+        "released_tracked_heap_bytes_with_last_result": 12091024
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 687039,
+          "vector_bytes": 9357304,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47831488
+        },
+        "prior": {
+          "header_cells": 687852,
+          "vector_bytes": 39859792,
+          "header_reported_mb": 36.8,
+          "tracked_heap_bytes": 78379504
+        },
+        "after_result": {
+          "header_cells": 690208,
+          "vector_bytes": 39952896,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 78604544
+        },
+        "after_drop_source": {
+          "header_cells": 690315,
+          "vector_bytes": 21474464,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 60132104
+        },
+        "after_drop_result": {
+          "header_cells": 690144,
+          "vector_bytes": 9393016,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 48041080
+        }
+      }
+    },
+    {
+      "kind": "string",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "heap-string-rename-1000000.log",
+      "exit_code": 0,
+      "sha256": "1d69ea655e6d8c2a8e710122d8761acc8f246b1415e85dadbaa9124dc171f57d",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 126,
+        "excess_header_cells_after_drop_result": 1003,
+        "retained_tracked_heap_bytes": 87824,
+        "excess_tracked_heap_bytes_after_drop_result": 82008,
+        "released_tracked_heap_bytes_with_last_result": 128091800
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 657615,
+          "vector_bytes": 8909184,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45735624
+        },
+        "prior": {
+          "header_cells": 658559,
+          "vector_bytes": 313014104,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 349893408
+        },
+        "after_result": {
+          "header_cells": 658685,
+          "vector_bytes": 313094872,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 349981232
+        },
+        "after_drop_source": {
+          "header_cells": 658801,
+          "vector_bytes": 137016576,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 173909432
+        },
+        "after_drop_result": {
+          "header_cells": 658618,
+          "vector_bytes": 8935024,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45817632
+        }
+      }
+    },
+    {
+      "kind": "string",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "heap-string-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "sha256": "0af597fa55e23d64b3a7a98b3e7cf17082f23aed90895c46b7e8821edb69731e",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 380,
+        "excess_header_cells_after_drop_result": 1261,
+        "retained_tracked_heap_bytes": 105824,
+        "excess_tracked_heap_bytes_after_drop_result": 100200,
+        "released_tracked_heap_bytes_with_last_result": 120090968
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 684809,
+          "vector_bytes": 9341288,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 47690592
+        },
+        "prior": {
+          "header_cells": 685753,
+          "vector_bytes": 313446208,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 351848376
+        },
+        "after_result": {
+          "header_cells": 686133,
+          "vector_bytes": 313530752,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 351954200
+        },
+        "after_drop_source": {
+          "header_cells": 686240,
+          "vector_bytes": 129452320,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 167881760
+        },
+        "after_drop_result": {
+          "header_cells": 686070,
+          "vector_bytes": 9370872,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47790792
+        }
+      }
+    },
+    {
+      "kind": "string",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "heap-string-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "sha256": "1cc4711240ab4ce93fd9f7e809dc6d082de9a38d839cb9c23a3fd9ea30566871",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2356,
+        "excess_header_cells_after_drop_result": 3105,
+        "retained_tracked_heap_bytes": 225040,
+        "excess_tracked_heap_bytes_after_drop_result": 209592,
+        "released_tracked_heap_bytes_with_last_result": 120091024
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 687039,
+          "vector_bytes": 9357304,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47831488
+        },
+        "prior": {
+          "header_cells": 687852,
+          "vector_bytes": 313459792,
+          "header_reported_mb": 36.8,
+          "tracked_heap_bytes": 351979504
+        },
+        "after_result": {
+          "header_cells": 690208,
+          "vector_bytes": 313552896,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 352204544
+        },
+        "after_drop_source": {
+          "header_cells": 690315,
+          "vector_bytes": 129474464,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 168132104
+        },
+        "after_drop_result": {
+          "header_cells": 690144,
+          "vector_bytes": 9393016,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 48041080
+        }
+      }
+    },
+    {
+      "kind": "declared_character",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "heap-declared_character-rename-100000.log",
+      "exit_code": 0,
+      "sha256": "cef8d75345ccdee0f2d4bc2d6c33403b4435e8401262c9caccd67ae7f276f24d",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 110,
+        "excess_header_cells_after_drop_result": 1003,
+        "retained_tracked_heap_bytes": 86928,
+        "excess_tracked_heap_bytes_after_drop_result": 82008,
+        "released_tracked_heap_bytes_with_last_result": 12889496
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 657223,
+          "vector_bytes": 8903392,
+          "header_reported_mb": 35.1,
+          "tracked_heap_bytes": 45707880
+        },
+        "prior": {
+          "header_cells": 658135,
+          "vector_bytes": 39406408,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 76261968
+        },
+        "after_result": {
+          "header_cells": 658245,
+          "vector_bytes": 39487176,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 76348896
+        },
+        "after_drop_source": {
+          "header_cells": 658377,
+          "vector_bytes": 21810272,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 58679384
+        },
+        "after_drop_result": {
+          "header_cells": 658226,
+          "vector_bytes": 8929232,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45789888
+        }
+      }
+    },
+    {
+      "kind": "declared_character",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "heap-declared_character-pipeline_five-100000.log",
+      "exit_code": 0,
+      "sha256": "e9878abfca149cd4a4eede8dc1e7b06d1e8ef7d1e378879b0a02330f99a4286f",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 365,
+        "excess_header_cells_after_drop_result": 1261,
+        "retained_tracked_heap_bytes": 104984,
+        "excess_tracked_heap_bytes_after_drop_result": 100200,
+        "released_tracked_heap_bytes_with_last_result": 12088808
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 684432,
+          "vector_bytes": 9335928,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 47664120
+        },
+        "prior": {
+          "header_cells": 685344,
+          "vector_bytes": 39838944,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 78218208
+        },
+        "after_result": {
+          "header_cells": 685709,
+          "vector_bytes": 39923488,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 78323192
+        },
+        "after_drop_source": {
+          "header_cells": 685833,
+          "vector_bytes": 21446480,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 59853128
+        },
+        "after_drop_result": {
+          "header_cells": 685693,
+          "vector_bytes": 9365512,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47764320
+        }
+      }
+    },
+    {
+      "kind": "declared_character",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "heap-declared_character-pipeline_50-100000.log",
+      "exit_code": 0,
+      "sha256": "158fcacbf824595e714a8fcc3deed2de2c3a86ddf4fea0c92f1946ac4f09b447",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2344,
+        "excess_header_cells_after_drop_result": 3103,
+        "retained_tracked_heap_bytes": 224384,
+        "excess_tracked_heap_bytes_after_drop_result": 209496,
+        "released_tracked_heap_bytes_with_last_result": 12088864
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 686641,
+          "vector_bytes": 9351944,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47803840
+        },
+        "prior": {
+          "header_cells": 687422,
+          "vector_bytes": 39852528,
+          "header_reported_mb": 36.8,
+          "tracked_heap_bytes": 78348160
+        },
+        "after_result": {
+          "header_cells": 689766,
+          "vector_bytes": 39945648,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 78572544
+        },
+        "after_drop_source": {
+          "header_cells": 689885,
+          "vector_bytes": 21468640,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 60102200
+        },
+        "after_drop_result": {
+          "header_cells": 689744,
+          "vector_bytes": 9387672,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 48013336
+        }
+      }
+    },
+    {
+      "kind": "declared_character",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "heap-declared_character-rename-1000000.log",
+      "exit_code": 0,
+      "sha256": "d5437b848082286f4bb79018b1370435d3b47c061a90ee2a1f54c5522291d0f9",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 110,
+        "excess_header_cells_after_drop_result": 1003,
+        "retained_tracked_heap_bytes": 86928,
+        "excess_tracked_heap_bytes_after_drop_result": 82008,
+        "released_tracked_heap_bytes_with_last_result": 128089496
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 657223,
+          "vector_bytes": 8903392,
+          "header_reported_mb": 35.1,
+          "tracked_heap_bytes": 45707880
+        },
+        "prior": {
+          "header_cells": 658135,
+          "vector_bytes": 313006408,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 349861968
+        },
+        "after_result": {
+          "header_cells": 658245,
+          "vector_bytes": 313087176,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 349948896
+        },
+        "after_drop_source": {
+          "header_cells": 658377,
+          "vector_bytes": 137010272,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 173879384
+        },
+        "after_drop_result": {
+          "header_cells": 658226,
+          "vector_bytes": 8929232,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45789888
+        }
+      }
+    },
+    {
+      "kind": "declared_character",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "heap-declared_character-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "sha256": "8e1e067ca257676a39ed7ee8869ca4f8e1dc6ef4dad9aacab33c0171583df7d8",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 365,
+        "excess_header_cells_after_drop_result": 1261,
+        "retained_tracked_heap_bytes": 104984,
+        "excess_tracked_heap_bytes_after_drop_result": 100200,
+        "released_tracked_heap_bytes_with_last_result": 120088808
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 684432,
+          "vector_bytes": 9335928,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 47664120
+        },
+        "prior": {
+          "header_cells": 685344,
+          "vector_bytes": 313438944,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 351818208
+        },
+        "after_result": {
+          "header_cells": 685709,
+          "vector_bytes": 313523488,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 351923192
+        },
+        "after_drop_source": {
+          "header_cells": 685833,
+          "vector_bytes": 129446480,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 167853128
+        },
+        "after_drop_result": {
+          "header_cells": 685693,
+          "vector_bytes": 9365512,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47764320
+        }
+      }
+    },
+    {
+      "kind": "declared_character",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "heap-declared_character-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "sha256": "1cf975663bfc7bf9242888882e1a1eba66fb3e74e7bb2d7864dbdde571850d46",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2341,
+        "excess_header_cells_after_drop_result": 3102,
+        "retained_tracked_heap_bytes": 224200,
+        "excess_tracked_heap_bytes_after_drop_result": 209424,
+        "released_tracked_heap_bytes_with_last_result": 120088864
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 686662,
+          "vector_bytes": 9351944,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47805016
+        },
+        "prior": {
+          "header_cells": 687443,
+          "vector_bytes": 313452528,
+          "header_reported_mb": 36.8,
+          "tracked_heap_bytes": 351949336
+        },
+        "after_result": {
+          "header_cells": 689784,
+          "vector_bytes": 313545632,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 352173536
+        },
+        "after_drop_source": {
+          "header_cells": 689905,
+          "vector_bytes": 129468624,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 168103304
+        },
+        "after_drop_result": {
+          "header_cells": 689764,
+          "vector_bytes": 9387656,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 48014440
+        }
+      }
+    },
+    {
+      "kind": "logical",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "heap-logical-rename-100000.log",
+      "exit_code": 0,
+      "sha256": "08f08ed61547fce51097edde7437841a8435b97ebed2fde08e57ce234565f30b",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 94,
+        "excess_header_cells_after_drop_result": 1002,
+        "retained_tracked_heap_bytes": 86032,
+        "excess_tracked_heap_bytes_after_drop_result": 81952,
+        "released_tracked_heap_bytes_with_last_result": 6486552
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 656879,
+          "vector_bytes": 8897144,
+          "header_reported_mb": 35.1,
+          "tracked_heap_bytes": 45682368
+        },
+        "prior": {
+          "header_cells": 657742,
+          "vector_bytes": 21798640,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 58632192
+        },
+        "after_result": {
+          "header_cells": 657836,
+          "vector_bytes": 21879408,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 58718224
+        },
+        "after_drop_source": {
+          "header_cells": 657984,
+          "vector_bytes": 15403768,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 52250872
+        },
+        "after_drop_result": {
+          "header_cells": 657881,
+          "vector_bytes": 8922984,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45764320
+        }
+      }
+    },
+    {
+      "kind": "logical",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "heap-logical-pipeline_five-100000.log",
+      "exit_code": 0,
+      "sha256": "f0b1b47be6d594664ca61ed4fefdc6fe913643283462ca72da9be0257546f12e",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 350,
+        "excess_header_cells_after_drop_result": 1257,
+        "retained_tracked_heap_bytes": 104144,
+        "excess_tracked_heap_bytes_after_drop_result": 99976,
+        "released_tracked_heap_bytes_with_last_result": 6086048
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 684091,
+          "vector_bytes": 9329704,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 47638800
+        },
+        "prior": {
+          "header_cells": 684954,
+          "vector_bytes": 22231200,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 60588624
+        },
+        "after_result": {
+          "header_cells": 685304,
+          "vector_bytes": 22315744,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 60692768
+        },
+        "after_drop_source": {
+          "header_cells": 685443,
+          "vector_bytes": 15440016,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 53824824
+        },
+        "after_drop_result": {
+          "header_cells": 685348,
+          "vector_bytes": 9359288,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47738776
+        }
+      }
+    },
+    {
+      "kind": "logical",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "heap-logical-pipeline_50-100000.log",
+      "exit_code": 0,
+      "sha256": "7d3a7a6b294bf7cc2c49db0ff3289eead8c1848bb5c225f5ee6706b3b2bb5e67",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2326,
+        "excess_header_cells_after_drop_result": 3104,
+        "retained_tracked_heap_bytes": 223360,
+        "excess_tracked_heap_bytes_after_drop_result": 209536,
+        "released_tracked_heap_bytes_with_last_result": 6086104
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 686324,
+          "vector_bytes": 9345720,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47779864
+        },
+        "prior": {
+          "header_cells": 687056,
+          "vector_bytes": 22244784,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 60719920
+        },
+        "after_result": {
+          "header_cells": 689382,
+          "vector_bytes": 22337888,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 60943280
+        },
+        "after_drop_source": {
+          "header_cells": 689524,
+          "vector_bytes": 15462160,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 54075504
+        },
+        "after_drop_result": {
+          "header_cells": 689428,
+          "vector_bytes": 9381432,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 47989400
+        }
+      }
+    },
+    {
+      "kind": "logical",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "heap-logical-rename-1000000.log",
+      "exit_code": 0,
+      "sha256": "dbe516aa5e83d532d4d3ae54436d0508ba398e18d32662506fcb47b01942a1b4",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 94,
+        "excess_header_cells_after_drop_result": 1002,
+        "retained_tracked_heap_bytes": 86032,
+        "excess_tracked_heap_bytes_after_drop_result": 81952,
+        "released_tracked_heap_bytes_with_last_result": 64086552
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 656879,
+          "vector_bytes": 8897144,
+          "header_reported_mb": 35.1,
+          "tracked_heap_bytes": 45682368
+        },
+        "prior": {
+          "header_cells": 657742,
+          "vector_bytes": 136998640,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 173832192
+        },
+        "after_result": {
+          "header_cells": 657836,
+          "vector_bytes": 137079408,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 173918224
+        },
+        "after_drop_source": {
+          "header_cells": 657984,
+          "vector_bytes": 73003768,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 109850872
+        },
+        "after_drop_result": {
+          "header_cells": 657881,
+          "vector_bytes": 8922984,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45764320
+        }
+      }
+    },
+    {
+      "kind": "logical",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "heap-logical-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "sha256": "15659ce4a1944571fd6f25245462ad0a2151427170c9608cbc749a88eab8eb40",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 350,
+        "excess_header_cells_after_drop_result": 1260,
+        "retained_tracked_heap_bytes": 104144,
+        "excess_tracked_heap_bytes_after_drop_result": 100144,
+        "released_tracked_heap_bytes_with_last_result": 60086048
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 684094,
+          "vector_bytes": 9329704,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 47638968
+        },
+        "prior": {
+          "header_cells": 684957,
+          "vector_bytes": 137431200,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 175788792
+        },
+        "after_result": {
+          "header_cells": 685307,
+          "vector_bytes": 137515744,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 175892936
+        },
+        "after_drop_source": {
+          "header_cells": 685449,
+          "vector_bytes": 69440016,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 107825160
+        },
+        "after_drop_result": {
+          "header_cells": 685354,
+          "vector_bytes": 9359288,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47739112
+        }
+      }
+    },
+    {
+      "kind": "logical",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "heap-logical-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "sha256": "67c5306c9fe3d2a692bec2cc34520a8b0f26d720cea63486d638f9c49a24a2a2",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2326,
+        "excess_header_cells_after_drop_result": 3104,
+        "retained_tracked_heap_bytes": 223360,
+        "excess_tracked_heap_bytes_after_drop_result": 209536,
+        "released_tracked_heap_bytes_with_last_result": 60086104
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 686324,
+          "vector_bytes": 9345720,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47779864
+        },
+        "prior": {
+          "header_cells": 687056,
+          "vector_bytes": 137444784,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 175919920
+        },
+        "after_result": {
+          "header_cells": 689382,
+          "vector_bytes": 137537888,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 176143280
+        },
+        "after_drop_source": {
+          "header_cells": 689524,
+          "vector_bytes": 69462160,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 108075504
+        },
+        "after_drop_result": {
+          "header_cells": 689428,
+          "vector_bytes": 9381432,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 47989400
+        }
+      }
+    },
+    {
+      "kind": "factor",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "heap-factor-rename-100000.log",
+      "exit_code": 0,
+      "sha256": "ea1da31c0de75284befc11588c31e96ab10dfbbd8f3b2d629ad10bdf4a2bf08d",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 126,
+        "excess_header_cells_after_drop_result": 1002,
+        "retained_tracked_heap_bytes": 87824,
+        "excess_tracked_heap_bytes_after_drop_result": 81952,
+        "released_tracked_heap_bytes_with_last_result": 6490776
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 656992,
+          "vector_bytes": 8899176,
+          "header_reported_mb": 35.1,
+          "tracked_heap_bytes": 45690728
+        },
+        "prior": {
+          "header_cells": 657919,
+          "vector_bytes": 29403168,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 66246632
+        },
+        "after_result": {
+          "header_cells": 658045,
+          "vector_bytes": 29483936,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 66334456
+        },
+        "after_drop_source": {
+          "header_cells": 658161,
+          "vector_bytes": 15406440,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 52263456
+        },
+        "after_drop_result": {
+          "header_cells": 657994,
+          "vector_bytes": 8925016,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45772680
+        }
+      }
+    },
+    {
+      "kind": "factor",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "heap-factor-pipeline_five-100000.log",
+      "exit_code": 0,
+      "sha256": "07ca6da6285bf2dce460ceb686e0f240b6dd42bef90d91ba2771ae9a6c416256",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 380,
+        "excess_header_cells_after_drop_result": 1260,
+        "retained_tracked_heap_bytes": 105824,
+        "excess_tracked_heap_bytes_after_drop_result": 100144,
+        "released_tracked_heap_bytes_with_last_result": 6090008
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 684252,
+          "vector_bytes": 9332464,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 47650576
+        },
+        "prior": {
+          "header_cells": 685179,
+          "vector_bytes": 29836456,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 68206480
+        },
+        "after_result": {
+          "header_cells": 685559,
+          "vector_bytes": 29921000,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 68312304
+        },
+        "after_drop_source": {
+          "header_cells": 685667,
+          "vector_bytes": 15443376,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 53840728
+        },
+        "after_drop_result": {
+          "header_cells": 685512,
+          "vector_bytes": 9362048,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47750720
+        }
+      }
+    },
+    {
+      "kind": "factor",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "heap-factor-pipeline_50-100000.log",
+      "exit_code": 0,
+      "sha256": "0d316a33b06d013884a5480266b944eaa61ad3639f2399d35b9fc037c58e23e5",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2353,
+        "excess_header_cells_after_drop_result": 3101,
+        "retained_tracked_heap_bytes": 224856,
+        "excess_tracked_heap_bytes_after_drop_result": 209352,
+        "released_tracked_heap_bytes_with_last_result": 6090064
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 686482,
+          "vector_bytes": 9348480,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47791472
+        },
+        "prior": {
+          "header_cells": 687278,
+          "vector_bytes": 29850040,
+          "header_reported_mb": 36.8,
+          "tracked_heap_bytes": 68337608
+        },
+        "after_result": {
+          "header_cells": 689631,
+          "vector_bytes": 29943128,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 68562464
+        },
+        "after_drop_source": {
+          "header_cells": 689739,
+          "vector_bytes": 15465504,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 54090888
+        },
+        "after_drop_result": {
+          "header_cells": 689583,
+          "vector_bytes": 9384176,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 48000824
+        }
+      }
+    },
+    {
+      "kind": "factor",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "heap-factor-rename-1000000.log",
+      "exit_code": 0,
+      "sha256": "f0a14a3f5dd304c1d77a83f1ff9d271dc997b4c80e2a4063a09828f747a91f6f",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 126,
+        "excess_header_cells_after_drop_result": 1002,
+        "retained_tracked_heap_bytes": 87824,
+        "excess_tracked_heap_bytes_after_drop_result": 81952,
+        "released_tracked_heap_bytes_with_last_result": 64090776
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 656992,
+          "vector_bytes": 8899176,
+          "header_reported_mb": 35.1,
+          "tracked_heap_bytes": 45690728
+        },
+        "prior": {
+          "header_cells": 657919,
+          "vector_bytes": 213003168,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 249846632
+        },
+        "after_result": {
+          "header_cells": 658045,
+          "vector_bytes": 213083936,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 249934456
+        },
+        "after_drop_source": {
+          "header_cells": 658161,
+          "vector_bytes": 73006440,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 109863456
+        },
+        "after_drop_result": {
+          "header_cells": 657994,
+          "vector_bytes": 8925016,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45772680
+        }
+      }
+    },
+    {
+      "kind": "factor",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "heap-factor-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "sha256": "ffe2ef39bd39d09cdaf523b42e55a647d6b69f45c9bdd26b2a46f5852f277d5a",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 380,
+        "excess_header_cells_after_drop_result": 1256,
+        "retained_tracked_heap_bytes": 105824,
+        "excess_tracked_heap_bytes_after_drop_result": 99920,
+        "released_tracked_heap_bytes_with_last_result": 60090008
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 684252,
+          "vector_bytes": 9332464,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 47650576
+        },
+        "prior": {
+          "header_cells": 685179,
+          "vector_bytes": 213436456,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 251806480
+        },
+        "after_result": {
+          "header_cells": 685559,
+          "vector_bytes": 213521000,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 251912304
+        },
+        "after_drop_source": {
+          "header_cells": 685663,
+          "vector_bytes": 69443376,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 107840504
+        },
+        "after_drop_result": {
+          "header_cells": 685508,
+          "vector_bytes": 9362048,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47750496
+        }
+      }
+    },
+    {
+      "kind": "factor",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "heap-factor-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "sha256": "b222059ce497c25cbb60dd161cc19c994099929ad6e9ef39c5143c4210d81686",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2332,
+        "excess_header_cells_after_drop_result": 3080,
+        "retained_tracked_heap_bytes": 223568,
+        "excess_tracked_heap_bytes_after_drop_result": 208064,
+        "released_tracked_heap_bytes_with_last_result": 60090064
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 686482,
+          "vector_bytes": 9348480,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47791472
+        },
+        "prior": {
+          "header_cells": 687278,
+          "vector_bytes": 213450040,
+          "header_reported_mb": 36.8,
+          "tracked_heap_bytes": 251937608
+        },
+        "after_result": {
+          "header_cells": 689610,
+          "vector_bytes": 213543016,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 252161176
+        },
+        "after_drop_source": {
+          "header_cells": 689718,
+          "vector_bytes": 69465392,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 108089600
+        },
+        "after_drop_result": {
+          "header_cells": 689562,
+          "vector_bytes": 9384064,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 47999536
+        }
+      }
+    },
+    {
+      "kind": "ordered",
+      "operation": "rename",
+      "rows": 100000,
+      "file": "heap-ordered-rename-100000.log",
+      "exit_code": 0,
+      "sha256": "9909567446345f7f8a0e86692f94d8515819c5aac0a117d0a7d32ed094647f4c",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 126,
+        "excess_header_cells_after_drop_result": 1002,
+        "retained_tracked_heap_bytes": 87824,
+        "excess_tracked_heap_bytes_after_drop_result": 81952,
+        "released_tracked_heap_bytes_with_last_result": 6490904
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 657007,
+          "vector_bytes": 8899288,
+          "header_reported_mb": 35.1,
+          "tracked_heap_bytes": 45691680
+        },
+        "prior": {
+          "header_cells": 657934,
+          "vector_bytes": 29403648,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 66247952
+        },
+        "after_result": {
+          "header_cells": 658060,
+          "vector_bytes": 29484416,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 66335776
+        },
+        "after_drop_source": {
+          "header_cells": 658176,
+          "vector_bytes": 15406680,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 52264536
+        },
+        "after_drop_result": {
+          "header_cells": 658009,
+          "vector_bytes": 8925128,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45773632
+        }
+      }
+    },
+    {
+      "kind": "ordered",
+      "operation": "pipeline_five",
+      "rows": 100000,
+      "file": "heap-ordered-pipeline_five-100000.log",
+      "exit_code": 0,
+      "sha256": "9882bdf7eb9b52bfa357a22f37b8b85dd0ef93423e8cfc701db97d394a94cc5d",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 380,
+        "excess_header_cells_after_drop_result": 1260,
+        "retained_tracked_heap_bytes": 105824,
+        "excess_tracked_heap_bytes_after_drop_result": 100144,
+        "released_tracked_heap_bytes_with_last_result": 6090128
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 684267,
+          "vector_bytes": 9332576,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 47651528
+        },
+        "prior": {
+          "header_cells": 685194,
+          "vector_bytes": 29836936,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 68207800
+        },
+        "after_result": {
+          "header_cells": 685574,
+          "vector_bytes": 29921480,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 68313624
+        },
+        "after_drop_source": {
+          "header_cells": 685682,
+          "vector_bytes": 15443608,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 53841800
+        },
+        "after_drop_result": {
+          "header_cells": 685527,
+          "vector_bytes": 9362160,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47751672
+        }
+      }
+    },
+    {
+      "kind": "ordered",
+      "operation": "pipeline_50",
+      "rows": 100000,
+      "file": "heap-ordered-pipeline_50-100000.log",
+      "exit_code": 0,
+      "sha256": "174c179e251b758bda9b183f27a5c9724b70526524fdd49d0145aac76f2cf4f2",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2350,
+        "excess_header_cells_after_drop_result": 3098,
+        "retained_tracked_heap_bytes": 224672,
+        "excess_tracked_heap_bytes_after_drop_result": 209168,
+        "released_tracked_heap_bytes_with_last_result": 6090184
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 686478,
+          "vector_bytes": 9348592,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47791360
+        },
+        "prior": {
+          "header_cells": 687274,
+          "vector_bytes": 29850520,
+          "header_reported_mb": 36.8,
+          "tracked_heap_bytes": 68337864
+        },
+        "after_result": {
+          "header_cells": 689624,
+          "vector_bytes": 29943592,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 68562536
+        },
+        "after_drop_source": {
+          "header_cells": 689732,
+          "vector_bytes": 15465720,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 54090712
+        },
+        "after_drop_result": {
+          "header_cells": 689576,
+          "vector_bytes": 9384272,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 48000528
+        }
+      }
+    },
+    {
+      "kind": "ordered",
+      "operation": "rename",
+      "rows": 1000000,
+      "file": "heap-ordered-rename-1000000.log",
+      "exit_code": 0,
+      "sha256": "0fda9a51aa179b60365abc8662377f3a5fb7db57da360bf99cf8c3011f5083d2",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 126,
+        "excess_header_cells_after_drop_result": 1002,
+        "retained_tracked_heap_bytes": 87824,
+        "excess_tracked_heap_bytes_after_drop_result": 81952,
+        "released_tracked_heap_bytes_with_last_result": 64090904
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 657007,
+          "vector_bytes": 8899288,
+          "header_reported_mb": 35.1,
+          "tracked_heap_bytes": 45691680
+        },
+        "prior": {
+          "header_cells": 657934,
+          "vector_bytes": 213003648,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 249847952
+        },
+        "after_result": {
+          "header_cells": 658060,
+          "vector_bytes": 213084416,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 249935776
+        },
+        "after_drop_source": {
+          "header_cells": 658176,
+          "vector_bytes": 73006680,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 109864536
+        },
+        "after_drop_result": {
+          "header_cells": 658009,
+          "vector_bytes": 8925128,
+          "header_reported_mb": 35.2,
+          "tracked_heap_bytes": 45773632
+        }
+      }
+    },
+    {
+      "kind": "ordered",
+      "operation": "pipeline_five",
+      "rows": 1000000,
+      "file": "heap-ordered-pipeline_five-1000000.log",
+      "exit_code": 0,
+      "sha256": "c55364a37e640f1bebef42df6036eb44007c5e2dec406148408d6d87e25cca9f",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 380,
+        "excess_header_cells_after_drop_result": 1257,
+        "retained_tracked_heap_bytes": 105824,
+        "excess_tracked_heap_bytes_after_drop_result": 99976,
+        "released_tracked_heap_bytes_with_last_result": 60090128
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 684267,
+          "vector_bytes": 9332576,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 47651528
+        },
+        "prior": {
+          "header_cells": 685194,
+          "vector_bytes": 213436936,
+          "header_reported_mb": 36.6,
+          "tracked_heap_bytes": 251807800
+        },
+        "after_result": {
+          "header_cells": 685574,
+          "vector_bytes": 213521480,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 251913624
+        },
+        "after_drop_source": {
+          "header_cells": 685679,
+          "vector_bytes": 69443608,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 107841632
+        },
+        "after_drop_result": {
+          "header_cells": 685524,
+          "vector_bytes": 9362160,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47751504
+        }
+      }
+    },
+    {
+      "kind": "ordered",
+      "operation": "pipeline_50",
+      "rows": 1000000,
+      "file": "heap-ordered-pipeline_50-1000000.log",
+      "exit_code": 0,
+      "sha256": "0b8f7f115b7b9d94269c46155c75e559907b2f5477159acd94aa4cae0ab1bd36",
+      "metrics": {
+        "header_bytes_per_cell": 56,
+        "retained_header_cells": 2356,
+        "excess_header_cells_after_drop_result": 3104,
+        "retained_tracked_heap_bytes": 225040,
+        "excess_tracked_heap_bytes_after_drop_result": 209536,
+        "released_tracked_heap_bytes_with_last_result": 60090184
+      },
+      "checkpoints": {
+        "prefixture": {
+          "header_cells": 686497,
+          "vector_bytes": 9348592,
+          "header_reported_mb": 36.7,
+          "tracked_heap_bytes": 47792424
+        },
+        "prior": {
+          "header_cells": 687293,
+          "vector_bytes": 213450520,
+          "header_reported_mb": 36.8,
+          "tracked_heap_bytes": 251938928
+        },
+        "after_result": {
+          "header_cells": 689649,
+          "vector_bytes": 213543624,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 252163968
+        },
+        "after_drop_source": {
+          "header_cells": 689757,
+          "vector_bytes": 69465752,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 108092144
+        },
+        "after_drop_result": {
+          "header_cells": 689601,
+          "vector_bytes": 9384304,
+          "header_reported_mb": 36.9,
+          "tracked_heap_bytes": 48001960
+        }
+      }
+    }
+  ],
+  "completed_utc": "2026-09-07T07:06:26.667449+00:00"
+}

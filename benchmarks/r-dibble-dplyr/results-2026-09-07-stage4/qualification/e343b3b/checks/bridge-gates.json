@@ -1,0 +1,37 @@
+[
+  {
+    "name": "fmt",
+    "command": [
+      "cargo",
+      "fmt",
+      "--manifest-path",
+      "rust/Cargo.toml",
+      "--",
+      "--check"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b/r-package/dtatools/src",
+    "seconds": 0.07602983301330823,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/bridge-fmt.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "check",
+    "command": [
+      "cargo",
+      "check",
+      "--manifest-path",
+      "rust/Cargo.toml",
+      "--config",
+      "rust/cargo-config.toml",
+      "--locked",
+      "--offline",
+      "--all-targets"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b/r-package/dtatools/src",
+    "seconds": 0.031293957988964394,
+    "exit_code": 101,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/bridge-check.log",
+    "sha256": "cd26975b9e7fbe0e29a18f17d56079faab58d93bc4d9fbfaac8554221c6cb049"
+  }
+]

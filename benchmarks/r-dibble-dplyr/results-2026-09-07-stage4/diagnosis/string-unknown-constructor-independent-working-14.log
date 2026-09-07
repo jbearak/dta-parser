@@ -1,0 +1,44 @@
+$backing
+[1] "0x813831900"
+
+$shared
+[1] TRUE
+
+$exposed
+[1] FALSE
+
+$bytes
+[1] 512
+
+$depth
+[1] 1
+
+$stata.string.storage
+[1] "str8"
+
+$class
+[1] "dta_string" "vctrs_vctr" "character" 
+
+rows 64 PASS
+$backing
+[1] "0x815010000"
+
+$shared
+[1] TRUE
+
+$exposed
+[1] FALSE
+
+$bytes
+[1] 8000
+
+$depth
+[1] 1
+
+$stata.string.storage
+[1] "str8"
+
+$class
+[1] "dta_string" "vctrs_vctr" "character" 
+
+rows 1000 PASS

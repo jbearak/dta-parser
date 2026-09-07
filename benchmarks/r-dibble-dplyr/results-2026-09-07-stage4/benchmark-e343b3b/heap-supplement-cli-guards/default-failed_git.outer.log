@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/run-heap-qualification.py", line 139, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/run-heap-qualification.py", line 86, in main
+    data = subprocess.check_output(["git", "show", f"{args.runner_sha}:{path.as_posix()}"], cwd=repo)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 473, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               **kwargs).stdout
+               ^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'show', '2222222222222222222222222222222222222222:benchmarks/r-dibble-dplyr/helpers.R']' returned non-zero exit status 17.

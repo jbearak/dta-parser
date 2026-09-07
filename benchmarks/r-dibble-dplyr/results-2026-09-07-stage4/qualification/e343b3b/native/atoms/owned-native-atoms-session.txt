@@ -1,0 +1,28 @@
+source e343b3b56a8529e9ee0ac40f8bd88beebcd2be15
+runner_revision e343b3b56a8529e9ee0ac40f8bd88beebcd2be15
+library /private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library
+benchmarks/r-reference-mutation/owned-atoms.R 0542e6943cf1b708bb17d86305483eac011ccedb30e4394d04aeace42ff6759a
+benchmarks/r-dibble-dplyr/helpers.R 38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219
+R version 4.6.1 (2026-06-24)
+Platform: aarch64-apple-darwin25.4.0
+Running under: macOS Tahoe 26.6.2
+
+Matrix products: default
+BLAS:   /opt/homebrew/Cellar/openblas/0.3.34/lib/libopenblasp-r0.3.34.dylib 
+LAPACK: /opt/homebrew/Cellar/r/4.6.1/lib/R/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] dtatools_0.7.1
+
+loaded via a namespace (and not attached):
+[1] compiler_4.6.1  cli_3.6.6       tools_4.6.1     pillar_1.11.1  
+[5] glue_1.8.1      vctrs_0.7.3     lifecycle_1.0.5 rlang_1.3.0    

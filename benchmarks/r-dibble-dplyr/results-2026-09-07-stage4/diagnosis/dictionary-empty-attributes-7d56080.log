@@ -1,0 +1,2 @@
+list(stata.string.storage = "str8", class = c("dta_string", "vctrs_vctr", 
+"character"), label = "source label")

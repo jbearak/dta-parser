@@ -1,0 +1,130 @@
+[
+  {
+    "name": "archive-tests",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts",
+      "-p",
+      "test_check_r_package_archive.py",
+      "-v"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+    "started": "2026-09-07T03:30:16.411488+00:00",
+    "seconds": 0.05286095799965551,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/archive-tests.log"
+  },
+  {
+    "name": "vendor-tests",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts",
+      "-p",
+      "test_check_r_cargo_vendor.py",
+      "-v"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+    "started": "2026-09-07T03:30:16.464541+00:00",
+    "seconds": 0.07871500000328524,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/vendor-tests.log"
+  },
+  {
+    "name": "vendor-rebuild-tests",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts",
+      "-p",
+      "test_rebuild_r_vendor.py",
+      "-v"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+    "started": "2026-09-07T03:30:16.543292+00:00",
+    "seconds": 0.034950207998917904,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/vendor-rebuild-tests.log"
+  },
+  {
+    "name": "cargo-vendor",
+    "command": [
+      "sh",
+      "scripts/check-r-cargo-vendor.sh"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+    "started": "2026-09-07T03:30:16.578275+00:00",
+    "seconds": 0.25656720899860375,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/cargo-vendor.log"
+  },
+  {
+    "name": "rust-source-hash",
+    "command": [
+      "sh",
+      "scripts/test-rust-source-hash.sh"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+    "started": "2026-09-07T03:30:16.834876+00:00",
+    "seconds": 1.991260124996188,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/rust-source-hash.log"
+  },
+  {
+    "name": "corpus-framework",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-corpus-performance/test-framework.R"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+    "started": "2026-09-07T03:30:18.826185+00:00",
+    "seconds": 0.11557312499644468,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/corpus-framework.log"
+  },
+  {
+    "name": "haven-helper-interop",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "scripts/test-haven-helper-interop.R"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+    "started": "2026-09-07T03:30:18.941798+00:00",
+    "seconds": 0.23137591699924087,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/haven-helper-interop.log"
+  },
+  {
+    "name": "labelled-interop",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "scripts/test-labelled-interop.R"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+    "started": "2026-09-07T03:30:19.173217+00:00",
+    "seconds": 1.5168433750004624,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/labelled-interop.log"
+  }
+]

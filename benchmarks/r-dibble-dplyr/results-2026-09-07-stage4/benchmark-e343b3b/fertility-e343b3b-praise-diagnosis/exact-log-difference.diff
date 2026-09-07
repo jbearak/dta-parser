@@ -1,0 +1,12 @@
+--- retained-baseline
++++ e343b3b
+@@ -346,8 +346,9 @@
+   no_values  years_since_first_union      Lebanon-Palestinian 2006                 n=3955 value=0 sysmiss=0 e=0 z=0
+   no_values  yfunion                      Lebanon-Palestinian 2006                 n=3955 value=0 sysmiss=0 e=0 z=0
+ 
+ ══ DONE ════════════════════════════════════════════════════════════════════════
++I believe in you!
+ 
+ r backend: 499 tests, 4 failed or errored, 2 skipped
+   test-integration-mics-output.R: every tagged missing value in the output has a value label
+   test-integration-mics-output.R: no harmonized variable holds plain sysmiss in any survey

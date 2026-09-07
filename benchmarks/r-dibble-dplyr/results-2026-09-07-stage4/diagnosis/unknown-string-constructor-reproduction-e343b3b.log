@@ -1,0 +1,8 @@
+source e343b3b56a8529e9ee0ac40f8bd88beebcd2be15 
+DLL_md5 18837c14dcd6597169dc0e3d99186dab 
+rows 64 captured first after foreign write: a 
+Both mutation directions isolated.
+rows 1000 captured first after foreign write: a 
+Both mutation directions isolated.
+rows 1000000 captured first after foreign write: a 
+Both mutation directions isolated.

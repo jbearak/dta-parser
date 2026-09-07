@@ -1,0 +1,4 @@
+using C compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang -std=gnu23 -I"/opt/homebrew/Cellar/r/4.6.1/lib/R/include" -DNDEBUG   -I/opt/homebrew/opt/gettext/include -I/opt/homebrew/opt/readline/include -I/opt/homebrew/opt/xz/include -I/opt/homebrew/include -I/opt/homebrew/include -DTBB_INTERFACE_NEW=1    -fPIC  -g -O2  -c accessor_probe.c -o accessor_probe.o
+clang -std=gnu23 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/opt/homebrew/Cellar/r/4.6.1/lib/R/lib -L/opt/homebrew/opt/gettext/lib -L/opt/homebrew/opt/readline/lib -L/opt/homebrew/opt/xz/lib -L/opt/homebrew/lib -L/opt/homebrew/lib -o accessor_probe.so accessor_probe.o -L/opt/homebrew/Cellar/r/4.6.1/lib/R/lib -lR

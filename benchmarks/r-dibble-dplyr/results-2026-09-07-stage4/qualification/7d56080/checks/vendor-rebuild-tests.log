@@ -1,0 +1,9 @@
+test_extracts_a_safe_regular_file_without_filter_support (test_rebuild_r_vendor.LegacyExtractionTests.test_extracts_a_safe_regular_file_without_filter_support) ... ok
+test_normalizes_member_modes (test_rebuild_r_vendor.LegacyExtractionTests.test_normalizes_member_modes) ... ok
+test_rejects_absolute_and_parent_traversal_paths (test_rebuild_r_vendor.LegacyExtractionTests.test_rejects_absolute_and_parent_traversal_paths) ... ok
+test_rejects_links_that_escape_the_destination (test_rebuild_r_vendor.LegacyExtractionTests.test_rejects_links_that_escape_the_destination) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.002s
+
+OK

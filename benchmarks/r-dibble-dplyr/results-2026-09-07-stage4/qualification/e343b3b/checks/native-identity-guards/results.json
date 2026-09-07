@@ -1,0 +1,122 @@
+[
+  {
+    "case": "git-failed-empty",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-failed-empty/output"
+    ],
+    "exit_code": 1,
+    "expected_diagnostic": "Invalid or failed identity command: git",
+    "no_output_files": true,
+    "log_sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75"
+  },
+  {
+    "case": "git-failed-valid-hash",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-failed-valid-hash/output"
+    ],
+    "exit_code": 1,
+    "expected_diagnostic": "Invalid or failed identity command: git",
+    "no_output_files": true,
+    "log_sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75"
+  },
+  {
+    "case": "git-malformed-success",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-malformed-success/output"
+    ],
+    "exit_code": 1,
+    "expected_diagnostic": "Invalid or failed identity command: git",
+    "no_output_files": true,
+    "log_sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75"
+  },
+  {
+    "case": "git-multiline-success",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-multiline-success/output"
+    ],
+    "exit_code": 1,
+    "expected_diagnostic": "Invalid or failed identity command: git",
+    "no_output_files": true,
+    "log_sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75"
+  },
+  {
+    "case": "shasum-failed-empty",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-failed-empty/output"
+    ],
+    "exit_code": 1,
+    "expected_diagnostic": "Invalid or failed identity command: shasum",
+    "no_output_files": true,
+    "log_sha256": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a"
+  },
+  {
+    "case": "shasum-failed-valid-hash",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-failed-valid-hash/output"
+    ],
+    "exit_code": 1,
+    "expected_diagnostic": "Invalid or failed identity command: shasum",
+    "no_output_files": true,
+    "log_sha256": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a"
+  },
+  {
+    "case": "shasum-malformed-success",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-malformed-success/output"
+    ],
+    "exit_code": 1,
+    "expected_diagnostic": "Invalid or failed identity command: shasum",
+    "no_output_files": true,
+    "log_sha256": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a"
+  },
+  {
+    "case": "shasum-multiline-success",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-multiline-success/output"
+    ],
+    "exit_code": 1,
+    "expected_diagnostic": "Invalid or failed identity command: shasum",
+    "no_output_files": true,
+    "log_sha256": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a"
+  }
+]

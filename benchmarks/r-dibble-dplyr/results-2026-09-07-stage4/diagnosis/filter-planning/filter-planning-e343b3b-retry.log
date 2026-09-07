@@ -1,0 +1,87 @@
+DEVELOPMENT DIAGNOSIS: existing filter and gather boundaries
+source e343b3b56a8529e9ee0ac40f8bd88beebcd2be15 library /private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library 
+/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools/libs/dtatools.so 
+                                                           "18837c14dcd6597169dc0e3d99186dab" 
+                                  benchmarks/r-dibble-dplyr/helpers.R 
+                                   "d6c0341379dd025e4e0492d6b14f4d22" 
+                     benchmarks/r-dibble-dplyr/owned-double-helpers.R 
+                                   "4d31109f49d89bbcdbfbb989dccf5334" 
+                     benchmarks/r-dibble-dplyr/owned-atomic-helpers.R 
+                                   "df5f3183107290847a82415124d44d49" 
+                             benchmarks/r-dibble-dplyr/owned-atomic.R 
+                                   "7e87cb5f50a51ea4c571f27d3a329bca" 
+                      benchmarks/r-dibble-dplyr/owned-atomic-memory.R 
+                                   "d8bd50bb040618201a2817031b47100c" 
+/private/tmp/dta-direct-stage4-validation/filter-planning-diagnosis.R 
+                                   "420cf909f5eb00da4cc56a65df6f5e67" 
+     kind   operation median_ms  r_bytes native_owned_capture_bytes
+1 logical full_filter  9.017171 58083576                    1.6e+07
+     kind       operation median_ms  r_bytes native_owned_capture_bytes
+1 logical snapshot_filter  7.688402 42002688                          0
+     kind  operation median_ms  r_bytes native_owned_capture_bytes
+1 logical raw_filter  4.488762 42002688                          0
+     kind      operation median_ms  r_bytes native_owned_capture_bytes
+1 logical snapshot_slice  4.679207 16000384                          0
+     kind operation median_ms  r_bytes native_owned_capture_bytes
+1 logical raw_slice  1.409949 16000384                          0
+     kind       operation median_ms  r_bytes native_owned_capture_bytes
+1 logical validated_batch  1.601583 16000384                          0
+     kind  operation median_ms  r_bytes native_owned_capture_bytes
+1 logical close_only  1.074405 16080888                    1.6e+07
+Tracing function ".gather_dta_columns" in package
+"namespace:dtatools"
+Tracing function "vec_slice_altrep" in package "namespace:vctrs"
+Untracing function "vec_slice_altrep" in package "namespace:vctrs"
+Untracing function ".gather_dta_columns" in package
+"namespace:dtatools"
+    kind   operation median_ms  r_bytes native_owned_capture_bytes
+1 factor full_filter  7.801316 42083192                          0
+    kind       operation median_ms  r_bytes native_owned_capture_bytes
+1 factor snapshot_filter  7.434366 42002688                          0
+    kind  operation median_ms  r_bytes native_owned_capture_bytes
+1 factor raw_filter  4.159368 42002688                          0
+    kind      operation median_ms  r_bytes native_owned_capture_bytes
+1 factor snapshot_slice  4.775557 16000384                          0
+    kind operation median_ms  r_bytes native_owned_capture_bytes
+1 factor raw_slice   1.37104 16000384                          0
+    kind       operation median_ms  r_bytes native_owned_capture_bytes
+1 factor validated_batch  1.605601 16000384                          0
+    kind  operation median_ms r_bytes native_owned_capture_bytes
+1 factor close_only  0.185033   80504                          0
+Tracing function ".gather_dta_columns" in package
+"namespace:dtatools"
+Tracing function "vec_slice_altrep" in package "namespace:vctrs"
+Untracing function "vec_slice_altrep" in package "namespace:vctrs"
+Untracing function ".gather_dta_columns" in package
+"namespace:dtatools"
+     kind   operation median_ms  r_bytes native_owned_capture_bytes
+1 ordered full_filter  7.710624 42083192                          0
+     kind       operation median_ms  r_bytes native_owned_capture_bytes
+1 ordered snapshot_filter  7.477703 42002688                          0
+     kind  operation median_ms  r_bytes native_owned_capture_bytes
+1 ordered raw_filter  4.092292 42002688                          0
+     kind      operation median_ms  r_bytes native_owned_capture_bytes
+1 ordered snapshot_slice  4.685316 16000384                          0
+     kind operation median_ms  r_bytes native_owned_capture_bytes
+1 ordered raw_slice  1.368457 16000384                          0
+     kind       operation median_ms  r_bytes native_owned_capture_bytes
+1 ordered validated_batch  1.644428 16000384                          0
+     kind  operation median_ms r_bytes native_owned_capture_bytes
+1 ordered close_only   0.18655   80504                          0
+Tracing function ".gather_dta_columns" in package
+"namespace:dtatools"
+Tracing function "vec_slice_altrep" in package "namespace:vctrs"
+Untracing function "vec_slice_altrep" in package "namespace:vctrs"
+Untracing function ".gather_dta_columns" in package
+"namespace:dtatools"
+Warning messages:
+1: In Rprof(path, interval = 1e-04) : interval too short, using '0.001000'
+2: In Rprof(path, interval = 1e-04) : interval too short, using '0.001000'
+3: In Rprof(path, interval = 1e-04) : interval too short, using '0.001000'
+4: In Rprof(path, interval = 1e-04) : interval too short, using '0.001000'
+5: In Rprof(path, interval = 1e-04) : interval too short, using '0.001000'
+6: In Rprof(path, interval = 1e-04) : interval too short, using '0.001000'
+7: In Rprof(path, interval = 1e-04) : interval too short, using '0.001000'
+8: In Rprof(path, interval = 1e-04) : interval too short, using '0.001000'
+9: In Rprof(path, interval = 1e-04) : interval too short, using '0.001000'
+PASS source/DLL/dependency/value/metadata/backing guards before and after

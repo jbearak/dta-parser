@@ -1,0 +1,37 @@
+{
+  "recorded_utc": "2026-09-07T03:39:44.962486+00:00",
+  "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-library",
+  "dll_sha256": "349e340b97361325ac0333369e84de2e7d24205d0cc0125bd9f03d0e6d41dfdb",
+  "dll_md5": "a390cab5fd2e2e2d8a0bb57f18194c54",
+  "provenance_sha256": "b13bff0b2a36ad5d74dcbc9fea981abb49b6387df7739201b21bb8852cd9d037",
+  "scope": "219 pure R regression cases reused byte-for-byte with historical baseline RDS oracles. R identical() comparisons passed. Child processes select requested library first and record matching exact DLL digest; outer driver validates complete exact installed package before and after. Excludes historical 18-case names-private native observer with unavailable C source.",
+  "process_exit_code": 0,
+  "cases": {
+    "generation-names": 45,
+    "delayed-mask": 72,
+    "delayed-private-mask": 72,
+    "symbol-private-callback": 30
+  },
+  "files": {
+    "delayed-mask-baseline.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "delayed-mask-candidate.log": "588562d230d6c1fa55c726a4ebda85450e306a468a55fa77e4d5c97fed1d4e04",
+    "delayed-mask-candidate.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "delayed-mask-matrix.R": "f01fdf0d670232e9a2bbb5249a92ed5df5303680e3430117b01156574e790091",
+    "delayed-private-mask-baseline.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "delayed-private-mask-candidate.log": "588562d230d6c1fa55c726a4ebda85450e306a468a55fa77e4d5c97fed1d4e04",
+    "delayed-private-mask-candidate.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "delayed-private-mask-matrix.R": "53b4291399cf1bb5d2887095ecd496696ad2c7d1b5b0623f9909cbc799d238a8",
+    "driver.log": "99d7baf151bba019ef700a82a8f160828666c9538289c5726a58853e4e5bb32f",
+    "generation-names-baseline.rds": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5",
+    "generation-names-candidate.log": "a9d461b318d2681fc60594e6d5f5df6d02b4bfad4770c159fc4a729dd3b14e1b",
+    "generation-names-candidate.rds": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5",
+    "generation-names-matrix.R": "d35583705f66c051aa7bd8ea3b2207c98ecf8c3360f727e672fd9c31b67015f6",
+    "reused-input-identities.json": "0c38e907b8c8acef3c5dccd1e056c3ab003e2deb0d55ab92d55e1f4aedb86bd1",
+    "run.R": "682b82b93f98e79616a03a348e168c1b80a1f22c481fafcc74bfd4797ea61ab8",
+    "symbol-private-callback-baseline.rds": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23",
+    "symbol-private-callback-candidate.log": "c23c00a8ad2a428fc672f3ee77afc6899f5e66ace5ecadf65bd6f3133ef0980e",
+    "symbol-private-callback-candidate.rds": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23",
+    "symbol-private-callback-matrix.R": "2e67b6f6ae5dc5eb2a77f34799cc67632d78212fd7e4970eb2bc90069838ddac"
+  }
+}

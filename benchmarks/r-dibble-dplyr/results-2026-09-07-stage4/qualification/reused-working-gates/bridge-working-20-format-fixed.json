@@ -1,0 +1,53 @@
+[
+  {
+    "name": "fmt",
+    "command": [
+      "cargo",
+      "fmt",
+      "--manifest-path",
+      "rust/Cargo.toml",
+      "--",
+      "--check"
+    ],
+    "seconds": 0.07561279099900275,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/bridge-fmt-working-20-format-fixed.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "check",
+    "command": [
+      "cargo",
+      "check",
+      "--manifest-path",
+      "rust/Cargo.toml",
+      "--config",
+      "rust/cargo-config.toml",
+      "--locked",
+      "--offline",
+      "--all-targets"
+    ],
+    "seconds": 0.26661170899751596,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/bridge-check-working-20-format-fixed.log",
+    "sha256": "f47377b8ea2e65adbed10504971bdca2ff1659b83913a046844e2c7da0b6d7d7"
+  },
+  {
+    "name": "tests",
+    "command": [
+      "cargo",
+      "test",
+      "--manifest-path",
+      "rust/Cargo.toml",
+      "--config",
+      "rust/cargo-config.toml",
+      "--locked",
+      "--offline",
+      "--all-targets"
+    ],
+    "seconds": 0.9722771670058137,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/bridge-tests-working-20-format-fixed.log",
+    "sha256": "44862d47b06e0fc104466a709f59937917e89a3fc0818f8608127972525cacf1"
+  }
+]

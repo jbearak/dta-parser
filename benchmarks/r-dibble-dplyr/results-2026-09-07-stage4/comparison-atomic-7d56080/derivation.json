@@ -1,0 +1,12 @@
+{
+  "baseline_manifest": "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/root-manifest.json",
+  "baseline_manifest_sha256": "d68f755d02423ace8816115d1889c474f7f4e39567a095610eccfb88e58c253b",
+  "candidate_manifest": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-b259ad5/root-manifest.json",
+  "candidate_manifest_sha256": "7f06a035bc05bc58cf0fb79d7fc9924df89deca2ea8587a090e58ffaf1a406c8",
+  "deriver_sha256": "4a9051ce97c5a84ff580f0ddda4cce2692c847695d0500ad8c239618e312b9bf",
+  "files": {
+    "investigate.json": "e7f0785c888795f2568c493b0aae1cf2a0effddf49c85bf1b735e93fce1c753e",
+    "memory-comparison.csv": "29d3a73f86b935fa66490b274508fda6a0817be3625430fa75936515b0f168b3",
+    "operation-comparison.csv": "317d61432dc5d6b9525b9f4a56829d2cb4afbf0c4aaa66227c6bcdc529891722"
+  }
+}

@@ -1,0 +1,34 @@
+{
+    value_names <- names(x)
+    x <- .Call(C_dtatools_capture_string, x)
+    if (!is.null(prototype)) {
+        x <- .restore_dta_variable_metadata(x, prototype, names = value_names)
+    }
+    else {
+        for (name in setdiff(names(attributes(x)), "names")) {
+            owned <- .set_dta_string_attribute(x, name, NULL)
+            if (is.null(owned)) 
+                attr(x, name) <- NULL
+            else x <- owned
+        }
+    }
+    owned <- .set_dta_string_attribute(x, "stata.string.storage", 
+        storage)
+    if (is.null(owned)) 
+        attr(x, "stata.string.storage") <- storage
+    else x <- owned
+    classes <- c("dta_string", "vctrs_vctr", "character")
+    owned <- .set_dta_string_attribute(x, "class", classes)
+    if (is.null(owned)) 
+        class(x) <- classes
+    else x <- owned
+    if (!is.null(value_names)) {
+        owned <- .set_dta_string_attribute(x, "names", value_names)
+        if (is.null(owned)) 
+            names(x) <- value_names
+        else x <- owned
+    }
+    .Call(C_dtatools_capture_column, x)
+}
+/private/tmp/dta-direct-stage4-validation/working-library/dtatools/libs/dtatools.so 
+                                                 "76381bb143563252c58c0683af8a7f7b" 

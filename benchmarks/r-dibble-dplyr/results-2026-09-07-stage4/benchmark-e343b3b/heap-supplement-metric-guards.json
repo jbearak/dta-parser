@@ -1,0 +1,105 @@
+{
+  "scope": "Read-only independent parsing of12 actual development smoke logs and6 synthetic corrupted-log rejection probes; no R run",
+  "driver_sha256": "39fd4814b59eec2e3fcbc8ff4cc7af608c8ef76b52f71e70f794e6a4d75fe9f3",
+  "positive": [
+    {
+      "file": "baseline-double.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 226920,
+      "excess_tracked_heap_bytes_after_drop_result": 183688
+    },
+    {
+      "file": "baseline-string.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 203432,
+      "excess_tracked_heap_bytes_after_drop_result": 178512
+    },
+    {
+      "file": "baseline-declared_character.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 203328,
+      "excess_tracked_heap_bytes_after_drop_result": 179248
+    },
+    {
+      "file": "baseline-logical.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 180728,
+      "excess_tracked_heap_bytes_after_drop_result": 160848
+    },
+    {
+      "file": "baseline-factor.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 182776,
+      "excess_tracked_heap_bytes_after_drop_result": 161216
+    },
+    {
+      "file": "baseline-ordered.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 182960,
+      "excess_tracked_heap_bytes_after_drop_result": 161400
+    },
+    {
+      "file": "candidate-double.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 226736,
+      "excess_tracked_heap_bytes_after_drop_result": 193272
+    },
+    {
+      "file": "candidate-string.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 225040,
+      "excess_tracked_heap_bytes_after_drop_result": 209592
+    },
+    {
+      "file": "candidate-declared_character.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 222360,
+      "excess_tracked_heap_bytes_after_drop_result": 207752
+    },
+    {
+      "file": "candidate-logical.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 223544,
+      "excess_tracked_heap_bytes_after_drop_result": 209720
+    },
+    {
+      "file": "candidate-factor.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 225040,
+      "excess_tracked_heap_bytes_after_drop_result": 209536
+    },
+    {
+      "file": "candidate-ordered.log",
+      "header_bytes_per_cell": 56,
+      "retained_tracked_heap_bytes": 225040,
+      "excess_tracked_heap_bytes_after_drop_result": 209536
+    }
+  ],
+  "negative": [
+    {
+      "case": "missing_checkpoint",
+      "rejection": "Incomplete or duplicate checkpoints: missing_checkpoint"
+    },
+    {
+      "case": "duplicate_checkpoint",
+      "rejection": "Incomplete or duplicate checkpoints: duplicate_checkpoint"
+    },
+    {
+      "case": "changed_checkpoint",
+      "rejection": "Derived retained_header_cells mismatch: changed_checkpoint"
+    },
+    {
+      "case": "wrong_header_size",
+      "rejection": "Header size inference mismatch: wrong_header_size"
+    },
+    {
+      "case": "wrong_total",
+      "rejection": "Derived retained_tracked_heap_bytes mismatch: wrong_total"
+    },
+    {
+      "case": "nonfinite",
+      "rejection": "Missing or duplicate retained_header_cells: nonfinite"
+    }
+  ],
+  "result": "pass"
+}

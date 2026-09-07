@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/run-heap-qualification.py", line 139, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/run-heap-qualification.py", line 87, in main
+    require((repo / path).read_bytes() == data, f"Runner source mismatch: {path}")
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/run-heap-qualification.py", line 18, in require
+    raise RuntimeError(message)
+RuntimeError: Runner source mismatch: benchmarks/r-dibble-dplyr/run-heap-qualification.py
