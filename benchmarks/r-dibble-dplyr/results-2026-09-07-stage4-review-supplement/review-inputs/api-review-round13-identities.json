@@ -1,0 +1,162 @@
+{
+  "recorded_utc": "2026-09-07T06:47:55.665074+00:00",
+  "files": [
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-praise-diagnosis/inspect-framework.R",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/inspect-framework.R",
+      "sha256": "560c2fd608ccdba7cf4f3da3506eb32726bd8617fcb7da85246d253ff38d4af6",
+      "bytes": 247
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-praise-diagnosis/semantic-parity-audit.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/semantic-parity-audit.json",
+      "sha256": "17affdd0ec5c08fdaa31a08c2e96c12f7ce2ded1b1b5859c4bfb7c849a69414f",
+      "bytes": 1642
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-praise-diagnosis/semantic-parity-addendum.md",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/semantic-parity-addendum.md",
+      "sha256": "790f7d0628a80d0d9486d17ad8d06c62dafc4b636c58193fc3b07d6ccc5055fb",
+      "bytes": 2095
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-praise-diagnosis/framework-source.log",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/framework-source.log",
+      "sha256": "ab5c6f674990880d0312ff5c09e868762a2e458bf44889d685ec658d8ef0b79b",
+      "bytes": 1403
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-praise-diagnosis/manifest.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/manifest.json",
+      "sha256": "c5ce582e9b20b3751caeed474862d79e703b3c19605303f8b1afc052951c83ea",
+      "bytes": 1199
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-praise-diagnosis/exact-log-difference.diff",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/exact-log-difference.diff",
+      "sha256": "40d5fdd0efd3b2599a344edfed66d45cce4f962166fb1f3d3f60b28b8b92bf55",
+      "bytes": 781
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-praise-diagnosis/audit-semantic-parity.py",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/audit-semantic-parity.py",
+      "sha256": "515880d04a39a7a995d324d3fdca27bb91de039afa7a9be83d087ee4fc049ae9",
+      "bytes": 3810
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b/before.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/before.json",
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+      "bytes": 51802
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b/post-install-guard.log",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/post-install-guard.log",
+      "sha256": "ce3eceb79d2eafb8aa6810785bfb14ecd189503efeb1a7c286016c01fad642c9",
+      "bytes": 82
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b/test.log",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/test.log",
+      "sha256": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69",
+      "bytes": 36794
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b/driver.R",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/driver.R",
+      "sha256": "138abec9dffd56adad85aca1fe16466443bd19a8264b553b7003ec5a9acca111",
+      "bytes": 769
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b/after.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/after.json",
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+      "bytes": 51802
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b/input-identities.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/input-identities.json",
+      "sha256": "c1e40709667540c6531fbbadfe8e65084672c7303459d4bc1f284f1232a92964",
+      "bytes": 1104
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b/verification.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/verification.json",
+      "sha256": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4",
+      "bytes": 1406
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-retry/before.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/before.json",
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+      "bytes": 51802
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-retry/post-install-guard.log",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/post-install-guard.log",
+      "sha256": "ce3eceb79d2eafb8aa6810785bfb14ecd189503efeb1a7c286016c01fad642c9",
+      "bytes": 82
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-retry/test.log",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/test.log",
+      "sha256": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69",
+      "bytes": 36794
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-retry/driver.R",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/driver.R",
+      "sha256": "138abec9dffd56adad85aca1fe16466443bd19a8264b553b7003ec5a9acca111",
+      "bytes": 769
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-retry/after.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/after.json",
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+      "bytes": 51802
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-retry/input-identities.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/input-identities.json",
+      "sha256": "c1e40709667540c6531fbbadfe8e65084672c7303459d4bc1f284f1232a92964",
+      "bytes": 1104
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-retry/verification.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/verification.json",
+      "sha256": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4",
+      "bytes": 1406
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/check-fertility-candidate.py",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/check-fertility-candidate.py",
+      "sha256": "903e681950f0f43bd99a099bb21697be58c40f3552e6a21d98fe80167846424a",
+      "bytes": 8957
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-stage2-baseline.log",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/historical/fertility-stage2-baseline.log",
+      "sha256": "f85c076a6d20983a155305522d11fa3da1c038f20283ee1a979f4726521d8708",
+      "bytes": 36681
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-before-exact-45f2ba4.json",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/historical/fertility-before-exact-45f2ba4.json",
+      "sha256": "44fd497ae6ff502363301c3ddc82083f7d963305b08853abfe445d88b398f0dd",
+      "bytes": 51888
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-outer.log",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-outer.log",
+      "sha256": "9e47d42c777ddec3a74e8939cfe00461d40bdb76edc557d75ba19d3529a7cd5d",
+      "bytes": 666
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b-retry-outer.log",
+      "copy": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry-outer.log",
+      "sha256": "9e47d42c777ddec3a74e8939cfe00461d40bdb76edc557d75ba19d3529a7cd5d",
+      "bytes": 666
+    }
+  ],
+  "changed_at_end": []
+}

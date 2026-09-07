@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/private/tmp/dta-direct-stage4-evidence/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/review-supplement.py", line 150, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/dta-direct-stage4-evidence/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/review-supplement.py", line 146, in main
+    diagnose(args)
+    ~~~~~~~~^^^^^^
+  File "/private/tmp/dta-direct-stage4-evidence/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/review-supplement.py", line 96, in diagnose
+    require((library / 'dtatools' / 'DESCRIPTION').is_file(), 'Requested library has no dtatools installation')
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/dta-direct-stage4-evidence/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/review-supplement.py", line 44, in require
+    raise RuntimeError(message)
+RuntimeError: Requested library has no dtatools installation

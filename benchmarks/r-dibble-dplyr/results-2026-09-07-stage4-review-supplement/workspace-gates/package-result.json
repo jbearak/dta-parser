@@ -1,0 +1,19 @@
+{
+  "name": "package",
+  "command": [
+    "cargo",
+    "package",
+    "-p",
+    "dta-tools",
+    "--locked",
+    "--offline"
+  ],
+  "started_utc": "2026-09-07T08:24:38.727616+00:00",
+  "elapsed_seconds": 2.027906165996683,
+  "exit_code": 0,
+  "before_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+  "after_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+  "log_sha256": "17313dc1a5f76565db662919b742a1b832f9816891df2736f7cf02b7e8c80f06",
+  "log_bytes": 1638,
+  "inputs_identical": true
+}

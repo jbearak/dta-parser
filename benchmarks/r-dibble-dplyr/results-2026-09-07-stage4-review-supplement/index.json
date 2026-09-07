@@ -1,0 +1,1416 @@
+{
+  "format": 1,
+  "scope": "Supplemental review evidence only; package remains Stage3 in this branch.",
+  "base": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+  "reviewed_historical_evidence": "5173f39b9b1bf895c4ced776b83db276e4593bc1",
+  "qualified_package_source": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "package_tree": "f12a2a1dd430636a33b7f6e953023d90d1ff2589",
+  "missing_referenced_review_artifacts": 29,
+  "original_mode_command_fixtures": 16,
+  "copy_policy": "Exact bytes and full retained-source Unix modes. Git records only regular-file/executable intent as100644/100755. Historical5173 artifacts remain unchanged.",
+  "historical_link_context": {
+    "authored_local_links": 19,
+    "authored_links_resolve": true,
+    "raw_snapshot_relative_links": [
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/api-review-round11-progress-followup.md",
+        "target": "dibble-result-performance.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "docs/plans/dibble-result-performance.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/api-review-round11-progress-followup.md",
+        "target": "../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/api-review-round11-progress-followup.md",
+        "target": "../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage3.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "benchmarks/r-dibble-dplyr/results-2026-09-06-stage3.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/api-review-round11-progress-followup.md",
+        "target": "../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage1.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "benchmarks/r-dibble-dplyr/results-2026-09-06-stage1.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/api-review-round11-progress-followup.md",
+        "target": "dibble-result-performance.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "docs/plans/dibble-result-performance.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/api-review-round11-progress-followup.md",
+        "target": "../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage2.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "benchmarks/r-dibble-dplyr/results-2026-09-06-stage2.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/storage-review-round12-progress-addendum-source.md",
+        "target": "dibble-result-performance.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "docs/plans/dibble-result-performance.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/storage-review-round12-progress-addendum-source.md",
+        "target": "../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/storage-review-round12-progress-addendum-source.md",
+        "target": "../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage3.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "benchmarks/r-dibble-dplyr/results-2026-09-06-stage3.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/storage-review-round12-progress-addendum-source.md",
+        "target": "../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage1.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "benchmarks/r-dibble-dplyr/results-2026-09-06-stage1.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/storage-review-round12-progress-addendum-source.md",
+        "target": "dibble-result-performance.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "docs/plans/dibble-result-performance.md",
+        "exists": true
+      },
+      {
+        "document": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/storage-review-round12-progress-addendum-source.md",
+        "target": "../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage2.md",
+        "original_document_context": "docs/plans/dibble-result-performance-progress.md",
+        "source_context_target": "benchmarks/r-dibble-dplyr/results-2026-09-06-stage2.md",
+        "exists": true
+      }
+    ],
+    "disposition": "These two files are immutable historical copies of progress source, not newly authored navigation; all twelve links resolve in their original docs/plans context. Identical unresolved-at-archive-location spelling is present in source93a271d. No split-induced missing link and no raw evidence edits."
+  },
+  "files": [
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round10-heap-current-evidence-identities.json",
+      "copy": "review-inputs/api-review-round10-heap-current-evidence-identities.json",
+      "bytes": 48178,
+      "sha256": "a01356839c19958b60d134cd2a2f7147cdb6f178c41524c1e8fcab9ec50553c2",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-identities.json",
+      "copy": "review-inputs/api-review-round13-identities.json",
+      "bytes": 9112,
+      "sha256": "218b57e18c10c38f75cee4c5bcd02af0987047900f677c4724d649cd304a25ca",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-independent-evidence-audit.json",
+      "copy": "review-inputs/api-review-round13-independent-evidence-audit.json",
+      "bytes": 1213,
+      "sha256": "e708b918fd81053687ffa1439ea9269c66277b0cf234415009872fa643387606",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/check-fertility-candidate.py",
+      "copy": "review-inputs/api-review-round13-snapshot/check-fertility-candidate.py",
+      "bytes": 8957,
+      "sha256": "903e681950f0f43bd99a099bb21697be58c40f3552e6a21d98fe80167846424a",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/after.json",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b/after.json",
+      "bytes": 51802,
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/before.json",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b/before.json",
+      "bytes": 51802,
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/driver.R",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b/driver.R",
+      "bytes": 769,
+      "sha256": "138abec9dffd56adad85aca1fe16466443bd19a8264b553b7003ec5a9acca111",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/input-identities.json",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b/input-identities.json",
+      "bytes": 1104,
+      "sha256": "c1e40709667540c6531fbbadfe8e65084672c7303459d4bc1f284f1232a92964",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/post-install-guard.log",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b/post-install-guard.log",
+      "bytes": 82,
+      "sha256": "ce3eceb79d2eafb8aa6810785bfb14ecd189503efeb1a7c286016c01fad642c9",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/test.log",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b/test.log",
+      "bytes": 36794,
+      "sha256": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/verification.json",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b/verification.json",
+      "bytes": 1406,
+      "sha256": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-outer.log",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-outer.log",
+      "bytes": 666,
+      "sha256": "9e47d42c777ddec3a74e8939cfe00461d40bdb76edc557d75ba19d3529a7cd5d",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/audit-semantic-parity.py",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/audit-semantic-parity.py",
+      "bytes": 3810,
+      "sha256": "515880d04a39a7a995d324d3fdca27bb91de039afa7a9be83d087ee4fc049ae9",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/exact-log-difference.diff",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/exact-log-difference.diff",
+      "bytes": 781,
+      "sha256": "40d5fdd0efd3b2599a344edfed66d45cce4f962166fb1f3d3f60b28b8b92bf55",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/framework-source.log",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/framework-source.log",
+      "bytes": 1403,
+      "sha256": "ab5c6f674990880d0312ff5c09e868762a2e458bf44889d685ec658d8ef0b79b",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/inspect-framework.R",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/inspect-framework.R",
+      "bytes": 247,
+      "sha256": "560c2fd608ccdba7cf4f3da3506eb32726bd8617fcb7da85246d253ff38d4af6",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/manifest.json",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/manifest.json",
+      "bytes": 1199,
+      "sha256": "c5ce582e9b20b3751caeed474862d79e703b3c19605303f8b1afc052951c83ea",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/semantic-parity-addendum.md",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/semantic-parity-addendum.md",
+      "bytes": 2095,
+      "sha256": "790f7d0628a80d0d9486d17ad8d06c62dafc4b636c58193fc3b07d6ccc5055fb",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/semantic-parity-audit.json",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/semantic-parity-audit.json",
+      "bytes": 1642,
+      "sha256": "17affdd0ec5c08fdaa31a08c2e96c12f7ce2ded1b1b5859c4bfb7c849a69414f",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/after.json",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-retry/after.json",
+      "bytes": 51802,
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/before.json",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-retry/before.json",
+      "bytes": 51802,
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/driver.R",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-retry/driver.R",
+      "bytes": 769,
+      "sha256": "138abec9dffd56adad85aca1fe16466443bd19a8264b553b7003ec5a9acca111",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/input-identities.json",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-retry/input-identities.json",
+      "bytes": 1104,
+      "sha256": "c1e40709667540c6531fbbadfe8e65084672c7303459d4bc1f284f1232a92964",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/post-install-guard.log",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-retry/post-install-guard.log",
+      "bytes": 82,
+      "sha256": "ce3eceb79d2eafb8aa6810785bfb14ecd189503efeb1a7c286016c01fad642c9",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/test.log",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-retry/test.log",
+      "bytes": 36794,
+      "sha256": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/verification.json",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-retry/verification.json",
+      "bytes": 1406,
+      "sha256": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry-outer.log",
+      "copy": "review-inputs/api-review-round13-snapshot/fertility-e343b3b-retry-outer.log",
+      "bytes": 666,
+      "sha256": "9e47d42c777ddec3a74e8939cfe00461d40bdb76edc557d75ba19d3529a7cd5d",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/historical/fertility-before-exact-45f2ba4.json",
+      "copy": "review-inputs/api-review-round13-snapshot/historical/fertility-before-exact-45f2ba4.json",
+      "bytes": 51888,
+      "sha256": "44fd497ae6ff502363301c3ddc82083f7d963305b08853abfe445d88b398f0dd",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/historical/fertility-stage2-baseline.log",
+      "copy": "review-inputs/api-review-round13-snapshot/historical/fertility-stage2-baseline.log",
+      "bytes": 36681,
+      "sha256": "f85c076a6d20983a155305522d11fa3da1c038f20283ee1a979f4726521d8708",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/git-failed-empty/bin/git",
+      "copy": "native-fixtures/qualification/7d56080/checks/native-identity-guards/git-failed-empty/bin/git",
+      "bytes": 17,
+      "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/git-failed-empty/bin/git",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/git-failed-valid-hash/bin/git",
+      "copy": "native-fixtures/qualification/7d56080/checks/native-identity-guards/git-failed-valid-hash/bin/git",
+      "bytes": 74,
+      "sha256": "0bc4e7e7e0de8eee3ba5358cf00dc224772590d7cbfe78895cd1ec188ed5961d",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/git-failed-valid-hash/bin/git",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/git-malformed-success/bin/git",
+      "copy": "native-fixtures/qualification/7d56080/checks/native-identity-guards/git-malformed-success/bin/git",
+      "bytes": 41,
+      "sha256": "23c89c3afa30ab08cf15189f384c977119b59c80cd7695543a8c8ad3c6d43420",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/git-malformed-success/bin/git",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/git-multiline-success/bin/git",
+      "copy": "native-fixtures/qualification/7d56080/checks/native-identity-guards/git-multiline-success/bin/git",
+      "bytes": 121,
+      "sha256": "fa00ec977292be369ed89d64a7cea3a42a2d93184977efd33e264f7d3018aa77",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/git-multiline-success/bin/git",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/shasum-failed-empty/bin/shasum",
+      "copy": "native-fixtures/qualification/7d56080/checks/native-identity-guards/shasum-failed-empty/bin/shasum",
+      "bytes": 17,
+      "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/shasum-failed-empty/bin/shasum",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/shasum-failed-valid-hash/bin/shasum",
+      "copy": "native-fixtures/qualification/7d56080/checks/native-identity-guards/shasum-failed-valid-hash/bin/shasum",
+      "bytes": 107,
+      "sha256": "d888108d485aeba8487f28158a57d956164254bf0bdbd16df32ad4db9b78d8c3",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/shasum-failed-valid-hash/bin/shasum",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/shasum-malformed-success/bin/shasum",
+      "copy": "native-fixtures/qualification/7d56080/checks/native-identity-guards/shasum-malformed-success/bin/shasum",
+      "bytes": 41,
+      "sha256": "23c89c3afa30ab08cf15189f384c977119b59c80cd7695543a8c8ad3c6d43420",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/shasum-malformed-success/bin/shasum",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/shasum-multiline-success/bin/shasum",
+      "copy": "native-fixtures/qualification/7d56080/checks/native-identity-guards/shasum-multiline-success/bin/shasum",
+      "bytes": 187,
+      "sha256": "24c34a22762fbb195c7ea494be8af9839afbb1623c18540adc6de3af44177ff2",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/shasum-multiline-success/bin/shasum",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-failed-empty/bin/git",
+      "copy": "native-fixtures/qualification/e343b3b/checks/native-identity-guards/git-failed-empty/bin/git",
+      "bytes": 17,
+      "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/git-failed-empty/bin/git",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-failed-valid-hash/bin/git",
+      "copy": "native-fixtures/qualification/e343b3b/checks/native-identity-guards/git-failed-valid-hash/bin/git",
+      "bytes": 74,
+      "sha256": "0bc4e7e7e0de8eee3ba5358cf00dc224772590d7cbfe78895cd1ec188ed5961d",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/git-failed-valid-hash/bin/git",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-malformed-success/bin/git",
+      "copy": "native-fixtures/qualification/e343b3b/checks/native-identity-guards/git-malformed-success/bin/git",
+      "bytes": 41,
+      "sha256": "23c89c3afa30ab08cf15189f384c977119b59c80cd7695543a8c8ad3c6d43420",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/git-malformed-success/bin/git",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-multiline-success/bin/git",
+      "copy": "native-fixtures/qualification/e343b3b/checks/native-identity-guards/git-multiline-success/bin/git",
+      "bytes": 121,
+      "sha256": "fa00ec977292be369ed89d64a7cea3a42a2d93184977efd33e264f7d3018aa77",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/git-multiline-success/bin/git",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-failed-empty/bin/shasum",
+      "copy": "native-fixtures/qualification/e343b3b/checks/native-identity-guards/shasum-failed-empty/bin/shasum",
+      "bytes": 17,
+      "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/shasum-failed-empty/bin/shasum",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-failed-valid-hash/bin/shasum",
+      "copy": "native-fixtures/qualification/e343b3b/checks/native-identity-guards/shasum-failed-valid-hash/bin/shasum",
+      "bytes": 107,
+      "sha256": "d888108d485aeba8487f28158a57d956164254bf0bdbd16df32ad4db9b78d8c3",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/shasum-failed-valid-hash/bin/shasum",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-malformed-success/bin/shasum",
+      "copy": "native-fixtures/qualification/e343b3b/checks/native-identity-guards/shasum-malformed-success/bin/shasum",
+      "bytes": 41,
+      "sha256": "23c89c3afa30ab08cf15189f384c977119b59c80cd7695543a8c8ad3c6d43420",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/shasum-malformed-success/bin/shasum",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-multiline-success/bin/shasum",
+      "copy": "native-fixtures/qualification/e343b3b/checks/native-identity-guards/shasum-multiline-success/bin/shasum",
+      "bytes": 187,
+      "sha256": "24c34a22762fbb195c7ea494be8af9839afbb1623c18540adc6de3af44177ff2",
+      "unix_mode": "0755",
+      "git_mode": "100755",
+      "existing_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/shasum-multiline-success/bin/shasum",
+      "existing_archive_mode": "0644",
+      "existing_archive_git_executable_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/clippy-after.json",
+      "copy": "workspace-gates/clippy-after.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/clippy-before.json",
+      "copy": "workspace-gates/clippy-before.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/clippy-result.json",
+      "copy": "workspace-gates/clippy-result.json",
+      "bytes": 595,
+      "sha256": "9eae40cb41ea4cfab5b85c1816e126bb8915da9e149e7be29aca41b4f92a70b0",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/clippy.log",
+      "copy": "workspace-gates/clippy.log",
+      "bytes": 2300,
+      "sha256": "8a07185483c58709a9ad53fbfef7cac6e62f7ebe98e8d454db8f8715fb678e4a",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/doc-after.json",
+      "copy": "workspace-gates/doc-after.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/doc-before.json",
+      "copy": "workspace-gates/doc-before.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/doc-result.json",
+      "copy": "workspace-gates/doc-result.json",
+      "bytes": 549,
+      "sha256": "60169e838b532e53416f8552671567aa2051bb842ccf38bf2b859a64763ee1d9",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/doc.log",
+      "copy": "workspace-gates/doc.log",
+      "bytes": 344,
+      "sha256": "360ede8e5d6e8cd236f9a948465458f6fff65b27610d194a6c061ea32203c4cf",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/final-inputs.json",
+      "copy": "workspace-gates/final-inputs.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/fmt-after.json",
+      "copy": "workspace-gates/fmt-after.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/fmt-before.json",
+      "copy": "workspace-gates/fmt-before.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/fmt-result.json",
+      "copy": "workspace-gates/fmt-result.json",
+      "bytes": 517,
+      "sha256": "46cd8b0ac677308afc02a4b72a6224df5c2e861cef2460bcfb3ec171174ca7f2",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/fmt.log",
+      "copy": "workspace-gates/fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/initial-inputs.json",
+      "copy": "workspace-gates/initial-inputs.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/manifest.json",
+      "copy": "workspace-gates/manifest.json",
+      "bytes": 4481,
+      "sha256": "e4843b818c245a38bb7c6ae5833ef4666f44f347c0b9c1a1ef102639ddb4b161",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/package-after.json",
+      "copy": "workspace-gates/package-after.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/package-before.json",
+      "copy": "workspace-gates/package-before.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/package-result.json",
+      "copy": "workspace-gates/package-result.json",
+      "bytes": 548,
+      "sha256": "11185c3254a4354d339cf3478ceff58571d30eefa2544d8f2538c0ba0f67ae04",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/package.log",
+      "copy": "workspace-gates/package.log",
+      "bytes": 1638,
+      "sha256": "17313dc1a5f76565db662919b742a1b832f9816891df2736f7cf02b7e8c80f06",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/tests-after.json",
+      "copy": "workspace-gates/tests-after.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/tests-before.json",
+      "copy": "workspace-gates/tests-before.json",
+      "bytes": 299452,
+      "sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/tests-result.json",
+      "copy": "workspace-gates/tests-result.json",
+      "bytes": 558,
+      "sha256": "3a914c40f0eb81fb58023b6814dbf9370e0fc54b8593071647b84d2f1bc4bfbd",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/tests.log",
+      "copy": "workspace-gates/tests.log",
+      "bytes": 26406,
+      "sha256": "1325ed0eeeb15adef39b2800bdf5843dd0c61aa7d94813d6cfbe02223862097b",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/helpers.R",
+      "copy": "diagnostic-guards/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/helpers.R",
+      "bytes": 4098,
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "copy": "diagnostic-guards/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "bytes": 8386,
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "copy": "diagnostic-guards/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "bytes": 6171,
+      "sha256": "eac8807d9a07353dc9230e8127ccc9a2db0e030b8a0fac1e8c29db23735469d3",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-changed-transitive-helper/stderr.log",
+      "copy": "diagnostic-guards/aggregate-changed-transitive-helper/stderr.log",
+      "bytes": 1117,
+      "sha256": "540e51d5d211c5456cee36cd093ab096062c7bf35418dc1750cc70dcb530858e",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-changed-transitive-helper/stdout.log",
+      "copy": "diagnostic-guards/aggregate-changed-transitive-helper/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-missing-library/stderr.log",
+      "copy": "diagnostic-guards/aggregate-missing-library/stderr.log",
+      "bytes": 985,
+      "sha256": "ed8d8aac86216c636cc6f3912a89a097843f868b5ffbda00f259c7e17fea2d57",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-missing-library/stdout.log",
+      "copy": "diagnostic-guards/aggregate-missing-library/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-valid-check/stderr.log",
+      "copy": "diagnostic-guards/aggregate-valid-check/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-valid-check/stdout.log",
+      "copy": "diagnostic-guards/aggregate-valid-check/stdout.log",
+      "bytes": 324,
+      "sha256": "280fdacaa6757689199ebdd24cde313a99fd32b011ddb2edec2de105ff0787a1",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-valid-replay/stderr.log",
+      "copy": "diagnostic-guards/aggregate-valid-replay/stderr.log",
+      "bytes": 979,
+      "sha256": "9975d3af41ade5949569977dc85966742cf1955d9cc38336d4be1c8888e2ab06",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-valid-replay/stdout.log",
+      "copy": "diagnostic-guards/aggregate-valid-replay/stdout.log",
+      "bytes": 1345,
+      "sha256": "928026957363c4700fa69c8ab349b52a89281e02ef1104d3bc1e40a4786da5eb",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-wrong-source/stderr.log",
+      "copy": "diagnostic-guards/aggregate-wrong-source/stderr.log",
+      "bytes": 953,
+      "sha256": "27606cc1a09d1ed7c852c34d329681acae0eac4c712afe96d406eed035883442",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards/aggregate-wrong-source/stdout.log",
+      "copy": "diagnostic-guards/aggregate-wrong-source/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/helpers.R",
+      "copy": "diagnostic-guards-v2/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/helpers.R",
+      "bytes": 4098,
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "copy": "diagnostic-guards-v2/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "bytes": 8386,
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "copy": "diagnostic-guards-v2/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "bytes": 6171,
+      "sha256": "eac8807d9a07353dc9230e8127ccc9a2db0e030b8a0fac1e8c29db23735469d3",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-changed-transitive-helper/stderr.log",
+      "copy": "diagnostic-guards-v2/accessor-changed-transitive-helper/stderr.log",
+      "bytes": 1119,
+      "sha256": "a802843f59102e616eefb1b02bfbc3043105f4e5642bc48b9e7b64cd8e531ea9",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-changed-transitive-helper/stdout.log",
+      "copy": "diagnostic-guards-v2/accessor-changed-transitive-helper/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-missing-library/stderr.log",
+      "copy": "diagnostic-guards-v2/accessor-missing-library/stderr.log",
+      "bytes": 985,
+      "sha256": "ed8d8aac86216c636cc6f3912a89a097843f868b5ffbda00f259c7e17fea2d57",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-missing-library/stdout.log",
+      "copy": "diagnostic-guards-v2/accessor-missing-library/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-valid-check/stderr.log",
+      "copy": "diagnostic-guards-v2/accessor-valid-check/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-valid-check/stdout.log",
+      "copy": "diagnostic-guards-v2/accessor-valid-check/stdout.log",
+      "bytes": 324,
+      "sha256": "280fdacaa6757689199ebdd24cde313a99fd32b011ddb2edec2de105ff0787a1",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-valid-replay/result.csv",
+      "copy": "diagnostic-guards-v2/accessor-valid-replay/result.csv",
+      "bytes": 918,
+      "sha256": "0d13610136e01715c12dd279b2c7e5dab8345c2c655753025f90cc0815070b8c",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-valid-replay/stderr.log",
+      "copy": "diagnostic-guards-v2/accessor-valid-replay/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-valid-replay/stdout.log",
+      "copy": "diagnostic-guards-v2/accessor-valid-replay/stdout.log",
+      "bytes": 1935,
+      "sha256": "c5cc6f1daa08010a77b71aa578b2dfd2719a9fd15835ed98a0f2315f4e9cec09",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-wrong-source/stderr.log",
+      "copy": "diagnostic-guards-v2/accessor-wrong-source/stderr.log",
+      "bytes": 953,
+      "sha256": "27606cc1a09d1ed7c852c34d329681acae0eac4c712afe96d406eed035883442",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/accessor-wrong-source/stdout.log",
+      "copy": "diagnostic-guards-v2/accessor-wrong-source/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/helpers.R",
+      "copy": "diagnostic-guards-v2/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/helpers.R",
+      "bytes": 4098,
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "copy": "diagnostic-guards-v2/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "bytes": 8386,
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "copy": "diagnostic-guards-v2/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "bytes": 6171,
+      "sha256": "eac8807d9a07353dc9230e8127ccc9a2db0e030b8a0fac1e8c29db23735469d3",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-changed-transitive-helper/stderr.log",
+      "copy": "diagnostic-guards-v2/aggregate-changed-transitive-helper/stderr.log",
+      "bytes": 1120,
+      "sha256": "0a79b198586f1e772baa86643157671123e8b1643fb3c7497539bb4660bf122e",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-changed-transitive-helper/stdout.log",
+      "copy": "diagnostic-guards-v2/aggregate-changed-transitive-helper/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-missing-library/stderr.log",
+      "copy": "diagnostic-guards-v2/aggregate-missing-library/stderr.log",
+      "bytes": 985,
+      "sha256": "ed8d8aac86216c636cc6f3912a89a097843f868b5ffbda00f259c7e17fea2d57",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-missing-library/stdout.log",
+      "copy": "diagnostic-guards-v2/aggregate-missing-library/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-valid-check/stderr.log",
+      "copy": "diagnostic-guards-v2/aggregate-valid-check/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-valid-check/stdout.log",
+      "copy": "diagnostic-guards-v2/aggregate-valid-check/stdout.log",
+      "bytes": 324,
+      "sha256": "280fdacaa6757689199ebdd24cde313a99fd32b011ddb2edec2de105ff0787a1",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-valid-replay/stderr.log",
+      "copy": "diagnostic-guards-v2/aggregate-valid-replay/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-valid-replay/stdout.log",
+      "copy": "diagnostic-guards-v2/aggregate-valid-replay/stdout.log",
+      "bytes": 1345,
+      "sha256": "207ccc7c61e08fedaa2f1f6e8660b9035fcb6dbaef109cb8a255b070eeaefd80",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-wrong-source/stderr.log",
+      "copy": "diagnostic-guards-v2/aggregate-wrong-source/stderr.log",
+      "bytes": 953,
+      "sha256": "27606cc1a09d1ed7c852c34d329681acae0eac4c712afe96d406eed035883442",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/aggregate-wrong-source/stdout.log",
+      "copy": "diagnostic-guards-v2/aggregate-wrong-source/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2/manifest.json",
+      "copy": "diagnostic-guards-v2/manifest.json",
+      "bytes": 11202,
+      "sha256": "f150be57d64ead2a8bec71b9a7b030ba4f7aa5a0b9076401daa84c56a9fc9d28",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/run-clean-workspace.py",
+      "copy": "supplement-source/run-clean-workspace.py",
+      "bytes": 6261,
+      "sha256": "d1d451c2ba0ba8e08a193bec8d1860b7c2a177395e629b144f9e4b708246004e",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/run-diagnostic-guards.py",
+      "copy": "supplement-source/run-diagnostic-guards.py",
+      "bytes": 4591,
+      "sha256": "b75748e08534f28aa0597fbf3f15ba8112cd12c547958300cecad83ebd316131",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/run-diagnostic-guards-first.py",
+      "copy": "supplement-source/run-diagnostic-guards-first.py",
+      "bytes": 4588,
+      "sha256": "c055ee380a8dff2a85f717e32ab736dc80a2b4aa7519b08930d0446a1c732f79",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/storage-assessment.md",
+      "copy": "supplement-source/storage-assessment.md",
+      "bytes": 11411,
+      "sha256": "417ff5cbccd396ed76ae9eef084a904a6df695e431cf40d64eb031dcfea58d4b",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/api-assessment.md",
+      "copy": "supplement-source/api-assessment.md",
+      "bytes": 9679,
+      "sha256": "adabbaaf308c59f2a1e78a6d07f3831344437aef461fc68d7299509c3431c289",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/helpers.R",
+      "copy": "diagnostic-guards-final/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/helpers.R",
+      "bytes": 4098,
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "copy": "diagnostic-guards-final/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "bytes": 8386,
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "copy": "diagnostic-guards-final/accessor-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "bytes": 6171,
+      "sha256": "eac8807d9a07353dc9230e8127ccc9a2db0e030b8a0fac1e8c29db23735469d3",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-changed-transitive-helper/stderr.log",
+      "copy": "diagnostic-guards-final/accessor-changed-transitive-helper/stderr.log",
+      "bytes": 1231,
+      "sha256": "6dfdf47b44f1f40921526ffc9aeb98b7a682c1c26441b170b02b32bead2ecd13",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-changed-transitive-helper/stdout.log",
+      "copy": "diagnostic-guards-final/accessor-changed-transitive-helper/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-missing-library/stderr.log",
+      "copy": "diagnostic-guards-final/accessor-missing-library/stderr.log",
+      "bytes": 1095,
+      "sha256": "41d40596bc06399c07f6ed593e548318c330a60cab421596fb33e000f1236819",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-missing-library/stdout.log",
+      "copy": "diagnostic-guards-final/accessor-missing-library/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-valid-check/stderr.log",
+      "copy": "diagnostic-guards-final/accessor-valid-check/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-valid-check/stdout.log",
+      "copy": "diagnostic-guards-final/accessor-valid-check/stdout.log",
+      "bytes": 324,
+      "sha256": "280fdacaa6757689199ebdd24cde313a99fd32b011ddb2edec2de105ff0787a1",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-valid-replay/result.csv",
+      "copy": "diagnostic-guards-final/accessor-valid-replay/result.csv",
+      "bytes": 921,
+      "sha256": "83a1f92ea6d689d325c0bb1be1de47ce2490eb557b6c339532f61c8c15e3cb52",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-valid-replay/stderr.log",
+      "copy": "diagnostic-guards-final/accessor-valid-replay/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-valid-replay/stdout.log",
+      "copy": "diagnostic-guards-final/accessor-valid-replay/stdout.log",
+      "bytes": 1935,
+      "sha256": "2776226b21d0d35218c9c821b536cba03a1090027695d0d53bab7f1323cefe90",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-wrong-source/stderr.log",
+      "copy": "diagnostic-guards-final/accessor-wrong-source/stderr.log",
+      "bytes": 1062,
+      "sha256": "3f10fea6606f2fc79845aaea0a82de5f1bb76c276236eb5cec48dbb1f878f001",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-wrong-source/stdout.log",
+      "copy": "diagnostic-guards-final/accessor-wrong-source/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/helpers.R",
+      "copy": "diagnostic-guards-final/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/helpers.R",
+      "bytes": 4098,
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "copy": "diagnostic-guards-final/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "bytes": 8386,
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "copy": "diagnostic-guards-final/aggregate-changed-transitive-helper/repository/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "bytes": 6171,
+      "sha256": "eac8807d9a07353dc9230e8127ccc9a2db0e030b8a0fac1e8c29db23735469d3",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-changed-transitive-helper/stderr.log",
+      "copy": "diagnostic-guards-final/aggregate-changed-transitive-helper/stderr.log",
+      "bytes": 1232,
+      "sha256": "3a18e68b45bcb89dc794bcc27b042c35740c5f2a8cad5634e888c6194a01eaaa",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-changed-transitive-helper/stdout.log",
+      "copy": "diagnostic-guards-final/aggregate-changed-transitive-helper/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-missing-library/stderr.log",
+      "copy": "diagnostic-guards-final/aggregate-missing-library/stderr.log",
+      "bytes": 1095,
+      "sha256": "41d40596bc06399c07f6ed593e548318c330a60cab421596fb33e000f1236819",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-missing-library/stdout.log",
+      "copy": "diagnostic-guards-final/aggregate-missing-library/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-valid-check/stderr.log",
+      "copy": "diagnostic-guards-final/aggregate-valid-check/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-valid-check/stdout.log",
+      "copy": "diagnostic-guards-final/aggregate-valid-check/stdout.log",
+      "bytes": 324,
+      "sha256": "280fdacaa6757689199ebdd24cde313a99fd32b011ddb2edec2de105ff0787a1",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-valid-replay/stderr.log",
+      "copy": "diagnostic-guards-final/aggregate-valid-replay/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-valid-replay/stdout.log",
+      "copy": "diagnostic-guards-final/aggregate-valid-replay/stdout.log",
+      "bytes": 1345,
+      "sha256": "4f0bfd00d65d23d7c801364aab37dc5fe9d46f9080f384d8f042e946ff787d1b",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-wrong-source/stderr.log",
+      "copy": "diagnostic-guards-final/aggregate-wrong-source/stderr.log",
+      "bytes": 1062,
+      "sha256": "3f10fea6606f2fc79845aaea0a82de5f1bb76c276236eb5cec48dbb1f878f001",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-wrong-source/stdout.log",
+      "copy": "diagnostic-guards-final/aggregate-wrong-source/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/manifest.json",
+      "copy": "diagnostic-guards-final/manifest.json",
+      "bytes": 11565,
+      "sha256": "eac9d7871a30d7c381893018124d8f77b2a91936d466bcf8b24847190c7d5dfc",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/workspace-gates/package-artifact.json",
+      "copy": "workspace-gates/package-artifact.json",
+      "bytes": 39215,
+      "sha256": "8e7708b1b65adca9a11ebaf0f53eefc72c7edfe0bc6f7c28d36469baefd320a6",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/run-diagnostic-guards-final.py",
+      "copy": "supplement-source/run-diagnostic-guards-final.py",
+      "bytes": 4622,
+      "sha256": "b1aef19bb4ce6c52db5cae6781b18563cf856e6364c73147bc77715d289b0d9d",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/verify-command-fixtures.py",
+      "copy": "supplement-source/verify-command-fixtures.py",
+      "bytes": 2314,
+      "sha256": "d7f738f5ac91b7ad0c5c3f3e96ea932aa3b1344661a8ca77fb4a16ea5dcd02ac",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/fixture-mode-check.json",
+      "copy": "fixture-mode-check.json",
+      "bytes": 26171,
+      "sha256": "94b4b60488d7d5f65b7143b60786f378b6bed7e4f548a90e725fd35587ef8910",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/api-assessment-identities.json",
+      "copy": "supplement-source/api-assessment-identities.json",
+      "bytes": 20330,
+      "sha256": "f73a71935f9d79d184669ef18db690dfea6928cd7d8e5fa3cd069bf3eb493730",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/api-initial-helper-draft.py",
+      "copy": "supplement-source/api-initial-helper-draft.py",
+      "bytes": 7243,
+      "sha256": "a355bf1601a3bcc40e81918f7bf7933c32f8b04ecf27884b3131cee97a92baf6",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/external-5173f39-03/reviews.json",
+      "copy": "external-review-5173f39/reviews.json",
+      "bytes": 5230,
+      "sha256": "5a8dbadcf7a8bf58d271837636f5687d9a1bb2bc44f03ddfb98845af08db5d6f",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/external-5173f39-03/inline.json",
+      "copy": "external-review-5173f39/inline.json",
+      "bytes": 46580,
+      "sha256": "face26198c562af834a5d0d6fa210f4d3a80cd85eb1879efac87c78f03565cee",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/external-5173f39-03/threads.json",
+      "copy": "external-review-5173f39/threads.json",
+      "bytes": 26319,
+      "sha256": "d25a4348e981e8d6304224eaf034028acc41fc424e3c3a844ef96f0d76795616",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/external-5173f39-03/comments.json",
+      "copy": "external-review-5173f39/comments.json",
+      "bytes": 12459,
+      "sha256": "4706d46013cf9493bf841daa65a66d95ddf7d888a6fa511faed7d8be9628511d",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/storage-assessment-identities.json",
+      "copy": "supplement-source/storage-assessment-identities.json",
+      "bytes": 18967,
+      "sha256": "c865489e632ea9cfa4250152274a21baa0696ab8ca813dd1864900a2caf2fd7f",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-evidence/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/diagnosis/aggregate-read-diagnosis.R",
+      "copy": "diagnosis/aggregate-read-diagnosis.R",
+      "bytes": 1075,
+      "sha256": "d8ba0529cf4dda5be0b7121d36725250e1456d3a5886881c237fdd99ff1263df",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-evidence/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/diagnosis/atomic-accessor-diagnosis.R",
+      "copy": "diagnosis/atomic-accessor-diagnosis.R",
+      "bytes": 1458,
+      "sha256": "3cd9a01421fa636e3bf59f9ab277af387878c4f592ee036bdcc5736cac84a120",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-v2-executed-tool.py",
+      "copy": "supplement-source/diagnostic-guards-v2-executed-tool.py",
+      "bytes": 7281,
+      "sha256": "4949589bced29597865f93b6ebef9fdc6b917d864740eaa4a08c42aa1f6ed87d",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/source-selection.json",
+      "copy": "supplement-source/source-selection.json",
+      "bytes": 68649,
+      "sha256": "d3645c4503e8d2ec7ab6933bd40f1132799c12b992537886a4a06535577e5498",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/assemble-normal-supplement.py",
+      "copy": "supplement-source/assemble-normal-supplement.py",
+      "bytes": 3451,
+      "sha256": "a56f922210f8f0278593c479a46b5ecb665157ef1739e927a1bf0814d2438e9c",
+      "unix_mode": "0644",
+      "git_mode": "100644"
+    }
+  ]
+}
