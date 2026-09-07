@@ -1,0 +1,206 @@
+[
+  {
+    "name": "archive-tests",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts",
+      "-p",
+      "test_check_r_package_archive.py",
+      "-v"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 0.05608891599695198,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/archive-tests.log",
+    "sha256": "3a86db2b9f808506e23c7c696fa5b5f6f3b8ba039c56226dbae54067854795c7"
+  },
+  {
+    "name": "vendor-tests",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts",
+      "-p",
+      "test_check_r_cargo_vendor.py",
+      "-v"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 0.09639733300718945,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/vendor-tests.log",
+    "sha256": "8259a28052f136b2c0acb7f79bf6f603969d1ff8798d97921642089231e8c285"
+  },
+  {
+    "name": "vendor-rebuild-tests",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts",
+      "-p",
+      "test_rebuild_r_vendor.py",
+      "-v"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 0.04344283399404958,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/vendor-rebuild-tests.log",
+    "sha256": "a26bda261b56851b5ce9f8721adbfb7ef74490fbb47e7dc912cb533603bee47e"
+  },
+  {
+    "name": "cargo-vendor",
+    "command": [
+      "sh",
+      "scripts/check-r-cargo-vendor.sh"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 0.269721208998817,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/cargo-vendor.log",
+    "sha256": "d2f91f77d5bdd8552331c0b457f2d0aab6c9eccb0a00d29a47f6c7294216720b"
+  },
+  {
+    "name": "rust-source-hash",
+    "command": [
+      "sh",
+      "scripts/test-rust-source-hash.sh"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 1.9733322919928469,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/rust-source-hash.log",
+    "sha256": "64412b90a734c68397b590ede544730f4b115e07f82cedc84ae791452eab888c"
+  },
+  {
+    "name": "corpus-framework",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-corpus-performance/test-framework.R"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 0.13449483300792053,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/corpus-framework.log",
+    "sha256": "a499c3b4bd2e3d8b7bc2046a17390505991ee20afbc91aac5d96864fde7c028b"
+  },
+  {
+    "name": "haven-helper-interop",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "scripts/test-haven-helper-interop.R"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 0.26093520800350234,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/haven-helper-interop.log",
+    "sha256": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264"
+  },
+  {
+    "name": "labelled-interop",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "scripts/test-labelled-interop.R"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 1.5323840829951223,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/labelled-interop.log",
+    "sha256": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81"
+  },
+  {
+    "name": "haven-conformance",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "scripts/test-haven-conformance.R"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 3.2083132090047,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/haven-conformance.log",
+    "sha256": "34fe99c59b88a98176d7e8ca6bb74a077e89c62d6a12eb5bb828c1ad6e2d2c78"
+  },
+  {
+    "name": "roxygen",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "-e",
+      "stopifnot(as.character(packageVersion(\"roxygen2\")) == read.dcf(\"DESCRIPTION\", \"Config/roxygen2/version\")[[1L]]); roxygen2::roxygenise(\".\", load_code=\"source\")"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4/r-package/dtatools",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 1.1898961660044733,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/roxygen.log",
+    "sha256": "e1a092b30f77cb7b1ea01f3c01e257b356104c0805eaf4121262d2d97435d02e"
+  },
+  {
+    "name": "r-build",
+    "command": [
+      "R",
+      "CMD",
+      "build",
+      "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4/r-package/dtatools"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 0.9389486250001937,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/r-build.log",
+    "sha256": "dde8511ca3d308d578ace9cfb5a13d78d6a5996efe289a131ea42fc896eb86c6"
+  },
+  {
+    "name": "r-archive",
+    "command": [
+      "sh",
+      "scripts/check-r-package-archive.sh",
+      "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/dtatools_0.7.1.tar.gz"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 0.0526302090001991,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/r-archive.log",
+    "sha256": "4c3587b6438c2471618364e967342b11f88e0d0484fb6f8f64e2ce8a0b3b1351"
+  },
+  {
+    "name": "r-binary",
+    "command": [
+      "R",
+      "CMD",
+      "INSTALL",
+      "--build",
+      "--clean",
+      "--library=/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/binary/library",
+      "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/dtatools_0.7.1.tar.gz"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/binary",
+    "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+    "seconds": 23.345211084000766,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/r-binary.log",
+    "sha256": "0f3885d7db9f949c61a7830519cc8cdce12621e4d4954ea103d56e53579836da"
+  }
+]

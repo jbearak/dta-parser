@@ -1,0 +1,27 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.R",
+    "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+    "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.so",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-baseline.rds"
+  ],
+  "exit_code": 1,
+  "evidence_scope": "Actual registered package width entry with direct native invocation to observe R temporary marker before surrounding .Call cleanup; no timing or byte-count claims.",
+  "files": {
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.c": "d53ee7b44098c11e6a1d00fb869e4f3ea91bf6f3bfaf4ad18e263e0c26a70231",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.so": "3c40b377ee8b4e1b8ceda8c722e69ba452aff35ad7833beb6f1e0e86558c9211",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.R": "a70e41cf7f380665e120a5d0070634ceea53704ff396f87b778b48ee0248dfb5",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-baseline.log": "4116e8d4ef9b75bd8f4cf451f9c31121ae510484c45a62be6a9e2d5e0862de96",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-baseline.rds": "3318ba22d5ab2e1b561c27070224ced6878505420fc40f0a8975bf5a06ed03b2"
+  },
+  "helpers_followup_identity": {
+    "executed_path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R",
+    "retained_copy": "/private/tmp/dta-direct-stage4-validation/root-review-probes/executed-benchmark-helpers.R",
+    "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "equals_committed_blob": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15:benchmarks/r-dibble-dplyr/helpers.R",
+    "scope": "Post-run source identity verification; installed package was guarded before and after inside R."
+  }
+}

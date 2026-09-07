@@ -1,0 +1,97 @@
+{
+  "review_type": "Initial source-only assessment of committed base, not clearance of later working fix",
+  "head": "75b0c54c9171bdc747e35d0896611616d151138c",
+  "package_tree": "f12a2a1dd430636a33b7f6e953023d90d1ff2589",
+  "diagnostic_e343b3b_package_tree": "f12a2a1dd430636a33b7f6e953023d90d1ff2589",
+  "equal_package_trees": true,
+  "source_files": [
+    {
+      "path": "r-package/dtatools/R/dta-string.R",
+      "git_blob": "243094e960a556600d0a38d280125b2b362cb21f",
+      "sha256": "0f57aadac08a04c5e9eda5c3ac7868dc5cb53f412d6eaf21041bedc9dad32e6d",
+      "bytes": 10953
+    },
+    {
+      "path": "r-package/dtatools/R/dta-numeric.R",
+      "git_blob": "f11fecc03b8a229ff51e59d5b9b9dd0a8ac862a9",
+      "sha256": "aa2a7b6442d7cb0604a249f14c25665c9a32bcd93e33e1063b9317799418d599",
+      "bytes": 58333
+    },
+    {
+      "path": "r-package/dtatools/src/init.c",
+      "git_blob": "91cac01c47219873a0bfb546e17e22fa8218f62d",
+      "sha256": "ab3204cc0fe18017d420b14dc101b2911ec4b14f1eea32acfedc1a5aa5b9ca62",
+      "bytes": 334281
+    },
+    {
+      "path": "r-package/dtatools/src/owned-columns.h",
+      "git_blob": "dd7c26856a7324666113d280f3ab2b6c62d94f13",
+      "sha256": "6fc5e6c322476521e8fac9fe6bb5bfba7298283316604a5e1686d05216bf3f0d",
+      "bytes": 40824
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-owned-atoms.R",
+      "git_blob": "72c14f4893d084c5df67d9b52d3929ebe27667b8",
+      "sha256": "c338b92d2bd9d719968eea408c56b502e54417bb3acb2d64b4b879c25eb4cadc",
+      "bytes": 45683
+    }
+  ],
+  "evidence_files": [
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-private.R",
+      "sha256": "7383df768c31a4c80ceb4fd0039115882665afb4e75f51af4a4ca06fdb35e1bd",
+      "bytes": 1607
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-private-red.csv",
+      "sha256": "74a0be285ccb2edafbe364576385ff947817138235ff84f36aa029b017325361",
+      "bytes": 409
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-private-red.log",
+      "sha256": "ed8c272b7ba96d0b41753e1f6c2852fc94fe290c72c89a916b360ef7bce82146",
+      "bytes": 869
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/initial-source-identity.json",
+      "sha256": "25ef2d8f5f60f48df9f4cc2b6d52986a6e7f6b7bb365798557e1ddbb2516d624",
+      "bytes": 495
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-red.c",
+      "sha256": "195c1830cb4c03c763ed42917d60460b839dc937475b31fba1501fdd10dc5dfd",
+      "bytes": 883
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe.R",
+      "sha256": "27d98f8b1bcb36897b406067468a8d7abfa018c9ceeabba1f042609c45f2ecf7",
+      "bytes": 721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-red.log",
+      "sha256": "2f03188e5166c182b54e5f371d3c7d7223afa5d412a33cdc437aeee77f0e6cca",
+      "bytes": 244
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/external-75b0c54-04/reviews.json",
+      "sha256": "a051e5869431d363d41ba655847d1a23ed7bfe8dc3bd72bed7691384f4703557",
+      "bytes": 8857
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/external-75b0c54-04/inline.json",
+      "sha256": "a888dc5e38ea7605aecc1a4b987922de1e62bea7da731345ae3b6b87e6131d74",
+      "bytes": 14896
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/external-75b0c54-04/comments.json",
+      "sha256": "d25f22c9a10b03417ddf928e0abb9208bb8b790383675b871b042ad3a187dedc",
+      "bytes": 20077
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/external-75b0c54-04/threads.json",
+      "sha256": "4ab5be22980a3e89f47ef9b4bc7e1cece7d3f309be56b0a301ebbf2aa42f1349",
+      "bytes": 8135
+    }
+  ],
+  "working_diff_already_present_at_report": true
+}

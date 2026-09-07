@@ -1,0 +1,6 @@
+fmt 0 0.385
+clippy 0 7.619
+tests 0 24.294
+doc 0 0.766
+package 0 2.352
+All five clean exact-source workspace gates passed

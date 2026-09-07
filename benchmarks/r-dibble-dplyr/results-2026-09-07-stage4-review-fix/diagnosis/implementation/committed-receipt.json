@@ -1,0 +1,104 @@
+{
+  "head": "75b0c54c9171bdc747e35d0896611616d151138c",
+  "reviewed_diff_sha256": "37133b1bec8365c97c33511245efe42f20b8c77123b1506b69285b55b6ce91a1",
+  "files": [
+    {
+      "path": "benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "bytes": 9934,
+      "sha256": "5ee991fdbb5e01ed5b5a5efcd1215be664db7e9d41ee82c3225655f31419f55e",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "tracked": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "bytes": 8399,
+      "sha256": "16c9dd392abe7fa31f074e49fc927eb05218d7b0a10b9b2d257303e01f64390b",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "tracked": true
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/README.md",
+      "bytes": 11559,
+      "sha256": "684c631864441f4249ab2557e4d829c2fa0a6a004951da2f9813aec39d19288e",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/benchmarks/r-reference-mutation/README.md",
+      "tracked": true
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/owned-atoms.R",
+      "bytes": 8392,
+      "sha256": "ac7b6364aee3cef47d6ceb35e6d45e28a8d5af24ec091c98d5b92e459c3ff190",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/benchmarks/r-reference-mutation/owned-atoms.R",
+      "tracked": true
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/test-owned-atoms-preflight.py",
+      "bytes": 5285,
+      "sha256": "91eedf2e7a3c2119a51c31e8afb793c91c98fd1766ab268eed17a88a42cf4bf5",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/benchmarks/r-reference-mutation/test-owned-atoms-preflight.py",
+      "tracked": false
+    },
+    {
+      "path": "docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md",
+      "bytes": 7631,
+      "sha256": "16e3133b28faa12b3e9fdc3d5ace1c26bc1e021ee6d7b6cd7d9b9541a9a749f7",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md",
+      "tracked": true
+    },
+    {
+      "path": "docs/plans/dibble-result-performance-progress.md",
+      "bytes": 61034,
+      "sha256": "8938e2aa2e8b65c800fdd446ff775e5a14e0639507e8be00b2d080caee1c4c25",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/docs/plans/dibble-result-performance-progress.md",
+      "tracked": true
+    },
+    {
+      "path": "r-package/dtatools/R/dta-string.R",
+      "bytes": 11516,
+      "sha256": "b958c28240e9aa0cec060d6d58d16477a3dc8e829cc2038737730ceb0fa40776",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/r-package/dtatools/R/dta-string.R",
+      "tracked": true
+    },
+    {
+      "path": "r-package/dtatools/src/init.c",
+      "bytes": 335925,
+      "sha256": "50ad819f6d9547604ac009bf528b82b05c8c8fe835831d850c6cfce2c4644471",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/r-package/dtatools/src/init.c",
+      "tracked": true
+    },
+    {
+      "path": "r-package/dtatools/src/owned-columns.h",
+      "bytes": 41614,
+      "sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/r-package/dtatools/src/owned-columns.h",
+      "tracked": true
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-owned-atoms.R",
+      "bytes": 49856,
+      "sha256": "fa9a7c9281ba1ad55f3aac544170fde9589374e9768023672689fb08640221b8",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/r-package/dtatools/tests/testthat/test-owned-atoms.R",
+      "tracked": true
+    }
+  ],
+  "reviews": {
+    "api-fix-review.md": "0b7ce7d95ea169298052235043275e46e1bd8dcfe7cf7dd445e94c0ec8c51a85",
+    "api-fix-identities.json": "41e175a28e7ea0108e93e1657ab187ccc7b5e3b99c396c38cd4995274c106176",
+    "storage-fix-review.md": "8ce2ce4a4877d0191b5a31a9b96a63c423c4fb18cf4b62d64066906bef0c03a5",
+    "storage-fix-scope.json": "22400df88ba4fbc3d1ef3120edc10b59bc580c9693bf4ff3983a717950715dfa"
+  },
+  "staged_tree": "0d845d94fcd1ec290ba28f116cc088cfb443ec1d",
+  "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "package_tree": "f88005766aee9b9dd5827b33a3930feff6672008",
+  "worktree_clean": true
+}

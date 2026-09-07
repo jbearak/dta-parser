@@ -1,0 +1,209 @@
+$source
+[1] "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+
+$dll_md5
+[1] "c655c59a09cbf1cd72a6f72e7e94758e"
+
+$cases
+$cases[[1]]
+$cases[[1]]$rows
+[1] 1
+
+$cases[[1]]$before
+$cases[[1]]$before$backing
+[1] "0xc13efa820"
+
+$cases[[1]]$before$shared
+[1] FALSE
+
+$cases[[1]]$before$exposed
+[1] FALSE
+
+$cases[[1]]$before$bytes
+[1] 8
+
+$cases[[1]]$before$depth
+[1] 1
+
+
+$cases[[1]]$after
+$cases[[1]]$after$backing
+[1] "0xc13efa820"
+
+$cases[[1]]$after$shared
+[1] FALSE
+
+$cases[[1]]$after$exposed
+[1] FALSE
+
+$cases[[1]]$after$bytes
+[1] 8
+
+$cases[[1]]$after$depth
+[1] 1
+
+
+$cases[[1]]$construction_copies
+           owned_capture             compact_copy               staged_new 
+                       8                        0                        0 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                       0                        0                        0 
+
+$cases[[1]]$first_write_copies
+           owned_capture             compact_copy               staged_new 
+                       0                        0                        0 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                       0                        0                        0 
+
+$cases[[1]]$single_initial_capture
+[1] TRUE
+
+$cases[[1]]$backing_stable
+[1] TRUE
+
+$cases[[1]]$no_first_write_capture
+[1] TRUE
+
+$cases[[1]]$values_correct
+[1] TRUE
+
+$cases[[1]]$source_unchanged
+[1] TRUE
+
+
+$cases[[2]]
+$cases[[2]]$rows
+[1] 100000
+
+$cases[[2]]$before
+$cases[[2]]$before$backing
+[1] "0xc0f998000"
+
+$cases[[2]]$before$shared
+[1] FALSE
+
+$cases[[2]]$before$exposed
+[1] FALSE
+
+$cases[[2]]$before$bytes
+[1] 8e+05
+
+$cases[[2]]$before$depth
+[1] 1
+
+
+$cases[[2]]$after
+$cases[[2]]$after$backing
+[1] "0xc0f998000"
+
+$cases[[2]]$after$shared
+[1] FALSE
+
+$cases[[2]]$after$exposed
+[1] FALSE
+
+$cases[[2]]$after$bytes
+[1] 8e+05
+
+$cases[[2]]$after$depth
+[1] 1
+
+
+$cases[[2]]$construction_copies
+           owned_capture             compact_copy               staged_new 
+                   8e+05                    0e+00                    0e+00 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                   0e+00                    0e+00                    0e+00 
+
+$cases[[2]]$first_write_copies
+           owned_capture             compact_copy               staged_new 
+                       0                        0                        0 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                       0                        0                        0 
+
+$cases[[2]]$single_initial_capture
+[1] TRUE
+
+$cases[[2]]$backing_stable
+[1] TRUE
+
+$cases[[2]]$no_first_write_capture
+[1] TRUE
+
+$cases[[2]]$values_correct
+[1] TRUE
+
+$cases[[2]]$source_unchanged
+[1] TRUE
+
+
+$cases[[3]]
+$cases[[3]]$rows
+[1] 1000000
+
+$cases[[3]]$before
+$cases[[3]]$before$backing
+[1] "0x60e000000"
+
+$cases[[3]]$before$shared
+[1] FALSE
+
+$cases[[3]]$before$exposed
+[1] FALSE
+
+$cases[[3]]$before$bytes
+[1] 8e+06
+
+$cases[[3]]$before$depth
+[1] 1
+
+
+$cases[[3]]$after
+$cases[[3]]$after$backing
+[1] "0x60e000000"
+
+$cases[[3]]$after$shared
+[1] FALSE
+
+$cases[[3]]$after$exposed
+[1] FALSE
+
+$cases[[3]]$after$bytes
+[1] 8e+06
+
+$cases[[3]]$after$depth
+[1] 1
+
+
+$cases[[3]]$construction_copies
+           owned_capture             compact_copy               staged_new 
+                   8e+06                    0e+00                    0e+00 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                   0e+00                    0e+00                    0e+00 
+
+$cases[[3]]$first_write_copies
+           owned_capture             compact_copy               staged_new 
+                       0                        0                        0 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                       0                        0                        0 
+
+$cases[[3]]$single_initial_capture
+[1] TRUE
+
+$cases[[3]]$backing_stable
+[1] TRUE
+
+$cases[[3]]$no_first_write_capture
+[1] TRUE
+
+$cases[[3]]$values_correct
+[1] TRUE
+
+$cases[[3]]$source_unchanged
+[1] TRUE
+
+
+
+$pass
+[1] TRUE
+

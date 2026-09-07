@@ -1,0 +1,60 @@
+[
+  {
+    "case": "constructor-baseline",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes/constructor-final-v2.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes-c8ca0a4-v2/constructor-baseline.rds"
+    ],
+    "exit_code": 1,
+    "expected_exit_code": 1,
+    "log_sha256": "c01ff781c4532c4c332a35d301fec3a1d73751fe4821def233913a8af70544a5"
+  },
+  {
+    "case": "constructor-candidate",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes/constructor-final-v2.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+      "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes-c8ca0a4-v2/constructor-candidate.rds"
+    ],
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log_sha256": "e256de2144a41ccab92db08d6aa789bf1d0d7c1473594227c278c9999092dbd1"
+  },
+  {
+    "case": "vmax-candidate",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+      "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.so",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes-c8ca0a4-v2/vmax-candidate.rds"
+    ],
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log_sha256": "37244d968bc69beaacda2c0f2bee34d188793fd7e7dba02587791cd729e2ce3c"
+  },
+  {
+    "case": "vmax-minimal-candidate",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax-minimal.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+      "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.so",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes-c8ca0a4-v2/vmax-minimal-candidate.rds"
+    ],
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log_sha256": "2a4b6463cec03955cf21c184d3d427a3784414923f8da42a6f175d22bdf6372b"
+  }
+]

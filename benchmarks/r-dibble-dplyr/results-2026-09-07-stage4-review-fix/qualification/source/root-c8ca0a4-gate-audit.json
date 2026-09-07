@@ -1,0 +1,21 @@
+{
+  "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "source_files_and_git_objects": 1950,
+  "source_archive_sha256": "33631a12f5b5f12146ab8d0569d96db8edc314d29e0f1a1528c33c081b4cc88a",
+  "gate_logs_rehashed": 29,
+  "gate_drivers_rehashed": 4,
+  "full_suite_test_blocks": 949,
+  "independent_full_suite_totals": {
+    "failed": 0,
+    "skipped": 0,
+    "error": 0,
+    "warning": 4,
+    "passed": 16445
+  },
+  "workspace_snapshots": 12,
+  "workspace_gates": 5,
+  "crate_members_verified": 27,
+  "crate_sha256": "69c4374daa7c2013a19bcfb0fb39c913869ea053536396b6e5edd38fa1708775",
+  "auditor_sha256": "0a0b8299cf90a19cd4911b230652c1de92acb13985c58c1ce95cd3d03cb1af10",
+  "limit": "Read-only source/artifact/result audit. No gate rerun or timing claim. Four full-suite warnings and standard package-check three warnings/two notes remain disclosed."
+}

@@ -1,0 +1,150 @@
+{
+  "scope": "Synthetic tiny inventories only; no package, R, build, or benchmark execution.",
+  "verifier_sha256": "cef10b4573bb8e4beab25e7d93cec781c4c672afe45ad706b138a8be40f7261e",
+  "cases": [
+    {
+      "mode": "default",
+      "case": "valid",
+      "exit_code": 0,
+      "stdout": "PASS: 2 indexed files plus index.json; originals=False; external=False\n",
+      "stderr": "",
+      "expected_accept": true
+    },
+    {
+      "mode": "default",
+      "case": "wrong-bytes",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-wrong-bytes/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-wrong-bytes/verify.py\", line 53, in main\n    check_file(root / relative, record)\n    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-wrong-bytes/verify.py\", line 27, in check_file\n    require(hashlib.sha256(data).hexdigest() == record['sha256'],\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'SHA256 mismatch: {path}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-wrong-bytes/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: SHA256 mismatch: /private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-wrong-bytes/payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "default",
+      "case": "extra-file",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-extra-file/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-extra-file/verify.py\", line 56, in main\n    require(actual == expected,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^\n            f'Inventory differs: missing={sorted(expected - actual)}, '\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'extra={sorted(actual - expected)}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-extra-file/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Inventory differs: missing=[], extra=['unexpected.txt']\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "default",
+      "case": "wrong-executable",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-wrong-executable/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-wrong-executable/verify.py\", line 53, in main\n    check_file(root / relative, record)\n    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-wrong-executable/verify.py\", line 31, in check_file\n    require(bool(mode & 0o111) == bool(expected & 0o111),\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'Executable-bit mismatch: {path}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-wrong-executable/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Executable-bit mismatch: /private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-wrong-executable/payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "default",
+      "case": "duplicate-path",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-duplicate-path/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-duplicate-path/verify.py\", line 51, in main\n    require(str(relative) not in expected, f'Duplicate archive path: {relative}')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-duplicate-path/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Duplicate archive path: payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "default",
+      "case": "escaping-path",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-escaping-path/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-escaping-path/verify.py\", line 49, in main\n    require(not relative.is_absolute() and '..' not in relative.parts,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'Unsafe archive path: {relative}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/default-escaping-path/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Unsafe archive path: ../payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "optimized",
+      "case": "valid",
+      "exit_code": 0,
+      "stdout": "PASS: 2 indexed files plus index.json; originals=False; external=False\n",
+      "stderr": "",
+      "expected_accept": true
+    },
+    {
+      "mode": "optimized",
+      "case": "wrong-bytes",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-wrong-bytes/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-wrong-bytes/verify.py\", line 53, in main\n    check_file(root / relative, record)\n    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-wrong-bytes/verify.py\", line 27, in check_file\n    require(hashlib.sha256(data).hexdigest() == record['sha256'],\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'SHA256 mismatch: {path}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-wrong-bytes/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: SHA256 mismatch: /private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-wrong-bytes/payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "optimized",
+      "case": "extra-file",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-extra-file/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-extra-file/verify.py\", line 56, in main\n    require(actual == expected,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^\n            f'Inventory differs: missing={sorted(expected - actual)}, '\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'extra={sorted(actual - expected)}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-extra-file/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Inventory differs: missing=[], extra=['unexpected.txt']\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "optimized",
+      "case": "wrong-executable",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-wrong-executable/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-wrong-executable/verify.py\", line 53, in main\n    check_file(root / relative, record)\n    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-wrong-executable/verify.py\", line 31, in check_file\n    require(bool(mode & 0o111) == bool(expected & 0o111),\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'Executable-bit mismatch: {path}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-wrong-executable/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Executable-bit mismatch: /private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-wrong-executable/payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "optimized",
+      "case": "duplicate-path",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-duplicate-path/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-duplicate-path/verify.py\", line 51, in main\n    require(str(relative) not in expected, f'Duplicate archive path: {relative}')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-duplicate-path/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Duplicate archive path: payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "optimized",
+      "case": "escaping-path",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-escaping-path/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-escaping-path/verify.py\", line 49, in main\n    require(not relative.is_absolute() and '..' not in relative.parts,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'Unsafe archive path: {relative}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/optimized-escaping-path/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Unsafe archive path: ../payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "envoptimized",
+      "case": "valid",
+      "exit_code": 0,
+      "stdout": "PASS: 2 indexed files plus index.json; originals=False; external=False\n",
+      "stderr": "",
+      "expected_accept": true
+    },
+    {
+      "mode": "envoptimized",
+      "case": "wrong-bytes",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-wrong-bytes/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-wrong-bytes/verify.py\", line 53, in main\n    check_file(root / relative, record)\n    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-wrong-bytes/verify.py\", line 27, in check_file\n    require(hashlib.sha256(data).hexdigest() == record['sha256'],\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'SHA256 mismatch: {path}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-wrong-bytes/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: SHA256 mismatch: /private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-wrong-bytes/payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "envoptimized",
+      "case": "extra-file",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-extra-file/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-extra-file/verify.py\", line 56, in main\n    require(actual == expected,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^\n            f'Inventory differs: missing={sorted(expected - actual)}, '\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'extra={sorted(actual - expected)}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-extra-file/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Inventory differs: missing=[], extra=['unexpected.txt']\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "envoptimized",
+      "case": "wrong-executable",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-wrong-executable/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-wrong-executable/verify.py\", line 53, in main\n    check_file(root / relative, record)\n    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-wrong-executable/verify.py\", line 31, in check_file\n    require(bool(mode & 0o111) == bool(expected & 0o111),\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'Executable-bit mismatch: {path}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-wrong-executable/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Executable-bit mismatch: /private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-wrong-executable/payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "envoptimized",
+      "case": "duplicate-path",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-duplicate-path/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-duplicate-path/verify.py\", line 51, in main\n    require(str(relative) not in expected, f'Duplicate archive path: {relative}')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-duplicate-path/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Duplicate archive path: payload.txt\n",
+      "expected_accept": false
+    },
+    {
+      "mode": "envoptimized",
+      "case": "escaping-path",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-escaping-path/verify.py\", line 70, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-escaping-path/verify.py\", line 49, in main\n    require(not relative.is_absolute() and '..' not in relative.parts,\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f'Unsafe archive path: {relative}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/dta-direct-stage4-validation/review-fix-verifier-guards/envoptimized-escaping-path/verify.py\", line 19, in require\n    raise RuntimeError(message)\nRuntimeError: Unsafe archive path: ../payload.txt\n",
+      "expected_accept": false
+    }
+  ]
+}

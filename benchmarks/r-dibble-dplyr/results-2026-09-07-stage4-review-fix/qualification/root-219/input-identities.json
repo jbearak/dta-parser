@@ -1,0 +1,18 @@
+{
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/delayed-mask-baseline.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/delayed-mask-matrix.R": "f01fdf0d670232e9a2bbb5249a92ed5df5303680e3430117b01156574e790091",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/historical-reused-input-identities.json": "0c38e907b8c8acef3c5dccd1e056c3ab003e2deb0d55ab92d55e1f4aedb86bd1",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/symbol-private-callback-baseline.rds": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/symbol-private-callback-matrix.R": "2e67b6f6ae5dc5eb2a77f34799cc67632d78212fd7e4970eb2bc90069838ddac",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/generation-names-baseline.rds": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/delayed-private-mask-matrix.R": "53b4291399cf1bb5d2887095ecd496696ad2c7d1b5b0623f9909cbc799d238a8",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/generation-names-matrix.R": "d35583705f66c051aa7bd8ea3b2207c98ecf8c3360f727e672fd9c31b67015f6",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/run.R": "035e5473220ecb562661c9cad9e1e785c8948a048c37125265cb0f04b76a4c63",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/delayed-private-mask-baseline.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/historical-pre-run-input-identities.json": "b3e615bf82c912323d748f56a05ee3593a345a9ea5e9512235b8d59939eb3baa",
+  "/private/tmp/dta-direct-stage4-validation/root-acceptance-c8ca0a4/historical-root-manifest.json": "768eae0ae91e3ac6947bb446dfd8b445f9d821d9333af4edc7fc0c8a27b211cd",
+  "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+  "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library/dtatools/libs/dtatools.so": "7839719fd30f468e9407e9378add8437eb2aa1e9c426e217b0f1967765944d1f",
+  "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library/dtatools/Meta/benchmark-provenance.rds": "c3e8e49bffe206ea0369de7b37553c472f4101170e98f38db816fd57290b824b",
+  "/private/tmp/dta-direct-stage4-validation/run-root-acceptance-c8ca0a4.py": "ab22d373b5375728c4e6f7d7840ab3d1013d743b8ee301c48c761120bbc16ca5"
+}

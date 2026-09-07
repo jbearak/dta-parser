@@ -1,0 +1,22 @@
+{
+  "name": "clippy",
+  "command": [
+    "cargo",
+    "clippy",
+    "--workspace",
+    "--all-targets",
+    "--locked",
+    "--offline",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "started_utc": "2026-09-07T10:41:30.763816+00:00",
+  "elapsed_seconds": 7.618901791007374,
+  "exit_code": 0,
+  "before_sha256": "6deaf41c67605bbbe5d8845125aad7e984638911843d7f2ea49e296fd97ede8d",
+  "after_sha256": "6deaf41c67605bbbe5d8845125aad7e984638911843d7f2ea49e296fd97ede8d",
+  "log_sha256": "0b6cbeda8da88cd0a99b5b33cbdff45da8b2cfae7df667eb91f0e9ca322886de",
+  "log_bytes": 2275,
+  "inputs_identical": true
+}

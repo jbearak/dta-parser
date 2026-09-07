@@ -1,0 +1,121 @@
+diff --git a/r-package/dtatools/R/dta-string.R b/r-package/dtatools/R/dta-string.R
+index 243094e..24bcdf1 100644
+--- a/r-package/dtatools/R/dta-string.R
++++ b/r-package/dtatools/R/dta-string.R
+@@ -69,6 +69,12 @@ dta_string <- function(x = character(), storage = NULL) {
+ 
+ .new_dta_string <- function(x, storage, prototype = NULL) {
+     value_names <- names(x)
++    if (is.null(prototype) && is.null(value_names)) {
++        # Keep a fresh constructor's metadata edits inside one native call.
++        # Declined cases retain their original R fallback and callback order.
++        constructed <- .Call(C_dtatools_construct_string, x, storage)
++        if (!is.null(constructed)) return(constructed)
++    }
+     x <- .Call(C_dtatools_capture_string, x)
+     if (!is.null(prototype)) {
+         # Attribute replacement materializes the dictionary-string ALTREP used
+diff --git a/r-package/dtatools/src/init.c b/r-package/dtatools/src/init.c
+index 91cac01..ac952d1 100644
+--- a/r-package/dtatools/src/init.c
++++ b/r-package/dtatools/src/init.c
+@@ -3,6 +3,7 @@
+ #include <Rinternals.h>
+ #include <R_ext/Rdynload.h>
+ #include <R_ext/Altrep.h>
++#include <R_ext/Memory.h>
+ #include <R_ext/GraphicsEngine.h>
+ #include <R_ext/Utils.h>
+ #include <R_ext/Visibility.h>
+@@ -1184,6 +1185,32 @@ SEXP C_dtatools_capture_string(SEXP value) {
+     return owned_fork(value);
+ }
+ 
++/* Complete callback-free, unnamed construction on one unpublished handle.
++   Borrowed values are captured before metadata is removed; existing owned
++   inputs still fork, retaining their real aliases. NULL declines cases whose
++   names dispatch, prototype restoration or declaration readers belong to R's
++   existing constructor path. Never clear sharing on a published record. */
++SEXP C_dtatools_construct_string(SEXP value, SEXP storage) {
++    if (TYPEOF(value) != STRSXP || Rf_isS4(value) ||
++        Rf_getAttrib(value, R_NamesSymbol) != R_NilValue ||
++        TYPEOF(storage) != STRSXP || ALTREP(storage) || ANY_ATTRIB(storage) ||
++        XLENGTH(storage) != 1 || STRING_ELT(storage, 0) == NA_STRING ||
++        unmaterialized_dictstring_source(value) != R_NilValue) return R_NilValue;
++    SEXP result = PROTECT(owned_fork(value));
++    Rf_setAttrib(result, R_ClassSymbol, R_NilValue);
++    CLEAR_ATTRIB(result);
++    Rf_setAttrib(result, Rf_install("stata.string.storage"), storage);
++    SEXP classes = PROTECT(Rf_allocVector(STRSXP, 3));
++    SET_STRING_ELT(classes, 0, Rf_mkChar("dta_string"));
++    SET_STRING_ELT(classes, 1, Rf_mkChar("vctrs_vctr"));
++    SET_STRING_ELT(classes, 2, Rf_mkChar("character"));
++    Rf_setAttrib(result, R_ClassSymbol, classes);
++    if (owned_flags(result)[OWNED_MAX_WIDTH] < 0 ||
++        owned_flags(result)[OWNED_NO_NA] < 0) owned_scan_strings(result);
++    UNPROTECT(2);
++    return result;
++}
++
+ SEXP C_dtatools_write_string_plan(SEXP value) {
+     if (TYPEOF(value) != STRSXP) {
+         Rf_error("internal string planning requires a character vector");
+@@ -8314,6 +8341,7 @@ static const R_CallMethodDef CallEntries[] = {
+     {"C_dtatools_owned_string_width", (DL_FUNC) &C_dtatools_owned_string_width, 1},
+     {"C_dtatools_owned_string_attribute", (DL_FUNC) &C_dtatools_owned_string_attribute, 3},
+     {"C_dtatools_capture_string", (DL_FUNC) &C_dtatools_capture_string, 1},
++    {"C_dtatools_construct_string", (DL_FUNC) &C_dtatools_construct_string, 2},
+     {"C_dtatools_owned_utf8_ready", (DL_FUNC) &C_dtatools_owned_utf8_ready, 1},
+     {"C_dtatools_owned_scan_stats", (DL_FUNC) &C_dtatools_owned_scan_stats, 1},
+     {"C_dtatools_callback_length", (DL_FUNC) &C_dtatools_callback_length, 2},
+diff --git a/r-package/dtatools/src/owned-columns.h b/r-package/dtatools/src/owned-columns.h
+index dd7c268..41c79ad 100644
+--- a/r-package/dtatools/src/owned-columns.h
++++ b/r-package/dtatools/src/owned-columns.h
+@@ -145,8 +145,14 @@ static int owned_supported(SEXP value) {
+ /* Match nchar(enc2utf8(x), type = "bytes"), including byte-marked strings.
+    The ordinary payload cannot call back while these facts are computed. */
+ static int owned_string_width(SEXP value) {
+-    return Rf_getCharCE(value) == CE_BYTES ? LENGTH(value) :
+-        (int) strlen(Rf_translateCharUTF8(value));
++    if (Rf_getCharCE(value) == CE_BYTES) return LENGTH(value);
++    /* Translation can allocate R temporary storage for each encoded element.
++       Only the byte count escapes, so release that storage before the next
++       element instead of retaining every conversion until .Call returns. */
++    const void *marker = vmaxget();
++    int width = (int) strlen(Rf_translateCharUTF8(value));
++    vmaxset(marker);
++    return width;
+ }
+ 
+ static void owned_scan_strings(SEXP value) {
+diff --git a/r-package/dtatools/tests/testthat/test-owned-atoms.R b/r-package/dtatools/tests/testthat/test-owned-atoms.R
+index 72c14f4..8b0fab2 100644
+--- a/r-package/dtatools/tests/testthat/test-owned-atoms.R
++++ b/r-package/dtatools/tests/testthat/test-owned-atoms.R
+@@ -729,6 +729,25 @@ test_that("Arrow readers adopt fresh logical and factor allocations", {
+     }
+ })
+ 
++test_that("fresh unnamed string construction keeps its first write private", {
++    for (rows in c(1L, 64L, 1000L)) for (collect in c(FALSE, TRUE)) {
++        raw <- rep("aa", rows)
++        value <- dta_string(raw, "str4")
++        if (collect) gc()
++        before <- owned_atom_info(value)
++        expect_false(before$shared)
++        .Call(C_dtatools_native_copy_stats, TRUE)
++        .Call(C_dtatools_owned_set_string, value, 1L, "zz")
++        copies <- .Call(C_dtatools_native_copy_stats, FALSE)
++        expect_identical(copies[["owned_capture"]], 0)
++        expect_identical(owned_atom_info(value)$backing, before$backing)
++        expect_identical(as.character(value), c("zz", rep("aa", rows - 1L)))
++        expect_identical(raw, rep("aa", rows))
++        expect_identical(attributes(value), list(stata.string.storage = "str4",
++            class = c("dta_string", "vctrs_vctr", "character")))
++    }
++})
++
+ test_that("large string constructors and restoration retain owned facts", {
+     for (rows in c(63L, 64L, 1000L)) {
+         raw <- rep(c("alpha", "", "\u00e9"), length.out = rows)

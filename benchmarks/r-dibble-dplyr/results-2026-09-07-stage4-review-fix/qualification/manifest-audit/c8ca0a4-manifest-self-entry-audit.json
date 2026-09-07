@@ -1,0 +1,149 @@
+{
+  "auditor_sha256": "af83f807f904563735fad674de0abbe4006b0bb0275088bdeae7d56df9f45b83",
+  "manifests": [
+    {
+      "path": "diagnosis/root-probes-final/manifest.json",
+      "completed_sha256": "2cf32127a3db35bb1a4254a704659ed7d9974f2c21714dca6dfabaddef19b2a4",
+      "historical_self_entry": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "non_self_files": [
+        {
+          "path": "diagnosis/root-probes-final/constructor-candidate.log",
+          "sha256": "e256de2144a41ccab92db08d6aa789bf1d0d7c1473594227c278c9999092dbd1"
+        },
+        {
+          "path": "diagnosis/root-probes-final/constructor-baseline.log",
+          "sha256": "c01ff781c4532c4c332a35d301fec3a1d73751fe4821def233913a8af70544a5"
+        },
+        {
+          "path": "diagnosis/root-probes-final/vmax-candidate.rds",
+          "sha256": "372957fa1c7be184ba09e5f649dd49cee81804b1540b2fb3467b9970db8f160a"
+        },
+        {
+          "path": "diagnosis/root-probes-final/constructor-candidate.rds",
+          "sha256": "2386dbc2e9516a4058dd749f714a1b31b0caedd3b05d728086c6dbf9521c7b34"
+        },
+        {
+          "path": "diagnosis/root-probes-final/vmax-candidate.log",
+          "sha256": "37244d968bc69beaacda2c0f2bee34d188793fd7e7dba02587791cd729e2ce3c"
+        },
+        {
+          "path": "diagnosis/root-probes-final/constructor-baseline.rds",
+          "sha256": "9c89abfcea319589e25b86fa21271fba8d1ca9e418b8895e3bdbaf99a73846a7"
+        },
+        {
+          "path": "diagnosis/root-probes-final/vmax-minimal-candidate.rds",
+          "sha256": "f582461bbed74b3f693ad1bd35a437b9cd2687c0425da5eb90114d384d4cb6dc"
+        },
+        {
+          "path": "diagnosis/root-probes-final/input-identities.json",
+          "sha256": "e440d0fc05c7f8c7b760674dd796c9fc2dae39c9890e95824096f4407208f5b7"
+        },
+        {
+          "path": "diagnosis/root-probes-final/progress.json",
+          "sha256": "cd50ba9c96c93345879a36976c19dff782f5160ffffcb424cd615b8232eb9ca6"
+        },
+        {
+          "path": "diagnosis/root-probes-final/vmax-minimal-candidate.log",
+          "sha256": "2a4b6463cec03955cf21c184d3d427a3784414923f8da42a6f175d22bdf6372b"
+        }
+      ]
+    },
+    {
+      "path": "qualification/root-219/post-run-audit.json",
+      "completed_sha256": "97c6dfc382ab72817e134fc5164501ed534f6cc98f97b7f5f6a227eeb30d318c",
+      "historical_self_entry": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "non_self_files": [
+        {
+          "path": "qualification/root-219/delayed-mask-candidate.log",
+          "sha256": "866f05debac4bf20ed77cc381dce7c4f97e1f33ba0c5cef9c9681f793ae25094"
+        },
+        {
+          "path": "qualification/root-219/delayed-mask-baseline.rds",
+          "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283"
+        },
+        {
+          "path": "qualification/root-219/delayed-mask-matrix.R",
+          "sha256": "f01fdf0d670232e9a2bbb5249a92ed5df5303680e3430117b01156574e790091"
+        },
+        {
+          "path": "qualification/root-219/historical-reused-input-identities.json",
+          "sha256": "0c38e907b8c8acef3c5dccd1e056c3ab003e2deb0d55ab92d55e1f4aedb86bd1"
+        },
+        {
+          "path": "qualification/root-219/symbol-private-callback-baseline.rds",
+          "sha256": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23"
+        },
+        {
+          "path": "qualification/root-219/delayed-mask-candidate.rds",
+          "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283"
+        },
+        {
+          "path": "qualification/root-219/symbol-private-callback-matrix.R",
+          "sha256": "2e67b6f6ae5dc5eb2a77f34799cc67632d78212fd7e4970eb2bc90069838ddac"
+        },
+        {
+          "path": "qualification/root-219/generation-names-candidate.log",
+          "sha256": "a6b82819074b104f68f1a7d7e82dfca229822ef843b667c04812e8f1a1a98506"
+        },
+        {
+          "path": "qualification/root-219/generation-names-baseline.rds",
+          "sha256": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5"
+        },
+        {
+          "path": "qualification/root-219/symbol-private-callback-candidate.rds",
+          "sha256": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23"
+        },
+        {
+          "path": "qualification/root-219/delayed-private-mask-matrix.R",
+          "sha256": "53b4291399cf1bb5d2887095ecd496696ad2c7d1b5b0623f9909cbc799d238a8"
+        },
+        {
+          "path": "qualification/root-219/delayed-private-mask-candidate.rds",
+          "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283"
+        },
+        {
+          "path": "qualification/root-219/input-identities.json",
+          "sha256": "edefc3da8e9b18e0dca310af4fdf25bc04489f8ead702f17fc0f2b3107aa2b90"
+        },
+        {
+          "path": "qualification/root-219/driver.log",
+          "sha256": "c43e97839282d42aa2d561ca026c3dc51f92456ff5c9fb48e0c2ee9f62d7734f"
+        },
+        {
+          "path": "qualification/root-219/symbol-private-callback-candidate.log",
+          "sha256": "782ed52cb27604adfe799fc65023b1ea5c027e200fc5b39e52fd175ec0b0cd3d"
+        },
+        {
+          "path": "qualification/root-219/generation-names-candidate.rds",
+          "sha256": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5"
+        },
+        {
+          "path": "qualification/root-219/generation-names-matrix.R",
+          "sha256": "d35583705f66c051aa7bd8ea3b2207c98ecf8c3360f727e672fd9c31b67015f6"
+        },
+        {
+          "path": "qualification/root-219/run.R",
+          "sha256": "035e5473220ecb562661c9cad9e1e785c8948a048c37125265cb0f04b76a4c63"
+        },
+        {
+          "path": "qualification/root-219/delayed-private-mask-baseline.rds",
+          "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283"
+        },
+        {
+          "path": "qualification/root-219/delayed-private-mask-candidate.log",
+          "sha256": "866f05debac4bf20ed77cc381dce7c4f97e1f33ba0c5cef9c9681f793ae25094"
+        },
+        {
+          "path": "qualification/root-219/historical-pre-run-input-identities.json",
+          "sha256": "b3e615bf82c912323d748f56a05ee3593a345a9ea5e9512235b8d59939eb3baa"
+        },
+        {
+          "path": "qualification/root-219/historical-root-manifest.json",
+          "sha256": "768eae0ae91e3ac6947bb446dfd8b445f9d821d9333af4edc7fc0c8a27b211cd"
+        }
+      ]
+    }
+  ],
+  "non_self_file_count": 32,
+  "scope": "Historical self entries observed an empty output in progress. All non-self digests match. Completed manifest bytes are bound here, without rewriting or rerunning any historical artifact."
+}

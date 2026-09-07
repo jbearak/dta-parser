@@ -1,0 +1,68 @@
+{
+  "test_sha256": "fa9a7c9281ba1ad55f3aac544170fde9589374e9768023672689fb08640221b8",
+  "test_source_snapshot": "test-owned-atoms-final.R",
+  "fixture_history_scope": "Earlier failed raw logs retained unchanged; descriptions identify executed fixture corrections. Only final full test bytes were frozen here; no claim earlier reconstructed snapshots were retained at execution.",
+  "logs": [
+    {
+      "file": "constructor-test-red.log",
+      "sha256": "e47ed454e2ddca32515de60086606f0c7e968cfb9ea63c85f6c3d0249d43f3d7",
+      "size": 155,
+      "disposition": "Test harness setup failed: test_file does not support filter; no test execution.",
+      "final_summary": []
+    },
+    {
+      "file": "constructor-test-red-actual.log",
+      "sha256": "c82b98ca65a059cfe4514d58f8bcb637fdbd934a3464101985e2d4d098625113",
+      "size": 41800,
+      "disposition": "First fresh-constructor regression against exact e343:18 expected failures; original assertion returned red summary but test_file default did not fail process.",
+      "final_summary": [
+        "[ FAIL 18 | WARN 0 | SKIP 0 | PASS 909 ]"
+      ]
+    },
+    {
+      "file": "working-22b-owned-atoms.log",
+      "sha256": "4d6b72b13d33bf0167824bcb2a5e4e983faaaa13416c2a784913caaa9c1abb99",
+      "size": 38800,
+      "disposition": "New names fixture incorrectly required an owned wrapper; generic names dispatch can return a foreign metadata wrapper.",
+      "final_summary": [
+        "[ FAIL 1 | WARN 0 | SKIP 0 | PASS 953 ]"
+      ]
+    },
+    {
+      "file": "working-22b-owned-atoms-fixture-fixed.log",
+      "sha256": "e06de620c24b0b247b059bec513f20d396ad962f8ba92a8d5a8debfcf6f7f840",
+      "size": 38817,
+      "disposition": "Second names fixture incorrectly assumed generic native writes admit foreign metadata wrappers; existing contract rejects them.",
+      "final_summary": [
+        "[ FAIL 1 | WARN 0 | SKIP 0 | PASS 953 ]"
+      ]
+    },
+    {
+      "file": "working-22c-owned-atoms.log",
+      "sha256": "fb5b62f066ce46baf8de4a1c2927f29b07f6e07a7c30d48ee42813a022c13502",
+      "size": 38973,
+      "disposition": "Ordinary R replacement correctly invokes names dispatch again; unconditional escaped assignment overwrote the original oracle.",
+      "final_summary": [
+        "[ FAIL 1 | WARN 0 | SKIP 0 | PASS 955 ]"
+      ]
+    },
+    {
+      "file": "working-22c-owned-atoms-escaped-fixed.log",
+      "sha256": "6504e42761edd48ca325c548be5b8452a4229eb80e239f19be9b17c511314659",
+      "size": 38601,
+      "disposition": "Final fixture captures only first dispatch. Working22c all956 pass; development source identity, not exact artifact qualification.",
+      "final_summary": [
+        "[ FAIL 0 | WARN 0 | SKIP 0 | PASS 956 ]"
+      ]
+    },
+    {
+      "file": "final-tests-e343-red.log",
+      "sha256": "9d09d83ff5629ef5bf1eb211bd43ce69a684c78725ace595729f97a585bd4243",
+      "size": 43030,
+      "disposition": "Exact e343 same final test bytes:938passes and18 intended fresh-constructor failures; every callback/names/encoding regression case passes.",
+      "final_summary": [
+        "[ FAIL 18 | WARN 0 | SKIP 0 | PASS 938 ]"
+      ]
+    }
+  ]
+}
