@@ -40,6 +40,8 @@
     state$alive <- TRUE
     state$id <- 0L
     state$generations <- list()
+    state$expired <- new.env(parent = emptyenv())
+    state$names <- character()
     state$current <- list()
     state$mask <- NULL
     rows <- groups$rows
@@ -51,6 +53,7 @@
         generation$chunks <- chunks
         generation$used <- FALSE
         state$current[[name]] <- generation
+        state$names <- union(state$names, name)
         state$generations[[length(state$generations) + 1L]] <- rlang::new_weakref(generation)
     }
     for (name in names(columns)) add(name, columns[[name]])
@@ -62,7 +65,7 @@
             call = NULL)
     }
     read <- function(generation, name, id) {
-        if (!state$alive) obsolete(name)
+        if (!state$alive) return(get(name, state$expired, inherits = FALSE))
         generation$used <- TRUE
         if (is.null(generation$chunks)) {
             value <- generation$value
@@ -134,7 +137,12 @@
         state$mask <- make_mask()
         rlang::eval_tidy(quo, state$mask)
     }
+    expire <- function(name) {
+        force(name)
+        delayedAssign(name, obsolete(name), eval.env = environment(), assign.env = state$expired)
+    }
     forget <- function() {
+        for (name in state$names) expire(name)
         state$alive <- FALSE
         for (reference in state$generations) {
             generation <- rlang::wref_key(reference)

@@ -31,6 +31,26 @@ The twelve base-R read costs remain open for final assessment, and the three
 filter timing flags remain mandatory Stage 6 work. Stages 6 through 9 and the
 final actual downstream renv validation remain required; issue #172 stays open.
 
+The first Stage 5 exact source checkpoints are `27d700d` and `985e26b`.
+Both installed from Git archives through a bound, tracked installer; these are
+validation candidates, not merged acceptance results. Two independent reviews
+found and fixed duplicate unpacked names, warning aggregation, persistent-key
+deletion, rowwise data-frame columns, symbol-result metadata, caller labels,
+renamed ungroup selectors, custom row names and expired-mask payload retention.
+Weak references retain cleanup access without owning superseded uncaptured
+column generations. Exact-source focused/full/package checks are underway.
+
+The [preparation archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/README.md)
+preserves the 181-file selective minimum preview and both complete indexed
+helper proofs. Production and evidence will use focused review scopes. ADR 0034
+records the explicit dplyr 1.2.1 minimum correction and the bounded older-binary
+limits. It also records two intended corrections from the delegated wrapper:
+unnamed across follows real dplyr expansion order/setup counts, and within-call
+captures retain their original generation and group. Post-call deferred reads
+still fail with the obsolete-mask error. Grouped computed operations preserve
+dataset attributes through the shared finalizer. No optional-dependency or
+complete-epic claim follows from this work.
+
 The following Stage 4 record retains its historical premerge status and evidence.
 
 The original evidence and additive review supplement merged as

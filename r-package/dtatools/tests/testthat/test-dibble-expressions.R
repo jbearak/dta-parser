@@ -158,10 +158,10 @@ test_that("captures retain earlier values while deferred column resolution expir
     }, x = x + 100)
     expect_identical(lapply(saved, as.double), list(20, c(10, 30)))
     for (i in seq_along(saved)) {
-        expect_error(closures[[i]](), "Obsolete data mask")
-        expect_error(pronouns[[i]]$x, "Obsolete data mask")
-        expect_error(rlang::eval_tidy(quosures[[i]]), "Obsolete data mask")
-        expect_error(get(paste0("g", i), late), "Obsolete data mask")
+        expect_error(suppressWarnings(closures[[i]]()), "Obsolete data mask")
+        expect_error(suppressWarnings(pronouns[[i]]$x), "Obsolete data mask")
+        expect_error(suppressWarnings(rlang::eval_tidy(quosures[[i]])), "Obsolete data mask")
+        expect_error(suppressWarnings(get(paste0("g", i), late)), "Obsolete data mask")
     }
     repl(result, y = 999, where = 1L)
     repl(data, x = 888, where = 1L)
@@ -386,4 +386,27 @@ test_that("ungroup preserves raw row names on an already ungrouped dibble", {
     expect_true(is_dibble(result))
     repl(result, x = 99, where = 1L)
     expect_identical(as.double(data$x), c(1, 2))
+})
+
+
+test_that("expired column promises retain repeated-resolution warnings", {
+    data <- dplyr::group_by(dibble(g = 1:2, x = c(10, 20)), g)
+    closures <- list()
+    dplyr::mutate(data, y = {
+        closures[[length(closures) + 1L]] <<- function() x
+        0L
+    })
+    warnings <- character()
+    observe <- function(fn) withCallingHandlers(tryCatch(fn(), error = identity),
+        warning = function(condition) {
+            warnings <<- c(warnings, conditionMessage(condition))
+            invokeRestart("muffleWarning")
+        })
+    first <- observe(closures[[1L]])
+    expect_length(warnings, 0L)
+    second <- observe(closures[[2L]])
+    expect_length(warnings, 1L)
+    expect_match(warnings, "restarting interrupted promise evaluation", fixed = TRUE)
+    expect_match(conditionMessage(first), "Obsolete data mask", fixed = TRUE)
+    expect_match(conditionMessage(second), "Obsolete data mask", fixed = TRUE)
 })

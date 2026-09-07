@@ -7,7 +7,11 @@ status: proposed
 The shared expression module owns group iteration, sizing, sequential visibility
 and column installation. Direct mutate, transmute and computed group_by use it;
 rowwise and ungroup assemble metadata through the existing grouping module.
-Dibble output remains eager, typed and isolated under ADR 0029. No public generic
+Dibble output remains eager, typed and isolated under ADR 0029. Dataset attributes
+also survive grouped expression and grouping operations, extending the earlier
+direct selector/row metadata preservation to paths whose delegation could drop
+them. This includes arbitrary dataset attributes as well as DTA metadata.
+No public generic
 or export is added. Reference-marked plain containers retain their ordinary
 container behavior through the existing compatibility methods.
 
