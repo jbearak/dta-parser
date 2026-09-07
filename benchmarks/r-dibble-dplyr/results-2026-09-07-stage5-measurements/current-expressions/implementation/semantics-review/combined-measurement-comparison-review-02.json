@@ -1,0 +1,221 @@
+{
+  "comparison": {
+    "assessment": "All 100 timing and allocation differences/ratios and strict >10% plus >1 ms flags independently match bound measurement CSVs. No candidate-direct flag in this one matrix run. The one safe-reference pipeline flag remains requires_assessment; it is not a proved repeatable regression or waived result.",
+    "candidate_direct_flags": 0,
+    "flags": [
+      {
+        "columns": "16",
+        "comparison": "candidate_reference_vs_baseline_reference",
+        "delta_ms": "17.676206975011397",
+        "groups": "1",
+        "kind": "ungrouped",
+        "measured_ms": "110.67691698554",
+        "operation": "pipeline_five",
+        "reference_ms": "93.0007100105286",
+        "rows": "1000000",
+        "time_ratio": "1.1900652906091822"
+      }
+    ],
+    "independently_recalculated_rows": 100,
+    "inputs": 132,
+    "inventories": 4,
+    "manifest": {
+      "bytes": 1758,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/expression-comparison-a2d8b6a-01/manifest.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/expression-comparison-a2d8b6a-01/manifest.json",
+      "sha256": "bf3835ac0faabbbf89fc992dbe9728ac8e3885db6ada5ca75c7a1610711f2334"
+    },
+    "pairings": [
+      "candidate_direct_vs_baseline_direct",
+      "candidate_direct_vs_candidate_reference",
+      "candidate_reference_vs_baseline_reference",
+      "baseline_direct_vs_baseline_reference"
+    ],
+    "products": 4,
+    "receipt": {
+      "bytes": 461,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/expression-comparison-a2d8b6a-01/completed-receipt.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/expression-comparison-a2d8b6a-01/completed-receipt.json",
+      "sha256": "e69e7b13a18e50b31bb7f38d537520901addb8c9c8395b5ce710becc7fb191a9"
+    },
+    "source": {
+      "bytes": 14570,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/compare-measurements-v4.py",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/compare-measurements-v4.py",
+      "sha256": "599d07b4abcb6b803dc37b9e70267abcf4a71aacd809eaca9b1a2bb1e0d9fb3c"
+    }
+  },
+  "independent_raw_check": {
+    "command": [
+      "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/baseline-measure02-raw-review-01.R",
+      "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-raw-review-01.csv"
+    ],
+    "exit_code": 0,
+    "products": [
+      {
+        "bytes": 1886,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/baseline-measure02-raw-review-01.R",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/baseline-measure02-raw-review-01.R",
+        "sha256": "9e27647c066bc1f7dec18401acadb4a799ce006f7eff8bf4b444abeee8d98993"
+      },
+      {
+        "bytes": 23529,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-raw-review-01.csv",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-raw-review-01.csv",
+        "sha256": "ff4686e91ed330cbdbe39b98a64445b7009f980f88e9bc6e2948dda6d6bfcfe7"
+      },
+      {
+        "bytes": 115,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-raw-review-01.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-raw-review-01.log",
+        "sha256": "e6d3b108ca8f8952a763086cab616e8fa72cc1210078488f17466db8119dfafb"
+      }
+    ],
+    "scope": "Reads RDS records only, no fixture construction or measured operations. Fourth sorted value of each seven-sample series times 1000 equals the plain numeric RDS median and CSV median; allocation and GC fields equal."
+  },
+  "limits": [
+    "Combined a2d8b6a records and their one full-matrix comparison only; the one safe-reference pipeline diagnosis flag still requires assessment. These records do not replace pending owned-operation/write-cost/retained-memory/RSS evidence or overall Stage5 acceptance.",
+    "25 deterministic cases, two modes, seven measured iterations each on one externally coordinated host run; timings are not confidence intervals or cross-platform/minimum-R measurements.",
+    "Safe reference uses the installed expression typing and safe closure, omitting the redundant old second retyping pass only for the explicitly checked corpus. Grouped/rowwise fixtures omit dataset labels; preservation correction has separate behavior evidence.",
+    "Fixture values and result metadata checks ran before timing and around a separate profile operation. Timed outputs are not all retained for post hoc value reconstruction. State inspection itself yields shared R handles, so these are shared-source read/evaluate costs, not exclusive/private write costs.",
+    "bench allocation is retained as a raw RDS summary and equals CSV. Rprofmem and native counters are separate profile-run summaries; temporary Rprofmem event logs were deleted by the unchanged helper, so their event totals cannot be independently reconstructed. Rprofmem, bench and native allocation counters overlap and must not be added. None is retained memory or process RSS.",
+    "Audit programs use an idle-file snapshot contract and a separate receipt, not an external authenticity anchor or concurrent mutation monitor. Python/OS/Homebrew external library closures remain unfrozen.",
+    "Rejected baseline01 and unused unit-error drafts remain historical, excluded from this acceptance."
+  ],
+  "matrix": {
+    "cases": 25,
+    "gc_filter": false,
+    "iterations": 7,
+    "measurement_rows": 50,
+    "modes": [
+      "safe_reference",
+      "direct"
+    ],
+    "raw_samples": 350,
+    "raw_series": 50
+  },
+  "measurement": {
+    "bytes": 1569406,
+    "input_bindings_verified": 3404,
+    "manifest": {
+      "bytes": 24933,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/manifest.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/manifest.json",
+      "sha256": "38a7fcf1434f2911db401f26c0a19836b67b3a9268f562477924a4f5cce8e4b9"
+    },
+    "products": 58,
+    "receipt": {
+      "bytes": 526,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-receipt.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-receipt.json",
+      "sha256": "57d80de9edcf11505a6035bea8f2d32bdebfc23b87ade47a1210ea5b8de36d23"
+    }
+  },
+  "pair_preparation": {
+    "exact_common_bindings_including_python": 3347,
+    "python": {
+      "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9": {
+        "bytes": 33816,
+        "mode": "0o755",
+        "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+        "resolved": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+        "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+      },
+      "f622f1ddba04b2bb7ac07415faccf2b417aab0e6": {
+        "bytes": 33816,
+        "mode": "0o755",
+        "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+        "resolved": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+        "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+      }
+    },
+    "same_grid_bytes": true,
+    "same_r_command": true,
+    "scope": "Exact common driver/corpus/helper/R/dependency/Python bindings match; only the recorded installed dtatools directories differ. Historical different-launcher exception is not used."
+  },
+  "reviewed_sources": [
+    {
+      "bytes": 5325,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure-v4.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure-v4.R",
+      "sha256": "c9754a5afc89309fadf1a17069f528494b92f8e7b62c781a37a66732bfed2b21"
+    },
+    {
+      "bytes": 6467,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure-v4.py",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure-v4.py",
+      "sha256": "b964807ebfc60d6b9c32b7c0444b9fbaa8983a7d87396afe413e72c95a2520e7"
+    },
+    {
+      "bytes": 8150,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/cases-v10.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/cases-v10.R",
+      "sha256": "cb6ca67c6a71a5cc6aac68847e1e2d6f73754777f6fbdec8a99d2fd23f54ca8d"
+    },
+    {
+      "bytes": 1579,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/audit-measurement.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/audit-measurement.R",
+      "sha256": "3eac0311d4155f18cb4b24417c11c179094e3001b536538bba4f1054fad5a34c"
+    },
+    {
+      "bytes": 5488,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/audit-measurement.py",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/audit-measurement.py",
+      "sha256": "08aaa50e1387e5627752e850a12a23e774bd7e6f30fce2e64bb59ca0b9234785"
+    }
+  ],
+  "reviewer_attempt_history": "Uses previously qualified read-only raw RDS reader. First audit source used an incorrect namespace TSV column name (package instead of name) and stopped at pair preparation after candidate record checks; its source/log are retained, original evidence untouched. Corrected reader uses the actual name/path schema. No measurement, fixture creation, profiling or tests rerun.",
+  "reviewer_script": {
+    "bytes": 15883,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-comparison-review-02.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-comparison-review-02.py",
+    "sha256": "666785d0edc348396ba3e0f0ac8212bf1a9bd4bc3d3ded57ce8092b80010dfc2"
+  },
+  "root_audit": {
+    "bytes": 820632,
+    "input_bindings_verified": 2564,
+    "manifest": {
+      "bytes": 1316,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-audit-01/manifest.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-audit-01/manifest.json",
+      "sha256": "8d84343686b0d4528570e6539d48b0d5deae125a968df5e9dfd378e90122196b"
+    },
+    "products": 3,
+    "receipt": {
+      "bytes": 443,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-audit-01-receipt.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-audit-01-receipt.json",
+      "sha256": "01b04cb204cde1f82e4db471d2ffa14a88dbd37381db7c79018691991833d76e"
+    }
+  },
+  "source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "source_assessment": "Fixture creation, independent value/metadata/capture checks, safe-reference full snapshot parity, GC and owned-state inspection occur outside timed operation. Capture sink resets each call. v4 uses explicit millisecond summary with raw seconds cross-check, saves all series, replicates state metadata rows explicitly, and turns unexpected warnings into errors. Profile output checked separately; post-timing source values and backing state checked. Root audit authenticates original products and recalculates 50 raw series; independent review additionally verifies full state matrix and current declared input tree inventories.",
+  "source_findings": [],
+  "state": {
+    "coverage": "Every fixture column in both modes at every required phase; owned TRUE, depth 1, unexposed, expected backing bytes; same backing address before and after. All observed handles shared and backing_private FALSE.",
+    "phases": 4,
+    "rows": 3456
+  },
+  "status": "clear_for_combined_expression_measurement_records",
+  "utc": "2026-09-07T20:50:40.785410+00:00"
+}

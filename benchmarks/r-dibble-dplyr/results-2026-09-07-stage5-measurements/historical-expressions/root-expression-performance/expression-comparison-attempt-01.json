@@ -1,0 +1,43 @@
+{
+  "utc": "2026-09-07T18:55:40.695100+00:00",
+  "status": "rejected_before_output_creation",
+  "driver": "compare-measurements-v2.py",
+  "requested_output": "expression-comparison-01",
+  "error": "Different driver, corpus, helper or common runtime bindings",
+  "commands": [
+    [
+      "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure-v4.R"
+    ],
+    [
+      "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure-v4.R"
+    ]
+  ],
+  "differences": [
+    {
+      "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "baseline": {
+        "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+        "resolved": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+        "bytes": 33816,
+        "mode": "0o755",
+        "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+      },
+      "candidate": null
+    },
+    {
+      "path": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "baseline": null,
+      "candidate": {
+        "path": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "bytes": 34640,
+        "mode": "0o755",
+        "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+      }
+    }
+  ]
+}

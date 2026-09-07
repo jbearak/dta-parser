@@ -1,0 +1,13 @@
+# Repair guard source and completed evidence review
+
+Clear for the bounded next measurement of exact source `622ffc194372d9882a78637077dff42f657b14a3`; no outstanding API, test or provenance finding in this scope. This is not performance acceptance or integration approval.
+
+The clean worktree differs from `57309d40433a92d99849fefa155ae7b22b86b337` by one added line in `.repair_data_table_container`: objects that do not inherit `data.table` return unchanged. The previous class-set predicate could not identify those objects as ordinary data tables, so their result, metadata marker, identity and ownership remain unchanged. Objects inheriting `data.table`, including subclasses and metadata-marked tables, retain the dependency check, marker handling and ordinary-table capacity repair. No native code, union path, tests or public namespace changes are included.
+
+The independent saved-artifact check in `audit-repair-guard-01.py` completed successfully; its result is `audit-repair-guard-01.json`. It verified every retained product, full inventory equality and all current bound file identities: 314 install products / 11,265 inputs, and 3,032 full-test products / 58,623 inputs. All 233 archived source files match the declared commit's Git blob and mode records. These are source-export files; the public R export count remains 106. The installed and preflight package/DLL records identify the exact candidate library and package tree `1733785140bd213d5bfb176db9258d6790595843`.
+
+Install receipt: `04b29e79d4bbb12b4375b5c48bdada59b527889bcbbf4646cedc975ba9661894`; manifest: `aba71f0eef5d7760305d3847e0a683af9ce2dabefe98467a943f527b355dc9ce`. Full-test receipt: `85e923bd5b6a9e2666a75b2b8fb8de4f1fdb0b072d0c0e72312ee5b8c0f8715c`; manifest: `226a4b50598d78d966d24031288ad46b44bcd5c6c02391a955dd13d0efc60916`. All commands completed with status zero, with no changed bound inputs or generated export files.
+
+The test CSV independently totals 16,624 passes, no failures, errors or skips, and four established warnings: factor conversion, incompatible temporal comparison methods, and two deprecated tibble row-name assignments. The retained log agrees. An initial inline reviewer CSV summary attempted to parse `FALSE` numerically and stopped; the saved checker handles Boolean CSV fields and passed. No qualification artifact was changed.
+
+Scope remains the recorded host R 4.6.1 runtime and completed idle snapshots. External OS dynamic libraries, the entire SDK and Python runtime closure are not frozen by these runners. No benchmark, profiler, R test rerun or optional probe was executed for this review.

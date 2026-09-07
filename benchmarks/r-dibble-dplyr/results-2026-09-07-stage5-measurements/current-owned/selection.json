@@ -1,0 +1,2597 @@
+{
+  "scope": "Selected completed current broad-owned matrix, exact plain functional sources/reviews and original-ec10 comparison records. Historical identities/reporting limits remain explicit in README.",
+  "files": [
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/current-owned-README-v1.md",
+      "path": "README.md",
+      "presentation": "plain",
+      "bytes": 3806,
+      "mode": "0o644",
+      "sha256": "4aa46d7c77db7780757e0189b97ba1441445e61f85c8d2ab483d6eb8a456023d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/bundle-tests-v1-observed-result.json",
+      "path": "bundle-tests-v1-observed-result.json",
+      "presentation": "plain",
+      "bytes": 858,
+      "mode": "0o644",
+      "sha256": "6f36d917d70263a0eb220c12192e9d8cb828d7f003159db3ca21ab5f250776f2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/compare-atomic.py",
+      "path": "compare-atomic.py",
+      "presentation": "plain",
+      "bytes": 4340,
+      "mode": "0o644",
+      "sha256": "4a9051ce97c5a84ff580f0ddda4cce2692c847695d0500ad8c239618e312b9bf"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/compare-double.py",
+      "path": "compare-double.py",
+      "presentation": "plain",
+      "bytes": 4780,
+      "mode": "0o644",
+      "sha256": "6da73e867e3d33cbb8469bc253058a4044ae8011220d6f539f43107f2d9867ad"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/compare-heap-stage5-v3.py",
+      "path": "compare-heap-stage5-v3.py",
+      "presentation": "plain",
+      "bytes": 6266,
+      "mode": "0o644",
+      "sha256": "603ddca3f3c20bf90d1bda791d257752e733df9c2570aacdfbf99c6e2a9c50a6"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/owned-combined-evidence-review-01.md",
+      "path": "implementation/api-review/owned-combined-evidence-review-01.md",
+      "presentation": "plain",
+      "bytes": 4049,
+      "mode": "0o644",
+      "sha256": "df8f6345f5aa7cc0e22bdf49ef68114051df8640e06fcad18724b7379d4017c4"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/owned-combined-integrity-review-01.json",
+      "path": "implementation/semantics-review/owned-combined-integrity-review-01.json",
+      "presentation": "bundle",
+      "bytes": 6818,
+      "mode": "0o644",
+      "sha256": "a2a7886bc35a35caf1a9c305ddba48d6d6b3c0d94937267ecd68960b4c79c278"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/owned-combined-integrity-review-01.log",
+      "path": "implementation/semantics-review/owned-combined-integrity-review-01.log",
+      "presentation": "bundle",
+      "bytes": 149,
+      "mode": "0o644",
+      "sha256": "28574dae385d1d7559cc8bcab8555cf64e63d16685efe3a1b661d8433041be42"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/owned-combined-integrity-review-01.py",
+      "path": "implementation/semantics-review/owned-combined-integrity-review-01.py",
+      "presentation": "plain",
+      "bytes": 5935,
+      "mode": "0o644",
+      "sha256": "22648751325a4a9f7ec2ec1f135b8261c84908238220f5846366901b8ea3228f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/owned-combined-outcomes-review-01.log",
+      "path": "implementation/semantics-review/owned-combined-outcomes-review-01.log",
+      "presentation": "bundle",
+      "bytes": 902,
+      "mode": "0o644",
+      "sha256": "f8409c48196ad92c99e32a9f7259025a26ef9b7612eb2adf997ae32863136976"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/owned-combined-outcomes-review-01.py",
+      "path": "implementation/semantics-review/owned-combined-outcomes-review-01.py",
+      "presentation": "plain",
+      "bytes": 15302,
+      "mode": "0o644",
+      "sha256": "cfa8f99a209f56c9ac6cc605809d0d4810f819d1625120bc7da55d81d74bac79"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/owned-combined-outcomes-review-02.json",
+      "path": "implementation/semantics-review/owned-combined-outcomes-review-02.json",
+      "presentation": "plain",
+      "bytes": 20710,
+      "mode": "0o644",
+      "sha256": "1cbe741a2b142772d457c0adb1bcda6145111f558dbe0bdbab4c948c3cb3c887"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/owned-combined-outcomes-review-02.log",
+      "path": "implementation/semantics-review/owned-combined-outcomes-review-02.log",
+      "presentation": "bundle",
+      "bytes": 225,
+      "mode": "0o644",
+      "sha256": "b8d6913e3c5396b740d5d9a946698f72b1dd16e901862c5735aa3ccf12a41c2d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/owned-combined-outcomes-review-02.py",
+      "path": "implementation/semantics-review/owned-combined-outcomes-review-02.py",
+      "presentation": "plain",
+      "bytes": 15502,
+      "mode": "0o644",
+      "sha256": "3837970176d03c5ba505e05c8bce64b33d13ad3785fdd42f629f9b3d97836f1b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-atomic-original-ec10-a2d8b6a-comparison-01.log",
+      "path": "root-atomic-original-ec10-a2d8b6a-comparison-01.log",
+      "presentation": "bundle",
+      "bytes": 8436,
+      "mode": "0o644",
+      "sha256": "7c7f6bd1da134551b2b1ebe77a34c3a7bb473405dbe6a056102b4fd19f32487c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-atomic-original-ec10-a2d8b6a-comparison-01/derivation.json",
+      "path": "root-atomic-original-ec10-a2d8b6a-comparison-01/derivation.json",
+      "presentation": "bundle",
+      "bytes": 865,
+      "mode": "0o644",
+      "sha256": "d9df8c645c7aaa806d572be7a99516b3a55b2bbe5c2dd40ddf447c655573dc91"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-atomic-original-ec10-a2d8b6a-comparison-01/investigate.json",
+      "path": "root-atomic-original-ec10-a2d8b6a-comparison-01/investigate.json",
+      "presentation": "bundle",
+      "bytes": 9363,
+      "mode": "0o644",
+      "sha256": "e10cbcaaa7d7a04d1ad3488d9d413ae411614d54bbf27ee953bc9d98b306ef85"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-atomic-original-ec10-a2d8b6a-comparison-01/memory-comparison.csv",
+      "path": "root-atomic-original-ec10-a2d8b6a-comparison-01/memory-comparison.csv",
+      "presentation": "bundle",
+      "bytes": 3251,
+      "mode": "0o644",
+      "sha256": "7f405a3c713d7f2d504866bb133a03a3c95517b8487f8551b049d90f9ed70ff5"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-atomic-original-ec10-a2d8b6a-comparison-01/operation-comparison.csv",
+      "path": "root-atomic-original-ec10-a2d8b6a-comparison-01/operation-comparison.csv",
+      "presentation": "bundle",
+      "bytes": 35431,
+      "mode": "0o644",
+      "sha256": "e9cecc9562aeaae764baaa2720f3e289670e29aa1210263e31243de52e64eee1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-double-original-ec10-a2d8b6a-comparison-01.log",
+      "path": "root-double-original-ec10-a2d8b6a-comparison-01.log",
+      "presentation": "bundle",
+      "bytes": 65,
+      "mode": "0o644",
+      "sha256": "b2fefddd0d4f2bddb3b60d1a8f68b17a79fc35bf2cca055b7972ab4e478f7261"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-double-original-ec10-a2d8b6a-comparison-01/derivation.json",
+      "path": "root-double-original-ec10-a2d8b6a-comparison-01/derivation.json",
+      "presentation": "bundle",
+      "bytes": 865,
+      "mode": "0o644",
+      "sha256": "22e1987529808e47083e6c185393da805711e5052fc19a20af9784b12db0d5b2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-double-original-ec10-a2d8b6a-comparison-01/investigate.json",
+      "path": "root-double-original-ec10-a2d8b6a-comparison-01/investigate.json",
+      "presentation": "bundle",
+      "bytes": 3,
+      "mode": "0o644",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-double-original-ec10-a2d8b6a-comparison-01/memory-comparison.csv",
+      "path": "root-double-original-ec10-a2d8b6a-comparison-01/memory-comparison.csv",
+      "presentation": "bundle",
+      "bytes": 873,
+      "mode": "0o644",
+      "sha256": "afd427dd930a71d81b0ef4ee60cbc447008deeb604dab735844eb33b26da746b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-double-original-ec10-a2d8b6a-comparison-01/operation-comparison.csv",
+      "path": "root-double-original-ec10-a2d8b6a-comparison-01/operation-comparison.csv",
+      "presentation": "bundle",
+      "bytes": 7494,
+      "mode": "0o644",
+      "sha256": "5899ee614dc234021df3456c047c189be487f26b2d1a268b15dc03892219910e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline-memory-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline-memory-command.json",
+      "presentation": "bundle",
+      "bytes": 1105,
+      "mode": "0o644",
+      "sha256": "d4cba8ed6e90d8b58537f494975c9fc39594ca668f34b11f9fbe7d9bb1d10a70"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline-memory-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline-memory-products.json",
+      "presentation": "bundle",
+      "bytes": 15952,
+      "mode": "0o644",
+      "sha256": "2ce0e3f22b3fe0ff34b98d6bd446f074fced3ab9068c589592e488876f4edb83"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline-memory.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline-memory.log",
+      "presentation": "bundle",
+      "bytes": 1511,
+      "mode": "0o644",
+      "sha256": "012a593c91c8708b782089f40195541b158a5048b1f92a9b1ae0f684b89e2d52"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline-operations-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline-operations-command.json",
+      "presentation": "bundle",
+      "bytes": 1120,
+      "mode": "0o644",
+      "sha256": "7dcbfed2f0a2ab703acd7a9a6d9572bc985b112333857a3d36ef8bab46e2ba0a"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline-operations-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline-operations-products.json",
+      "presentation": "bundle",
+      "bytes": 2493,
+      "mode": "0o644",
+      "sha256": "a76e5ec511f6e1537f4111af417815e82a0b7563e1871212ea8bb4168db844aa"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline-operations.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline-operations.log",
+      "presentation": "bundle",
+      "bytes": 126,
+      "mode": "0o644",
+      "sha256": "2008c477e20612a279dba77871a7d833034f326cf2982138b2698e7212dfd3f4"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2575,
+      "mode": "0o644",
+      "sha256": "b06412faf9bdd7a456b2a6da32f6760a526c068fc9d9bedd28ffd8d1b09a4151"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2579,
+      "mode": "0o644",
+      "sha256": "42b888cecf8fcda90b5d4255ec5c470f88c3d95b9aadf10125ad0b5fbea39f5b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2577,
+      "mode": "0o644",
+      "sha256": "cd4bcbd411265b9e7c516f8d640f8ac4066d01251fa1b7f146efdf684c3487ad"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2581,
+      "mode": "0o644",
+      "sha256": "a1ed24e3b405b1e653ee6912a4853813926fb3b46d83b4d74bd6eab4117d50e1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2570,
+      "mode": "0o644",
+      "sha256": "2e7cb29d37f741f9998881cdc203d0845403071b2f9765c017ef92e83464995f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-declared_character-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2574,
+      "mode": "0o644",
+      "sha256": "7ce1c8b297b9411123cf695979c4decd9407414087027cb43a9ac31d26ec8da2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2561,
+      "mode": "0o644",
+      "sha256": "1120caffdac6b3152eb4c04f658c2ab381deaca22fa992abf743cf787b49bcaa"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2564,
+      "mode": "0o644",
+      "sha256": "d2c40884ae769bbc9ffcffd67464cbe827edba70c072d08ac72d933234121a4b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2563,
+      "mode": "0o644",
+      "sha256": "5662941a080e5fc47e9083fa12cde230f5b3be1bfd9d27cc7c9e0c915290c3eb"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2566,
+      "mode": "0o644",
+      "sha256": "8aa0a4f5ca491600f59f00f19723926c2aacf3b6439e6d8c1b5e50b3ba8bf6eb"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2556,
+      "mode": "0o644",
+      "sha256": "d6a98ec4db7823f7d809333549e21de20ea8b14ed3f98486168a3264d0744f53"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-factor-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2559,
+      "mode": "0o644",
+      "sha256": "24745e4ddf6967a160bd019daa4b57540239844c85d779ddac2fbf8e525b3fa3"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2562,
+      "mode": "0o644",
+      "sha256": "d95c76119a397c963cef153da0ee1d16b656da3628afff5ec3e85e8b3b6fc962"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2565,
+      "mode": "0o644",
+      "sha256": "3904f196abb083bf3cbacda4167087da15cc389268bde5aa8aa3bb959bd472fe"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2564,
+      "mode": "0o644",
+      "sha256": "2100723081f649afd224be623f6c6244f779e4e5ee1544d06737a5e7143f88ea"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2567,
+      "mode": "0o644",
+      "sha256": "e826f8bc70c31faba32129fc398c01964e72a5a4c13e829d0c2ee354b1724135"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2557,
+      "mode": "0o644",
+      "sha256": "326ad5a1cb7bf61ddf8799adc7ac3410374b8be19befaee8810b72f16cc24be9"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-logical-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2560,
+      "mode": "0o644",
+      "sha256": "487f0d3609458cf8064a698400acb037225694295c81b110878092de3f16b0a2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2562,
+      "mode": "0o644",
+      "sha256": "dec22bacf85e450e8aed47c5c6c5ae035ae35e661bff238fb830dc2ec064108f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2565,
+      "mode": "0o644",
+      "sha256": "e8528c30ce78fad6213799286b72da1144ed6411d9bef128c3e0a35c21920801"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2564,
+      "mode": "0o644",
+      "sha256": "f9576198585785b524a8edfd9316338c68558e92c061cc6d42bd10985d057037"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2567,
+      "mode": "0o644",
+      "sha256": "fb5cf593a25397ede08d82cbfe8ba8c5f0abc9f236321aeca5985d51a5dc0e1b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2557,
+      "mode": "0o644",
+      "sha256": "7673be13c31478d19a165c5a1a8a670648200af4d0549b65e009edc13ff82fed"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-ordered-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2560,
+      "mode": "0o644",
+      "sha256": "e3a931ec1256729f001952e4fbe6a16c6808824aa214c563cc4bded623b9dcea"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2563,
+      "mode": "0o644",
+      "sha256": "b02dc06b978316a6c50c03f1d72f36db8e40f3e336faf3169e99b37abf1bdc72"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2567,
+      "mode": "0o644",
+      "sha256": "4d5ac5a937f442e0b188e7e44884c8a5adb923b3af11983a290dc6a2753e735d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2565,
+      "mode": "0o644",
+      "sha256": "b8899c0161fff0744263884daea89f95ebd314185e6f87ed23ddea007e33b3b7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2569,
+      "mode": "0o644",
+      "sha256": "4b8e8b05739ab7da5c5e190865a2c16ecfbb5465c4f3b6fbf467454184ef6432"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2558,
+      "mode": "0o644",
+      "sha256": "2a17cd4890409098f88af5dfa5829002f72fe6d1a826015573eb603377b3faea"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/memory-string-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2562,
+      "mode": "0o644",
+      "sha256": "8e163e8608bf10ddd3b646687fe94c05cb8c2052700a79ff770ecd9b97a9c0f0"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/owned-atomic-after-read.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/owned-atomic-after-read.csv",
+      "presentation": "bundle",
+      "bytes": 8096,
+      "mode": "0o644",
+      "sha256": "7a0cef9bd97da828ff6a2fbb4b5b1e96f9a9931a644a93424a05f05a69382682"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/owned-atomic-session.txt",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/owned-atomic-session.txt",
+      "presentation": "bundle",
+      "bytes": 1449,
+      "mode": "0o644",
+      "sha256": "75bb285d5662afa371bbe6fc4cb4213f93dc0a1fa134c3ef6e7d2e32e5970f23"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/owned-atomic-writes.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/owned-atomic-writes.csv",
+      "presentation": "bundle",
+      "bytes": 1541,
+      "mode": "0o644",
+      "sha256": "84ecd1b4f05a7a0c9c2c19dffd2b108d397c82e74db5b7cf3c197778fda1aaf8"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/owned-atomic.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/owned-atomic.csv",
+      "presentation": "bundle",
+      "bytes": 20996,
+      "mode": "0o644",
+      "sha256": "8faaa0f86aae5294f050d19d381bc794e5fba56b6659d9aa1d86b6533ab45a0b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/root-manifest.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/root-manifest.json",
+      "presentation": "bundle",
+      "bytes": 16579,
+      "mode": "0o644",
+      "sha256": "bbbc94665bcea06c8633c7eedf5eb9f8d2b398e615e2d9535b4ac4007bc9c718"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-baseline/runner.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-baseline/runner.log",
+      "presentation": "bundle",
+      "bytes": 39809,
+      "mode": "0o644",
+      "sha256": "00eb11052831b43f03a7aa6854230c2aadb8a3e715bb92e3177ec24bc700cc07"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate-memory-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate-memory-command.json",
+      "presentation": "bundle",
+      "bytes": 1125,
+      "mode": "0o644",
+      "sha256": "cc35fa00c00cf58401043536d638f4a55157852cf95762d79b8920e3a26b9454"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate-memory-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate-memory-products.json",
+      "presentation": "bundle",
+      "bytes": 16024,
+      "mode": "0o644",
+      "sha256": "2f213ae08f39efcaa56066c4634586f478895da44547b46d5cf31d12c73db152"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate-memory.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate-memory.log",
+      "presentation": "bundle",
+      "bytes": 1513,
+      "mode": "0o644",
+      "sha256": "1df4763f08d073bbbfa1d1929abf6db511efc37aa09beb04d0d4292eca33238d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate-operations-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate-operations-command.json",
+      "presentation": "bundle",
+      "bytes": 1140,
+      "mode": "0o644",
+      "sha256": "fcadc94aedf281dda76d5a76df031e52a98b85eeb5cdc5f4c2cfb0439d08fd46"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate-operations-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate-operations-products.json",
+      "presentation": "bundle",
+      "bytes": 2505,
+      "mode": "0o644",
+      "sha256": "32bb2bd0375e9edc3fb5ea4c130d22e12ebf27bc0f60f4cea9fc7ea2a379e668"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate-operations.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate-operations.log",
+      "presentation": "bundle",
+      "bytes": 128,
+      "mode": "0o644",
+      "sha256": "a2a528223a3b2cbf41c512e6bbd03912b7c2917dfced141d74cde5380fef4228"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2591,
+      "mode": "0o644",
+      "sha256": "a6a7ac2a0d9139a476a55c8b91067b523c4c16d5e1b1f986f7fae4bb11994484"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2595,
+      "mode": "0o644",
+      "sha256": "738f9fabde1ae189729f1d1cabfcd1154d42e23527ef9f926f8baf8151e0fdcc"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2593,
+      "mode": "0o644",
+      "sha256": "dc2cb21b74532dbfcdda781b260d7427aa5d08735f83af625067c6725909fab9"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2597,
+      "mode": "0o644",
+      "sha256": "0be242673d1d4aafd06cec690b85ab18abe63c59c7fa18dc543f5e0113d1fab4"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2586,
+      "mode": "0o644",
+      "sha256": "62945d3d90ca88b2f1b12bafb99dc6a064fb7de75e26ca41d5da6187badc5bc5"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-declared_character-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2590,
+      "mode": "0o644",
+      "sha256": "b3de9cbef7885dbb61ccdc04b0daedc0ecc98d870014ad895d4e7b9815ee9b9c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2577,
+      "mode": "0o644",
+      "sha256": "08a3875a832ab25244ecda34549d5313d9f9bb5d7383ff3bf00e0475c51f1da7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2580,
+      "mode": "0o644",
+      "sha256": "27ffc3aaa6c83c9c4d9e15f41e97865ab7e10de35d144750d757e24a91e3cfd7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2579,
+      "mode": "0o644",
+      "sha256": "0b0442b2957395a81e2033f0797c75b5de5db1af3166b963a2830316bd8bb613"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2582,
+      "mode": "0o644",
+      "sha256": "002f7b6c351ceb97ab3f2dc91266874d1784dd161d5f42e3bb321cb55a809a19"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2572,
+      "mode": "0o644",
+      "sha256": "4a62d517756d26c146a9bea8adbdd0ace8896519f46f6b08fe42f23593391404"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-factor-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2575,
+      "mode": "0o644",
+      "sha256": "4cdf293c5d5fee1cc453a4bf9dcd766c2200d4b4b4e0aba84ad843474390ac47"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2578,
+      "mode": "0o644",
+      "sha256": "e15ec0b8c4bc222a91dee2198ead420faa29b387f9a9ebae7873cdfb54e46cd0"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2581,
+      "mode": "0o644",
+      "sha256": "2f354488e625483848b6fb7b6779462a1a56015751ac91e4cddd25e7a4572fce"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2580,
+      "mode": "0o644",
+      "sha256": "29176413c1c28bacd301f08d71922f0ad54750cf439d528fbc05af710e5a4621"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2583,
+      "mode": "0o644",
+      "sha256": "281fc0a0eb4dda5c576ff5a5bf000a671d1f7b1a098f25d9ea6c81ac94553f40"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2573,
+      "mode": "0o644",
+      "sha256": "b62ec0c61fdf7a3a2e88bf62234b339a4cdc1e5931c1f9e6bc7583f7b1cc3c53"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-logical-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2576,
+      "mode": "0o644",
+      "sha256": "9671b599b045410d0819b0cf2b15f1b5eb21b0500bfd24501d01ccc5296900dd"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2578,
+      "mode": "0o644",
+      "sha256": "54a3a94bccf19d8a0724d0dfdb0fc578ba7e3d508b8741105f50576beb82a13d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2581,
+      "mode": "0o644",
+      "sha256": "c733c1ad773fff14ea866b7c38c5d273197505b1faf1f1babe3f9129d43152c1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2580,
+      "mode": "0o644",
+      "sha256": "426b725bf177ab0f44ec21ab142eb47c59feea542032c7e5570af97622784d9c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2583,
+      "mode": "0o644",
+      "sha256": "14e4570189ba3c0e5a8e3ba184f81b3a586f87286cd94d316ae607d47e9d4f62"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2573,
+      "mode": "0o644",
+      "sha256": "f00c15bc4c9ec638624347138d5938ccbee92492e1bc407237ffe1a8a400d981"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-ordered-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2576,
+      "mode": "0o644",
+      "sha256": "9ed1909a0695ca79980b59f41c594928849c31fc64a07b9bbd95bdd25988b57c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2579,
+      "mode": "0o644",
+      "sha256": "355d5ae4216a10b315566a5c38b9c045fb43c2802f246c6589d2a7789863ca9a"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2583,
+      "mode": "0o644",
+      "sha256": "2261680c83ce10cfe61f7883ebb1f055df3fd7d7ab43ad097ada60fa4067255c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2581,
+      "mode": "0o644",
+      "sha256": "6583bd761fbbf46a5dd5d954f146dd3880c6ca5890ae0dc8e4c76f97053f1b50"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2585,
+      "mode": "0o644",
+      "sha256": "6c05ba348d6ba86b498abc1360e862aaf9ee97bb2fcc33ab801209fa47999100"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2574,
+      "mode": "0o644",
+      "sha256": "da3119f6e8234236944c8eec957c423da9c67d39d33fd762b6eff790b225bf0b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/memory-string-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2578,
+      "mode": "0o644",
+      "sha256": "8a31bda0db46ab762d04e8f32bf416fa862b22797ba44e48f05e4417d7b1b512"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/owned-atomic-after-read.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/owned-atomic-after-read.csv",
+      "presentation": "bundle",
+      "bytes": 8096,
+      "mode": "0o644",
+      "sha256": "7a0cef9bd97da828ff6a2fbb4b5b1e96f9a9931a644a93424a05f05a69382682"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/owned-atomic-session.txt",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/owned-atomic-session.txt",
+      "presentation": "bundle",
+      "bytes": 1465,
+      "mode": "0o644",
+      "sha256": "06f3d38b4ae9dd7b0d08110e2d0d55758c3d353c38d8d69e34c6b3ae8082899a"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/owned-atomic-writes.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/owned-atomic-writes.csv",
+      "presentation": "bundle",
+      "bytes": 1541,
+      "mode": "0o644",
+      "sha256": "84ecd1b4f05a7a0c9c2c19dffd2b108d397c82e74db5b7cf3c197778fda1aaf8"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/owned-atomic.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/owned-atomic.csv",
+      "presentation": "bundle",
+      "bytes": 20995,
+      "mode": "0o644",
+      "sha256": "caaeaf0f894ac62bf3b3fee2cf39d2f4212aabca5acebfcf7a2569d2c7649ac4"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/root-manifest.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/root-manifest.json",
+      "presentation": "bundle",
+      "bytes": 16595,
+      "mode": "0o644",
+      "sha256": "242d0cf9a82805153d80a4d87347416e62d6681cf0369dc8ca085a292d2a3a94"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-candidate/runner.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-candidate/runner.log",
+      "presentation": "bundle",
+      "bytes": 39800,
+      "mode": "0o644",
+      "sha256": "4f0b7e3da7b77c0436f12107c9a19573bbe83fa17d6063ac2f422af7b45bfb6f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-comparison/derivation.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-comparison/derivation.json",
+      "presentation": "bundle",
+      "bytes": 878,
+      "mode": "0o644",
+      "sha256": "b1d609d5f2897309cdce0ad463b2e2f9bf8542569b9bbb1952b35e6a7c08a187"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-comparison/investigate.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-comparison/investigate.json",
+      "presentation": "bundle",
+      "bytes": 606,
+      "mode": "0o644",
+      "sha256": "7cf81769f89e67134ab7477128045aa51e63a9239405f8b5f6ee8ac321651f77"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-comparison/memory-comparison.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-comparison/memory-comparison.csv",
+      "presentation": "bundle",
+      "bytes": 3158,
+      "mode": "0o644",
+      "sha256": "3bf1c35944227fde2e0ef1653ba4d7825bf28ac7c3a5f3bd806d31184ab91060"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/atomic-comparison/operation-comparison.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/atomic-comparison/operation-comparison.csv",
+      "presentation": "bundle",
+      "bytes": 34859,
+      "mode": "0o644",
+      "sha256": "c8ed7e0d357e36ae6012009abadb55462a75de7cfc1aac059c0064fc2500bbea"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/compare-atomic-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/compare-atomic-command.json",
+      "presentation": "bundle",
+      "bytes": 1021,
+      "mode": "0o644",
+      "sha256": "38cd945edde3e5617904f84d97829807c921fa69e840d32ba2f14621226a5734"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/compare-atomic-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/compare-atomic-products.json",
+      "presentation": "bundle",
+      "bytes": 1678,
+      "mode": "0o644",
+      "sha256": "25aa53211ef5ca6bdde53d204be8ea24efcedccd3f719f6e17d0f5774d8ba092"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/compare-atomic.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/compare-atomic.log",
+      "presentation": "bundle",
+      "bytes": 680,
+      "mode": "0o644",
+      "sha256": "9407c5b97bb2731e4225714a0def9b3c190855bef1be2ef807e094d72281d0af"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/compare-double-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/compare-double-command.json",
+      "presentation": "bundle",
+      "bytes": 1020,
+      "mode": "0o644",
+      "sha256": "b12a6e7c4e5c5c5a4756167d91dc6b134790e7c1671fc8c2363190aa4fe59b4e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/compare-double-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/compare-double-products.json",
+      "presentation": "bundle",
+      "bytes": 1674,
+      "mode": "0o644",
+      "sha256": "00f07a04c4da1c5db79468d44c63f721a71a2359c4b7f7188bf38ce552726b3e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/compare-double.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/compare-double.log",
+      "presentation": "bundle",
+      "bytes": 65,
+      "mode": "0o644",
+      "sha256": "b2fefddd0d4f2bddb3b60d1a8f68b17a79fc35bf2cca055b7972ab4e478f7261"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/compare-heap-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/compare-heap-command.json",
+      "presentation": "bundle",
+      "bytes": 1055,
+      "mode": "0o644",
+      "sha256": "60b9b48b1bc6bd474edca33dea4834ec7c3a1586341db173c2dc956456713827"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/compare-heap-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/compare-heap-products.json",
+      "presentation": "bundle",
+      "bytes": 836,
+      "mode": "0o644",
+      "sha256": "a984fd277fbd46b192a48e586e086ad8afc05fd555778beba10c90a3f2b5c78d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/compare-heap.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/compare-heap.log",
+      "presentation": "bundle",
+      "bytes": 107,
+      "mode": "0o644",
+      "sha256": "c6f6ea5d01ae7e8c3521bd565e5c4504b3cdafa0057130bb034d70fe53034a3c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/comparison-inputs.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/comparison-inputs.json",
+      "presentation": "bundle",
+      "bytes": 103440,
+      "mode": "0o644",
+      "sha256": "0c5bfbe7c2e3cd49b1270b7e756fa148139df19fe67e7f399ecfaf8d8f4d0728"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/completed-receipt.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/completed-receipt.json",
+      "presentation": "bundle",
+      "bytes": 624,
+      "mode": "0o644",
+      "sha256": "dcfe9a472ca789f22cf2b526a72e41da1452c1ae9b639a74773f371a55650ad3"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline-memory-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline-memory-command.json",
+      "presentation": "bundle",
+      "bytes": 1103,
+      "mode": "0o644",
+      "sha256": "5d6dbaca7c0594085c98962994ea14d77566a79ad3dbb2abf22ad7052c68be62"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline-memory-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline-memory-products.json",
+      "presentation": "bundle",
+      "bytes": 6762,
+      "mode": "0o644",
+      "sha256": "10cb2e6dbc1131b68fb29146c16fdee38f1a76174c4cdd203361a08120197b79"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline-memory.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline-memory.log",
+      "presentation": "bundle",
+      "bytes": 341,
+      "mode": "0o644",
+      "sha256": "1ed1dcbed378a8aeaf75611d9155c4169a6e5cd32300ae799663d5f2077c22f1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline-operations-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline-operations-command.json",
+      "presentation": "bundle",
+      "bytes": 1119,
+      "mode": "0o644",
+      "sha256": "ddeb38d6ea72c9415927f4b573e3dc057b679728cdd227894fcdd6701fcab393"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline-operations-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline-operations-products.json",
+      "presentation": "bundle",
+      "bytes": 4188,
+      "mode": "0o644",
+      "sha256": "f39cf5d91682f49a3ae7f915599ea0f8ba334dbc375fea2c70b8aa7c9b0d4230"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline-operations.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline-operations.log",
+      "presentation": "bundle",
+      "bytes": 126,
+      "mode": "0o644",
+      "sha256": "9c40547e828e9dc4d65ff8784c8493e508e9496f7a293fea30a341e6e9508e13"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/arithmetic-where-cost-100000.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/arithmetic-where-cost-100000.csv",
+      "presentation": "bundle",
+      "bytes": 314,
+      "mode": "0o644",
+      "sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/arithmetic-where-cost-1000000.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/arithmetic-where-cost-1000000.csv",
+      "presentation": "bundle",
+      "bytes": 317,
+      "mode": "0o644",
+      "sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/memory-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/memory-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2457,
+      "mode": "0o644",
+      "sha256": "d1a3c14da67276f52c7e31e898b069ef1071cf6a4aec2967f9713121b5a73327"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/memory-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/memory-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2461,
+      "mode": "0o644",
+      "sha256": "730d2017c3150a4a4f4fc82a7fcd801d453b237c95b5ad245bf5b140c08f063f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/memory-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/memory-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2459,
+      "mode": "0o644",
+      "sha256": "2bff1af84950317ddcde78d1b86fd31cb889439afb47d056bf61bc206044eb2f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/memory-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/memory-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2463,
+      "mode": "0o644",
+      "sha256": "e7fb5f9523eaf96628bd30553e98578fe9edc360c6cbbde4698d896ef8071a67"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/memory-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/memory-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2452,
+      "mode": "0o644",
+      "sha256": "977502880b68dbd8f847b7bdb3d24b47b1eeec7cd0f422ec67e369b989487d18"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/memory-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/memory-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2456,
+      "mode": "0o644",
+      "sha256": "c8ec6760b8b7a3585d2f8cb57cf24f14fc79b2c6ed8ccaf926cf8bd748fdc969"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/owned-after-read.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/owned-after-read.csv",
+      "presentation": "bundle",
+      "bytes": 1613,
+      "mode": "0o644",
+      "sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/owned-double-session.txt",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/owned-double-session.txt",
+      "presentation": "bundle",
+      "bytes": 1356,
+      "mode": "0o644",
+      "sha256": "70047fbe34e4be7e075e196cb7f5628ca9718de6a8a1376215817cdbfddee8f5"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/owned-double-writes.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/owned-double-writes.csv",
+      "presentation": "bundle",
+      "bytes": 564,
+      "mode": "0o644",
+      "sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/owned-double.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/owned-double.csv",
+      "presentation": "bundle",
+      "bytes": 4174,
+      "mode": "0o644",
+      "sha256": "6a22ce6e8aac61c087125c5eaf3bc576392708f29ca540312631ef144f3bf478"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/root-manifest.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/root-manifest.json",
+      "presentation": "bundle",
+      "bytes": 3664,
+      "mode": "0o644",
+      "sha256": "7335bcef0ab226a3640d209a96caac91a07afe1de54c9087b485d4a0ec1954fd"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/runner.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/runner.log",
+      "presentation": "bundle",
+      "bytes": 5433,
+      "mode": "0o644",
+      "sha256": "f59d66cd82f466dc33bb87b756e7cb49f0cddea3cf8e76d33c157b1eccac5052"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/snapshot-cost-100000.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/snapshot-cost-100000.csv",
+      "presentation": "bundle",
+      "bytes": 320,
+      "mode": "0o644",
+      "sha256": "2657d2b5fe722c5eb2fdfb816ecdcb19ad967a990df896f6d3170bb83f154c9e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-baseline/snapshot-cost-1000000.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-baseline/snapshot-cost-1000000.csv",
+      "presentation": "bundle",
+      "bytes": 323,
+      "mode": "0o644",
+      "sha256": "7b0f366d7d6d6a79280a60444b4b7c68eda655598914c8b1baf31f06e17d8cc4"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate-memory-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate-memory-command.json",
+      "presentation": "bundle",
+      "bytes": 1123,
+      "mode": "0o644",
+      "sha256": "55e9878f9bdee0fb4450e0a9f444788b6cca4eff07a854c4d729fa9d06751f2a"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate-memory-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate-memory-products.json",
+      "presentation": "bundle",
+      "bytes": 6794,
+      "mode": "0o644",
+      "sha256": "9f341de0146133ab3550b03444489d040f32345bbcfd0d804fe78da726f8e578"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate-memory.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate-memory.log",
+      "presentation": "bundle",
+      "bytes": 343,
+      "mode": "0o644",
+      "sha256": "7bc3f4a3998d339e5df5898ef9a4365c8b69ee4b8d3d1c36998604af2b8c923c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate-operations-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate-operations-command.json",
+      "presentation": "bundle",
+      "bytes": 1139,
+      "mode": "0o644",
+      "sha256": "ab9572aa8fa3cc12197635ceb84eafd8d43efd4a459486811e068d6e002abea3"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate-operations-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate-operations-products.json",
+      "presentation": "bundle",
+      "bytes": 4208,
+      "mode": "0o644",
+      "sha256": "42738a0737f29bedd0fc7e6ad26e13c249fb96cb96307639f3e5a73abda82255"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate-operations.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate-operations.log",
+      "presentation": "bundle",
+      "bytes": 128,
+      "mode": "0o644",
+      "sha256": "42ce1f3df9a3d771de86a5f872047310bdb9631dd9cc61d38394d887b18a61f7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/arithmetic-where-cost-100000.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/arithmetic-where-cost-100000.csv",
+      "presentation": "bundle",
+      "bytes": 314,
+      "mode": "0o644",
+      "sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/arithmetic-where-cost-1000000.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/arithmetic-where-cost-1000000.csv",
+      "presentation": "bundle",
+      "bytes": 317,
+      "mode": "0o644",
+      "sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/memory-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/memory-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2473,
+      "mode": "0o644",
+      "sha256": "b883fb3c79f4e7d08dcba231c4a17f84a120ad194d030b059b36f95eb130595f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/memory-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/memory-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2477,
+      "mode": "0o644",
+      "sha256": "6af088631f090a7ef40bc9bab92033ec5f53620ebd8beeeb381a4706fab808a1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/memory-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/memory-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2475,
+      "mode": "0o644",
+      "sha256": "0c401fe0fdf33c519726abb9fbbb60c09b5ba79db477c5d9711a2a96740f0825"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/memory-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/memory-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2479,
+      "mode": "0o644",
+      "sha256": "45acba6715bcdee632f4336c7a4869e6c6e43c73394ec6d0dd7ceeb661c3ecac"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/memory-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/memory-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2468,
+      "mode": "0o644",
+      "sha256": "3a963005aa1dd84c21b9da85253f0ca5f0d371f7bfd46ad811f06efbcc8eca9c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/memory-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/memory-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2472,
+      "mode": "0o644",
+      "sha256": "73d64d060abf8f2b143850b989dc153c85aea040afb6a5bb2ee538ebb52bc102"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/owned-after-read.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/owned-after-read.csv",
+      "presentation": "bundle",
+      "bytes": 1613,
+      "mode": "0o644",
+      "sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/owned-double-session.txt",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/owned-double-session.txt",
+      "presentation": "bundle",
+      "bytes": 1372,
+      "mode": "0o644",
+      "sha256": "e1fe32e125c9396be6341b202988c0c76edbc3e30b2370bdc744363a6f5012db"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/owned-double-writes.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/owned-double-writes.csv",
+      "presentation": "bundle",
+      "bytes": 564,
+      "mode": "0o644",
+      "sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/owned-double.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/owned-double.csv",
+      "presentation": "bundle",
+      "bytes": 4181,
+      "mode": "0o644",
+      "sha256": "5faff8ac82471140bafe66fb404289ebcf9605e78e4d89aa4bb8470a7a9333b9"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/root-manifest.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/root-manifest.json",
+      "presentation": "bundle",
+      "bytes": 3680,
+      "mode": "0o644",
+      "sha256": "e06f1b2b1c9daa60dade24231d654fbcd0f891046a35ee530c0ab9c5f4a8bb8e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/runner.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/runner.log",
+      "presentation": "bundle",
+      "bytes": 5496,
+      "mode": "0o644",
+      "sha256": "e114e6315848fb19edf32e7559b86bd08f7af0b391a1c04c85b52aae2b1df2af"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/snapshot-cost-100000.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/snapshot-cost-100000.csv",
+      "presentation": "bundle",
+      "bytes": 320,
+      "mode": "0o644",
+      "sha256": "2657d2b5fe722c5eb2fdfb816ecdcb19ad967a990df896f6d3170bb83f154c9e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-candidate/snapshot-cost-1000000.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-candidate/snapshot-cost-1000000.csv",
+      "presentation": "bundle",
+      "bytes": 323,
+      "mode": "0o644",
+      "sha256": "7b0f366d7d6d6a79280a60444b4b7c68eda655598914c8b1baf31f06e17d8cc4"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-comparison/derivation.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-comparison/derivation.json",
+      "presentation": "bundle",
+      "bytes": 878,
+      "mode": "0o644",
+      "sha256": "1d00e3fe6276b5465bb93151903a003d965d8f3786de6420a6981a8a88410c0d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-comparison/investigate.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-comparison/investigate.json",
+      "presentation": "bundle",
+      "bytes": 3,
+      "mode": "0o644",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-comparison/memory-comparison.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-comparison/memory-comparison.csv",
+      "presentation": "bundle",
+      "bytes": 873,
+      "mode": "0o644",
+      "sha256": "615649df2595ee1270daa5e8e6762079599ccdd604a58acee4e5ff5b42dded27"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/double-comparison/operation-comparison.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/double-comparison/operation-comparison.csv",
+      "presentation": "bundle",
+      "bytes": 7495,
+      "mode": "0o644",
+      "sha256": "9fcb65abea0122f59a3b04210e66512c6beb6b5c237d501295991615c8c673b0"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/execution-result.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/execution-result.json",
+      "presentation": "bundle",
+      "bytes": 15868,
+      "mode": "0o644",
+      "sha256": "a105a22ee42635bf5e1a1e52230a9a3eac5a9ee7b607e880bca3f04136e7cefd"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline-command.json",
+      "presentation": "bundle",
+      "bytes": 1060,
+      "mode": "0o644",
+      "sha256": "0446162a126f9139605c30c297c7c8b418696c98abd0a5e3fde5ce6d23669ac1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline-products.json",
+      "presentation": "bundle",
+      "bytes": 16256,
+      "mode": "0o644",
+      "sha256": "e5bed8ad76e29660ce01b78f39227da8eced29720ee6264f5c699ba186388fa6"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline.log",
+      "presentation": "bundle",
+      "bytes": 1707,
+      "mode": "0o644",
+      "sha256": "6f1b5e04c78a8f53fc6eb3f10541df6d5b29a2a40799b2e7b8c062f804644422"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3632,
+      "mode": "0o644",
+      "sha256": "e92423157f418806886c1b9d939653bfeb2fe1f00fcebdc290deed4579e7590a"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3641,
+      "mode": "0o644",
+      "sha256": "b9241f580e67ff2dec44c45b96f03da94d5ca31f079e74054fc70c96f33dd652"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3634,
+      "mode": "0o644",
+      "sha256": "f23b71750ce07b5c0181e909c581bd00146f6e48287103e23baa85ea2123f36b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3643,
+      "mode": "0o644",
+      "sha256": "6b8045806b102f30aa4ba3f4683c5fdafd15ea1430db834f15f9d73e6243151a"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3618,
+      "mode": "0o644",
+      "sha256": "2d63059a682f2016dd0bd96e4a8d0f533ed6a7a1b222a344a34730cbf55a8338"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-declared_character-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3627,
+      "mode": "0o644",
+      "sha256": "d1eddf308023052159fb8845d5d500dbb4305508de004a63f82a759dcfbdff88"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3498,
+      "mode": "0o644",
+      "sha256": "c97dcca2a4cafe63544fa0499920417a4a9cbc6e9364a435ad9b10232c71a103"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3507,
+      "mode": "0o644",
+      "sha256": "4ddb256fe2f63a3f12286ea9fa01df1113781a54eac61d6a6c97e3007532a5e8"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3503,
+      "mode": "0o644",
+      "sha256": "60a8be4c8183e1d074d9858f2ee5f38e21c49dd4c90f06593c24e3637e12a97c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3512,
+      "mode": "0o644",
+      "sha256": "c09b20a43c426760a135890ea1865047d6ea061a432bd222e64a148a998a3583"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3488,
+      "mode": "0o644",
+      "sha256": "2de672222ae79748ac6eacae48d58ddf568367f932d863f20fd752506f6a88e1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-double-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3497,
+      "mode": "0o644",
+      "sha256": "ca518fbb99a0b89ee5b725f2b9efe293f6665f83fb20b3c0c1bb3ee346f7f986"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3605,
+      "mode": "0o644",
+      "sha256": "ad36678f1e3bafb61856d40077c6c9e7f0ab7a577ec01488579030ce6c146e77"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3612,
+      "mode": "0o644",
+      "sha256": "e9b007ab1cc0bf2aa49c77f19cc19130504439f5130d8ac91c4fbf682e77a7c3"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3607,
+      "mode": "0o644",
+      "sha256": "e0ee8fb390c93c0ebce7305527a6c099ca0aa02c80d5f3759e0afcee893d2a48"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3614,
+      "mode": "0o644",
+      "sha256": "1a2d25bcd31ed8760e1d8a7d6cfd3eb440f61a915cf856dc5567b2a7e8992155"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3591,
+      "mode": "0o644",
+      "sha256": "287aa8d544763d4f4a17a957eb81ff0c30c7dec178e38543f72ec9227e5548ad"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-factor-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3598,
+      "mode": "0o644",
+      "sha256": "f6a18daa4c2ba887dc12c963021b04814b2ffa53088d8bb5b70d604c79346d86"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3607,
+      "mode": "0o644",
+      "sha256": "d8cbccedb160cbce914646e33dccd62ec88ac6b674bb51d55cfd05cc592d4f9c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3614,
+      "mode": "0o644",
+      "sha256": "e30ea11fb66d31cc1bc38fe0f45f3a066cac5f845f68e4ce056399618813981e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3609,
+      "mode": "0o644",
+      "sha256": "5fac267c8608f0d2e10142e92c2a3c400dfef3a5dea69c8d90d1ad3ab942d6e8"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3616,
+      "mode": "0o644",
+      "sha256": "819559179ef8aa8335b8d1e6c62a14270e8b0a349fe4065f854cec96b58de0b4"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3592,
+      "mode": "0o644",
+      "sha256": "d64c5a57c63eb0487ae2a4db6509580c9230fb7618301b7e99dcd43145386de6"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-logical-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3599,
+      "mode": "0o644",
+      "sha256": "365da0bb39fc09d46ea15043bd3bbd26e204f85e15e4e99744af2635abbde6ac"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3607,
+      "mode": "0o644",
+      "sha256": "4d1262347f36b434a1bd8eba930407b6aa64adc0c93c03b4133db3c7aeef961e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3614,
+      "mode": "0o644",
+      "sha256": "821a0d608fdb771fc880d0e6444aa0a6fb358ee837aeed9add5f974c44115b40"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3609,
+      "mode": "0o644",
+      "sha256": "b6567a72b4161e7f6002883b7b62a68dce618254079ce461db6f4d06829637fc"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3616,
+      "mode": "0o644",
+      "sha256": "c0cb51c37b132c76a8987d2af5311e69b497ccc92c6d75ff6468971f77fc134e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3593,
+      "mode": "0o644",
+      "sha256": "27e2a5e413c46d62584a81bc1babc7e42d62bf21b3759a1d58c38a1467a34d76"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-ordered-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3600,
+      "mode": "0o644",
+      "sha256": "5ee50cd57e113972d849c5d5f9e4d88104bfa9973c8078cf683fdc48471ed672"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3608,
+      "mode": "0o644",
+      "sha256": "2c1661e909aad4a38a423073e8221f768f84db3c047570731b23776a526d8cb4"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3617,
+      "mode": "0o644",
+      "sha256": "467b3147034bcd9882eeef6714f74e38fac4055f44bbe72cdb021582d3872867"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3610,
+      "mode": "0o644",
+      "sha256": "677c5f099cda5b134bd3ba19775bc48afd089225cdbd6b0ca938bce91a54790e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3619,
+      "mode": "0o644",
+      "sha256": "7dce7d325edde5bfbcf4e859e2ab24dc10c27d145998c2f2b631c3edfd296bc2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3594,
+      "mode": "0o644",
+      "sha256": "c887553a56dca714e57dca7edfb1da17197c85ccdad2c1bc59236edeaacae27f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/heap-string-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3603,
+      "mode": "0o644",
+      "sha256": "5d9ed067cc2a104aca5d16d16a9180aa3458d719d6adb57f2dfec4a6026c8f92"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-baseline/root-manifest.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-baseline/root-manifest.json",
+      "presentation": "bundle",
+      "bytes": 57304,
+      "mode": "0o644",
+      "sha256": "7d119e3b7e330f69653ca4a86205391e980054bb818c4ea06f8d2dcf1677de03"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate-command.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate-command.json",
+      "presentation": "bundle",
+      "bytes": 1080,
+      "mode": "0o644",
+      "sha256": "b5f87b3f81e9b958f4afe2ad176dca208d60d3e484d81bc0ab9840f23bc10b92"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate-products.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate-products.json",
+      "presentation": "bundle",
+      "bytes": 16330,
+      "mode": "0o644",
+      "sha256": "f8e7cc49b55633ee1cbf2f2f2bfed7c93eb7a8df83e3890c40c7c6f14fb06ddb"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate.log",
+      "presentation": "bundle",
+      "bytes": 1709,
+      "mode": "0o644",
+      "sha256": "e8a1f89e3ae790a0348879f8b51d3f2608c332504516626139ccdf5121d7cb05"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3664,
+      "mode": "0o644",
+      "sha256": "184f1db735f22b17aba4e25ca1874676909b74eb6c02e2ff48d71c1582de0493"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3673,
+      "mode": "0o644",
+      "sha256": "0d22b562781e6fff2e1050a14a91bf5c40d0f768bc71d4140903311962052069"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3658,
+      "mode": "0o644",
+      "sha256": "1d271168fa63a09001d27a7818cc20398ce2ed20b8de6e7b89489c0d0e95895f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3667,
+      "mode": "0o644",
+      "sha256": "3a80a506247f97b372bce7d622f56cfbadadaea7d2296a0feae81c5b35ad05a6"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3651,
+      "mode": "0o644",
+      "sha256": "f7d472b7d08cf3f41d687b4895531c97559c19a4ef37ea07cdef3b180328f7ce"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-declared_character-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3660,
+      "mode": "0o644",
+      "sha256": "7013d3927432791ccb2dee42685f24aa1313466735b48b484972c2e69ca9e3b6"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3534,
+      "mode": "0o644",
+      "sha256": "1a950e184188aa741a5d839e622a0f20bc48f31d0be72677b493e3fdcfe7761d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3543,
+      "mode": "0o644",
+      "sha256": "2937fd8561103a01d70e75b5e0401a07a2525c2880c235ac0528f95975acd15f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3535,
+      "mode": "0o644",
+      "sha256": "096c1d2b37408c3069f9235f41ca4964f8082f7b6419dc8c75052e093d945ad8"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3544,
+      "mode": "0o644",
+      "sha256": "39a2aea399f729a6cc2d852d7a2eacff1970d55d3de1696eca2d76a5f8fad9c0"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3520,
+      "mode": "0o644",
+      "sha256": "6a8350e7db8fe37c3937c5ee83b8b66a9db9324456734d96835e4fb4edbd6f23"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-double-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3529,
+      "mode": "0o644",
+      "sha256": "27ef80d6488f984c0623eda7af4d09a14b4ba772a7f049e958db57e553f61fd1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3637,
+      "mode": "0o644",
+      "sha256": "a375b1b5bc071bf197f4148046da2fa9ddd96a9856f7c30a220a65f97e54c237"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3644,
+      "mode": "0o644",
+      "sha256": "1f5ccfb7003273800c9b68fa7a4ccbc2e4d3b75f889de671e0c4b53438cbeb59"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3631,
+      "mode": "0o644",
+      "sha256": "5b15222e75ebeb6d30a7e3f0ee5c306d88cc2e78489d2dc9b146d4ef53aba131"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3638,
+      "mode": "0o644",
+      "sha256": "b2599e273d2e90355acf6d9805a290df092cf45169853bbca439866317756b83"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3624,
+      "mode": "0o644",
+      "sha256": "59b73e35ed14180552136f99791a4313751c706a4bf39543544ae492c91f8b15"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-factor-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3631,
+      "mode": "0o644",
+      "sha256": "9ec0981697e0dc83cfed5033786c050657f9e11f47ae453e4c2cd6789d6c0e70"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3639,
+      "mode": "0o644",
+      "sha256": "45a5f907139f56906270eff42fa32dfc1d88eab031456135b0721a223dcb0a8d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3646,
+      "mode": "0o644",
+      "sha256": "388d2fd282036567fc94cc606d3a2c826f11f81f0adb3afe75bdba0ac25b6d2b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3633,
+      "mode": "0o644",
+      "sha256": "28c8a770d35597daad8f1e6ad4187be2bcf94e85574037fe47a0391f077d1041"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3640,
+      "mode": "0o644",
+      "sha256": "cf1b88d08b366957740ee8050c61c223e41efe20b31089f875e9d847a3e77057"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3625,
+      "mode": "0o644",
+      "sha256": "648b9f388760e06f668da7cf57b69b9daf6b18debd179a0d653fc228e6e8920d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-logical-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3632,
+      "mode": "0o644",
+      "sha256": "d817ade0c0daf029bfadbb27101543297bb5484d9a3b3df88e099cd27ae64f70"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3639,
+      "mode": "0o644",
+      "sha256": "6f9e6d2d46d3f9fe3bb67009d806d3a30702c39426dd0d75a0c9c19ff930d1bf"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3646,
+      "mode": "0o644",
+      "sha256": "4f4617c8fb39628f4b319c826736fea48cfafc243181ef6edb9b227efca5d84e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3633,
+      "mode": "0o644",
+      "sha256": "2ab3ec9d1030bea8d7137068fb4f8cad69b00f39fb230c0e960d868b50076c28"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3640,
+      "mode": "0o644",
+      "sha256": "7351d59363367e5b03d810d812c176ace519f8488ca24605da0490d422f55ec5"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3626,
+      "mode": "0o644",
+      "sha256": "198081a3b4f71d281064a22395c5d8bc087c22ddf8e6869b7fda0c1a851a3ace"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-ordered-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3633,
+      "mode": "0o644",
+      "sha256": "8859d797bf63b3f15fed7126b9e7795aed3b7cc37811c3387d5d019bd492576b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-pipeline_50-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 3640,
+      "mode": "0o644",
+      "sha256": "5d0760c781fc9d40b1e088251562ff4adc3a5951236b277b260e2d5f7bf44f29"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-pipeline_50-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3649,
+      "mode": "0o644",
+      "sha256": "25d014caad489ec400103a5c1fd2ba2aa36c0e25926420583e21f10dffd431a6"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-pipeline_five-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 3632,
+      "mode": "0o644",
+      "sha256": "34bf38021491ae9561c25e624af1c0eaa6d86c74dd10560df3b066dce3248e0c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-pipeline_five-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3641,
+      "mode": "0o644",
+      "sha256": "cab2201510f9fe83ed69edfb7704fc683ee11927f99ca7597b4ce715dfe99810"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-rename-100000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 3627,
+      "mode": "0o644",
+      "sha256": "ebbcba644a9e7bd05bcb970c1645b4c2c9f8390eee2ffb833f2b8c65745ecbe7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-rename-1000000.log",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/heap-string-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 3636,
+      "mode": "0o644",
+      "sha256": "b82f4f84d3f7e9f9f7ae6c12e7908d63c83641e9a1571518634a51269cf1fe04"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-candidate/root-manifest.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-candidate/root-manifest.json",
+      "presentation": "bundle",
+      "bytes": 57330,
+      "mode": "0o644",
+      "sha256": "e2e21a87e3b23756f3fa23af026eac4ee73ca89afbcc7601c5dd10fd03598fdd"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-comparison/derivation.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-comparison/derivation.json",
+      "presentation": "bundle",
+      "bytes": 34445,
+      "mode": "0o644",
+      "sha256": "4636c58db6d3f41195b302d34e0661a405648e104551fa9af3a61474fffe0593"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/heap-comparison/heap-comparison.csv",
+      "path": "root-stage5-owned-performance-a2d8b6a/heap-comparison/heap-comparison.csv",
+      "presentation": "bundle",
+      "bytes": 4021,
+      "mode": "0o644",
+      "sha256": "ce9051994fb661dc7d264bb2633cd1d83787944e7f5830867ee894170b735e18"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/input-identities.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/input-identities.json",
+      "presentation": "bundle",
+      "bytes": 19909510,
+      "mode": "0o644",
+      "sha256": "5faf10153f7507775714efbf1d2d17f64aab69619e2eac00f09e85fc6fec96af"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-stage5-owned-performance-a2d8b6a/output-manifest.json",
+      "path": "root-stage5-owned-performance-a2d8b6a/output-manifest.json",
+      "presentation": "bundle",
+      "bytes": 99005,
+      "mode": "0o644",
+      "sha256": "5cc1e954c73612bda3bc2952f0c49a483fabbeb6bb8eadaf92219a7ecb33ca2f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/run-stage5-owned-performance-v3.py",
+      "path": "run-stage5-owned-performance-v3.py",
+      "presentation": "plain",
+      "bytes": 10246,
+      "mode": "0o644",
+      "sha256": "f62c2544ebfd3414aa748dcbad97c3b7eb26a0c41b78e22958e841053be637f4"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-pipeline_50-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-declared_character-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2565,
+      "mode": "0o644",
+      "sha256": "992f1b97c08c194f80edcd74808efe0c683d83741d7c4125dd6e6eece3b6f031"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-pipeline_50-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-declared_character-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2570,
+      "mode": "0o644",
+      "sha256": "8c744742a6f2c302a36118f4c87d6d7ae28fc51178d8c9f0642dce5754a2e803"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-pipeline_five-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-declared_character-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2567,
+      "mode": "0o644",
+      "sha256": "f978aee476e72850358a7e9e1b8f853c2d207bf0244ebbdf0882b59da5cd562e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-pipeline_five-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-declared_character-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2572,
+      "mode": "0o644",
+      "sha256": "9fea613e59370a7df1f8bfc28f984cb52720ae6683728d1c7d43325befd08318"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-rename-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-declared_character-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2560,
+      "mode": "0o644",
+      "sha256": "33e6090e2abe3ef2a1cb36da769a1818c336c201b72ded22ebd788314e299a95"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-declared_character-rename-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-declared_character-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2565,
+      "mode": "0o644",
+      "sha256": "0af0eb30cb27bd354186c32695cbf5ca3a5b0f75a1b026affeb08cc68f9c6e25"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-pipeline_50-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-factor-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2550,
+      "mode": "0o644",
+      "sha256": "258eccb31d9290f5195299bdc96d12f760f6a05aeb03046f9934318c5c868d18"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-pipeline_50-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-factor-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2554,
+      "mode": "0o644",
+      "sha256": "43998b0eabdf9bc679a642829d7855b9c20e072f19313c7b2670a8467950a5ff"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-pipeline_five-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-factor-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2552,
+      "mode": "0o644",
+      "sha256": "cda167d36686ca81c82afea62b064db54440756fd9b7a08e04418f211ae6a8a8"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-pipeline_five-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-factor-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2556,
+      "mode": "0o644",
+      "sha256": "da1166d035fee541e5f5a17b404ffa4959904bd8c17bdb0b1c6d4e6ed8df6cd2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-rename-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-factor-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2545,
+      "mode": "0o644",
+      "sha256": "2162ca8d0c456a2daa1f1e2f6e8d3c14c6aa44c0ed130bfbbcc901fb3e0ce776"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-factor-rename-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-factor-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2549,
+      "mode": "0o644",
+      "sha256": "0acad6e3708b4c3d0d9eb49e83620a3ac27fb18a2e98e4fb41066878c1a3bf8e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-pipeline_50-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-logical-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2551,
+      "mode": "0o644",
+      "sha256": "f10445c034804820fc74f7cfdb50acee23c50dc58652060ea472b5809700ea0c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-pipeline_50-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-logical-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2555,
+      "mode": "0o644",
+      "sha256": "e74f599b5b44f81a93d4cd29ab49c7c1375028a23045b5b0f796a558583b7abd"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-pipeline_five-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-logical-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2553,
+      "mode": "0o644",
+      "sha256": "70dcfb78d02b5ee399efbcbbcccf61064a0283b69d97aba1809420b612f56982"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-pipeline_five-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-logical-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2557,
+      "mode": "0o644",
+      "sha256": "f3bde904d89906163e440b379a72815abbf8b3e3b194107f4f00e9b71817b05f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-rename-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-logical-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2546,
+      "mode": "0o644",
+      "sha256": "ee10db4ce4011d9192d974dfbd6b257ea47134f7a55c296b54e8d7ecd3a8efe7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-logical-rename-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-logical-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2550,
+      "mode": "0o644",
+      "sha256": "97a9465852b6c9c6fd3786d9b120fbf04cb0b5021b181ac7fb696ec671cc09cc"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-pipeline_50-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-ordered-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2551,
+      "mode": "0o644",
+      "sha256": "9a77cf34539c35473658742e6e3b6e4ae4852215e761e924389d74ca27df9a57"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-pipeline_50-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-ordered-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2555,
+      "mode": "0o644",
+      "sha256": "bf4797bcc307e30b8b7985e40d85019e66f75145976bc7c92515605779d5b2a0"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-pipeline_five-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-ordered-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2553,
+      "mode": "0o644",
+      "sha256": "b4dc02b7538f1ef9d33cace45acb949e03891227ea13f683064c03350b0056c5"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-pipeline_five-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-ordered-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2557,
+      "mode": "0o644",
+      "sha256": "73c430be52e95d1af58ee991798545449c0fbe2f11093b858133913443a8e32f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-rename-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-ordered-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2546,
+      "mode": "0o644",
+      "sha256": "5f2eb22759880374b06c973eca249a90948b4655667827d6111f5535e2dd74cb"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-ordered-rename-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-ordered-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2550,
+      "mode": "0o644",
+      "sha256": "40fc3444f3a78189ac6f2b62eaa084225d061814dcebe18ab4c1c48d7731618a"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-pipeline_50-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-string-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2553,
+      "mode": "0o644",
+      "sha256": "c5ebe856173fe0fcc0d479598c50dfbe07d9c4f26e5dd73df6c302ce9bc8f1ce"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-pipeline_50-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-string-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2558,
+      "mode": "0o644",
+      "sha256": "d19b62558ddbad48b3d69317be92bcced39c26ed695974483d19587cedbb4758"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-pipeline_five-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-string-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2555,
+      "mode": "0o644",
+      "sha256": "075531adfd7a0386b9174e88dc18648c225773c8c4f5c991034e5a19f3c68396"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-pipeline_five-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-string-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2560,
+      "mode": "0o644",
+      "sha256": "e1485cfc83e44b0dcd7c08f2e819d293443b932f048fb423dc5e73e4e9eae7df"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-rename-100000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-string-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2548,
+      "mode": "0o644",
+      "sha256": "40eb6ce1784c3305946ed2728b6f1516362598bd9366832cb775a8f811f39e95"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/memory-string-rename-1000000.log",
+      "path": "stage4-original-ec10/atomic-baseline/memory-string-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2553,
+      "mode": "0o644",
+      "sha256": "48f7804a59b1a5b74a3315206195599abcbe95224bdde8e02490c53f9c3d023e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic-after-read.csv",
+      "path": "stage4-original-ec10/atomic-baseline/owned-atomic-after-read.csv",
+      "presentation": "bundle",
+      "bytes": 8852,
+      "mode": "0o644",
+      "sha256": "76d17161b93fe0cabfbaca8ee34e66a33e4ac87ee20fbe502edce9eddb480f97"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic-session.txt",
+      "path": "stage4-original-ec10/atomic-baseline/owned-atomic-session.txt",
+      "presentation": "bundle",
+      "bytes": 1436,
+      "mode": "0o644",
+      "sha256": "87a31ddc4c686ceecbcebd927f1bbc55d3f5e1f68ab5f683a25962a66be05fd8"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic-writes.csv",
+      "path": "stage4-original-ec10/atomic-baseline/owned-atomic-writes.csv",
+      "presentation": "bundle",
+      "bytes": 1626,
+      "mode": "0o644",
+      "sha256": "28b300e4d2486cae9aa3328201c4918cb66ceb734a9c57ab1aabb79d9c46e67c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic.csv",
+      "path": "stage4-original-ec10/atomic-baseline/owned-atomic.csv",
+      "presentation": "bundle",
+      "bytes": 22030,
+      "mode": "0o644",
+      "sha256": "999a185279e66a21bb20b5155a6651b42ded2cb55ad187e526951242370c1928"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/root-manifest.json",
+      "path": "stage4-original-ec10/atomic-baseline/root-manifest.json",
+      "presentation": "bundle",
+      "bytes": 16659,
+      "mode": "0o644",
+      "sha256": "cc066b4f708cc07a9aafcd1ad5763922ce1bb042383cdfc657822a9f27b2ced9"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/runner.log",
+      "path": "stage4-original-ec10/atomic-baseline/runner.log",
+      "presentation": "bundle",
+      "bytes": 39797,
+      "mode": "0o644",
+      "sha256": "83caa08b0be8a60dd6717d285e084e60ee7fd329cb592f543bcef409c38f95d9"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/arithmetic-where-cost-100000.csv",
+      "path": "stage4-original-ec10/double-baseline/arithmetic-where-cost-100000.csv",
+      "presentation": "bundle",
+      "bytes": 314,
+      "mode": "0o644",
+      "sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/arithmetic-where-cost-1000000.csv",
+      "path": "stage4-original-ec10/double-baseline/arithmetic-where-cost-1000000.csv",
+      "presentation": "bundle",
+      "bytes": 317,
+      "mode": "0o644",
+      "sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-pipeline_50-100000.log",
+      "path": "stage4-original-ec10/double-baseline/memory-pipeline_50-100000.log",
+      "presentation": "bundle",
+      "bytes": 2444,
+      "mode": "0o644",
+      "sha256": "130e3ab1901726a886eed0a2b9711c126dcae7d535d8a4556da791198c4d4f94"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-pipeline_50-1000000.log",
+      "path": "stage4-original-ec10/double-baseline/memory-pipeline_50-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2448,
+      "mode": "0o644",
+      "sha256": "c5a727594303d16aa8f8c08a31df34b4a4628e51a8db0c8ac08d9e499f1795c7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-pipeline_five-100000.log",
+      "path": "stage4-original-ec10/double-baseline/memory-pipeline_five-100000.log",
+      "presentation": "bundle",
+      "bytes": 2446,
+      "mode": "0o644",
+      "sha256": "5fbf39246abf60464846052f7c6608ca25819d88041e88e390892532ac47cc5b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-pipeline_five-1000000.log",
+      "path": "stage4-original-ec10/double-baseline/memory-pipeline_five-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2450,
+      "mode": "0o644",
+      "sha256": "f4e4bbf890ab45cc253a527d202021aae1deaa7f7a0c6b8010c793538c594dc6"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-rename-100000.log",
+      "path": "stage4-original-ec10/double-baseline/memory-rename-100000.log",
+      "presentation": "bundle",
+      "bytes": 2439,
+      "mode": "0o644",
+      "sha256": "70c4675aee4f0aab03cef53ce0df278dd9f4dc47c1d44413beb3606094afb6a7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/memory-rename-1000000.log",
+      "path": "stage4-original-ec10/double-baseline/memory-rename-1000000.log",
+      "presentation": "bundle",
+      "bytes": 2443,
+      "mode": "0o644",
+      "sha256": "f63eccbed489d1a932cdbf2d0e43bef2a7d5a2976c560508efb8e430f4dc1df2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/owned-after-read.csv",
+      "path": "stage4-original-ec10/double-baseline/owned-after-read.csv",
+      "presentation": "bundle",
+      "bytes": 1613,
+      "mode": "0o644",
+      "sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/owned-double-session.txt",
+      "path": "stage4-original-ec10/double-baseline/owned-double-session.txt",
+      "presentation": "bundle",
+      "bytes": 1343,
+      "mode": "0o644",
+      "sha256": "dca9fa336a3ea22fa6b3613b8b0791583e87590c368ff4d46b7dbddd42a93cbe"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/owned-double-writes.csv",
+      "path": "stage4-original-ec10/double-baseline/owned-double-writes.csv",
+      "presentation": "bundle",
+      "bytes": 564,
+      "mode": "0o644",
+      "sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/owned-double.csv",
+      "path": "stage4-original-ec10/double-baseline/owned-double.csv",
+      "presentation": "bundle",
+      "bytes": 4173,
+      "mode": "0o644",
+      "sha256": "12950c096a0e72f3efb9a2451508171540a777890a2f2348b1e4ec5d76f5e3ce"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/root-manifest.json",
+      "path": "stage4-original-ec10/double-baseline/root-manifest.json",
+      "presentation": "bundle",
+      "bytes": 3651,
+      "mode": "0o644",
+      "sha256": "d84653f0af2036281dee521560461cfc6a8b3851c7f467df93219a6d4048c3aa"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/runner.log",
+      "path": "stage4-original-ec10/double-baseline/runner.log",
+      "presentation": "bundle",
+      "bytes": 5433,
+      "mode": "0o644",
+      "sha256": "ef390470f0f2e1538743ef664361a99a7df9374c53407a15385b5d048738fa73"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/snapshot-cost-100000.csv",
+      "path": "stage4-original-ec10/double-baseline/snapshot-cost-100000.csv",
+      "presentation": "bundle",
+      "bytes": 321,
+      "mode": "0o644",
+      "sha256": "391efa7a5588df4f3f0e38eddd6df23af2188534e20ac970afe7beb43a9e6d27"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-baseline/snapshot-cost-1000000.csv",
+      "path": "stage4-original-ec10/double-baseline/snapshot-cost-1000000.csv",
+      "presentation": "bundle",
+      "bytes": 324,
+      "mode": "0o644",
+      "sha256": "88dd94b983e9165d2b1ce4b6d6ee959d7459d240e63e8573b82373dac0ee4da7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/input-identities.json",
+      "path": "stage4-original-ec10/input-identities.json",
+      "presentation": "bundle",
+      "bytes": 2446,
+      "mode": "0o644",
+      "sha256": "17683641a25af2224b4676ba1343338f724ed0005885a135200720b61848f9d5"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/progress.json",
+      "path": "stage4-original-ec10/progress.json",
+      "presentation": "bundle",
+      "bytes": 11770,
+      "mode": "0o644",
+      "sha256": "e8b6c22c250a26bb620bf66e0b08f78a7c53e754da517ea0bbe744b7f4fc98f1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/qualification.json",
+      "path": "stage4-original-ec10/qualification.json",
+      "presentation": "bundle",
+      "bytes": 15011,
+      "mode": "0o644",
+      "sha256": "85a2af0bc5c3d72d605f8e9d85d3a0611cce71ec9f4aa7ca5fcc925ede1d69dd"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R",
+      "path": "stage4/benchmarks/r-dibble-dplyr/helpers.R",
+      "presentation": "plain",
+      "bytes": 4098,
+      "mode": "0o644",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "path": "stage4/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "presentation": "plain",
+      "bytes": 8386,
+      "mode": "0o644",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "path": "stage4/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "presentation": "plain",
+      "bytes": 2620,
+      "mode": "0o644",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "path": "stage4/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "presentation": "plain",
+      "bytes": 12810,
+      "mode": "0o644",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "path": "stage4/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "presentation": "plain",
+      "bytes": 6118,
+      "mode": "0o644",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-double-memory.R",
+      "path": "stage4/benchmarks/r-dibble-dplyr/owned-double-memory.R",
+      "presentation": "plain",
+      "bytes": 3198,
+      "mode": "0o644",
+      "sha256": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-double.R",
+      "path": "stage4/benchmarks/r-dibble-dplyr/owned-double.R",
+      "presentation": "plain",
+      "bytes": 13771,
+      "mode": "0o644",
+      "sha256": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-heap.R",
+      "path": "stage4/benchmarks/r-dibble-dplyr/owned-heap.R",
+      "presentation": "plain",
+      "bytes": 3906,
+      "mode": "0o644",
+      "sha256": "cfe7259861d558b6ffdd48f0b05921269ca209aea0cd28d8d3ebe82808dd5f58"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "path": "stage4/benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "presentation": "plain",
+      "bytes": 9934,
+      "mode": "0o644",
+      "sha256": "5ee991fdbb5e01ed5b5a5efcd1215be664db7e9d41ee82c3225655f31419f55e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "path": "stage4/benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "presentation": "plain",
+      "bytes": 8399,
+      "mode": "0o644",
+      "sha256": "16c9dd392abe7fa31f074e49fc927eb05218d7b0a10b9b2d257303e01f64390b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-owned-qualification.py",
+      "path": "stage4/benchmarks/r-dibble-dplyr/run-owned-qualification.py",
+      "presentation": "plain",
+      "bytes": 5964,
+      "mode": "0o644",
+      "sha256": "c681422c5f94328e669b5410f06fcfcacfe6b7c4f77c81d19ff5cf843a2dbab9"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/test-bundle-evidence-v1.py",
+      "path": "test-bundle-evidence-v1.py",
+      "presentation": "plain",
+      "bytes": 5047,
+      "mode": "0o644",
+      "sha256": "e9c34cd5b8b9592facd435927a016536fa83fe65669bb94961704eb641bdc0a1"
+    }
+  ]
+}

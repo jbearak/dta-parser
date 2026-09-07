@@ -1,0 +1,310 @@
+{
+  "utc": "2026-09-07T22:42:41.964543+00:00",
+  "bindings": {
+    "baseline-ec10-read-control-v3-01": {
+      "receipt_sha256": "52387111c93505c0bb6ae5a3866c910a0526dd95c09f5181f75e076bab000381",
+      "manifest": {
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-ec10-read-control-v3-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-ec10-read-control-v3-01/manifest.json",
+        "bytes": 6746,
+        "mode": "0o644",
+        "sha256": "72459aa34040c98a11e95f43107de273ce9f0013f627581dd6ee6ff52459d1d9"
+      }
+    },
+    "candidate-a2d8b6a-read-control-v3-01": {
+      "receipt_sha256": "c79324ecb650d4a10bcf835afb06e47f9bc6da11a142ebeb8715fc64e7f0f491",
+      "manifest": {
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-read-control-v3-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-read-control-v3-01/manifest.json",
+        "bytes": 6874,
+        "mode": "0o644",
+        "sha256": "ae68b1c119eae0d1c1aeab3559da7eb202af1471f184f4bcc63d6a6cac08d96c"
+      }
+    },
+    "baseline-ec10-read-control-v3-02": {
+      "receipt_sha256": "7cdc4efda6a3fec962f10089b8efb16b750e5d033c8f871179faa1b80d12d327",
+      "manifest": {
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-ec10-read-control-v3-02/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-ec10-read-control-v3-02/manifest.json",
+        "bytes": 6746,
+        "mode": "0o644",
+        "sha256": "9aa2969ef100fa8e81e16a3bb3cf9ae4d23d74d254581178728b22376cecb25a"
+      }
+    },
+    "candidate-a2d8b6a-read-control-v3-02": {
+      "receipt_sha256": "6dbdd99550a0f546f35bf75cb212dbef86038f32c75a8d06283d8d6ea7039e46",
+      "manifest": {
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-read-control-v3-02/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-read-control-v3-02/manifest.json",
+        "bytes": 6874,
+        "mode": "0o644",
+        "sha256": "8a1b94d46ea039514b2f8340aa718dc838dade245d6cef6daa7966fb01869da8"
+      }
+    },
+    "baseline-ec10-read-control-v3-03": {
+      "receipt_sha256": "12d4c78a4298f1fd3b85301c7fa535553bc3db95aeef3d9fe105160c0178b9a4",
+      "manifest": {
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-ec10-read-control-v3-03/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-ec10-read-control-v3-03/manifest.json",
+        "bytes": 6746,
+        "mode": "0o644",
+        "sha256": "b603505c7ff2e0c87234c7eb242baab0160e967a669d8bafafa2c9ea60b0fafc"
+      }
+    },
+    "candidate-a2d8b6a-read-control-v3-03": {
+      "receipt_sha256": "cd245e27e0b782a0faf81a2baa9dc1c74741a82c4b26170d848052a7d15113dd",
+      "manifest": {
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-read-control-v3-03/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-read-control-v3-03/manifest.json",
+        "bytes": 6874,
+        "mode": "0o644",
+        "sha256": "1c97dacf48f316caafec4c4ecc05f2329a8f93c574daf7175cdc63afafb2a11e"
+      }
+    }
+  },
+  "comparisons": [
+    {
+      "repeat": 1,
+      "operation": "public_table",
+      "rows": 100000,
+      "baseline_ms": 0.0304220156976953,
+      "candidate_ms": 0.264286005403847,
+      "delta_ms": 0.2338639897061517,
+      "ratio": 8.687327231373057,
+      "flag": false
+    },
+    {
+      "repeat": 1,
+      "operation": "public_column",
+      "rows": 100000,
+      "baseline_ms": 0.0283720000879839,
+      "candidate_ms": 0.26264600455761,
+      "delta_ms": 0.2342740044696261,
+      "ratio": 9.257225565456196,
+      "flag": false
+    },
+    {
+      "repeat": 1,
+      "operation": "native_elt",
+      "rows": 100000,
+      "baseline_ms": 0.109388012788258,
+      "candidate_ms": 0.567604016396217,
+      "delta_ms": 0.45821600360795905,
+      "ratio": 5.18890509049585,
+      "flag": false
+    },
+    {
+      "repeat": 1,
+      "operation": "native_pointer",
+      "rows": 100000,
+      "baseline_ms": 0.0222219969145954,
+      "candidate_ms": 0.0223860115511343,
+      "delta_ms": 0.0001640146365388985,
+      "ratio": 1.0073807334763498,
+      "flag": false
+    },
+    {
+      "repeat": 1,
+      "operation": "public_table",
+      "rows": 1000000,
+      "baseline_ms": 0.284170993836597,
+      "candidate_ms": 2.62010499136522,
+      "delta_ms": 2.335933997528623,
+      "ratio": 9.22017041919424,
+      "flag": true
+    },
+    {
+      "repeat": 1,
+      "operation": "public_column",
+      "rows": 1000000,
+      "baseline_ms": 0.283351007965393,
+      "candidate_ms": 2.62141699204221,
+      "delta_ms": 2.338065984076817,
+      "ratio": 9.25148285465911,
+      "flag": true
+    },
+    {
+      "repeat": 1,
+      "operation": "native_elt",
+      "rows": 1000000,
+      "baseline_ms": 1.09338801121339,
+      "candidate_ms": 5.67558901093435,
+      "delta_ms": 4.58220099972096,
+      "ratio": 5.1908279153672545,
+      "flag": true
+    },
+    {
+      "repeat": 1,
+      "operation": "native_pointer",
+      "rows": 1000000,
+      "baseline_ms": 0.219227018533275,
+      "candidate_ms": 0.221113004954532,
+      "delta_ms": 0.0018859864212570077,
+      "ratio": 1.0086028922615244,
+      "flag": false
+    },
+    {
+      "repeat": 2,
+      "operation": "public_table",
+      "rows": 100000,
+      "baseline_ms": 0.0304630084428936,
+      "candidate_ms": 0.242679001530632,
+      "delta_ms": 0.2122159930877384,
+      "ratio": 7.966350466847737,
+      "flag": false
+    },
+    {
+      "repeat": 2,
+      "operation": "public_column",
+      "rows": 100000,
+      "baseline_ms": 0.0285770074697211,
+      "candidate_ms": 0.262440997175872,
+      "delta_ms": 0.23386398970615088,
+      "ratio": 9.183641690052486,
+      "flag": false
+    },
+    {
+      "repeat": 2,
+      "operation": "native_elt",
+      "rows": 100000,
+      "baseline_ms": 0.109551998320967,
+      "candidate_ms": 0.567440001759678,
+      "delta_ms": 0.457888003438711,
+      "ratio": 5.179640814010386,
+      "flag": false
+    },
+    {
+      "repeat": 2,
+      "operation": "native_pointer",
+      "rows": 100000,
+      "baseline_ms": 0.0223860115511343,
+      "candidate_ms": 0.0221809896174818,
+      "delta_ms": -0.00020502193365249874,
+      "ratio": 0.9908415157749657,
+      "flag": false
+    },
+    {
+      "repeat": 2,
+      "operation": "public_table",
+      "rows": 1000000,
+      "baseline_ms": 0.286630995105952,
+      "candidate_ms": 2.63113398978021,
+      "delta_ms": 2.344502994674258,
+      "ratio": 9.179516642321328,
+      "flag": true
+    },
+    {
+      "repeat": 2,
+      "operation": "public_column",
+      "rows": 1000000,
+      "baseline_ms": 0.282326000160538,
+      "candidate_ms": 2.62633699458092,
+      "delta_ms": 2.344010994420382,
+      "ratio": 9.302497797183099,
+      "flag": true
+    },
+    {
+      "repeat": 2,
+      "operation": "native_elt",
+      "rows": 1000000,
+      "baseline_ms": 1.09338799666148,
+      "candidate_ms": 5.67886901262682,
+      "delta_ms": 4.585481015965341,
+      "ratio": 5.193827836016601,
+      "flag": true
+    },
+    {
+      "repeat": 2,
+      "operation": "native_pointer",
+      "rows": 1000000,
+      "baseline_ms": 0.220539004658349,
+      "candidate_ms": 0.2188170037698,
+      "delta_ms": -0.0017220008885489857,
+      "ratio": 0.9921918533584722,
+      "flag": false
+    },
+    {
+      "repeat": 3,
+      "operation": "public_table",
+      "rows": 100000,
+      "baseline_ms": 0.030586015782319,
+      "candidate_ms": 0.26445000548847,
+      "delta_ms": 0.23386398970615097,
+      "ratio": 8.646108318604275,
+      "flag": false
+    },
+    {
+      "repeat": 3,
+      "operation": "public_column",
+      "rows": 100000,
+      "baseline_ms": 0.0288230075966567,
+      "candidate_ms": 0.262194997048937,
+      "delta_ms": 0.2333719894522803,
+      "ratio": 9.096725807314781,
+      "flag": false
+    },
+    {
+      "repeat": 3,
+      "operation": "native_elt",
+      "rows": 100000,
+      "baseline_ms": 0.10947001283057,
+      "candidate_ms": 0.567481009056792,
+      "delta_ms": 0.458010996226222,
+      "ratio": 5.183894606234305,
+      "flag": false
+    },
+    {
+      "repeat": 3,
+      "operation": "native_pointer",
+      "rows": 100000,
+      "baseline_ms": 0.0222630042117089,
+      "candidate_ms": 0.0223450042540208,
+      "delta_ms": 8.200004231189925e-05,
+      "ratio": 1.0036832424560551,
+      "flag": false
+    },
+    {
+      "repeat": 3,
+      "operation": "public_table",
+      "rows": 1000000,
+      "baseline_ms": 0.284704001387581,
+      "candidate_ms": 2.40592101181392,
+      "delta_ms": 2.1212170104263386,
+      "ratio": 8.450604839018844,
+      "flag": true
+    },
+    {
+      "repeat": 3,
+      "operation": "public_column",
+      "rows": 1000000,
+      "baseline_ms": 0.282572000287473,
+      "candidate_ms": 2.62535299407318,
+      "delta_ms": 2.3427809937857074,
+      "ratio": 9.29091697479684,
+      "flag": true
+    },
+    {
+      "repeat": 3,
+      "operation": "native_elt",
+      "rows": 1000000,
+      "baseline_ms": 1.09125601011328,
+      "candidate_ms": 5.67952501296531,
+      "delta_ms": 4.58826900285203,
+      "ratio": 5.204576158417432,
+      "flag": true
+    },
+    {
+      "repeat": 3,
+      "operation": "native_pointer",
+      "rows": 1000000,
+      "baseline_ms": 0.219185996684246,
+      "candidate_ms": 0.220579997403547,
+      "delta_ms": 0.001394000719301014,
+      "ratio": 1.0063598986266864,
+      "flag": false
+    }
+  ],
+  "scope": "Root CSV arithmetic and successful receipt bindings. All six children were sequential under explicit three-agent quiet hold. Raw-sample/state/full binding audits are separate pending reviewer work.",
+  "assessment": "Public pre-extracted character anyNA retains the baseline/candidate gap in all three pairs; matched rooted read-only pointer loops show essentially equal between-source times. This supports the per-element access path rather than table lookup. The separately compiled STRING_ELT loop has different absolute cost from baseanyNA, so its timing is not a measurement of the internal base loop or isolated getter latency. This does not fix or establish irreducibility of any read flag, nor attribute every integer/logical/factor flag.",
+  "failed_preparation": "Original baseline read-control-v2-01 failed in untimed NA constructor oracle. Both versions normalize those table strings; separate observations and corrected prefix checks preserve that established policy. No original failure relabeled."
+}

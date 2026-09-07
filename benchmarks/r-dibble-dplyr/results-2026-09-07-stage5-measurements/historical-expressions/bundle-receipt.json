@@ -1,0 +1,21 @@
+{
+  "plain_files": 52,
+  "bundled_files": 462,
+  "selected_bytes": 37418020,
+  "selection": {
+    "bytes": 212920,
+    "mode": "0o644",
+    "sha256": "634ae6d45e1e9daa6d7ee9bc3610e6da61266842d49f13af256516c2cac383ca"
+  },
+  "recipe": {
+    "bytes": 7149,
+    "mode": "0o644",
+    "sha256": "d3167d6290b79d4ab5637c42b14cc0b8d83402c7245c771f3a474db4009af9e7"
+  },
+  "archive": {
+    "bytes": 5669198,
+    "mode": "0o644",
+    "sha256": "798f2d0b10c62dc02fd9071704f8a4b1ed429da64d92764ff250950c3ee2525b"
+  },
+  "scope": "Explicit selected-byte and mode consistency. Tar contents are read without filesystem extraction. No experiment rerun, authenticity assertion, concurrent-mutation guarantee, or qualification of omitted runtime inputs."
+}

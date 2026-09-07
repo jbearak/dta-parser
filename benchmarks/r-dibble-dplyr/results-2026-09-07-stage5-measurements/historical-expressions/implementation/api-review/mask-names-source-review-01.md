@@ -1,0 +1,7 @@
+# Mask name-history source review
+
+Source review clear for `ad976f7a6854be19db08549a3ef87373448fdfe9` above repair-guard `622ffc194372d9882a78637077dff42f657b14a3`. Exact-install and completed full-test evidence are still pending this report; no measurement acceptance is implied.
+
+The sole production edit replaces `union(state$names, name)` with a membership-guarded append. This is equivalent for the internal plain-character history, initialized empty and populated one scalar column name at a time: first occurrence order and uniqueness are preserved, existing names do not move, and removal still changes only `state$current`. Historical names therefore remain available to `forget()` after removal or re-addition, so every captured generation uses the same call-local expiry behavior as before. Generation weak references, value/chunk capture, bindings and cleanup are unchanged. Initial input names remain validated against missing, empty and duplicate names; the added names are the existing normalized expression names. There is no public API or namespace change.
+
+The added public regression removes and re-adds `x`, reads both original and replacement captures during the call, removes `x` again, checks output order and replacement values, checks both late captures fail with the existing shared-promise warning behavior, and verifies later source mutation leaves the result isolated. It exercises the lifetime history rather than mirroring the new membership expression. The exact-install/full gate must pass before the variant is cleared for measurement.
