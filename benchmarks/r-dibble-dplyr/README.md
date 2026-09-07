@@ -303,12 +303,14 @@ cumulative R allocations and overlapping native byte counters remain separate.
 Use `run-atomic-qualification.py` with fresh `install.R` libraries and committed
 runner files. It guards its own source and all five R dependencies, including
 the shared `helpers.R`, and records runtime identities and SHA-256 manifests.
-Both installations must use the same runner revision. For an exact candidate
-commit in `atomic_candidate` and a quiet measurement window:
+Both installations must use the same runner revision. The example below
+reproduces the qualified `c8ca0a4` candidate using its committed runner files.
+Run it in a quiet measurement window:
 
 ```sh
 atomic_bench_root=$(mktemp -d /tmp/dibble-atomic-benchmark.XXXXXX)
 atomic_baseline=ec10a6ac34602f3bd691e8043019c1b479babda4
+atomic_candidate=c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe
 Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
   "$atomic_bench_root/baseline-library" "$atomic_baseline"
 Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
