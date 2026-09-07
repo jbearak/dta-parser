@@ -104,8 +104,8 @@ reviews and the following exact-source gates pass:
   helper expansion forms, and 8,859 focused assertions, including 187 expression
   assertions. Two Arrow and one profiler capability skips, plus four established
   warnings, remain explicit. This is not minimum-runtime profiling acceptance.
-- The full expression matrix retains 50 series and 350 raw samples per source.
-  All 100 comparisons recalculate with zero candidate-direct flags against predecessor
+- The full expression matrix retains 50 series and 350 raw samples. All 100
+  comparisons recalculate with zero candidate-direct flags against predecessor
   or same-source safe reference. One safe-reference pipeline flag did not recur
   in three paired repeats; the original flagged observation remains retained.
 - Paired expression writes retain 40 series and 280 samples with no same-mode
@@ -134,13 +134,11 @@ No overall read-performance acceptance or irreducibility claim is made.
 
 The minimum evidence merged normally in PR #200 as
 `220ac07a33323398f4b78d4cb23fd9ba9bd808be`; its package tree is unchanged. Helper
-evidence PR #201 at `b2e5c47` has all 15 CI checks passing. At the 2026-09-07
-23:29 UTC checkpoint, full CodeRabbit review `5135750178` has identified two
-archive issues: current repeat-command guidance and a missing file-mode check.
-Those fixes and subsequent latest-head gates remain required before normal
-merge. The documentation coverage warning is nonblocking. Evidence archives
-and the implementation retain focused external review scopes. Stage 5 remains active until its normal implementation
-merge; stages 6 through 9 and final downstream validation remain required.
+evidence PR #201 at `b2e5c47` still requires actual latest-head substantive
+review and CI before normal merge. Evidence archives and the implementation
+will retain focused external review scopes. Stage 5 remains active until its
+normal implementation merge; stages 6 through 9 and final downstream validation
+remain required.
 
 The earlier exact clean R 4.6.0 evaluator source `4900dc8` passes 179 expression
 assertions without failures, skips or warnings. Its broader focused run passes
@@ -154,14 +152,10 @@ host parser and final package checks.
 The [diagnostic archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-diagnostics/README.md)
 preserves prior implementation failures and source-review reproductions.
 Both independent reviews clear the historical qualification and combined-host
-inclusions, all five measurement/diagnosis bundles, and the plain read-disposition
-proof archive. The assembled 247-path measurement evidence passed both actual
-diff reviews and is committed as `d152775b1c7fa3824d922f794b3913e37addbffb`,
-unpublished pending its preceding normal merges. The final implementation
-assembly has 209 changed paths and retains the tested a2 package tree and gate
-helpers; its actual assembled-diff reviews are in progress. Earlier prose
-snapshots remain unchanged in the proof archive. External substantive review,
-CI and normal merge remain required before Stage 5 completes.
+inclusions, and the current minimum/expression/owned evidence bundles. Historical
+expression diagnosis and final read-bundle inclusion reviews remain in progress.
+External substantive review, CI and normal merge remain required before Stage 5
+completes.
 
 The [preparation archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/README.md)
 preserves the 181-file selective minimum preview and both complete indexed

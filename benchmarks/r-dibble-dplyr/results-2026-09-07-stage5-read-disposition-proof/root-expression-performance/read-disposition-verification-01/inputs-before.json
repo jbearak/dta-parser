@@ -1,0 +1,292 @@
+{
+  "inputs": [
+    {
+      "bytes": 3699840,
+      "mode": "0o555",
+      "path": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+      "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+      "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+    },
+    {
+      "bytes": 34640,
+      "mode": "0o755",
+      "path": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+    },
+    {
+      "bytes": 34680,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage3-validation/R-4-6-1-altrep.c",
+      "resolved": "/private/tmp/dta-direct-stage3-validation/R-4-6-1-altrep.c",
+      "sha256": "e40228b39c989c1f842bb26fd116bf8bc44c5349e8a5deb484bca95a6eb9efe2"
+    },
+    {
+      "bytes": 82817,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage3-validation/R-4-6-1-coerce.c",
+      "resolved": "/private/tmp/dta-direct-stage3-validation/R-4-6-1-coerce.c",
+      "sha256": "e0bb2f86a00a7cf6fc04c5f38c42d7de16dc4f0c9b344f5a5fede042bc697767"
+    },
+    {
+      "bytes": 35403,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage3-validation/R-4-6-1-summary.c",
+      "resolved": "/private/tmp/dta-direct-stage3-validation/R-4-6-1-summary.c",
+      "sha256": "61bb7974d6b11219b1119e4743c3830a3e7c3a784792f6166ab5d407c1e6bf49"
+    },
+    {
+      "bytes": 13377,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/CONTEXT.md",
+      "resolved": "/private/tmp/dta-direct-stage4/CONTEXT.md",
+      "sha256": "53308a3a863ff3cb7b572fd2de3914d815372a10daf615436e19c4ddbe202945"
+    },
+    {
+      "bytes": 4098,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+    },
+    {
+      "bytes": 8386,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "bytes": 2620,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "resolved": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2"
+    },
+    {
+      "bytes": 12810,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "resolved": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    },
+    {
+      "bytes": 6118,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2"
+    },
+    {
+      "bytes": 9934,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "resolved": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "sha256": "5ee991fdbb5e01ed5b5a5efcd1215be664db7e9d41ee82c3225655f31419f55e"
+    },
+    {
+      "bytes": 7631,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md",
+      "resolved": "/private/tmp/dta-direct-stage4/docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md",
+      "sha256": "16e3133b28faa12b3e9fdc3d5ace1c26bc1e021ee6d7b6cd7d9b9541a9a749f7"
+    },
+    {
+      "bytes": 10965,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/r-package/dtatools/NAMESPACE",
+      "resolved": "/private/tmp/dta-direct-stage4/r-package/dtatools/NAMESPACE",
+      "sha256": "94a412e9883a444d27ea621362f8df4dc513b0fa7a3cb7eb4ae6bb0933fc1ff3"
+    },
+    {
+      "bytes": 154005,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/r-package/dtatools/R/mutate-data.R",
+      "resolved": "/private/tmp/dta-direct-stage4/r-package/dtatools/R/mutate-data.R",
+      "sha256": "337477c4dfbd67d1f1f9c758a7ac49ec2048d0f2ae727bf1f8880c1b7ed76bc0"
+    },
+    {
+      "bytes": 41614,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4/r-package/dtatools/src/owned-columns.h",
+      "resolved": "/private/tmp/dta-direct-stage4/r-package/dtatools/src/owned-columns.h",
+      "sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1"
+    },
+    {
+      "bytes": 21200,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4-validation/c8ca0a4-performance-summary.json",
+      "resolved": "/private/tmp/dta-direct-stage4-validation/c8ca0a4-performance-summary.json",
+      "sha256": "d83614a69f235b31dc4c7202097f789c60420251b055277e44c2c3ced046f89c"
+    },
+    {
+      "bytes": 4340,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4-validation/compare-atomic.py",
+      "resolved": "/private/tmp/dta-direct-stage4-validation/compare-atomic.py",
+      "sha256": "4a9051ce97c5a84ff580f0ddda4cce2692c847695d0500ad8c239618e312b9bf"
+    },
+    {
+      "bytes": 2614,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4-validation/read-dispatch-audit-7d56080.json",
+      "resolved": "/private/tmp/dta-direct-stage4-validation/read-dispatch-audit-7d56080.json",
+      "sha256": "015ac420000f4c01d8b115c04fb3ccf7d5dad59395c59e1a635c6193f9c3eb4a"
+    },
+    {
+      "bytes": 1436,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic-session.txt",
+      "resolved": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic-session.txt",
+      "sha256": "87a31ddc4c686ceecbcebd927f1bbc55d3f5e1f68ab5f683a25962a66be05fd8"
+    },
+    {
+      "bytes": 22030,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic.csv",
+      "resolved": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/owned-atomic.csv",
+      "sha256": "999a185279e66a21bb20b5155a6651b42ded2cb55ad187e526951242370c1928"
+    },
+    {
+      "bytes": 16659,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/root-manifest.json",
+      "resolved": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-baseline/root-manifest.json",
+      "sha256": "cc066b4f708cc07a9aafcd1ad5763922ce1bb042383cdfc657822a9f27b2ced9"
+    },
+    {
+      "bytes": 1446,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/owned-atomic-session.txt",
+      "resolved": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/owned-atomic-session.txt",
+      "sha256": "de698e45025df3f90a56a6b93a41bb58dec771adcb9cff57861a10eaa16fe249"
+    },
+    {
+      "bytes": 21000,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/owned-atomic.csv",
+      "resolved": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/owned-atomic.csv",
+      "sha256": "dff9b476ba7f43557d5603969ea36767e9b6cb3bb3715cf04676ccc31060bb93"
+    },
+    {
+      "bytes": 16576,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/root-manifest.json",
+      "resolved": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-candidate/root-manifest.json",
+      "sha256": "d713382ebeac521689745beee906eebc0a520fa792ce65717784e95516d73d9f"
+    },
+    {
+      "bytes": 35420,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-comparison/operation-comparison.csv",
+      "resolved": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/atomic-comparison/operation-comparison.csv",
+      "sha256": "cb012d19156b18ded1a426ab8e7dce896ab03cc62415aab4f67033bbf7e8da71"
+    },
+    {
+      "bytes": 8386,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "bytes": 12810,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "resolved": "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    },
+    {
+      "bytes": 74063,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance-progress.md",
+      "resolved": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance-progress.md",
+      "sha256": "3990e083d01162f4b850cda60cccb44d0a97b5021ae0d628840d4e299488632f"
+    },
+    {
+      "bytes": 41151,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance.md",
+      "resolved": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance.md",
+      "sha256": "e36f0cce1c8fa9dc7e01c1d59396e25114d611db9ddf7d1ab2873260d8f8517d"
+    },
+    {
+      "bytes": 9411,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/docs/research/stage5-base-r-read-costs.md",
+      "resolved": "/private/tmp/dta-direct-stage5/docs/research/stage5-base-r-read-costs.md",
+      "sha256": "69f94ecafffedf6217a019455fde16d5dcb984f86cb42a53562bbdf2fbc3260d"
+    },
+    {
+      "bytes": 41614,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/r-package/dtatools/src/owned-columns.h",
+      "resolved": "/private/tmp/dta-direct-stage5/r-package/dtatools/src/owned-columns.h",
+      "sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1"
+    },
+    {
+      "bytes": 6691,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-minimum-preflight/r46-source/R-4.6.1/src/include/R_ext/Altrep.h",
+      "resolved": "/private/tmp/dta-direct-stage5-minimum-preflight/r46-source/R-4.6.1/src/include/R_ext/Altrep.h",
+      "sha256": "299bbc137d14e3fd83daf1b9c1eb46f4f2f34dc1c9ee048d1ccd762f5e933a3a"
+    },
+    {
+      "bytes": 12404,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-minimum-preflight/r46-source/R-4.6.1/src/library/base/R/factor.R",
+      "resolved": "/private/tmp/dta-direct-stage5-minimum-preflight/r46-source/R-4.6.1/src/library/base/R/factor.R",
+      "sha256": "54f886cb89f424db432b9bf41d48d87606a768fd0225745cda60e2695dd8d6b4"
+    },
+    {
+      "bytes": 1479,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-minimum-preflight/r46-source/R-4.6.1/src/library/base/R/mean.R",
+      "resolved": "/private/tmp/dta-direct-stage5-minimum-preflight/r46-source/R-4.6.1/src/library/base/R/mean.R",
+      "sha256": "55d8e9dcc4d6bf62678e8824224481554921a9b704ac5e5d3d3a6e865df4d76e"
+    },
+    {
+      "bytes": 25508,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-read-cost-preparation.inputs.json",
+      "resolved": "/private/tmp/dta-direct-stage5-read-cost-preparation.inputs.json",
+      "sha256": "06b20266f89ea7f1daf47c67709c83ab43bce5a364b33db80152312cccaa5295"
+    },
+    {
+      "bytes": 13317,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-read-cost-preparation.md",
+      "resolved": "/private/tmp/dta-direct-stage5-read-cost-preparation.md",
+      "sha256": "64a99e2cec5d6f648fbb6beea8bf0a7836a68eb0ad4d21584785f80806e1028d"
+    },
+    {
+      "bytes": 37861,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/atomic-read-repeat-v2-root-assessment-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/atomic-read-repeat-v2-root-assessment-01.json",
+      "sha256": "31e2d7d9e671d521c46398c1a6d4bbaa24c27ee7d900d660f3e61c23a3da6c82"
+    },
+    {
+      "bytes": 10927,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-control-v3-root-assessment-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-control-v3-root-assessment-01.json",
+      "sha256": "921f7beeda4de80be9c05948fdbdf19559db4f52d6c323559b240a4cdad05014"
+    },
+    {
+      "bytes": 21843,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-count-control-v1-root-assessment-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-count-control-v1-root-assessment-01.json",
+      "sha256": "ef53ccc873e83aa4fd5efb7e6faccd6fae290b6b90815e5d5947e0826fca3f09"
+    },
+    {
+      "bytes": 6786,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/verify-read-disposition-v1.py",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/verify-read-disposition-v1.py",
+      "sha256": "bf0230f7d95c8332e30afdd14bf10c4506469150bfde5fef52f1ab02a9b5304f"
+    }
+  ],
+  "scope": "Current source/hash and saved-assessment arithmetic verification. No historical runtime reconstruction, new R execution or performance experiment. Completed benchmark/raw audits retain their independent receipts."
+}

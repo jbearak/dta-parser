@@ -1,0 +1,29 @@
+{
+  "scope": "Post-execution snapshot of the current v2 prose, at committed e23d9571af4c20e07901c7bb9499c626e3f342df, for preservation across later assembly status refreshes. This is not an original pre-run snapshot.",
+  "files": [
+    {
+      "original": "/private/tmp/dta-direct-stage5/docs/research/stage5-base-r-read-costs.md",
+      "snapshot": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-prose-v2-postrun-snapshot/docs/research/stage5-base-r-read-costs.md",
+      "sha256": "b1f63b362d1a9a7ec5f5912c9ea0a2172f6ee3e54502b6c2914d29272741f942",
+      "bytes": 9464,
+      "mode": "0o644",
+      "matches_v2_before": true
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance.md",
+      "snapshot": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-prose-v2-postrun-snapshot/docs/plans/dibble-result-performance.md",
+      "sha256": "e36f0cce1c8fa9dc7e01c1d59396e25114d611db9ddf7d1ab2873260d8f8517d",
+      "bytes": 41151,
+      "mode": "0o644",
+      "matches_v2_before": true
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance-progress.md",
+      "snapshot": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-prose-v2-postrun-snapshot/docs/plans/dibble-result-performance-progress.md",
+      "sha256": "3972d1323b450039e4e7a1f69512e9895c46749142f3cbfe82474e6984396d36",
+      "bytes": 74074,
+      "mode": "0o644",
+      "matches_v2_before": true
+    }
+  ]
+}
