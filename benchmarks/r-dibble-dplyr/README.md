@@ -198,3 +198,81 @@ macOS `/usr/bin/time -l`. Run the driver's CLI regression checks with
 `python3 benchmarks/r-dibble-dplyr/test-owned-qualification.py`. They exercise
 normal Python, `-O` and `PYTHONOPTIMIZE=1` using disposable Git fixtures and
 synthetic subprocess output; they do not run R workloads.
+
+## Owned strings, logicals and integer backing
+
+`owned-atomic.R` qualifies ordinary `dta_string`, declared character, logical,
+factor and ordered-factor columns. The public dibble constructor continues to
+promote bare integer columns to Stata numeric storage, so factors exercise the
+table's ordinary integer backing. The native mutation qualification separately
+covers captured bare integer values. Public `replace_values()` continues to
+reject factor targets; the public write matrix covers both string forms and
+logicals.
+
+The operation matrix contains 206 rows: direct and equally safe delegated
+selectors and five-verb pipelines, plus applicable reads, aggregates, coercions,
+exports, filtering, row subsets and DTA/Arrow I/O. All five types use 100,000 and
+1,000,000 rows. Selectors use 16 columns; reads use eight. There are also 126
+post-read selector checks and 18 separate first shared, subsequent private and
+full-replacement write profiles. Private-write preparation and measurement
+change different rows. A later source write checks the reverse direction of
+result isolation.
+
+Deterministic ordinary vectors supply independent value, type and column
+attribute oracles. Table metadata checks include compact row-name bookkeeping.
+File-format expectations explicitly include DTA's logical-to-byte and
+factor-to-labelled-long conversions and Arrow's preservation of logicals and
+factor levels. The runner checks the expected factor conversion warning; other
+warnings remain visible. Fixture creation and all oracle checks occur outside
+timing and allocation profiles. The profiled result and `bench`'s retained
+preflight result are checked as well as the initial result. Writers' final timed
+files are reopened and compared with the independent oracle.
+
+The source backing is checked before and after each read, profile and timed
+phase. Returned aliases remain alive through the subsequent selector. Candidate
+selectors must allocate under 1 MB and copy no payloads. Private string scan
+counters also require zero unchanged-column validation scans, because low R
+allocation alone cannot establish that values were not scanned. Scan counts,
+cumulative R allocations and overlapping native byte counters remain separate.
+
+Use `run-atomic-qualification.py` with fresh `install.R` libraries and committed
+runner files. It guards its own source and all five R dependencies, including
+the shared `helpers.R`, and records runtime identities and SHA-256 manifests.
+Both installations must use the same runner revision. For an exact candidate
+commit in `atomic_candidate` and a quiet measurement window:
+
+```sh
+atomic_bench_root=$(mktemp -d /tmp/dibble-atomic-benchmark.XXXXXX)
+atomic_baseline=ec10a6ac34602f3bd691e8043019c1b479babda4
+Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
+  "$atomic_bench_root/baseline-library" "$atomic_baseline"
+Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
+  "$atomic_bench_root/candidate-library" "$atomic_candidate"
+python3 benchmarks/r-dibble-dplyr/run-atomic-qualification.py operations . \
+  "$atomic_bench_root/baseline" "$atomic_bench_root/baseline-library" \
+  "$atomic_baseline" "$atomic_candidate" baseline
+python3 benchmarks/r-dibble-dplyr/run-atomic-qualification.py operations . \
+  "$atomic_bench_root/candidate" "$atomic_bench_root/candidate-library" \
+  "$atomic_candidate" "$atomic_candidate" candidate
+python3 benchmarks/r-dibble-dplyr/run-atomic-qualification.py memory . \
+  "$atomic_bench_root/baseline" "$atomic_bench_root/baseline-library" \
+  "$atomic_baseline" "$atomic_candidate" baseline
+python3 benchmarks/r-dibble-dplyr/run-atomic-qualification.py memory . \
+  "$atomic_bench_root/candidate" "$atomic_bench_root/candidate-library" \
+  "$atomic_candidate" "$atomic_candidate" candidate
+```
+
+Each memory command launches 30 isolated macOS processes: rename, five verbs
+and 50 verbs, at both row counts, for all five types. It checks flat handle depth,
+backing identity, retained heap with source and result alive, and release after
+the last result is dropped. Whole-process peak RSS includes startup, fixtures
+and validation, so it is not an operation-only allocation peak.
+
+The driver rejects existing operation directories and memory logs, verifies
+complete case matrices and existing evidence hashes, and preserves failed-run
+diagnostics. Use a new output directory for a retry. Its explicit integrity
+exceptions remain enabled under Python optimization. Run
+`python3 benchmarks/r-dibble-dplyr/test-atomic-qualification.py` for the 87
+synthetic CLI guard cases across default Python, `-O` and `PYTHONOPTIMIZE=1`.
+These guard tests perform no R timing. The Stage 3 runners and historical raw
+evidence keep their original bytes and identities.

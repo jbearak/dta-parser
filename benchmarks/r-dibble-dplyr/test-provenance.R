@@ -6,18 +6,25 @@ source("benchmarks/r-dibble-dplyr/helpers.R")
 library_path <- normalizePath(args[[1L]], mustWork = TRUE)
 source_sha <- args[[2L]]
 validate_benchmark_install(library_path, source_sha)
-check_owned_runner_identity <- function(temporary) {
-    paths <- c("helpers.R", "owned-double-helpers.R", "owned-double.R", "owned-double-memory.R")
+check_owned_runner_identity <- function(temporary, family) {
+    paths <- if (family == "double") {
+        c("helpers.R", "owned-double-helpers.R", "owned-double.R", "owned-double-memory.R")
+    } else {
+        c("helpers.R", "owned-double-helpers.R", "owned-atomic-helpers.R",
+          "owned-atomic.R", "owned-atomic-memory.R")
+    }
     runner_dir <- file.path("benchmarks", "r-dibble-dplyr")
-    copy_root <- file.path(temporary, "runner-identity")
+    copy_root <- file.path(temporary, paste0("runner-identity-", family))
     dir.create(file.path(copy_root, runner_dir), recursive = TRUE)
     stopifnot(file.copy(file.path(runner_dir, paths), file.path(copy_root, runner_dir)))
     runner <- new.env(parent = globalenv())
-    sys.source(file.path(runner_dir, "owned-double-helpers.R"), envir = runner)
+    helper <- if (family == "double") "owned-double-helpers.R" else "owned-atomic-helpers.R"
+    sys.source(file.path(runner_dir, helper), envir = runner)
     previous <- setwd(copy_root)
     on.exit(setwd(previous), add = TRUE)
+    identity_function <- if (family == "double") runner$owned_runner_identity else runner$atomic_identity
     identity <- function() grep("^runner_md5 ",
-        runner$owned_runner_identity(source_sha, library_path, "candidate"), value = TRUE)
+        identity_function(source_sha, library_path, "candidate"), value = TRUE)
     before <- identity()
     expected <- paste("runner_md5", file.path(runner_dir, paths),
                       unname(tools::md5sum(file.path(runner_dir, paths))))
@@ -36,7 +43,8 @@ main <- function() {
     temporary <- tempfile("benchmark-provenance-test-")
     dir.create(temporary)
     on.exit(unlink(temporary, recursive = TRUE), add = TRUE)
-    check_owned_runner_identity(temporary)
+    check_owned_runner_identity(temporary, "double")
+    check_owned_runner_identity(temporary, "atomic")
     copied_library <- file.path(temporary, "copied-library")
     dir.create(copied_library)
     stopifnot(file.copy(file.path(library_path, "dtatools"), copied_library, recursive = TRUE))
@@ -47,7 +55,7 @@ main <- function() {
     description <- file.path(package_path, "DESCRIPTION")
     saved_description <- readBin(description, "raw", n = file.info(description)$size)
     runners <- c("run.R", "columns.R", "run-rows.R", "row-memory.R", "repeat-group-reconstruct.R",
-                 "owned-double.R", "owned-double-memory.R")
+                 "owned-double.R", "owned-double-memory.R", "owned-atomic.R", "owned-atomic-memory.R")
     expected_errors <- c(
         mismatch = "Benchmark SOURCE_SHA does not match installation provenance",
         missing = "Missing benchmark installation provenance; use install.R",
@@ -72,6 +80,8 @@ main <- function() {
                 "row-memory.R" = c(copied_library, "double", claimed),
                 "owned-double.R" = c(copied_library, output, claimed, "candidate", "3"),
                 "owned-double-memory.R" = c(copied_library, claimed, "candidate", "rename", "100"),
+                "owned-atomic.R" = c(copied_library, output, claimed, "candidate", "3"),
+                "owned-atomic-memory.R" = c(copied_library, claimed, "candidate", "string", "rename", "100"),
                 c(copied_library, output, claimed))
             status <- system2(file.path(R.home("bin"), "Rscript"),
                 vapply(c("--vanilla", file.path("benchmarks/r-dibble-dplyr", runner),
