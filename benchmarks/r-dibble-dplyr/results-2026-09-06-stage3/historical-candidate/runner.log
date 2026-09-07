@@ -1,0 +1,22 @@
+Case double 100000 32
+rename typed_tibble 0.191 ms 0.009 MB; dibble 0.686 ms 0.095 MB
+select_all typed_tibble 0.211 ms 0.013 MB; dibble 0.632 ms 0.097 MB
+mutate_symbol typed_tibble 0.246 ms 0.009 MB; dibble 0.824 ms 0.095 MB
+filter_half typed_tibble 13.014 ms 15.408 MB; dibble 13.297 ms 15.492 MB
+pipeline_five typed_tibble 1.252 ms 0.046 MB; dibble 3.915 ms 0.473 MB
+mutate_arithmetic typed_tibble 2.065 ms 15.611 MB; dibble 3.166 ms 15.695 MB
+Case double 1000000 16
+rename typed_tibble 0.191 ms 0.003 MB; dibble 0.484 ms 0.084 MB
+select_all typed_tibble 0.204 ms 0.003 MB; dibble 0.453 ms 0.084 MB
+mutate_symbol typed_tibble 0.213 ms 0.002 MB; dibble 0.575 ms 0.083 MB
+filter_half typed_tibble 54.511 ms 90.003 MB; dibble 54.944 ms 90.084 MB
+pipeline_five typed_tibble 1.088 ms 0.010 MB; dibble 2.890 ms 0.416 MB
+mutate_arithmetic typed_tibble 18.392 ms 156.004 MB; dibble 18.546 ms 156.085 MB
+Case double 100 1000
+rename typed_tibble 0.592 ms 0.248 MB; dibble 11.650 ms 0.474 MB
+select_all typed_tibble 0.656 ms 0.438 MB; dibble 11.652 ms 0.602 MB
+mutate_symbol typed_tibble 1.582 ms 0.179 MB; dibble 16.265 ms 0.384 MB
+filter_half typed_tibble 67.702 ms 0.541 MB; dibble 79.655 ms 0.698 MB
+pipeline_five typed_tibble 8.541 ms 0.893 MB; dibble 91.454 ms 1.921 MB
+mutate_arithmetic typed_tibble 1.719 ms 0.188 MB; dibble 16.594 ms 0.346 MB
+All equivalence, input preservation, metadata, and compact-source checks passed.

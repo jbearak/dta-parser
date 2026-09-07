@@ -9,7 +9,64 @@ decisions are recorded in that plan.
 
 ## Stages 1 and 2 complete, Stage 3 active
 
-Latest Stage 3 working checkpoint: native runner round 9 passes every original
+Stage 3 implementation and local acceptance use source
+`45f2ba489a6e0a2f25d1728eef0a84a6b2fde7b7`. The
+[measured report](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage3.md)
+retains the exact Stage 2 baseline, the rejected first candidate, all paired
+repeats and memory evidence. Both final operation pairs and the historical
+matrix pass the agreed read-regression threshold. No R package or measured
+runner file has changed since the accepted source. Later evidence, reproduction
+instructions and provenance-test changes are recorded separately.
+
+The exact native runner passes every original 159 assertion and all 15 added
+provenance/readiness conditions. Original budgets remain unchanged. Repeated
+generation at 400 and 1,600 columns takes 0.122 and 0.815 seconds and profiles
+3,256 and 12,856 R bytes above the original 1,000-byte threshold. The saved rename
+allocation gate passes, with its largest dibble allocation at 40,056 bytes.
+Root's 237 ownership/compatibility cases and 30 separate before/after read-backing
+checks pass. Independent API and storage reviewers have closed the actual
+source, tests, benchmark fixtures, report calculations and provenance reviews.
+
+The final source archive passes the complete R suite with 15,478 assertions,
+four established test warnings and no failures or skips. Required conformance
+passes 22 TypeScript fixtures with 32,085 cell comparisons, ten deterministic
+native cases, the fixture oracle and a fresh R build/check. The standard check
+has the established three warnings and two notes. An additional `--as-cran`
+check returns no errors, five warnings and four notes; it is a separate check
+mode, not a clean or same-mode baseline result. Its extra diagnostics include
+the unavailable `checkbashisms` tool and inherited undeclared test imports.
+
+Rust formatting, Clippy, 278 workspace tests, documentation and package
+verification pass. The isolated offline bridge passes formatting, checking and
+17 tests. All 32 archive/vendor unit checks, vendor integrity, Rust source-hash
+checks and the corpus framework pass. Haven conformance runs without skips
+after a permitted loopback-server retry; Haven 2.5.5 helper and labelled 2.16.0
+interoperability also pass. Initial network-blocked Cargo/R checks and the
+sandbox-skipped loopback attempt remain retained and are not acceptance evidence.
+
+Fresh source and macOS binary archives contain the same NOTICE as their
+installed packages. All 106 exports are unchanged. Every one of the 686 original
+git-export files remains byte-identical after checking. The provenance driver
+now tests both owned-double runners and passes 28 rejection/no-output cases,
+seven usage counterchecks, matching output and locale/copy checks. Full logs
+and artifact hashes are under
+`/private/tmp/dta-direct-stage3-validation/checks-45f2ba4/`.
+
+The downstream comparison on exact source is byte-identical to the preserved
+Stage 2 output: 499 tests, the same four existing integration failure blocks
+and two skips, with no column-reallocation warning. All 454 tracked/untracked
+source hashes, branch/HEAD/status/diff and the ignored output file's size and
+mtime remain unchanged. This closes Stage 3 compatibility comparison; it does
+not turn that downstream suite into a passing suite or replace the final
+integrated epic validation.
+
+The evidence and reproduction instructions are ready. The PR, external
+CI/CodeRabbit review and normal merge remain pending. Stage 3 stays active until
+those gates finish; stages 4 through 9 have not begun.
+
+### Earlier Stage 3 checkpoints
+
+The working native runner round 9 passes every original
 159 condition plus 15 provenance/readiness conditions, with no bound changes. On working
 DLL `c3a298572b15a23671572d51b5778951`, 400 and 1,600 repeated generations take
 0.123 and 0.855 seconds and profile 3,256 and 12,856 bytes above the original

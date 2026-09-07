@@ -55,8 +55,9 @@ isolation. It verifies output metadata and both directions of later mutation.
 It is an experiment for column-only operations, not a general implementation.
 
 `check-rename-allocation.R LIBRARY` intentionally fails on the baseline. It
-expresses the future goal that renaming a column must not allocate its complete
-retained numeric payload. It is not enabled as a current CI gate.
+requires that renaming an owned double column does not allocate its complete
+retained payload. Stage 3 requires this check to pass; it remains separate from
+the current CI workflow.
 
 The dated result directory contains raw CSV files and package versions. The
 package build/check result and exact baseline revision are recorded in the report.
@@ -110,3 +111,59 @@ mismatched, malformed and changed installation metadata, asserts no result
 output on rejection, and checks locale-independent fingerprints and matching
 result output. Older dated artifacts keep their recorded runner versions and
 manual exact-install verification; do not add provenance to an old library.
+
+## Owned ordinary-double stage
+
+The [Stage 3 report](results-2026-09-06-stage3.md) records the exact final pair,
+the rejected first candidate and its read regressions, native mutation gates,
+retained heap and process peaks. Run the following from a clean checkout with
+the runner files from the candidate revision. Each library is created by the
+provenance installer described above; the reported comparison uses Stage 2
+`fd069a36832ed7c1bdedeed52a4281ecabb36e25` and candidate
+`45f2ba489a6e0a2f25d1728eef0a84a6b2fde7b7`.
+
+```sh
+owned_bench_root=$(mktemp -d /tmp/dibble-owned-benchmark.XXXXXX)
+owned_baseline=fd069a36832ed7c1bdedeed52a4281ecabb36e25
+owned_candidate=45f2ba489a6e0a2f25d1728eef0a84a6b2fde7b7
+Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
+  "$owned_bench_root/baseline-library" "$owned_baseline"
+Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
+  "$owned_bench_root/candidate-library" "$owned_candidate"
+Rscript --vanilla benchmarks/r-dibble-dplyr/owned-double.R \
+  "$owned_bench_root/baseline-library" "$owned_bench_root/baseline" \
+  "$owned_baseline" baseline 7
+Rscript --vanilla benchmarks/r-dibble-dplyr/owned-double.R \
+  "$owned_bench_root/candidate-library" "$owned_bench_root/candidate" \
+  "$owned_candidate" candidate 7
+Rscript --vanilla benchmarks/r-dibble-dplyr/check-rename-allocation.R \
+  "$owned_bench_root/candidate-library"
+```
+
+`owned-double.R` checks tenfold row scaling for selectors, direct and safe
+delegated five-verb pipelines, aggregates, arithmetic, filtering, coercion and
+DTA/Arrow reads and writes. Every read/export is followed by a selector that
+checks backing and allocation. First shared capture, subsequent private sparse
+writes and full replacement are measured separately. Nested string RHS and
+arithmetic row expressions retain their separate snapshot cost and alias checks.
+Fixtures and independent source/result checks stay outside measurements.
+
+`owned-double-memory.R LIBRARY SOURCE_SHA baseline|candidate OPERATION ROWS`
+measures retained heap and release after rename, `pipeline_five` or `pipeline_50`.
+Run each operation at 100,000 and 1,000,000 rows in its own process, for both
+libraries. On macOS, one case is:
+
+```sh
+/usr/bin/time -l Rscript --vanilla benchmarks/r-dibble-dplyr/owned-double-memory.R \
+  "$owned_bench_root/candidate-library" "$owned_candidate" candidate \
+  pipeline_50 1000000
+```
+
+Run timed processes serially, without concurrent builds or tests. Retained heap,
+nominal object sizes and whole-process peak RSS answer different questions.
+Native copy counters overlap R allocation and one another; do not add them into
+a total. The [reference-mutation runner](../r-reference-mutation/README.md)
+also qualifies assigned capacity preparation and separately measured borrowed
+capture before strict private writes. It preserves all 159 original assertions
+and their original numerical limits. Zero Rprofmem bytes above a threshold does
+not mean zero total allocation.

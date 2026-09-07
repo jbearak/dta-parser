@@ -24,7 +24,8 @@ main <- function() {
     saved_sidecar <- readBin(sidecar, "raw", n = file.info(sidecar)$size)
     description <- file.path(package_path, "DESCRIPTION")
     saved_description <- readBin(description, "raw", n = file.info(description)$size)
-    runners <- c("run.R", "columns.R", "run-rows.R", "row-memory.R", "repeat-group-reconstruct.R")
+    runners <- c("run.R", "columns.R", "run-rows.R", "row-memory.R", "repeat-group-reconstruct.R",
+                 "owned-double.R", "owned-double-memory.R")
     expected_errors <- c(
         mismatch = "Benchmark SOURCE_SHA does not match installation provenance",
         missing = "Missing benchmark installation provenance; use install.R",
@@ -45,10 +46,14 @@ main <- function() {
             output <- file.path(temporary, paste(mode, runner, sep = "-"))
             stdout <- tempfile(tmpdir = temporary)
             stderr <- tempfile(tmpdir = temporary)
-            second <- if (runner == "row-memory.R") "double" else output
+            arguments <- switch(runner,
+                "row-memory.R" = c(copied_library, "double", claimed),
+                "owned-double.R" = c(copied_library, output, claimed, "candidate", "3"),
+                "owned-double-memory.R" = c(copied_library, claimed, "candidate", "rename", "100"),
+                c(copied_library, output, claimed))
             status <- system2(file.path(R.home("bin"), "Rscript"),
                 vapply(c("--vanilla", file.path("benchmarks/r-dibble-dplyr", runner),
-                         copied_library, second, claimed), shQuote, character(1)),
+                         arguments), shQuote, character(1)),
                 stdout = stdout, stderr = stderr)
             stopifnot(status != 0L, file.info(stdout)$size == 0, !file.exists(output),
                 guard_diagnostic(stderr, expected_errors[[mode]]))
@@ -80,6 +85,7 @@ main <- function() {
     stopifnot(status == 0L, file.exists(output))
     result <- read.csv(output)
     stopifnot(nrow(result) == 3L, all(result$source_sha == source_sha))
-    cat(checks, "exact-diagnostic rejection/no-output cases, five usage counterchecks, matching CSV and locale/copy checks passed\n")
+    cat(checks, "exact-diagnostic rejection/no-output cases,", length(runners),
+        "usage counterchecks, matching CSV and locale/copy checks passed\n")
 }
 main()

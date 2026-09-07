@@ -1,0 +1,13 @@
+"kind","rows","columns","operation","stage","median_ms","min_ms","allocated_bytes","iterations","gc_count"
+"double",100000,32,"rename_stages","snapshot",0.0100449979072437,0.00947099761106074,304,7,0
+"double",100000,32,"rename_stages","isolate",0.30749999859836,0.296922000416089,912,7,0
+"double",100000,32,"rename_stages","revalidate_columns",0.104057995486073,0.10278699483024,608,7,0
+"double",100000,32,"rename_stages","reconstruct",0.231650003115647,0.223859999096021,83016,7,0
+"double",1000000,16,"rename_stages","snapshot",0.0093890048447065,0.00910200469661504,0,7,0
+"double",1000000,16,"rename_stages","isolate",0.156415000674315,0.152150998474099,280,7,0
+"double",1000000,16,"rename_stages","revalidate_columns",0.0539970060344785,0.0533410056959838,280,7,0
+"double",1000000,16,"rename_stages","reconstruct",0.157235001097433,0.154365006892476,80912,7,0
+"double",100,1000,"rename_stages","snapshot",0.00951199763221666,0.00902000465430319,0,7,0
+"double",100,1000,"rename_stages","isolate",10.377755999798,9.08088500000304,47872,7,4
+"double",100,1000,"rename_stages","revalidate_columns",3.27184099296574,3.21370299934642,39824,7,1
+"double",100,1000,"rename_stages","reconstruct",4.04473199887434,3.91927199962083,180920,7,2
