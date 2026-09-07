@@ -1,0 +1,7 @@
+operation,rows,baseline_maximum_resident_set_size_bytes,baseline_retained_with_source_vector_heap_bytes,baseline_excess_after_drop_result_bytes,baseline_released_with_last_result_bytes,candidate_maximum_resident_set_size_bytes,candidate_retained_with_source_vector_heap_bytes,candidate_excess_after_drop_result_bytes,candidate_released_with_last_result_bytes
+rename,100000,230440960,84296,-62368,12881264,230342656,84296,-59000,12881264
+pipeline_five,100000,230817792,87488,-59792,12081176,231096320,87488,-56456,12081176
+pipeline_50,100000,232194048,92832,-54448,12081176,232046592,92816,-51128,12081176
+rename,1000000,1244397568,84296,-62368,128081264,1244381184,84296,-59000,128081264
+pipeline_five,1000000,1232502784,87488,-59792,120081176,1232830464,87472,-56472,120081176
+pipeline_50,1000000,1256751104,92816,-54464,120081176,1256767488,92832,-51112,120081176

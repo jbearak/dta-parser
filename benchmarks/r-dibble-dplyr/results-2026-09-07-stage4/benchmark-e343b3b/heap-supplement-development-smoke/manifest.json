@@ -1,0 +1,129 @@
+{
+  "scope": "Working new wrapper smoke against exact existing Stage3/initialStage4 libraries. Not final source or full-size memory qualification.",
+  "inputs": {
+    "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-heap.R": "933c9eb9ed0cba676884a7f448527a2b70332f514125f1d1cac31a89458f9eb6",
+    "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-heap-qualification.py": "17c2fd1371f30a6532dff4cdade14675bd815b8f8884a34fc1e173f564b42e7e"
+  },
+  "cases": [
+    {
+      "mode": "baseline",
+      "kind": "double",
+      "rows": 40,
+      "source": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+      "library": "/private/tmp/dta-direct-stage4-validation/baseline-library",
+      "exit_code": 0,
+      "file": "baseline-double.log",
+      "sha256": "70e8f173f4a075569b211424910489a400952bb7ece566aa0fe742982f23c269"
+    },
+    {
+      "mode": "baseline",
+      "kind": "string",
+      "rows": 40,
+      "source": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+      "library": "/private/tmp/dta-direct-stage4-validation/baseline-library",
+      "exit_code": 0,
+      "file": "baseline-string.log",
+      "sha256": "88eb8d19d474be40a3342d5c4d70679e8265a6f2a07952259340a94a95b4fcb3"
+    },
+    {
+      "mode": "baseline",
+      "kind": "declared_character",
+      "rows": 40,
+      "source": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+      "library": "/private/tmp/dta-direct-stage4-validation/baseline-library",
+      "exit_code": 0,
+      "file": "baseline-declared_character.log",
+      "sha256": "85c3459413e1cf911124965f9aa12fe87e08581be146e63bd502098801243ee8"
+    },
+    {
+      "mode": "baseline",
+      "kind": "logical",
+      "rows": 40,
+      "source": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+      "library": "/private/tmp/dta-direct-stage4-validation/baseline-library",
+      "exit_code": 0,
+      "file": "baseline-logical.log",
+      "sha256": "da887bad9bbde1827cddc1b2c3d72ef68c482f056020ad65bc6945ac94de7b72"
+    },
+    {
+      "mode": "baseline",
+      "kind": "factor",
+      "rows": 40,
+      "source": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+      "library": "/private/tmp/dta-direct-stage4-validation/baseline-library",
+      "exit_code": 0,
+      "file": "baseline-factor.log",
+      "sha256": "2d7c0fde3b2ce52e90b0f1b9bb39e8aff4abf6db823091e981cfeacb9eec8297"
+    },
+    {
+      "mode": "baseline",
+      "kind": "ordered",
+      "rows": 40,
+      "source": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+      "library": "/private/tmp/dta-direct-stage4-validation/baseline-library",
+      "exit_code": 0,
+      "file": "baseline-ordered.log",
+      "sha256": "c1f19d2bb90b88a487b43b117414810f03782229ca72c97676efde55c953861a"
+    },
+    {
+      "mode": "candidate",
+      "kind": "double",
+      "rows": 40,
+      "source": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+      "library": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-library",
+      "exit_code": 0,
+      "file": "candidate-double.log",
+      "sha256": "d8d456bb782bcfc0b8c2cc6cb43a74ce0e0a534973aa98bba736f0620dc36350"
+    },
+    {
+      "mode": "candidate",
+      "kind": "string",
+      "rows": 40,
+      "source": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+      "library": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-library",
+      "exit_code": 0,
+      "file": "candidate-string.log",
+      "sha256": "bbd5322103604d47a4c7464bed399f0cb8924b6078c7141d85982746d6f08114"
+    },
+    {
+      "mode": "candidate",
+      "kind": "declared_character",
+      "rows": 40,
+      "source": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+      "library": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-library",
+      "exit_code": 0,
+      "file": "candidate-declared_character.log",
+      "sha256": "bda88ce17d733633ed2ed9bc7c87b345d6e305ac444c42af37a5bc14006746a3"
+    },
+    {
+      "mode": "candidate",
+      "kind": "logical",
+      "rows": 40,
+      "source": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+      "library": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-library",
+      "exit_code": 0,
+      "file": "candidate-logical.log",
+      "sha256": "fc722161783de47dd306f95dc704decec9ad2783e97b630d277a567304b1e8eb"
+    },
+    {
+      "mode": "candidate",
+      "kind": "factor",
+      "rows": 40,
+      "source": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+      "library": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-library",
+      "exit_code": 0,
+      "file": "candidate-factor.log",
+      "sha256": "f12f010b1425da7ef0ab69e3c8060dfa73812fce48f045aae545fcb39a22486a"
+    },
+    {
+      "mode": "candidate",
+      "kind": "ordered",
+      "rows": 40,
+      "source": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+      "library": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-library",
+      "exit_code": 0,
+      "file": "candidate-ordered.log",
+      "sha256": "8a2f42dd28702babed07dd59178364d6577d8c1645f1746af3ddac221b455264"
+    }
+  ]
+}

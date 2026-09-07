@@ -1,0 +1,90 @@
+{
+  "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+  "package_tree": "82b95507e3ea9fe8b8658d7c2098b1f95f5c3756",
+  "updated_utc": "2026-09-07T03:43:41.810266+00:00",
+  "source_directory": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+  "source_manifest": "/private/tmp/dta-direct-stage4-validation/source-7d56080-manifest.json",
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-library",
+  "gates": {
+    "required_conformance": {
+      "command": "DTA_REQUIRE_R_CONFORMANCE=1 R_LIBS=<candidate-library> sh scripts/conformance.sh",
+      "exit_code": 0,
+      "typescript_fixtures": 22,
+      "decoded_cells": 32085,
+      "deterministic_native_cases": 10,
+      "canonical_oracle_cases": 1,
+      "standard_r_check": "3 WARNINGs, 2 NOTEs; no errors; testthat passed",
+      "log": "conformance.log"
+    },
+    "roxygen": {
+      "command": "sh scripts/check-r-roxygen.sh",
+      "exit_code": 0,
+      "pinned_version": "8.1.0",
+      "man_unchanged": true,
+      "log": "roxygen.log"
+    },
+    "haven_conformance": {
+      "command": "R_LIBS=<candidate-library> Rscript --vanilla scripts/test-haven-conformance.R",
+      "exit_code": 0,
+      "loopback_permission": true,
+      "skips": 0,
+      "log": "haven-conformance.log"
+    },
+    "ancillary": "ancillary-gates.json",
+    "archives": "archive-gates.json",
+    "notice": "archive-notice-verification.json",
+    "binary_smoke": {
+      "exit_code": 0,
+      "log": "binary-smoke-2.log",
+      "earlier_diagnostic": "binary-smoke.log called masked dplyr::replace_values; corrected to dtatools::replace_values without package change"
+    },
+    "native_identity_guards": "native-identity-guards/results.json",
+    "native_assertion_inventory": {
+      "original": 159,
+      "added_readiness": 15,
+      "log": "native-assertions.log"
+    }
+  },
+  "working_source_rust": {
+    "workspace": "/private/tmp/dta-direct-stage4-validation/workspace-working-9.json",
+    "workspace_tests": 278,
+    "packaging_warnings": "11 existing excluded-test warnings",
+    "bridge": "/private/tmp/dta-direct-stage4-validation/bridge-working-8.json",
+    "bridge_tests": 18,
+    "qualification_limit": "Working-source Cargo gates passed; package and Rust files are byte-identical in committed7d56080"
+  },
+  "pending": [
+    "Correct and re-review native factor fixture; execute18nativeatomcases",
+    "Finish native post-source/library identities and rename allocation gate",
+    "Paired candidate performance/memory evidence",
+    "Final nested evidence review, focusedPR, latest-headCI and CodeRabbit, normal merge"
+  ],
+  "log_sha256": {
+    "r-binary.log": "acfb40c32bc39a5c1de561f2ca8d70bcc79caf588cad5b044df921138349e38e",
+    "archive-tests.log": "3a86db2b9f808506e23c7c696fa5b5f6f3b8ba039c56226dbae54067854795c7",
+    "r-archive.log": "4c3587b6438c2471618364e967342b11f88e0d0484fb6f8f64e2ce8a0b3b1351",
+    "roxygen.log": "35168c510b1a28ed94445d6809c95346b19f3f3b51c6a8f02411b851f275ae92",
+    "rust-source-hash.log": "64412b90a734c68397b590ede544730f4b115e07f82cedc84ae791452eab888c",
+    "r-binary-reinstall.log": "15a92ac9a0c29d972173787847d17aa5bcae856ffea9f6f7acf2144226f8f7e8",
+    "corpus-framework.log": "a499c3b4bd2e3d8b7bc2046a17390505991ee20afbc91aac5d96864fde7c028b",
+    "vendor-tests.log": "d602efada0bc2c7983ca95771e4a749bb462fbaf50c188f9c1b2f9fd374e10ba",
+    "binary-smoke-2.log": "3f5278adb3ca8507ececd8fbb189af83e0652f9e223e406c6dadf6b1c5e85cf4",
+    "haven-conformance.log": "9f2478e81235409b338fe7248baec50fcdc565af8cba9938996a0f15528c5465",
+    "labelled-interop.log": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81",
+    "conformance.log": "dffc7f92313f5adf4bb940715ec5bd79a6618d8565cf82b7676e12856fde0089",
+    "haven-helper-interop.log": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264",
+    "cargo-vendor.log": "d2f91f77d5bdd8552331c0b457f2d0aab6c9eccb0a00d29a47f6c7294216720b",
+    "vendor-rebuild-tests.log": "a26bda261b56851b5ce9f8721adbfb7ef74490fbb47e7dc912cb533603bee47e",
+    "native-assertions.log": "c1303009cd26684cdda1309a100112b3857d351e491130384299578884936375",
+    "binary-smoke.log": "704e36736921230056bdda389af2f2248862c36df377ace2225a853e9c38a1ae",
+    "r-build.log": "27ad8a1f0741be61d39182458d799188ad5b89356b9fee4308e8437af6123982",
+    "native-identity-guards/git-failed-empty/probe.log": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+    "native-identity-guards/git-failed-valid-hash/probe.log": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+    "native-identity-guards/shasum-failed-valid-hash/probe.log": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a",
+    "native-identity-guards/shasum-failed-empty/probe.log": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a",
+    "native-identity-guards/shasum-malformed-success/probe.log": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a",
+    "native-identity-guards/git-multiline-success/probe.log": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+    "native-identity-guards/git-malformed-success/probe.log": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+    "native-identity-guards/shasum-multiline-success/probe.log": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a"
+  }
+}

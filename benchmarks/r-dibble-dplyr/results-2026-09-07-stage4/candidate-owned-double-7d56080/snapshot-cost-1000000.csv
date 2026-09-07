@@ -1,0 +1,2 @@
+"rows","operation","r_allocated_bytes","r_largest_allocation_bytes","native_owned_capture_bytes","native_compact_copy_bytes","native_staged_new_bytes","native_old_journal_bytes","native_native_scratch_allocated_bytes","native_mutation_target_copy_bytes"
+1000000,"captured_nested_string_rhs",16000312,8000048,8000016,0,8,0,0,8e+06

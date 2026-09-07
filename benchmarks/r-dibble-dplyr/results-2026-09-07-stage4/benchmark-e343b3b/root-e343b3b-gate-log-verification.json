@@ -1,0 +1,8 @@
+{
+  "recorded_utc": "2026-09-07T06:49:12.948766+00:00",
+  "manifest_sha256": "f4d0d324b2581b2e5cb7db8637126c01d265fd8aa0a891ea615f268555afeee7",
+  "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "verified_log_count": 30,
+  "all_recorded_log_hashes_match": true,
+  "scope": "Read-only verification of final exact gate manifest and saved logs"
+}

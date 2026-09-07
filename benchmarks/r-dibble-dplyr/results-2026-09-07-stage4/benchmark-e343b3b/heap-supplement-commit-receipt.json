@@ -1,0 +1,9 @@
+{
+  "commit": "7003a46899ed508c4068e077e3aa1af7fff541f3",
+  "files_sha256": {
+    "benchmarks/r-dibble-dplyr/owned-heap.R": "cfe7259861d558b6ffdd48f0b05921269ca209aea0cd28d8d3ebe82808dd5f58",
+    "benchmarks/r-dibble-dplyr/run-heap-qualification.py": "39fd4814b59eec2e3fcbc8ff4cc7af608c8ef76b52f71e70f794e6a4d75fe9f3",
+    "benchmarks/r-dibble-dplyr/README.md": "3356e86a156cd90c69b41c0761142e14d821f6fc6976b939b043d2901eee6d0f"
+  },
+  "review_scope": "Storage round10 and API round10 plus current-evidence addendum; full-size qualification pending"
+}

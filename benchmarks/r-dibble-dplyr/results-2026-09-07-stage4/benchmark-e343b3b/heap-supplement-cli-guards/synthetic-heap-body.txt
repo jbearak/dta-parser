@@ -1,0 +1,11 @@
+heap_header_bytes_per_cell 56 
+heap_retained_header_cells 2329
+heap_excess_header_cells_after_drop_result 3107
+heap_retained_tracked_heap_bytes 223544
+heap_excess_tracked_heap_bytes_after_drop_result 209720
+heap_released_tracked_heap_bytes_with_last_result 88744
+heap_checkpoint prefixture header_cells 686190 vector_bytes 9343928 header_reported_mb 36.7 
+heap_checkpoint prior header_cells 686922 vector_bytes 9448368 header_reported_mb 36.7 
+heap_checkpoint after_result header_cells 689251 vector_bytes 9541488 header_reported_mb 36.9 
+heap_checkpoint after_drop_source header_cells 689393 vector_bytes 9463024 header_reported_mb 36.9 
+heap_checkpoint after_drop_result header_cells 689297 vector_bytes 9379656 header_reported_mb 36.9 

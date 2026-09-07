@@ -1,0 +1,19 @@
+{
+  "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+  "notice_sha256": "3f19001559480e42ecfc7f6255afecbe9583977b6e7bd75b6ff076f22d8614e3",
+  "archives": [
+    {
+      "archive": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/dtatools_0.7.1.tar.gz",
+      "archive_sha256": "2a1e9ed8eaae488a49c8b7bc562a523d2132443cfd1fe0e5f1f57c46a00f8623",
+      "notice_member": "dtatools/inst/NOTICE",
+      "notice_sha256": "3f19001559480e42ecfc7f6255afecbe9583977b6e7bd75b6ff076f22d8614e3"
+    },
+    {
+      "archive": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/binary/dtatools_0.7.1.tgz",
+      "archive_sha256": "ffc6cb281dcf25fbc9123dea2cf290b9e226f19c6228da5c73abc5e038810b28",
+      "notice_member": "dtatools/NOTICE",
+      "notice_sha256": "3f19001559480e42ecfc7f6255afecbe9583977b6e7bd75b6ff076f22d8614e3"
+    }
+  ],
+  "installed_notice_copies_equal": true
+}

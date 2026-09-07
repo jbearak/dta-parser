@@ -1,0 +1,192 @@
+{
+  "scope": "Same exact baseline package and committed runner; fresh206operations/126postreads/18writes only, originalbaseline memory retained separately",
+  "source_sha": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+  "runner_source_sha": "b259ad5a521dbb867a0b8563e3a0c2262e298671",
+  "manifests": {
+    "/private/tmp/dta-direct-stage4-validation/baseline-b259ad5-qualified/root-manifest.json": "d68f755d02423ace8816115d1889c474f7f4e39567a095610eccfb88e58c253b",
+    "/private/tmp/dta-direct-stage4-validation/baseline-confirmation-b259ad5/root-manifest.json": "0e96449d1075b1455fbcaf975ea581b922f6e1dadcf9505bb5678e682d2f25b4"
+  },
+  "interesting_read_timings": [
+    {
+      "kind": "string",
+      "operation": "any_na",
+      "original_ms": 2.91354200453497,
+      "confirmation_ms": 2.88176700996701
+    },
+    {
+      "kind": "string",
+      "operation": "nonmissing_count",
+      "original_ms": 3.04552099987632,
+      "confirmation_ms": 2.98291399667505
+    },
+    {
+      "kind": "string",
+      "operation": "coercion_character",
+      "original_ms": 2.0543459977489,
+      "confirmation_ms": 2.1911630028626
+    },
+    {
+      "kind": "string",
+      "operation": "row_subset",
+      "original_ms": 68.3084600022994,
+      "confirmation_ms": 71.1741960112704
+    },
+    {
+      "kind": "string",
+      "operation": "write_arrow",
+      "original_ms": 185.172687000886,
+      "confirmation_ms": 187.020147015573
+    },
+    {
+      "kind": "declared_character",
+      "operation": "any_na",
+      "original_ms": 0.28753300284734,
+      "confirmation_ms": 0.285442001768388
+    },
+    {
+      "kind": "declared_character",
+      "operation": "nonmissing_count",
+      "original_ms": 1.01696400088258,
+      "confirmation_ms": 1.01585700758733
+    },
+    {
+      "kind": "declared_character",
+      "operation": "coercion_character",
+      "original_ms": 2.16980199911632,
+      "confirmation_ms": 2.17730501026381
+    },
+    {
+      "kind": "declared_character",
+      "operation": "row_subset",
+      "original_ms": 24.1051300035906,
+      "confirmation_ms": 23.5204700147733
+    },
+    {
+      "kind": "declared_character",
+      "operation": "write_arrow",
+      "original_ms": 184.852969003259,
+      "confirmation_ms": 183.838137003477
+    },
+    {
+      "kind": "logical",
+      "operation": "any_na",
+      "original_ms": 0.00200900103664026,
+      "confirmation_ms": 0.00184500822797418
+    },
+    {
+      "kind": "logical",
+      "operation": "nonmissing_count",
+      "original_ms": 1.01798900141148,
+      "confirmation_ms": 1.01466801424976
+    },
+    {
+      "kind": "logical",
+      "operation": "coercion_character",
+      "original_ms": 3.00353700004052,
+      "confirmation_ms": 3.01706700702198
+    },
+    {
+      "kind": "logical",
+      "operation": "row_subset",
+      "original_ms": 4.36289199569728,
+      "confirmation_ms": 4.37580699508544
+    },
+    {
+      "kind": "logical",
+      "operation": "write_arrow",
+      "original_ms": 32.0079209996038,
+      "confirmation_ms": 31.3992760056863
+    },
+    {
+      "kind": "logical",
+      "operation": "coercion_integer",
+      "original_ms": 0.267770999926142,
+      "confirmation_ms": 0.270148986601271
+    },
+    {
+      "kind": "logical",
+      "operation": "mean",
+      "original_ms": 1.84311399789294,
+      "confirmation_ms": 1.83167500654235
+    },
+    {
+      "kind": "factor",
+      "operation": "any_na",
+      "original_ms": 0.25157599884551,
+      "confirmation_ms": 0.250304990913719
+    },
+    {
+      "kind": "factor",
+      "operation": "nonmissing_count",
+      "original_ms": 1.01844000164419,
+      "confirmation_ms": 1.01602100767195
+    },
+    {
+      "kind": "factor",
+      "operation": "coercion_character",
+      "original_ms": 2.4486429974786,
+      "confirmation_ms": 2.45327601442114
+    },
+    {
+      "kind": "factor",
+      "operation": "row_subset",
+      "original_ms": 5.00117999763461,
+      "confirmation_ms": 4.75833700329531
+    },
+    {
+      "kind": "factor",
+      "operation": "write_arrow",
+      "original_ms": 21.2379590011551,
+      "confirmation_ms": 22.9811559984228
+    },
+    {
+      "kind": "factor",
+      "operation": "coercion_integer",
+      "original_ms": 0.0485439959447831,
+      "confirmation_ms": 0.0482980103697628
+    },
+    {
+      "kind": "ordered",
+      "operation": "any_na",
+      "original_ms": 0.251739998930134,
+      "confirmation_ms": 0.250469005550258
+    },
+    {
+      "kind": "ordered",
+      "operation": "nonmissing_count",
+      "original_ms": 1.01339699904202,
+      "confirmation_ms": 1.01688200084027
+    },
+    {
+      "kind": "ordered",
+      "operation": "coercion_character",
+      "original_ms": 2.4416320011369,
+      "confirmation_ms": 2.45487500797026
+    },
+    {
+      "kind": "ordered",
+      "operation": "row_subset",
+      "original_ms": 4.83029200404417,
+      "confirmation_ms": 4.94000800244976
+    },
+    {
+      "kind": "ordered",
+      "operation": "write_arrow",
+      "original_ms": 21.9122859998606,
+      "confirmation_ms": 24.3358370062197
+    },
+    {
+      "kind": "ordered",
+      "operation": "coercion_integer",
+      "original_ms": 0.0481750030303374,
+      "confirmation_ms": 0.0500610040035099
+    },
+    {
+      "kind": "ordered",
+      "operation": "range",
+      "original_ms": 2.75323199457489,
+      "confirmation_ms": 2.8442110051401
+    }
+  ],
+  "r_allocation_differences": []
+}

@@ -1,0 +1,9 @@
+NULL
+$stata.string.storage
+[1] "str8"
+
+$class
+[1] "dta_string" "vctrs_vctr" "character" 
+
+Error: identical(as.character(x), raw) is not TRUE
+Execution halted

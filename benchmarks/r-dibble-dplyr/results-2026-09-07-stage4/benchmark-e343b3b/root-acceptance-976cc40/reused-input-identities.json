@@ -1,0 +1,34 @@
+{
+  "generation-names-matrix.R": {
+    "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/generation-names-matrix.R",
+    "sha256": "d35583705f66c051aa7bd8ea3b2207c98ecf8c3360f727e672fd9c31b67015f6"
+  },
+  "generation-names-baseline.rds": {
+    "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/generation-names-baseline.rds",
+    "sha256": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5"
+  },
+  "delayed-mask-matrix.R": {
+    "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/delayed-mask-matrix.R",
+    "sha256": "f01fdf0d670232e9a2bbb5249a92ed5df5303680e3430117b01156574e790091"
+  },
+  "delayed-mask-baseline.rds": {
+    "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/delayed-mask-baseline.rds",
+    "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283"
+  },
+  "delayed-private-mask-matrix.R": {
+    "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/delayed-private-mask-matrix.R",
+    "sha256": "53b4291399cf1bb5d2887095ecd496696ad2c7d1b5b0623f9909cbc799d238a8"
+  },
+  "delayed-private-mask-baseline.rds": {
+    "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/delayed-private-mask-baseline.rds",
+    "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283"
+  },
+  "symbol-private-callback-matrix.R": {
+    "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/symbol-private-callback-matrix.R",
+    "sha256": "2e67b6f6ae5dc5eb2a77f34799cc67632d78212fd7e4970eb2bc90069838ddac"
+  },
+  "symbol-private-callback-baseline.rds": {
+    "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/symbol-private-callback-baseline.rds",
+    "sha256": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23"
+  }
+}

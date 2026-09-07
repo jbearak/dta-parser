@@ -1,0 +1,214 @@
+{
+  "scope": "24 synthetic CLI integrity probes using fake git and Rscript. No R, real package tests, git mutation or qualification.",
+  "actual_runner_sha256": {
+    "helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "owned-double-helpers.R": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2",
+    "owned-atomic-helpers.R": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+    "owned-double.R": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685",
+    "owned-double-memory.R": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416",
+    "owned-atomic.R": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012",
+    "owned-atomic-memory.R": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2",
+    "owned-heap.R": "cfe7259861d558b6ffdd48f0b05921269ca209aea0cd28d8d3ebe82808dd5f58",
+    "run-heap-qualification.py": "39fd4814b59eec2e3fcbc8ff4cc7af608c8ef76b52f71e70f794e6a4d75fe9f3"
+  },
+  "cases": [
+    {
+      "optimization": "default",
+      "mode": "valid_protocol",
+      "exit_code": 0,
+      "synthetic_child_calls": 36,
+      "outer_log": "default-valid_protocol.outer.log",
+      "outer_log_sha256": "cfdadd4eba6bf22167df2096f78b0e7dd3ba92ff7e94fdc7d0e2f961aa88331c"
+    },
+    {
+      "optimization": "default",
+      "mode": "changed_dependency",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "default-changed_dependency.outer.log",
+      "outer_log_sha256": "4fbfc904747a565e77baecf899bc415b23ecc53561f0409a2358dd9fa1bda15b"
+    },
+    {
+      "optimization": "default",
+      "mode": "changed_driver",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "default-changed_driver.outer.log",
+      "outer_log_sha256": "354569f54dd51f93ed8e2823c4a2f8f5682086d9bf8dfa82a3a30cc5676ec812"
+    },
+    {
+      "optimization": "default",
+      "mode": "existing_output",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "default-existing_output.outer.log",
+      "outer_log_sha256": "10db384951cba4693df2a3803b05a75f0d317bb35e75b3d70c16234c88ada7c5"
+    },
+    {
+      "optimization": "default",
+      "mode": "failed_git",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "default-failed_git.outer.log",
+      "outer_log_sha256": "c5ca92a7cf83225f84c9dcb2639735aa8d9faa6bf0df75d70f7f9613d0a2652c"
+    },
+    {
+      "optimization": "default",
+      "mode": "missing_checkpoint",
+      "exit_code": 1,
+      "synthetic_child_calls": 1,
+      "outer_log": "default-missing_checkpoint.outer.log",
+      "outer_log_sha256": "a0205d378a86afa270eabbe9fefb97951076f6f306a0156edd5d15a11c551e5c"
+    },
+    {
+      "optimization": "default",
+      "mode": "duplicate_identity",
+      "exit_code": 1,
+      "synthetic_child_calls": 1,
+      "outer_log": "default-duplicate_identity.outer.log",
+      "outer_log_sha256": "22710fc5032f0f15e76b1b16e5a72dac15e0c4fea30fe765d0e8ea8a20ea75c1"
+    },
+    {
+      "optimization": "default",
+      "mode": "wrong_runtime_dependency",
+      "exit_code": 1,
+      "synthetic_child_calls": 1,
+      "outer_log": "default-wrong_runtime_dependency.outer.log",
+      "outer_log_sha256": "4c18f0128ea5dfb63007d13b0b3a32b05b0c74a37e1600b26202fb0ef628a854"
+    },
+    {
+      "optimization": "-O",
+      "mode": "valid_protocol",
+      "exit_code": 0,
+      "synthetic_child_calls": 36,
+      "outer_log": "-O-valid_protocol.outer.log",
+      "outer_log_sha256": "8118f55961a8e4b958ca924a468d576888e19f8cf26703ed74097cf6043cd3ee"
+    },
+    {
+      "optimization": "-O",
+      "mode": "changed_dependency",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "-O-changed_dependency.outer.log",
+      "outer_log_sha256": "4fbfc904747a565e77baecf899bc415b23ecc53561f0409a2358dd9fa1bda15b"
+    },
+    {
+      "optimization": "-O",
+      "mode": "changed_driver",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "-O-changed_driver.outer.log",
+      "outer_log_sha256": "354569f54dd51f93ed8e2823c4a2f8f5682086d9bf8dfa82a3a30cc5676ec812"
+    },
+    {
+      "optimization": "-O",
+      "mode": "existing_output",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "-O-existing_output.outer.log",
+      "outer_log_sha256": "edfcdb14fbf42674612aa0d4b2b7dc01f67fd0839189a533248d655dae8468a1"
+    },
+    {
+      "optimization": "-O",
+      "mode": "failed_git",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "-O-failed_git.outer.log",
+      "outer_log_sha256": "c5ca92a7cf83225f84c9dcb2639735aa8d9faa6bf0df75d70f7f9613d0a2652c"
+    },
+    {
+      "optimization": "-O",
+      "mode": "missing_checkpoint",
+      "exit_code": 1,
+      "synthetic_child_calls": 1,
+      "outer_log": "-O-missing_checkpoint.outer.log",
+      "outer_log_sha256": "bda9d75d87ec63a048dd97befbfd209fc4bbb3185b09ad698d1acdaec8365fdb"
+    },
+    {
+      "optimization": "-O",
+      "mode": "duplicate_identity",
+      "exit_code": 1,
+      "synthetic_child_calls": 1,
+      "outer_log": "-O-duplicate_identity.outer.log",
+      "outer_log_sha256": "4c72f1d5605382578e865128c0cd62fbeff8f5bb0dea63302b7cb2cbe3c38e52"
+    },
+    {
+      "optimization": "-O",
+      "mode": "wrong_runtime_dependency",
+      "exit_code": 1,
+      "synthetic_child_calls": 1,
+      "outer_log": "-O-wrong_runtime_dependency.outer.log",
+      "outer_log_sha256": "2867d8a45c6ef62d5aefc0e529395533215ecad2ee26a94557d4d794f770e7a3"
+    },
+    {
+      "optimization": "PYTHONOPTIMIZE=1",
+      "mode": "valid_protocol",
+      "exit_code": 0,
+      "synthetic_child_calls": 36,
+      "outer_log": "PYTHONOPTIMIZE-1-valid_protocol.outer.log",
+      "outer_log_sha256": "4806f99929a4d1205c42959ad599bf4e236011790b9c9513f23b05ec56a15296"
+    },
+    {
+      "optimization": "PYTHONOPTIMIZE=1",
+      "mode": "changed_dependency",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "PYTHONOPTIMIZE-1-changed_dependency.outer.log",
+      "outer_log_sha256": "4fbfc904747a565e77baecf899bc415b23ecc53561f0409a2358dd9fa1bda15b"
+    },
+    {
+      "optimization": "PYTHONOPTIMIZE=1",
+      "mode": "changed_driver",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "PYTHONOPTIMIZE-1-changed_driver.outer.log",
+      "outer_log_sha256": "354569f54dd51f93ed8e2823c4a2f8f5682086d9bf8dfa82a3a30cc5676ec812"
+    },
+    {
+      "optimization": "PYTHONOPTIMIZE=1",
+      "mode": "existing_output",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "PYTHONOPTIMIZE-1-existing_output.outer.log",
+      "outer_log_sha256": "6a8c949561be2a99643bd1f7cbf9babfe421eff8bc06a5327ae32f56034aba0d"
+    },
+    {
+      "optimization": "PYTHONOPTIMIZE=1",
+      "mode": "failed_git",
+      "exit_code": 1,
+      "synthetic_child_calls": 0,
+      "outer_log": "PYTHONOPTIMIZE-1-failed_git.outer.log",
+      "outer_log_sha256": "c5ca92a7cf83225f84c9dcb2639735aa8d9faa6bf0df75d70f7f9613d0a2652c"
+    },
+    {
+      "optimization": "PYTHONOPTIMIZE=1",
+      "mode": "missing_checkpoint",
+      "exit_code": 1,
+      "synthetic_child_calls": 1,
+      "outer_log": "PYTHONOPTIMIZE-1-missing_checkpoint.outer.log",
+      "outer_log_sha256": "4659228dea3a80a8768920c3dc02c19a42161ea7607ab86171e9d5886cf03654"
+    },
+    {
+      "optimization": "PYTHONOPTIMIZE=1",
+      "mode": "duplicate_identity",
+      "exit_code": 1,
+      "synthetic_child_calls": 1,
+      "outer_log": "PYTHONOPTIMIZE-1-duplicate_identity.outer.log",
+      "outer_log_sha256": "da4790c3e2f05632a6a8d64cd21aa3bd7845e2e0a02a439b0a6627e6ac946b29"
+    },
+    {
+      "optimization": "PYTHONOPTIMIZE=1",
+      "mode": "wrong_runtime_dependency",
+      "exit_code": 1,
+      "synthetic_child_calls": 1,
+      "outer_log": "PYTHONOPTIMIZE-1-wrong_runtime_dependency.outer.log",
+      "outer_log_sha256": "3bbd4abdc7a591151edfeccc845c4eb1c8707d4764e439bb1712d0945043da45"
+    }
+  ],
+  "result": "pass",
+  "probe_sha256": "43de94456b24785aa60cfff27d569577d670690cea3326bc1773c1c7476b7001",
+  "synthetic_tools": {
+    "git": "e6d33926a87595e615dc529e3863d6201581654a4a524b9a42202cc30119327d",
+    "Rscript": "fddcdbb2f67543198b08f3aef1ba667c84b3b7e61996e1d6da54400ada5d82ba"
+  }
+}

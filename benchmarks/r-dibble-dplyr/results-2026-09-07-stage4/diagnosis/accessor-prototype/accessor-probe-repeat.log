@@ -1,0 +1,73 @@
+DEVELOPMENT ONLY, minimized getter experiment; no writes or subset methods
+                                                                   accessor_probe.c 
+                                                 "7e7cdff086711aeebb3cd3a88e0543fc" 
+                                                                  accessor_probe.so 
+                                                 "ae52a1f1effac64cc95f06175e79aa17" 
+                                                            accessor-probe-repeat.R 
+                                                 "d7ce8b1b052568e50c1cec5392f43cff" 
+/private/tmp/dta-direct-stage4-validation/working-library/dtatools/libs/dtatools.so 
+                                                 "0481edb4704ad346098f59ef6a3a6a3f" 
+        kind  operation          variant           ms   bytes
+1    logical nonmissing         ordinary 1.016841e+00 8000096
+2    logical nonmissing       production 4.055925e+00 8000096
+3    logical nonmissing       record_elt 4.058713e+00 8000096
+4    logical nonmissing   record_pointer 4.108610e+00 8000096
+5    logical nonmissing       direct_elt 3.174138e+00 8000096
+6    logical nonmissing   direct_pointer 3.199681e+00 8000096
+7    logical nonmissing external_pointer 3.205708e+00 8000096
+8    logical  character         ordinary 3.159952e+00 8000048
+9    logical  character       production 6.099693e+00 8000048
+10   logical  character       record_elt 6.105720e+00 8000048
+11   logical  character   record_pointer 6.332901e+00 8000048
+12   logical  character       direct_elt 5.116062e+00 8000048
+13   logical  character   direct_pointer 5.032053e+00 8000048
+14   logical  character external_pointer 5.247672e+00 8000048
+15   logical    integer         ordinary 2.420640e-01 4000048
+16   logical    integer       production 3.508575e+00 4000048
+17   logical    integer       record_elt 3.287831e+00 4000048
+18   logical    integer   record_pointer 3.286888e+00 4000048
+19   logical    integer       direct_elt 2.194074e+00 4000048
+20   logical    integer   direct_pointer 2.215394e+00 4000048
+21   logical    integer external_pointer 2.217239e+00 4000048
+22    factor nonmissing         ordinary 1.013725e+00 8000096
+23    factor nonmissing       production 4.276177e+00 8000096
+24    factor nonmissing       record_elt 4.276546e+00 8000096
+25    factor nonmissing   record_pointer 4.274947e+00 8000096
+26    factor nonmissing       direct_elt 3.186643e+00 8000096
+27    factor nonmissing   direct_pointer 3.188693e+00 8000096
+28    factor nonmissing external_pointer 3.200173e+00 8000096
+29    factor  character         ordinary 2.256927e+00 8000048
+30    factor  character       production 5.496419e+00 8000048
+31    factor  character       record_elt 5.317249e+00 8000048
+32    factor  character   record_pointer 5.497731e+00 8000048
+33    factor  character       direct_elt 4.263467e+00 8000048
+34    factor  character   direct_pointer 4.434396e+00 8000048
+35    factor  character external_pointer 4.474043e+00 8000048
+36    factor     any_na         ordinary 2.493210e-01 4000048
+37    factor     any_na       production 3.509641e+00 4000048
+38    factor     any_na       record_elt 3.504721e+00 4000048
+39    factor     any_na   record_pointer 3.502507e+00 4000048
+40    factor     any_na       direct_elt 2.413178e+00 4000048
+41    factor     any_na   direct_pointer 2.420845e+00 4000048
+42    factor     any_na external_pointer 2.434006e+00 4000048
+43 character nonmissing         ordinary 1.013192e+00 8000096
+44 character nonmissing       production 4.267690e+00 8000096
+45 character nonmissing       record_elt 4.265107e+00 8000096
+46 character nonmissing   record_pointer 4.259408e+00 8000096
+47 character nonmissing       direct_elt 3.193408e+00 8000096
+48 character nonmissing   direct_pointer 3.394636e+00 8000096
+49 character nonmissing external_pointer 3.178730e+00 8000096
+50 character  character         ordinary 1.230001e-04       0
+51 character  character       production 1.230001e-04       0
+52 character  character       record_elt 1.640001e-04       0
+53 character  character   record_pointer 8.200004e-05       0
+54 character  character       direct_elt 1.230001e-04       0
+55 character  character   direct_pointer 8.200004e-05       0
+56 character  character external_pointer 1.640001e-04       0
+57 character     any_na         ordinary 2.836790e-01       0
+58 character     any_na       production 3.710746e+00       0
+59 character     any_na       record_elt 3.710623e+00       0
+60 character     any_na   record_pointer 3.710459e+00       0
+61 character     any_na       direct_elt 2.622319e+00       0
+62 character     any_na   direct_pointer 2.622237e+00       0
+63 character     any_na external_pointer 2.620802e+00       0

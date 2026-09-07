@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/run-heap-qualification.py", line 139, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/run-heap-qualification.py", line 111, in main
+    require(re.findall(r"^heap_runner_md5 .*", text, re.MULTILINE) == md5_lines,
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            f"Runtime runner identity mismatch: {log}")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/synthetic-repo/benchmarks/r-dibble-dplyr/run-heap-qualification.py", line 18, in require
+    raise RuntimeError(message)
+RuntimeError: Runtime runner identity mismatch: /private/tmp/dta-direct-stage4-validation/heap-supplement-cli-guards/default-wrong_runtime_dependency/heap-double-rename-100000.log

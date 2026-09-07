@@ -1,0 +1,64 @@
+{
+  "historical_manifest_sha256": "5b6387454272272892022cea201aebc05a75006b13d536b377a44dd0ebcc0a2d",
+  "source_sha": "976cc403f21b9adbb454d39c9c3447717b67c29f",
+  "case_counts": {
+    "generation-names": 45,
+    "delayed-mask": 72,
+    "delayed-private-mask": 72,
+    "symbol-private-callback": 30
+  },
+  "inputs": {
+    "generation-names-matrix.R": {
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/generation-names-matrix.R",
+      "sha256": "d35583705f66c051aa7bd8ea3b2207c98ecf8c3360f727e672fd9c31b67015f6",
+      "byte_identical": true
+    },
+    "generation-names-baseline.rds": {
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/generation-names-baseline.rds",
+      "sha256": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5",
+      "byte_identical": true
+    },
+    "delayed-mask-matrix.R": {
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-mask-matrix.R",
+      "sha256": "f01fdf0d670232e9a2bbb5249a92ed5df5303680e3430117b01156574e790091",
+      "byte_identical": true
+    },
+    "delayed-mask-baseline.rds": {
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-mask-baseline.rds",
+      "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+      "byte_identical": true
+    },
+    "delayed-private-mask-matrix.R": {
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-private-mask-matrix.R",
+      "sha256": "53b4291399cf1bb5d2887095ecd496696ad2c7d1b5b0623f9909cbc799d238a8",
+      "byte_identical": true
+    },
+    "delayed-private-mask-baseline.rds": {
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/delayed-private-mask-baseline.rds",
+      "sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+      "byte_identical": true
+    },
+    "symbol-private-callback-matrix.R": {
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/symbol-private-callback-matrix.R",
+      "sha256": "2e67b6f6ae5dc5eb2a77f34799cc67632d78212fd7e4970eb2bc90069838ddac",
+      "byte_identical": true
+    },
+    "symbol-private-callback-baseline.rds": {
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/symbol-private-callback-baseline.rds",
+      "sha256": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23",
+      "byte_identical": true
+    },
+    "reused-input-identities.json": {
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/reused-input-identities.json",
+      "sha256": "0c38e907b8c8acef3c5dccd1e056c3ab003e2deb0d55ab92d55e1f4aedb86bd1",
+      "byte_identical": true
+    },
+    "run.R": {
+      "source_path": "/private/tmp/dta-direct-stage4-validation/root-acceptance-7d56080/run.R",
+      "source_sha256": "682b82b93f98e79616a03a348e168c1b80a1f22c481fafcc74bfd4797ea61ab8",
+      "sha256": "9f8290ab5decbb14164ac12cb4f6493260a6f5dfd04649e1813f9d03db636b87",
+      "change": "Only fixed output directory changes; workload and R identical() checks unchanged"
+    }
+  },
+  "scope": "219 pure R cases; historical 18 native-observer cases excluded because C source unavailable; prepared only, no R run yet"
+}

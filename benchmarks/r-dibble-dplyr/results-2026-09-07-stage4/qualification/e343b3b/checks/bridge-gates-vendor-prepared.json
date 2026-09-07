@@ -1,0 +1,60 @@
+{
+  "vendor_archive_sha256": "31249dcf2962711a7e51ccb7983661543e3d87bcc0c574aadfbad4ee9c19252e",
+  "preparation": "Extracted verified tracked vendor archive as normal package configuration does; first unprepared Cargo attempt preserved separately",
+  "commands": [
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--manifest-path",
+        "rust/Cargo.toml",
+        "--",
+        "--check"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b/r-package/dtatools/src",
+      "seconds": 0.07643566600745544,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/bridge-fmt-vendor-prepared.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "check",
+      "command": [
+        "cargo",
+        "check",
+        "--manifest-path",
+        "rust/Cargo.toml",
+        "--config",
+        "rust/cargo-config.toml",
+        "--locked",
+        "--offline",
+        "--all-targets"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b/r-package/dtatools/src",
+      "seconds": 7.05561533299624,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/bridge-check-vendor-prepared.log",
+      "sha256": "460876b4207af89e2241fd47ba6878532f51f0539b6875bfaf34d5a35c3cfc62"
+    },
+    {
+      "name": "tests",
+      "command": [
+        "cargo",
+        "test",
+        "--manifest-path",
+        "rust/Cargo.toml",
+        "--config",
+        "rust/cargo-config.toml",
+        "--locked",
+        "--offline",
+        "--all-targets"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b/r-package/dtatools/src",
+      "seconds": 7.549468083001557,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/bridge-tests-vendor-prepared.log",
+      "sha256": "33de446cdfa70d8068cc4d9d3dbd2a7e4c93f7d4a7085ba77433e1bbb7ca6fa3"
+    }
+  ]
+}

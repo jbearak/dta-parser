@@ -1,0 +1,9 @@
+DIAGNOSTIC ONLY source 7d56080f3e97bc4d73a848e363d729767b9629c0 
+DLL_md5 a390cab5fd2e2e2d8a0bb57f18194c54 
+Before dictionary cache 0 
+Elapsed 0.032 
+           owned_capture             compact_copy               staged_new 
+                       8                        0                        0 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                       0                        0                        0 
+After dictionary cache 0 

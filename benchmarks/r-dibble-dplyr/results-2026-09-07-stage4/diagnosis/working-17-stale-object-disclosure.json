@@ -1,0 +1,13 @@
+{
+  "status": "not a test or timing of the record change",
+  "actual_dll_md5": "0481edb4704ad346098f59ef6a3a6a3f",
+  "actual_native_source": "working16 before external-pointer record change",
+  "logs": [
+    "working-install-17-record.log",
+    "read-fixes-working-17-record.log",
+    "aggregate-working-17.log"
+  ],
+  "cause": "Makevars.rust omitted owned-columns.h and mutation-write.h from init.o dependencies; make reported dtatools.so up to date",
+  "fix": "add both header dependencies then verify compilation and changed DLL before repeating checks",
+  "exact_archive_impact": "none; exact archive installs build from fresh source"
+}

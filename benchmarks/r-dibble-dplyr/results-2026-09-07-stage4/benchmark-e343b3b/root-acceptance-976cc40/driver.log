@@ -1,0 +1,6 @@
+generation-names 45 exact historical behavior comparisons passed
+delayed-mask 72 exact historical behavior comparisons passed
+delayed-private-mask 72 exact historical behavior comparisons passed
+symbol-private-callback 30 exact historical behavior comparisons passed
+Exact package source 976cc403f21b9adbb454d39c9c3447717b67c29f 
+All 219 R-only root regression cases passed

@@ -1,0 +1,18 @@
+DEVELOPMENT DIAGNOSIS: existing filter and gather boundaries
+source e343b3b56a8529e9ee0ac40f8bd88beebcd2be15 library /private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library 
+/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools/libs/dtatools.so 
+                                                           "18837c14dcd6597169dc0e3d99186dab" 
+                                  benchmarks/r-dibble-dplyr/helpers.R 
+                                   "d6c0341379dd025e4e0492d6b14f4d22" 
+                     benchmarks/r-dibble-dplyr/owned-double-helpers.R 
+                                   "4d31109f49d89bbcdbfbb989dccf5334" 
+                     benchmarks/r-dibble-dplyr/owned-atomic-helpers.R 
+                                   "df5f3183107290847a82415124d44d49" 
+                             benchmarks/r-dibble-dplyr/owned-atomic.R 
+                                   "7e87cb5f50a51ea4c571f27d3a329bca" 
+                      benchmarks/r-dibble-dplyr/owned-atomic-memory.R 
+                                   "d8bd50bb040618201a2817031b47100c" 
+/private/tmp/dta-direct-stage4-validation/filter-planning-diagnosis.R 
+                                   "69df5f7a5be01abd204a1eefeb9357b5" 
+Error: identical(atomic_columns(mark$result[[1L]]), expected) is not TRUE
+Execution halted
