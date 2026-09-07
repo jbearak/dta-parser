@@ -145,7 +145,7 @@ owned_profile <- function(operation) {
 }
 
 owned_runner_identity <- function(source_sha, library_path, mode) {
-    paths <- c("owned-double-helpers.R", "owned-double.R", "owned-double-memory.R")
+    paths <- c("helpers.R", "owned-double-helpers.R", "owned-double.R", "owned-double-memory.R")
     paths <- file.path("benchmarks/r-dibble-dplyr", paths)
     c(paste("source_sha", source_sha), paste("library", library_path),
       paste("mode", mode), paste("runner_md5", paths, unname(tools::md5sum(paths))),

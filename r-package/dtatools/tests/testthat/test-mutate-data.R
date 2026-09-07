@@ -389,7 +389,6 @@ test_that("evaluation interrupts leave the dataset unchanged", {
 })
 
 test_that("native write interrupts roll back values and compact state", {
-    skip_on_os("windows")
     skip_if_not_installed("callr")
 
     package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")

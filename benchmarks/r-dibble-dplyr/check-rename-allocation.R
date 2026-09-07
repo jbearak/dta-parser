@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
 
 # This intentionally fails on the recorded Stage 2 baseline. Stage 3 requires
-# it to pass for owned doubles; owned-double.R adds full selector/scaling gates.
+# it to pass for owned doubles. Both limits below cover recorded allocations
+# above 10,000 bytes; owned-double.R adds unthresholded selector/scaling gates.
 args <- commandArgs(TRUE)
 stopifnot(length(args) == 1L)
 .libPaths(c(normalizePath(args[[1L]], mustWork = TRUE), .libPaths()))
@@ -17,9 +18,15 @@ allocation <- function(value) {
     Rprofmem(NULL)
     stopifnot(identical(as.double(result$renamed), rep(1, rows)))
     records <- suppressWarnings(as.numeric(sub(" .*", "", readLines(path))))
-    max(c(0, records[is.finite(records)]))
+    records <- records[is.finite(records)]
+    c(largest = max(c(0, records)), total = sum(records))
 }
-cat("Typed tibble largest allocation:", allocation(dtatools:::.reference_snapshot(data)), "bytes\n")
-largest <- allocation(data)
+typed <- allocation(dtatools:::.reference_snapshot(data))
+cat("Typed tibble largest allocation:", typed[["largest"]], "bytes\n")
+cat("Typed tibble total recorded allocation:", typed[["total"]], "bytes\n")
+owned <- allocation(data)
+largest <- owned[["largest"]]
 cat("Dibble largest allocation:", largest, "bytes\n")
+cat("Dibble total recorded allocation:", owned[["total"]], "bytes\n")
 stopifnot(largest < 8 * rows)
+stopifnot(owned[["total"]] < 8 * rows)

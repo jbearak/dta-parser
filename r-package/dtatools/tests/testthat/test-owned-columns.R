@@ -870,11 +870,14 @@ test_that("read pointers and ordinary aggregates retain safe backing forks", {
 })
 
 test_that("owned doubles preserve metadata and ordinary serialized values", {
-    value <- dta_double(c(1, tagged_missing("z"), NA_real_))
-    attr(value, "label") <- "Codes"
-    restored <- unserialize(serialize(value, NULL))
-    expect_identical(as.double(restored), c(1, tagged_missing("z"), NA_real_))
-    expect_identical(attributes(restored), attributes(value))
+    for (version in 2:3) {
+        value <- dta_double(c(1, tagged_missing("z"), NA_real_))
+        attr(value, "label") <- "Codes"
+        restored <- unserialize(serialize(value, NULL, version = version))
+        expect_identical(as.double(restored), c(1, tagged_missing("z"), NA_real_))
+        expect_identical(attributes(restored), attributes(value))
+        expect_null(owned_info(restored))
+    }
     # Base's initial serialization fallback is allowed to expose/materialize
     # the original. Metadata sharing is checked on a fresh private capture.
     value <- dta_double(c(1, tagged_missing("z"), NA_real_))

@@ -58,6 +58,11 @@ copy. Shared full replacements allocate new destination backing without reading
 old values. Partial writes may capture the changed column once; later proven
 private writes retain their sparse allocation bounds. Other native transaction
 paths retain explicit rollback, including real after-write interrupt coverage.
+Deterministic fault injection enters R's native interrupt handler directly so
+Windows exercises the same transaction unwind. Separate asynchronous POSIX
+tests retain OS signal delivery. An injected interrupt disarms before entering
+the handler and retains an error fallback if suspension or a resume restart
+returns from it.
 Failed or zero-match work must preserve original claims while retaining sharing
 introduced by a legitimate callback. Identical slots in the supplied physical
 table commit together; metadata and promotion keep their named-slot policies.
@@ -65,7 +70,11 @@ table commit together; metadata and promotion keep their named-slot policies.
 Ordinary strings have temporary internal read handles during preflight. These
 handles release their physical source reference when evaluation finishes, while
 any escaped snapshot keeps its own reference. They do not change the public
-string representation or implement shared owned string backing. Supported cast
+string representation or implement shared owned string backing. These preflight
+views borrow read-only pointers only from ordinary contiguous strings.
+A data-pointer request materializes a private ordinary copy and honors writable
+access there; direct element assignment on a temporary view is unsupported.
+Public exposure returns an ordinary string vector. Supported cast
 prototypes use metadata without decoding full target values. Native numeric fit
 checks scan selected replacement values without constructing full R temporaries;
 unknown classes still use their existing R validation methods. Remaining

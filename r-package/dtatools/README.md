@@ -838,3 +838,5 @@ R's read, coercion and concatenation code informed owned read paths. Range
 receives an independent ordinary snapshot, and integer/logical exports call
 R's native coercion API. No R implementation or tests were copied for these
 paths; the notice lists the studied files.
+R's interrupt implementation was studied for portable native fault injection;
+tests call its documented interrupt entry and retain transaction rollback checks.

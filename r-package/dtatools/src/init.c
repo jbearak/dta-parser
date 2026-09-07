@@ -9,7 +9,6 @@
 #include <float.h>
 #include <limits.h>
 #include <math.h>
-#include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -722,7 +721,8 @@ static double numeric_reader_at(
 
 static double reference_row_reads = 0.0;
 static int reference_row_reads_enabled = 0;
-/* Test control. It disarms itself before raising SIGINT after native writes. */
+/* Test control. Disarm before entering R's native interrupt handler. CRT
+   SIGINT delivery can terminate Windows R instead of unwinding its contexts. */
 static int reference_write_interrupt_enabled = 0;
 
 static void record_reference_row_read(void) {
@@ -756,8 +756,7 @@ SEXP C_dtatools_inject_reference_write_interrupt(SEXP enabled) {
 static void maybe_inject_reference_write_interrupt(void) {
     if (!reference_write_interrupt_enabled) return;
     reference_write_interrupt_enabled = 0;
-    raise(SIGINT);
-    R_CheckUserInterrupt();
+    Rf_onintr();
     Rf_error("failed to inject reference write interrupt");
 }
 
@@ -4150,15 +4149,19 @@ static SEXP mutation_string_duplicate(SEXP value, Rboolean deep) {
     return result;
 }
 static void *mutation_string_dataptr(SEXP value, Rboolean writable) {
-    (void) writable;
     if (R_altrep_data2(value) == R_NilValue) {
         SEXP copy = PROTECT(mutation_string_duplicate(value, FALSE));
         R_set_altrep_data2(value, copy);
         UNPROTECT(1);
     }
-    return (void *) DATAPTR_RO(R_altrep_data2(value));
+    SEXP copy = R_altrep_data2(value); /* Always an ordinary private STRSXP. */
+    return writable ? DATAPTR_RW(copy) : (void *) DATAPTR_RO(copy);
 }
 static const void *mutation_string_dataptr_or_null(SEXP value) {
+    /* The constructor admits only ordinary contiguous strings. Borrowing this
+       read-only pointer cannot allocate or invoke a callback; Dataptr isolates
+       a separate copy if requested. The call-local view roots either source.
+       Element assignment is unsupported; public exposure uses ordinary strings. */
     return DATAPTR_RO(mutation_string_source(value));
 }
 static SEXP C_dtatools_mutation_prototype(SEXP value) {
@@ -6514,8 +6517,7 @@ static void maybe_inject_column_append_failure(int stage) {
     if (column_append_failure_stage != stage) return;
     column_append_failure_stage = 0;
     if (column_append_failure_interrupt) {
-        raise(SIGINT);
-        R_CheckUserInterrupt();
+        Rf_onintr();
     }
     Rf_error("injected column append failure at stage %d", stage);
 }

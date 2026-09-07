@@ -14,9 +14,9 @@ Stage 3 implementation and local acceptance use source
 [measured report](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage3.md)
 retains the exact Stage 2 baseline, the rejected first candidate, all paired
 repeats and memory evidence. Both final operation pairs and the historical
-matrix pass the agreed read-regression threshold. No R package or measured
-runner file has changed since the accepted source. Later evidence, reproduction
-instructions and provenance-test changes are recorded separately.
+matrix pass the agreed read-regression threshold. Those measurements remain
+bound to that source. The external-review corrections below require separate
+qualification; historical evidence and identities are unchanged.
 
 The exact native runner passes every original 159 assertion and all 15 added
 provenance/readiness conditions. Original budgets remain unchanged. Repeated
@@ -66,6 +66,43 @@ The evidence and reproduction instructions are committed as
 `codex/direct-dibble-owned-doubles`. Latest-head external CI/CodeRabbit review
 and normal merge remain pending. Stage 3 stays active until those gates finish;
 stages 4 through 9 have not begun.
+
+### Stage 3 external-review corrections in progress
+
+Windows CI on `6140a05` builds the package but terminates during its tests.
+The reviewed diagnostics-only head `86d1db1` retains the full failed output and
+locates exit status 3 at the first native append interrupt injection. The
+preceding error-injection case restores all state successfully. A bounded local
+subprocess reproduction confirms that CRT `SIGINT` delivery terminates R when
+its usual POSIX handler is absent.
+
+The working correction enters R's documented native interrupt handler in the
+two armed test controls and retains their disarm order and fallback errors.
+The older native-write rollback matrix now also runs on Windows; separate
+POSIX asynchronous signal tests are unchanged. The focused owned-column,
+owned-read and mutation suite passes. The complete working suite passes 15,482
+assertions with four established warnings and no failures or skips. Both
+independent round 19 reviews close the native, test, documentation and benchmark
+corrections. Exact-source checks and latest-head Windows CI remain pending.
+
+External review also prompted explicit writable access to the private ordinary
+string-view copy, while preserving allocation-free reads from its ordinary
+source. The temporary view does not support direct element assignment or escape
+into public evaluation. Independent native and public callback probes preserve
+source and snapshot isolation. Serialization's writable exposure is the
+materializing fallback explicitly allowed by the handoff; version 2/3 byte,
+metadata, tag, alias and retained-pointer comparisons pass, and restored values
+contain no live owned state. Permanent tests now cover both serialization
+versions. CodeRabbit [acknowledged and resolved this finding](https://github.com/jbearak/dta-parser/pull/194#discussion_r3945814759),
+accepting the later-copy cost as a Stage 3 tradeoff. No custom serialized class
+format is introduced.
+
+The saved rename checker now also checks summed recorded allocation while
+retaining its original maximum-event bound and profiling threshold. Runner
+identity includes the sourced shared `helpers.R`; a regression test changes
+only that file in a copied runner and verifies that its identity changes.
+Historical measurements retain their original identities. Fresh corrected
+evidence and the remaining external review replies are pending.
 
 ### Earlier Stage 3 checkpoints
 
