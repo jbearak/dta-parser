@@ -23,6 +23,23 @@ the existing width behavior and the existing native generation/export errors.
 Private scan counters include both width validation and missingness-only scans,
 counting each pass and each value inspected; they are separate from byte counters.
 
+Each backing record is an R-managed external pointer. Its protected field roots
+the ordinary allocation, its tag roots the flags and facts, and its address
+stores that allocation's read pointer. It owns no separate native memory and
+needs no finalizer. Replacing a record changes the allocation, pointer and facts
+together, while data2 retains the existing ordinary/read-view distinction.
+Element reads avoid a repeated vector-record lookup. Writable access still
+passes through the same preparation boundary before touching the payload.
+
+Deep duplication of a known factor returns an independent ordinary integer
+copy with its metadata. Shallow duplication and explicit metadata copies retain
+owned forks. Public logical subsets return newly allocated ordinary values;
+the private validated batch route adopts its fresh columns directly. These
+boundaries keep R's coercion, range and mean temporaries ordinary without a
+generic Coerce hook or changes to public classes. An ordinary logical subset
+crossing a later table boundary is captured there under the existing ingress
+rules.
+
 Public writable pointers detach shared backing, invalidate facts and mark the
 allocation exposed. Future forks capture exposed storage because a retained
 pointer may write again. String element assignment detaches and invalidates
@@ -31,6 +48,24 @@ values and row positions before their final sharing and target checks, then
 commit without allocating or calling R. Full replacement does not copy old
 values; partial writes may copy only their target column. The existing physical
 table aliases, identical slots, metadata replacement and rollback policies apply.
+
+String construction captures borrowed character values before removing incoming
+classes or attributes. Internal attribute copies fork the owned handle and use
+R's attribute setter, preserving facts without a generic R metadata wrapper.
+Names replacement with object dispatch or attributed names retains the R setter.
+Public attribute replacement and conservative foreign fallbacks are unchanged.
+Native readers adopt completed ordinary logical, integer/factor and character
+buffers without an additional capture. Writers retain exact owned string
+allocations across later metadata callbacks; their internal pointers never
+become untracked R results. Already UTF-8 owned strings need no DTA planning copy.
+
+The shared row planner gathers a wholly supported integer/logical/factor batch
+directly under its existing vctrs policy. Its locations are already validated,
+so base R need not validate them again for every ALTREP column. The batch keeps
+column attributes in their original order. Base-frame gathering retains its
+separate factor attribute policy. Any foreign column, unsupported class or
+attribute, names, dimensions, or callback-capable locations declines the whole
+batch, preserving the existing fallback and cross-column callback order.
 
 Native readers retain the exact allocation behind a pointer across callbacks.
 Compact dictionaries additionally pin their immutable Rust descriptor through

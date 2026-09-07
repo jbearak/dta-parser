@@ -62,7 +62,7 @@ extern "C" {
 
     fn dtatools_check_interrupt() -> c_int;
     fn dtatools_alloc_vector(kind: c_int, length: RLen, result: *mut Sexp) -> c_int;
-    fn dtatools_adopt_real(values: Sexp, result: *mut Sexp) -> c_int;
+    fn dtatools_adopt_atomic(values: Sexp, result: *mut Sexp) -> c_int;
     fn dtatools_preserve_object(object: Sexp) -> c_int;
     fn dtatools_release_object(object: Sexp);
     fn dtatools_make_char(
@@ -1756,15 +1756,15 @@ impl ProtectGuard {
         Ok(value)
     }
 
-    /// Finish a native ordinary-double allocation after its final writer has
+    /// Finish a native ordinary atomic allocation after its final writer has
     /// returned. The protected C bridge contains R allocation failures.
-    unsafe fn adopt_real(&mut self, value: Sexp) -> Result<Sexp, String> {
+    unsafe fn adopt_atomic(&mut self, value: Sexp) -> Result<Sexp, String> {
         self.objects
             .try_reserve(1)
-            .map_err(|_| "R could not track an owned double vector".to_owned())?;
+            .map_err(|_| "R could not track an owned atomic vector".to_owned())?;
         let mut result = ptr::null_mut();
-        if dtatools_adopt_real(value, &mut result) == 0 || result.is_null() {
-            return Err("R could not adopt an ordinary-double vector".to_owned());
+        if dtatools_adopt_atomic(value, &mut result) == 0 || result.is_null() {
+            return Err("R could not adopt an ordinary atomic vector".to_owned());
         }
         self.objects.push(result);
         Ok(result)
@@ -2323,7 +2323,7 @@ unsafe fn numeric_column<T: Copy + Into<f64>>(
             .map(r_missing)
             .unwrap_or_else(|| observed_value(values[index].into(), temporal));
     }
-    guard.adopt_real(vector)
+    guard.adopt_atomic(vector)
 }
 
 unsafe fn build_column(
@@ -3221,7 +3221,10 @@ impl DtaSink for RDataFrameSink {
                         // Streaming and parallel fills have finished before
                         // this method. Retire their writer before publication.
                         *output = ptr::null_mut();
-                        *vector = self._guard.adopt_real(*vector).map_err(DtaError::Output)?;
+                        *vector = self
+                            ._guard
+                            .adopt_atomic(*vector)
+                            .map_err(DtaError::Output)?;
                         SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
                         *vector
                     }

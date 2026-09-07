@@ -1175,6 +1175,15 @@ static SEXP write_string_plan_result(
     return result;
 }
 
+/* Explicit string construction replaces the incoming class. Capture borrowed
+   values even when that removable class is outside generic owned qualification.
+   Existing compact dictionaries retain their separate copy-on-write contract. */
+SEXP C_dtatools_capture_string(SEXP value) {
+    if (TYPEOF(value) != STRSXP) Rf_error("string construction requires character values");
+    if (unmaterialized_dictstring_source(value) != R_NilValue) return value;
+    return owned_fork(value);
+}
+
 SEXP C_dtatools_write_string_plan(SEXP value) {
     if (TYPEOF(value) != STRSXP) {
         Rf_error("internal string planning requires a character vector");
@@ -1206,14 +1215,18 @@ SEXP C_dtatools_write_string_plan(SEXP value) {
         }
         return write_string_plan_result(maximum, 0, value);
     }
-    R_xlen_t length = XLENGTH(value);
-    int materialize_altstring = ALTREP(value);
+    /* Owned strings have stable ordinary storage. Read that allocation here,
+       but return the tracked handle when no normalization is needed. Foreign
+       ALTSTRING values still need the established materialization boundary. */
+    SEXP source = PROTECT(owned_column(value) ? owned_values(value) : value);
+    R_xlen_t length = XLENGTH(source);
+    int materialize_altstring = ALTREP(source);
     if (materialize_altstring) {
         normalized = PROTECT(Rf_allocVector(STRSXP, length));
     }
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
-        SEXP element = STRING_ELT(value, index);
+        SEXP element = STRING_ELT(source, index);
         if (materialize_altstring) PROTECT(element);
         if (element == NA_STRING) {
             missing += 1;
@@ -1236,8 +1249,8 @@ SEXP C_dtatools_write_string_plan(SEXP value) {
         } else {
             if (normalized == R_NilValue) {
                 normalized = PROTECT(Rf_allocVector(STRSXP, length));
-                        for (R_xlen_t prior = 0; prior < index; prior++) {
-                    SET_STRING_ELT(normalized, prior, STRING_ELT(value, prior));
+                for (R_xlen_t prior = 0; prior < index; prior++) {
+                    SET_STRING_ELT(normalized, prior, STRING_ELT(source, prior));
                 }
             }
             const char *translated = Rf_translateCharUTF8(element);
@@ -1255,6 +1268,7 @@ SEXP C_dtatools_write_string_plan(SEXP value) {
         maximum, missing, normalized == R_NilValue ? value : normalized
     );
     if (normalized != R_NilValue) UNPROTECT(1);
+    UNPROTECT(1);
     return result;
 }
 
@@ -3311,14 +3325,40 @@ SEXP C_dtatools_has_bytes_encoding(SEXP values) {
     if (TYPEOF(values) != STRSXP) {
         Rf_error("internal encoding check requires a character vector");
     }
-    R_xlen_t length = XLENGTH(values);
+    SEXP source = PROTECT(owned_column(values) ? owned_values(values) : values);
+    R_xlen_t length = XLENGTH(source);
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
-        if (Rf_getCharCE(STRING_ELT(values, index)) == CE_BYTES) {
+        if (Rf_getCharCE(STRING_ELT(source, index)) == CE_BYTES) {
+            UNPROTECT(1);
             return Rf_ScalarLogical(1);
         }
     }
+    UNPROTECT(1);
     return Rf_ScalarLogical(0);
+}
+
+/* The existing Arrow fallback rejects bytes and calls enc2utf8. Already UTF-8
+   owned values need neither a second handle-dispatch scan nor a new payload.
+   Inspect actual strings, including exposed backing, without publishing their
+   ordinary allocation. Other encodings keep the original R conversion. */
+SEXP C_dtatools_owned_utf8_ready(SEXP value) {
+    if (TYPEOF(value) != STRSXP || !owned_column(value)) return R_NilValue;
+    SEXP payload = PROTECT(owned_values(value));
+    R_xlen_t length = XLENGTH(payload);
+    const SEXP *strings = STRING_PTR_RO(payload);
+    for (R_xlen_t i = 0; i < length; i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        SEXP item = strings[i];
+        if (item == NA_STRING) continue;
+        cetype_t encoding = Rf_getCharCE(item);
+        if (encoding == CE_BYTES || (encoding != CE_UTF8 && write_string_utf8_status(item) != 1)) {
+            UNPROTECT(1);
+            return R_NilValue;
+        }
+    }
+    UNPROTECT(1);
+    return value;
 }
 
 static SEXP write_rooted_strings(
@@ -3578,7 +3618,8 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
             if (TYPEOF(values) != STRSXP) {
                 Rf_error("internal string write column must be character");
             }
-            descriptor->string_values = values;
+            descriptor->string_values = owned_column(values) ? owned_values(values) : values;
+            SET_VECTOR_ELT(payload_roots, (R_xlen_t) (table_count + index), descriptor->string_values);
             SEXP dictionary_source = unmaterialized_dictstring_source(values);
             if (dictionary_source != R_NilValue) {
                 SEXP root = PROTECT(dictstring_read_root(dictionary_source));
@@ -3721,7 +3762,7 @@ static void arrow_write_column_descriptor(
         if (TYPEOF(values) != STRSXP) {
             Rf_error("internal Arrow character column has the wrong type");
         }
-        descriptor->strings = values;
+        descriptor->strings = owned_column(values) ? owned_values(values) : values;
         descriptor->string_count = row_count;
         SEXP dictionary_source = unmaterialized_dictstring_source(values);
         if (dictionary_source != R_NilValue) {
@@ -8271,10 +8312,14 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_capture_column", (DL_FUNC) &C_dtatools_capture_column, 1},
     {"C_dtatools_owned_string_fits", (DL_FUNC) &C_dtatools_owned_string_fits, 2},
     {"C_dtatools_owned_string_width", (DL_FUNC) &C_dtatools_owned_string_width, 1},
+    {"C_dtatools_owned_string_attribute", (DL_FUNC) &C_dtatools_owned_string_attribute, 3},
+    {"C_dtatools_capture_string", (DL_FUNC) &C_dtatools_capture_string, 1},
+    {"C_dtatools_owned_utf8_ready", (DL_FUNC) &C_dtatools_owned_utf8_ready, 1},
     {"C_dtatools_owned_scan_stats", (DL_FUNC) &C_dtatools_owned_scan_stats, 1},
     {"C_dtatools_callback_length", (DL_FUNC) &C_dtatools_callback_length, 2},
     {"C_dtatools_dictstring_subset", (DL_FUNC) &C_dtatools_dictstring_subset, 2},
     {"C_dtatools_owned_subset", (DL_FUNC) &C_dtatools_owned_subset, 2},
+    {"C_dtatools_gather_owned_discrete", (DL_FUNC) &C_dtatools_gather_owned_discrete, 2},
     {"C_dtatools_owned_set_string", (DL_FUNC) &C_dtatools_owned_set_string, 3},
     {"C_dtatools_owned_info", (DL_FUNC) &C_dtatools_owned_info, 1},
     {"C_dtatools_owned_pointer", (DL_FUNC) &C_dtatools_owned_pointer, 2},

@@ -3176,7 +3176,10 @@ unsafe fn finalize_read_column(
             };
             guard.dictstring(data)?
         }
-        ColumnShape::Strings { has_nulls: true } => character_vector(column, row_count, guard)?,
+        ColumnShape::Strings { has_nulls: true } => {
+            let vector = character_vector(column, row_count, guard)?;
+            guard.adopt_atomic(vector)?
+        }
         ColumnShape::Factor => {
             let FillOutcome::Levels(levels) = outcome else {
                 return Err(mismatch());
@@ -3192,15 +3195,16 @@ unsafe fn finalize_read_column(
             } else {
                 set_class(plan.vector, &["factor"], guard)?;
             }
-            plan.vector
+            guard.adopt_atomic(plan.vector)?
         }
+        ColumnShape::Logical | ColumnShape::Integer => guard.adopt_atomic(plan.vector)?,
         ColumnShape::ProfiledDouble { .. }
         | ColumnShape::ProfiledEager { .. }
         | ColumnShape::Date32
         | ColumnShape::Timestamp
         | ColumnShape::Duration { .. }
         | ColumnShape::PayloadDouble
-        | ColumnShape::SemanticDouble => guard.adopt_real(plan.vector)?,
+        | ColumnShape::SemanticDouble => guard.adopt_atomic(plan.vector)?,
         _ => plan.vector,
     };
     match &plan.shape {

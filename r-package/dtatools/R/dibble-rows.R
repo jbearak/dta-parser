@@ -23,11 +23,16 @@
     }
     positions <- which(!native)
     if (length(positions)) {
-        frame <- vctrs::new_data_frame(columns[positions],
-                                       n = NROW(columns[[positions[[1L]]]]))
-        result[positions] <- .plain_data_columns(if (identical(fallback, "base")) {
-            frame[locations, , drop = FALSE]
-        } else vctrs::vec_slice(frame, locations))
+        remaining <- columns[positions]
+        gathered <- if (identical(fallback, "vctrs"))
+            .Call(C_dtatools_gather_owned_discrete, remaining, locations) else NULL
+        if (!is.null(gathered)) result[positions] <- gathered else {
+            frame <- vctrs::new_data_frame(remaining,
+                                           n = NROW(columns[[positions[[1L]]]]))
+            result[positions] <- .plain_data_columns(if (identical(fallback, "base")) {
+                frame[locations, , drop = FALSE]
+            } else vctrs::vec_slice(frame, locations))
+        }
     }
     result
 }

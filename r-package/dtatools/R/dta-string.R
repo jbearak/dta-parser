@@ -24,7 +24,17 @@ dta_string <- function(x = character(), storage = NULL) {
     x <- enc2utf8(x)
     required <- .dta_string_required_width(x)
     storage <- .normalize_dta_string_storage(storage, required)
-    .new_dta_string(x, storage)
+    result <- .new_dta_string(x, storage)
+    # A foreign reader or declaration callback can change borrowed values
+    # after the initial validation. Check the values actually captured.
+    if (!.is_unmaterialized_dictstring(result)) {
+        captured_width <- .dta_string_required_width(result)
+        if (is.na(captured_width)) {
+            stop("Stata strings cannot contain `NA_character_`; use `\"\"`", call. = FALSE)
+        }
+        if (captured_width > required) .normalize_dta_string_storage(storage, captured_width)
+    }
+    result
 }
 
 .dta_string_required_width <- function(x) {
@@ -59,6 +69,7 @@ dta_string <- function(x = character(), storage = NULL) {
 
 .new_dta_string <- function(x, storage, prototype = NULL) {
     value_names <- names(x)
+    x <- .Call(C_dtatools_capture_string, x)
     if (!is.null(prototype)) {
         # Attribute replacement materializes the dictionary-string ALTREP used
         # by read_dta(). Restore the owned attributes in place so imported
@@ -66,13 +77,20 @@ dta_string <- function(x = character(), storage = NULL) {
         x <- .restore_dta_variable_metadata(x, prototype, names = value_names)
     } else {
         for (name in setdiff(names(attributes(x)), "names")) {
-            attr(x, name) <- NULL
+            x <- .set_dta_string_attribute(x, name, NULL)
         }
     }
-    attr(x, "stata.string.storage") <- storage
-    attr(x, "class") <- c("dta_string", "vctrs_vctr", "character")
-    if (!is.null(value_names)) names(x) <- value_names
+    x <- .set_dta_string_attribute(x, "stata.string.storage", storage)
+    x <- .set_dta_string_attribute(x, "class", c("dta_string", "vctrs_vctr", "character"))
+    if (!is.null(value_names)) x <- .set_dta_string_attribute(x, "names", value_names)
     .Call(C_dtatools_capture_column, x)
+}
+
+.set_dta_string_attribute <- function(value, name, replacement) {
+    result <- .Call(C_dtatools_owned_string_attribute, value, name, replacement)
+    if (!is.null(result)) return(result)
+    if (identical(name, "names")) names(value) <- replacement else attr(value, name) <- replacement
+    value
 }
 
 # The bare character data behind a Stata string, read through a metadata

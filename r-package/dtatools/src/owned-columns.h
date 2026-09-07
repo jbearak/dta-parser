@@ -18,7 +18,6 @@ static double staged_new_bytes = 0;
 static double old_journal_bytes = 0;
 static double native_scratch_allocated = 0;
 
-enum { OWNED_VALUES, OWNED_FLAGS, OWNED_RECORD_SIZE };
 enum { OWNED_SHARED, OWNED_EXPOSED, OWNED_NO_NA, OWNED_MAX_WIDTH, OWNED_WIDTH_EXACT, OWNED_FLAGS_SIZE };
 
 static int owned_real(SEXP value) {
@@ -49,24 +48,29 @@ static size_t owned_width(SEXP value) {
 }
 
 static SEXP owned_values(SEXP value) {
-    return VECTOR_ELT(R_altrep_data1(value), OWNED_VALUES);
+    return R_ExternalPtrProtected(R_altrep_data1(value));
 }
 
 static int *owned_flags(SEXP value) {
-    return INTEGER(VECTOR_ELT(R_altrep_data1(value), OWNED_FLAGS));
+    return INTEGER(R_ExternalPtrTag(R_altrep_data1(value)));
+}
+
+static const void *owned_read_pointer(SEXP value) {
+    return R_ExternalPtrAddr(R_altrep_data1(value));
 }
 
 static SEXP owned_record(SEXP values) {
-    SEXP record = PROTECT(Rf_allocVector(VECSXP, OWNED_RECORD_SIZE));
     SEXP flags = PROTECT(Rf_allocVector(INTSXP, OWNED_FLAGS_SIZE));
     INTEGER(flags)[OWNED_SHARED] = 0;
     INTEGER(flags)[OWNED_EXPOSED] = 0;
     INTEGER(flags)[OWNED_NO_NA] = -1;
     INTEGER(flags)[OWNED_MAX_WIDTH] = -1;
     INTEGER(flags)[OWNED_WIDTH_EXACT] = 0;
-    SET_VECTOR_ELT(record, OWNED_VALUES, values);
-    SET_VECTOR_ELT(record, OWNED_FLAGS, flags);
-    UNPROTECT(2);
+    /* This pointer never owns native memory. The protected ordinary vector is
+       its exact R-managed allocation, and the tag roots that allocation's facts.
+       Replacing the record changes all three together. No finalizer is needed. */
+    SEXP record = R_MakeExternalPtr((void *) DATAPTR_RO(values), flags, values);
+    UNPROTECT(1);
     return record;
 }
 
@@ -147,7 +151,7 @@ static int owned_string_width(SEXP value) {
 
 static void owned_scan_strings(SEXP value) {
     SEXP record = PROTECT(R_altrep_data1(value));
-    SEXP payload = VECTOR_ELT(record, OWNED_VALUES);
+    SEXP payload = R_ExternalPtrProtected(record);
     int no_na = 1, maximum = 0;
     owned_string_scans++;
     for (R_xlen_t i = 0; i < XLENGTH(payload); i++) {
@@ -157,7 +161,7 @@ static void owned_scan_strings(SEXP value) {
         if (item == NA_STRING) no_na = 0;
         else { int width = owned_string_width(item); if (width > maximum) maximum = width; }
     }
-    int *flags = INTEGER(VECTOR_ELT(record, OWNED_FLAGS));
+    int *flags = INTEGER(R_ExternalPtrTag(record));
     flags[OWNED_NO_NA] = no_na;
     flags[OWNED_MAX_WIDTH] = maximum;
     flags[OWNED_WIDTH_EXACT] = 1;
@@ -222,6 +226,25 @@ static SEXP C_dtatools_capture_column(SEXP value) {
         (owned_flags(result)[OWNED_MAX_WIDTH] < 0 || owned_flags(result)[OWNED_NO_NA] < 0)) {
         owned_scan_strings(result);
     }
+    UNPROTECT(1);
+    return result;
+}
+
+/* R's attribute-only copy may wrap a large ALTREP in a generic metadata
+   wrapper. Package string construction already owns its copy boundary; keep
+   that independent handle here so restoration retains the backing facts. */
+static SEXP C_dtatools_owned_string_attribute(SEXP value, SEXP name, SEXP replacement) {
+    if (TYPEOF(value) != STRSXP || !owned_column(value)) return R_NilValue;
+    if (TYPEOF(name) != STRSXP || ALTREP(name) || ANY_ATTRIB(name) ||
+        XLENGTH(name) != 1 || STRING_ELT(name, 0) == NA_STRING) return R_NilValue;
+    /* names<- is generic and converts attributed names through as.character.
+       Those cases must still enter the existing R setter. */
+    if (strcmp(CHAR(STRING_ELT(name, 0)), "names") == 0 &&
+        (Rf_isObject(value) || (replacement != R_NilValue &&
+         (TYPEOF(replacement) != STRSXP || ALTREP(replacement) || ANY_ATTRIB(replacement)))))
+        return R_NilValue;
+    SEXP result = PROTECT(owned_fork(value));
+    Rf_setAttrib(result, name, replacement);
     UNPROTECT(1);
     return result;
 }
@@ -312,32 +335,46 @@ static SEXP C_dtatools_owned_missing_mask(SEXP value) {
 /* This is the only public writable backing preparation for owned columns. Public
    access and transaction access differ solely in their exposure policy. */
 static void *owned_prepare(SEXP value, int exposed) {
-    if (owned_flags(value)[OWNED_SHARED] || R_altrep_data2(value) == R_BaseEnv) {
+    int *flags = owned_flags(value);
+    if (flags[OWNED_SHARED] || R_altrep_data2(value) == R_BaseEnv) {
         SEXP copy = PROTECT(owned_capture(value));
         R_set_altrep_data1(value, R_altrep_data1(copy));
         R_set_altrep_data2(value, R_NilValue);
         UNPROTECT(1);
+        flags = owned_flags(value);
     }
-    owned_flags(value)[OWNED_NO_NA] = -1;
-    owned_flags(value)[OWNED_MAX_WIDTH] = -1;
-    owned_flags(value)[OWNED_WIDTH_EXACT] = 0;
-    if (exposed) owned_flags(value)[OWNED_EXPOSED] = 1;
+    flags[OWNED_NO_NA] = -1;
+    flags[OWNED_MAX_WIDTH] = -1;
+    flags[OWNED_WIDTH_EXACT] = 0;
+    if (exposed) flags[OWNED_EXPOSED] = 1;
     return DATAPTR_RW(owned_values(value));
 }
 
 static R_xlen_t owned_real_length(SEXP value) { return XLENGTH(owned_values(value)); }
-static double owned_real_elt(SEXP value, R_xlen_t i) { return REAL_ELT(owned_values(value), i); }
+static double owned_real_elt(SEXP value, R_xlen_t i) { return ((const double *) owned_read_pointer(value))[i]; }
 static R_xlen_t owned_real_region(SEXP value, R_xlen_t i, R_xlen_t n, double *out) {
     return REAL_GET_REGION(owned_values(value), i, n, out);
 }
 static void *owned_real_dataptr(SEXP value, Rboolean writable) {
-    return writable ? owned_prepare(value, 1) : (void *) DATAPTR_RO(owned_values(value));
+    return writable ? owned_prepare(value, 1) : (void *) owned_read_pointer(value);
 }
 static const void *owned_real_dataptr_or_null(SEXP value) {
-    return DATAPTR_OR_NULL(owned_values(value));
+    return owned_read_pointer(value);
 }
 static SEXP owned_real_duplicate(SEXP value, Rboolean deep) {
-    (void) deep;
+    /* Same-type factor coercion deep-duplicates before removing attributes.
+       Its ordinary integer snapshot must not carry another owned handle into
+       base range/concatenation's repeated writable-pointer requests. Explicit
+       metadata copies and shallow duplication retain their owned forks. */
+    if (deep && TYPEOF(value) == INTSXP && owned_supported(value) &&
+        !Rf_isS4(value) && Rf_inherits(value, "factor")) {
+        SEXP payload = PROTECT(owned_values(value));
+        SEXP result = PROTECT(Rf_duplicate(payload));
+        owned_capture_bytes += (double) XLENGTH(payload) * sizeof(int);
+        SHALLOW_DUPLICATE_ATTRIB(result, value);
+        UNPROTECT(2);
+        return result;
+    }
     return owned_fork_real(value);
 }
 
@@ -345,7 +382,7 @@ static int owned_real_no_na(SEXP value) {
     int *flags = owned_flags(value);
     if (!flags[OWNED_EXPOSED] && flags[OWNED_NO_NA] >= 0) return flags[OWNED_NO_NA];
     SEXP record = PROTECT(R_altrep_data1(value));
-    SEXP payload = VECTOR_ELT(record, OWNED_VALUES);
+    SEXP payload = R_ExternalPtrProtected(record);
     R_xlen_t length = XLENGTH(payload);
     const double *values = (const double *) DATAPTR_RO(payload);
     int no_na = 1;
@@ -451,9 +488,9 @@ static SEXP C_dtatools_owned_pointer_write(SEXP pointer, SEXP index, SEXP replac
     return R_NilValue;
 }
 
-static int owned_integer_elt(SEXP value, R_xlen_t i) { return INTEGER_ELT(owned_values(value), i); }
-static int owned_logical_elt(SEXP value, R_xlen_t i) { return LOGICAL_ELT(owned_values(value), i); }
-static SEXP owned_string_elt(SEXP value, R_xlen_t i) { return STRING_ELT(owned_values(value), i); }
+static int owned_integer_elt(SEXP value, R_xlen_t i) { return ((const int *) owned_read_pointer(value))[i]; }
+static int owned_logical_elt(SEXP value, R_xlen_t i) { return ((const int *) owned_read_pointer(value))[i]; }
+static SEXP owned_string_elt(SEXP value, R_xlen_t i) { return ((const SEXP *) owned_read_pointer(value))[i]; }
 static R_xlen_t owned_integer_region(SEXP value, R_xlen_t i, R_xlen_t n, int *out) {
     return INTEGER_GET_REGION(owned_values(value), i, n, out);
 }
@@ -511,28 +548,49 @@ static SEXP C_dtatools_owned_set_string(SEXP value, SEXP index, SEXP replacement
     SET_STRING_ELT(value, (R_xlen_t) position - 1, STRING_ELT(replacement, 0));
     return R_NilValue;
 }
-static SEXP owned_atomic_subset(SEXP value, SEXP index, SEXP call) {
-    (void) call;
+static SEXP owned_atomic_gather(SEXP value, SEXP index, int adopt) {
     if (TYPEOF(index) != INTSXP && TYPEOF(index) != REALSXP) return NULL;
     SEXP record = PROTECT(R_altrep_data1(value));
-    SEXP payload = VECTOR_ELT(record, OWNED_VALUES);
+    SEXP payload = R_ExternalPtrProtected(record);
     R_xlen_t length = XLENGTH(index), source_length = XLENGTH(payload);
-    int type = TYPEOF(value), padded = 0;
+    int type = TYPEOF(value), index_type = TYPEOF(index), padded = 0;
     SEXP values = PROTECT(Rf_allocVector(type, length));
-    for (R_xlen_t i = 0; i < length; i++) {
+    /* Keep callback-capable index methods in their established element order.
+       Ordinary and owned indices can use one rooted, read-only allocation. */
+    SEXP index_payload = PROTECT(owned_column(index) ? owned_values(index) : index);
+    const int *integer_index = index_type == INTSXP && !ALTREP(index_payload) ?
+        (const int *) DATAPTR_RO(index_payload) : NULL;
+    const double *real_index = index_type == REALSXP && !ALTREP(index_payload) ?
+        (const double *) DATAPTR_RO(index_payload) : NULL;
+    const int *source = type != STRSXP ? (const int *) DATAPTR_RO(payload) : NULL;
+    const SEXP *strings = type == STRSXP ? STRING_PTR_RO(payload) : NULL;
+    int *out = type != STRSXP ? (int *) DATAPTR_RW(values) : NULL;
+    if (integer_index != NULL && type != STRSXP) {
+        for (R_xlen_t i = 0; i < length; i++) {
+            if ((i & 16383) == 0) R_CheckUserInterrupt();
+            int position = integer_index[i];
+            int valid = position >= 1 && (R_xlen_t) position <= source_length;
+            padded |= !valid;
+            out[i] = valid ? source[position - 1] : NA_INTEGER;
+        }
+    } else for (R_xlen_t i = 0; i < length; i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
-        double position = TYPEOF(index) == INTSXP ? INTEGER_ELT(index, i) : REAL_ELT(index, i);
-        int valid = R_FINITE(position) && position >= 1 && position <= (double) source_length;
+        double position = integer_index != NULL ? integer_index[i] :
+            real_index != NULL ? real_index[i] :
+            index_type == INTSXP ? INTEGER_ELT(index, i) : REAL_ELT(index, i);
+        /* These finite bounds also reject NA, NaN and both infinities. */
+        int valid = position >= 1 && position <= (double) source_length;
         if (!valid) padded = 1;
         R_xlen_t from = valid ? (R_xlen_t) position - 1 : 0;
-        switch (type) {
-        case INTSXP: INTEGER(values)[i] = valid ? INTEGER_ELT(payload, from) : NA_INTEGER; break;
-        case LGLSXP: LOGICAL(values)[i] = valid ? LOGICAL_ELT(payload, from) : NA_LOGICAL; break;
-        case STRSXP: SET_STRING_ELT(values, i, valid ? STRING_ELT(payload, from) : NA_STRING); break;
-        }
+        if (type == STRSXP) SET_STRING_ELT(values, i, valid ? strings[from] : NA_STRING);
+        else out[i] = valid ? source[from] : NA_INTEGER;
+    }
+    if (!adopt) {
+        UNPROTECT(3);
+        return values;
     }
     SEXP result = PROTECT(owned_adopt(values));
-    int *prior = INTEGER(VECTOR_ELT(record, OWNED_FLAGS));
+    int *prior = INTEGER(R_ExternalPtrTag(record));
     /* Foreign index methods can mutate earlier source values and recompute
        facts while this loop is gathering. Their output must be rescanned. */
     if (!prior[OWNED_EXPOSED] && (!ALTREP(index) || owned_column(index))) {
@@ -540,8 +598,21 @@ static SEXP owned_atomic_subset(SEXP value, SEXP index, SEXP call) {
         owned_flags(result)[OWNED_MAX_WIDTH] = prior[OWNED_MAX_WIDTH];
         owned_flags(result)[OWNED_WIDTH_EXACT] = 0;
     }
-    UNPROTECT(3);
+    UNPROTECT(4);
     return result;
+}
+
+static SEXP owned_atomic_subset(SEXP value, SEXP index, SEXP call) {
+    (void) call;
+    return owned_atomic_gather(value, index, 1);
+}
+
+/* Base mean subsets logical input before its numeric loop. A public logical
+   subset is a new ordinary allocation; the package's validated batch route
+   still adopts its newly gathered columns directly. No source payload escapes. */
+static SEXP owned_logical_subset(SEXP value, SEXP index, SEXP call) {
+    (void) call;
+    return owned_atomic_gather(value, index, 0);
 }
 
 static SEXP C_dtatools_owned_subset(SEXP value, SEXP index) {
@@ -551,15 +622,67 @@ static SEXP C_dtatools_owned_subset(SEXP value, SEXP index) {
     return result == NULL ? R_NilValue : result;
 }
 
+/* The row planner has already checked these locations. Base's ALTREP subset
+   fallback checks them again for each column; gather a wholly known batch
+   directly. Declining the entire batch preserves foreign callback ordering. */
+static SEXP owned_discrete_gather_attribute(SEXP tag, SEXP value, void *context) {
+    (void) value;
+    (void) context;
+    const char *metadata[] = {"class", "levels", "stata.storage", "stata.string.storage",
+        "format.stata", "label", "labels", "value.label.name", "notes", "stata.note.numbers",
+        "stata.characteristics", "tzone", "units"};
+    for (size_t i = 0; i < sizeof(metadata) / sizeof(metadata[0]); i++) {
+        if (tag == Rf_install(metadata[i])) return NULL;
+    }
+    return R_NilValue;
+}
+
+static int owned_discrete_gather_supported(SEXP value) {
+    if (!owned_column(value) || (TYPEOF(value) != INTSXP && TYPEOF(value) != LGLSXP)) return 0;
+    SEXP classes = Rf_getAttrib(value, R_ClassSymbol);
+    if (classes != R_NilValue) {
+        if (TYPEOF(value) != INTSXP || TYPEOF(classes) != STRSXP ||
+            ALTREP(classes) || ANY_ATTRIB(classes)) return 0;
+        R_xlen_t n = XLENGTH(classes);
+        if (!((n == 1 && strcmp(CHAR(STRING_ELT(classes, 0)), "factor") == 0) ||
+              (n == 2 && strcmp(CHAR(STRING_ELT(classes, 0)), "ordered") == 0 &&
+                         strcmp(CHAR(STRING_ELT(classes, 1)), "factor") == 0))) return 0;
+        SEXP levels = Rf_getAttrib(value, R_LevelsSymbol);
+        if (TYPEOF(levels) != STRSXP || ALTREP(levels) || ANY_ATTRIB(levels)) return 0;
+    } else if (Rf_isObject(value)) return 0;
+    if (Rf_isS4(value)) return 0;
+    return R_mapAttrib(value, owned_discrete_gather_attribute, NULL) == NULL;
+}
+
+static SEXP C_dtatools_gather_owned_discrete(SEXP columns, SEXP locations) {
+    if (TYPEOF(columns) != VECSXP || ALTREP(columns) ||
+        TYPEOF(locations) != INTSXP || ALTREP(locations) || ANY_ATTRIB(locations)) return R_NilValue;
+    R_xlen_t count = XLENGTH(columns);
+    for (R_xlen_t i = 0; i < count; i++) {
+        if (!owned_discrete_gather_supported(VECTOR_ELT(columns, i))) return R_NilValue;
+    }
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, count));
+    for (R_xlen_t i = 0; i < count; i++) {
+        SEXP column = VECTOR_ELT(columns, i);
+        SEXP gathered = PROTECT(owned_atomic_subset(column, locations, R_NilValue));
+        SHALLOW_DUPLICATE_ATTRIB(gathered, column);
+        SET_VECTOR_ELT(result, i, gathered);
+        UNPROTECT(1);
+    }
+    Rf_setAttrib(result, R_NamesSymbol, Rf_getAttrib(columns, R_NamesSymbol));
+    UNPROTECT(1);
+    return result;
+}
+
 typedef struct { SEXP values; SEXP result; } owned_adopt_context;
 static void owned_adopt_call(void *data) {
     owned_adopt_context *context = (owned_adopt_context *) data;
-    SEXP result = PROTECT(owned_adopt_real(context->values));
+    SEXP result = PROTECT(owned_adopt(context->values));
     R_PreserveObject(result);
     context->result = result;
     UNPROTECT(1);
 }
-int dtatools_adopt_real(SEXP values, SEXP *result) {
+int dtatools_adopt_atomic(SEXP values, SEXP *result) {
     owned_adopt_context context = {values, NULL};
     int ok = R_ToplevelExec(owned_adopt_call, &context);
     if (ok) *result = context.result;
@@ -706,6 +829,7 @@ static void initialize_owned_columns(DllInfo *dll) {
     R_set_altinteger_Get_region_method(dtatools_owned_integer_class, owned_integer_region);
     R_set_altinteger_No_NA_method(dtatools_owned_integer_class, owned_discrete_no_na);
     R_set_altlogical_Elt_method(dtatools_owned_logical_class, owned_logical_elt);
+    R_set_altvec_Extract_subset_method(dtatools_owned_logical_class, owned_logical_subset);
     R_set_altlogical_Get_region_method(dtatools_owned_logical_class, owned_logical_region);
     R_set_altlogical_No_NA_method(dtatools_owned_logical_class, owned_discrete_no_na);
     R_set_altstring_Elt_method(dtatools_owned_string_class, owned_string_elt);

@@ -2,6 +2,94 @@ owned_atom_info <- function(value) .Call(C_dtatools_owned_info, value)
 owned_atom_scan_stats <- function(reset = FALSE) .Call(C_dtatools_owned_scan_stats, reset)
 owned_atom_capture <- function(value) .Call(C_dtatools_capture_column, value)
 
+test_that("validated discrete batches retain vctrs and base gather behavior", {
+    values <- list(l = rep(c(TRUE, FALSE, NA), length.out = 1000L),
+                   f = factor(rep(c("b", "a", NA), length.out = 1000L),
+                              levels = c("a", "b", "unused")),
+                   o = ordered(rep(c("b", "a", NA), length.out = 1000L),
+                               levels = c("a", "b", "unused")))
+    values <- lapply(values, function(x) {
+        # Populate a fresh ordinary vector. Repeated attribute edits to a
+        # borrowed large vector can instead create R's foreign metadata wrapper.
+        out <- if (is.factor(x)) as.integer(x)[seq_along(x)] else x[seq_along(x)]
+        if (is.factor(x)) {
+            attr(out, "levels") <- levels(x)
+            attr(out, "class") <- class(x)
+        }
+        attr(out, "label") <- "label"
+        attr(out, "notes") <- c("one", "two")
+        out
+    })
+    frame <- vctrs::new_data_frame(values, n = 1000L)
+    expect_false(any(vapply(values, .is_altrep, TRUE)))
+    columns <- lapply(values, owned_atom_capture)
+    before <- lapply(columns, owned_atom_info)
+    expect_true(all(vapply(before, function(x) !is.null(x), TRUE)))
+    for (locations in list(integer(), c(1L, 1000L, 1L), c(NA_integer_, 3L, 1L))) {
+        result <- .Call(C_dtatools_gather_owned_discrete, columns, locations)
+        expect_identical(result, stats::setNames(
+            .plain_data_columns(vctrs::vec_slice(frame, locations)), names(values)))
+        expect_identical(lapply(result, attributes), lapply(values, attributes))
+        expect_true(all(vapply(result, function(x) !is.null(owned_atom_info(x)), TRUE)))
+        expect_identical(.gather_dta_columns(columns, locations), result)
+        expect_identical(.gather_dta_columns(columns, locations, "base"),
+                         stats::setNames(.plain_data_columns(frame[locations, , drop = FALSE]),
+                                         names(values)))
+    }
+    result <- .Call(C_dtatools_gather_owned_discrete, columns, c(1L, 3L))
+    .Call(C_dtatools_patch_vector, columns$l, 1L, FALSE)
+    expect_identical(as.logical(result$l), c(TRUE, NA))
+    .Call(C_dtatools_patch_vector, result$f, 1L, 1L)
+    expect_identical(as.integer(columns$f), as.integer(values$f))
+    expect_identical(lapply(columns[-1L], function(x) owned_atom_info(x)$backing),
+                     lapply(before[-1L], `[[`, "backing"))
+})
+
+test_that("discrete gather declines whole callback or metadata fallback batches", {
+    calls <- 0L
+    callback <- function() calls <<- calls + 1L
+    eligible <- owned_atom_capture(c(TRUE, FALSE, NA))
+    foreign <- .Call(C_dtatools_callback_integer, c(1L, 2L, 3L), callback)
+    expect_null(.Call(C_dtatools_gather_owned_discrete,
+                     list(first = eligible, second = foreign), c(1L, 3L)))
+    expect_identical(calls, 0L)
+    for (attribute in list(list(names = c("a", "b", "c")), list(dim = c(3L, 1L)),
+                           list(custom = TRUE), list(class = "unknown"))) {
+        value <- .metadata_copy(eligible)
+        attributes(value) <- attribute
+        expect_null(.Call(C_dtatools_gather_owned_discrete,
+                         list(first = eligible, second = value), c(1L, 3L)))
+    }
+    foreign_locations <- .Call(C_dtatools_callback_integer, c(1L, 3L), callback)
+    expect_null(.Call(C_dtatools_gather_owned_discrete, list(eligible), foreign_locations))
+    expect_identical(calls, 0L)
+    expect_null(.Call(C_dtatools_gather_owned_discrete, list(eligible), c(a = 1L)))
+})
+
+test_that("mixed gather fallbacks retain cross-column callback order", {
+    run <- function(direct, foreign_first) {
+        target <- owned_atom_capture(c(TRUE, FALSE, NA))
+        calls <- 0L
+        foreign <- .Call(C_dtatools_callback_integer, c(1L, 2L, 3L), function() {
+            calls <<- calls + 1L
+            .Call(C_dtatools_patch_vector, target, 1L, FALSE)
+        })
+        columns <- if (foreign_first) list(foreign = foreign, target = target) else
+            list(target = target, foreign = foreign)
+        result <- if (direct) .gather_dta_columns(columns, c(1L, 3L)) else
+            stats::setNames(.plain_data_columns(vctrs::vec_slice(
+                vctrs::new_data_frame(columns, n = 3L), c(1L, 3L))), names(columns))
+        list(result = result, source = as.logical(target), calls = calls)
+    }
+    for (foreign_first in c(FALSE, TRUE)) {
+        actual <- run(TRUE, foreign_first)
+        expect_identical(actual, run(FALSE, foreign_first))
+        expect_identical(as.logical(actual$result$target), c(!foreign_first, NA))
+        expect_identical(actual$source, c(FALSE, FALSE, NA))
+        expect_identical(actual$calls, 1L)
+    }
+})
+
 owned_atom_fixtures <- function() list(
     string = dta_string(c("wide", "", "\u00e9", "z"), "str8"),
     declared = structure(c("wide", "", "\u00e9", "z"), stata.string.storage = "str8"),
@@ -9,6 +97,78 @@ owned_atom_fixtures <- function() list(
     factor = factor(c("b", "a", NA, "b"), levels = c("a", "b", "unused")),
     ordered = ordered(c("b", "a", NA, "b"), levels = c("a", "b", "unused"))
 )
+
+test_that("owned record reads follow each replacement allocation through GC", {
+    for (value in c(owned_atom_fixtures(), list(real = dta_double(c(1, 2, NA, 4))))) {
+        original <- paste0(value)
+        target <- owned_atom_capture(value)
+        sibling <- .metadata_copy(target)
+        .Call(C_dtatools_patch_vector, target, 1L, value[2L])
+        expected <- original
+        expected[1L] <- original[2L]
+        gc()
+        expect_identical(paste0(target), expected)
+        expect_identical(paste0(sibling), original)
+        .Call(C_dtatools_patch_vector, target, 2L, value[4L])
+        expected[2L] <- original[4L]
+        gc()
+        expect_identical(paste0(target), expected)
+        previous <- .metadata_copy(target)
+        .Call(C_dtatools_patch_vector, target, NULL, rep(value[2L], length(value)))
+        gc()
+        expect_identical(paste0(target), rep(original[2L], length(value)))
+        expect_identical(paste0(previous), expected)
+        expect_identical(paste0(sibling), original)
+    }
+})
+
+test_that("factor integer exports use an isolated ordinary deep copy", {
+    for (ordered in c(FALSE, TRUE)) {
+        value <- factor(rep(c("b", "a", NA), length.out = 1000L),
+                        levels = c("a", "b", "unused"), ordered = ordered)
+        source <- owned_atom_capture(value)
+        expect_false(is.null(owned_atom_info(source)))
+        before <- owned_atom_info(source)$backing
+        expected <- as.integer(value)
+        exported <- as.integer(source)
+        expect_identical(exported, expected)
+        expect_false(.is_altrep(exported))
+        expect_null(attributes(exported))
+        expect_identical(owned_atom_info(source)$backing, before)
+        metadata_copy <- .metadata_copy(source)
+        expect_identical(owned_atom_info(metadata_copy)$backing, before)
+        if (ordered) expect_identical(range(source, na.rm = TRUE), range(value, na.rm = TRUE))
+        .Call(C_dtatools_patch_vector, source, 1L, 1L)
+        expect_identical(exported, expected)
+        expect_identical(metadata_copy, value)
+        exported[2L] <- 2L
+        expect_identical(as.integer(source)[1:3], c(1L, 1L, NA_integer_))
+        expect_identical(as.integer(metadata_copy), expected)
+    }
+})
+
+test_that("public logical subsets are fresh ordinary values and batch results stay owned", {
+    for (named in c(FALSE, TRUE)) {
+        value <- rep(c(TRUE, FALSE, NA), length.out = 1000L)
+        if (named) names(value) <- paste0("r", seq_along(value))
+        source <- owned_atom_capture(value)
+        before <- owned_atom_info(source)$backing
+        for (locations in list(integer(), c(1L, 3L, 1L), c(NA_integer_, 1000L, 2L))) {
+            result <- source[locations]
+            expect_identical(result, value[locations])
+            expect_false(.is_altrep(result))
+            native <- .Call(C_dtatools_owned_subset, source, locations)
+            expect_false(is.null(owned_atom_info(native)))
+            expect_identical(unname(as.logical(native)), unname(as.logical(value[locations])))
+        }
+        result <- source[c(1L, 2L, 3L)]
+        .Call(C_dtatools_patch_vector, source, 1L, FALSE)
+        expect_identical(result, value[c(1L, 2L, 3L)])
+        result[2L] <- TRUE
+        expect_identical(unname(as.logical(source[1:3])), c(FALSE, FALSE, NA))
+        expect_identical(owned_atom_info(source)$backing, before)
+    }
+})
 
 test_that("ordinary atom handles share flat backing with independent attributes", {
     for (value in owned_atom_fixtures()) {
@@ -483,9 +643,10 @@ test_that("DTA and Arrow writer pointers survive later metadata callbacks", {
     fixture <- tempfile(fileext = ".arrow")
     withr::defer(unlink(fixture))
     save_arrow(data.frame(x = c("alpha", "beta", "alpha")), fixture)
-    for (format in c("dta", "arrow")) for (kind in c("dictionary", "integer", "logical", "double")) {
+    for (format in c("dta", "arrow")) for (kind in c("dictionary", "string", "integer", "logical", "double")) {
         data <- if (kind == "dictionary") read_arrow(fixture, output = "tibble") else
-            tibble::tibble(x = switch(kind, integer = owned_atom_capture(c(1L, 2L, 3L)),
+            tibble::tibble(x = switch(kind, string = owned_atom_capture(c("alpha", "beta", "alpha")),
+                                    integer = owned_atom_capture(c(1L, 2L, 3L)),
                                     logical = owned_atom_capture(c(TRUE, FALSE, NA)),
                                     double = dta_double(c(1, 2, 3))))
         data$y <- c("a", "b", "c")
@@ -493,13 +654,14 @@ test_that("DTA and Arrow writer pointers survive later metadata callbacks", {
             .prepare_arrow_write(data, NULL, TRUE)
         value <- specification[[3L]][[1L]]$values
         if (kind == "dictionary") expect_true(.is_unmaterialized_dictstring(value))
-        expected <- if (kind == "dictionary") c("alpha", "beta", "alpha") else
+        expected <- if (kind %in% c("dictionary", "string")) c("alpha", "beta", "alpha") else
             if (kind == "logical") c(1, 0, NA_real_) else c(1, 2, 3)
         if (!is.null(owned_atom_info(value))) .metadata_copy(value)
         callback <- function() {
             if (kind == "dictionary") .force_altrep_materialization(value) else
                 if (!is.null(owned_atom_info(value))) .Call(C_dtatools_patch_vector, value, NULL,
-                    if (typeof(value) == "logical") FALSE else if (typeof(value) == "integer") 9L else 9)
+                    if (typeof(value) == "character") "changed" else if (typeof(value) == "logical") FALSE else
+                        if (typeof(value) == "integer") 9L else 9)
             gc()
         }
         specification[[3L]][[2L]]$name <- .Call(C_dtatools_callback_character, "y", callback)
@@ -508,10 +670,198 @@ test_that("DTA and Arrow writer pointers survive later metadata callbacks", {
         if (format == "dta") .Call(C_dtatools_write, specification, path) else
             .Call(C_dtatools_save_arrow, specification, path, "uncompressed", 1L, TRUE)
         restored <- if (format == "dta") read_dta(path) else read_arrow(path)
-        actual <- if (kind == "dictionary") as.character(restored$x) else as.double(restored$x)
+        actual <- if (kind %in% c("dictionary", "string")) as.character(restored$x) else as.double(restored$x)
         expect_identical(actual, expected)
         expect_identical(as.character(restored$y), c("a", "b", "c"))
     }
+})
+
+test_that("DTA planning retains already UTF-8 owned strings without a payload copy", {
+    for (raw in list(c("a", "\u00e9", ""), c("a", NA_character_, ""))) {
+        value <- owned_atom_capture(raw)
+        before <- owned_atom_info(value)
+        plan <- .Call(C_dtatools_write_string_plan, value)
+        expect_identical(plan[1:2], list(if (anyNA(raw)) 1 else 2, as.double(sum(is.na(raw)))))
+        expect_identical(as.vector(plan[[3L]]), raw)
+        expect_identical(owned_atom_info(plan[[3L]])$backing, before$backing)
+        expect_identical(owned_atom_info(value), before)
+    }
+})
+
+test_that("writer specifications isolate initially private strings from public callback writes", {
+    for (format in c("dta", "arrow")) {
+        data <- dibble(x = dta_string(rep("old", 3L), "str12"), y = c("a", "b", "c"))
+        replace_values(data, x, c("alpha", "beta", "alpha"))
+        expect_true(.Call(C_dtatools_mutation_info, data, 1L)$backing_private)
+        specification <- if (format == "dta") .prepare_dta_write(data, NULL, 2045L, TRUE) else
+            .prepare_arrow_write(data, NULL, TRUE)
+        calls <- 0L
+        callback <- function() {
+            calls <<- calls + 1L
+            replace_values(data, x, "changed")
+            gc()
+        }
+        specification[[3L]][[2L]]$name <- .Call(C_dtatools_callback_character, "y", callback)
+        path <- tempfile(fileext = paste0(".", format))
+        withr::defer(unlink(path))
+        if (format == "dta") .Call(C_dtatools_write, specification, path) else
+            .Call(C_dtatools_save_arrow, specification, path, "uncompressed", 1L, TRUE)
+        restored <- if (format == "dta") read_dta(path) else read_arrow(path)
+        expect_identical(calls, 1L)
+        expect_identical(as.character(data$x), rep("changed", 3L))
+        expect_identical(as.character(restored$x), c("alpha", "beta", "alpha"))
+    }
+})
+
+test_that("Arrow readers adopt fresh logical and factor allocations", {
+    for (value in list(c(TRUE, FALSE, NA), factor(c("a", "b", NA)),
+                       ordered(c("a", "b", NA), levels = c("b", "a", "unused")))) {
+        path <- tempfile(fileext = ".arrow")
+        withr::defer(unlink(path))
+        save_arrow(tibble::tibble(x = value), path)
+        .Call(C_dtatools_native_copy_stats, TRUE)
+        result <- read_arrow(path)
+        stats <- .Call(C_dtatools_native_copy_stats, FALSE)
+        expect_identical(as.vector(result$x), as.vector(value))
+        expect_identical(attributes(result$x), attributes(value))
+        expect_false(is.null(owned_atom_info(result$x)))
+        expect_equal(stats[["owned_capture"]], 0)
+    }
+})
+
+test_that("large string constructors and restoration retain owned facts", {
+    for (rows in c(63L, 64L, 1000L)) {
+        raw <- rep(c("alpha", "", "\u00e9"), length.out = rows)
+        value <- dta_string(raw, "str8")
+        expect_false(is.null(owned_atom_info(value)))
+        source <- owned_atom_info(value)$backing
+        for (result in list(value[seq_len(rows)], vctrs::vec_slice(value, seq_len(rows)))) {
+            expect_false(is.null(owned_atom_info(result)))
+            expect_identical(as.character(result), raw)
+            expect_identical(attributes(result), attributes(value))
+            owned_atom_scan_stats(TRUE)
+            expect_true(.string_declaration_holds(result))
+            expect_identical(owned_atom_scan_stats(), c(0, 0))
+        }
+        expect_identical(owned_atom_info(value)$backing, source)
+        annotated <- .set_dta_string_attribute(value, "label", "restored")
+        expect_identical(owned_atom_info(annotated)$backing, source)
+        expect_null(attr(value, "label", exact = TRUE))
+        .Call(C_dtatools_owned_set_string, annotated, 1L, "new")
+        expect_identical(as.character(value), raw)
+        expect_identical(as.character(annotated), c("new", raw[-1L]))
+        .Call(C_dtatools_owned_set_string, value, 2L, "source")
+        expect_identical(as.character(annotated), c("new", raw[-1L]))
+    }
+})
+
+test_that("owned string metadata leaves names replacement dispatch to R", {
+    calls <- 0L
+    method <- function(x, value) {
+        calls <<- calls + 1L
+        attr(x, "names") <- paste0("custom-", value)
+        x
+    }
+    table <- get(".__S3MethodsTable__.", envir = baseenv())
+    registerS3method("names<-", "stage4_owned_names", method, envir = baseenv())
+    withr::defer(rm(list = "names<-.stage4_owned_names", envir = table))
+    value <- .set_dta_string_attribute(owned_atom_capture(c("a", "b")), "class", "stage4_owned_names")
+    result <- .set_dta_string_attribute(value, "names", c("first", "second"))
+    expect_identical(calls, 1L)
+    expect_identical(names(result), c("custom-first", "custom-second"))
+    expect_null(names(value))
+    expect_identical(class(value), "stage4_owned_names")
+})
+
+test_that("large string construction captures borrowed values before removing metadata", {
+    skip_if_not_installed("data.table")
+    for (rows in c(64L, 1000L, 1000000L)) for (unknown in c(FALSE, TRUE)) {
+        raw <- rep(c("a", "b"), length.out = rows)
+        foreign <- data.table::data.table(x = rep(c("a", "b"), length.out = rows))
+        if (unknown) data.table::setattr(foreign$x, "class", "stage4_removed_string_class")
+        key <- iconv("caf\u00e9", to = "latin1")
+        Encoding(key) <- "latin1"
+        data.table::setattr(foreign$x, key, "remove")
+        data.table::setattr(foreign$x, enc2utf8("ol\u00e9"), "also remove")
+        value <- dta_string(foreign$x, "str8")
+        expect_false(is.null(owned_atom_info(value)))
+        expect_identical(attributes(value), list(stata.string.storage = "str8",
+            class = c("dta_string", "vctrs_vctr", "character")))
+        data.table::set(foreign, i = 1L, j = "x", value = "changed")
+        expect_identical(as.character(value), raw)
+        .Call(C_dtatools_owned_set_string, value, 2L, "new")
+        expect_identical(as.character(value), c("a", "new", raw[-(1:2)]))
+        expect_identical(as.character(foreign$x), c("changed", raw[-1L]))
+    }
+})
+
+test_that("string construction validates values captured after declaration callbacks", {
+    skip_if_not_installed("data.table")
+    for (replacement in list(NA_character_, "wide", "bb")) {
+        foreign <- data.table::data.table(x = rep("a", 64L))
+        calls <- 0L
+        callback <- function() {
+            calls <<- calls + 1L
+            data.table::set(foreign, i = 1L, j = "x", value = replacement)
+            gc()
+        }
+        storage <- .Call(C_dtatools_callback_character, "str3", callback)
+        if (is.na(replacement)) expect_error(dta_string(foreign$x, storage), "NA_character_") else
+            if (replacement == "wide") expect_error(dta_string(foreign$x, storage), "str3 storage cannot represent") else {
+                result <- dta_string(foreign$x, storage)
+                expect_identical(as.character(result), c("bb", rep("a", 63L)))
+                expect_true(.string_declaration_holds(result))
+                data.table::set(foreign, i = 1L, j = "x", value = "late")
+                expect_identical(as.character(result), c("bb", rep("a", 63L)))
+            }
+        expect_identical(calls, 1L)
+    }
+})
+
+test_that("Arrow UTF-8 readiness reads current owned strings and retains conversion fallbacks", {
+    value <- owned_atom_capture(c("ascii", "\u00e9", NA_character_))
+    before <- owned_atom_info(value)
+    result <- .arrow_utf8(value, "test column")
+    expect_identical(result, value)
+    expect_identical(owned_atom_info(result), before)
+    latin1 <- iconv("\u00e9", to = "latin1")
+    Encoding(latin1) <- "latin1"
+    .Call(C_dtatools_owned_set_string, value, 1L, latin1)
+    converted <- .arrow_utf8(value, "test column")
+    expect_identical(as.vector(converted), c("\u00e9", "\u00e9", NA_character_))
+    expect_identical(Encoding(converted)[1L], "UTF-8")
+    expect_identical(Encoding(value)[1L], "latin1")
+    bytes <- "caf\u00e9"
+    Encoding(bytes) <- "bytes"
+    expect_identical(Encoding(bytes), "bytes")
+    .Call(C_dtatools_owned_set_string, value, 1L, bytes)
+    expect_error(.arrow_utf8(value, "test column"), "test column cannot contain strings with `bytes` encoding")
+})
+
+test_that("Arrow UTF-8 preflight retains its original fallback when base conversion is traced", {
+    value <- owned_atom_capture(c("a", "\u00e9"))
+    calls <- fallback_calls <- 0L
+    # Match the original compiled fallback. R may compile enc2utf8 as a direct
+    # builtin call, so tracing that name alone need not run its tracer.
+    reference <- function(value, what) {
+        .arrow_reject_bytes(value, what)
+        enc2utf8(value)
+    }
+    environment(reference) <- asNamespace("dtatools")
+    reference <- compiler::cmpfun(reference)
+    trace("enc2utf8", tracer = function() calls <<- calls + 1L, where = baseenv(), print = FALSE)
+    withr::defer(untrace("enc2utf8", where = baseenv()))
+    trace(".arrow_reject_bytes", tracer = function() fallback_calls <<- fallback_calls + 1L,
+          where = asNamespace("dtatools"), print = FALSE)
+    withr::defer(untrace(".arrow_reject_bytes", where = asNamespace("dtatools")))
+    expected <- reference(value, "test column")
+    expected_calls <- calls
+    expect_identical(fallback_calls, 1L)
+    calls <- fallback_calls <- 0L
+    result <- .arrow_utf8(value, "test column")
+    expect_identical(calls, expected_calls)
+    expect_identical(fallback_calls, 1L)
+    expect_identical(result, expected)
 })
 
 

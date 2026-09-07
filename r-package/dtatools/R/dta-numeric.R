@@ -456,9 +456,13 @@ as.logical.dta_numeric <- function(x, ...) {
         ), call. = FALSE)
     }
     for (name in intersect(names(source), .dta_variable_attribute_names)) {
-        attr(value, name) <- source[[name]]
+        if (is.character(value)) value <- .set_dta_string_attribute(value, name, source[[name]]) else
+            attr(value, name) <- source[[name]]
     }
-    if (!is.null(names)) base::names(value) <- names
+    if (!is.null(names)) {
+        if (is.character(value)) value <- .set_dta_string_attribute(value, "names", names) else
+            base::names(value) <- names
+    }
     value
 }
 

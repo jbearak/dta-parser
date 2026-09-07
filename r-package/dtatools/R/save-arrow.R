@@ -158,6 +158,10 @@ save_arrow <- function(data, path,
 }
 
 .arrow_utf8 <- function(value, what) {
+    if (is.primitive(base::enc2utf8)) {
+        ready <- .Call(C_dtatools_owned_utf8_ready, value)
+        if (!is.null(ready)) return(ready)
+    }
     .arrow_reject_bytes(value, what)
     enc2utf8(value)
 }

@@ -87,6 +87,67 @@ sandbox-denied attempt remains preserved separately. Durable
 review reports and exact diff identities are under
 `/private/tmp/dta-direct-stage4-validation`; package acceptance remains pending.
 
+The first committed package candidate, `7d56080f3e97bc4d73a848e363d729767b9629c0`,
+passed the exact local gates and original 159 native assertions plus 15 readiness
+checks. The required R check retained the established three warnings and two
+notes. The native atom supplement exposed a large-factor fixture using a foreign
+R metadata wrapper; runner-only commit `80e636e` adds genuine ordinary factor
+construction and explicit ownership preconditions without changing budgets.
+Its corrected full supplement remains pending on the final source.
+
+The [initial Stage 4 report](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4.md)
+and 157 immutable evidence artifacts are committed as `ca6b678e`. Both nested
+reviews clear their presentation and identities. The full atomic pair passes
+its measured correctness, allocation and memory checks but has 43 read regressions;
+it is not accepted. The paired existing owned-double matrix has no flagged
+read regression. Root's additional 219 R comparisons pass their preserved
+oracles. Later tests exposed an owned-string Arrow writer callback error and
+foreign constructor aliasing outside the original matrix. Those failures remain
+preserved separately; they do not relabel the original measurements.
+
+Read fixes now cache rooted gather pointers, avoid copying already UTF-8 owned
+strings during DTA planning, retain exact string writer allocations, and adopt
+fresh Arrow atomic buffers. Internal string metadata restoration preserves owned
+handles and facts. Explicit string construction captures borrowed values before
+removing incoming metadata and validates the actual captured values after
+callbacks. New tests include large vectors, foreign data.table mutation in both
+directions, encoded attribute names and public names replacement dispatch.
+Development measurements put string row subsets below the baseline and DTA/Arrow
+writes near it after eliminating avoidable scans and copies. A separate gather
+probe found the native discrete loop faster than ordinary subset, while repeated
+base subscript validation inside vctrs added table cost. A narrowly qualified
+whole-batch route now reuses the shared planner's validated locations for its
+vctrs policy. Base-frame and foreign/callback fallbacks retain their prior order.
+Focused metadata, padding and alias tests pass; final paired measurements and
+the remaining per-element read costs are still under investigation.
+
+A separate getter experiment compared record lookup, direct payload lookup,
+typed access and an R-managed external-pointer cache. The retained cache roots
+its ordinary allocation and facts together and removes one lookup per element.
+It does not change the data2 transaction state. Header-only development rebuilds
+initially reused an old object; that failed identity check is recorded in
+`working-17-stale-object-disclosure.json`. Explicit header dependencies now force
+recompilation. Exact archive qualifications were unaffected.
+
+Known factor deep duplication now returns a fresh ordinary integer copy, and
+public logical subsets return their fresh ordinary result directly. Private
+table gathering still adopts its fresh buffers. Development measurements put
+ordered-factor range at 2.615 ms against 2.753 ms on the baseline, with the same
+R allocation. Logical mean falls from the initial 9.90 ms to 3.876 ms, against
+1.84 ms on the baseline. The current 30-case development read matrix has no
+gather or writer flags. Ten missingness/coercion cases still add 1.8–2.4 ms per
+million values, with unchanged R allocation. Logical mean and integer coercion
+also retain about 2 ms of additional element-dispatch cost. These are unresolved
+acceptance costs, not a clean final result. Working build 20 and its focused
+tests are development evidence; final exact-source paired measurements remain
+required. The separate heap supplement reports Ncells as well as Vcells so the
+new record representation cannot hide header allocation.
+
+These edits require focused/full qualification, both independent actual-diff
+reviews and a new committed-source comparison. The latest development build is
+not a final measured source. Stage 4's PR, latest-head external review/CI and
+normal merge are still pending; all subsequent stages remain required.
+
 ### Stage 3 accepted qualification
 
 Stage 3 implementation and local acceptance use source
