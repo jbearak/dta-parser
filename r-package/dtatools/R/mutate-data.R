@@ -3650,7 +3650,7 @@ ungroup.dtatools_ref_data <- function(x, ...) {
         context <- .begin_dibble_result(x, "ungroup()", "columns")
         keys <- character()
         if (inherits(x, "grouped_df") && !missing(...)) {
-            removed <- names(tidyselect::eval_select(rlang::expr(c(...)), x))
+            removed <- names(tidyselect::eval_select(rlang::expr(c(...)), x, allow_rename = FALSE))
             keys <- setdiff(.group_vars(x), removed)
         } else rlang::check_dots_empty()
         return(.dibble_group_result(x, context, context$columns, keys,

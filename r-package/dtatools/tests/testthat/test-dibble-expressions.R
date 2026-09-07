@@ -307,3 +307,32 @@ test_that("diagnostics identify the actual expression entry point", {
         expect_warning(verb(data, y = { warning("diagnostic"); 1 }), name, fixed = TRUE)
     }
 })
+
+
+test_that("within-call captures keep their original generation and group", {
+    input <- dplyr::group_by(dibble(g = c(1, 1, 2, 2), x = c(1, 2, 3, 4)), g)
+    closures <- list(); pronouns <- list(); quosures <- list()
+    promises <- new.env(parent = emptyenv())
+    capture <- function(value, key) {
+        delayedAssign(key, value, eval.env = environment(), assign.env = promises)
+        0
+    }
+    result <- dplyr::mutate(input, captured = {
+        id <- dplyr::cur_group_id()
+        closures[[id]] <<- function() x
+        pronouns[[id]] <<- .data
+        quosures[[id]] <<- rlang::quo(x)
+        capture(x, paste0("g", id))
+    }, x = x + 10, observed = {
+        expect_identical(as.double(closures[[1L]]()), c(1, 2))
+        expect_identical(as.double(pronouns[[1L]]$x), c(1, 2))
+        expect_identical(as.double(rlang::eval_tidy(quosures[[1L]])), c(1, 2))
+        expect_identical(as.double(get("g1", promises)), c(1, 2))
+        sum(closures[[dplyr::cur_group_id()]]())
+    })
+    expect_identical(as.double(result$observed), c(3, 3, 7, 7))
+    expect_error(closures[[1L]](), "Obsolete data mask")
+    # This promise was forced during evaluation, so it now holds a saved value.
+    expect_identical(as.double(get("g1", promises)), c(1, 2))
+    expect_error(dplyr::ungroup(input, renamed = g), "Can't rename")
+})
