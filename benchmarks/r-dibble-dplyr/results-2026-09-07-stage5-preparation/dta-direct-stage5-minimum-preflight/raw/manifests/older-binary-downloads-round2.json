@@ -1,0 +1,14 @@
+[
+  {
+    "url": "https://cran-archive.r-project.org/bin/macosx/big-sur-arm64/contrib/4.3/dplyr_1.1.4.tgz",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "url": "https://cran-archive.r-project.org/bin/macosx/big-sur-arm64/contrib/4.2/dplyr_1.1.4.tgz",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "url": "https://cran-archive.r-project.org/bin/macosx/big-sur-arm64/contrib/4.3/PACKAGES.gz",
+    "error": "HTTP Error 404: Not Found"
+  }
+]

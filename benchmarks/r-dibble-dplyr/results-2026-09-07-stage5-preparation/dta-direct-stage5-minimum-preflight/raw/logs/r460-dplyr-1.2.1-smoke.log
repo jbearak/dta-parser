@@ -1,0 +1,40 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+               _                           
+platform       aarch64-apple-darwin25.6.0  
+arch           aarch64                     
+os             darwin25.6.0                
+system         aarch64, darwin25.6.0       
+status                                     
+major          4                           
+minor          6.0                         
+year           2026                        
+month          04                          
+day            24                          
+svn rev        89956                       
+language       R                           
+version.string R version 4.6.0 (2026-04-24)
+nickname       Because it was There        
+[1] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.2.1"
+[2] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-dependencies"         
+[3] "/private/tmp/dta-direct-stage5-minimum-preflight/empty-user-library"        
+[4] "/private/tmp/dta-direct-stage5-minimum-preflight/r460-install/lib/R/library"
+Version: 1.2.1
+Built: R 4.6.0; aarch64-apple-darwin25.6.0; 2026-09-07 08:45:59 UTC;
+        unix
+
+-- File: /private/tmp/dta-direct-stage5-minimum-preflight/r460-dplyr-libraries/1.2.1/dplyr/Meta/package.rds 
+-- Fields read: Version, Built
+Error in asNamespace(ns, base.OK = FALSE) : 
+  operation not allowed on base namespace
+Calls: print -> vapply -> FUN -> getNamespaceInfo -> asNamespace
+Execution halted

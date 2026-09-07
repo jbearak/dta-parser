@@ -1,0 +1,51 @@
+[
+  {
+    "version": "1.1.0",
+    "archive": "downloads/dplyr-git-1.1.0.tar",
+    "sha256": "1e3bda7dc02c31f446dabf3d7d41077dd6e4e05ed01ab9b5f14a46013a99952f",
+    "install_source": "dplyr-clean-pristine/1.1.0/dplyr",
+    "chop_sha256": "2147938fb6b1b7c7ca9fcbf2367e110c861ad1c6f9713299b3db49808588923a"
+  },
+  {
+    "version": "1.1.1",
+    "archive": "downloads/dplyr-git-1.1.1.tar",
+    "sha256": "032802a78bda92a362cc745e61460b97a888aadc667a62f91cdf5cfbc6ef3cca",
+    "install_source": "dplyr-clean-pristine/1.1.1/dplyr",
+    "chop_sha256": "46a4e9ce1360523be115908062dcd97f643c05d3fd53240efac15599bacead95"
+  },
+  {
+    "version": "1.1.2",
+    "archive": "downloads/dplyr-git-1.1.2.tar",
+    "sha256": "db94d53d0410bd2bfa2c037b6bb33aaeae076a672addd1593fd2f82df43b65bd",
+    "install_source": "dplyr-clean-pristine/1.1.2/dplyr",
+    "chop_sha256": "46a4e9ce1360523be115908062dcd97f643c05d3fd53240efac15599bacead95"
+  },
+  {
+    "version": "1.1.3",
+    "archive": "downloads/dplyr-git-1.1.3.tar",
+    "sha256": "6a1996bddedc6ed84b267b3560b3d11dc4f3c7a233a5e830a29b8d48cd15e3b2",
+    "install_source": "dplyr-clean-pristine/1.1.3/dplyr",
+    "chop_sha256": "46a4e9ce1360523be115908062dcd97f643c05d3fd53240efac15599bacead95"
+  },
+  {
+    "version": "1.1.4",
+    "archive": "downloads/dplyr-git-1.1.4.tar",
+    "sha256": "42503a16de3f6972d50271bfdcbc5aabd1949d8f50a44eb4ca9087282d6b921c",
+    "install_source": "dplyr-clean-pristine/1.1.4/dplyr",
+    "chop_sha256": "46a4e9ce1360523be115908062dcd97f643c05d3fd53240efac15599bacead95"
+  },
+  {
+    "version": "1.2.0",
+    "archive": "downloads/dplyr-git-1.2.0.tar",
+    "sha256": "814a7ae588ce241733721c6812e60801190020210ff9e1a54963659a4bf9916b",
+    "install_source": "dplyr-clean-pristine/1.2.0/dplyr",
+    "chop_sha256": "00d26019f377b98f683e3502a1f04b9194b5d80089274cfd935a830191e2ca79"
+  },
+  {
+    "version": "1.2.1",
+    "archive": "downloads/dplyr-git-1.2.1.tar",
+    "sha256": "83229c200ecc83f408ccc44a38740def4174d7f25c871efe48a900c501aa1910",
+    "install_source": "dplyr-clean-pristine/1.2.1/dplyr",
+    "chop_sha256": "63dc0bc5d4c066697c6385ca736777bfcd5127ae4bd9a8903730536a10ce7dd6"
+  }
+]

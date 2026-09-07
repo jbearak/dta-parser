@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+Date: Mon, 07 Sep 2026 08:34:15 GMT
+Server: Apache/2.4.68 (Debian)
+Upgrade: h2,h2c
+Connection: Upgrade
+Cache-Control: max-age=0
+Last-Modified: Thu, 16 Apr 2026 12:58:53 GMT
+ETag: "89897//tags/R-4-6-0/src/include/Rinternals.h"
+Accept-Ranges: bytes
+Content-Length: 44416
+Content-Type: text/x-chdr
+

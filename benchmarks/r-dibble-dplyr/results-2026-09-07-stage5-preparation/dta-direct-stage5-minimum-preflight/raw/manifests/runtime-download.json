@@ -1,0 +1,8 @@
+{
+  "url": "https://cran.r-project.org/bin/macosx/sonoma-arm64/base/R-4.6.0-arm64.pkg",
+  "file": "downloads/R-4.6.0-arm64.pkg",
+  "sha256": "549f9a06d9816b515fa1adff13c4aefd64a27887bb888caa6279b61059e757da",
+  "signature_check_exit": 1,
+  "signature_check_log": "logs/r460-package-signature.log",
+  "disposition": "Not extracted or executed. Building official source instead."
+}

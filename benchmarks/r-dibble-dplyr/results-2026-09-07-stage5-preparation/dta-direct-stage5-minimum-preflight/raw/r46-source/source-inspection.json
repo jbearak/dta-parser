@@ -1,0 +1,32 @@
+{
+  "method": "Read-only source inspection; no compilation, package installation, R execution, or tests",
+  "R_4_6_0_Rinternals_equal_R_4_6_1": true,
+  "R_4_6_0_archive_Rinternals_equal_official_svn_tag": true,
+  "R_4_6_0_Rinternals_symbol_lines": {
+    "SET_PRENV": [],
+    "SET_PRCODE": [],
+    "SET_PRVALUE": [],
+    "PRVALUE": [],
+    "ENCLOS": [],
+    "PRENV": [
+      1264
+    ],
+    "Rf_findVarInFrame": [
+      919,
+      1262
+    ],
+    "Rf_allocSExp": [
+      874,
+      1266
+    ],
+    "R_GetBindingType": [
+      656
+    ],
+    "R_MakeDelayedBinding": [
+      670
+    ],
+    "R_ParentEnv": [
+      354
+    ]
+  }
+}

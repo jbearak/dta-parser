@@ -1,0 +1,23 @@
+{
+  "scope": "Unmodified official R4.3 binary on isolated R4.6.0, controlled dynamic library search, bounded smoke only",
+  "command": [
+    "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/bin/exec/R",
+    "--vanilla",
+    "--slave",
+    "--file=/private/tmp/dta-direct-stage5-minimum-preflight/older-binary-smoke.R",
+    "--args",
+    "/private/tmp/dta-direct-stage5-minimum-preflight/older-binary-r43-library",
+    "1.1.4",
+    "4.6.0"
+  ],
+  "env": {
+    "R_HOME": "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R",
+    "DYLD_LIBRARY_PATH": "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib",
+    "R_LIBS_SITE": "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies",
+    "R_LIBS_USER": "/private/tmp/dta-direct-stage5-minimum-preflight/empty-user-library",
+    "R_LIBS": "/private/tmp/dta-direct-stage5-minimum-preflight/older-binary-r43-library:/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-dependencies"
+  },
+  "exit_code": 1,
+  "log": "logs/older-binary-r43-on-r460-smoke.log",
+  "log_sha256": "bf23b270f14d8c3eaa5a20e1f17b4fd6843e5e55d94f4e1637810f632db84820"
+}

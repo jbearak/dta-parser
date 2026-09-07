@@ -1,0 +1,16 @@
+{
+  "scope": "Nonqualifying setup diagnostics",
+  "cause": "Generic -L/opt/homebrew/lib preceded the isolated libR search for libRlapack.dylib, which records a Homebrew R4.6.1 libR load command.",
+  "affected": [
+    "r460-install",
+    "r460-dependencies",
+    "r460-dplyr-libraries",
+    "manifests/r460-dplyr-installs.json"
+  ],
+  "evidence": [
+    "logs/r460-loaded-images-diagnostic.log",
+    "logs/r460-make.log"
+  ],
+  "disposition": "Retained unchanged. Runtime qualification must use a fresh build without the generic Homebrew library search path and verify exactly one loaded libR before package experiments.",
+  "source_compile_scope": "The failed old-dplyr compilations still use the pinned4.6.0 public header, but are not final isolated-runtime install qualification."
+}

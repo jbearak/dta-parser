@@ -1,0 +1,86 @@
+{
+  "upstream": "/private/tmp/dta-direct-stage1-validation/upstream/dplyr",
+  "head": "95740975c465c29cdb2abdfa13effddb948444dc",
+  "status": "",
+  "versions": [
+    {
+      "version": "1.1.0",
+      "tag": "v1.1.0",
+      "commit": "b67769f92c32583ba7b5522f07fcd3790df39021",
+      "files_sha256": {
+        "DESCRIPTION": "e74935dd989b84fef43a54ac2655d9fd74cd9e68f570523c063e8b8ed07331e3",
+        "NEWS.md": "9732068d44fc104f6a77f321ee089c4747bcf2fb38f49599ac89fd7845d73b3a",
+        "src/chop.cpp": "2147938fb6b1b7c7ca9fcbf2367e110c861ad1c6f9713299b3db49808588923a",
+        "src/dplyr.h": "e70fecb5672fe14f6b8a8d3f415b28e0989b9a9e5d6f526af261e397a9d4da77"
+      }
+    },
+    {
+      "version": "1.1.1",
+      "tag": "v1.1.1",
+      "commit": "d2f79bbc4bb32985bcacb04844036a7d70a18896",
+      "files_sha256": {
+        "DESCRIPTION": "fd0c254a017c2dfb879dde515dcf9094efb84d159cdd36c33a823b6dea61ae16",
+        "NEWS.md": "1537f8212d234a57597275628e4776619409054785c3e0f06ef204586072857c",
+        "src/chop.cpp": "46a4e9ce1360523be115908062dcd97f643c05d3fd53240efac15599bacead95",
+        "src/dplyr.h": "a2b44de45c8629de702230a191b57c7444ce5fb7a925889fbcdea5adfcfe7aeb"
+      }
+    },
+    {
+      "version": "1.1.2",
+      "tag": "v1.1.2",
+      "commit": "92ace94c682914e5c8aa736b6ec6c8cb3327cb46",
+      "files_sha256": {
+        "DESCRIPTION": "6ead6fbda6b1daeb111e885ad9e5369077d26753ea39bf519e4b29ed4ec4cbb8",
+        "NEWS.md": "2e4d6f51d5f9d0ca1546916773a3ba0f7c33abf6af0f31d82ad1533da048c117",
+        "src/chop.cpp": "46a4e9ce1360523be115908062dcd97f643c05d3fd53240efac15599bacead95",
+        "src/dplyr.h": "a2b44de45c8629de702230a191b57c7444ce5fb7a925889fbcdea5adfcfe7aeb"
+      }
+    },
+    {
+      "version": "1.1.3",
+      "tag": "v1.1.3",
+      "commit": "b4ebddb09c98d4bcded4973a9c7a5020aa5e627a",
+      "files_sha256": {
+        "DESCRIPTION": "86f881081c58d582aeab7550daf87899b181992797005ace44ceb327ded6af52",
+        "NEWS.md": "6fdbaa79bc5b18a38fefcd75bff9d401682aebb9457f7af24c02a68e34fe7851",
+        "src/chop.cpp": "46a4e9ce1360523be115908062dcd97f643c05d3fd53240efac15599bacead95",
+        "src/dplyr.h": "a2b44de45c8629de702230a191b57c7444ce5fb7a925889fbcdea5adfcfe7aeb"
+      }
+    },
+    {
+      "version": "1.1.4",
+      "tag": "v1.1.4",
+      "commit": "74de24448833278fc03c8ba5f455aa7c888295b8",
+      "files_sha256": {
+        "DESCRIPTION": "c37c709429e1383966a58aac462a0fe3dd4339017930120f494aa0baa534266b",
+        "NEWS.md": "c88c2f167cb8954b0fe6a7cf895e047bd0e242621070f4574883fc68996d0c31",
+        "src/chop.cpp": "46a4e9ce1360523be115908062dcd97f643c05d3fd53240efac15599bacead95",
+        "src/dplyr.h": "4e700b89ec8fc11fc8bc15df6b096dcbe9ee27f12f1f51aab9f837f29308a049"
+      }
+    },
+    {
+      "version": "1.2.0",
+      "tag": "v1.2.0",
+      "commit": "6aee1cbaa6ee8c666fa45a8bdf48a8ca008c5a2c",
+      "files_sha256": {
+        "DESCRIPTION": "ae11fbba608f565e6120c998a3af7f7f43660846c95554cd28e5db2c886cc836",
+        "NEWS.md": "8a63a6bd231d1131ccf422bcc3ae46e921c36a9dcec7546b0a20948f77f8e053",
+        "src/chop.cpp": "00d26019f377b98f683e3502a1f04b9194b5d80089274cfd935a830191e2ca79",
+        "src/dplyr.h": "921ac2d1f6aa3ebf2cc8ed589c840f08bded00cfeeb2cf1addb74c8288e7a797",
+        "src/utils.h": "2b569e6dbdc09ccff39b4f534de2539b107f5f5c90daba4da03d179edcd1812a"
+      }
+    },
+    {
+      "version": "1.2.1",
+      "tag": "v1.2.1",
+      "commit": "95740975c465c29cdb2abdfa13effddb948444dc",
+      "files_sha256": {
+        "DESCRIPTION": "326ccffe8878824e2b5e3cadefad2e1aad89924b79a866c5d59778b82f4019fe",
+        "NEWS.md": "9c7eaa542eaacb3f7c754ac56267dc14e8294b691b3015532118d85ec39a2aed",
+        "src/chop.cpp": "63dc0bc5d4c066697c6385ca736777bfcd5127ae4bd9a8903730536a10ce7dd6",
+        "src/dplyr.h": "71aecb1184bc9617eeb9dcb239516fcd4d54e0f9c875cb52ee94f696c94923b7",
+        "src/utils.h": "8cfab164f9d6a22574ea71d4600e110c29c0f136b78eeef8338161793773975f"
+      }
+    }
+  ]
+}

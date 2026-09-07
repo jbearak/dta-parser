@@ -1,0 +1,56 @@
+               _                           
+platform       aarch64-apple-darwin25.4.0  
+arch           aarch64                     
+os             darwin25.4.0                
+system         aarch64, darwin25.4.0       
+status                                     
+major          4                           
+minor          6.1                         
+year           2026                        
+month          06                          
+day            24                          
+svn rev        90187                       
+language       R                           
+version.string R version 4.6.1 (2026-06-24)
+nickname       Happy Hop                   
+[1] "/opt/homebrew/lib/R/4.6/site-library"      
+[2] "/opt/homebrew/Cellar/r/4.6.1/lib/R/library"
+           Package      Version 
+dplyr      "dplyr"      "1.2.1" 
+rlang      "rlang"      "1.3.0" 
+vctrs      "vctrs"      "0.7.3" 
+tibble     "tibble"     "3.3.1" 
+cli        "cli"        "3.6.6" 
+tidyselect "tidyselect" "1.2.1" 
+lifecycle  "lifecycle"  "1.0.5" 
+pillar     "pillar"     "1.11.1"
+glue       "glue"       "1.8.1" 
+generics   "generics"   "0.1.4" 
+R6         "R6"         "2.6.1" 
+magrittr   "magrittr"   "2.0.5" 
+           Built                                                               
+dplyr      "R 4.6.0; aarch64-apple-darwin25.4.0; 2026-04-29 20:22:33 UTC; unix"
+rlang      "R 4.6.1; aarch64-apple-darwin25.4.0; 2026-07-21 00:14:07 UTC; unix"
+vctrs      "R 4.6.0; aarch64-apple-darwin25.4.0; 2026-04-29 20:22:06 UTC; unix"
+tibble     "R 4.6.0; aarch64-apple-darwin25.4.0; 2026-04-29 20:22:31 UTC; unix"
+cli        "R 4.6.1; aarch64-apple-darwin25.4.0; 2026-07-21 00:13:57 UTC; unix"
+tidyselect "R 4.6.1; ; 2026-07-21 00:14:42 UTC; unix"                          
+lifecycle  "R 4.6.0; ; 2026-04-29 20:21:22 UTC; unix"                          
+pillar     "R 4.6.0; ; 2026-04-29 20:22:29 UTC; unix"                          
+glue       "R 4.6.0; aarch64-apple-darwin25.4.0; 2026-04-29 20:22:05 UTC; unix"
+generics   "R 4.6.0; ; 2026-04-29 20:22:22 UTC; unix"                          
+R6         "R 4.6.0; ; 2026-04-29 20:22:22 UTC; unix"                          
+magrittr   "R 4.6.0; aarch64-apple-darwin25.4.0; 2026-04-29 20:22:22 UTC; unix"
+           LibPath                               
+dplyr      "/opt/homebrew/lib/R/4.6/site-library"
+rlang      "/opt/homebrew/lib/R/4.6/site-library"
+vctrs      "/opt/homebrew/lib/R/4.6/site-library"
+tibble     "/opt/homebrew/lib/R/4.6/site-library"
+cli        "/opt/homebrew/lib/R/4.6/site-library"
+tidyselect "/opt/homebrew/lib/R/4.6/site-library"
+lifecycle  "/opt/homebrew/lib/R/4.6/site-library"
+pillar     "/opt/homebrew/lib/R/4.6/site-library"
+glue       "/opt/homebrew/lib/R/4.6/site-library"
+generics   "/opt/homebrew/lib/R/4.6/site-library"
+R6         "/opt/homebrew/lib/R/4.6/site-library"
+magrittr   "/opt/homebrew/lib/R/4.6/site-library"
