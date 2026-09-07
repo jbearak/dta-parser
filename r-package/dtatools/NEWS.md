@@ -1,4 +1,4 @@
-# Development version
+# dtatools 0.7.1.9000
 
 * Dibble mutate, transmute and grouping now use the package-owned expression
   and grouping modules, retaining sequential Stata typing and later-write

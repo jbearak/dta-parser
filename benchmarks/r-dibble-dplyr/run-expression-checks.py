@@ -163,8 +163,9 @@ def main():
     for variable in ['R_HOME', 'R_ARCH', 'DYLD_INSERT_LIBRARIES', 'DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH']:
         environment.pop(variable, None)
     records = []
+    consumed = []
     def guard():
-        changes = input_changes(before)
+        changes = input_changes(before + consumed)
         require(not changes, 'Bound inputs changed: ' + repr(changes))
         require_package_inventory(package_root, package_inventory)
     def run(label, command, cwd=source, env=None):
@@ -216,6 +217,8 @@ def main():
             run('build', ['R', 'CMD', 'build', str(source/'r-package/dtatools')], output)
             version = next(line.split(': ', 1)[1] for line in (source/'r-package/dtatools/DESCRIPTION').read_text().splitlines() if line.startswith('Version: '))
             package = output / ('dtatools_' + version + '.tar.gz')
+            consumed.append(identity(package))
+            write(output/'built-source-before-checks.json', consumed[-1])
             run('archive', ['sh', 'scripts/check-r-package-archive.sh', str(package)])
             # Keep this archive's complete check tree even when check fails.
             # The shared conformance gate also checks its own temporary copy.
@@ -254,7 +257,7 @@ def main():
                 run(label, command, env=dict(environment, RUSTDOCFLAGS='-D warnings'))
         status = 'complete'
     finally:
-        changed = input_changes(before)
+        changed = input_changes(before + consumed)
         try:
             require_package_inventory(package_root, package_inventory)
         except RuntimeError as error:
