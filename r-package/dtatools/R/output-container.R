@@ -124,6 +124,7 @@
 }
 
 .repair_data_table_container <- function(data) {
+    if (!inherits(data, "data.table")) return(data)
     if (inherits(data, "data.table")) .require_data_table()
     if (inherits(data, "data.table") &&
         inherits(data, "dtatools_dta_metadata")) {
