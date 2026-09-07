@@ -1,0 +1,21 @@
+{
+  "created_utc": "2026-09-07T16:33:52.036350+00:00",
+  "evidence_audit": "host-package-native-evidence-audit-01.json",
+  "outcomes": {
+    "package": "All16commands passed; retained Rcheck testthat output16624passes/zero failures/skips/four established test warnings. Source archive, binary archive and installed NOTICE checks passed in guarded command driver. Rcheck reports3warnings2notes; note contents need correction as below.",
+    "native": "Reference mutation,18integer/factor/ordered allocation-isolation cases and rename gate passed. Benchmark source is4427a9b; run/owned-atoms/rename source unchanged from Stage4base. Native atoms current-worktree helper/script bytes are compared to exact export before use and bound as inputs; session runner_revision differs from source revision and records that scope."
+  },
+  "open_findings": [
+    {
+      "area": "Host package checker input binding",
+      "finding": "After R CMD build, newly generated source tarball is consumed by archive/check/binary without joining before/consumed input identities. Only final tar bytes are inventoried. Existing observed output audit clean but historical consumption identity not guarded.",
+      "resolution": "Bind and retain tar identity before first consumption; guard around consumers as installer already does."
+    },
+    {
+      "area": "New NEWS parser note",
+      "finding": "Stage5 Rcheck adds Problems with news in NEWS.md: No news entries found under package-subdirectories NOTE. Retained Stage4 e343b3b baseline has only CITATION under that NOTE. Same top-level3warning2note totals do not mean identical note content.",
+      "resolution": "Use parser-recognized package/version NEWS heading and validate check output."
+    }
+  ],
+  "limits": "This is an actual-outcome/identity review, not final acceptance; fixes and exact final qualification pending. No timings or tests rerun."
+}

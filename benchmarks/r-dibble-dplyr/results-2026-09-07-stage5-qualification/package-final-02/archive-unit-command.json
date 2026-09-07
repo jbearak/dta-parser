@@ -1,0 +1,25 @@
+{
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "scripts",
+    "-p",
+    "test_check_r_package_archive.py",
+    "-v"
+  ],
+  "completed_utc": "2026-09-07T16:40:17.318655+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/source",
+  "exit_code": 0,
+  "label": "archive-unit",
+  "log": {
+    "bytes": 912,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/archive-unit.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/archive-unit.log",
+    "sha256": "a69e99ba05c044bc7b9f1c4ff1a20f55285dac659e2243c2c7ddda94ff4e7eef"
+  },
+  "started_utc": "2026-09-07T16:40:17.272247+00:00"
+}

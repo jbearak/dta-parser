@@ -1,0 +1,337 @@
+{
+  "scope": "Frozen completed output inventories and package contents. Input immutability is the runner endpoint claim; later live inputs were not requalified. No timing workload was launched by reviewer.",
+  "records": [
+    {
+      "name": "package-final-01",
+      "products": 10793,
+      "bytes": 1214014928,
+      "issues": [],
+      "missing": [],
+      "extra": [],
+      "receipt": {
+        "bytes": 526,
+        "mode": "0o644",
+        "sha256": "c17f1d22159d66df26182b6b8f6bd71d1e7fcef1e4ffea99e2ad4a7b7dbfa21e"
+      },
+      "manifest": {
+        "bytes": 5592148,
+        "mode": "0o644",
+        "sha256": "edd9649380326870284dcb089a173397876ff6c9f543a85a037ff503faa22afc"
+      },
+      "status": "complete",
+      "source_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+      "runner_sha": "8f6caf78ab0c87ea7ed6db2c07a0f0d6ca46750b"
+    },
+    {
+      "name": "native-final-01",
+      "products": 2858,
+      "bytes": 129054181,
+      "issues": [],
+      "missing": [],
+      "extra": [],
+      "receipt": {
+        "bytes": 524,
+        "mode": "0o644",
+        "sha256": "482592dd580e9a242b560df86ebb4f829a279924037a57fee1751d6dbcbbb961"
+      },
+      "manifest": {
+        "bytes": 1544312,
+        "mode": "0o644",
+        "sha256": "c76d12c9e3ba27a390cd190fccc7ad5664d2c3c408c8ac8f9d1ef29f77415fac"
+      },
+      "status": "complete",
+      "source_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+      "runner_sha": "8f6caf78ab0c87ea7ed6db2c07a0f0d6ca46750b"
+    }
+  ],
+  "notice_sha256": "2b7092d0e91ef0012dc4496edfcef267781ef8a4c9165c2bfee72691408cda98",
+  "baseline_namespace_identical": true,
+  "packaging": [
+    {
+      "archive": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/dtatools_0.7.1.tar.gz",
+      "identity": {
+        "bytes": 9577485,
+        "mode": "0o644",
+        "sha256": "e2db41b5faa2094656976119cef57257395678df509172d0a26951a9a63f3114"
+      },
+      "notice_paths": [
+        "dtatools/inst/NOTICE"
+      ],
+      "notice_identical": true,
+      "namespace_identical": true,
+      "export_lines": 106
+    },
+    {
+      "archive": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/binary/dtatools_0.7.1.tgz",
+      "identity": {
+        "bytes": 3707813,
+        "mode": "0o644",
+        "sha256": "c6d29f2f07949249214456eddbc6a56f1e7b25883ad27793b929c413835b53f7"
+      },
+      "notice_paths": [
+        "dtatools/NOTICE"
+      ],
+      "notice_identical": true,
+      "namespace_identical": true,
+      "export_lines": 106
+    },
+    {
+      "installed": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/dtatools.Rcheck/dtatools",
+      "notice_identical": true,
+      "namespace_identical": true
+    },
+    {
+      "installed": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/binary/library/dtatools",
+      "notice_identical": true,
+      "namespace_identical": true
+    }
+  ],
+  "check_summary": [
+    "* checking whether package \u2018dtatools\u2019 can be installed ... WARNING",
+    "* checking package subdirectories ... NOTE",
+    "* checking line endings in C/C++/Fortran sources/headers ... NOTE",
+    "* checking for GNU extensions in Makefiles ... WARNING",
+    "* checking compiled code ... WARNING",
+    "Status: 3 WARNINGs, 2 NOTEs"
+  ],
+  "roxygen_scope": "Hand-maintained NAMESPACE, read_dta.Rd and recode.Rd skipped as recorded; generated source check remained unchanged.",
+  "native_readiness_lines": [],
+  "native_log_summary": [],
+  "atoms": [
+    {
+      "kind": "integer",
+      "rows": "100000",
+      "operation": "first_shared",
+      "r_allocated_bytes": "400048",
+      "r_largest_allocation_bytes": "400048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "4e+05"
+    },
+    {
+      "kind": "integer",
+      "rows": "100000",
+      "operation": "subsequent_private",
+      "r_allocated_bytes": "0",
+      "r_largest_allocation_bytes": "0",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "integer",
+      "rows": "100000",
+      "operation": "full_replacement",
+      "r_allocated_bytes": "400048",
+      "r_largest_allocation_bytes": "400048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "factor",
+      "rows": "100000",
+      "operation": "first_shared",
+      "r_allocated_bytes": "400048",
+      "r_largest_allocation_bytes": "400048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "4e+05"
+    },
+    {
+      "kind": "factor",
+      "rows": "100000",
+      "operation": "subsequent_private",
+      "r_allocated_bytes": "0",
+      "r_largest_allocation_bytes": "0",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "factor",
+      "rows": "100000",
+      "operation": "full_replacement",
+      "r_allocated_bytes": "400048",
+      "r_largest_allocation_bytes": "400048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "ordered",
+      "rows": "100000",
+      "operation": "first_shared",
+      "r_allocated_bytes": "400048",
+      "r_largest_allocation_bytes": "400048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "4e+05"
+    },
+    {
+      "kind": "ordered",
+      "rows": "100000",
+      "operation": "subsequent_private",
+      "r_allocated_bytes": "0",
+      "r_largest_allocation_bytes": "0",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "ordered",
+      "rows": "100000",
+      "operation": "full_replacement",
+      "r_allocated_bytes": "400048",
+      "r_largest_allocation_bytes": "400048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "integer",
+      "rows": "1000000",
+      "operation": "first_shared",
+      "r_allocated_bytes": "4000048",
+      "r_largest_allocation_bytes": "4000048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "4e+06"
+    },
+    {
+      "kind": "integer",
+      "rows": "1000000",
+      "operation": "subsequent_private",
+      "r_allocated_bytes": "0",
+      "r_largest_allocation_bytes": "0",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "integer",
+      "rows": "1000000",
+      "operation": "full_replacement",
+      "r_allocated_bytes": "4000048",
+      "r_largest_allocation_bytes": "4000048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "factor",
+      "rows": "1000000",
+      "operation": "first_shared",
+      "r_allocated_bytes": "4000048",
+      "r_largest_allocation_bytes": "4000048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "4e+06"
+    },
+    {
+      "kind": "factor",
+      "rows": "1000000",
+      "operation": "subsequent_private",
+      "r_allocated_bytes": "0",
+      "r_largest_allocation_bytes": "0",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "factor",
+      "rows": "1000000",
+      "operation": "full_replacement",
+      "r_allocated_bytes": "4000048",
+      "r_largest_allocation_bytes": "4000048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "ordered",
+      "rows": "1000000",
+      "operation": "first_shared",
+      "r_allocated_bytes": "4000048",
+      "r_largest_allocation_bytes": "4000048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "4e+06"
+    },
+    {
+      "kind": "ordered",
+      "rows": "1000000",
+      "operation": "subsequent_private",
+      "r_allocated_bytes": "0",
+      "r_largest_allocation_bytes": "0",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    },
+    {
+      "kind": "ordered",
+      "rows": "1000000",
+      "operation": "full_replacement",
+      "r_allocated_bytes": "4000048",
+      "r_largest_allocation_bytes": "4000048",
+      "owned_capture": "0",
+      "compact_copy": "0",
+      "staged_new": "4",
+      "old_journal": "0",
+      "native_scratch_allocated": "0",
+      "mutation_target_copy": "0"
+    }
+  ],
+  "rename": "Typed tibble largest allocation: 0 bytes\nTyped tibble total recorded allocation: 0 bytes\nDibble largest allocation: 40056 bytes\nDibble total recorded allocation: 80112 bytes\n"
+}

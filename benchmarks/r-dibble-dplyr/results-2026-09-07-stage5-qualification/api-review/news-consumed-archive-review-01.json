@@ -1,0 +1,11 @@
+{
+  "base": "4900dc831a0df2307146a7425b6c84633fd30db4",
+  "package_files_compared": 230,
+  "changed_package_files": [
+    "r-package/dtatools/NEWS.md"
+  ],
+  "checker_syntax": "valid Python",
+  "checker_sha256": "9c38bba2371140c55d0866797ae65aca4d3aa8e4a0f9f3fbace2a6999c4cd93f",
+  "news_sha256": "1072b302ad8f850d781de8497402d839b7a41cd6dcc8c0a2cd869dc96b78a681",
+  "scope": "Read-only comparison to original clean-minimum evaluator source; NEWS is the sole package file difference at this checkpoint."
+}

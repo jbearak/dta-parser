@@ -1,0 +1,74 @@
+{
+  "created_utc": "2026-09-07T16:32:15.370668+00:00",
+  "scope": "All current retained package/native output bytes rehashed against manifests/receipts with exact file inventory. Command records and outcome logs inspected. Historical consumed-input guard outcomes inspected; full current input dependency/runtime closure not independently rehashed. No benchmark or tests executed by reviewer.",
+  "runs": [
+    {
+      "run": "package-final-01",
+      "receipt": {
+        "bytes": 526,
+        "sha256": "c17f1d22159d66df26182b6b8f6bd71d1e7fcef1e4ffea99e2ad4a7b7dbfa21e",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 5592148,
+        "sha256": "edd9649380326870284dcb089a173397876ff6c9f543a85a037ff503faa22afc",
+        "mode": "0o644"
+      },
+      "products_verified": 10793,
+      "product_bytes": 1214014928,
+      "errors": [],
+      "unexpected": [],
+      "missing": [],
+      "status": "complete",
+      "changed_inputs": [],
+      "source_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+      "runner_sha": "8f6caf78ab0c87ea7ed6db2c07a0f0d6ca46750b",
+      "command_exits": {
+        "preflight": 0,
+        "archive-unit": 0,
+        "vendor-unit": 0,
+        "vendor-rebuild-unit": 0,
+        "vendor": 0,
+        "rust-source-hash": 0,
+        "haven": 0,
+        "labelled": 0,
+        "haven-conformance": 0,
+        "corpus-framework": 0,
+        "roxygen": 0,
+        "conformance": 0,
+        "build": 0,
+        "archive": 0,
+        "check": 0,
+        "binary": 0
+      }
+    },
+    {
+      "run": "native-final-01",
+      "receipt": {
+        "bytes": 524,
+        "sha256": "482592dd580e9a242b560df86ebb4f829a279924037a57fee1751d6dbcbbb961",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 1544312,
+        "sha256": "c76d12c9e3ba27a390cd190fccc7ad5664d2c3c408c8ac8f9d1ef29f77415fac",
+        "mode": "0o644"
+      },
+      "products_verified": 2858,
+      "product_bytes": 129054181,
+      "errors": [],
+      "unexpected": [],
+      "missing": [],
+      "status": "complete",
+      "changed_inputs": [],
+      "source_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+      "runner_sha": "8f6caf78ab0c87ea7ed6db2c07a0f0d6ca46750b",
+      "command_exits": {
+        "preflight": 0,
+        "native": 0,
+        "native-atoms": 0,
+        "rename": 0
+      }
+    }
+  ]
+}

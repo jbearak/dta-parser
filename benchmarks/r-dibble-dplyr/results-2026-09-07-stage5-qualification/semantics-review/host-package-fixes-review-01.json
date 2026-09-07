@@ -1,0 +1,32 @@
+{
+  "created_utc": "2026-09-07T16:37:10.660581+00:00",
+  "scope": "Actual working diff review; no tests/builds/timings run by reviewer. NEWS parser retained output read.",
+  "source_identities": [
+    {
+      "path": "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+      "bytes": 15901,
+      "sha256": "9c38bba2371140c55d0866797ae65aca4d3aa8e4a0f9f3fbace2a6999c4cd93f",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5/r-package/dtatools/NEWS.md",
+      "bytes": 666,
+      "sha256": "1072b302ad8f850d781de8497402d839b7a41cd6dcc8c0a2cd869dc96b78a681",
+      "mode": "0o644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/news-parse-fixed-01.log",
+      "bytes": 762,
+      "sha256": "92e6e50b56a7690956b80a70cc639df2c22ea9ec125420d81e0bf092a38487ea",
+      "mode": "0o644"
+    }
+  ],
+  "package_delta_from_reviewed_4900dc8": [
+    "r-package/dtatools/NEWS.md"
+  ],
+  "findings_resolved": [
+    "Newly built source tar identity captured and retained in built-source-before-checks.json before archive/check/binary consume it; before and after each command plus finalization guard before+consumed. Missing/deleted input errors already covered by reviewed guard function.",
+    "NEWS header now identifies version0.7.1.9000 and retained R news parser output recognizes both entries. Remaining R/src/DESCRIPTION/NAMESPACE/tests match reviewed4900dc8."
+  ],
+  "status": "Source fixes clean. Fresh exact host install/package outcomes still pending; original package01 evidence remains unchanged and retains documented limitations. Minimum runtime4900dc8 evidence only supports identical runtime source/native/tests, with explicit NEWS-only delta."
+}

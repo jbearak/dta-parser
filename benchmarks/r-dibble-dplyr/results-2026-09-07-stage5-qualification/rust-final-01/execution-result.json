@@ -1,0 +1,138 @@
+{
+  "changed_inputs": [],
+  "records": [
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "benchmarks/r-dibble-dplyr/expression-preflight.R",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library",
+        "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+        "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/source",
+        "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01"
+      ],
+      "completed_utc": "2026-09-07T16:18:48.365401+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/source",
+      "exit_code": 0,
+      "label": "preflight",
+      "log": {
+        "bytes": 60,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/preflight.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/preflight.log",
+        "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27"
+      },
+      "started_utc": "2026-09-07T16:18:48.151971+00:00"
+    },
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "completed_utc": "2026-09-07T16:18:54.473119+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/source",
+      "exit_code": 0,
+      "label": "fmt",
+      "log": {
+        "bytes": 0,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/fmt.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "started_utc": "2026-09-07T16:18:54.275956+00:00"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "completed_utc": "2026-09-07T16:19:07.986906+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/source",
+      "exit_code": 0,
+      "label": "clippy",
+      "log": {
+        "bytes": 2293,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/clippy.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/clippy.log",
+        "sha256": "01e110c2bbd629e3c2a3a7d19e97a6d9be1ded766ef2f701b411d946a18a1801"
+      },
+      "started_utc": "2026-09-07T16:19:00.540124+00:00"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--all-targets",
+        "--locked"
+      ],
+      "completed_utc": "2026-09-07T16:19:37.721425+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/source",
+      "exit_code": 0,
+      "label": "tests",
+      "log": {
+        "bytes": 25321,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/tests.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/tests.log",
+        "sha256": "37ce6acf4de48bb8780bc1398fc09aa819254f8a8885877ba9252051b4f9ca34"
+      },
+      "started_utc": "2026-09-07T16:19:14.050042+00:00"
+    },
+    {
+      "command": [
+        "cargo",
+        "doc",
+        "--workspace",
+        "--locked",
+        "--no-deps"
+      ],
+      "completed_utc": "2026-09-07T16:19:44.307813+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/source",
+      "exit_code": 0,
+      "label": "docs",
+      "log": {
+        "bytes": 338,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/docs.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/docs.log",
+        "sha256": "9c61d97284a8102879a9fbabab682c54635f6762afa1a085b45801b9d1380b0b"
+      },
+      "started_utc": "2026-09-07T16:19:43.781553+00:00"
+    },
+    {
+      "command": [
+        "cargo",
+        "package",
+        "-p",
+        "dta-tools",
+        "--locked",
+        "--allow-dirty"
+      ],
+      "completed_utc": "2026-09-07T16:19:52.355989+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/source",
+      "exit_code": 0,
+      "label": "package",
+      "log": {
+        "bytes": 1625,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/package.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/package.log",
+        "sha256": "0df21d8910f492ba44ab84de03b06d35c00589dea0c709aa96b990237bb99ce3"
+      },
+      "started_utc": "2026-09-07T16:19:50.361165+00:00"
+    }
+  ],
+  "status": "complete"
+}

@@ -1,0 +1,18 @@
+{
+  "command": [
+    "sh",
+    "scripts/check-r-cargo-vendor.sh"
+  ],
+  "completed_utc": "2026-09-07T16:40:34.909252+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/source",
+  "exit_code": 0,
+  "label": "vendor",
+  "log": {
+    "bytes": 21,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/vendor.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/vendor.log",
+    "sha256": "d2f91f77d5bdd8552331c0b457f2d0aab6c9eccb0a00d29a47f6c7294216720b"
+  },
+  "started_utc": "2026-09-07T16:40:34.652486+00:00"
+}

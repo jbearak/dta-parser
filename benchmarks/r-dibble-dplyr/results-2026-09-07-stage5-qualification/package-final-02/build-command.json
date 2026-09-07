@@ -1,0 +1,20 @@
+{
+  "command": [
+    "R",
+    "CMD",
+    "build",
+    "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/source/r-package/dtatools"
+  ],
+  "completed_utc": "2026-09-07T16:44:54.248011+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02",
+  "exit_code": 0,
+  "label": "build",
+  "log": {
+    "bytes": 418,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/build.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/build.log",
+    "sha256": "cf8f4be1e94474699abd3afe4bc68c5a11cf4256df419379f7f7985ed8164f22"
+  },
+  "started_utc": "2026-09-07T16:44:53.280446+00:00"
+}

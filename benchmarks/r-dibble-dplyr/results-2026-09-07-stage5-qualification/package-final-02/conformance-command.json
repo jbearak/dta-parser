@@ -1,0 +1,18 @@
+{
+  "command": [
+    "sh",
+    "scripts/conformance.sh"
+  ],
+  "completed_utc": "2026-09-07T16:44:47.539472+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/source",
+  "exit_code": 0,
+  "label": "conformance",
+  "log": {
+    "bytes": 25145,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/conformance.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/conformance.log",
+    "sha256": "be424a6f51fe0b765f4292f1007da6f4ab1b58bbc416ab633da53551494e1df3"
+  },
+  "started_utc": "2026-09-07T16:41:22.681960+00:00"
+}

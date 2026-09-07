@@ -1,0 +1,24 @@
+{
+  "command": [
+    "cargo",
+    "clippy",
+    "--workspace",
+    "--all-targets",
+    "--locked",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "completed_utc": "2026-09-07T16:19:07.986906+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/source",
+  "exit_code": 0,
+  "label": "clippy",
+  "log": {
+    "bytes": 2293,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/clippy.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/clippy.log",
+    "sha256": "01e110c2bbd629e3c2a3a7d19e97a6d9be1ded766ef2f701b411d946a18a1801"
+  },
+  "started_utc": "2026-09-07T16:19:00.540124+00:00"
+}

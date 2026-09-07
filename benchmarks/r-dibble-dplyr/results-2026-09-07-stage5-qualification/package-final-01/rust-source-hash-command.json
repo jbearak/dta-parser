@@ -1,0 +1,18 @@
+{
+  "command": [
+    "sh",
+    "scripts/test-rust-source-hash.sh"
+  ],
+  "completed_utc": "2026-09-07T16:19:09.317511+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+  "exit_code": 0,
+  "label": "rust-source-hash",
+  "log": {
+    "bytes": 34,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/rust-source-hash.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/rust-source-hash.log",
+    "sha256": "64412b90a734c68397b590ede544730f4b115e07f82cedc84ae791452eab888c"
+  },
+  "started_utc": "2026-09-07T16:19:07.383524+00:00"
+}

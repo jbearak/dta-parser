@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/rust/1.98.0/bin/rustc",
+    "-vV"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-03",
+  "finished_utc": "2026-09-07T16:38:33.756894+00:00",
+  "label": "rustc-version",
+  "log": {
+    "bytes": 203,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-03/rustc-version.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-03/rustc-version.log",
+    "sha256": "75d92da7b8174054e6c19a9a80df6ccb5077af573190ddcc9cbfbe9f5c600c50"
+  },
+  "returncode": 0,
+  "started_utc": "2026-09-07T16:38:33.745245+00:00"
+}

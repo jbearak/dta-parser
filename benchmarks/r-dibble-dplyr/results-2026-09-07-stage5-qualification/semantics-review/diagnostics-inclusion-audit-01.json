@@ -1,0 +1,35 @@
+{
+  "created_utc": "2026-09-07T16:25:23.946165+00:00",
+  "scope": "All 174 included source and destination files independently rehashed. Current README read after selected-audit scope clarification. No experiments or original records changed.",
+  "archive": "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-diagnostics",
+  "identities": {
+    "README.md": {
+      "bytes": 3251,
+      "sha256": "5646c6e3441b467470c809aa9d11117fc40669f0883092732aee3f5587c9ce94",
+      "mode": "0o644"
+    },
+    "inclusion-manifest.json": {
+      "bytes": 53469,
+      "sha256": "e889eb59246f5d8a36c86faf9962e6ca34ea65335dfc4f5cc6ca21df572fd632",
+      "mode": "0o644"
+    },
+    "inclusion-receipt.json": {
+      "bytes": 162,
+      "sha256": "4161089cfffa2760830168dd8d1df33512a2f63af99a35418612a0e4d1fc9005",
+      "mode": "0o644"
+    },
+    "archive-diagnostics.py": {
+      "bytes": 2541,
+      "sha256": "3fa3be0d100d238211bb6ef27084d772640a3dc02e3b1f1c53d5bc3c25adcd46",
+      "mode": "0o644"
+    }
+  },
+  "files": 174,
+  "bytes": 56845047,
+  "identity_errors": [],
+  "receipt_matches": true,
+  "missing": [],
+  "unexpected": [],
+  "review": "Clean within selective diagnostic scope. Failed development and focused attempts stay failed; current script bytes do not bind earlier development source retroactively. Preliminary exact installs and focused runs do not claim final acceptance. Omitted binaries/exports/installations remain external identities, not a replay bundle. Original absolute-path recipes are explicitly unsafe to rerun in place. Selected preliminary driver findings and one full-test output audit are now accurately described.",
+  "remaining": "Final installed package/minimum-runtime/performance qualification and review acceptance remain separate work."
+}

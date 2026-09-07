@@ -1,0 +1,2204 @@
+{
+  "excluded_receipt": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/completed-receipt.json",
+  "excluded_self": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/output-manifest.json",
+  "products": [
+    {
+      "bytes": 9577513,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build/dtatools_0.7.1.tar.gz",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build/dtatools_0.7.1.tar.gz",
+      "sha256": "ce12c77442c944409b66b1a9060d99a93602f16ef1877a11fd2b82c93d02224b"
+    },
+    {
+      "bytes": 779,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build-command.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build-command.json",
+      "sha256": "89dbe6c9ed502fbede045b1b271eecfaab3cb708dc0ead561c7b0f22a8418d20"
+    },
+    {
+      "bytes": 420,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build.log",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/build.log",
+      "sha256": "cc13dbed5c6a713870c82ca60dcfdfe67dc4c41a5d7f2f3edbf918e5850f6ed6"
+    },
+    {
+      "bytes": 360,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/built-source-before-install.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/built-source-before-install.json",
+      "sha256": "8c1cd6e3c65a09d533d8d738b4d40daf3811f33cb9c6a51d1ad3d4f007b05782"
+    },
+    {
+      "bytes": 683,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/cargo-version-command.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/cargo-version-command.json",
+      "sha256": "c7a72644f2a3919653106e96278927484609fb040b34d7f439023e2121cfa3cd"
+    },
+    {
+      "bytes": 314,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/cargo-version.log",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/cargo-version.log",
+      "sha256": "30a8ffbf5019e716b5592ff2a57ead71e42015b7b082bb9a8e76aae1d85b34df"
+    },
+    {
+      "bytes": 696,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/clang-version-command.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/clang-version-command.json",
+      "sha256": "331eb8894e56edbeb06fccb0a61d32e88130d835ba3fa0024817279b891c7268"
+    },
+    {
+      "bytes": 159,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/clang-version.log",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/clang-version.log",
+      "sha256": "55f7662ee66d47566d9f08f35a12158ac9588e4852f788eed57fa3bf625c9a5d"
+    },
+    {
+      "bytes": 6324,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/execution-result.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/execution-result.json",
+      "sha256": "ea81a5cc1e80c5806a00f8f6d78a7b43c1bb177c69224048c17c8401d3259b2b"
+    },
+    {
+      "bytes": 2503,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+      "sha256": "488edf49c605423af9e86f319e054e26007f384cb043890b70c723d363f05edc"
+    },
+    {
+      "bytes": 4098,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/benchmarks/r-dibble-dplyr/helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/benchmarks/r-dibble-dplyr/helpers.R",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+    },
+    {
+      "bytes": 14363,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/benchmarks/r-dibble-dplyr/install-expression-source.py",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/benchmarks/r-dibble-dplyr/install-expression-source.py",
+      "sha256": "61600d3ec59b156b7fd8fcc3c72324b306791d79288ca4efbf24e2e11af1061c"
+    },
+    {
+      "bytes": 186,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/.Rbuildignore",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/.Rbuildignore",
+      "sha256": "e83629afa88e670a76f857681177ec14f8ac8e238479213a77f443abda62cbaf"
+    },
+    {
+      "bytes": 98,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/.gitignore",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/.gitignore",
+      "sha256": "af417e11d1a5486491406a59207d88115209f53d84e51afd24e6b885f0adc152"
+    },
+    {
+      "bytes": 1711,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/DESCRIPTION",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/DESCRIPTION",
+      "sha256": "004c512b525091ab7e051691f1c41253918596850fc9e16b6305444ff7e4d076"
+    },
+    {
+      "bytes": 10965,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/NAMESPACE",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/NAMESPACE",
+      "sha256": "94a412e9883a444d27ea621362f8df4dc513b0fa7a3cb7eb4ae6bb0933fc1ff3"
+    },
+    {
+      "bytes": 666,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/NEWS.md",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/NEWS.md",
+      "sha256": "9ad3700aff7742c7913d1e9a8baf3ca1823376e658461036c28ba583fd7c35a5"
+    },
+    {
+      "bytes": 37591,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/codebooks.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/codebooks.R",
+      "sha256": "ae9ce74c8cda8700b099d36273a3342f02e7d31117a1576f701e4c64bd190daa"
+    },
+    {
+      "bytes": 4929,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/datasig.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/datasig.R",
+      "sha256": "a6c744a1aa8af49db7e61685d12627695603344702d1d96d5c425592ae214c05"
+    },
+    {
+      "bytes": 3008,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble-dplyr-context.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble-dplyr-context.R",
+      "sha256": "0fa7b1a317c8d7b4dbec7a561dc9704c46c50b13407b05fdee6a2e11ae8f0e05"
+    },
+    {
+      "bytes": 20864,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble-expressions.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble-expressions.R",
+      "sha256": "17833e1794bb3b82f0dcf05c73bb10df9c391c9630dbeae1b3c3f4f4d91682b8"
+    },
+    {
+      "bytes": 12011,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble-groups.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble-groups.R",
+      "sha256": "ea91b3549ce0bd11578673981c04dc83bd2e78c6226569abfd9624fd5e7381c5"
+    },
+    {
+      "bytes": 9100,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble-result.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble-result.R",
+      "sha256": "20c86c603f7cd7300e9b7b06bb4fe1ba29a14b74e4192b67a6061b0bdc421fc7"
+    },
+    {
+      "bytes": 12456,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble-rows.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble-rows.R",
+      "sha256": "1ce41f4cbe505584dea298b807d600c08b9a735d6b13a41dd9520f7c29d570b3"
+    },
+    {
+      "bytes": 25061,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dibble.R",
+      "sha256": "1ebfc62751b92804ef3906ac323ff0616ec1b5589b6e039424d32f5799ee7e1e"
+    },
+    {
+      "bytes": 33020,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-append.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-append.R",
+      "sha256": "9d67e506fbc2a97bcfc5c6e9c0473d21ca5f8ddfddad997ae0df4cd37ac47258"
+    },
+    {
+      "bytes": 15903,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-match.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-match.R",
+      "sha256": "70b4f0224ed25c1face0de3aa911d40fa9ec6e22edd66f6dc3d8f939c34a3ea0"
+    },
+    {
+      "bytes": 33662,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-merge.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-merge.R",
+      "sha256": "53b4c9a3f93967629423b1eda885d8a02aae530f8828723525c69e63677d5618"
+    },
+    {
+      "bytes": 25759,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-metadata.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-metadata.R",
+      "sha256": "d7587595fe15329c9649aa434f36de68b06fba7099bcd308159b6e545ddeaa3d"
+    },
+    {
+      "bytes": 58333,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-numeric.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-numeric.R",
+      "sha256": "aa2a7b6442d7cb0604a249f14c25665c9a32bcd93e33e1063b9317799418d599"
+    },
+    {
+      "bytes": 6757,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-storage-defaults.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-storage-defaults.R",
+      "sha256": "23754b7870c783fb0365d16ea19f2e0b5e416eb8b9fb0fe05dd21923d496f484"
+    },
+    {
+      "bytes": 11516,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-string.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/dta-string.R",
+      "sha256": "b958c28240e9aa0cec060d6d58d16477a3dc8e829cc2038737730ceb0fa40776"
+    },
+    {
+      "bytes": 11000,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/egen-groups.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/egen-groups.R",
+      "sha256": "857146242ffa5ee6a6c1d1a40dfb2a89b8984abadfd6e3019e8b0f3592918f64"
+    },
+    {
+      "bytes": 4177,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/egen-values.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/egen-values.R",
+      "sha256": "48c55ff2676ae2cfb4a8f0a067ccfb54c05a4ea6ec8abca3fcc0535f762e5743"
+    },
+    {
+      "bytes": 19904,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/egen.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/egen.R",
+      "sha256": "706cf0056765a5fcde0cb52db875d252c48d8d8e57f3cffe6ac307f60bc4d082"
+    },
+    {
+      "bytes": 4272,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/factor-from-labels.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/factor-from-labels.R",
+      "sha256": "fbe65574deb7cacba644c3c7ee68208dd0aafa34e2968b97d10b46a7fe1c19fe"
+    },
+    {
+      "bytes": 2656,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/is-missing.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/is-missing.R",
+      "sha256": "a71198e9cd9963b3c860a26d8053bb69aa898114f0380b55a39ed240decd3706"
+    },
+    {
+      "bytes": 16900,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/keep-drop.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/keep-drop.R",
+      "sha256": "6807dc4fd094ca4544ff62825b6589f06dc9710d2c4c9d752c60040dbbcfaa3c"
+    },
+    {
+      "bytes": 32958,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/labels.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/labels.R",
+      "sha256": "b7199bd9bd1cec9efd3d841cc47af3b07326a9fdccb5cc464ff9533e35dc15eb"
+    },
+    {
+      "bytes": 155805,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/mutate-data.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/mutate-data.R",
+      "sha256": "afda9ab258515e423d9e6e852ce99030d892b66df876894316093ee1e3263020"
+    },
+    {
+      "bytes": 9651,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/output-container.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/output-container.R",
+      "sha256": "d44157ab17ddd4127084f288ffd6182b4f6fdf9d8ba98f7b6bf320119208273e"
+    },
+    {
+      "bytes": 3391,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/print-dibble.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/print-dibble.R",
+      "sha256": "be5f73a80a4da83494a85d9c4cc88b297086ac5a8db459b302d0b8e1eda1934c"
+    },
+    {
+      "bytes": 10738,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/read-arrow.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/read-arrow.R",
+      "sha256": "4a107e2e08402fecbbb54c38666812661e1a2e81d5275e62530487f67074866b"
+    },
+    {
+      "bytes": 24416,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/read-dta.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/read-dta.R",
+      "sha256": "c9509f29be86e835c13f897f4f7f74e4023ea694623a3ae8ed5b64e0e03fa3ac"
+    },
+    {
+      "bytes": 12202,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/recode.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/recode.R",
+      "sha256": "6aa7ab2f01242c5049923381b1493677f4e172c42eb504ff08aa49ae4763a530"
+    },
+    {
+      "bytes": 2642,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/reorder-dta-rows.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/reorder-dta-rows.R",
+      "sha256": "deab5d8239714dff28ee9e229f2a03c138bff91353c3d43e09a5022f7efd342b"
+    },
+    {
+      "bytes": 8020,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/reserve-columns.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/reserve-columns.R",
+      "sha256": "dfb29ebac3819832c664c547c1f1b24f89f723cff5e783a4d1dad9d17d3f7d6f"
+    },
+    {
+      "bytes": 24859,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/save-arrow.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/save-arrow.R",
+      "sha256": "7cce2583a09d132b0fb9d35661815588917f6858ae6001cb66a8a01d4dc646de"
+    },
+    {
+      "bytes": 43504,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/save-dta.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/save-dta.R",
+      "sha256": "56d90f945eb6d7772bf8164683927b2fa5c72304b795f96d2d90b792928f961e"
+    },
+    {
+      "bytes": 14673,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/set-metadata.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/set-metadata.R",
+      "sha256": "b18f5fd37f99d55ef4e203f6c22f275aff56c38400f030073ff8bee029af9162"
+    },
+    {
+      "bytes": 5325,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/slice-dta-rows.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/slice-dta-rows.R",
+      "sha256": "b0cc52cb5376f66bb910907c1140e6432696957b4f7293da8d060623a3f8c3eb"
+    },
+    {
+      "bytes": 12414,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/tab.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/tab.R",
+      "sha256": "7245dd7deeae02aaef9219f4c54c50c7a5191248fefe3e139cf83cc4f2490c80"
+    },
+    {
+      "bytes": 4751,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/tagged-missing.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/tagged-missing.R",
+      "sha256": "73dba3bb15254f2437c882cd197b70a5ef864811eb94ca359bfc51e1ee7009a3"
+    },
+    {
+      "bytes": 4048,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/variable-names.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/variable-names.R",
+      "sha256": "2d92c8627a567692c375f6a37502d461a2f84aaaf16eed013dd6f4c6d5ea6bb0"
+    },
+    {
+      "bytes": 3269,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/zzz.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/R/zzz.R",
+      "sha256": "d51d1a3638a4b011630fb11d5dc4b0c18014accf369659d42308c1d23fe12c60"
+    },
+    {
+      "bytes": 46128,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/README.md",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/README.md",
+      "sha256": "f0b69794960fe38220995365e73f29d6d0ed9c0517f6495cbbe2ccf80f8ad5b1"
+    },
+    {
+      "bytes": 46,
+      "mode": "0o755",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/cleanup",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/cleanup",
+      "sha256": "f9df8209dcc491c06504c0e34ac2e43beec1e46bac7098b6622dabf086809ca7"
+    },
+    {
+      "bytes": 357,
+      "mode": "0o755",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/configure",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/configure",
+      "sha256": "7d7ba813c1b02c24a1a7cf98440756374da93443f0f485cb132e234d5e540f08"
+    },
+    {
+      "bytes": 795,
+      "mode": "0o755",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/configure.win",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/configure.win",
+      "sha256": "b6d1bb8f6b959a4ac78c716ca264eb3122f8893434b15834900db72634848592"
+    },
+    {
+      "bytes": 30822,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/NOTICE",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/NOTICE",
+      "sha256": "2b7092d0e91ef0012dc4496edfcef267781ef8a4c9165c2bfee72691408cda98"
+    },
+    {
+      "bytes": 6213,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/all_types.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/all_types.dta",
+      "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8"
+    },
+    {
+      "bytes": 1729,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/all_types_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/all_types_v115.dta",
+      "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7"
+    },
+    {
+      "bytes": 2668,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/all_types_v117.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/all_types_v117.dta",
+      "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2"
+    },
+    {
+      "bytes": 6213,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/all_types_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/all_types_v118.dta",
+      "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c"
+    },
+    {
+      "bytes": 6107,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/auto_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/auto_v115.dta",
+      "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693"
+    },
+    {
+      "bytes": 6616,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/auto_v117.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/auto_v117.dta",
+      "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35"
+    },
+    {
+      "bytes": 12765,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/auto_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/auto_v118.dta",
+      "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c"
+    },
+    {
+      "bytes": 181,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_labels_stata18.csv",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_labels_stata18.csv",
+      "sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a"
+    },
+    {
+      "bytes": 2109,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_number_labels_stata18.csv",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_number_labels_stata18.csv",
+      "sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d"
+    },
+    {
+      "bytes": 5283,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_number_labels_stata18.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_number_labels_stata18.dta",
+      "sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3"
+    },
+    {
+      "bytes": 2445,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_precision_stata18.csv",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_precision_stata18.csv",
+      "sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620"
+    },
+    {
+      "bytes": 782,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_stata18.csv",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_stata18.csv",
+      "sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6"
+    },
+    {
+      "bytes": 10273,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_unicode_names_stata18.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/egen_unicode_names_stata18.dta",
+      "sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426"
+    },
+    {
+      "bytes": 2475,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/empty.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/empty.dta",
+      "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e"
+    },
+    {
+      "bytes": 713,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/empty_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/empty_v115.dta",
+      "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65"
+    },
+    {
+      "bytes": 2475,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/empty_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/empty_v118.dta",
+      "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5"
+    },
+    {
+      "bytes": 4325,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/missing_values.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/missing_values.dta",
+      "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198"
+    },
+    {
+      "bytes": 1681,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/missing_values_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/missing_values_v115.dta",
+      "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397"
+    },
+    {
+      "bytes": 4325,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/missing_values_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/missing_values_v118.dta",
+      "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e"
+    },
+    {
+      "bytes": 2804,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/strl_test.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/strl_test.dta",
+      "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073"
+    },
+    {
+      "bytes": 2804,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/strl_test_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/strl_test_v118.dta",
+      "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412"
+    },
+    {
+      "bytes": 543,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/synthetic_v105.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/synthetic_v105.dta",
+      "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+    },
+    {
+      "bytes": 886,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/synthetic_v108.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/synthetic_v108.dta",
+      "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+    },
+    {
+      "bytes": 1286,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/synthetic_v110.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/synthetic_v110.dta",
+      "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+    },
+    {
+      "bytes": 1352,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/synthetic_v111.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/synthetic_v111.dta",
+      "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+    },
+    {
+      "bytes": 3162,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/value_labels.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/value_labels.dta",
+      "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a"
+    },
+    {
+      "bytes": 1054,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/value_labels_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/value_labels_v115.dta",
+      "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86"
+    },
+    {
+      "bytes": 1549,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/value_labels_v117.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/value_labels_v117.dta",
+      "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02"
+    },
+    {
+      "bytes": 3162,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/value_labels_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/value_labels_v118.dta",
+      "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea"
+    },
+    {
+      "bytes": 86955,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/wide.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/wide.dta",
+      "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b"
+    },
+    {
+      "bytes": 33596,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/wide_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/wide_v115.dta",
+      "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174"
+    },
+    {
+      "bytes": 86955,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/wide_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/extdata/wide_v118.dta",
+      "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c"
+    },
+    {
+      "bytes": 2782,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/raven/nse.toml",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/inst/raven/nse.toml",
+      "sha256": "678f2a1649caeb00e0444616f47c68422df395929e5b003d18e7d3533a40875f"
+    },
+    {
+      "bytes": 1704,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/codebook.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/codebook.Rd",
+      "sha256": "5658b9ff8a5d1bb102edb0b7a7545bca75905d43bc27bd540e1ae36fd624d5df"
+    },
+    {
+      "bytes": 2576,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/column_capacity.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/column_capacity.Rd",
+      "sha256": "8e490ce2a83070e2e8c25beb2375f541d64b4ac24585ef3c5f49f740d67f4b2a"
+    },
+    {
+      "bytes": 4279,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/datasig.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/datasig.Rd",
+      "sha256": "2147787c2be8e232a18889750cb6fa13f9175a1073dcaec6b4a7571663423d84"
+    },
+    {
+      "bytes": 5584,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dibble-bracket.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dibble-bracket.Rd",
+      "sha256": "43cf750ff10da1482ca2240cd55ba898407b0c881d50bf4be021ee4a27a9fd9f"
+    },
+    {
+      "bytes": 8339,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dibble.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dibble.Rd",
+      "sha256": "edcfcb131f7ae581dca2e010282bf39c404ead5060fa25278d1b89852278f894"
+    },
+    {
+      "bytes": 1991,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta-calculations.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta-calculations.Rd",
+      "sha256": "bb0411f862185d59fce4520fb55460f83ca93ddb4a5aeaf6786bdb26ec5f172f"
+    },
+    {
+      "bytes": 7550,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta-storage-defaults.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta-storage-defaults.Rd",
+      "sha256": "677f8428f966fa360c2c9e809a8e132c581e62e36c126a721d279a115b3e29cc"
+    },
+    {
+      "bytes": 4491,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_append.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_append.Rd",
+      "sha256": "745f96ff349c93ea47687be9d07208468eaeb037fb65187812857bfe0c034e4a"
+    },
+    {
+      "bytes": 5639,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_byte.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_byte.Rd",
+      "sha256": "0475d3b6e83ab20d11e9804a65b68fe04d4a21c6c78b8404fe30d3775dd90df4"
+    },
+    {
+      "bytes": 3009,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_group_id.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_group_id.Rd",
+      "sha256": "f4e8f5bac94f71abed2aba57449572c11f8f4a4ccf3fe24d4a214378ad99c8ec"
+    },
+    {
+      "bytes": 3050,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_match.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_match.Rd",
+      "sha256": "b042e3e95b6674fc6970d9af53286c74a87c6cab48c62867e9aa8988aec3d2b7"
+    },
+    {
+      "bytes": 6991,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_merge.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_merge.Rd",
+      "sha256": "5112c5ed363d9e17cd8be8eea7abecd181b2f9fa36a128dde2dcc848611603f1"
+    },
+    {
+      "bytes": 4119,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_notes.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_notes.Rd",
+      "sha256": "a3c79f5f26151d6b1525f11b12d99dd40846d91cc8d21b697b8d628b6e815746"
+    },
+    {
+      "bytes": 1086,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_string.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/dta_string.Rd",
+      "sha256": "5e544dd5e9e988fca071fa026c323257cea2846d36652846e7b3cb26c449c011"
+    },
+    {
+      "bytes": 4889,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/egen.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/egen.Rd",
+      "sha256": "61de922859756bbe56f6d9a33bb66671e5359767e1210dec59eae51ce66ef33e"
+    },
+    {
+      "bytes": 2452,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/factor_from_labels.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/factor_from_labels.Rd",
+      "sha256": "c2d5762894cb2c4dbefa094c5cfa023e315579454f9a3f4b7fef4397b1ea9aa4"
+    },
+    {
+      "bytes": 2732,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/is_missing.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/is_missing.Rd",
+      "sha256": "ea873a2a0457f205dc2f335618d1aa087596342697dd6c7de2b5f2e1d4845780"
+    },
+    {
+      "bytes": 2180,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/keep_vars.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/keep_vars.Rd",
+      "sha256": "7dad4f34301a65cdafed4c171cee2d8379e847840346e8b800ded984febb5502"
+    },
+    {
+      "bytes": 1390,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/labelbook.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/labelbook.Rd",
+      "sha256": "15acb41acdfe409371f2e36814210ea58c1d6c92b8f8562213bb79faa2ce3b1d"
+    },
+    {
+      "bytes": 2633,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/mutation-containers.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/mutation-containers.Rd",
+      "sha256": "01e3c6406bd1ebf051e3ba39892f0bc43313a30d8708776d8f7f54e40708ddfa"
+    },
+    {
+      "bytes": 1264,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/order_vars.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/order_vars.Rd",
+      "sha256": "0111831a28eac17c45d40d49aee28e8c7a7f633f405593fd8f3c2cacdc2b015b"
+    },
+    {
+      "bytes": 5755,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/read_arrow.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/read_arrow.Rd",
+      "sha256": "26fc8ecf15dedee6f818f46ef620a4f57c46ca5633c37b3dfdfaed7b7fe38087"
+    },
+    {
+      "bytes": 10934,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/read_dta.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/read_dta.Rd",
+      "sha256": "bd691d3a07a727bb6ebe12d6e78b4426bd083693026a1c48458f93d97f0f96ee"
+    },
+    {
+      "bytes": 3323,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/recode.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/recode.Rd",
+      "sha256": "a85e521d8a7aeaff2e460edc07963b6d9db2066f17fec360c4b6aa8ece3f86f9"
+    },
+    {
+      "bytes": 1506,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/rename_vars.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/rename_vars.Rd",
+      "sha256": "77cb27e52a6c4ef8f317c91705e4243c50624905d1e5157a4c0230911f7a42a2"
+    },
+    {
+      "bytes": 1488,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/reorder_dta_rows.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/reorder_dta_rows.Rd",
+      "sha256": "4b65fe1792e50176bf976f61f1f52f5951fea889cdf26c907e2eacbf8815d6ef"
+    },
+    {
+      "bytes": 21015,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/replace_values.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/replace_values.Rd",
+      "sha256": "0d9909d4dfe523684d05d6693f08b911a80aad6f151a059325656692364cb17d"
+    },
+    {
+      "bytes": 2613,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/reserve_columns.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/reserve_columns.Rd",
+      "sha256": "d35d88b8232c2d3b6440d30de9631af134e60248c07e235ff2adcda851c79ab3"
+    },
+    {
+      "bytes": 2162,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/resolve_var_name.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/resolve_var_name.Rd",
+      "sha256": "86b1a9aaebd5faa134188beb0425a458cb1e2b95bc3e114b1fc225477a8fc2f1"
+    },
+    {
+      "bytes": 5186,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/save_arrow.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/save_arrow.Rd",
+      "sha256": "ee6bae43e1ad7a0c57a7d44c2a4239548051a425a05f17efdd9459947d256fe0"
+    },
+    {
+      "bytes": 3696,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/save_dta.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/save_dta.Rd",
+      "sha256": "a52268f97f99b966a45d09b56950568bec5bb4c04713697e6d089815b5880831"
+    },
+    {
+      "bytes": 3369,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/set_dta_metadata.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/set_dta_metadata.Rd",
+      "sha256": "3cc7da33e078e915dcae65321d64719c33ab9d86f22603d006b372021386afea"
+    },
+    {
+      "bytes": 2481,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/set_var_format.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/set_var_format.Rd",
+      "sha256": "08e36806693f32d1a08b7036ac45e873f0096f53359f3e9e834b8f0955b4a68a"
+    },
+    {
+      "bytes": 2028,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/slice_dta_rows.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/slice_dta_rows.Rd",
+      "sha256": "119be18b800c9a6935bf11e541873885139094c7b133736e16483c38dedec1a9"
+    },
+    {
+      "bytes": 3231,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/tab.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/tab.Rd",
+      "sha256": "54b7484df09b1d8fffc07ebec847f8fb856bc53dc7d0497413daebe52bafe6ff"
+    },
+    {
+      "bytes": 1783,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/tagged_missing.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/tagged_missing.Rd",
+      "sha256": "20aba3ab3149dcfd406585caef4f04d725bf0d8e3c6a052c9f5c7bf70c50a483"
+    },
+    {
+      "bytes": 1137,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/tagged_missing_constants.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/tagged_missing_constants.Rd",
+      "sha256": "38c1d290eb81a4806d4d47b5b9f44294846eb5b03e739024f29a8b561f81878e"
+    },
+    {
+      "bytes": 9367,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/var_label.Rd",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/man/var_label.Rd",
+      "sha256": "115a9db1a29be998eee0b032bb8814d94fb490b89a2bb3c4d235953a9b91042f"
+    },
+    {
+      "bytes": 187,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/Makevars.in",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/Makevars.in",
+      "sha256": "670886cbb880b1ff23b497c4d19fefb85885f8e86b441161078f7696b27781a7"
+    },
+    {
+      "bytes": 376,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/Makevars.rust",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/Makevars.rust",
+      "sha256": "cabb38a3bda5e7d87661c3b3cbbd58e9c61360bf925f48e70d09809bd5656585"
+    },
+    {
+      "bytes": 314,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/Makevars.win.in",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/Makevars.win.in",
+      "sha256": "271e7299d265fd2597e8685c3534fd5402b58c60788aaeae0fec5c253fbc25eb"
+    },
+    {
+      "bytes": 820,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/Cargo.toml",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/Cargo.toml",
+      "sha256": "d68c81106cc10f6c33b6cbef0c0f722ce0c284208b1f44d759bed25e5d4d8bcf"
+    },
+    {
+      "bytes": 35149,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/LICENSE",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/LICENSE",
+      "sha256": "3fb86ad2fc6f9ee1bada36000b8a6905b492caab81e3601c2592a3d6504d803a"
+    },
+    {
+      "bytes": 4718,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/examples/bench.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/examples/bench.rs",
+      "sha256": "9ef961da13517fd8b9a611b4c3dc20a28d05c3814894cabbe94856492aa0bc97"
+    },
+    {
+      "bytes": 18768,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/examples/typescript_arrow_fixtures.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/examples/typescript_arrow_fixtures.rs",
+      "sha256": "487939221c686da1015714fb25815f4c5719374b76987002d7e9fc89363b54db"
+    },
+    {
+      "bytes": 7741,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/arrow/checksum.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/arrow/checksum.rs",
+      "sha256": "610bd2b3c25029df5057c7bb1ec0d4fcb81bab51767deb5af92bca2b3af4779a"
+    },
+    {
+      "bytes": 2811,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/arrow/mod.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/arrow/mod.rs",
+      "sha256": "36d33918bc76c176bad240fc0dfac971616081f81fe7d606070b907a42fd42ce"
+    },
+    {
+      "bytes": 71075,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/arrow/profile.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/arrow/profile.rs",
+      "sha256": "caa8af362db65435add3bc8c670028b7cf4b36a70d3cf87ce8d692a8e0bf5a0b"
+    },
+    {
+      "bytes": 112474,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/arrow/read.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/arrow/read.rs",
+      "sha256": "80ab1e50fa19c7808f87e9cb192929a1193e537f5242ff8ccfeb68c09c0583d7"
+    },
+    {
+      "bytes": 57921,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/arrow/write.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/arrow/write.rs",
+      "sha256": "6bc26a47f5f5d043251c605d6138dcc681767716b0c65a60a509c2312acb4a55"
+    },
+    {
+      "bytes": 15421,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/data_reader.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/data_reader.rs",
+      "sha256": "e872eb4f68cd7941a3064c0a299541bf0395a1346e991cedb45b49eed0d90668"
+    },
+    {
+      "bytes": 26830,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/dta_metadata.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/dta_metadata.rs",
+      "sha256": "fc823940eae74be61cd86667a367a620efff8145b9fca72acaf4b47f3be69543"
+    },
+    {
+      "bytes": 6675,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/endian.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/endian.rs",
+      "sha256": "fd0bca2750f1eec6a3951e3d3768399b2602ffe8b6a65a7b2e2bdd8c8078225f"
+    },
+    {
+      "bytes": 9038,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/error.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/error.rs",
+      "sha256": "d716541fedca39464baa8a97f74b7e9cef7e8506828e183b4a9e49b0ebd39378"
+    },
+    {
+      "bytes": 273789,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/file.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/file.rs",
+      "sha256": "ae4f8fafafef80183364588abcd32c32e09167f7e480f161bc1be94cc1cd7138"
+    },
+    {
+      "bytes": 21244,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/legacy.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/legacy.rs",
+      "sha256": "987ce81dbb1ed3f7481e1b6a13f380502eed5d2dc21add8395af0d7790a17e5c"
+    },
+    {
+      "bytes": 3892,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/lib.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/lib.rs",
+      "sha256": "a4c5e7289893a89c28bb03d2a49543892c872ad96286a7cc691db8073b78f8db"
+    },
+    {
+      "bytes": 29553,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/metadata.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/metadata.rs",
+      "sha256": "e4ab8183377b4e813a2177a300560549a5712073fae415939e261aca23f722ac"
+    },
+    {
+      "bytes": 10602,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/missing.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/missing.rs",
+      "sha256": "74bf2fc1aaeb8192fd5c2dc58720fb286477a236bcc9c3bc4611216399191f1e"
+    },
+    {
+      "bytes": 3191,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/selection.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/selection.rs",
+      "sha256": "41139e996a585c67993c5b9f2b8bb735d661261006a0169473ddc496826ab209"
+    },
+    {
+      "bytes": 15132,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/strl.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/strl.rs",
+      "sha256": "f456ba74f4313a0d2e64a373c1f83242d4f1e9a505950b009535bc9106dea8fc"
+    },
+    {
+      "bytes": 6164,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/text.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/text.rs",
+      "sha256": "7a7b01c06a665b0f601df44c097411e1792476960c79f31aadefb1de9171a60d"
+    },
+    {
+      "bytes": 17872,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/types.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/types.rs",
+      "sha256": "46cb44d58cfd9fbb559c88ed501fc006cd004734f724835978e44c36dfebc20a"
+    },
+    {
+      "bytes": 29583,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/value_labels.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/value_labels.rs",
+      "sha256": "f8c025db968ef91e09b968ffcaf29e6d140fb7dde337820c9eabe03392abcd40"
+    },
+    {
+      "bytes": 76042,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/write.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/src/write.rs",
+      "sha256": "c23f70b4e60f4c34269dd47e02f5706db7dc32adf19e7d0d3a65952a5b4d47ce"
+    },
+    {
+      "bytes": 79511,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/arrow.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/arrow.rs",
+      "sha256": "310b22cd8f125f029b3617f4ce597844682c4fa41851d331b232e540f527506f"
+    },
+    {
+      "bytes": 5937,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/conformance.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/conformance.rs",
+      "sha256": "e8bcd96fb45e18183ec00609024c14cdacac0ce665feadaa14c7fc20db2b0124"
+    },
+    {
+      "bytes": 518903,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/data/modern-canonical.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/data/modern-canonical.json",
+      "sha256": "c515d7b44af55f45bc9e1ff438ccd3388f259acae2cd24ed92f07406442122e4"
+    },
+    {
+      "bytes": 543,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/data/synthetic-v105.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/data/synthetic-v105.dta",
+      "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+    },
+    {
+      "bytes": 886,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/data/synthetic-v108.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/data/synthetic-v108.dta",
+      "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+    },
+    {
+      "bytes": 1286,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/data/synthetic-v110.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/data/synthetic-v110.dta",
+      "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+    },
+    {
+      "bytes": 1352,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/data/synthetic-v111.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/data/synthetic-v111.dta",
+      "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+    },
+    {
+      "bytes": 5409,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/encoding.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/encoding.rs",
+      "sha256": "151f5ed2619651ed723566b57c8d1729e20f60cd75bbd79b94174964edaf206e"
+    },
+    {
+      "bytes": 57348,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/file.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/file.rs",
+      "sha256": "fb91837922354d6be55a2b35755829326f6d807eb0c9676cfd1d2428ec54ffbc"
+    },
+    {
+      "bytes": 11820,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/fuzz_smoke.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/fuzz_smoke.rs",
+      "sha256": "e12705de3b93c77722c9a9fea91f16f22b5837e1ae0e750d8ed6b144c5fb94ce"
+    },
+    {
+      "bytes": 36792,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/legacy.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/legacy.rs",
+      "sha256": "cf28be104122ce90e90475b6b11c9392b043ffc680916b0236c90f7e0105aa97"
+    },
+    {
+      "bytes": 11116,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/metadata.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/metadata.rs",
+      "sha256": "c0f8bd5b0487f69cb3ebc7234785220793269ec2b0fb168fa8b7d80366e850e5"
+    },
+    {
+      "bytes": 33666,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/observations.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/observations.rs",
+      "sha256": "17d1f24f9f6efc05608dcf6b6964dedee13d45bbcc43a7de9c0fe0df2f70283a"
+    },
+    {
+      "bytes": 3432,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/strl.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/strl.rs",
+      "sha256": "3ceaa89efd1c04c813368f52fa82d17596fcd079c98226b185c8778c35db5926"
+    },
+    {
+      "bytes": 3888,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/support/generate-modern-canonical.ts",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/support/generate-modern-canonical.ts",
+      "sha256": "cf89302fc964fb6afbf8085f17586e05031201819e566f31e49ae70a690c30d2"
+    },
+    {
+      "bytes": 587,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/support/mod.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/support/mod.rs",
+      "sha256": "05523b8e88e4e8b230f7990c07e444aa78d31791005e3023cc32e971f2052b62"
+    },
+    {
+      "bytes": 11318,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/value_labels.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/value_labels.rs",
+      "sha256": "d100865f5133e4d90fdb37d48caac355de391c840e6b36413346d6d9d66711df"
+    },
+    {
+      "bytes": 60748,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/write.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/dta-tools/tests/write.rs",
+      "sha256": "7ad087cc43aa7cb2185146fe3b9968e3b1d3bcd700031cc22354a8337d90200b"
+    },
+    {
+      "bytes": 6125,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/egen-groups.h",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/egen-groups.h",
+      "sha256": "fd18c269dc2c05896c7292b53ee129dd8010b7c128e12f5d803c88a23a95801f"
+    },
+    {
+      "bytes": 4501,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/egen-values.h",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/egen-values.h",
+      "sha256": "bcd53a9eae7126d65de4dc6a1b6a068142a9cd1628e00514db1375d78e12e236"
+    },
+    {
+      "bytes": 335925,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/init.c",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/init.c",
+      "sha256": "50ad819f6d9547604ac009bf528b82b05c8c8fe835831d850c6cfce2c4644471"
+    },
+    {
+      "bytes": 29800,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/mutation-write.h",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/mutation-write.h",
+      "sha256": "d8e5f6abbe970c4ed12fb923fa55b76e6278e9c1072089356a7698f9cd8c489d"
+    },
+    {
+      "bytes": 41614,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/owned-columns.h",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/owned-columns.h",
+      "sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1"
+    },
+    {
+      "bytes": 21995,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/Cargo.lock",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/Cargo.lock",
+      "sha256": "5d71904510bb84b70d691b446979794d75cbfba7b82054de704250cd3b7e3b7f"
+    },
+    {
+      "bytes": 480,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/Cargo.toml",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/Cargo.toml",
+      "sha256": "86c196918de6f7ee161d78325e51643868f34d732666d1e85e714cd3878bcd65"
+    },
+    {
+      "bytes": 123,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/cargo-config.toml",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/cargo-config.toml",
+      "sha256": "60f1bbe1f3f7449d5ec772629f7e7623fe96077ebb87ccbf426f833a0b6f2688"
+    },
+    {
+      "bytes": 140194,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/src/arrow_ffi.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/src/arrow_ffi.rs",
+      "sha256": "d9c295d7f808eb1bfd7d6e57381b1b10a10d9bd4873369ff375f2228897f2d8b"
+    },
+    {
+      "bytes": 190384,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/src/lib.rs",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/src/lib.rs",
+      "sha256": "e2fa30dad4c852a018d7607dbb23a35dd78ff8348daa991ac06834ff018591dd"
+    },
+    {
+      "bytes": 80,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/vendor.sha256",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/vendor.sha256",
+      "sha256": "147065f56a04e8833bbff3f840406a1354dc456706ce1ae58514c4a35ba5f639"
+    },
+    {
+      "bytes": 8886726,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/vendor.tar.gz",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/src/rust/vendor.tar.gz",
+      "sha256": "31249dcf2962711a7e51ccb7983661543e3d87bcc0c574aadfbad4ee9c19252e"
+    },
+    {
+      "bytes": 7966,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/helper-fixtures.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/helper-fixtures.R",
+      "sha256": "0cbb2ffc21363beb4aa71353c9ec73ed6280b08ce6149425468a4db91fddbe16"
+    },
+    {
+      "bytes": 48843,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-arrow.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-arrow.R",
+      "sha256": "ced7425bf3ebd50d3d70f5951cb2606b58cd70e2491464ca60cada03e80e93a3"
+    },
+    {
+      "bytes": 12642,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-codebooks.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-codebooks.R",
+      "sha256": "aef04cdec341b4eb2fb7acf9f9ef6cd5ca3caf60de69e5956ef30363b0fe5890"
+    },
+    {
+      "bytes": 2568,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-copy-data.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-copy-data.R",
+      "sha256": "cbd704afda0f4c07333653e13084817667f57a2d556410cde010a3abf18a7d73"
+    },
+    {
+      "bytes": 14798,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-data-table-compatibility.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-data-table-compatibility.R",
+      "sha256": "1bd35095356c578c2931ff99b0122efc3f988970b835ff9350a4ad447ddaface"
+    },
+    {
+      "bytes": 8007,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-datasig.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-datasig.R",
+      "sha256": "b0cbd5aa049670ca5d1890196ac4749d0e5ed25aa483dca95dfd5ef0c2a6b5fd"
+    },
+    {
+      "bytes": 15818,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-bracket.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-bracket.R",
+      "sha256": "ae8ecf89edb684747a174e2edef23ea95c34c440afca0a937d60e4c9193d5388"
+    },
+    {
+      "bytes": 7355,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-class.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-class.R",
+      "sha256": "559b688934c97c074c2992421c70b1f13a3dcf6b254e5e585142557568def439"
+    },
+    {
+      "bytes": 18266,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-columns.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-columns.R",
+      "sha256": "07a27397ecb617cb822255ca46d48cd2971ada75f1198244de66ced8e0848c90"
+    },
+    {
+      "bytes": 21100,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-expressions.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-expressions.R",
+      "sha256": "62d0d192ea5bae864db4361b8bcf10ab1ad32ace6fd99efcd5e54d81d8a3ed72"
+    },
+    {
+      "bytes": 10737,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-print.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-print.R",
+      "sha256": "e2d1a43254656f76406462e23278623e6286e277f4dbae1fab4f16b3fe3ec6c9"
+    },
+    {
+      "bytes": 29412,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-rows.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble-rows.R",
+      "sha256": "0e20c6ac8b6f4b05890456920dc2e91d6f8296b900daf762118218222fd2e5f6"
+    },
+    {
+      "bytes": 77702,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dibble.R",
+      "sha256": "e595ad7620aa81b226ae69713abf4ee35a8e9473aba6a0d3ebde8dd3d5b5b6c5"
+    },
+    {
+      "bytes": 27179,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-append.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-append.R",
+      "sha256": "84c6fac5573b22cd43a10b27ed81f240a982ce0fb9bae24240ae4d89ae9f02f3"
+    },
+    {
+      "bytes": 6941,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-compare-native.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-compare-native.R",
+      "sha256": "de340d4f47395bc96bf17b0720152e3523bc23889e4d9b0b139396988cb1cead"
+    },
+    {
+      "bytes": 3700,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-identical.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-identical.R",
+      "sha256": "283d3d5c74bbb0b180f6d02256b8bc50cf673df4c94ce11b32f7ccef0e39226d"
+    },
+    {
+      "bytes": 12308,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-match.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-match.R",
+      "sha256": "330c0697e50973c6fa9034cbaec8c0c780b17c09433f4c206c99c3f167b07821"
+    },
+    {
+      "bytes": 34620,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-merge.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-merge.R",
+      "sha256": "4bdfc7cd8c75f9c2381c3571134b79862b5782755d9581b7d36ab3095da23156"
+    },
+    {
+      "bytes": 27876,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-metadata.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-metadata.R",
+      "sha256": "180874c434a2c9e973b4868a3bceb953188faa9cefe1095557f826bd37786c30"
+    },
+    {
+      "bytes": 1821,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-numeric-summary.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-numeric-summary.R",
+      "sha256": "0a01e55bea84150e798b1537f5fd3362b0a9aefc054a0ce060a00bf7b924123b"
+    },
+    {
+      "bytes": 40076,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-numeric.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-numeric.R",
+      "sha256": "426f02a2b560c81c701f3d53c1d5b0ebc28f6f8f08eb6644bb99a25d86b3cd9d"
+    },
+    {
+      "bytes": 2997,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-string-metadata-coercion.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-string-metadata-coercion.R",
+      "sha256": "59de9581f8796f4d567f2e236e1e2612ecfd579d27fe9a6d53882c0e2d87745f"
+    },
+    {
+      "bytes": 5966,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-string.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-dta-string.R",
+      "sha256": "a44c7e2a4b7317583d68bb1c8ddbffabdc16efc425890076cc806ed8c760e846"
+    },
+    {
+      "bytes": 10590,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-egen-command.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-egen-command.R",
+      "sha256": "407e6aceda56a62e3e50d144a80e9ece2b247092099c5fa641ddd0d213ee718b"
+    },
+    {
+      "bytes": 8256,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-egen-groups.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-egen-groups.R",
+      "sha256": "472c77124887ea6941b5fad5cb6fc388622fe0434813734cbe7bdc6bbcad79b8"
+    },
+    {
+      "bytes": 7030,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-egen-stata-fixture.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-egen-stata-fixture.R",
+      "sha256": "1de8da374f3b3b77669d8b159341f7c829bdf24ebdaa11f69cee2f8f3bd4b9d4"
+    },
+    {
+      "bytes": 7346,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-egen-values.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-egen-values.R",
+      "sha256": "ee8023f4da0b0adf0153169b9a3de223e9b6555df347d54021a6d884d600869f"
+    },
+    {
+      "bytes": 18663,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-explicit-metadata.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-explicit-metadata.R",
+      "sha256": "8a954e71acfc01bfd22b0e3e0daf6ee31cb391d3ace2551449e9b6fe9fb07a18"
+    },
+    {
+      "bytes": 9639,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-factor-from-labels.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-factor-from-labels.R",
+      "sha256": "88c7a9512382417cb69ead2c235f3469ae8a29cd871a19ed73ba213d51ee539b"
+    },
+    {
+      "bytes": 6784,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-input-sources.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-input-sources.R",
+      "sha256": "7e3fc78036593f5aa8019bc3adc09184e75d1e1da6c2dc6b8043408b4c824d6a"
+    },
+    {
+      "bytes": 9001,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-is-missing.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-is-missing.R",
+      "sha256": "cb3d22d5bb76080a28c15f70a9bd3d0f877f5aeec73af98ea7a7e975ed313aae"
+    },
+    {
+      "bytes": 12044,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-keep-drop.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-keep-drop.R",
+      "sha256": "280a280804c110b28a4e16377b95fb45ec0af8ca62d35735e0fe4cbd0b96d862"
+    },
+    {
+      "bytes": 8145,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-label-dual-shape.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-label-dual-shape.R",
+      "sha256": "eb738bba6f0f8cbfc5f48f9d780e9f0337adfbf7816804617592408ea19c93b3"
+    },
+    {
+      "bytes": 28441,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-label-metadata.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-label-metadata.R",
+      "sha256": "ad0603958382736a38eb946f056678e2a91f9ee731d7fc502d85c8fea7288902"
+    },
+    {
+      "bytes": 114878,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-mutate-data.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-mutate-data.R",
+      "sha256": "7709d22e753795093b9c1fe59c0ac71c0bf7f084285039bd08e3c27dea4f7c9d"
+    },
+    {
+      "bytes": 15467,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-mutation-containers.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-mutation-containers.R",
+      "sha256": "28dc58db85d463c4f0c9a98077a07d9803410e4e4eabb66c4c1553548187aff0"
+    },
+    {
+      "bytes": 10344,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-name-strings.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-name-strings.R",
+      "sha256": "fc74ec0c45f29cae13193287db085af3855a6ba5616d9d9c4e7b14978a4a17a0"
+    },
+    {
+      "bytes": 5989,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-order-rename-vars.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-order-rename-vars.R",
+      "sha256": "86a30926e84d032082b72b19552bfc3f798664c320220f13b55de72d642c68cc"
+    },
+    {
+      "bytes": 49856,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-owned-atoms.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-owned-atoms.R",
+      "sha256": "fa9a7c9281ba1ad55f3aac544170fde9589374e9768023672689fb08640221b8"
+    },
+    {
+      "bytes": 41830,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-owned-columns.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-owned-columns.R",
+      "sha256": "ef9dff710c5eaccb7a65dc6983149930b82243668a1243d515e63af6474f28ad"
+    },
+    {
+      "bytes": 6742,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-owned-reads.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-owned-reads.R",
+      "sha256": "b8002a460bf962ddd0f0e68af8fb59094a7c99393254399a6ed95f74225d695e"
+    },
+    {
+      "bytes": 5471,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-raven-nse.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-raven-nse.R",
+      "sha256": "9e96c06aac46aa578d12720f98f8a6ad7790bbc19bc67aff47a02aa42c8fc410"
+    },
+    {
+      "bytes": 40489,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-read-dta.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-read-dta.R",
+      "sha256": "e788a37a46ff2c33a38485c01e1ab9df796eafde61011c4f873c57059185a774"
+    },
+    {
+      "bytes": 9735,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-reference-copy.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-reference-copy.R",
+      "sha256": "7382f561752b3cb6171cfdf88b397237a35c32e86b31d1430910d0a5d4f859a0"
+    },
+    {
+      "bytes": 24533,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-reserve-columns.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-reserve-columns.R",
+      "sha256": "c445cd86d493366c5b9715f05ef3ee92f808b4b6b2bbfb0aaf50efff47533363"
+    },
+    {
+      "bytes": 35772,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-save-dta.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-save-dta.R",
+      "sha256": "a048b975feee2554716f4267b8b0e80be972a37fd505b4015307da2066389253"
+    },
+    {
+      "bytes": 13938,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-slice-dta-rows.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-slice-dta-rows.R",
+      "sha256": "e802d9b7ad00483978895ac36987db1a3169532b18fe128d928a3fd736627503"
+    },
+    {
+      "bytes": 7750,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-tab.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-tab.R",
+      "sha256": "6261327b91a0f9fe17c3b9327221cd27e0049257884e59d7610d479cbce52204"
+    },
+    {
+      "bytes": 7255,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-tagged-missing.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-tagged-missing.R",
+      "sha256": "c1b02ef8d1b317ba2c8f943fb276a8fd792441e56f1930c35e0a7eb61b93d5c7"
+    },
+    {
+      "bytes": 16093,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-value-label-table-names.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-value-label-table-names.R",
+      "sha256": "1fd234c05f7e59c676b3358d94154bf69a2af2618e58fc84ce48202b175f1003"
+    },
+    {
+      "bytes": 4203,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-variable-names.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat/test-variable-names.R",
+      "sha256": "26ea884386abb2d7aa86612d0e49ccc1baded688752a2c58a03faf8682a5a5d6"
+    },
+    {
+      "bytes": 60,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tests/testthat.R",
+      "sha256": "c3a7c04fdc9005f1850dbf7fcddafb4880772f561fa64148f54f164b5be86f77"
+    },
+    {
+      "bytes": 362,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tools/configure-rust.sh",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tools/configure-rust.sh",
+      "sha256": "90720c10ddd9180a5e0a09f8a719bc9e7f9e52c03e8350ae55580d3228730124"
+    },
+    {
+      "bytes": 1901,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tools/rust-source-hash.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/export/r-package/dtatools/tools/rust-source-hash.R",
+      "sha256": "f67e3c4ebff9c9c6e7c4c3faf9252dc91634fc8e16885ef0ea5934a23fabf101"
+    },
+    {
+      "bytes": 1258,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/finish-install-command.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/finish-install-command.json",
+      "sha256": "423928230c07a69dcaff25856fdfbdea98a7d096669e661382e75a57ad7d85dc"
+    },
+    {
+      "bytes": 280,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/finish-install.log",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/finish-install.log",
+      "sha256": "39a4d7840c7a8809fbb2d4f24bf9db960d095f0db7bdb0f0e703fff659102b54"
+    },
+    {
+      "bytes": 4219955,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/inputs-before.json",
+      "sha256": "934e27f805d21e1a563fdd949e0d65f4e409bb5e7df39bbef39405070a7fdc22"
+    },
+    {
+      "bytes": 892,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/install-command.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/install-command.json",
+      "sha256": "3567949c5b0ab6442c14340dff5665c7eb4cf480f9123e734f5e038c02d6e06d"
+    },
+    {
+      "bytes": 13443,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/install.log",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/install.log",
+      "sha256": "d10ed038a764f265d4d4d4baca7cab55bfd395e3df94ef73a398329c865a81d8"
+    },
+    {
+      "bytes": 23230,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/installed-files.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/installed-files.json",
+      "sha256": "cdfac56b2951f0249a409850464afb6375370dc8c26c251acb6dd327072d1f84"
+    },
+    {
+      "bytes": 32015,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/installed-identity.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/installed-identity.R",
+      "sha256": "6f0feb43f403b7153a3fdd7944df405a252578fe831d9005c217aa3610d09ed6"
+    },
+    {
+      "bytes": 2033,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/DESCRIPTION",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/DESCRIPTION",
+      "sha256": "f4f903b3ec582bb881d2d44d466932c238c8f41714170bb531abc059f59f04c9"
+    },
+    {
+      "bytes": 2725,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/INDEX",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/INDEX",
+      "sha256": "40d3ed83999e2fbd0bc9d65b8346dbc0998df32be1a1d77b5771268dd348768d"
+    },
+    {
+      "bytes": 1919,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/Rd.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/Rd.rds",
+      "sha256": "918e609494e3a2f44892257808aca457c42ca0b07d4612f0dc9936f855e5d788"
+    },
+    {
+      "bytes": 1867,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/benchmark-provenance.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/benchmark-provenance.rds",
+      "sha256": "e0c9ead9f0696027834ac2ab591480e3ef9e779e3cc6cc8686253e869bb13955"
+    },
+    {
+      "bytes": 123,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/features.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/features.rds",
+      "sha256": "b4f074bc0f45cfe56d976c0d67a1453067f4b34693828ed02d674a6641b3e332"
+    },
+    {
+      "bytes": 1826,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/hsearch.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/hsearch.rds",
+      "sha256": "c503dcdb0da4bd4bd15c292cf3ace0cb5806c0279da0ce9fb9ff05469e61adb4"
+    },
+    {
+      "bytes": 1037,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/links.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/links.rds",
+      "sha256": "aa6d02be5c3c9613b12f20459947425de253eb8ece8d7922d635488860545da7"
+    },
+    {
+      "bytes": 2076,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/nsInfo.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/nsInfo.rds",
+      "sha256": "e67ef17b34618db6a2727ccace16429b3e11263e68c55ecaaa443815169d2db0"
+    },
+    {
+      "bytes": 1612,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/package.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/Meta/package.rds",
+      "sha256": "5ea8e6ed9eb411de1b76e854e1598b73e727ae581bfe7ead2f7f7785aaff2257"
+    },
+    {
+      "bytes": 10965,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/NAMESPACE",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/NAMESPACE",
+      "sha256": "94a412e9883a444d27ea621362f8df4dc513b0fa7a3cb7eb4ae6bb0933fc1ff3"
+    },
+    {
+      "bytes": 666,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/NEWS.md",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/NEWS.md",
+      "sha256": "9ad3700aff7742c7913d1e9a8baf3ca1823376e658461036c28ba583fd7c35a5"
+    },
+    {
+      "bytes": 30822,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/NOTICE",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/NOTICE",
+      "sha256": "2b7092d0e91ef0012dc4496edfcef267781ef8a4c9165c2bfee72691408cda98"
+    },
+    {
+      "bytes": 1058,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/R/dtatools",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/R/dtatools",
+      "sha256": "570ca456b280cdeb201ef5ebdf22dc8f80092e2c0c68e33c7f73340e420f3759"
+    },
+    {
+      "bytes": 896702,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/R/dtatools.rdb",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/R/dtatools.rdb",
+      "sha256": "0fa24027a73dd2f8360762d8380284cede063caa8b07348008ec3a7d2fbc53dd"
+    },
+    {
+      "bytes": 12643,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/R/dtatools.rdx",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/R/dtatools.rdx",
+      "sha256": "a78f066f8c0610104abe6e2c015d9ae35f473de3bebce4f4741506504d06b121"
+    },
+    {
+      "bytes": 46128,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/README.md",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/README.md",
+      "sha256": "f0b69794960fe38220995365e73f29d6d0ed9c0517f6495cbbe2ccf80f8ad5b1"
+    },
+    {
+      "bytes": 6213,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/all_types.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/all_types.dta",
+      "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8"
+    },
+    {
+      "bytes": 1729,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/all_types_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/all_types_v115.dta",
+      "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7"
+    },
+    {
+      "bytes": 2668,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/all_types_v117.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/all_types_v117.dta",
+      "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2"
+    },
+    {
+      "bytes": 6213,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/all_types_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/all_types_v118.dta",
+      "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c"
+    },
+    {
+      "bytes": 6107,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/auto_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/auto_v115.dta",
+      "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693"
+    },
+    {
+      "bytes": 6616,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/auto_v117.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/auto_v117.dta",
+      "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35"
+    },
+    {
+      "bytes": 12765,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/auto_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/auto_v118.dta",
+      "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c"
+    },
+    {
+      "bytes": 181,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_labels_stata18.csv",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_labels_stata18.csv",
+      "sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a"
+    },
+    {
+      "bytes": 2109,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_number_labels_stata18.csv",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_number_labels_stata18.csv",
+      "sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d"
+    },
+    {
+      "bytes": 5283,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_number_labels_stata18.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_number_labels_stata18.dta",
+      "sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3"
+    },
+    {
+      "bytes": 2445,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_precision_stata18.csv",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_precision_stata18.csv",
+      "sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620"
+    },
+    {
+      "bytes": 782,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_stata18.csv",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_stata18.csv",
+      "sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6"
+    },
+    {
+      "bytes": 10273,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_unicode_names_stata18.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/egen_unicode_names_stata18.dta",
+      "sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426"
+    },
+    {
+      "bytes": 2475,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/empty.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/empty.dta",
+      "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e"
+    },
+    {
+      "bytes": 713,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/empty_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/empty_v115.dta",
+      "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65"
+    },
+    {
+      "bytes": 2475,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/empty_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/empty_v118.dta",
+      "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5"
+    },
+    {
+      "bytes": 4325,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/missing_values.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/missing_values.dta",
+      "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198"
+    },
+    {
+      "bytes": 1681,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/missing_values_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/missing_values_v115.dta",
+      "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397"
+    },
+    {
+      "bytes": 4325,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/missing_values_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/missing_values_v118.dta",
+      "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e"
+    },
+    {
+      "bytes": 2804,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/strl_test.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/strl_test.dta",
+      "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073"
+    },
+    {
+      "bytes": 2804,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/strl_test_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/strl_test_v118.dta",
+      "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412"
+    },
+    {
+      "bytes": 543,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/synthetic_v105.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/synthetic_v105.dta",
+      "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+    },
+    {
+      "bytes": 886,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/synthetic_v108.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/synthetic_v108.dta",
+      "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+    },
+    {
+      "bytes": 1286,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/synthetic_v110.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/synthetic_v110.dta",
+      "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+    },
+    {
+      "bytes": 1352,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/synthetic_v111.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/synthetic_v111.dta",
+      "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+    },
+    {
+      "bytes": 3162,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/value_labels.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/value_labels.dta",
+      "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a"
+    },
+    {
+      "bytes": 1054,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/value_labels_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/value_labels_v115.dta",
+      "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86"
+    },
+    {
+      "bytes": 1549,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/value_labels_v117.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/value_labels_v117.dta",
+      "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02"
+    },
+    {
+      "bytes": 3162,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/value_labels_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/value_labels_v118.dta",
+      "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea"
+    },
+    {
+      "bytes": 86955,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/wide.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/wide.dta",
+      "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b"
+    },
+    {
+      "bytes": 33596,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/wide_v115.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/wide_v115.dta",
+      "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174"
+    },
+    {
+      "bytes": 86955,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/wide_v118.dta",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/extdata/wide_v118.dta",
+      "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c"
+    },
+    {
+      "bytes": 2862,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/help/AnIndex",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/help/AnIndex",
+      "sha256": "bf6dc5d4e2df4dc95032c794015ed10007ba254521b6d07c585e90bff200f2fa"
+    },
+    {
+      "bytes": 873,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/help/aliases.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/help/aliases.rds",
+      "sha256": "e915d37d1575964d6cee1953d2847c4aa836cc6c7039eebd55dea7c1003525a2"
+    },
+    {
+      "bytes": 200647,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/help/dtatools.rdb",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/help/dtatools.rdb",
+      "sha256": "1bc1593132dcb74b11fb6178f720265714b533ef49cb79f498fdea5e1f8fb97c"
+    },
+    {
+      "bytes": 1047,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/help/dtatools.rdx",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/help/dtatools.rdx",
+      "sha256": "2c9c8259996261c1a4a44791a8016bffefa46085fe699d67c89b4513a13e61b7"
+    },
+    {
+      "bytes": 576,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/help/paths.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/help/paths.rds",
+      "sha256": "939b37347694ccfe2e46ce417e2513070dd1e074a3892ecd108a7c7bba401531"
+    },
+    {
+      "bytes": 17354,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/html/00Index.html",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/html/00Index.html",
+      "sha256": "8a19b3734093b45fb28a446e3d24a86780ee4064b10340c7671c19fb766478c5"
+    },
+    {
+      "bytes": 2133,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/html/R.css",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/html/R.css",
+      "sha256": "3d290675266eebeba6efff07db879d699843c80bf428f9e71000e2fc6078f5db"
+    },
+    {
+      "bytes": 8663048,
+      "mode": "0o755",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/libs/dtatools.so",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/libs/dtatools.so",
+      "sha256": "1f3f704704b707da92cdfba62d8c2126cf18c29ee841b481fc1b16dcfdfe2ace"
+    },
+    {
+      "bytes": 2782,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/raven/nse.toml",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library/dtatools/raven/nse.toml",
+      "sha256": "678f2a1649caeb00e0444616f47c68422df395929e5b003d18e7d3533a40875f"
+    },
+    {
+      "bytes": 909,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/loaded-dlls.txt",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/loaded-dlls.txt",
+      "sha256": "27d42af9a601bb0e1cfef8a93378401a1f219e21cdc1d29586b06e422a5758c8"
+    },
+    {
+      "bytes": 1096,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/loaded-namespaces.tsv",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/loaded-namespaces.tsv",
+      "sha256": "e28066359893cac60140af9d774e53bef3e7fbd9aeb6168313ee9c03173a3a2b"
+    },
+    {
+      "bytes": 669,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/r-version-command.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/r-version-command.json",
+      "sha256": "808d5e4051c3a960bee3943a28ab57917ec404a13ad3cd7f80dc3910d995b3f1"
+    },
+    {
+      "bytes": 381,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/r-version.log",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/r-version.log",
+      "sha256": "d5edd22a6841d31ea0be9e6fef9a2b7cbcb8f1bfa6c650a827dfe9138712e752"
+    },
+    {
+      "bytes": 1188,
+      "mode": "0o600",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/runtime-temp/xcrun_db",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/runtime-temp/xcrun_db",
+      "sha256": "6241d4dc74066ab6c8fc8e05fd859f8b6a44b27a40aa95b8ca6f864b5ce85d63"
+    },
+    {
+      "bytes": 683,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/rustc-version-command.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/rustc-version-command.json",
+      "sha256": "e510030578a0e5300ff1a6798c37d39e56a336e4063e8d46092be84ca7754d0a"
+    },
+    {
+      "bytes": 203,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/rustc-version.log",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/rustc-version.log",
+      "sha256": "75d92da7b8174054e6c19a9a80df6ccb5077af573190ddcc9cbfbe9f5c600c50"
+    },
+    {
+      "bytes": 13854720,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/source.tar",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/source.tar",
+      "sha256": "66e978b5a875e644f8df64913521824df16b783c18828b3da28fc468ff80308d"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "changed_inputs": [],
+  "manifest": {
+    "bytes": 4651821,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/manifest.json",
+    "sha256": "bbcc87c760c53301e3fc8d3469d0657728b39517a94cc43be6e1f698f9a53f3c"
+  },
+  "runner_sha": "8f6caf78ab0c87ea7ed6db2c07a0f0d6ca46750b",
+  "source_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+  "status": "complete"
+}

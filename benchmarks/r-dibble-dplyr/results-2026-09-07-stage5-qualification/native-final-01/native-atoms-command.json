@@ -1,0 +1,22 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "benchmarks/r-reference-mutation/owned-atoms.R",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library",
+    "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+    "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/atoms"
+  ],
+  "completed_utc": "2026-09-07T16:29:32.479955+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5",
+  "exit_code": 0,
+  "label": "native-atoms",
+  "log": {
+    "bytes": 297,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/native-atoms.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/native-atoms.log",
+    "sha256": "4dc7294cda16cf77509148d3df1f9bb89287134e8a2e4434b1941b9da7575382"
+  },
+  "started_utc": "2026-09-07T16:29:31.997143+00:00"
+}
