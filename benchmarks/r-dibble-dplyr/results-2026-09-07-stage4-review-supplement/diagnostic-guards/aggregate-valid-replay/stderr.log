@@ -1,0 +1,15 @@
+Error: identical(normalizePath(find.package("dtatools"), mustWork = TRUE),  .... is not TRUE
+Execution halted
+Traceback (most recent call last):
+  File "/private/tmp/dta-direct-stage4-evidence/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/review-supplement.py", line 150, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/dta-direct-stage4-evidence/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/review-supplement.py", line 146, in main
+    diagnose(args)
+    ~~~~~~~~^^^^^^
+  File "/private/tmp/dta-direct-stage4-evidence/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/review-supplement.py", line 120, in diagnose
+    require(child.returncode == 0, 'Guarded diagnostic failed')
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/dta-direct-stage4-evidence/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/review-supplement.py", line 44, in require
+    raise RuntimeError(message)
+RuntimeError: Guarded diagnostic failed

@@ -1,0 +1,28 @@
+GUARDED REPLAY e343b3b56a8529e9ee0ac40f8bd88beebcd2be15 /private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools 
+/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools/libs/dtatools.so 
+                                                           "18837c14dcd6597169dc0e3d99186dab" 
+DEVELOPMENT ONLY guarded-replay-e343b3b56a8529e9ee0ac40f8bd88beebcd2be15 /private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools 
+/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools/libs/dtatools.so 
+                                                           "18837c14dcd6597169dc0e3d99186dab" 
+                 kind  operation          ms    bytes
+1              string     any_na 0.552598009  4000048
+2              string nonmissing 1.166081012  8000096
+3              string  character 0.003321009        0
+4  declared_character     any_na 2.712477988        0
+5  declared_character nonmissing 3.585532002  8000096
+6  declared_character  character 0.001804001        0
+7             logical     any_na 0.001845008        0
+8             logical nonmissing 3.318703995  8000096
+9             logical  character 4.920328007  8000048
+10            logical    integer 2.349218004  4000048
+11            logical       mean 4.105247994 18000248
+12             factor     any_na 2.562172012  4000048
+13             factor nonmissing 3.529894995  8000096
+14             factor  character 4.691343012  8000048
+15             factor    integer 0.050757997  4000048
+16            ordered     any_na 2.491078005  4000048
+17            ordered nonmissing 3.636617999  8000096
+18            ordered  character 4.378677011  8000048
+19            ordered    integer 0.050184011  4000048
+/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools/libs/dtatools.so 
+                                                           "18837c14dcd6597169dc0e3d99186dab" 

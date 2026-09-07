@@ -1,0 +1,19 @@
+{
+  "name": "doc",
+  "command": [
+    "cargo",
+    "doc",
+    "--workspace",
+    "--locked",
+    "--offline",
+    "--no-deps"
+  ],
+  "started_utc": "2026-09-07T08:24:37.985926+00:00",
+  "elapsed_seconds": 0.6340375839936314,
+  "exit_code": 0,
+  "before_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+  "after_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+  "log_sha256": "360ede8e5d6e8cd236f9a948465458f6fff65b27610d194a6c061ea32203c4cf",
+  "log_bytes": 344,
+  "inputs_identical": true
+}

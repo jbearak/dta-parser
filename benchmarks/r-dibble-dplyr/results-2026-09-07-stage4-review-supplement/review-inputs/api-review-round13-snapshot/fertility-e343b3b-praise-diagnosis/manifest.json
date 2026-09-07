@@ -1,0 +1,16 @@
+{
+  "classification": "Exact backend byte difference is one framework encouragement line after DONE; installedtestthat3.3.2 source calls encourage with25percent probability when failures exist",
+  "normalization_applied_to_driver_or_original_evidence": false,
+  "original_guard_result": "rejected, preserved",
+  "planned_followup": "Run unchanged903e681 driver once in newdirectory; no source or threshold edits",
+  "inputs": {
+    "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-stage2-baseline.log": "f85c076a6d20983a155305522d11fa3da1c038f20283ee1a979f4726521d8708",
+    "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b/test.log": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69",
+    "/private/tmp/dta-direct-stage4-validation/fertility-e343b3b/verification.json": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4"
+  },
+  "files": {
+    "exact-log-difference.diff": "40d5fdd0efd3b2599a344edfed66d45cce4f962166fb1f3d3f60b28b8b92bf55",
+    "framework-source.log": "ab5c6f674990880d0312ff5c09e868762a2e458bf44889d685ec658d8ef0b79b",
+    "inspect-framework.R": "560c2fd608ccdba7cf4f3da3506eb32726bd8617fcb7da85246d253ff38d4af6"
+  }
+}

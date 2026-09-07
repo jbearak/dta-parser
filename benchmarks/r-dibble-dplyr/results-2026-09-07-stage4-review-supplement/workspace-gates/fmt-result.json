@@ -1,0 +1,18 @@
+{
+  "name": "fmt",
+  "command": [
+    "cargo",
+    "fmt",
+    "--all",
+    "--",
+    "--check"
+  ],
+  "started_utc": "2026-09-07T08:24:06.184328+00:00",
+  "elapsed_seconds": 0.27864466699247714,
+  "exit_code": 0,
+  "before_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+  "after_sha256": "dbc754503417aa0b28fbca1ed97e589cc7197aac78ce28f765211924a0005410",
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "log_bytes": 0,
+  "inputs_identical": true
+}

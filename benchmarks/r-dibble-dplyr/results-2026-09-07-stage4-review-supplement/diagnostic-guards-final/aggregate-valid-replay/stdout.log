@@ -1,0 +1,16 @@
+GUARDED REPLAY e343b3b56a8529e9ee0ac40f8bd88beebcd2be15 /private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools 
+/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools/libs/dtatools.so 
+                                                           "18837c14dcd6597169dc0e3d99186dab" 
+DEVELOPMENT ONLY guarded-replay-e343b3b56a8529e9ee0ac40f8bd88beebcd2be15 /private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools 
+/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools/libs/dtatools.so 
+                                                           "18837c14dcd6597169dc0e3d99186dab" 
+logical 4.225337 ms 18000248 Rbytes
+           owned_capture             compact_copy               staged_new 
+                       0                        0                        0 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                       0                        0                        0 
+ordered 2.614529 ms 26000344 Rbytes
+           owned_capture             compact_copy               staged_new 
+                   4e+06                    0e+00                    0e+00 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                   0e+00                    0e+00                    0e+00 

@@ -1,0 +1,241 @@
+{
+  "scope": "New guarded replay qualification only; original development logs are unchanged and not retrospectively source-qualified",
+  "source": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "tool_and_dependency_before": {
+    "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py": "532e2febf77ed83cd4b710018f4a6bcd10c4016312e6bea2c7da7fbb4a3d0e8f",
+    "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools/libs/dtatools.so": "9af2605a3c73b06f970578b11fd7ee39db652fd4a56c544ca7be060deda75efb",
+    "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+    "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-double-helpers.R": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2"
+  },
+  "tool_and_dependency_after": {
+    "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py": "532e2febf77ed83cd4b710018f4a6bcd10c4016312e6bea2c7da7fbb4a3d0e8f",
+    "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools/libs/dtatools.so": "9af2605a3c73b06f970578b11fd7ee39db652fd4a56c544ca7be060deda75efb",
+    "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+    "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-double-helpers.R": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2"
+  },
+  "fallback_library_environment": {
+    "R_LIBS_USER": "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library"
+  },
+  "cases": [
+    {
+      "kind": "aggregate",
+      "case": "valid-check",
+      "command": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py",
+        "diagnose",
+        "aggregate",
+        "--library",
+        "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+        "--source",
+        "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+        "--repository",
+        "/private/tmp/dta-direct-stage4",
+        "--check-only"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "280fdacaa6757689199ebdd24cde313a99fd32b011ddb2edec2de105ff0787a1",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "csv_sha256": null
+    },
+    {
+      "kind": "aggregate",
+      "case": "missing-library",
+      "command": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py",
+        "diagnose",
+        "aggregate",
+        "--library",
+        "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/empty-library",
+        "--source",
+        "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+        "--repository",
+        "/private/tmp/dta-direct-stage4",
+        "--check-only"
+      ],
+      "exit_code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "41d40596bc06399c07f6ed593e548318c330a60cab421596fb33e000f1236819",
+      "csv_sha256": null
+    },
+    {
+      "kind": "aggregate",
+      "case": "wrong-source",
+      "command": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py",
+        "diagnose",
+        "aggregate",
+        "--library",
+        "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+        "--source",
+        "0000000000000000000000000000000000000000",
+        "--repository",
+        "/private/tmp/dta-direct-stage4",
+        "--check-only"
+      ],
+      "exit_code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "3f10fea6606f2fc79845aaea0a82de5f1bb76c276236eb5cec48dbb1f878f001",
+      "csv_sha256": null
+    },
+    {
+      "kind": "aggregate",
+      "case": "changed-transitive-helper",
+      "command": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py",
+        "diagnose",
+        "aggregate",
+        "--library",
+        "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+        "--source",
+        "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+        "--repository",
+        "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/aggregate-changed-transitive-helper/repository",
+        "--check-only"
+      ],
+      "exit_code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "3a18e68b45bcb89dc794bcc27b042c35740c5f2a8cad5634e888c6194a01eaaa",
+      "csv_sha256": null
+    },
+    {
+      "kind": "aggregate",
+      "case": "valid-replay",
+      "command": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py",
+        "diagnose",
+        "aggregate",
+        "--library",
+        "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+        "--source",
+        "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+        "--repository",
+        "/private/tmp/dta-direct-stage4"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "4f0bfd00d65d23d7c801364aab37dc5fe9d46f9080f384d8f042e946ff787d1b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "csv_sha256": null
+    },
+    {
+      "kind": "accessor",
+      "case": "valid-check",
+      "command": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py",
+        "diagnose",
+        "accessor",
+        "--library",
+        "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+        "--source",
+        "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+        "--repository",
+        "/private/tmp/dta-direct-stage4",
+        "--csv",
+        "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-valid-check/result.csv",
+        "--check-only"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "280fdacaa6757689199ebdd24cde313a99fd32b011ddb2edec2de105ff0787a1",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "csv_sha256": null
+    },
+    {
+      "kind": "accessor",
+      "case": "missing-library",
+      "command": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py",
+        "diagnose",
+        "accessor",
+        "--library",
+        "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/empty-library",
+        "--source",
+        "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+        "--repository",
+        "/private/tmp/dta-direct-stage4",
+        "--csv",
+        "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-missing-library/result.csv",
+        "--check-only"
+      ],
+      "exit_code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "41d40596bc06399c07f6ed593e548318c330a60cab421596fb33e000f1236819",
+      "csv_sha256": null
+    },
+    {
+      "kind": "accessor",
+      "case": "wrong-source",
+      "command": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py",
+        "diagnose",
+        "accessor",
+        "--library",
+        "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+        "--source",
+        "0000000000000000000000000000000000000000",
+        "--repository",
+        "/private/tmp/dta-direct-stage4",
+        "--csv",
+        "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-wrong-source/result.csv",
+        "--check-only"
+      ],
+      "exit_code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "3f10fea6606f2fc79845aaea0a82de5f1bb76c276236eb5cec48dbb1f878f001",
+      "csv_sha256": null
+    },
+    {
+      "kind": "accessor",
+      "case": "changed-transitive-helper",
+      "command": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py",
+        "diagnose",
+        "accessor",
+        "--library",
+        "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+        "--source",
+        "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+        "--repository",
+        "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-changed-transitive-helper/repository",
+        "--csv",
+        "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-changed-transitive-helper/result.csv",
+        "--check-only"
+      ],
+      "exit_code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "6dfdf47b44f1f40921526ffc9aeb98b7a682c1c26441b170b02b32bead2ecd13",
+      "csv_sha256": null
+    },
+    {
+      "kind": "accessor",
+      "case": "valid-replay",
+      "command": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "/private/tmp/dta-direct-stage4-review-supplement/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-supplement/guarded-diagnostic.py",
+        "diagnose",
+        "accessor",
+        "--library",
+        "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+        "--source",
+        "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+        "--repository",
+        "/private/tmp/dta-direct-stage4",
+        "--csv",
+        "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/diagnostic-guards-final/accessor-valid-replay/result.csv"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "2776226b21d0d35218c9c821b536cba03a1090027695d0d53bab7f1323cefe90",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "csv_sha256": "83a1f92ea6d689d325c0bb1be1de47ce2490eb557b6c339532f61c8c15e3cb52"
+    }
+  ]
+}

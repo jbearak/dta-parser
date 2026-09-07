@@ -1,0 +1,30 @@
+{
+  "errors": [],
+  "cases": [
+    {
+      "name": "fertility-e343b3b",
+      "raw_log_sha256": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69",
+      "verification_sha256": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4",
+      "outer_log_sha256": "9e47d42c777ddec3a74e8939cfe00461d40bdb76edc557d75ba19d3529a7cd5d",
+      "six_field_state_equal": true,
+      "source_file_count": 454,
+      "input_hash_count": 5,
+      "raw_backend_bytes": 36699,
+      "baseline_backend_bytes": 36681,
+      "removed_bytes": 18
+    },
+    {
+      "name": "fertility-e343b3b-retry",
+      "raw_log_sha256": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69",
+      "verification_sha256": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4",
+      "outer_log_sha256": "9e47d42c777ddec3a74e8939cfe00461d40bdb76edc557d75ba19d3529a7cd5d",
+      "six_field_state_equal": true,
+      "source_file_count": 454,
+      "input_hash_count": 5,
+      "raw_backend_bytes": 36699,
+      "baseline_backend_bytes": 36681,
+      "removed_bytes": 18
+    }
+  ],
+  "scope": "Independent source/hash and saved-byte comparison only; no auditor execution, R run, build or probe."
+}

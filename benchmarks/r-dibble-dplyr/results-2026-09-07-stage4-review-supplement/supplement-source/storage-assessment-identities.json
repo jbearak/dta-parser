@@ -1,0 +1,369 @@
+{
+  "recorded_utc": "2026-09-07T08:24:23.977654+00:00",
+  "evidence_head": "5173f39b9b1bf895c4ced776b83db276e4593bc1",
+  "evidence_status": "",
+  "original_head": "c52866071ac6b1baa75b7bb04c51dd5b254835d7",
+  "original_status": "",
+  "reviewed_files": [
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/benchmark-e343b3b/archive-root-e343b3b-evidence.py",
+      "sha256": "5706042b88fdbd0a15bbd1ca37e75f66173e4da52e6930c9ad32a2c716cb36a0",
+      "bytes": 5371
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/benchmark-e343b3b/api-review-round10-heap-current-evidence-addendum.md",
+      "sha256": "2fc2951b36b0451d40b57e96a6fb49aca530a06d8355a1a824cd9b0d4ad44757",
+      "bytes": 2697
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/benchmark-e343b3b/api-review-round13-downstream-semantic-parity.md",
+      "sha256": "1f26b099b5d9098b2908da1c8ddd5415c907829c1df014be9b7484ab6a6c5817",
+      "bytes": 5403
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/diagnosis/aggregate-read-diagnosis.R",
+      "sha256": "d8ba0529cf4dda5be0b7121d36725250e1456d3a5886881c237fdd99ff1263df",
+      "bytes": 1075
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/diagnosis/atomic-accessor-diagnosis.R",
+      "sha256": "3cd9a01421fa636e3bf59f9ab277af387878c4f592ee036bdcc5736cac84a120",
+      "bytes": 1458
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/archive-implementation-evidence.py",
+      "sha256": "466c55a8a81ac57dc2535a5c7a47512216f86a9b738eda7b610f134660f8f48e",
+      "bytes": 5777
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/workspace-unchanged-proof.json",
+      "sha256": "f1d86f192add6451fd14eac6e01bd001c31fd6a88a8145334f18582e380a1eb4",
+      "bytes": 3402
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/exact-gates-manifest.json",
+      "sha256": "6fca4d2d4467510efdaa12b33866ef81cfbe8f1e0cd20338b7512aabe22a0549",
+      "bytes": 5360
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/source-manifest.json",
+      "sha256": "ed2cf568a403910b5e1d1c3fae56d4cefec1bf00397a150b7b5ffa1365b12726",
+      "bytes": 120710
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/reviews/api-review-round11-progress-followup.md",
+      "sha256": "d2daeb89a113fb28a3a58ae4cf227f75de6785c74d3a924920038a850ace431e",
+      "bytes": 53592
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/initial-evidence-index.json",
+      "sha256": "d58ba06fc93efc8429ed5511e7461cae9764014c70bdb84ea4c10f325661e40c",
+      "bytes": 49280
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/implementation-evidence-index.json",
+      "sha256": "60d53d62da0296793580032f22119d1cf229752e24a04c7496e451e2b2829806",
+      "bytes": 73464
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/benchmark-e343b3b/index.json",
+      "sha256": "9af98a128da3d8ba9fe1a3ea251025f5f1a17c91d3aa35eb8d75a99597f9fffe",
+      "bytes": 147931
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/diagnosis/filter-planning/archive-index.json",
+      "sha256": "6639021451ebcfdebd0c1ecc9837f55332571946f348fb7fd24f066da6bfaf60",
+      "bytes": 7557
+    }
+  ],
+  "external_records": [
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/external-5173f39-03/reviews.json",
+      "sha256": "5a8dbadcf7a8bf58d271837636f5687d9a1bb2bc44f03ddfb98845af08db5d6f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/external-5173f39-03/inline.json",
+      "sha256": "face26198c562af834a5d0d6fa210f4d3a80cd85eb1879efac87c78f03565cee"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/external-5173f39-03/threads.json",
+      "sha256": "d25a4348e981e8d6304224eaf034028acc41fc424e3c3a844ef96f0d76795616"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/external-5173f39-03/comments.json",
+      "sha256": "4706d46013cf9493bf841daa65a66d95ddf7d888a6fa511faed7d8be9628511d"
+    }
+  ],
+  "mode_mismatches": [
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/git-failed-empty/bin/git",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/git-failed-empty/bin/git",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/git-failed-valid-hash/bin/git",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/git-failed-valid-hash/bin/git",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "0bc4e7e7e0de8eee3ba5358cf00dc224772590d7cbfe78895cd1ec188ed5961d",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/git-malformed-success/bin/git",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/git-malformed-success/bin/git",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "23c89c3afa30ab08cf15189f384c977119b59c80cd7695543a8c8ad3c6d43420",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/git-multiline-success/bin/git",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/git-multiline-success/bin/git",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "fa00ec977292be369ed89d64a7cea3a42a2d93184977efd33e264f7d3018aa77",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/shasum-failed-empty/bin/shasum",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/shasum-failed-empty/bin/shasum",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/shasum-failed-valid-hash/bin/shasum",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/shasum-failed-valid-hash/bin/shasum",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "d888108d485aeba8487f28158a57d956164254bf0bdbd16df32ad4db9b78d8c3",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/shasum-malformed-success/bin/shasum",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/shasum-malformed-success/bin/shasum",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "23c89c3afa30ab08cf15189f384c977119b59c80cd7695543a8c8ad3c6d43420",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/7d56080/checks/native-identity-guards/shasum-multiline-success/bin/shasum",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-7d56080/native-identity-guards/shasum-multiline-success/bin/shasum",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "24c34a22762fbb195c7ea494be8af9839afbb1623c18540adc6de3af44177ff2",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/git-failed-empty/bin/git",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-failed-empty/bin/git",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/git-failed-valid-hash/bin/git",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-failed-valid-hash/bin/git",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "0bc4e7e7e0de8eee3ba5358cf00dc224772590d7cbfe78895cd1ec188ed5961d",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/git-malformed-success/bin/git",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-malformed-success/bin/git",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "23c89c3afa30ab08cf15189f384c977119b59c80cd7695543a8c8ad3c6d43420",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/git-multiline-success/bin/git",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/git-multiline-success/bin/git",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "fa00ec977292be369ed89d64a7cea3a42a2d93184977efd33e264f7d3018aa77",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/shasum-failed-empty/bin/shasum",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-failed-empty/bin/shasum",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/shasum-failed-valid-hash/bin/shasum",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-failed-valid-hash/bin/shasum",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "d888108d485aeba8487f28158a57d956164254bf0bdbd16df32ad4db9b78d8c3",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/shasum-malformed-success/bin/shasum",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-malformed-success/bin/shasum",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "23c89c3afa30ab08cf15189f384c977119b59c80cd7695543a8c8ad3c6d43420",
+      "bytes_match_source": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/e343b3b/checks/native-identity-guards/shasum-multiline-success/bin/shasum",
+      "source": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/native-identity-guards/shasum-multiline-success/bin/shasum",
+      "archive_mode": "0o644",
+      "retained_source_mode": "0o755",
+      "sha256": "24c34a22762fbb195c7ea494be8af9839afbb1623c18540adc6de3af44177ff2",
+      "bytes_match_source": true
+    }
+  ],
+  "missing_inputs_available": [
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round10-heap-current-evidence-identities.json",
+      "bytes": 48178,
+      "sha256": "a01356839c19958b60d134cd2a2f7147cdb6f178c41524c1e8fcab9ec50553c2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-identities.json",
+      "bytes": 9112,
+      "sha256": "218b57e18c10c38f75cee4c5bcd02af0987047900f677c4724d649cd304a25ca"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/check-fertility-candidate.py",
+      "bytes": 8957,
+      "sha256": "903e681950f0f43bd99a099bb21697be58c40f3552e6a21d98fe80167846424a"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/after.json",
+      "bytes": 51802,
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/before.json",
+      "bytes": 51802,
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/driver.R",
+      "bytes": 769,
+      "sha256": "138abec9dffd56adad85aca1fe16466443bd19a8264b553b7003ec5a9acca111"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/input-identities.json",
+      "bytes": 1104,
+      "sha256": "c1e40709667540c6531fbbadfe8e65084672c7303459d4bc1f284f1232a92964"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/post-install-guard.log",
+      "bytes": 82,
+      "sha256": "ce3eceb79d2eafb8aa6810785bfb14ecd189503efeb1a7c286016c01fad642c9"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/test.log",
+      "bytes": 36794,
+      "sha256": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b/verification.json",
+      "bytes": 1406,
+      "sha256": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-outer.log",
+      "bytes": 666,
+      "sha256": "9e47d42c777ddec3a74e8939cfe00461d40bdb76edc557d75ba19d3529a7cd5d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/audit-semantic-parity.py",
+      "bytes": 3810,
+      "sha256": "515880d04a39a7a995d324d3fdca27bb91de039afa7a9be83d087ee4fc049ae9"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/exact-log-difference.diff",
+      "bytes": 781,
+      "sha256": "40d5fdd0efd3b2599a344edfed66d45cce4f962166fb1f3d3f60b28b8b92bf55"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/framework-source.log",
+      "bytes": 1403,
+      "sha256": "ab5c6f674990880d0312ff5c09e868762a2e458bf44889d685ec658d8ef0b79b"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/inspect-framework.R",
+      "bytes": 247,
+      "sha256": "560c2fd608ccdba7cf4f3da3506eb32726bd8617fcb7da85246d253ff38d4af6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/manifest.json",
+      "bytes": 1199,
+      "sha256": "c5ce582e9b20b3751caeed474862d79e703b3c19605303f8b1afc052951c83ea"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/semantic-parity-addendum.md",
+      "bytes": 2095,
+      "sha256": "790f7d0628a80d0d9486d17ad8d06c62dafc4b636c58193fc3b07d6ccc5055fb"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-praise-diagnosis/semantic-parity-audit.json",
+      "bytes": 1642,
+      "sha256": "17affdd0ec5c08fdaa31a08c2e96c12f7ce2ded1b1b5859c4bfb7c849a69414f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/after.json",
+      "bytes": 51802,
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/before.json",
+      "bytes": 51802,
+      "sha256": "748f811e85d28f9d13486f6144c89096be9bc5a5a3413970cbf6d01efe3c54b2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/driver.R",
+      "bytes": 769,
+      "sha256": "138abec9dffd56adad85aca1fe16466443bd19a8264b553b7003ec5a9acca111"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/input-identities.json",
+      "bytes": 1104,
+      "sha256": "c1e40709667540c6531fbbadfe8e65084672c7303459d4bc1f284f1232a92964"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/post-install-guard.log",
+      "bytes": 82,
+      "sha256": "ce3eceb79d2eafb8aa6810785bfb14ecd189503efeb1a7c286016c01fad642c9"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/test.log",
+      "bytes": 36794,
+      "sha256": "663882d7f23f048d6ef5ae2c727f508087cd1a397c2e587e798bad1eb5586d69"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry/verification.json",
+      "bytes": 1406,
+      "sha256": "256a0d27400b56cbb0f6352568ae1b5c36d3660cdbe74a8a948a2942700a59c4"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/fertility-e343b3b-retry-outer.log",
+      "bytes": 666,
+      "sha256": "9e47d42c777ddec3a74e8939cfe00461d40bdb76edc557d75ba19d3529a7cd5d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/historical/fertility-before-exact-45f2ba4.json",
+      "bytes": 51888,
+      "sha256": "44fd497ae6ff502363301c3ddc82083f7d963305b08853abfe445d88b398f0dd"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/api-review-round13-snapshot/historical/fertility-stage2-baseline.log",
+      "bytes": 36681,
+      "sha256": "f85c076a6d20983a155305522d11fa3da1c038f20283ee1a979f4726521d8708"
+    }
+  ]
+}
