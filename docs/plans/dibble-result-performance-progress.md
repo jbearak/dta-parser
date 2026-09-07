@@ -60,8 +60,9 @@ allocation, interoperability, pinned roxygen, source/binary archive and NOTICE
 checks passed. NAMESPACE remains identical with 106 exports.
 
 The paired expression matrix later reproduced overhead in two 64-column cases.
-Three paired width repeats and a 12-row, 64-column retain case kept the signal
-while removing payload size as its main cause. Ordinary sampling profiles
+Three paired width repeats confirmed both cases. A 12-row, 64-column retain
+case preserved its signal, excluding payload size as the main cause of that
+retain overhead. The dependent case was not separately minimized. Ordinary sampling profiles
 identified eager setup costs in table repair checks on atomic columns and in
 rebuilding the name set for each column. Separate exact source `622ffc19` adds
 only the non-data.table repair guard. Source `ad976f7a` then replaces mask-name
