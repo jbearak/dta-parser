@@ -123,8 +123,26 @@ def main():
              ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'bun', 'R', 'Rscript', 'python3']}
     inputs.update(tools.values())
     inputs.add(Path(sys.executable).resolve(strict=True))
+    compiler = Path(subprocess.check_output(
+        [str(tools['xcrun']), '--find', 'clang'], text=True).strip()).resolve(strict=True)
+    inputs.add(compiler)
     rust_root = tools['rustc'].parent.parent
     inputs.update(p for p in rust_root.rglob('*') if p.is_file())
+    if args.phase in ('package', 'rust'):
+        # Cargo's locked dependency resolution is preparation, before any
+        # qualifying build. Bind the resolved registry/path source bytes too.
+        command = [str(tools['cargo']), 'metadata', '--locked', '--offline', '--format-version=1']
+        with (output/'cargo-metadata.json').open('x') as stream, (output/'cargo-metadata.log').open('x') as log:
+            result = subprocess.run(command, cwd=source, stdout=stream, stderr=log)
+        write(output/'cargo-metadata-command.json', dict(command=command, cwd=str(source),
+            exit_code=result.returncode, cargo=identity(tools['cargo'])))
+        require(result.returncode == 0, 'Cargo dependency preparation failed; retained metadata log')
+        metadata = json.loads((output/'cargo-metadata.json').read_text())
+        for package in metadata['packages']:
+            directory = Path(package['manifest_path']).parent
+            if not directory.is_relative_to(source):
+                inputs.update(p for p in directory.rglob('*') if p.is_file())
+        inputs.add(output/'cargo-metadata.json')
     for config in [Path('/Users/jmb/.R/Makevars'), Path('/Users/jmb/.cargo/config'), Path('/Users/jmb/.cargo/config.toml')]:
         if config.is_file():
             inputs.add(config)
@@ -136,6 +154,7 @@ def main():
     write(output / 'inputs-before.json', dict(source_sha=args.source_sha,
         runner_sha=args.runner_sha, phase=args.phase, inputs=before,
         scope='Exact Git sources plus complete visible R/site/candidate library files. '
+              'Build phases also bind Cargo-resolved dependency source files. '
               'R/Rust/tool executables are bound; external OS dylibs, full SDK and Python closure are not frozen.'))
     environment = dict(os.environ)
     environment.update(R_LIBS=str(library), R_LIBS_SITE=str(site),
