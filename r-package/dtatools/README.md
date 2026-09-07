@@ -840,3 +840,8 @@ R's native coercion API. No R implementation or tests were copied for these
 paths; the notice lists the studied files.
 R's interrupt implementation was studied for portable native fault injection;
 tests call its documented interrupt entry and retain transaction rollback checks.
+
+R's ALTSTRING, subset and serialization code informed the extension to owned
+ordinary strings, logicals and integer/factor backing. The same notice records
+that study; no implementation from those files was copied. String width and
+missingness facts belong to backing, while declarations remain column metadata.

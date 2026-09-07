@@ -10,6 +10,69 @@ validation prototype. The [implementation plan](../../docs/plans/dibble-result-p
 describes the staged architecture. Later dated reports record production changes
 and keep their exact source revisions separate from the initial prototype.
 
+
+## Stage 4 implementation review fixes
+
+The [review-fix report](results-2026-09-07-stage4-review-fix.md) and
+[indexed evidence](results-2026-09-07-stage4-review-fix/README.md) qualify
+`c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe`. Fresh constructors avoid the
+unnecessary first-private-write payload copy, width scans release temporary
+encoding buffers, and the native runner rejects every nonempty destination.
+The complete local gates and fresh paired baseline/candidate matrix pass their
+behavioral, allocation and memory checks. The same fifteen read flags remain:
+twelve base-R operations and three delegated filters. Stage 6 must resolve the
+filter regressions; integrated performance acceptance remains open.
+
+The new archive preserves failed attempts, exact source/installation identities,
+all fresh five-gate Cargo input snapshots and raw paired results. Run its
+`verify.py` to check archived bytes and executable bits without running workloads.
+The previous dated report and merged review supplement retain their original
+bytes and qualification scope. PR #195 still requires final substantive review,
+CI and normal merge on its eventual reviewed head.
+
+The diagnosis and local qualification records merged through
+[PR #198](https://github.com/jbearak/dta-parser/pull/198), followed by the paired
+benchmark evidence in [PR #199](https://github.com/jbearak/dta-parser/pull/199).
+Their additive [output-content record](results-2026-09-07-stage4-output-integrity/README.md)
+provides full-byte SHA-256 equality at both checkpoints of one fresh isolated
+c8 fertility run. The separate [comparison-identity audit](results-2026-09-07-stage4-comparison-integrity/README.md)
+binds the unchanged paired results to all six manifests and three comparators,
+with 87 small guard cases. Neither supplement rewrites historical records,
+claims absence of transient restored writes, or supplies new benchmark timings.
+The final actual fertility renv install/test/restore remains open.
+
+These evidence changes preserve the separately qualified c8 package and runner
+identities. The later two preflight helper docstrings leave its executable AST
+unchanged; archived c8 executions retain their original input hash.
+
+## Stage 4 review supplement
+
+The [review supplement](results-2026-09-07-stage4-review-supplement/README.md),
+submitted as [PR #197](https://github.com/jbearak/dta-parser/pull/197) at
+`0bb559e80af119264f87c4fcd06a65287230db0d`, adds missing review inputs,
+executable command fixtures and guarded diagnostic replay. The original
+[Stage 4 report](results-2026-09-07-stage4.md) and historical artifacts retain
+their bytes and measured-source labels.
+
+The earlier three-Git-object comparison did not prove which working files the
+reused Rust workspace commands read. The supplement's
+[fresh five-gate manifest](results-2026-09-07-stage4-review-supplement/workspace-gates/manifest.json)
+supersedes that insufficient binding. Formatting, Clippy, 278 tests,
+documentation and verified packaging passed on a clean checkout of
+`e343b3b56a8529e9ee0ac40f8bd88beebcd2be15`, with complete 1,060-file
+byte/mode inventories and clean status checked before and after every command.
+Packaging used no `--allow-dirty`; its eleven existing warnings concern excluded
+test targets. The [crate record](results-2026-09-07-stage4-review-supplement/workspace-gates/package-artifact.json)
+binds the actual verified artifact and all 27 members. The separate R check
+retains three established warnings and two notes.
+
+These additions do not resolve the fifteen disclosed read flags. The three
+filter regressions remain required Stage 6 work; twelve per-element costs remain
+visible, with integrated performance acceptance still open. Stages 5–9, a fresh
+merged-main installation and tests in the actual fertility renv, and restoration
+from its original lockfile remain required. Issue #172 stays open. Substantive
+external review, CI and normal merges are separate gates.
+
 ## Reproduce
 
 Run from the repository root. Install `bench`, `dplyr`, and the package's test
@@ -198,3 +261,120 @@ macOS `/usr/bin/time -l`. Run the driver's CLI regression checks with
 `python3 benchmarks/r-dibble-dplyr/test-owned-qualification.py`. They exercise
 normal Python, `-O` and `PYTHONOPTIMIZE=1` using disposable Git fixtures and
 synthetic subprocess output; they do not run R workloads.
+
+## Owned strings, logicals and integer backing
+
+`owned-atomic.R` qualifies ordinary `dta_string`, declared character, logical,
+factor and ordered-factor columns. The public dibble constructor continues to
+promote bare integer columns to Stata numeric storage, so factors exercise the
+table's ordinary integer backing. The native mutation qualification separately
+covers captured bare integer values. Public `replace_values()` continues to
+reject factor targets; the public write matrix covers both string forms and
+logicals.
+
+The operation matrix contains 206 rows: direct and equally safe delegated
+selectors and five-verb pipelines, plus applicable reads, aggregates, coercions,
+exports, filtering, row subsets and DTA/Arrow I/O. All five types use 100,000 and
+1,000,000 rows. Selectors use 16 columns; reads use eight. There are also 126
+post-read selector checks and 18 separate first shared, subsequent private and
+full-replacement write profiles. Private-write preparation and measurement
+change different rows. A later source write checks the reverse direction of
+result isolation.
+
+Deterministic ordinary vectors supply independent value, type and column
+attribute oracles. Table metadata checks include compact row-name bookkeeping.
+File-format expectations explicitly include DTA's logical-to-byte and
+factor-to-labelled-long conversions and Arrow's preservation of logicals and
+factor levels. The runner checks the expected factor conversion warning; other
+warnings remain visible. The DTA writer wrapper collects and checks that warning
+inside each measured call in both revisions. Fixture creation and all value and
+metadata oracle checks occur outside timing and allocation profiles. The
+profiled result and `bench`'s retained
+preflight result are checked as well as the initial result. Writers' final timed
+files are reopened and compared with the independent oracle.
+
+The source backing is checked before and after each read, profile and timed
+phase. Returned aliases remain alive through the subsequent selector. Candidate
+selectors must allocate under 1 MB and copy no payloads. Private string scan
+counters also require zero unchanged-column validation scans, because low R
+allocation alone cannot establish that values were not scanned. Scan counts,
+cumulative R allocations and overlapping native byte counters remain separate.
+
+Use `run-atomic-qualification.py` with fresh `install.R` libraries and committed
+runner files. It guards its own source and all five R dependencies, including
+the shared `helpers.R`, and records runtime identities and SHA-256 manifests.
+Both installations must use the same runner revision. The example below
+reproduces the qualified `c8ca0a4` candidate using its committed runner files.
+Run it in a quiet measurement window:
+
+```sh
+atomic_bench_root=$(mktemp -d /tmp/dibble-atomic-benchmark.XXXXXX)
+atomic_baseline=ec10a6ac34602f3bd691e8043019c1b479babda4
+atomic_candidate=c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe
+Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
+  "$atomic_bench_root/baseline-library" "$atomic_baseline"
+Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
+  "$atomic_bench_root/candidate-library" "$atomic_candidate"
+python3 benchmarks/r-dibble-dplyr/run-atomic-qualification.py operations . \
+  "$atomic_bench_root/baseline" "$atomic_bench_root/baseline-library" \
+  "$atomic_baseline" "$atomic_candidate" baseline
+python3 benchmarks/r-dibble-dplyr/run-atomic-qualification.py operations . \
+  "$atomic_bench_root/candidate" "$atomic_bench_root/candidate-library" \
+  "$atomic_candidate" "$atomic_candidate" candidate
+python3 benchmarks/r-dibble-dplyr/run-atomic-qualification.py memory . \
+  "$atomic_bench_root/baseline" "$atomic_bench_root/baseline-library" \
+  "$atomic_baseline" "$atomic_candidate" baseline
+python3 benchmarks/r-dibble-dplyr/run-atomic-qualification.py memory . \
+  "$atomic_bench_root/candidate" "$atomic_bench_root/candidate-library" \
+  "$atomic_candidate" "$atomic_candidate" candidate
+```
+
+Each memory command launches 30 isolated macOS processes: rename, five verbs
+and 50 verbs, at both row counts, for all five types. It checks flat handle depth,
+backing identity, retained heap with source and result alive, and release after
+the last result is dropped. Whole-process peak RSS includes startup, fixtures
+and validation, so it is not an operation-only allocation peak.
+
+The driver rejects existing operation directories and memory logs, verifies
+complete case matrices and existing evidence hashes, and preserves failed-run
+diagnostics. Use a new output directory for a retry. Its explicit integrity
+exceptions remain enabled under Python optimization. Run
+`python3 benchmarks/r-dibble-dplyr/test-atomic-qualification.py` for the 87
+synthetic CLI guard cases across default Python, `-O` and `PYTHONOPTIMIZE=1`.
+These guard tests perform no R timing. The Stage 3 runners and historical raw
+evidence keep their original bytes and identities.
+## Retained header and vector heap supplement
+
+`owned-heap.R` sources the existing atomic or double memory runner unchanged
+in a local evaluation environment, then reads its five `gc()` checkpoints.
+This is a separate measurement. It includes R header cells, which the earlier
+vector-heap measurements omit, and is useful when an owned backing record uses
+an external pointer. No namespace is patched. The local argument adapter only
+supplies the original runner's expected command-line arguments.
+
+The wrapper reports raw header-cell counts and vector bytes. It infers the
+unique integer header size consistent with all five cell counts and R's reported
+MB totals, which are rounded upward to 0.1 MiB. It fails if the size is ambiguous.
+The Python driver independently checks that inference and every reported heap
+delta. Header bytes plus vector bytes measure used R heap; they exclude external
+native allocations, unused heap capacity, and process overhead. The existing
+peak-RSS runs retain their separate whole-process interpretation. Small residual
+heap after dropping the result can include fixed bookkeeping and caches.
+
+After committing the wrapper and driver, run each side in a quiet window:
+
+```sh
+python3 benchmarks/r-dibble-dplyr/run-heap-qualification.py REPO NEW_OUTPUT LIBRARY SOURCE_SHA RUNNER_SHA baseline
+python3 benchmarks/r-dibble-dplyr/run-heap-qualification.py REPO NEW_OUTPUT LIBRARY SOURCE_SHA RUNNER_SHA candidate
+```
+
+Use full commit identities and a fresh output directory for each command. The
+driver binds its own bytes and all eight R dependencies to `RUNNER_SHA`; the R
+wrapper records and rechecks their runtime identities. Every process validates
+the exact installed package before and after its workload. The matrix has 36
+fresh processes per side: doubles and the five atomic kinds, 100k/1M rows, and
+rename/five-verb/fifty-verb operations. Existing value, metadata, backing, depth
+and vector-heap checks remain active. Candidates must also retain less than
+1 MB of combined tracked R heap with source and result alive and leave less than
+1 MB above the reference-free checkpoint after both are dropped. The supplement
+reports no operation timing and does not replace the original qualification.

@@ -4,6 +4,9 @@ status: proposed
 
 # Share owned double backing with transactional table writes
 
+[ADR 0033](0033-share-owned-atomic-backing-and-storage-facts.md) extends this
+Stage 3 decision to ordinary strings, logicals and integer/factor backing.
+
 Ordinary doubles captured by dtatools use distinct ALTREP handles with backing
 on R's vector heap. Column results can share that backing while keeping their
 attributes independent. Unknown input requires an isolation copy; only native

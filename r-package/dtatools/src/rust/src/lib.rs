@@ -62,7 +62,7 @@ extern "C" {
 
     fn dtatools_check_interrupt() -> c_int;
     fn dtatools_alloc_vector(kind: c_int, length: RLen, result: *mut Sexp) -> c_int;
-    fn dtatools_adopt_real(values: Sexp, result: *mut Sexp) -> c_int;
+    fn dtatools_adopt_atomic(values: Sexp, result: *mut Sexp) -> c_int;
     fn dtatools_preserve_object(object: Sexp) -> c_int;
     fn dtatools_release_object(object: Sexp);
     fn dtatools_make_char(
@@ -1526,6 +1526,9 @@ struct DictStringData {
     // Owns the string buffers referenced by `value_views`. Declared after the
     // views so it is dropped after them.
     _values: AHashMap<String, u32>,
+    // Native readers can outlive materialization of the original R handle.
+    // Pins own this same immutable allocation without changing column sharing.
+    references: std::sync::atomic::AtomicUsize,
 }
 
 impl DictStringData {
@@ -1542,8 +1545,32 @@ impl DictStringData {
             length,
             value_views,
             _values: values,
+            references: std::sync::atomic::AtomicUsize::new(1),
         }
     }
+}
+
+#[no_mangle]
+/// Retain an immutable dictionary descriptor for one native read scope.
+///
+/// # Safety
+///
+/// `data` must be null or a live `DictStringData`. On success the caller owns
+/// one additional reference and must release it with `dtatools_dictstring_free`.
+pub unsafe extern "C" fn dtatools_dictstring_retain(data: *mut c_void) -> c_int {
+    if data.is_null() {
+        return 0;
+    }
+    let data = &*data.cast::<DictStringData>();
+    i32::from(
+        data.references
+            .fetch_update(
+                std::sync::atomic::Ordering::Relaxed,
+                std::sync::atomic::Ordering::Relaxed,
+                |count| count.checked_add(1),
+            )
+            .is_ok(),
+    )
 }
 
 #[no_mangle]
@@ -1674,10 +1701,19 @@ pub unsafe extern "C" fn dtatools_dictstring_gather(
 ///
 /// # Safety
 ///
-/// `data` must be null or a live pointer created by `ProtectGuard::dictstring`,
-/// and it must not have been freed previously.
+/// `data` must be null or a live dictionary pointer for which the caller owns
+/// one reference, from creation or `dtatools_dictstring_retain`. Releasing the
+/// final reference invalidates the pointer.
 pub unsafe extern "C" fn dtatools_dictstring_free(data: *mut c_void) {
     if data.is_null() {
+        return;
+    }
+    let retained = &*data.cast::<DictStringData>();
+    if retained
+        .references
+        .fetch_sub(1, std::sync::atomic::Ordering::AcqRel)
+        != 1
+    {
         return;
     }
     let data = Box::from_raw(data.cast::<DictStringData>());
@@ -1720,15 +1756,15 @@ impl ProtectGuard {
         Ok(value)
     }
 
-    /// Finish a native ordinary-double allocation after its final writer has
+    /// Finish a native ordinary atomic allocation after its final writer has
     /// returned. The protected C bridge contains R allocation failures.
-    unsafe fn adopt_real(&mut self, value: Sexp) -> Result<Sexp, String> {
+    unsafe fn adopt_atomic(&mut self, value: Sexp) -> Result<Sexp, String> {
         self.objects
             .try_reserve(1)
-            .map_err(|_| "R could not track an owned double vector".to_owned())?;
+            .map_err(|_| "R could not track an owned atomic vector".to_owned())?;
         let mut result = ptr::null_mut();
-        if dtatools_adopt_real(value, &mut result) == 0 || result.is_null() {
-            return Err("R could not adopt an ordinary-double vector".to_owned());
+        if dtatools_adopt_atomic(value, &mut result) == 0 || result.is_null() {
+            return Err("R could not adopt an ordinary atomic vector".to_owned());
         }
         self.objects.push(result);
         Ok(result)
@@ -2287,7 +2323,7 @@ unsafe fn numeric_column<T: Copy + Into<f64>>(
             .map(r_missing)
             .unwrap_or_else(|| observed_value(values[index].into(), temporal));
     }
-    guard.adopt_real(vector)
+    guard.adopt_atomic(vector)
 }
 
 unsafe fn build_column(
@@ -3185,7 +3221,10 @@ impl DtaSink for RDataFrameSink {
                         // Streaming and parallel fills have finished before
                         // this method. Retire their writer before publication.
                         *output = ptr::null_mut();
-                        *vector = self._guard.adopt_real(*vector).map_err(DtaError::Output)?;
+                        *vector = self
+                            ._guard
+                            .adopt_atomic(*vector)
+                            .map_err(DtaError::Output)?;
                         SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
                         *vector
                     }
@@ -5479,5 +5518,36 @@ mod tests {
         assert!(threaded_replacements.iter().any(|&count| count > 0));
 
         unsafe { dtatools_dictstring_free(dictionary_data.cast()) };
+    }
+    #[test]
+    fn dictionary_pin_survives_release_of_original_owner() {
+        let mut dictionary = AHashMap::new();
+        dictionary.insert("alpha".to_owned(), 0_u32);
+        let value = dictionary.keys().next().unwrap();
+        let views = vec![(value.as_ptr(), value.len())];
+        let data = Box::into_raw(Box::new(DictStringData::new(vec![0, 0], dictionary, views)));
+        unsafe {
+            assert_eq!(super::dtatools_dictstring_retain(data.cast()), 1);
+            assert_eq!(super::dtatools_dictstring_retain(ptr::null_mut()), 0);
+            dtatools_dictstring_free(data.cast());
+            let mut bytes = ptr::null();
+            let mut length = 0;
+            assert_eq!(
+                super::dtatools_dictstring_bytes(data.cast(), 0, &mut bytes, &mut length),
+                1
+            );
+            assert_eq!(
+                std::slice::from_raw_parts(bytes.cast::<u8>(), length as usize),
+                b"alpha"
+            );
+            assert_eq!((*data).length, 2);
+            assert_eq!(
+                (*data)
+                    .references
+                    .load(std::sync::atomic::Ordering::Relaxed),
+                1
+            );
+            dtatools_dictstring_free(data.cast());
+        }
     }
 }

@@ -17,6 +17,29 @@ refuses tracked or untracked changes. Explicit development child runs remain
 labelled diagnostic and cannot establish source-bound qualification. Pass
 `--markdown=PATH` to write the same metric registry as a Markdown table.
 
+Stage 4 adds `owned-atoms.R LIBRARY SOURCE_SHA OUTPUT_DIRECTORY` for native
+integer, factor and ordered-factor backing. Run it from the checkout with a
+fresh exact-source installation and an existing empty output directory. It
+verifies the installed package and DLL, its own committed bytes and the shared
+installer helper, then records all identities alongside 18 allocation cases at
+100,000 and 1,000,000 rows. Each case checks independent values, attributes and
+raw row names. The first shared sparse write copies one target payload; the
+next private write changes a different row without that copy. Full native
+replacement preserves a retained alias and copies no old values. Standalone
+metadata-copy aliases are checked in both mutation directions. These are
+lower-level native integer writes; public factor replacement retains its
+existing rejection. Public strings/logicals and table selectors for all new
+types are qualified by `benchmarks/r-dibble-dplyr/owned-atomic.R`.
+
+The output preflight rejects every existing entry, including unrelated files,
+hidden files and empty child directories, before writing identity or results.
+`python3 benchmarks/r-reference-mutation/test-owned-atoms-preflight.py LIBRARY
+SOURCE_SHA NEW_EVIDENCE_DIRECTORY` checks that boundary with the real R runner
+and exact installed package. A clearly labelled synthetic git command stops an
+admitted empty-directory control before any measured workload. Rejected cases
+must leave every fixture byte and mode unchanged; child logs and a manifest are
+retained. This is a preflight test, not native performance qualification.
+
 Stage 3 retains all 159 original assertion expressions and every numerical
 bound. Fixtures now assign `reserve_columns()` before generation, outside the
 measured operation, and verify the original base-frame dispatch and capacity.

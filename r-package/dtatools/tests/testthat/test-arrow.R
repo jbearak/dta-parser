@@ -194,10 +194,15 @@ test_that("string columns without missing values defer through ALTREP", {
     save_arrow(data, path)
 
     actual <- read_arrow(path)
-    expect_true(dtatools:::.is_altrep(actual$s))
+    expect_true(dtatools:::.is_unmaterialized_dictstring(actual$s))
     # The dictionary-string ALTREP class cannot represent NA_character_, so
-    # null-bearing columns materialize eagerly.
-    expect_false(dtatools:::.is_altrep(actual$m))
+    # null-bearing columns are decoded eagerly into fresh owned storage.
+    expect_false(dtatools:::.is_unmaterialized_dictstring(actual$m))
+    owned <- .Call(dtatools:::C_dtatools_owned_info, actual$m)
+    expect_false(is.null(owned))
+    expect_identical(owned$depth, 1L)
+    expect_identical(typeof(actual$m), "character")
+    expect_identical(is.na(actual$m), is.na(data$m))
     expect_identical(actual, data)
 })
 

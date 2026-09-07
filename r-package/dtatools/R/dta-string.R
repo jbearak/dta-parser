@@ -24,10 +24,22 @@ dta_string <- function(x = character(), storage = NULL) {
     x <- enc2utf8(x)
     required <- .dta_string_required_width(x)
     storage <- .normalize_dta_string_storage(storage, required)
-    .new_dta_string(x, storage)
+    result <- .new_dta_string(x, storage, .validated_storage = TRUE)
+    # A foreign reader or declaration callback can change borrowed values
+    # after the initial validation. Check the values actually captured.
+    if (!.is_unmaterialized_dictstring(result)) {
+        captured_width <- .dta_string_required_width(result)
+        if (is.na(captured_width)) {
+            stop("Stata strings cannot contain `NA_character_`; use `\"\"`", call. = FALSE)
+        }
+        if (captured_width > required) .normalize_dta_string_storage(storage, captured_width)
+    }
+    result
 }
 
 .dta_string_required_width <- function(x) {
+    owned_width <- .Call(C_dtatools_owned_string_width, x)
+    if (!is.null(owned_width)) return(owned_width)
     if (!length(x)) return(1L)
     max(nchar(enc2utf8(x), type = "bytes"))
 }
@@ -55,8 +67,17 @@ dta_string <- function(x = character(), storage = NULL) {
     storage
 }
 
-.new_dta_string <- function(x, storage, prototype = NULL) {
+.new_dta_string <- function(x, storage, prototype = NULL, .validated_storage = FALSE) {
     value_names <- names(x)
+    if (.validated_storage && missing(prototype) && is.null(value_names)) {
+        # Keep a fresh constructor's metadata edits inside one native call.
+        # Only dta_string() supplies this proof: storage is already evaluated
+        # by normalization and no prototype promise can precede capture.
+        # Internal restoration keeps its original promise/callback order.
+        constructed <- .Call(C_dtatools_construct_string, x, storage)
+        if (!is.null(constructed)) return(constructed)
+    }
+    x <- .Call(C_dtatools_capture_string, x)
     if (!is.null(prototype)) {
         # Attribute replacement materializes the dictionary-string ALTREP used
         # by read_dta(). Restore the owned attributes in place so imported
@@ -64,13 +85,26 @@ dta_string <- function(x = character(), storage = NULL) {
         x <- .restore_dta_variable_metadata(x, prototype, names = value_names)
     } else {
         for (name in setdiff(names(attributes(x)), "names")) {
-            attr(x, name) <- NULL
+            owned <- .set_dta_string_attribute(x, name, NULL)
+            if (is.null(owned)) attr(x, name) <- NULL else x <- owned
         }
     }
-    attr(x, "stata.string.storage") <- storage
-    attr(x, "class") <- c("dta_string", "vctrs_vctr", "character")
-    if (!is.null(value_names)) names(x) <- value_names
-    x
+    owned <- .set_dta_string_attribute(x, "stata.string.storage", storage)
+    if (is.null(owned)) attr(x, "stata.string.storage") <- storage else x <- owned
+    classes <- c("dta_string", "vctrs_vctr", "character")
+    owned <- .set_dta_string_attribute(x, "class", classes)
+    if (is.null(owned)) attr(x, "class") <- classes else x <- owned
+    if (!is.null(value_names)) {
+        owned <- .set_dta_string_attribute(x, "names", value_names)
+        if (is.null(owned)) names(x) <- value_names else x <- owned
+    }
+    .Call(C_dtatools_capture_column, x)
+}
+
+.set_dta_string_attribute <- function(value, name, replacement) {
+    # NULL declines. Keep ordinary assignment in the original caller frame:
+    # a fallback here adds a live binding and copies dictionary payload again.
+    .Call(C_dtatools_owned_string_attribute, value, name, replacement)
 }
 
 # The bare character data behind a Stata string, read through a metadata
