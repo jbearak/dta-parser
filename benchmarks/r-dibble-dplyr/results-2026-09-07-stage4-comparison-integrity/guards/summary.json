@@ -1,0 +1,21 @@
+{
+  "test_sha256": "0143dc7a0d62c0346f7136a47e61096e384ebd7458059c4376b4e8b28acd8d2b",
+  "auditor_sha256": "97709832d0b5599e96038c09fd1dd8f9d0adb7d0b4df89fa397be6f944a8e51e",
+  "runs": [
+    {
+      "mode": "default",
+      "cases": 29,
+      "sha256": "9202904bab4ff1027bddc712a935201e8ab1cb8b6285fcfc84f7dcce85e47996"
+    },
+    {
+      "mode": "dash-O",
+      "cases": 29,
+      "sha256": "2c28716d6a3d257c355d2dc09d1223c6e7ecc77330bc0b00dbefd9eb1f4b6406"
+    },
+    {
+      "mode": "env-optimize",
+      "cases": 29,
+      "sha256": "979dab82ee8952d538a830f9f2aa888bc44871b87b3a4752b56b811fe39925be"
+    }
+  ]
+}

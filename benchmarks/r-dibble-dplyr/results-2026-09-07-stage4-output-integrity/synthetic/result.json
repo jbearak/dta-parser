@@ -1,0 +1,16 @@
+{
+  "before": {
+    "size": 8,
+    "mtime_ns": 1788782507461037090,
+    "sha256": "0682c5f2076f099c34cfdd15a9e063849ed437a49677e6fcc5b4198c76575be5"
+  },
+  "after": {
+    "size": 8,
+    "mtime_ns": 1788782507461037090,
+    "sha256": "b80012851cf027c6d8adda328907d400c95773958fb4fec3e544a02cd5eeab0e"
+  },
+  "stat_only_would_accept": true,
+  "digest_equality_would_accept": false,
+  "source_sha256": "b2d3f79d19e846451f25465c60f1f26be397c8d6e55fd2504c8ecac9b99a89fc",
+  "scope": "Eight-byte synthetic fixture only; no real output, fertility project, package, R, benchmark or historical evidence was accessed or changed."
+}

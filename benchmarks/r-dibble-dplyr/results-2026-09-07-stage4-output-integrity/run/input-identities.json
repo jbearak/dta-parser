@@ -1,0 +1,39 @@
+{
+  "files": {
+    "/private/tmp/dta-direct-stage4-validation/check-fertility-output-content.py": "e6a1e2372e77d06707451db86e51fd5ae4323bfc308388c5cb3ed44f88f5b6aa",
+    "/private/tmp/dta-direct-stage4-validation/check-fertility-candidate.py": "903e681950f0f43bd99a099bb21697be58c40f3552e6a21d98fe80167846424a",
+    "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-stage2-baseline.log": "f85c076a6d20983a155305522d11fa3da1c038f20283ee1a979f4726521d8708",
+    "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-before-exact-45f2ba4.json": "44fd497ae6ff502363301c3ddc82083f7d963305b08853abfe445d88b398f0dd",
+    "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library/dtatools/libs/dtatools.so": "7839719fd30f468e9407e9378add8437eb2aa1e9c426e217b0f1967765944d1f",
+    "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library/dtatools/Meta/benchmark-provenance.rds": "c3e8e49bffe206ea0369de7b37553c472f4101170e98f38db816fd57290b824b"
+  },
+  "source": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+  "child_driver_git_revision": "f043959b3c1337fb6c49518a644171fed6067966",
+  "child_driver_git_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-fix/qualification/source/check-fertility-candidate.py",
+  "python": "3.14.7 (main, Aug 10 2026, 16:57:53) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "python_executable": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+  "reviewed_input_records": [
+    {
+      "git_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-fix/qualification/fertility/input-identities.json",
+      "sha256": "1e6c1f93193c520e6069eb97b6dc3998ea38197f01a540529ceea513216d354b",
+      "checked_input_paths": [
+        "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-before-exact-45f2ba4.json",
+        "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-stage2-baseline.log",
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library/dtatools/libs/dtatools.so",
+        "/private/tmp/dta-direct-stage4-validation/check-fertility-candidate.py",
+        "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R"
+      ]
+    },
+    {
+      "git_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-fix/diagnosis/root-probes-final/input-identities.json",
+      "sha256": "e440d0fc05c7f8c7b760674dd796c9fc2dae39c9890e95824096f4407208f5b7",
+      "checked_input_paths": [
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library/dtatools/Meta/benchmark-provenance.rds",
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library/dtatools/libs/dtatools.so",
+        "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R"
+      ]
+    }
+  ]
+}

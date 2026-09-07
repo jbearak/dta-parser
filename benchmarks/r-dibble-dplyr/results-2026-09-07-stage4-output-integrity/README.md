@@ -1,0 +1,23 @@
+# Fresh Stage 4 output-content qualification
+
+This additive record addresses [PR198's output-content finding](https://github.com/jbearak/dta-parser/pull/198#discussion_r3949479433). The earlier fertility snapshots recorded the ignored output's size and modification time. They did not hash its content and remain unchanged. The new isolated-library run establishes equality of every output byte at its own two checkpoints; it supplies no retrospective digest for an earlier run.
+
+The [executed wrapper](source/check-fertility-output-content.py) ran once against exact package `c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe`, DLL SHA-256 `7839719fd30f468e9407e9378add8437eb2aa1e9c426e217b0f1967765944d1f`. It streams 8 MiB blocks, checks regular-file/path/descriptor identity before and after each read, and hashes after the unchanged child even if that child fails. The six non-wrapper inputs were pinned to already reviewed Git records before execution. The actual source keeps its execution-path assumptions; do not run it blindly from an archive checkout.
+
+[Before](run/content-before.json) and [after](run/content-after.json) each read **4,374,755,735 bytes**, both SHA-256 `1d05595054635b362cb0823b81c0290cb81e5d63a7a2c731a7de5d8f3e040588`. Device, inode, size, mtime, ctime and mode also match. Access time is intentionally excluded. The child ran from `2026-09-07T12:15:38.229582+00:00` through `2026-09-07T12:16:17.757324+00:00`, after the first hash and before the second. These intervals record observation order, not a timing or throughput benchmark.
+
+The [completed content verification](run/content-verification.json) records child exit 0 and unchanged inputs. The [unchanged child result](run/run/verification.json) retains complete baseline log equality, 499 tests with four known failed/errored blocks and two skips, no Column reallocation warning, all 454 project-file hashes and full Git/output metadata state unchanged, and the post-install identity guard. Its inner R exit 1 is the expected result of those known failure blocks; the qualifying Python child exits 0. All 12 run files and the separate [outer launch log](outer-launch.log) are copied byte for byte. This was one successful run, with no failed attempt or retry.
+
+The [independent root audit](root-audit.json) and its [executed source](source/audit-fertility-content-c8ca0a4.py) verify all recorded hashes, exact baseline bytes/header, source/DLL/input identities and temporal order without rerunning R or rehashing the large output. The [eight-byte synthetic counterexample](synthetic/result.json), produced by [this script](synthetic/stat-counterexample.py), shows why equal size and restored mtime can accompany changed content. Synthetic output is unrelated to the fertility dataset.
+
+Run the portable archive verifier from any checkout:
+
+```sh
+python3 benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-output-integrity/verify.py
+```
+
+An optional `--git-repo /path/to/dta-parser` also verifies every fixed source/baseline Git input in [index.json](index.json). The default verifies the exact archive file set, hashes, executable bits, both embedded inventories, endpoint equality/order and child result. It does not read `mics.dta`, import R, or execute archived drivers. Git records only the executable distinction; full Unix modes remain forensic source records. The index deliberately excludes its own hash; the commit/review receipts bind the completed index.
+
+The original invocation was `python3 /private/tmp/dta-direct-stage4-validation/check-fertility-output-content.py /private/tmp/dta-direct-stage4-validation/fertility-content-c8ca0a4`. The [input record](run/input-identities.json) binds the Python version/executable, exact candidate library, wrapper, unchanged child, helper, baseline log/state, DLL and provenance sidecar. Fixed Git mappings in the index resolve the smaller prior inputs. The large installed DLL and sidecar remain external products with exact hashes; the [existing exact-artifact qualification](https://github.com/jbearak/dta-parser/tree/f043959b3c1337fb6c49518a644171fed6067966/benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-fix/qualification) records their source/build/install proof.
+
+This evidence proves endpoint content equality for this fresh isolated c8 run. It does not rule out transient writes later restored, replace the final actual fertility renv install/test/restore, change the three R check warnings/two notes or eleven existing Cargo package warnings, resolve the 15 timing flags, or complete Stages 5–9. Issue #172 remains open. No original report, historical record, package, runner, fertility source, output or renv file was edited to produce this supplement.
