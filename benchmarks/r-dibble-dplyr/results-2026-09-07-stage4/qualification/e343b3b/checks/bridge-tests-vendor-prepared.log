@@ -1,0 +1,70 @@
+   Compiling cfg-if v1.0.4
+   Compiling rand_core v0.10.1
+   Compiling bytes v1.12.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling once_cell v1.21.4
+   Compiling libm v0.2.16
+   Compiling libc v0.2.189
+   Compiling arrow-schema v59.2.0
+   Compiling hashbrown v0.17.1
+   Compiling serde_core v1.0.229
+   Compiling zerocopy v0.8.56
+   Compiling bitflags v2.13.1
+   Compiling zmij v1.0.23
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling encoding_rs v0.8.35
+   Compiling chacha20 v0.10.2
+   Compiling zstd-safe v7.2.4
+   Compiling thiserror v2.0.19
+   Compiling iana-time-zone v0.1.65
+   Compiling flatbuffers v25.12.19
+   Compiling unicode-general-category v1.1.0
+   Compiling zstd v0.13.3
+   Compiling getrandom v0.4.3
+   Compiling getrandom v0.3.4
+   Compiling rand v0.10.2
+   Compiling num-traits v0.2.19
+   Compiling twox-hash v2.1.4
+   Compiling lz4_flex v0.14.0
+   Compiling num-integer v0.1.47
+   Compiling chrono v0.4.45
+   Compiling num-complex v0.4.6
+   Compiling num-bigint v0.5.1
+   Compiling serde_json v1.0.151
+   Compiling serde v1.0.229
+   Compiling half v2.7.1
+   Compiling ahash v0.8.12
+   Compiling arrow-buffer v59.2.0
+   Compiling arrow-data v59.2.0
+   Compiling arrow-array v59.2.0
+   Compiling arrow-select v59.2.0
+   Compiling arrow-ipc v59.2.0
+   Compiling dta-tools v0.7.1 (/private/tmp/dta-direct-stage4-validation/source-e343b3b/r-package/dtatools/src/dta-tools)
+   Compiling dtatools-r v0.7.1 (/private/tmp/dta-direct-stage4-validation/source-e343b3b/r-package/dtatools/src/rust)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.26s
+     Running unittests src/lib.rs (rust/target/debug/deps/dtatools_r-df60c073731cbe82)
+
+running 18 tests
+test tests::callback_errors_preserve_r_condition_messages ... ok
+test arrow_ffi::tests::native_interrupts_and_large_string_offsets_are_classified ... ok
+test tests::oversized_r_data_frames_are_rejected_before_decode ... ok
+test tests::selected_row_windows_are_clamped_before_decode ... ok
+test tests::decoded_dta_milliseconds_snap_back_to_integer_storage ... ok
+test arrow_ffi::tests::wide_integers_must_fit_exactly_in_r_doubles ... ok
+test tests::dictionary_pin_survives_release_of_original_owner ... ok
+test arrow_ffi::tests::compact_float_fill_counts_generic_nan_as_missing ... ok
+test arrow_ffi::tests::temporal_counts_must_round_trip_through_r_doubles ... ok
+test arrow_ffi::tests::empty_zero_copy_arrays_ignore_ffi_sentinel_alignment ... ok
+test tests::direct_r_missing_codes_match_r_system_na_payloads ... ok
+test arrow_ffi::tests::duplicate_dictionary_values_cannot_become_factor_levels ... ok
+test arrow_ffi::tests::arrow_write_assembly_rejects_duplicate_value_label_table_names ... ok
+test arrow_ffi::tests::observed_int32_minimum_is_widened_to_double ... ok
+test arrow_ffi::tests::eager_legacy_tail_values_select_the_legacy_missing_layout ... ok
+test arrow_ffi::tests::invalid_profiled_nans_are_counted_as_replacements ... ok
+test tests::temporal_formats_match_haven_prefix_rules ... ok
+test tests::threaded_direct_observation_encoding_matches_the_serial_path ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+

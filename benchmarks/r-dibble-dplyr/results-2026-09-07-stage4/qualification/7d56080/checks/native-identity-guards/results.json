@@ -1,0 +1,54 @@
+{
+  "source_sha": "7d56080f3e97bc4d73a848e363d729767b9629c0",
+  "runner_sha256": "5ce543534ada9a4a13523fe6c16964130f37bca54300c778b0df4d70b88d3b73",
+  "cases": [
+    {
+      "case": "git-failed-empty",
+      "exit_code": 1,
+      "outputs": [],
+      "diagnostic": "Invalid or failed identity command: git"
+    },
+    {
+      "case": "git-failed-valid-hash",
+      "exit_code": 1,
+      "outputs": [],
+      "diagnostic": "Invalid or failed identity command: git"
+    },
+    {
+      "case": "git-malformed-success",
+      "exit_code": 1,
+      "outputs": [],
+      "diagnostic": "Invalid or failed identity command: git"
+    },
+    {
+      "case": "git-multiline-success",
+      "exit_code": 1,
+      "outputs": [],
+      "diagnostic": "Invalid or failed identity command: git"
+    },
+    {
+      "case": "shasum-failed-empty",
+      "exit_code": 1,
+      "outputs": [],
+      "diagnostic": "Invalid or failed identity command: shasum"
+    },
+    {
+      "case": "shasum-failed-valid-hash",
+      "exit_code": 1,
+      "outputs": [],
+      "diagnostic": "Invalid or failed identity command: shasum"
+    },
+    {
+      "case": "shasum-malformed-success",
+      "exit_code": 1,
+      "outputs": [],
+      "diagnostic": "Invalid or failed identity command: shasum"
+    },
+    {
+      "case": "shasum-multiline-success",
+      "exit_code": 1,
+      "outputs": [],
+      "diagnostic": "Invalid or failed identity command: shasum"
+    }
+  ]
+}

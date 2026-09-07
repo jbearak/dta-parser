@@ -1,0 +1,38 @@
+{
+  "scope": "Source observations only; no additional timing, no copied upstream implementation and no irreducible-cost claim",
+  "upstream": {
+    "version": "R 4.6.1 SVN90187",
+    "url": "https://svn.r-project.org/R/tags/R-4-6-1/src/main/subset.c",
+    "retained_path": "/private/tmp/dta-direct-stage3-validation/R-4-6-1-subset.c",
+    "bytes": 40829,
+    "sha256": "74d927da1b25cfa88a2dbc98ef4ca2c5e2b4878c447bac1d73ba8935788ae6ce",
+    "observations": [
+      {
+        "function": "VectorSubset",
+        "line": 211,
+        "observation": "makeSubscript executes before ExtractSubset at line216"
+      },
+      {
+        "function": "ExtractSubset",
+        "line": 122,
+        "observation": "ALTVEC_EXTRACT_SUBSET is invoked only after entry to this function"
+      }
+    ]
+  },
+  "package_source": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "package_files": [
+    {
+      "path": "r-package/dtatools/R/mutate-data.R",
+      "sha256": "337477c4dfbd67d1f1f9c758a7ac49ec2048d0f2ae727bf1f8880c1b7ed76bc0"
+    },
+    {
+      "path": "r-package/dtatools/R/dibble-rows.R",
+      "sha256": "1ce41f4cbe505584dea298b807d600c08b9a735d6b13a41dd9520f7c29d570b3"
+    },
+    {
+      "path": "r-package/dtatools/src/owned-columns.h",
+      "sha256": "6fc5e6c322476521e8fac9fe6bb5bfba7298283316604a5e1686d05216bf3f0d"
+    }
+  ],
+  "attribution": "Existing package NOTICE identifies R 4.6.1 subset/subscript source study; no upstream source is incorporated by this evidence"
+}

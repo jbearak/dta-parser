@@ -1,0 +1,4 @@
+Binary package: /private/tmp/dta-direct-stage4-validation/checks-e343b3b/binary-installed-library/dtatools 
+DLL: /private/tmp/dta-direct-stage4-validation/checks-e343b3b/binary-installed-library/dtatools/libs/dtatools.so 
+DLL_md5: d6903c5dc138d2adb7fc7ada9315931d 
+Six atomic storage families preserve source/result isolation.

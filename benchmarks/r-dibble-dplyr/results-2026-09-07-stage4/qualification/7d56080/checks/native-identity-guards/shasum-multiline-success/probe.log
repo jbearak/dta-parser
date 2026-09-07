@@ -1,0 +1,4 @@
+Error in checked_line("shasum", c("-a", "256", shQuote(path)), "^[0-9a-f]{64}[[:space:]]+") : 
+  Invalid or failed identity command: shasum
+Calls: vapply -> FUN -> substr -> checked_line
+Execution halted

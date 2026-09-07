@@ -1,0 +1,20 @@
+* installing *source* package ‘dtatools’ ...
+** this is package ‘dtatools’ version ‘0.7.1’
+** using staged installation
+rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew)
+** libs
+using C compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+make: `dtatools.so' is up to date.
+installing to /private/tmp/dta-direct-stage4-validation/working-library/00LOCK-dtatools/00new/dtatools/libs
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+** building package indices
+** testing if installed package can be loaded from temporary location
+** checking absolute paths in shared objects and dynamic libraries
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (dtatools)

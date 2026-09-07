@@ -1,0 +1,4 @@
+Error in checked_line("git", arguments, "^[0-9a-f]{40}$") : 
+  Invalid or failed identity command: git
+Calls: git_hash -> checked_line
+Execution halted

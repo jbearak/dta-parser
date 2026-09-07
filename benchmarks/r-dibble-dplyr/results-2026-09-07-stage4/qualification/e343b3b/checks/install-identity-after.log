@@ -1,0 +1,15 @@
+source e343b3b56a8529e9ee0ac40f8bd88beebcd2be15 
+package /private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library/dtatools 
+DLL_md5 18837c14dcd6597169dc0e3d99186dab 
+$format
+[1] 1
+
+$source_sha
+[1] "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15"
+
+$source_tree
+[1] "f12a2a1dd430636a33b7f6e953023d90d1ff2589"
+
+$archive_md5
+[1] "7905e63970f81b60c25dc40c8b801858"
+

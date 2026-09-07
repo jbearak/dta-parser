@@ -89,3 +89,15 @@ recognition, and normal result construction or assigned preparation recaptures
 plain payload as needed. The transient blank-name ALTREP used during column
 append is separate from public string-column storage. Stage 3's range,
 coercion, literal-expression and attribute-transaction boundaries remain intact.
+
+Exact Stage 4 qualification passes the correctness, allocation, native-write
+and isolated-memory gates, with a measured read tradeoff. Twelve base-R read
+cases add about 2 ms per million values after the getter and ordinary-temporary
+fixes. Three delegated filter cases add about 2.9–3.9 ms on one million rows and
+eight columns. Their repeated per-column subset planning is separate from the
+element-read costs; the shared batch gatherer avoids it. These costs remain
+visible in the [performance evidence](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4.md),
+with no claim that every ordinary read is as fast or that the differences are
+universally negligible. Stage 6 must resolve the filter regressions using its
+shared evaluator and gatherer. Stage 4's storage qualification does not complete
+direct filtering or final integrated performance acceptance.

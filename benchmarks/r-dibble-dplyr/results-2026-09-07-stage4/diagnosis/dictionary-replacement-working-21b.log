@@ -1,0 +1,9 @@
+DIAGNOSTIC ONLY source working-21b 
+DLL_md5 76381bb143563252c58c0683af8a7f7b 
+Before dictionary cache 0 
+Elapsed 0.032 
+           owned_capture             compact_copy               staged_new 
+                       8                        0                        0 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                       0                        0                        0 
+After dictionary cache 0 

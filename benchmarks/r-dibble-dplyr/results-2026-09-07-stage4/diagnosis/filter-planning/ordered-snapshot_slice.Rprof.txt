@@ -1,0 +1,23 @@
+$by.self
+                   self.time self.pct total.time total.pct
+".subset"              0.088    95.65      0.088     95.65
+"vctrs::vec_slice"     0.003     3.26      0.092    100.00
+"vec_proxy"            0.001     1.09      0.001      1.09
+
+$by.total
+                   total.time total.pct self.time self.pct
+"vctrs::vec_slice"      0.092    100.00     0.003     3.26
+"operation"             0.092    100.00     0.000     0.00
+"tryCatch"              0.092    100.00     0.000     0.00
+"tryCatchList"          0.092    100.00     0.000     0.00
+"<Anonymous>"           0.089     96.74     0.000     0.00
+".subset"               0.088     95.65     0.088    95.65
+"vec_slice_altrep"      0.088     95.65     0.000     0.00
+"vec_proxy"             0.001      1.09     0.001     1.09
+
+$sample.interval
+[1] 0.001
+
+$sampling.time
+[1] 0.092
+

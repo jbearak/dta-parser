@@ -1,0 +1,17 @@
+$by.self
+                         self.time self.pct total.time total.pct
+"ns$.gather_dta_columns"     0.032      100      0.032       100
+
+$by.total
+                         total.time total.pct self.time self.pct
+"ns$.gather_dta_columns"      0.032       100     0.032      100
+"operation"                   0.032       100     0.000        0
+"tryCatch"                    0.032       100     0.000        0
+"tryCatchList"                0.032       100     0.000        0
+
+$sample.interval
+[1] 0.001
+
+$sampling.time
+[1] 0.032
+

@@ -1,0 +1,80 @@
+[
+  {
+    "name": "workspace-fmt",
+    "command": [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "started": "2026-09-07T03:21:33.869079+00:00",
+    "seconds": 0.18485791599960066,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/workspace-fmt-working-9.log"
+  },
+  {
+    "name": "workspace-clippy",
+    "command": [
+      "cargo",
+      "clippy",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "--offline",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "started": "2026-09-07T03:21:34.054033+00:00",
+    "seconds": 7.885289208003087,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/workspace-clippy-working-9.log"
+  },
+  {
+    "name": "workspace-tests",
+    "command": [
+      "cargo",
+      "test",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "--offline"
+    ],
+    "started": "2026-09-07T03:21:41.939414+00:00",
+    "seconds": 24.31460062500264,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/workspace-tests-working-9.log"
+  },
+  {
+    "name": "workspace-doc",
+    "command": [
+      "cargo",
+      "doc",
+      "--workspace",
+      "--locked",
+      "--offline",
+      "--no-deps"
+    ],
+    "started": "2026-09-07T03:22:06.254199+00:00",
+    "seconds": 0.5565808750034194,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/workspace-doc-working-9.log"
+  },
+  {
+    "name": "workspace-package",
+    "command": [
+      "cargo",
+      "package",
+      "-p",
+      "dta-tools",
+      "--locked",
+      "--offline",
+      "--allow-dirty"
+    ],
+    "started": "2026-09-07T03:22:06.810836+00:00",
+    "seconds": 2.1405709169994225,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/workspace-package-working-9.log"
+  }
+]

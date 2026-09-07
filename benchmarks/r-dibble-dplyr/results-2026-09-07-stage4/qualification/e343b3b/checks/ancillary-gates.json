@@ -1,0 +1,138 @@
+[
+  {
+    "name": "archive-tests",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts",
+      "-p",
+      "test_check_r_package_archive.py",
+      "-v"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b",
+    "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+    "started": "2026-09-07T06:34:48.765563+00:00",
+    "seconds": 0.05467716700513847,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/archive-tests.log",
+    "sha256": "a321ea234e015ba17e1cd42878bfcb0899e68b7d4412e85d5721edaf4cc29940"
+  },
+  {
+    "name": "vendor-tests",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts",
+      "-p",
+      "test_check_r_cargo_vendor.py",
+      "-v"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b",
+    "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+    "started": "2026-09-07T06:34:48.820596+00:00",
+    "seconds": 0.09495845799392555,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/vendor-tests.log",
+    "sha256": "7c7ddbf5c6a641f20123261434c3ddb0ca894da432acb2b08e93659c3fbd0a20"
+  },
+  {
+    "name": "vendor-rebuild-tests",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts",
+      "-p",
+      "test_rebuild_r_vendor.py",
+      "-v"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b",
+    "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+    "started": "2026-09-07T06:34:48.915865+00:00",
+    "seconds": 0.04209541699674446,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/vendor-rebuild-tests.log",
+    "sha256": "a26bda261b56851b5ce9f8721adbfb7ef74490fbb47e7dc912cb533603bee47e"
+  },
+  {
+    "name": "cargo-vendor",
+    "command": [
+      "sh",
+      "scripts/check-r-cargo-vendor.sh"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b",
+    "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+    "started": "2026-09-07T06:34:48.958262+00:00",
+    "seconds": 0.3015460000024177,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/cargo-vendor.log",
+    "sha256": "d2f91f77d5bdd8552331c0b457f2d0aab6c9eccb0a00d29a47f6c7294216720b"
+  },
+  {
+    "name": "rust-source-hash",
+    "command": [
+      "sh",
+      "scripts/test-rust-source-hash.sh"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b",
+    "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+    "started": "2026-09-07T06:34:49.260192+00:00",
+    "seconds": 2.7285626249940833,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/rust-source-hash.log",
+    "sha256": "64412b90a734c68397b590ede544730f4b115e07f82cedc84ae791452eab888c"
+  },
+  {
+    "name": "corpus-framework",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-corpus-performance/test-framework.R"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b",
+    "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+    "started": "2026-09-07T06:34:51.989233+00:00",
+    "seconds": 0.13754387499648146,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/corpus-framework.log",
+    "sha256": "a499c3b4bd2e3d8b7bc2046a17390505991ee20afbc91aac5d96864fde7c028b"
+  },
+  {
+    "name": "haven-helper-interop",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "scripts/test-haven-helper-interop.R"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b",
+    "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+    "started": "2026-09-07T06:34:52.127075+00:00",
+    "seconds": 0.25379537499975413,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/haven-helper-interop.log",
+    "sha256": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264"
+  },
+  {
+    "name": "labelled-interop",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "scripts/test-labelled-interop.R"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-e343b3b",
+    "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+    "started": "2026-09-07T06:34:52.381218+00:00",
+    "seconds": 1.548078958003316,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/checks-e343b3b/labelled-interop.log",
+    "sha256": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81"
+  }
+]

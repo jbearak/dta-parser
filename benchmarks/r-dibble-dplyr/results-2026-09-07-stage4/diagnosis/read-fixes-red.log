@@ -1,0 +1,50 @@
+owned-atoms: ....................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................1.........2...3...4...5...6.....................................
+
+══ Failed ══════════════════════════════════════════════════════════════════════
+── 1. Failure ('test-owned-atoms.R:514:9'): DTA and Arrow writer pointers surviv
+Expected `actual` to be identical to `expected`.
+Differences:
+`actual`:   "changed" "changed" "changed"
+`expected`: "alpha"   "beta"    "alpha"  
+
+
+── 2. Failure ('test-owned-atoms.R:526:9'): DTA planning retains already UTF-8 o
+Expected `owned_atom_info(plan[[3L]])$backing` to be identical to `before$backing`.
+Differences:
+`actual` is NULL
+`expected` is a character vector ('0xb4960dbd8')
+
+
+── 3. Failure ('test-owned-atoms.R:526:9'): DTA planning retains already UTF-8 o
+Expected `owned_atom_info(plan[[3L]])$backing` to be identical to `before$backing`.
+Differences:
+`actual` is NULL
+`expected` is a character vector ('0xb4ad9c0f8')
+
+
+── 4. Failure ('test-owned-atoms.R:542:9'): Arrow readers adopt fresh logical an
+Expected `is.null(owned_atom_info(result$x))` to be FALSE.
+Differences:
+`actual`:   TRUE 
+`expected`: FALSE
+
+
+── 5. Failure ('test-owned-atoms.R:542:9'): Arrow readers adopt fresh logical an
+Expected `is.null(owned_atom_info(result$x))` to be FALSE.
+Differences:
+`actual`:   TRUE 
+`expected`: FALSE
+
+
+── 6. Failure ('test-owned-atoms.R:542:9'): Arrow readers adopt fresh logical an
+Expected `is.null(owned_atom_info(result$x))` to be FALSE.
+Differences:
+`actual`:   TRUE 
+`expected`: FALSE
+
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+Don't worry, you'll get it.
+Error:
+! Test failures.
+Execution halted

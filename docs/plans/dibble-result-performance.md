@@ -401,6 +401,19 @@ PRs 6 and 7 reuse that tested evaluator rather than creating new masks per verb.
 Preserve valid unsupported column classes through the established fallback;
 full compatibility does not require accepting inputs the package already rejects.
 
+Stage 4 qualification identifies a specific Stage 6 performance requirement.
+The still-delegated `filter()` repeats base subscript planning for each owned
+logical, factor and ordered-factor column; ordinary logical results also require
+capture at the result boundary. The
+[filter diagnosis](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/diagnosis/filter-planning/filter-planning-diagnosis-findings.md)
+separates those costs from predicate evaluation and measures the existing batch
+gatherer. Stage 6 must replace that delegation with the shared evaluator's row
+plan, preserve predicate/grouping and isolation semantics, and resolve the three
+recorded filter regressions in fresh paired measurements before epic acceptance.
+Stage 4 storage qualification does not complete this criterion or establish
+broad read-performance acceptance. Its twelve measured per-element read costs
+also remain visible in final integrated performance qualification.
+
 PR 8 reuses public vctrs matching/casting and the package gather/assembly module.
 Do not substitute `dta_merge()` for a dplyr join: suffixes, coalescing, key
 missingness, relationship checks, non-equi joins, and output order have their

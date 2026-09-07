@@ -1,0 +1,64 @@
+DEVELOPMENT ONLY, minimized getter experiment; no writes or subset methods
+                                                                   accessor_probe.c 
+                                                 "671330890932a24a6c148cf814856c1e" 
+                                                                  accessor_probe.so 
+                                                 "afb32fb482116390c4c4dbdd6c14bb78" 
+                                                                   accessor_probe.R 
+                                                 "ed9abfc6f930af141db5bb1f74ee0ffc" 
+/private/tmp/dta-direct-stage4-validation/working-library/dtatools/libs/dtatools.so 
+                                                 "0481edb4704ad346098f59ef6a3a6a3f" 
+        kind  operation        variant           ms   bytes
+1    logical nonmissing       ordinary 1.0170050009 8000096
+2    logical nonmissing     production 4.2757670017 8000096
+3    logical nonmissing     record_elt 4.2742909936 8000096
+4    logical nonmissing record_pointer 4.2683869979 8000096
+5    logical nonmissing     direct_elt 3.1775410025 8000096
+6    logical nonmissing direct_pointer 3.1962779976 8000096
+7    logical  character       ordinary 2.8972649961 8000048
+8    logical  character     production 6.3746390006 8000048
+9    logical  character     record_elt 6.2852999981 8000048
+10   logical  character record_pointer 6.1225300014 8000048
+11   logical  character     direct_elt 4.7688330014 8000048
+12   logical  character direct_pointer 5.2463190004 8000048
+13   logical    integer       ordinary 0.2431710018 4000048
+14   logical    integer     production 3.5082059985 4000048
+15   logical    integer     record_elt 3.5100509995 4000048
+16   logical    integer record_pointer 3.5073449981 4000048
+17   logical    integer     direct_elt 2.4142030015 4000048
+18   logical    integer direct_pointer 2.4394180000 4000048
+19    factor nonmissing       ordinary 1.0129049988 8000096
+20    factor nonmissing     production 4.2750700013 8000096
+21    factor nonmissing     record_elt 4.2742499936 8000096
+22    factor nonmissing record_pointer 4.2702319988 8000096
+23    factor nonmissing     direct_elt 3.2183770018 8000096
+24    factor nonmissing direct_pointer 3.2034120013 8000096
+25    factor  character       ordinary 2.7649170006 8000048
+26    factor  character     production 5.6822309998 8000048
+27    factor  character     record_elt 5.7261830007 8000048
+28    factor  character record_pointer 5.7422960017 8000048
+29    factor  character     direct_elt 4.6378789993 8000048
+30    factor  character direct_pointer 4.6689980009 8000048
+31    factor     any_na       ordinary 0.2483780045 4000048
+32    factor     any_na     production 3.5068939978 4000048
+33    factor     any_na     record_elt 3.5054180044 4000048
+34    factor     any_na record_pointer 3.5091899990 4000048
+35    factor     any_na     direct_elt 2.4163759954 4000048
+36    factor     any_na direct_pointer 2.4308080028 4000048
+37 character nonmissing       ordinary 1.0139299993 8000096
+38 character nonmissing     production 4.4897869957 8000096
+39 character nonmissing     record_elt 4.7091369997 8000096
+40 character nonmissing record_pointer 4.2648200033 8000096
+41 character nonmissing     direct_elt 3.3975469996 8000096
+42 character nonmissing direct_pointer 3.3952919985 8000096
+43 character  character       ordinary 0.0001640001       0
+44 character  character     production 0.0001230001       0
+45 character  character     record_elt 0.0001640001       0
+46 character  character record_pointer 0.0001640001       0
+47 character  character     direct_elt 0.0001230001       0
+48 character  character direct_pointer 0.0001230001       0
+49 character     any_na       ordinary 0.2854420018       0
+50 character     any_na     production 3.7103360009       0
+51 character     any_na     record_elt 3.7106230011       0
+52 character     any_na record_pointer 3.7105410011       0
+53 character     any_na     direct_elt 2.4029280030       0
+54 character     any_na direct_pointer 2.6199819986       0

@@ -1,0 +1,126 @@
+{
+  "source_sha": "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+  "package_tree": "f12a2a1dd430636a33b7f6e953023d90d1ff2589",
+  "source_tree": "91b23ab19f0257ff952fdba42b54d0edfb71bb63",
+  "source_directory": "/private/tmp/dta-direct-stage4-validation/source-e343b3b",
+  "source_manifest": "/private/tmp/dta-direct-stage4-validation/source-e343b3b-manifest.json",
+  "source_manifest_sha256": "92f449b362d4888993e529f9994067e8b4e687a13788c4463df4419905227167",
+  "archive_sha256": "da56b2d61bbfeca9e9994d88bdf3c1d38366160f9b142c2240ca4b683f738dce",
+  "archived_files_rechecked": 1060,
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+  "dll_md5": "18837c14dcd6597169dc0e3d99186dab",
+  "updated_utc": "2026-09-07T06:42:48.128634+00:00",
+  "status": "All local gates pass; paired read/performance acceptance and external gates pending",
+  "gates": {
+    "required_conformance": {
+      "exit_code": 0,
+      "typescript_fixtures": 22,
+      "decoded_cells": 32085,
+      "deterministic_native_cases": 10,
+      "canonical_oracle_cases": 1,
+      "standard_r_check": "3 WARNINGs, 2 NOTEs; no errors; full testthat passed",
+      "log": "conformance.log"
+    },
+    "roxygen": {
+      "exit_code": 0,
+      "pinned_version": "8.1.0",
+      "man_unchanged": true,
+      "log": "roxygen.log"
+    },
+    "haven_conformance": {
+      "exit_code": 0,
+      "skips": 0,
+      "log": "haven-conformance.log"
+    },
+    "ancillary": "ancillary-gates.json",
+    "archives": "archive-gates.json",
+    "notice": "archive-notice-verification.json",
+    "binary_smoke": {
+      "exit_code": 0,
+      "six_storage_families": true,
+      "log": "binary-smoke.log"
+    },
+    "bridge": {
+      "manifest": "bridge-gates-vendor-prepared.json",
+      "tests": 18,
+      "exact_archived_source": true
+    },
+    "workspace": {
+      "manifest": "workspace-unchanged-proof.json",
+      "tests": 278,
+      "reused": "Five initial workspace gates with unchanged Cargo.toml/Cargo.lock/dta-tools Git objects"
+    },
+    "native_identity_guards": {
+      "manifest": "native-identity-guards/results.json",
+      "cases": 8
+    },
+    "native": {
+      "manifest": "/private/tmp/dta-direct-stage4-validation/native-e343b3b/qualification.json",
+      "original_assertions": 159,
+      "readiness_assertions": 15,
+      "atom_cases": 18,
+      "rename_gate": "PASS",
+      "original_runner_unchanged": true,
+      "complete_atom_case_set_verified": true
+    }
+  },
+  "preserved_contract_blobs": [
+    {
+      "path": "r-package/dtatools/NAMESPACE",
+      "base_blob": "94891fb5c749b5d909c106d6242dcb684e1b5be7",
+      "final_blob": "94891fb5c749b5d909c106d6242dcb684e1b5be7"
+    },
+    {
+      "path": "r-package/dtatools/DESCRIPTION",
+      "base_blob": "ef01e9a1b410768c2105f93c9ebe964ac0f160d6",
+      "final_blob": "ef01e9a1b410768c2105f93c9ebe964ac0f160d6"
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/run.R",
+      "base_blob": "24b1102fa27a6f40720a7e23a69a517d18b50602",
+      "final_blob": "24b1102fa27a6f40720a7e23a69a517d18b50602"
+    }
+  ],
+  "failed_attempts": [
+    {
+      "manifest": "bridge-gates.json",
+      "reason": "Direct Cargo check before generated vendor directory was prepared; exact verified tracked vendor archive then extracted and all three bridge gates passed"
+    },
+    {
+      "directory": "/private/tmp/dta-direct-stage4-validation/native-976cc40",
+      "reason": "Prior source dictionary timing failure, fixed by reviewed caller-frame R fallback changes; original failure preserved"
+    }
+  ],
+  "log_sha256": {
+    "bridge-check-vendor-prepared.log": "460876b4207af89e2241fd47ba6878532f51f0539b6875bfaf34d5a35c3cfc62",
+    "r-binary.log": "1eadedfa73b2a87ec5dc2cc8ff2c8821f14742a1cb71e82c44dcea09aa78cb7d",
+    "archive-tests.log": "a321ea234e015ba17e1cd42878bfcb0899e68b7d4412e85d5721edaf4cc29940",
+    "r-archive.log": "4c3587b6438c2471618364e967342b11f88e0d0484fb6f8f64e2ce8a0b3b1351",
+    "roxygen.log": "17a698091744ee60a8d83d2a316f1e9c1e181e429f6ca584cb52ac0c68684a96",
+    "bridge-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bridge-check.log": "cd26975b9e7fbe0e29a18f17d56079faab58d93bc4d9fbfaac8554221c6cb049",
+    "rust-source-hash.log": "64412b90a734c68397b590ede544730f4b115e07f82cedc84ae791452eab888c",
+    "bridge-tests-vendor-prepared.log": "33de446cdfa70d8068cc4d9d3dbd2a7e4c93f7d4a7085ba77433e1bbb7ca6fa3",
+    "r-binary-reinstall.log": "15a92ac9a0c29d972173787847d17aa5bcae856ffea9f6f7acf2144226f8f7e8",
+    "corpus-framework.log": "a499c3b4bd2e3d8b7bc2046a17390505991ee20afbc91aac5d96864fde7c028b",
+    "vendor-tests.log": "7c7ddbf5c6a641f20123261434c3ddb0ca894da432acb2b08e93659c3fbd0a20",
+    "install-identity-after.log": "cf8540d2a1c29052df42f4e727226ce10d0533e453a55a789a249977bde4e2d2",
+    "haven-conformance.log": "9f2478e81235409b338fe7248baec50fcdc565af8cba9938996a0f15528c5465",
+    "labelled-interop.log": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81",
+    "conformance.log": "41800eb7b6f1258c9574f6aec20a4e68fcea016749ae2ffb25ce1b3065e616ce",
+    "haven-helper-interop.log": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264",
+    "bridge-fmt-vendor-prepared.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cargo-vendor.log": "d2f91f77d5bdd8552331c0b457f2d0aab6c9eccb0a00d29a47f6c7294216720b",
+    "vendor-rebuild-tests.log": "a26bda261b56851b5ce9f8721adbfb7ef74490fbb47e7dc912cb533603bee47e",
+    "binary-smoke.log": "4157243a6e7ea15c25a04872be22549adda1f7909c69fa67d6b01c3ca081a977",
+    "r-build.log": "488b621e48f55f549657abce9a1bcc83b5d8e5c4607f1aefb503f2dfdbdd0f8e",
+    "native-identity-guards/git-failed-empty/probe.log": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+    "native-identity-guards/git-failed-valid-hash/probe.log": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+    "native-identity-guards/shasum-failed-valid-hash/probe.log": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a",
+    "native-identity-guards/shasum-failed-empty/probe.log": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a",
+    "native-identity-guards/shasum-malformed-success/probe.log": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a",
+    "native-identity-guards/git-multiline-success/probe.log": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+    "native-identity-guards/git-malformed-success/probe.log": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+    "native-identity-guards/shasum-multiline-success/probe.log": "c6896818b261146cec728cca5bd04201c53b3986da569779738c64c75963e25a"
+  }
+}

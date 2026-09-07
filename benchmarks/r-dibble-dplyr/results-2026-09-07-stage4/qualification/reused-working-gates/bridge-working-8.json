@@ -1,0 +1,53 @@
+[
+  {
+    "name": "bridge-fmt",
+    "command": [
+      "cargo",
+      "fmt",
+      "--manifest-path",
+      "rust/Cargo.toml",
+      "--",
+      "--check"
+    ],
+    "started": "2026-09-07T03:18:51.707586+00:00",
+    "seconds": 0.07616687499830732,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/bridge-fmt-working-8.log"
+  },
+  {
+    "name": "bridge-check",
+    "command": [
+      "cargo",
+      "check",
+      "--manifest-path",
+      "rust/Cargo.toml",
+      "--config",
+      "rust/cargo-config.toml",
+      "--locked",
+      "--offline",
+      "--all-targets"
+    ],
+    "started": "2026-09-07T03:18:51.783820+00:00",
+    "seconds": 7.0014955419974285,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/bridge-check-working-8.log"
+  },
+  {
+    "name": "bridge-tests",
+    "command": [
+      "cargo",
+      "test",
+      "--manifest-path",
+      "rust/Cargo.toml",
+      "--config",
+      "rust/cargo-config.toml",
+      "--locked",
+      "--offline",
+      "--all-targets"
+    ],
+    "started": "2026-09-07T03:18:58.785395+00:00",
+    "seconds": 7.562279457997647,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/bridge-tests-working-8.log"
+  }
+]

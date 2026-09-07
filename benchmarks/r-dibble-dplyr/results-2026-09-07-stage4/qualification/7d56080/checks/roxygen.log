@@ -1,0 +1,190 @@
+Loading required package: dplyr
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: pillar
+
+Attaching package: ‘pillar’
+
+The following object is masked from ‘package:dplyr’:
+
+    dim_desc
+
+Loading required package: readr
+Loading required package: rlang
+Loading required package: tibble
+Loading required package: tidyselect
+Loading required package: vctrs
+
+Attaching package: ‘vctrs’
+
+The following object is masked from ‘package:tibble’:
+
+    data_frame
+
+The following object is masked from ‘package:dplyr’:
+
+    data_frame
+
+✖ dibble.R:11: @details Could not resolve link to topic "set_var_format" in the
+  dependencies or base packages..
+ℹ If you haven't documented "set_var_format" yet, or just changed its name,
+  this is normal. Once "set_var_format" is documented, this warning goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ dibble.R:11: @details Could not resolve link to topic "set_dta_metadata" in
+  the dependencies or base packages..
+ℹ If you haven't documented "set_dta_metadata" yet, or just changed its name,
+  this is normal. Once "set_dta_metadata" is documented, this warning goes
+  away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ dta-metadata.R:3: @description Could not resolve link to topic
+  "mutation-containers" in the dependencies or base packages..
+ℹ If you haven't documented "mutation-containers" yet, or just changed its
+  name, this is normal. Once "mutation-containers" is documented, this warning
+  goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ egen.R:3: @description Could not resolve link to topic "mutation-containers"
+  in the dependencies or base packages..
+ℹ If you haven't documented "mutation-containers" yet, or just changed its
+  name, this is normal. Once "mutation-containers" is documented, this warning
+  goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ keep-drop.R:3: @description Could not resolve link to topic
+  "mutation-containers" in the dependencies or base packages..
+ℹ If you haven't documented "mutation-containers" yet, or just changed its
+  name, this is normal. Once "mutation-containers" is documented, this warning
+  goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ labels.R:3: @description Could not resolve link to topic
+  "mutation-containers" in the dependencies or base packages..
+ℹ If you haven't documented "mutation-containers" yet, or just changed its
+  name, this is normal. Once "mutation-containers" is documented, this warning
+  goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ labels.R:79: @section Could not resolve link to topic "set_dta_metadata" in
+  the dependencies or base packages..
+ℹ If you haven't documented "set_dta_metadata" yet, or just changed its name,
+  this is normal. Once "set_dta_metadata" is documented, this warning goes
+  away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ mutate-data.R:3: @description Could not resolve link to topic
+  "mutation-containers" in the dependencies or base packages..
+ℹ If you haven't documented "mutation-containers" yet, or just changed its
+  name, this is normal. Once "mutation-containers" is documented, this warning
+  goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ mutate-data.R:3: @description Could not resolve link to topic
+  "set_var_format" in the dependencies or base packages..
+ℹ If you haven't documented "set_var_format" yet, or just changed its name,
+  this is normal. Once "set_var_format" is documented, this warning goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ mutate-data.R:3: @description Could not resolve link to topic
+  "column_capacity" in the dependencies or base packages..
+ℹ If you haven't documented "column_capacity" yet, or just changed its name,
+  this is normal. Once "column_capacity" is documented, this warning goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ mutate-data.R:3: @description Could not resolve link to topic
+  "can_add_columns" in the dependencies or base packages..
+ℹ If you haven't documented "can_add_columns" yet, or just changed its name,
+  this is normal. Once "can_add_columns" is documented, this warning goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ output-container.R:197: @details Could not resolve link to topic
+  "column_capacity" in the dependencies or base packages..
+ℹ If you haven't documented "column_capacity" yet, or just changed its name,
+  this is normal. Once "column_capacity" is documented, this warning goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ output-container.R:197: @details Could not resolve link to topic
+  "can_add_columns" in the dependencies or base packages..
+ℹ If you haven't documented "can_add_columns" yet, or just changed its name,
+  this is normal. Once "can_add_columns" is documented, this warning goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ output-container.R:223: @seealso Could not resolve link to topic
+  "set_dta_metadata" in the dependencies or base packages..
+ℹ If you haven't documented "set_dta_metadata" yet, or just changed its name,
+  this is normal. Once "set_dta_metadata" is documented, this warning goes
+  away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ reorder-dta-rows.R:3: @description Could not resolve link to topic
+  "mutation-containers" in the dependencies or base packages..
+ℹ If you haven't documented "mutation-containers" yet, or just changed its
+  name, this is normal. Once "mutation-containers" is documented, this warning
+  goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ reserve-columns.R:3: @description Could not resolve link to topic
+  "mutation-containers" in the dependencies or base packages..
+ℹ If you haven't documented "mutation-containers" yet, or just changed its
+  name, this is normal. Once "mutation-containers" is documented, this warning
+  goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ reserve-columns.R:11: @details Could not resolve link to topic
+  "column_capacity" in the dependencies or base packages..
+ℹ If you haven't documented "column_capacity" yet, or just changed its name,
+  this is normal. Once "column_capacity" is documented, this warning goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ reserve-columns.R:11: @details Could not resolve link to topic
+  "can_add_columns" in the dependencies or base packages..
+ℹ If you haven't documented "can_add_columns" yet, or just changed its name,
+  this is normal. Once "can_add_columns" is documented, this warning goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ set-metadata.R:44: @description Could not resolve link to topic
+  "mutation-containers" in the dependencies or base packages..
+ℹ If you haven't documented "mutation-containers" yet, or just changed its
+  name, this is normal. Once "mutation-containers" is documented, this warning
+  goes away.
+ℹ Make sure that the name of the topic is spelled correctly.
+ℹ Always list the linked package as a dependency.
+ℹ Alternatively, you can fully qualify the link with a package name.
+✖ Skipping NAMESPACE
+  (<file:///private/tmp/dta-direct-stage4/r-package/dtatools/NAMESPACE>)
+ℹ It already exists and was not generated by roxygen2.
+✖ Skipping read_dta.Rd
+  (<file:///private/tmp/dta-direct-stage4/r-package/dtatools/man/read_dta.Rd>)
+ℹ It already exists and was not generated by roxygen2.
+✖ Skipping recode.Rd
+  (<file:///private/tmp/dta-direct-stage4/r-package/dtatools/man/recode.Rd>)
+ℹ It already exists and was not generated by roxygen2.
+roxygen check: PASS (man/ matches the roxygen blocks)

@@ -1,0 +1,46 @@
+[
+  {
+    "name": "identity-before",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "-e",
+      "source(\"benchmarks/r-dibble-dplyr/helpers.R\"); lib <- \"/private/tmp/dta-direct-stage4-validation/candidate-7d56080-library\"; sha <- \"7d56080f3e97bc4d73a848e363d729767b9629c0\"; validate_benchmark_install(lib,sha); .libPaths(c(lib,.libPaths())); library(dtatools); package <- normalizePath(file.path(lib,\"dtatools\")); dll <- normalizePath(file.path(package,\"libs\",paste0(\"dtatools\",.Platform$dynlib.ext))); stopifnot(identical(normalizePath(find.package(\"dtatools\")),package), identical(normalizePath(getLoadedDLLs()[[\"dtatools\"]][[\"path\"]]),dll)); cat(\"source\",sha,\"\npackage\",package,\"\ndll\",dll,\"\nDLL MD5\",tools::md5sum(dll),\"\n\"); validate_benchmark_install(lib,sha)"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "started": "2026-09-07T03:37:25.601207+00:00",
+    "seconds": 0.20829416700144066,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/native-7d56080/identity-before.log"
+  },
+  {
+    "name": "original-native",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage4-validation/source-7d56080/benchmarks/r-reference-mutation/run.R",
+      "--markdown=/private/tmp/dta-direct-stage4-validation/native-7d56080/original-native.md"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4-validation/source-7d56080",
+    "started": "2026-09-07T03:37:25.809838+00:00",
+    "seconds": 8.336369167001976,
+    "exit_code": 0,
+    "log": "/private/tmp/dta-direct-stage4-validation/native-7d56080/original-native.log"
+  },
+  {
+    "name": "native-atoms",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-7d56080-library",
+      "7d56080f3e97bc4d73a848e363d729767b9629c0",
+      "/private/tmp/dta-direct-stage4-validation/native-7d56080/atoms"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage4",
+    "started": "2026-09-07T03:37:34.146540+00:00",
+    "seconds": 0.3352036249998491,
+    "exit_code": 1,
+    "log": "/private/tmp/dta-direct-stage4-validation/native-7d56080/native-atoms.log"
+  }
+]

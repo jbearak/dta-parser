@@ -93,8 +93,7 @@ checks. The required R check retained the established three warnings and two
 notes. The native atom supplement exposed a large-factor fixture using a foreign
 R metadata wrapper; runner-only commit `80e636e` adds genuine ordinary factor
 construction and explicit ownership preconditions without changing budgets.
-Its corrected full supplement was pending at that point and subsequently passed
-on `e343b3b`, as recorded below.
+Its corrected full supplement remains pending on the final source.
 
 The [initial Stage 4 report](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4.md)
 and 157 immutable evidence artifacts are committed as `ca6b678e`. Both nested
@@ -162,44 +161,10 @@ reference and allocates 44,017,136 bytes, matching the earlier allocation.
 Those logs are explicitly development evidence, separate from `976cc40`'s
 failed exact run.
 
-Both follow-up reviews are clean at `e343b3b56a8529e9ee0ac40f8bd88beebcd2be15`,
-package tree `f12a2a1dd430636a33b7f6e953023d90d1ff2589`. A fresh archive install
-passes every local gate, including the unchanged 159 native assertions and 15
-readiness checks, all 18 integer/factor allocation cases, and the saved rename
-gate. Exact R check retains the established three warnings and two notes. The
-final bridge has 18 passing tests; unchanged core workspace gates are retained
-with a Git-object equality proof. Guarded replays fail on `7d56080` and pass on
-the final source for the writer callback and foreign constructor defects.
-The [qualification archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/qualification/README.md)
-records exact identities, original failures and gate scopes. The
-[diagnosis archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/diagnosis/README.md)
-retains prototype source, raw profiles, corrected fixtures and stale-build
-disclosure. Both nested evidence reviews clear the 252-file qualification and
-diagnosis snapshot, including the 247 original copied artifacts. Later filter
-diagnosis and its staged disposition have a separate review scope.
-
-The exact `e343b3b` atomic matrix passes its value, allocation and memory guards.
-Both the original and fresh baseline comparisons flag the same 15 reads at one
-million rows. Twelve involve per-element missingness, aggregation or coercion work; three
-are `filter()` on logical, factor and ordered-factor tables. The filter predicate
-does not read source columns, so those three costs require a separate diagnosis
-of delegated slicing and result capture. The later
-[21-case diagnosis](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4/diagnosis/filter-planning/filter-planning-diagnosis-findings.md)
-measures owned snapshot slicing at 4.68–4.78 ms, ordinary slicing at 1.37–1.41 ms,
-and the existing validated batch at 1.60–1.64 ms. Predicate overhead is comparable;
-logical closure adds a 16 MB capture, while factor closure captures no payload.
-The initial failed benchmark-result setup and sampling/trace limitations remain
-preserved. No package change follows this diagnosis.
-
-Root's remaining owned-double and heap matrices pass, with no owned-double read
-threshold flags. Stage 4 storage may advance on its correctness, allocation,
-native and memory qualification, while the three filter regressions remain an
-explicit required Stage 6 criterion before epic acceptance. The twelve
-per-element costs remain visible measured tradeoffs, with no claim of broad
-read-performance acceptance or universally negligible slowdown. Stage 4's final
-evidence review, PR, latest-head external review/CI and normal merge are still
-pending; all subsequent stages and final integrated performance qualification
-remain required.
+These edits require focused/full qualification, both independent actual-diff
+reviews and a new committed-source comparison. The latest development build is
+not a final measured source. Stage 4's PR, latest-head external review/CI and
+normal merge are still pending; all subsequent stages remain required.
 
 ### Stage 3 accepted qualification
 
