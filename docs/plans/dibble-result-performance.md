@@ -1,8 +1,9 @@
 # Direct dibble operations and optional dplyr
 
-Status: stages 1 and 2 merged as PRs #192 and #193 on 2026-09-06 for
-[issue #172](https://github.com/jbearak/dta-parser/issues/172). Stage 3 is active
-from `fd069a36832ed7c1bdedeed52a4281ecabb36e25`; stages 4 through 9 remain pending. See the
+Status: stages 1 through 4 merged as PRs #192 through #195, with supporting
+Stage 4 evidence PRs #196 through #199, for
+[issue #172](https://github.com/jbearak/dta-parser/issues/172). Stage 5 is active
+from `f622f1ddba04b2bb7ac07415faccf2b417aab0e6`; stages 6 through 9 remain pending. See the
 [progress record](dibble-result-performance-progress.md) for current heads,
 checks, review and merge state. The chosen architecture is package-owned direct
 operations. The starting main was `5ad44406f9b80db81789dcf7b7e1756c28502559`,

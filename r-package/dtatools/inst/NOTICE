@@ -56,7 +56,8 @@ Adapted from dplyr 1.2.1:
     R/mutate.R: mutate_cols, mutate_col, mutate_keep and mutate_relocate policies
     R/transmute.R: transmute.data.frame and check_transmute_args policies
     R/by.R: compute_by and compute_by_groups ordering policies
-    R/group-by.R: group_by_prepare and add_computed_columns
+    R/group-by.R: group_by_prepare, add_computed_columns,
+      ungroup.grouped_df, ungroup.rowwise_df and ungroup.data.frame policies
     R/rowwise.R: rowwise.data.frame and rowwise.grouped_df
     src/chop.cpp: zero-row list/list-of prototype rule
   Destinations: R/dibble-expressions.R, R/dibble-dplyr-context.R and the

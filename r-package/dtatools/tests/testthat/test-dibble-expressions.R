@@ -270,7 +270,9 @@ test_that("duplicate unpacked names and grouped warning aggregation retain their
         })
     expect_length(warnings, 1L)
     expect_match(conditionMessage(warnings[[1L]]), "3 warnings")
-    expect_length(dplyr::last_dplyr_warnings(Inf), 3L)
+    records <- utils::tail(dplyr::last_dplyr_warnings(Inf), 3L)
+    expect_length(records, 3L)
+    expect_true(all(vapply(records, function(w) grepl("sample", conditionMessage(w)), logical(1))))
 })
 
 
@@ -335,4 +337,53 @@ test_that("within-call captures keep their original generation and group", {
     # This promise was forced during evaluation, so it now holds a saved value.
     expect_identical(as.double(get("g1", promises)), c(1, 2))
     expect_error(dplyr::ungroup(input, renamed = g), "Can't rename")
+})
+
+
+test_that("expired capture masks release source payloads on success and failure", {
+    for (kind in c("closure", "pronoun", "quosure", "promise")) {
+        for (fail in c(FALSE, TRUE)) {
+            probe <- function() {
+                sentinel <- new.env(parent = emptyenv())
+                weak <- rlang::new_weakref(sentinel)
+                x <- dta_double(1:3)
+                attr(x, "capture_lifetime") <- sentinel
+                groups <- list(rows = list(1:3), names = character(),
+                    keys = tibble::new_tibble(list(), nrow = 1L), type = "ungrouped")
+                mask <- dtatools:::.new_dibble_expression_mask(list(x = x), groups, 3L, "mutate()")
+                if (kind == "promise") {
+                    saved <- new.env(parent = emptyenv())
+                    capture <- function(value) delayedAssign("value", value,
+                        eval.env = environment(), assign.env = saved)
+                    mask$evaluate(rlang::quo(capture(x)), 1L)
+                    resolve <- function() saved$value
+                } else {
+                    q <- switch(kind, closure = rlang::quo(function() x),
+                        pronoun = rlang::quo(.data), quosure = rlang::quo(rlang::quo(x)))
+                    saved <- mask$evaluate(q, 1L)
+                    resolve <- switch(kind, closure = saved,
+                        pronoun = function() saved$x, quosure = function() rlang::eval_tidy(saved))
+                }
+                if (fail) expect_error(mask$evaluate(rlang::quo(stop("failure")), 1L), "failure")
+                mask$forget()
+                rm(sentinel, x, groups, mask)
+                list(weak = weak, resolve = resolve)
+            }
+            out <- probe()
+            invisible(gc()); invisible(gc())
+            expect_null(rlang::wref_key(out$weak))
+            expect_error(out$resolve(), "Obsolete data mask")
+        }
+    }
+})
+
+
+test_that("ungroup preserves raw row names on an already ungrouped dibble", {
+    data <- dibble(x = 1:2)
+    attr(data, "row.names") <- c("r1", "r2")
+    result <- dplyr::ungroup(data)
+    expect_identical(.row_names_info(result, 0L), c("r1", "r2"))
+    expect_true(is_dibble(result))
+    repl(result, x = 99, where = 1L)
+    expect_identical(as.double(data$x), c(1, 2))
 })

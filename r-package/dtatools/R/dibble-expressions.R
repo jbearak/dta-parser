@@ -31,6 +31,7 @@
 # call-local lifetime invalidates deferred reads and releases all retained
 # generation payloads on normal return, errors and interrupts.
 .new_dibble_expression_mask <- function(columns, groups, size, caller) {
+    force(columns); force(groups); force(size); force(caller)
     if (is.null(names(columns)) || anyNA(names(columns)) ||
         any(!nzchar(names(columns))) || anyDuplicated(names(columns))) {
         rlang::abort("Can't transform a data frame with missing or duplicate names.")
@@ -53,6 +54,7 @@
         state$generations[[length(state$generations) + 1L]] <- rlang::new_weakref(generation)
     }
     for (name in names(columns)) add(name, columns[[name]])
+    columns <- NULL
     obsolete <- function(name) {
         rlang::abort(c("Obsolete data mask.",
             x = paste0("Too late to resolve `", name, "` after the end of `dplyr::", caller, "`."),
@@ -74,6 +76,7 @@
                     } else .gather_dta_columns(list(value = value), index)[[1L]]
                 })
         }
+        if (id == -1L) return(generation$chunks)
         # Expansion before the first group sees empty column slices.
         if (id == 0L) return(vctrs::vec_slice(generation$value, integer()))
         generation$chunks[[id]]
@@ -142,14 +145,14 @@
         }
         state$generations <- state$current <- list()
         state$mask <- NULL
+        groups <<- rows <<- NULL
     }
     list(helpers = helpers, evaluate = evaluate, add = add,
          remove = function(name) { state$current[[name]] <- NULL },
          values = values, rows = rows, groups = groups,
          resolve = function(name) {
              generation <- state$current[[name]]
-             read(generation, name, 0L)
-             generation$chunks
+             read(generation, name, -1L)
          },
          used = function() vapply(state$current, function(x) x$used, logical(1)),
          current_id = function() state$id,
@@ -359,7 +362,9 @@
     metadata$class <- setdiff(metadata$class, c("grouped_df", "rowwise_df"))
     metadata$groups <- NULL
     metadata$names <- names(columns)
-    metadata$row.names <- .set_row_names(nrow(data))
+    metadata$row.names <- if (identical(context$caller, "ungroup()") &&
+        !inherits(data, c("grouped_df", "rowwise_df"))) context$metadata$row.names else
+        .set_row_names(nrow(data))
     attributes(columns) <- metadata
     .finish_dibble_result(context, columns, grouping = function(result) {
         class(result) <- final_classes

@@ -14,7 +14,7 @@ provenance <- list(format = 1L, source_sha = source_sha, source_tree = source_tr
 saveRDS(provenance, sidecar)
 validate_benchmark_install(library_path, source_sha)
 .libPaths(c(library_path, .libPaths()))
-if (!identical(as.character(getRversion()), "4.6.1")) stop("Unexpected baseline runtime")
+if (!identical(as.character(getRversion()), "4.6.1")) stop("Unexpected candidate runtime")
 namespace <- loadNamespace("dtatools", lib.loc = library_path)
 if (!identical(normalizePath(getNamespaceInfo(namespace, "path")), normalizePath(package_path))) {
   stop("Loaded the wrong dtatools installation")
@@ -24,8 +24,8 @@ value <- dtatools::dibble(x = 1:2)
 if (!inherits(value, "dibble") || !identical(as.double(value$x), c(1, 2))) stop("Tiny baseline load check failed")
 validate_benchmark_install(library_path, source_sha)
 dll <- getLoadedDLLs()[["dtatools"]][["path"]]
-if (!startsWith(normalizePath(dll), paste0(normalizePath(package_path), "/"))) stop("Loaded DLL is outside baseline")
-cat("PASS fresh baseline", source_sha, "package tree", source_tree, "exports 106\n")
+if (!startsWith(normalizePath(dll), paste0(normalizePath(package_path), "/"))) stop("Loaded DLL is outside candidate")
+cat("PASS fresh candidate", source_sha, "package tree", source_tree, "exports 106\n")
 cat("DLL", dll, "MD5", unname(tools::md5sum(dll)), "\n")
 dput(list(R = R.version, libraries = .libPaths(), package_path = package_path,
           exports = length(getNamespaceExports(namespace)), provenance = provenance,
