@@ -21,14 +21,35 @@ minimum note at its historical sibling-relative location keeps the helper
 report's link usable. No archive, installed library, installer or expanded
 upstream build tree was added by this inclusion.
 
-The [copy recipe](archive-preparation.py) verified every selected original
-checksum before copying it. The [inclusion manifest](inclusion-manifest.json)
+The historical [copy recipe](archive-preparation.py) checked the pinned preview
+checksum list and the indexed helper-proof inputs before copying them. Its
+additional sibling-note copy checked source/destination byte equality and
+recorded the copied hash, but did not compare that source with the preview's
+indexed raw note before copying. The [inclusion manifest](inclusion-manifest.json)
 maps 272 copied files to their original absolute paths, current modes, lengths
 and hashes; its [receipt](inclusion-receipt.json) binds the completed manifest.
 Those counts include the recipe itself and the additional note copy. This
 wrapper and the two inclusion records are new documentation, separate from
 those copied historical bytes. Historical absolute-path recipes are review
 records and must not be executed against this archive in place.
+
+The new [note consistency check](review-fixes/verify-note-consistency.py) verifies
+both archived note copies against the raw note's entry in the original pinned
+preview checksum list and against their original inclusion records. It also
+checks that the historical recipe, manifest and receipt retain their pinned
+bytes. This is a current archive check; it does not establish that the missing
+comparison ran during preparation. Run it with the preparation archive path:
+
+```sh
+python3 -B benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/verify-note-consistency.py benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation
+```
+
+The checker requires an idle archive and checks only these six named inputs.
+Its pins preserve the reviewed record; they are not an external authenticity
+anchor. [Bounded tests](review-fixes/test-note-consistency.py) alter temporary
+copies to exercise corruption and missing/link inputs without changing this
+archive. The [new check record](review-fixes/note-checks-01/execution-result.json)
+retains the actual command results and bound inputs. No experiment was rerun.
 
 The additive [inclusion correction](inclusion-correction.json) qualifies the
 new manifest's phrase “historical bytes/modes preserved.” Historical indexes

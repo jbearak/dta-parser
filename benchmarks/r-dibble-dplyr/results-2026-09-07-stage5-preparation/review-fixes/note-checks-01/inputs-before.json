@@ -1,0 +1,83 @@
+{
+  "inputs": [
+    {
+      "bytes": 4022,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/run-note-checks.py",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/run-note-checks.py",
+      "sha256": "82f2524718ecca4b84f46c7fa2f654a6afda667a3165b0c4684efa12ea5681af"
+    },
+    {
+      "bytes": 3090,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/verify-note-consistency.py",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/verify-note-consistency.py",
+      "sha256": "8d97350e1dfae7c9fff7e3fa19017fc1506341862ee294b4d459eee4d87a22e5"
+    },
+    {
+      "bytes": 2501,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/test-note-consistency.py",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/test-note-consistency.py",
+      "sha256": "5ecd212086133d97cd619c4b1d8eeae2a6cadb029b6f518c095e512494577861"
+    },
+    {
+      "bytes": 34640,
+      "mode": "0o755",
+      "path": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+    },
+    {
+      "bytes": 4511,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/README.md",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/README.md",
+      "sha256": "f35b58e4db4a39273c7c74568a053ce4f35517c6fa9eee46ab2efc900daa05fc"
+    },
+    {
+      "bytes": 3194,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/archive-preparation.py",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/archive-preparation.py",
+      "sha256": "2fee5f6e3c735d8ef38ec3cd33cba6f7b99be4b370f441d118fbcd3cbc0f098e"
+    },
+    {
+      "bytes": 93998,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/inclusion-manifest.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/inclusion-manifest.json",
+      "sha256": "16c6a85bc7c83b119a80a1cd51f85f74ff4bda5e19c4d4964e6b105a16bf0ff1"
+    },
+    {
+      "bytes": 107,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/inclusion-receipt.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/inclusion-receipt.json",
+      "sha256": "df46d88b02411236e1721d17f0dd53c3c012750466dcbb8f4fd470b244ddbfdc"
+    },
+    {
+      "bytes": 18566,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/SHA256SUMS",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/SHA256SUMS",
+      "sha256": "d1afb744bdca3f77a2e249a55b3a0c8cc9ba31319a7879f879740937e7646162"
+    },
+    {
+      "bytes": 14918,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/raw/dplyr-r46-minimum.md",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/raw/dplyr-r46-minimum.md",
+      "sha256": "d566bc40493651d9c752b657a6a3fff088e72a98728dcf43b8d3faa8260b2deb"
+    },
+    {
+      "bytes": 14918,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/dplyr-r46-minimum.md",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/dplyr-r46-minimum.md",
+      "sha256": "d566bc40493651d9c752b657a6a3fff088e72a98728dcf43b8d3faa8260b2deb"
+    }
+  ],
+  "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "scope": "New note consistency and temporary corruption checks. Named archive inputs, scripts and invoked Python executable are bound. Full Python and OS runtime closures are not frozen."
+}

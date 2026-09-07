@@ -1,0 +1,26 @@
+{
+  "changed_inputs": [],
+  "commands": [
+    {
+      "command": [
+        "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-B",
+        "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/test-note-consistency.py"
+      ],
+      "exit_code": 0,
+      "label": "corruption-tests"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-B",
+        "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/verify-note-consistency.py",
+        "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation"
+      ],
+      "exit_code": 0,
+      "label": "current-note-check"
+    }
+  ],
+  "failure": null,
+  "status": "complete"
+}
