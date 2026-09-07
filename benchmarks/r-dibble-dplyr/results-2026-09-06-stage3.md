@@ -17,17 +17,28 @@ the plan's materializing fallback. Serialization can mark a backing exposed and
 make later forks copy; values, classes and metadata survive without live
 ownership records. CodeRabbit [accepted this tradeoff](https://github.com/jbearak/dta-parser/pull/194#discussion_r3945814759).
 
-The nine earlier owned-run directories below omitted the shared `helpers.R`
-from their runner identities. Their measurements, sessions, manifests and hashes
-remain unchanged as historical evidence, including the rejected candidate and
-ABBA repeats. The new [baseline manifest](results-2026-09-06-stage3/final-baseline-08b086c/root-manifest.json)
+Nine earlier owned-run directories omitted shared `helpers.R` from their runner
+identities: `baseline`, `before-read-fix`, `candidate`,
+`repeat-after-1-baseline`, `repeat-after-2-candidate`,
+`repeat-before-1-baseline`, `repeat-before-2-candidate`,
+`repeat-before-3-candidate` and `repeat-before-4-baseline`.
+The separate `historical-baseline`, `historical-before-read-fix` and
+`historical-candidate` manifests already include `helpers.R`. All these
+measurements, sessions, manifests and hashes remain unchanged, including the
+rejected candidate and ABBA repeats. The new [baseline manifest](results-2026-09-06-stage3/final-baseline-08b086c/root-manifest.json)
 and [candidate manifest](results-2026-09-06-stage3/final-candidate-08b086c/root-manifest.json)
 record all four dependencies. Each runtime MD5 identity matches the files whose
 SHA-256 hashes are recorded, and every runner file matches its committed
 `08b086c` bytes before and after measurement. Archive-built isolated libraries pass the
 installed-source and file-hash guards before measurement and after all runs.
-The [execution driver](results-2026-09-06-stage3/final-qualification-08b086c/run-reviewed-owned-qualification.py)
-records operations and memory separately and refuses to replace existing output.
+The [archived execution driver](results-2026-09-06-stage3/final-qualification-08b086c/run-reviewed-owned-qualification.py)
+is preserved as the script used for these runs. Its Python assertions can be
+disabled by optimization. The [current reproduction driver](run-owned-qualification.py)
+uses explicit exceptions and exclusive log creation, so validation and output
+protection remain active under `-O` and `PYTHONOPTIMIZE`. This later guard repair
+does not change the measured R runners or relabel the archived evidence.
+The [CLI regression checks](test-owned-qualification.py) pass 51 success and
+rejection cases across those three Python modes using synthetic subprocess output.
 
 Both final operation matrices pass all 46 cases, 30 selectors after reads,
 six write cases and four captured-expression cases. All comparisons use seven

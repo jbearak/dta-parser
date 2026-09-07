@@ -66,7 +66,8 @@ integrated epic validation.
 
 The original evidence and reproduction instructions are retained in commit
 `53571eb92d3c4296e0d95b1824724dee5c8fa68a`. Corrected source is committed as
-`08b086c`; the reviewed final evidence is ready for publication.
+`08b086c`; reviewed final evidence is published as
+`4172613921597b4be11b7b44ebe5c5fd1fe01a94`.
 [PR #194](https://github.com/jbearak/dta-parser/pull/194) is open from
 `codex/direct-dibble-owned-doubles`. Latest-head external CI/CodeRabbit review
 and normal merge remain pending. Stage 3 stays active until those gates finish;
@@ -88,7 +89,11 @@ POSIX asynchronous signal tests are unchanged. The focused owned-column,
 owned-read and mutation suite passes. The complete working suite passes 15,482
 assertions with four established warnings and no failures or skips. Both
 independent round 19 reviews close the native, test, documentation and benchmark
-corrections. Exact-source checks pass; latest-head Windows CI remains pending.
+corrections. Exact-source checks pass. On published head `4172613`, Windows
+job `101592812344` passes the package build/check that previously terminated,
+and its failure-only diagnostic steps are skipped. Windows interoperability
+steps are still running; the whole Windows job and checks on the next published
+head remain pending. Linux and macOS jobs on `4172613` pass.
 
 External review also prompted explicit writable access to the private ordinary
 string-view copy, while preserving allocation-free reads from its ordinary
@@ -110,8 +115,27 @@ Historical measurements retain their original identities. CodeRabbit
 [agreed to preserve that history](https://github.com/jbearak/dta-parser/pull/194#discussion_r3945821144).
 Fresh corrected baseline/candidate measurements pass with identities checked
 against committed runner bytes and the actual runtime records. Both final
-round 20 reviews are clean. The remaining external review replies follow
-publication of this qualified head.
+round 20 reviews are clean. The qualified head and three follow-up replies are
+published. CodeRabbit resolved the allocation, serialization and internal
+string-view findings. The original runner-identity finding awaits acknowledgment
+of the complete new evidence.
+
+The substantive review of `4172613` raised two further evidence issues. The
+report now names the nine earlier owned-run directories and distinguishes the
+three `historical-*` manifests, which already record `helpers.R`. The archived
+Python execution driver uses integrity assertions that Python optimization can
+disable. All 201 indexed artifacts, including that actual execution driver,
+remain unchanged. The separate reusable driver uses explicit exceptions and
+exclusive log creation. Its synthetic CLI suite passes 51 success and rejection
+cases under normal execution, `-O` and `PYTHONOPTIMIZE=1`, including source
+mismatch, subprocess failure, malformed identities and preservation of existing
+output. These checks do not run timed R workloads. Both independent round 21
+reviews are clean. The measured R runners and package source remain unchanged.
+
+CodeRabbit [confirmed that its docstring metric is advisory](https://github.com/jbearak/dta-parser/pull/194#issuecomment-5563799860):
+its active configuration uses warning mode and does not fail commit status. It
+identified no concrete missing documentation or unmet merge requirement. No
+review threshold or configuration changed.
 
 ### Earlier Stage 3 checkpoints
 

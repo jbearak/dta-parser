@@ -125,8 +125,9 @@ provenance installer described above; the reported comparison uses Stage 2
 `fd069a36832ed7c1bdedeed52a4281ecabb36e25` and candidate
 `08b086ccd338d394420112cf9f550d355e94cb24`. The final runner identities include
 `helpers.R`, both entry points and `owned-double-helpers.R`. Earlier owned-run
-records omitted `helpers.R`; the report preserves and distinguishes those
-historical measurements from the final qualification.
+records listed in the report omitted `helpers.R`; the separate `historical-*`
+manifests already include it. The report preserves those records and distinguishes
+them from the final qualification.
 
 ```sh
 owned_bench_root=$(mktemp -d /tmp/dibble-owned-benchmark.XXXXXX)
@@ -173,3 +174,27 @@ also qualifies assigned capacity preparation and separately measured borrowed
 capture before strict private writes. It preserves all 159 original assertions
 and their original numerical limits. Zero Rprofmem bytes above a threshold does
 not mean zero total allocation.
+
+The [current qualification driver](run-owned-qualification.py) records complete
+runner identities and output manifests for the same workloads. It checks
+committed runner bytes, process results and runtime identities with explicit
+exceptions that remain active under Python optimization. It refuses existing
+operation output and opens each memory log exclusively. Failed attempts retain
+their diagnostic files; use a new output directory when retrying. For the
+candidate, after installing the library above and arranging a quiet window:
+
+```sh
+python3 benchmarks/r-dibble-dplyr/run-owned-qualification.py operations . \
+  "$owned_bench_root/qualified-candidate" "$owned_bench_root/candidate-library" \
+  "$owned_candidate" "$owned_candidate" candidate
+python3 benchmarks/r-dibble-dplyr/run-owned-qualification.py memory . \
+  "$owned_bench_root/qualified-candidate" "$owned_bench_root/candidate-library" \
+  "$owned_candidate" "$owned_candidate" candidate
+```
+
+Use the baseline library and source with a separate output directory for the
+paired baseline, keeping the candidate runner revision. The memory command uses
+macOS `/usr/bin/time -l`. Run the driver's CLI regression checks with
+`python3 benchmarks/r-dibble-dplyr/test-owned-qualification.py`. They exercise
+normal Python, `-O` and `PYTHONOPTIMIZE=1` using disposable Git fixtures and
+synthetic subprocess output; they do not run R workloads.
