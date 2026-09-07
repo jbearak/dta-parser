@@ -1,0 +1,24 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "--vanilla",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/export/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library",
+    "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+    "b08c77d91bdce67032f13aced90c29d068d6e95a",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/build/dtatools_0.7.1.tar.gz",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/export/benchmarks/r-dibble-dplyr/helpers.R"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01",
+  "finished_utc": "2026-09-07T20:06:17.045513+00:00",
+  "label": "finish-install",
+  "log": {
+    "bytes": 283,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/finish-install.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/finish-install.log",
+    "sha256": "3cf6a22ea15102adcf2a06dae1270849aa353ca6aadf4af342d46c993dcf3440"
+  },
+  "returncode": 0,
+  "started_utc": "2026-09-07T20:06:16.679821+00:00"
+}

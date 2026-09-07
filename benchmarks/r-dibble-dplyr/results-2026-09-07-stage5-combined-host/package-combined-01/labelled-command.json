@@ -1,0 +1,19 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "scripts/test-labelled-interop.R"
+  ],
+  "completed_utc": "2026-09-07T20:11:17.593422+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/source",
+  "exit_code": 0,
+  "label": "labelled",
+  "log": {
+    "bytes": 69,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/labelled.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/labelled.log",
+    "sha256": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81"
+  },
+  "started_utc": "2026-09-07T20:11:16.154508+00:00"
+}

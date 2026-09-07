@@ -1,0 +1,23 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "benchmarks/r-dibble-dplyr/expression-preflight.R",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library",
+    "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+    "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/source",
+    "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01"
+  ],
+  "completed_utc": "2026-09-07T20:30:14.757358+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/source",
+  "exit_code": 0,
+  "label": "preflight",
+  "log": {
+    "bytes": 60,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/preflight.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/preflight.log",
+    "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27"
+  },
+  "started_utc": "2026-09-07T20:30:14.548300+00:00"
+}

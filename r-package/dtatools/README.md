@@ -845,3 +845,10 @@ R's ALTSTRING, subset and serialization code informed the extension to owned
 ordinary strings, logicals and integer/factor backing. The same notice records
 that study; no implementation from those files was copied. String width and
 missingness facts belong to backing, while declarations remain column metadata.
+
+The direct expression and grouping implementation also adapts dplyr 1.2.1 mask
+and evaluation policies. The optional helper adapter uses the installed context
+and across/pick expansion functions. See [NOTICE](inst/NOTICE) for exact source
+and license records. dplyr 1.2.1 is the supported minimum on R 4.6.0 or newer;
+[the compatibility study](https://github.com/jbearak/dta-parser/blob/main/docs/research/dplyr-r46-minimum.md)
+records the source-build evidence and limits of the older-binary investigation.

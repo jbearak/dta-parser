@@ -1,0 +1,153 @@
+{
+  "assessment": "Together with prior source/install/focused review, the retained full gate and delayed readiness diagnostic support integrating the isolated native test-control patch. Public generation installation policy and normal zero-mode behavior are unchanged; all seven modes preserve alias/table/reference/cache state after interruption and allow retry.",
+  "delayed_diagnostic": {
+    "all_true": true,
+    "cases": 7,
+    "checks": 67,
+    "helper_change": "Independent R syntax comparison establishes exactly one added Sys.sleep(1) immediately before SIGINT after readiness; other helper syntax unchanged.",
+    "independent_reader_command": [
+      "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-delayed-record-read-01.R",
+      "/private/tmp/dta-direct-stage5-validation/native-generation-ci/delayed-checkpoint-02",
+      "/private/tmp/dta-native-generation-interrupt-fix/r-package/dtatools/tests/testthat/helper-generation-interrupt.R"
+    ],
+    "reader_products": [
+      {
+        "bytes": 1763,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-delayed-record-read-01.R",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-delayed-record-read-01.R",
+        "sha256": "9a5287e1cb5fd23e743593c8f9e62c158676ba6aa88af7452ddbe961ec751d72"
+      },
+      {
+        "bytes": 148,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-delayed-record-read-01.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-delayed-record-read-01.log",
+        "sha256": "db77b405dc267685a02addb2a4b5272224ef5de93d3e9d265e260ca52dfd19d6"
+      }
+    ]
+  },
+  "diagnostic_source": [
+    {
+      "bytes": 3237,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/run-replay-fixed-v2.py",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/run-replay-fixed-v2.py",
+      "sha256": "85410db6088fd717004214b602a409ff35febabb97fdb17d0a3295ba7c467cb9"
+    },
+    {
+      "bytes": 1627,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/replay-fixed.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/replay-fixed.R",
+      "sha256": "f70db7095687b4e7577b5397be0878031666117fbdaef512c3ee183ea49e6677"
+    }
+  ],
+  "evidence": [
+    {
+      "bound_inputs": 58163,
+      "manifest": {
+        "bytes": 1364761,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/full-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/full-01/manifest.json",
+        "sha256": "bfed59a01f5c745e89442ea9d90744e45277435d8242defa0fd76983021b886c"
+      },
+      "name": "full-01",
+      "product_bytes": 101692076,
+      "products": 2574,
+      "receipt": {
+        "bytes": 520,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/full-01/receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/full-01/receipt.json",
+        "sha256": "fcbdc085ff497996e40e6f189d5db202c0889eec82a3caefc89f379dc1698345"
+      }
+    },
+    {
+      "bound_inputs": 63,
+      "manifest": {
+        "bytes": 2230,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/delayed-checkpoint-02/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/delayed-checkpoint-02/output-manifest.json",
+        "sha256": "f3c23929a297e834125dcaad51b81d95b7da789881c120b725e1d35ea86fe3f1"
+      },
+      "name": "delayed-checkpoint-02",
+      "product_bytes": 29149,
+      "products": 6,
+      "receipt": {
+        "bytes": 394,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/delayed-checkpoint-02/completed-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/delayed-checkpoint-02/completed-receipt.json",
+        "sha256": "6bc075cb66a994076c2202336e95cb187d2edf2d32f049672ea5c8c65cff21c0"
+      }
+    }
+  ],
+  "full_counts": {
+    "errors": 0,
+    "failed": 0,
+    "known_warnings": 4,
+    "passed": 16563,
+    "skips": 0
+  },
+  "limits": [
+    "Original CI timing/case remains unknown. Deliberate one-second post-readiness delay shows synchronization robustness; it does not prove the original CI cause.",
+    "Full host test evidence is exact ed2db36 with package-identical725974a code. It does not constitute execution on Windows, minimum R, or an R CMD check/package gate.",
+    "Delayed diagnostic binds 63 scripts/executables/package inputs, with bytes/path/resolved/SHA but no original mode field; full runtime/dependency closure is explicitly not requalified by it. Full gate has the broader separate binding.",
+    "No new generation, signals, or benchmark operations were run by this reviewer. Independent R invocation read only retained RDS and parsed helper syntax.",
+    "Stage5 performance candidate57309d4 remains a separate pre-integration package identity. This audit does not relabel its existing measurements for a future integrated native build."
+  ],
+  "new_tests": [
+    {
+      "context": "mutate-data",
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-mutate-data.R",
+      "nb": "67",
+      "passed": "67",
+      "real": "0.325999999999999",
+      "skipped": "FALSE",
+      "system": "0.0229999999999999",
+      "test": "native generation interrupts leave reference state unchanged",
+      "user": "0.0489999999999995",
+      "warning": "0"
+    },
+    {
+      "context": "mutate-data",
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-mutate-data.R",
+      "nb": "67",
+      "passed": "67",
+      "real": "0.327",
+      "skipped": "FALSE",
+      "system": "0.0259999999999998",
+      "test": "POSIX interrupts reach an active native generation checkpoint",
+      "user": "0.0530000000000008",
+      "warning": "0"
+    },
+    {
+      "context": "mutate-data",
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-mutate-data.R",
+      "nb": "6",
+      "passed": "6",
+      "real": "0.00799999999999912",
+      "skipped": "FALSE",
+      "system": "0.00100000000000011",
+      "test": "generation interrupt controls disarm after validation errors",
+      "user": "0.00699999999999967",
+      "warning": "0"
+    }
+  ],
+  "package_tree": "482738a44d0cb971784d192e328e004ef2571cb2",
+  "runner_overlay": "ed2db36735e678b15b5a77b4f8834749b23c6539",
+  "source": "725974aeab7c5c87a09dc6b33eaa0b5a85b14e4e",
+  "status": "final_native_semantic_and_host_evidence_clear",
+  "utc": "2026-09-07T19:15:41.406544+00:00"
+}

@@ -1,0 +1,17 @@
+{
+  "status": "pass",
+  "receipt_sha256": "dd931f0abc8781478bac62e71dc349124432fa4eceaebf7c7c70735261e76b35",
+  "manifest_sha256": "45752db69ac46a795c0513afa8e11245e01fefb0fb54e87a05ee5a7f55e0311e",
+  "products": 3252,
+  "inputs": 58842,
+  "git_export_files": 3237,
+  "native_metrics": 410,
+  "atomic_cases": 18,
+  "rename_allocation_bytes": [
+    0,
+    0,
+    40056,
+    80112
+  ],
+  "limits": "Native elapsed values and allocation aggregates are retained gate metrics, not a paired full-expression result. Temporary Rprofmem traces were not retained. Atomic staged_new remains 4 bytes; subsequent private zero applies to R allocation and target copies. Rename uses a 10,000-byte profiling threshold. No workload rerun."
+}

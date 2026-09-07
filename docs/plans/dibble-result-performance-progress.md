@@ -7,7 +7,174 @@ authorized sequential PR, independent-review, CI and CodeRabbit process. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stages 1 through 3 complete, Stage 4 active
+## Stages 1 through 4 complete, Stage 5 active
+
+Stage 4 [PR #195](https://github.com/jbearak/dta-parser/pull/195) merged normally
+at 2026-09-07 15:23:12 UTC as
+`f622f1ddba04b2bb7ac07415faccf2b417aab0e6`. Root verified the remote merge,
+its exact match to final reviewed head `443e548ac3280d279587ad5024d200cf15ccedb0`,
+all 15 passing CI checks and completed substantive CodeRabbit review. The package
+tree remains `f88005766aee9b9dd5827b33a3930feff6672008`, identical to qualified
+`c8ca0a4`. The receipt is retained at
+`/private/tmp/dta-direct-stage4-validation/pr195-verified-normal-merge.json`.
+
+Stage 5 is active on `codex/direct-dibble-expressions` in
+`/private/tmp/dta-direct-stage5`, based on that verified merge. The implementation
+covers a shared expression evaluator, direct mutate/transmute and computed
+grouping, including rowwise/ungroup assembly. The standalone helper proof passes
+35 bounded cases on real dplyr 1.2.1 under R 4.6.1 and qualified clean R 4.6.0.
+It proves context feasibility, not production evaluation, ownership or capture
+parity. The implemented evaluator retains obsolete-mask errors for deferred
+reads and types each expression before dependent expressions. Both independent
+combined-source reviews and exact-source host/minimum integration gates pass.
+External latest-head review, CI and normal merge still gate Stage 5 completion.
+The twelve base-R read costs remain open for final assessment, and the three
+filter timing flags remain mandatory Stage 6 work. Stages 6 through 9 and the
+final actual downstream renv validation remain required; issue #172 stays open.
+
+The first Stage 5 exact source checkpoints are `27d700d` and `985e26b`.
+Both installed from Git archives through a bound, tracked installer; these are
+validation candidates, not merged acceptance results. Two independent reviews
+found and fixed duplicate unpacked names, warning aggregation, persistent-key
+deletion, rowwise data-frame columns, symbol-result metadata, caller labels,
+renamed ungroup selectors, custom row names and expired-mask payload retention.
+Weak references retain cleanup access without owning superseded uncaptured
+column generations. Exact-source focused/full/package checks are underway.
+
+Final source review also restored repeated interrupted-promise warnings after
+mask expiry and preserved validated group ordering when mutate/transmute leave
+grouping keys unchanged. Independent probes compare nine expired reads and
+eight payload-lifetime cases. The original exact `985e26b` focused run passed
+7,608 assertions with four established warnings, then failed in its namespace
+reporter; that failed record remains retained. The reporter fix and subsequent
+source changes required fresh exact-installed qualification.
+
+Those earlier local gates passed on package source `57309d4`; its fresh
+Git-archive installation and corrected package checks are preserved in the
+[qualification archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-qualification/README.md).
+Its R checks pass 16,624 assertions with no failures or skips and the four
+established test warnings. The three R check warnings and two notes retain their
+prior categories; a new NEWS parser sub-note found during review was fixed and
+the earlier record remains unchanged. Full installed tests, five fresh Cargo
+gates, unchanged native mutation gates, 18 atomic allocation cases, rename
+allocation, interoperability, pinned roxygen, source/binary archive and NOTICE
+checks passed. NAMESPACE remains identical with 106 exports.
+
+The paired expression matrix later reproduced overhead in two 64-column cases.
+Three paired width repeats confirmed both cases. A 12-row, 64-column retain
+case preserved its signal, excluding payload size as the main cause of that
+retain overhead. The dependent case was not separately minimized. Ordinary sampling profiles
+identified eager setup costs in table repair checks on atomic columns and in
+rebuilding the name set for each column. Separate exact source `622ffc19` adds
+only the non-data.table repair guard. Source `ad976f7a` then replaces mask-name
+union with membership-guarded append and adds a public remove/re-add/capture
+test. The latter full suite passes 16,632 assertions without failures or skips
+and with the four established warnings. Its unchanged six-case width loop
+clears the combined greater-than-10-percent and greater-than-1-ms diagnosis
+threshold against its same-source safe reference. These bounded measurements
+retain their original libraries and do not qualify a later combined source.
+
+A macOS CI failure on the unchanged Stage 4 package also exposed a limit of the
+fixed-delay generation interrupt test. An induced one-second signal delay
+reproduced its failure pattern after generation had already committed. The
+original CI timing was not logged, so its cause remains unproven. Separately
+reviewed source `725974a` replaces that timing assumption with a private native
+checkpoint after staged generation and before installation. Native interrupts
+and real POSIX SIGINT both exercise seven named cases, checking unchanged
+values, names, aliases, reference state and dictionary caches, then a successful
+retry. The control is consumed once at native entry; helper cleanup also
+disarms it when R validation fails before entry. Focused/full and deliberately
+delayed readiness checks pass on that separate source.
+
+The three source changes are integrated in package source
+`a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9`, package tree
+`b08c77d91bdce67032f13aced90c29d068d6e95a`. Both independent combined-source
+reviews and the following exact-source gates pass:
+
+- Host installed full tests and package checks: 16,750 assertions, no failures
+  or skips, four established test warnings. R check retains three warnings and
+  two notes in the established categories. All 16 package commands, including
+  conformance, interoperability, roxygen and source/binary NOTICE/export checks,
+  pass. The 106 exports remain unchanged.
+- Five fresh Cargo gates pass, including 278 tests and the existing 11 package
+  test-exclusion warnings. Native preflight, mutation, 18 atomic allocation
+  cases and rename allocation pass. The 410 retained native metrics agree
+  between log and report; no inferred dynamic assertion count is claimed.
+- Clean R 4.6.0 installation and integration pass: eight behavior cases, four
+  helper expansion forms, and 8,859 focused assertions, including 187 expression
+  assertions. Two Arrow and one profiler capability skips, plus four established
+  warnings, remain explicit. This is not minimum-runtime profiling acceptance.
+- The full expression matrix retains 50 series and 350 raw samples per source.
+  All 100 comparisons recalculate with zero candidate-direct flags against predecessor
+  or same-source safe reference. One safe-reference pipeline flag did not recur
+  in three paired repeats; the original flagged observation remains retained.
+- Paired expression writes retain 40 series and 280 samples with no same-mode
+  timing flags. Eight isolated memory runs and the broader owned matrices pass
+  their value, metadata, alias, allocation and retained-memory checks. Live
+  vector heap, cumulative allocation and process RSS remain separate metrics.
+
+Both independent reviewers audited these retained outputs and their exact
+source, runner, library and input bindings. The native atom runner observes
+nonpackage prose head `ea031bec`; its two consumed helper files equal a2 and
+are bound. Every installed package and runtime result retains its own source
+identity. The original older installs, failed attempts and measured variants
+remain unchanged. Public provenance refs preserve the combined, mask-name and
+native-interrupt source histories.
+
+The original ec10-to-a2 matrix still has twelve base-R read flags and three
+Stage 6 filter flags. Three fresh read pairs reproduce all twelve at one million
+rows, and a one-column minimization retains them. Character anyNA and three
+logical/factor/ordered nonmissing-count controls show that pre-extraction keeps
+the measured gap while matched rooted pointer scans remove the between-source
+difference. Their compiled Elt loops do not isolate a base getter's absolute
+cost or prove one cause for all twelve. The [read-cost disposition](../research/stage5-base-r-read-costs.md)
+records the measured limits, primary R paths and unproved implementation options.
+The separate fresh Arrow write flag did not recur in three paired repeats.
+No overall read-performance acceptance or irreducibility claim is made.
+
+The minimum evidence merged normally in PR #200 as
+`220ac07a33323398f4b78d4cb23fd9ba9bd808be`; its package tree is unchanged. Helper
+evidence PR #201 at `b2e5c47` has all 15 CI checks passing. At the 2026-09-07
+23:29 UTC checkpoint, full CodeRabbit review `5135750178` has identified two
+archive issues: current repeat-command guidance and a missing file-mode check.
+Those fixes and subsequent latest-head gates remain required before normal
+merge. The documentation coverage warning is nonblocking. Evidence archives
+and the implementation retain focused external review scopes. Stage 5 remains active until its normal implementation
+merge; stages 6 through 9 and final downstream validation remain required.
+
+The earlier exact clean R 4.6.0 evaluator source `4900dc8` passes 179 expression
+assertions without failures, skips or warnings. Its broader focused run passes
+4,960 assertions with three classified Arrow/profmem capability skips and four
+known warnings. Both reviewers verified that NEWS is the only package byte
+difference between this source and `57309d4`; the earlier runtime results keep
+their original identities. An optional clean-runtime NEWS parse probe lacks
+commonmark and remains a retained setup failure, separate from the successful
+host parser and final package checks.
+
+The [diagnostic archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-diagnostics/README.md)
+preserves prior implementation failures and source-review reproductions.
+Both independent reviews clear the historical qualification and combined-host
+inclusions, all five measurement/diagnosis bundles, and the plain read-disposition
+proof archive. The assembled 247-path measurement evidence passed both actual
+diff reviews and is committed as `d152775b1c7fa3824d922f794b3913e37addbffb`,
+unpublished pending its preceding normal merges. The final implementation
+assembly has 209 changed paths and retains the tested a2 package tree and gate
+helpers; its actual assembled-diff reviews are in progress. Earlier prose
+snapshots remain unchanged in the proof archive. External substantive review,
+CI and normal merge remain required before Stage 5 completes.
+
+The [preparation archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/README.md)
+preserves the 181-file selective minimum preview and both complete indexed
+helper proofs. Production and evidence will use focused review scopes. ADR 0034
+records the explicit dplyr 1.2.1 minimum correction and the bounded older-binary
+limits. It also records two intended corrections from the delegated wrapper:
+unnamed across follows real dplyr expansion order/setup counts, and within-call
+captures retain their original generation and group. Post-call deferred reads
+still fail with the obsolete-mask error. Grouped computed operations preserve
+dataset attributes through the shared finalizer. No optional-dependency or
+complete-epic claim follows from this work.
+
+The following Stage 4 record retains its historical premerge status and evidence.
 
 The original evidence and additive review supplement merged as
 [PR #196](https://github.com/jbearak/dta-parser/pull/196) and

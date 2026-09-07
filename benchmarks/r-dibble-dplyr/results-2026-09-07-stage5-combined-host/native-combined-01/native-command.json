@@ -1,0 +1,20 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "benchmarks/r-reference-mutation/run.R",
+    "--markdown=/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/native.md"
+  ],
+  "completed_utc": "2026-09-07T20:30:28.938624+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/source",
+  "exit_code": 0,
+  "label": "native",
+  "log": {
+    "bytes": 26767,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/native.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/native.log",
+    "sha256": "b7b864f855948eff98f0d7e348c71ac433defef594f238ca35271a1c13b01705"
+  },
+  "started_utc": "2026-09-07T20:30:20.551063+00:00"
+}
