@@ -1,0 +1,28 @@
+{
+  "changed_inputs": [],
+  "commands": [
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/test-verify-pristine-tree.py"
+      ],
+      "exit_code": 0,
+      "label": "synthetic"
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/verify-pristine-tree.py",
+        "/private/tmp/dta-direct-stage5-minimum-preflight/downloads/dplyr-git-1.2.1.tar",
+        "/private/tmp/dta-direct-stage5-validation/minimum-pr-fixes/guard-checks-02/fresh-extraction",
+        "83229c200ecc83f408ccc44a38740def4174d7f25c871efe48a900c501aa1910"
+      ],
+      "exit_code": 0,
+      "label": "fresh-source"
+    }
+  ],
+  "failure": null,
+  "status": "complete"
+}

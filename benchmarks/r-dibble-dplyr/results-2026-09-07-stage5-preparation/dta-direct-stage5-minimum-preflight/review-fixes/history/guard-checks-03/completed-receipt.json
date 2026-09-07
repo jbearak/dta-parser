@@ -1,0 +1,11 @@
+{
+  "changed_inputs": [],
+  "manifest": {
+    "bytes": 198230,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/minimum-pr-fixes/guard-checks-03/output-manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/minimum-pr-fixes/guard-checks-03/output-manifest.json",
+    "sha256": "97f4b8c2061958a7201084fb73619d4d8cfac48f3c30ff826910b238172420b2"
+  },
+  "status": "complete"
+}

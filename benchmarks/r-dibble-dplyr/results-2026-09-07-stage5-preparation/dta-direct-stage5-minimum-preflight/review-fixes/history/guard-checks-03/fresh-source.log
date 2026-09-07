@@ -1,0 +1,1 @@
+{"archive_sha256": "83229c200ecc83f408ccc44a38740def4174d7f25c871efe48a900c501aa1910", "directories": 22, "files": 468, "scope": "New pre-build archive/tree equality check; no runtime/build qualification or historical strengthening.", "status": "pass"}

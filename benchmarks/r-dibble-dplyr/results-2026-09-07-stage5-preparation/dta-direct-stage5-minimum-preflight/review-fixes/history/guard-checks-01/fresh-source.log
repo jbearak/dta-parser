@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/verify-pristine-tree.py", line 114, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/verify-pristine-tree.py", line 110, in main
+    print(json.dumps(verify(args.archive, args.tree, args.archive_sha256), sort_keys=True))
+                     ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/verify-pristine-tree.py", line 92, in verify
+    require(item['mode'] is None or item['mode'] == observed['mode'], 'Entry mode mismatch: ' + name)
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/dta-direct-stage5-minimum-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/dta-direct-stage5-minimum-preflight/review-fixes/verify-pristine-tree.py", line 19, in require
+    raise RuntimeError(message)
+RuntimeError: Entry mode mismatch: dplyr

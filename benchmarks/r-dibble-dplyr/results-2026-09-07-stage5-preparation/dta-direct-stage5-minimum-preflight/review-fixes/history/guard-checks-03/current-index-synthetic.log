@@ -1,0 +1,13 @@
+test_duplicate_indexed_path (__main__.CurrentEvidence.test_duplicate_indexed_path) ... ok
+test_exact_copy (__main__.CurrentEvidence.test_exact_copy) ... ok
+test_extra_archive_file (__main__.CurrentEvidence.test_extra_archive_file) ... ok
+test_identical_byte_symlink (__main__.CurrentEvidence.test_identical_byte_symlink) ... ok
+test_missing_file (__main__.CurrentEvidence.test_missing_file) ... ok
+test_out_of_scope_record (__main__.CurrentEvidence.test_out_of_scope_record) ... ok
+test_promoted_note_changed (__main__.CurrentEvidence.test_promoted_note_changed) ... ok
+test_unbound_index (__main__.CurrentEvidence.test_unbound_index) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.012s
+
+OK
