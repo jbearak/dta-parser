@@ -1,0 +1,357 @@
+Exact source c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe
+DLL_md5 c655c59a09cbf1cd72a6f72e7e94758e
+backend: r  dtatools: 0.7.1 
+aww-use: ..............
+birth-history-identifiers: .....................................................
+cm-birth: .............................................................................
+cm-lastbirth: .........................................................................................
+copy-var: ............
+desire-more-child: .........................................
+drop-vars: ........
+dtatools-stata-semantics: ...........................
+egen-group: ....
+egen-max: ........
+egen-min: ....
+egen-rowmax: ....
+egen-rowtotal: ....
+egen-tag: .....
+egen-total: ....
+ever-had-sex: ...................
+helper-backend: ......
+helper-integration: ..........
+integration-mics-output: .1...234
+keep-vars: ........
+label-contains: .........
+mics-age-first-sex: .....................................
+mics-bh-birth-intention: ........................................................................
+mics-bh-cm-lastbirth: ...............................................................
+mics-bh-ever-had-sex: .....................
+mics-bh-is-using-contraception: .................................
+mics-bh-last-preg-was-desired: ............................................
+mics-bh-marital-status: ........................................
+mics-bh-months-since-last-birth: ...............
+mics-bh-period-returned: ..............................................................
+mics-bh-pregnancy-intention: ........................................
+mics-bh-prospective-intention: .........
+mics-bh-time-since-last-sex: .............................................
+mics-bh-year-recodes: ...........................................................................................................................
+mics-duplicates-resolution: ............................
+mics-isolate-bh-value-labels: .............
+mics-loop: .......................................................................
+mics-raw-vars-to-retain: .....
+mics-survey: ...............................................................................................................
+mics-time-since-last-sex: ........................................................................
+mics-time-since-period: .................................................
+mics-var-drivers: ........
+mics-wm-age-wm: ..............................
+mics-wm-ceb: .........................
+mics-wm-curr-preg: ........................
+mics-wm-desire-wait: .........................................
+mics-wm-ever-given-birth: ......................................
+mics-wm-ever-used-contraception: ........................................................
+mics-wm-future-intended: ....................................
+mics-wm-interview-status: ..................
+mics-wm-is-in-union: ................
+mics-wm-is-using-contraception: ............................................................................................................................
+mics-wm-preg-intention: ...................................
+mics-wm-vars-union-status: ....................................................................................
+mics-wm-wm-doi: .....................
+mics-wm-year-recodes: .............................................................................................................................................................................
+mics-wm-years-since-first-union: ................
+raw-projection-enabled: ............
+raw-trace: ......................................................
+raw-vars-trace-table: ......
+reorder-table-rows: ......
+stata-mics-survey: SS
+str-fold-marks: ..
+str-lower-ascii: ..
+str-strip-non-alnum: ..
+val-label-texts: ...
+val-label-values: ...
+wm-identifiers: .....................................................................
+
+══ Skipped ═════════════════════════════════════════════════════════════════════
+1. Stata survey merge preserves birth-history value labels ('test-stata-mics-survey.R:2:3') - Reason: test_backend() != "stata" is TRUE
+
+2. Stata survey rejects an unreadable birth-history file ('test-stata-mics-survey.R:92:3') - Reason: test_backend() != "stata" is TRUE
+
+══ Failed ══════════════════════════════════════════════════════════════════════
+── 1. Failure ('test-integration-mics-output.R:86:3'): every tagged missing valu
+3 variable(s) have tagged missing values without labels:
+  is_using_femster             .a n=239
+  is_using_femster             .e n=88551
+  is_using_femster             .z n=168338
+  time_since_per               .a n=5
+  time_since_per               .b n=15
+  time_since_per               .d n=2794
+  time_since_period_u          .o n=23261
+
+── 2. Failure ('test-integration-mics-output.R:135:3'): no harmonized variable h
+209 cell(s) hold plain sysmiss:
+  sysmiss    period_returned              Afghanistan 2011                         n=22053 value=4832 sysmiss=17221 e=0 z=0
+  sysmiss    period_returned              Afghanistan 2023                         n=141957 value=0 sysmiss=141957 e=0 z=0
+  sysmiss    period_returned              Albania 2005                             n=5128 value=0 sysmiss=5128 e=0 z=0
+  sysmiss    period_returned              Algeria 2013                             n=81938 value=16251 sysmiss=65687 e=0 z=0
+  sysmiss    period_returned              Algeria 2019                             n=73412 value=15467 sysmiss=57945 e=0 z=0
+  sysmiss    period_returned              Argentina 2012                           n=23778 value=0 sysmiss=23778 e=0 z=0
+  sysmiss    period_returned              Argentina 2020                           n=13095 value=2121 sysmiss=10974 e=0 z=0
+  sysmiss    period_returned              Bangladesh 2006                          n=78260 value=0 sysmiss=78260 e=0 z=0
+  sysmiss    period_returned              Bangladesh 2013                          n=59599 value=7780 sysmiss=51819 e=0 z=0
+  sysmiss    period_returned              Bangladesh 2019                          n=141053 value=19919 sysmiss=121134 e=0 z=0
+  sysmiss    period_returned              Barbados 2012                            n=1916 value=147 sysmiss=1769 e=0 z=0
+  sysmiss    period_returned              Belarus 2005                             n=5906 value=0 sysmiss=5906 e=0 z=0
+  sysmiss    period_returned              Belarus 2012                             n=5911 value=1324 sysmiss=4587 e=0 z=0
+  sysmiss    period_returned              Belarus 2019                             n=5765 value=1197 sysmiss=4568 e=0 z=0
+  sysmiss    period_returned              Belize 2006                              n=1675 value=0 sysmiss=1675 e=0 z=0
+  sysmiss    period_returned              Belize 2011                              n=4485 value=698 sysmiss=3787 e=0 z=0
+  sysmiss    period_returned              Belize 2016                              n=11727 value=0 sysmiss=11727 e=0 z=0
+  sysmiss    period_returned              Benin 2014                               n=50061 value=18366 sysmiss=31695 e=0 z=0
+  sysmiss    period_returned              Bhutan 2010                              n=16823 value=2462 sysmiss=14361 e=0 z=0
+  sysmiss    period_returned              Bosnia and Herzegovina (Roma Settlements) 2012 n=1457 value=0 sysmiss=1457 e=0 z=0
+  sysmiss    period_returned              Bosnia and Herzegovina 2006              n=4977 value=0 sysmiss=4977 e=0 z=0
+  sysmiss    period_returned              Bosnia and Herzegovina 2012              n=4645 value=710 sysmiss=3935 e=0 z=0
+  sysmiss    period_returned              Burkina Faso 2006                        n=8159 value=0 sysmiss=8159 e=0 z=0
+  sysmiss    period_returned              Burundi 2005                             n=9614 value=0 sysmiss=9614 e=0 z=0
+  sysmiss    period_returned              Cameroon 2006                            n=9408 value=0 sysmiss=9408 e=0 z=0
+  sysmiss    period_returned              Cameroon 2014                            n=29565 value=9936 sysmiss=19629 e=0 z=0
+  sysmiss    period_returned              Central African Republic 2006            n=12436 value=0 sysmiss=12436 e=0 z=0
+  sysmiss    period_returned              Central African Republic 2011            n=12507 value=4502 sysmiss=8005 e=0 z=0
+  sysmiss    period_returned              Central African Republic 2019            n=29216 value=12782 sysmiss=16434 e=0 z=0
+  sysmiss    period_returned              Chad 2010                                n=18088 value=6061 sysmiss=12027 e=0 z=0
+  sysmiss    period_returned              Chad 2019                                n=80378 value=34139 sysmiss=46239 e=0 z=0
+  sysmiss    period_returned              Congo 2015                               n=34464 value=0 sysmiss=34464 e=0 z=0
+  sysmiss    period_returned              Costa Rica 2011                          n=5740 value=851 sysmiss=4889 e=0 z=0
+  sysmiss    period_returned              Costa Rica 2018                          n=8217 value=1283 sysmiss=6934 e=0 z=0
+  sysmiss    period_returned              Cote d'Ivoire 2006                       n=13020 value=0 sysmiss=13020 e=0 z=0
+  sysmiss    period_returned              Cote d'Ivoire 2016                       n=12463 value=3747 sysmiss=8716 e=0 z=0
+  sysmiss    period_returned              Cuba 2006                                n=8681 value=0 sysmiss=8681 e=0 z=0
+  sysmiss    period_returned              Cuba 2011                                n=9440 value=4407 sysmiss=5033 e=0 z=0
+  sysmiss    period_returned              Cuba 2014                                n=9232 value=2190 sysmiss=7042 e=0 z=0
+  sysmiss    period_returned              Cuba 2019                                n=8942 value=1870 sysmiss=7072 e=0 z=0
+  sysmiss    period_returned              Dem. Rep. of the Congo 2010              n=13235 value=4801 sysmiss=8434 e=0 z=0
+  sysmiss    period_returned              Dem. Rep. of the Congo 2018              n=67766 value=33022 sysmiss=34744 e=0 z=0
+  sysmiss    period_returned              Djibouti 2006                            n=7371 value=0 sysmiss=7371 e=0 z=0
+  sysmiss    period_returned              Dominican Republic 2014                  n=66044 value=16507 sysmiss=49537 e=0 z=0
+  sysmiss    period_returned              Dominican Republic 2019                  n=48176 value=7354 sysmiss=40822 e=0 z=0
+  sysmiss    period_returned              Egypt 2014                               n=18225 value=10469 sysmiss=7756 e=0 z=0
+  sysmiss    period_returned              El Salvador 2014                         n=29519 value=6000 sysmiss=23519 e=0 z=0
+  sysmiss    period_returned              Eswatini 2010                            n=11470 value=2670 sysmiss=8800 e=0 z=0
+  sysmiss    period_returned              Eswatini 2014                            n=11538 value=2595 sysmiss=8943 e=0 z=0
+  sysmiss    period_returned              Fiji 2021                                n=11202 value=2265 sysmiss=8937 e=0 z=0
+  sysmiss    period_returned              Gambia 2006                              n=10252 value=0 sysmiss=10252 e=0 z=0
+  sysmiss    period_returned              Gambia 2010                              n=15138 value=0 sysmiss=15138 e=0 z=0
+  sysmiss    period_returned              Gambia 2018                              n=42113 value=14186 sysmiss=27927 e=0 z=0
+  sysmiss    period_returned              Georgia 2005                             n=10908 value=0 sysmiss=10908 e=0 z=0
+  sysmiss    period_returned              Georgia 2018                             n=8511 value=0 sysmiss=8511 e=0 z=0
+  sysmiss    period_returned              Ghana 2006                               n=6240 value=0 sysmiss=6240 e=0 z=0
+  sysmiss    period_returned              Ghana 2011                               n=34412 value=11198 sysmiss=23214 e=0 z=0
+  sysmiss    period_returned              Ghana 2018                               n=39590 value=11126 sysmiss=28464 e=0 z=0
+  sysmiss    period_returned              Guinea 2016                              n=10245 value=3934 sysmiss=6311 e=0 z=0
+  sysmiss    period_returned              Guinea-Bissau 2006                       n=9904 value=0 sysmiss=9904 e=0 z=0
+  sysmiss    period_returned              Guinea-Bissau 2014                       n=30819 value=11172 sysmiss=19647 e=0 z=0
+  sysmiss    period_returned              Guinea-Bissau 2019                       n=29380 value=9293 sysmiss=20087 e=0 z=0
+  sysmiss    period_returned              Guyana 2007                              n=5253 value=0 sysmiss=5253 e=0 z=0
+  sysmiss    period_returned              Guyana 2014                              n=13193 value=3394 sysmiss=9799 e=0 z=0
+  sysmiss    period_returned              Guyana 2020                              n=13866 value=0 sysmiss=13866 e=0 z=0
+  sysmiss    period_returned              Honduras 2019                            n=45847 value=7823 sysmiss=38024 e=0 z=0
+  sysmiss    period_returned              Indonesia (Papau) 2011                   n=3017 value=0 sysmiss=3017 e=0 z=0
+  sysmiss    period_returned              Indonesia (Selected Districts of West Papau) 2011 n=2853 value=0 sysmiss=2853 e=0 z=0
+  sysmiss    period_returned              Iraq 2006                                n=75383 value=0 sysmiss=75383 e=0 z=0
+  sysmiss    period_returned              Iraq 2011                                n=161069 value=49357 sysmiss=111712 e=0 z=0
+  sysmiss    period_returned              Iraq 2018                                n=83478 value=20363 sysmiss=63115 e=0 z=0
+  sysmiss    period_returned              Jamaica 2005                             n=3777 value=0 sysmiss=3777 e=0 z=0
+  sysmiss    period_returned              Jamaica 2011                             n=5143 value=626 sysmiss=4517 e=0 z=0
+  sysmiss    period_returned              Kazakhstan 2006                          n=14719 value=0 sysmiss=14719 e=0 z=0
+  sysmiss    period_returned              Kazakhstan 2011                          n=14228 value=2027 sysmiss=12201 e=0 z=0
+  sysmiss    period_returned              Kazakhstan 2015                          n=12910 value=2088 sysmiss=10822 e=0 z=0
+  sysmiss    period_returned              Kenya (Bungoma County) 2014              n=3885 value=1055 sysmiss=2830 e=0 z=0
+  sysmiss    period_returned              Kenya (Kakamega County) 2014             n=3450 value=1025 sysmiss=2425 e=0 z=0
+  sysmiss    period_returned              Kenya (Mombasa) 2009                     n=1895 value=0 sysmiss=1895 e=0 z=0
+  sysmiss    period_returned              Kenya (Nyanza) 2011                      n=20444 value=0 sysmiss=20444 e=0 z=0
+  sysmiss    period_returned              Kenya (Turkana County) 2014              n=3728 value=1525 sysmiss=2203 e=0 z=0
+  sysmiss    period_returned              Kiribati 2019                            n=9912 value=2598 sysmiss=7314 e=0 z=0
+  sysmiss    period_returned              Kosovo (Roma_ Ashkali_ Egypt) 2014       n=4343 value=1009 sysmiss=3334 e=0 z=0
+  sysmiss    period_returned              Kosovo (Roma_ Ashkali_ Egypt) 2020       n=4362 value=0 sysmiss=4362 e=0 z=0
+  sysmiss    period_returned              Kosovo 2014                              n=11824 value=1418 sysmiss=10406 e=0 z=0
+  sysmiss    period_returned              Kosovo 2020                              n=11965 value=1422 sysmiss=10543 e=0 z=0
+  sysmiss    period_returned              Kyrgyzstan 2006                          n=6973 value=0 sysmiss=6973 e=0 z=0
+  sysmiss    period_returned              Kyrgyzstan 2014                          n=16474 value=4428 sysmiss=12046 e=0 z=0
+  sysmiss    period_returned              Kyrgyzstan 2018                          n=14206 value=3627 sysmiss=10579 e=0 z=0
+  sysmiss    period_returned              Lao People's Dem. Republic 2006          n=7703 value=0 sysmiss=7703 e=0 z=0
+  sysmiss    period_returned              Lao People's Dem. Republic 2012          n=64620 value=13105 sysmiss=51515 e=0 z=0
+  sysmiss    period_returned              Lao People's Dem. Republic 2017          n=62136 value=0 sysmiss=62136 e=0 z=0
+  sysmiss    period_returned              Lebanon-Palestinian 2006                 n=3955 value=0 sysmiss=3955 e=0 z=0
+  sysmiss    period_returned              Lebanon-Palestinian 2011                 n=13065 value=2189 sysmiss=10876 e=0 z=0
+  sysmiss    period_returned              Lesotho 2018                             n=15327 value=2639 sysmiss=12688 e=0 z=0
+  sysmiss    period_returned              Madagascar (South) 2012                  n=10735 value=0 sysmiss=10735 e=0 z=0
+  sysmiss    period_returned              Madagascar 2018                          n=52432 value=17399 sysmiss=35033 e=0 z=0
+  sysmiss    period_returned              Malawi 2006                              n=84897 value=0 sysmiss=84897 e=0 z=0
+  sysmiss    period_returned              Malawi 2014                              n=79048 value=25469 sysmiss=53579 e=0 z=0
+  sysmiss    period_returned              Malawi 2020                              n=70851 value=18350 sysmiss=52501 e=0 z=0
+  sysmiss    period_returned              Mali 2010                                n=28846 value=10502 sysmiss=18344 e=0 z=0
+  sysmiss    period_returned              Mali 2015                                n=61278 value=25189 sysmiss=36089 e=0 z=0
+  sysmiss    period_returned              Mauritania 2007                          n=13416 value=0 sysmiss=13416 e=0 z=0
+  sysmiss    period_returned              Mauritania 2011                          n=39136 value=13601 sysmiss=25535 e=0 z=0
+  sysmiss    period_returned              Mauritania 2015                          n=43422 value=16268 sysmiss=27154 e=0 z=0
+  sysmiss    period_returned              Mexico 2015                              n=12937 value=3026 sysmiss=9907 e=0 z=0
+  sysmiss    period_returned              Moldova 2012                             n=10473 value=1261 sysmiss=9212 e=0 z=0
+  sysmiss    period_returned              Mongolia (Khuvsgul Aimag) 2012           n=1909 value=302 sysmiss=1607 e=0 z=0
+  sysmiss    period_returned              Mongolia (Khuvsgul Aimag) 2016           n=4894 value=1025 sysmiss=3869 e=0 z=0
+  sysmiss    period_returned              Mongolia (Nalaikh District) 2012         n=929 value=165 sysmiss=764 e=0 z=0
+  sysmiss    period_returned              Mongolia (Nalaikh District) 2016         n=1605 value=345 sysmiss=1260 e=0 z=0
+  sysmiss    period_returned              Mongolia 2005                            n=8057 value=0 sysmiss=8057 e=0 z=0
+  sysmiss    period_returned              Mongolia 2010                            n=9599 value=1677 sysmiss=7922 e=0 z=0
+  sysmiss    period_returned              Mongolia 2013                            n=28067 value=5420 sysmiss=22647 e=0 z=0
+  sysmiss    period_returned              Mongolia 2018                            n=25898 value=5582 sysmiss=20316 e=0 z=0
+  sysmiss    period_returned              Montenegro (Roma Settlements) 2013       n=1001 value=224 sysmiss=777 e=0 z=0
+  sysmiss    period_returned              Montenegro (Roma Settlements) 2018       n=1048 value=198 sysmiss=850 e=0 z=0
+  sysmiss    period_returned              Montenegro 2006                          n=2385 value=0 sysmiss=2385 e=0 z=0
+  sysmiss    period_returned              Montenegro 2013                          n=3606 value=491 sysmiss=3115 e=0 z=0
+  sysmiss    period_returned              Montenegro 2018                          n=2928 value=431 sysmiss=2497 e=0 z=0
+  sysmiss    period_returned              Mozambique 2008                          n=15060 value=0 sysmiss=15060 e=0 z=0
+  sysmiss    period_returned              Nepal (Mid-and Far-Western Regions) 2010 n=7674 value=0 sysmiss=7674 e=0 z=0
+  sysmiss    period_returned              Nepal 2014                               n=33621 value=4828 sysmiss=28793 e=0 z=0
+  sysmiss    period_returned              Nepal 2019                               n=31346 value=0 sysmiss=31346 e=0 z=0
+  sysmiss    period_returned              Nigeria 2007                             n=27093 value=0 sysmiss=27093 e=0 z=0
+  sysmiss    period_returned              Nigeria 2011                             n=33699 value=9818 sysmiss=23881 e=0 z=0
+  sysmiss    period_returned              Nigeria 2017                             n=113523 value=0 sysmiss=113523 e=0 z=0
+  sysmiss    period_returned              Nigeria 2021                             n=120036 value=0 sysmiss=120036 e=0 z=0
+  sysmiss    period_returned              North Macedonia (Roma Settlements) 2011  n=1134 value=173 sysmiss=961 e=0 z=0
+  sysmiss    period_returned              North Macedonia (Roma Settlements) 2019  n=3457 value=0 sysmiss=3457 e=0 z=0
+  sysmiss    period_returned              North Macedonia 2005                     n=7539 value=0 sysmiss=7539 e=0 z=0
+  sysmiss    period_returned              North Macedonia 2011                     n=4024 value=491 sysmiss=3533 e=0 z=0
+  sysmiss    period_returned              North Macedonia 2019                     n=5905 value=0 sysmiss=5905 e=0 z=0
+  sysmiss    period_returned              Pakistan (Balochistan) 2010              n=18958 value=2334 sysmiss=16624 e=0 z=0
+  sysmiss    period_returned              Pakistan (Balochistan) 2020              n=97759 value=0 sysmiss=97759 e=0 z=0
+  sysmiss    period_returned              Pakistan (Gilgit Baltistan) 2017         n=11452 value=0 sysmiss=11452 e=0 z=0
+  sysmiss    period_returned              Pakistan (Khyber Pakhtunkhwa) 2017       n=37669 value=0 sysmiss=37669 e=0 z=0
+  sysmiss    period_returned              Pakistan (Khyber Pakhtunkhwa) 2019       n=110910 value=0 sysmiss=110910 e=0 z=0
+  sysmiss    period_returned              Pakistan (Punjab) 2011                   n=150814 value=0 sysmiss=150814 e=0 z=0
+  sysmiss    period_returned              Pakistan (Punjab) 2014                   n=61286 value=10538 sysmiss=50748 e=0 z=0
+  sysmiss    period_returned              Pakistan (Punjab) 2018                   n=194377 value=48651 sysmiss=145726 e=0 z=0
+  sysmiss    period_returned              Pakistan (Sindh) 2014                    n=29898 value=6514 sysmiss=23384 e=0 z=0
+  sysmiss    period_returned              Pakistan (Sindh) 2019                    n=79010 value=0 sysmiss=79010 e=0 z=0
+  sysmiss    period_returned              Panama 2013                              n=9845 value=2277 sysmiss=7568 e=0 z=0
+  sysmiss    period_returned              Paraguay 2016                            n=16710 value=4374 sysmiss=12336 e=0 z=0
+  sysmiss    period_returned              Qatar 2012                               n=5809 value=0 sysmiss=5809 e=0 z=0
+  sysmiss    period_returned              Saint Lucia 2012                         n=1341 value=97 sysmiss=1244 e=0 z=0
+  sysmiss    period_returned              Samoa 2020                               n=11535 value=3363 sysmiss=8172 e=0 z=0
+  sysmiss    period_returned              Sao Tome and Principe 2014               n=8403 value=0 sysmiss=8403 e=0 z=0
+  sysmiss    period_returned              Sao Tome and Principe 2019               n=8478 value=2045 sysmiss=6433 e=0 z=0
+  sysmiss    period_returned              Senegal (Dakar) 2016                     n=21369 value=5051 sysmiss=16318 e=0 z=0
+  sysmiss    period_returned              Serbia (Roma Settlements) 2010           n=2234 value=0 sysmiss=2234 e=0 z=0
+  sysmiss    period_returned              Serbia (Roma Settlements) 2014           n=2162 value=559 sysmiss=1603 e=0 z=0
+  sysmiss    period_returned              Serbia (Roma Settlements) 2019           n=1912 value=383 sysmiss=1529 e=0 z=0
+  sysmiss    period_returned              Serbia 2006                              n=7895 value=0 sysmiss=7895 e=0 z=0
+  sysmiss    period_returned              Serbia 2010                              n=5797 value=1183 sysmiss=4614 e=0 z=0
+  sysmiss    period_returned              Serbia 2014                              n=4997 value=955 sysmiss=4042 e=0 z=0
+  sysmiss    period_returned              Serbia 2019                              n=4219 value=660 sysmiss=3559 e=0 z=0
+  sysmiss    period_returned              Sierra Leone 2005                        n=9257 value=0 sysmiss=9257 e=0 z=0
+  sysmiss    period_returned              Sierra Leone 2010                        n=14066 value=3352 sysmiss=10714 e=0 z=0
+  sysmiss    period_returned              Sierra Leone 2017                        n=47082 value=0 sysmiss=47082 e=0 z=0
+  sysmiss    period_returned              Somalia (Northeast) 2011                 n=17517 value=6205 sysmiss=11312 e=0 z=0
+  sysmiss    period_returned              Somalia (Somaliland) 2011                n=20058 value=7161 sysmiss=12897 e=0 z=0
+  sysmiss    period_returned              Somalia 2006                             n=23073 value=0 sysmiss=23073 e=0 z=0
+  sysmiss    period_returned              South Sudan 2010                         n=33233 value=15231 sysmiss=18002 e=0 z=0
+  sysmiss    period_returned              State of Palestine 2010                  n=56990 value=17445 sysmiss=39545 e=0 z=0
+  sysmiss    period_returned              State of Palestine 2014                  n=38301 value=9631 sysmiss=28670 e=0 z=0
+  sysmiss    period_returned              State of Palestine 2020                  n=30408 value=7518 sysmiss=22890 e=0 z=0
+  sysmiss    period_returned              Sudan 2010                               n=54867 value=23390 sysmiss=31477 e=0 z=0
+  sysmiss    period_returned              Sudan 2014                               n=60856 value=23598 sysmiss=37258 e=0 z=0
+  sysmiss    period_returned              Suriname 2006                            n=5959 value=0 sysmiss=5959 e=0 z=0
+  sysmiss    period_returned              Suriname 2010                            n=7237 value=1235 sysmiss=6002 e=0 z=0
+  sysmiss    period_returned              Suriname 2018                            n=17415 value=3854 sysmiss=13561 e=0 z=0
+  sysmiss    period_returned              Syria (Palestinians in Syria) 2006       n=25563 value=0 sysmiss=25563 e=0 z=0
+  sysmiss    period_returned              Syria 2006                               n=25563 value=0 sysmiss=25563 e=0 z=0
+  sysmiss    period_returned              Tajikistan 2005                          n=10626 value=0 sysmiss=10626 e=0 z=0
+  sysmiss    period_returned              Thailand (14 Provinces) 2016             n=15607 value=0 sysmiss=15607 e=0 z=0
+  sysmiss    period_returned              Thailand (Bangkok) 2016                  n=2988 value=0 sysmiss=2988 e=0 z=0
+  sysmiss    period_returned              Thailand 2006                            n=37187 value=0 sysmiss=37187 e=0 z=0
+  sysmiss    period_returned              Thailand 2012                            n=22256 value=2762 sysmiss=19494 e=0 z=0
+  sysmiss    period_returned              Thailand 2016                            n=26033 value=0 sysmiss=26033 e=0 z=0
+  sysmiss    period_returned              Thailand 2019                            n=26002 value=3876 sysmiss=22126 e=0 z=0
+  sysmiss    period_returned              Togo 2006                                n=6210 value=0 sysmiss=6210 e=0 z=0
+  sysmiss    period_returned              Togo 2010                                n=7016 value=1924 sysmiss=5092 e=0 z=0
+  sysmiss    period_returned              Togo 2017                                n=20905 value=0 sysmiss=20905 e=0 z=0
+  sysmiss    period_returned              Tonga 2019                               n=7102 value=1378 sysmiss=5724 e=0 z=0
+  sysmiss    period_returned              Trinidad and Tobago 2006                 n=4826 value=0 sysmiss=4826 e=0 z=0
+  sysmiss    period_returned              Trinidad and Tobago 2011                 n=4424 value=0 sysmiss=4424 e=0 z=0
+  sysmiss    period_returned              Tunisia 2012                             n=19604 value=2769 sysmiss=16835 e=0 z=0
+  sysmiss    period_returned              Tunisia 2018                             n=19756 value=2856 sysmiss=16900 e=0 z=0
+  sysmiss    period_returned              Turkmenistan 2006                        n=7177 value=0 sysmiss=7177 e=0 z=0
+  sysmiss    period_returned              Turkmenistan 2016                        n=15560 value=3375 sysmiss=12185 e=0 z=0
+  sysmiss    period_returned              Turkmenistan 2019                        n=16171 value=3173 sysmiss=12998 e=0 z=0
+  sysmiss    period_returned              Turks and Caicos Islands 2020            n=1582 value=193 sysmiss=1389 e=0 z=0
+  sysmiss    period_returned              Tuvalu 2020                              n=1914 value=533 sysmiss=1381 e=0 z=0
+  sysmiss    period_returned              Ukraine 2005                             n=6174 value=0 sysmiss=6174 e=0 z=0
+  sysmiss    period_returned              Ukraine 2012                             n=8239 value=1544 sysmiss=6695 e=0 z=0
+  sysmiss    period_returned              Uruguay 2013                             n=3103 value=433 sysmiss=2670 e=0 z=0
+  sysmiss    period_returned              Uzbekistan 2006                          n=14205 value=0 sysmiss=14205 e=0 z=0
+  sysmiss    period_returned              Uzbekistan 2022                          n=23481 value=0 sysmiss=23481 e=0 z=0
+  sysmiss    period_returned              Vanuatu 2007                             n=3261 value=0 sysmiss=3261 e=0 z=0
+  sysmiss    period_returned              Viet Nam 2006                            n=9471 value=0 sysmiss=9471 e=0 z=0
+  sysmiss    period_returned              Viet Nam 2011                            n=12115 value=1352 sysmiss=10763 e=0 z=0
+  sysmiss    period_returned              Viet Nam 2014                            n=18568 value=2719 sysmiss=15849 e=0 z=0
+  sysmiss    period_returned              Viet Nam 2021                            n=20608 value=0 sysmiss=20608 e=0 z=0
+  sysmiss    period_returned              Yemen 2006                               n=17817 value=0 sysmiss=17817 e=0 z=0
+  sysmiss    period_returned              Zimbabwe 2009                            n=28110 value=0 sysmiss=28110 e=0 z=0
+  sysmiss    period_returned              Zimbabwe 2014                            n=36810 value=10868 sysmiss=25942 e=0 z=0
+  sysmiss    period_returned              Zimbabwe 2019                            n=25918 value=6511 sysmiss=19407 e=0 z=0
+
+── 3. Failure ('test-integration-mics-output.R:159:3'): no survey carries one re
+33 cell(s) carry one respondent-level tag for every woman, which is a survey-level fact and so .e:
+  one_tag    children_ever_born           Barbados 2012                            n=1916 value=0 sysmiss=0 e=0 z=0
+  one_tag    cm_lastbirth                 Cameroon 2006                            n=9408 value=0 sysmiss=0 e=0 z=399
+  one_tag    cm_lastbirth                 Cuba 2006                                n=8681 value=0 sysmiss=0 e=0 z=233
+  one_tag    dlastbirth                   Bosnia and Herzegovina (Roma Settlements) 2012 n=1457 value=0 sysmiss=0 e=0 z=0
+  one_tag    dlastbirth                   North Macedonia (Roma Settlements) 2011  n=1134 value=0 sysmiss=0 e=0 z=0
+  one_tag    mfunion                      Cote d'Ivoire 2006                       n=13020 value=0 sysmiss=0 e=0 z=0
+  one_tag    mfunion                      South Sudan 2010                         n=33233 value=0 sysmiss=0 e=0 z=0
+  one_tag    mfunion                      Sudan 2010                               n=54867 value=0 sysmiss=0 e=0 z=0
+  one_tag    mlastbirth                   Guinea-Bissau 2019                       n=29380 value=0 sysmiss=0 e=0 z=0
+  one_tag    mlastbirth                   Mali 2015                                n=61278 value=0 sysmiss=0 e=0 z=0
+  one_tag    preg_intention               Afghanistan 2023                         n=141957 value=0 sysmiss=0 e=0 z=0
+  one_tag    preg_intention               Bangladesh 2006                          n=78260 value=0 sysmiss=0 e=0 z=0
+  one_tag    preg_intention               Egypt 2014                               n=18225 value=0 sysmiss=0 e=0 z=0
+  one_tag    preg_intention               Gambia 2006                              n=10252 value=0 sysmiss=0 e=0 z=0
+  one_tag    preg_intention               Jamaica 2005                             n=3777 value=0 sysmiss=0 e=0 z=0
+  one_tag    preg_intention               Jamaica 2011                             n=5143 value=0 sysmiss=0 e=0 z=0
+  one_tag    preg_intention               Mauritania 2007                          n=13416 value=0 sysmiss=0 e=0 z=0
+  one_tag    preg_intention               Uruguay 2013                             n=3103 value=0 sysmiss=0 e=0 z=0
+  one_tag    preg_intention               Zimbabwe 2019                            n=25918 value=0 sysmiss=0 e=0 z=0
+  one_tag    union_status                 Central African Republic 2006            n=12436 value=0 sysmiss=0 e=0 z=0
+  one_tag    union_status                 Cote d'Ivoire 2006                       n=13020 value=0 sysmiss=0 e=0 z=0
+  one_tag    union_status                 Guinea-Bissau 2006                       n=9904 value=0 sysmiss=0 e=0 z=0
+  one_tag    union_status                 Pakistan (Punjab) 2014                   n=61286 value=0 sysmiss=0 e=0 z=0
+  one_tag    union_status                 South Sudan 2010                         n=33233 value=0 sysmiss=0 e=0 z=0
+  one_tag    union_status                 Sudan 2010                               n=54867 value=0 sysmiss=0 e=0 z=0
+  one_tag    years_since_first_union      Cote d'Ivoire 2006                       n=13020 value=0 sysmiss=0 e=0 z=132
+  one_tag    years_since_first_union      South Sudan 2010                         n=33233 value=0 sysmiss=0 e=0 z=2499
+  one_tag    years_since_first_union      Sudan 2010                               n=54867 value=0 sysmiss=0 e=0 z=1440
+  one_tag    yfunion                      Cote d'Ivoire 2006                       n=13020 value=0 sysmiss=0 e=0 z=0
+  one_tag    yfunion                      South Sudan 2010                         n=33233 value=0 sysmiss=0 e=0 z=0
+  one_tag    yfunion                      Sudan 2010                               n=54867 value=0 sysmiss=0 e=0 z=0
+  one_tag    ylastbirth                   Guinea-Bissau 2019                       n=29380 value=0 sysmiss=0 e=0 z=0
+  one_tag    ylastbirth                   Mali 2015                                n=61278 value=0 sysmiss=0 e=0 z=0
+
+── 4. Failure ('test-integration-mics-output.R:181:3'): no survey has a harmoniz
+11 cell(s) have no values and mixed tags:
+  no_values  age_first_living_w_partner   Mongolia (Nalaikh District) 2012         n=929 value=0 sysmiss=0 e=0 z=0
+  no_values  age_first_living_w_partner   Turkmenistan 2016                        n=15560 value=0 sysmiss=0 e=0 z=0
+  no_values  mfunion                      Lebanon-Palestinian 2006                 n=3955 value=0 sysmiss=0 e=0 z=0
+  no_values  preg_intention               Lebanon-Palestinian 2006                 n=3955 value=0 sysmiss=0 e=3662 z=0
+  no_values  preg_intention               Pakistan (Balochistan) 2010              n=18958 value=0 sysmiss=0 e=11422 z=1226
+  no_values  preg_intention               Somalia 2006                             n=23073 value=0 sysmiss=0 e=18600 z=513
+  no_values  preg_intention               Thailand 2006                            n=37187 value=0 sysmiss=0 e=26984 z=227
+  no_values  preg_intention               Viet Nam 2006                            n=9471 value=0 sysmiss=0 e=6208 z=0
+  no_values  union_status                 Pakistan (Punjab) 2011                   n=150814 value=0 sysmiss=0 e=0 z=0
+  no_values  years_since_first_union      Lebanon-Palestinian 2006                 n=3955 value=0 sysmiss=0 e=0 z=0
+  no_values  yfunion                      Lebanon-Palestinian 2006                 n=3955 value=0 sysmiss=0 e=0 z=0
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+
+r backend: 499 tests, 4 failed or errored, 2 skipped
+  test-integration-mics-output.R: every tagged missing value in the output has a value label
+  test-integration-mics-output.R: no harmonized variable holds plain sysmiss in any survey
+  test-integration-mics-output.R: no survey carries one respondent-level tag for every woman
+  test-integration-mics-output.R: no survey has a harmonized variable that is only mixed tags
