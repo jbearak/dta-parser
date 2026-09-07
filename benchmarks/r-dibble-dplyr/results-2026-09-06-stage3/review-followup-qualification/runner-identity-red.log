@@ -1,0 +1,5 @@
+Error in check_owned_runner_identity(temporary) :
+  identical(before, expected) is not TRUE
+Calls: tryCatch ... tryCatchList -> check_owned_runner_identity -> stopifnot
+Execution halted
+Exit status: 1

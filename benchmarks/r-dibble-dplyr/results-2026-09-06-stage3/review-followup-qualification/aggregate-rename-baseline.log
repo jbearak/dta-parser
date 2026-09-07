@@ -1,0 +1,8 @@
+Typed tibble largest allocation: 0 bytes
+Typed tibble total recorded allocation: 0 bytes
+Dibble largest allocation: 800048 bytes
+Dibble total recorded allocation: 840104 bytes
+Error: largest < 8 * rows is not TRUE
+Execution halted
+
+Exit status: 1

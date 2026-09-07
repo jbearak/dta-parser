@@ -864,6 +864,348 @@
       "copy": "qualification/fertility-post-install-guard-45f2ba4.log",
       "original_sha256": "ba52099f924a69b8f8f7dc88fe3786337d0e773af6ae39f2d102de46210cdd48",
       "copy_sha256": "ba52099f924a69b8f8f7dc88fe3786337d0e773af6ae39f2d102de46210cdd48"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/arithmetic-where-cost-100000.csv",
+      "copy": "final-baseline-08b086c/arithmetic-where-cost-100000.csv",
+      "original_sha256": "d3f5ea158d65da0b48e7a5c19061b2313ab6831f56f44083f3a008c38e80afa4",
+      "copy_sha256": "d3f5ea158d65da0b48e7a5c19061b2313ab6831f56f44083f3a008c38e80afa4"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/arithmetic-where-cost-1000000.csv",
+      "copy": "final-baseline-08b086c/arithmetic-where-cost-1000000.csv",
+      "original_sha256": "fe79b560275fd01010977fca5f5042e04caac5ebdc3afa12816fd7379a244dbd",
+      "copy_sha256": "fe79b560275fd01010977fca5f5042e04caac5ebdc3afa12816fd7379a244dbd"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/memory-pipeline_50-100000.log",
+      "copy": "final-baseline-08b086c/memory-pipeline_50-100000.log",
+      "original_sha256": "66efdcca80e6eb4a01c54937b4d30196165c56f249f730a9c47c79f55dc3c0e5",
+      "copy_sha256": "72610beb8faefce49057e14c314ff86d178d1b4a5bc34ee1a6f1760348506a2f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/memory-pipeline_50-1000000.log",
+      "copy": "final-baseline-08b086c/memory-pipeline_50-1000000.log",
+      "original_sha256": "984a1f390aa989dc2fa3d8af7abc898dbb869d107976dae6c1146cfea0cce113",
+      "copy_sha256": "0f6e4167aee98e78a8392d04aa8341cd50b0c846a7159e08ebc2dc3f7aefc44a"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/memory-pipeline_five-100000.log",
+      "copy": "final-baseline-08b086c/memory-pipeline_five-100000.log",
+      "original_sha256": "149883ceed9f207188ae3a4954bd1a35fb5d6225e1fda00dd98fc9d0da2963fe",
+      "copy_sha256": "04c4d118d9ee6314b9f7e4a6a2443966de318609096bd069821b26892ad9931c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/memory-pipeline_five-1000000.log",
+      "copy": "final-baseline-08b086c/memory-pipeline_five-1000000.log",
+      "original_sha256": "ea2c7cde471ba6edf1934558aa7c780bed6a7856dac85c1e8b7ebf78caf979b8",
+      "copy_sha256": "3e5949897e15073dcf132ba7ef590618c4554f43e73fce3a65ebfaa6ad99ec58"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/memory-rename-100000.log",
+      "copy": "final-baseline-08b086c/memory-rename-100000.log",
+      "original_sha256": "75713993b0d4d6f3c3d49b866894fb3053961a068e87e009939bbed704da5fc6",
+      "copy_sha256": "394f4d13f69dca8165082aaffb15ffd66d9db019978b1fbeebc78d844281fead"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/memory-rename-1000000.log",
+      "copy": "final-baseline-08b086c/memory-rename-1000000.log",
+      "original_sha256": "a299aee9e29bd7beefb8ab59fe726a6ecd5e42857eb418fd02c4bdadaed2eac5",
+      "copy_sha256": "fa0c0fda2674dbaca23b2cbfcf605e07bc9e91911c1d33fed9a2d7f30508c0bc"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/owned-after-read.csv",
+      "copy": "final-baseline-08b086c/owned-after-read.csv",
+      "original_sha256": "fc7656ed71aaf31aebb3e7bef8b6cdccd053553ffde9a0a8e0a085363454d78b",
+      "copy_sha256": "fc7656ed71aaf31aebb3e7bef8b6cdccd053553ffde9a0a8e0a085363454d78b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/owned-double-session.txt",
+      "copy": "final-baseline-08b086c/owned-double-session.txt",
+      "original_sha256": "92f26081ce0294cdf4d8f662ed2c1d8511eb0aeaa02d967982789ea7e8834b02",
+      "copy_sha256": "859e1baa1b8948f1ca309fc5d7cdd5faed4a306caf9ac967b4a950b2c6789177"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/owned-double-writes.csv",
+      "copy": "final-baseline-08b086c/owned-double-writes.csv",
+      "original_sha256": "1a407ce42dd9fd69715cb4ddfadcc9b668ba4cbef33679bfba050675878cbd3e",
+      "copy_sha256": "1a407ce42dd9fd69715cb4ddfadcc9b668ba4cbef33679bfba050675878cbd3e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/owned-double.csv",
+      "copy": "final-baseline-08b086c/owned-double.csv",
+      "original_sha256": "005e65c57aefe7bbd8c1121c7ddbf9953dc138e90124577a99c81ca592c0c105",
+      "copy_sha256": "005e65c57aefe7bbd8c1121c7ddbf9953dc138e90124577a99c81ca592c0c105"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/root-manifest.json",
+      "copy": "final-baseline-08b086c/root-manifest.json",
+      "original_sha256": "faa42b2e9b943e3ed329c238e83b5b4d00cd7265f051272faf070991ff435247",
+      "copy_sha256": "faa42b2e9b943e3ed329c238e83b5b4d00cd7265f051272faf070991ff435247"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/runner.log",
+      "copy": "final-baseline-08b086c/runner.log",
+      "original_sha256": "303f04755703189bafa4a0f5043e8b17c5f7afc981a8ccb57e9c264431050e2a",
+      "copy_sha256": "303f04755703189bafa4a0f5043e8b17c5f7afc981a8ccb57e9c264431050e2a"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/snapshot-cost-100000.csv",
+      "copy": "final-baseline-08b086c/snapshot-cost-100000.csv",
+      "original_sha256": "f015cafc498bd2c90dc6d1d70056aadd123140a9d0a1b02474ae789f70593d65",
+      "copy_sha256": "f015cafc498bd2c90dc6d1d70056aadd123140a9d0a1b02474ae789f70593d65"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-baseline-08b086c/snapshot-cost-1000000.csv",
+      "copy": "final-baseline-08b086c/snapshot-cost-1000000.csv",
+      "original_sha256": "78db2e9e9eb12387b86ff3f00a2f75b6f5276e53b50e476ec566ede6bc7fbe7f",
+      "copy_sha256": "78db2e9e9eb12387b86ff3f00a2f75b6f5276e53b50e476ec566ede6bc7fbe7f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/arithmetic-where-cost-100000.csv",
+      "copy": "final-candidate-08b086c/arithmetic-where-cost-100000.csv",
+      "original_sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28",
+      "copy_sha256": "b39d61b6b8b43328ab09c7c3861463f0a3a759b46f70f8e130de09c0a7565d28"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/arithmetic-where-cost-1000000.csv",
+      "copy": "final-candidate-08b086c/arithmetic-where-cost-1000000.csv",
+      "original_sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77",
+      "copy_sha256": "9991ebaf7cbf3be74f8b7bf23ec7a1b369fd09432d8d296a6cda4455bdd7cc77"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/memory-pipeline_50-100000.log",
+      "copy": "final-candidate-08b086c/memory-pipeline_50-100000.log",
+      "original_sha256": "e95e7a74c31f2a85550c37355f1f57c7ad1137e253cdfcafb354aa02583dfebf",
+      "copy_sha256": "0ece10dec2866c00f62f522eff8d2615988bb20779c47bd722e08f6413b30a72"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/memory-pipeline_50-1000000.log",
+      "copy": "final-candidate-08b086c/memory-pipeline_50-1000000.log",
+      "original_sha256": "77a3cac57f68c18cb65026846a31f162a051d3e1446973516d54f99aa4eb6fd1",
+      "copy_sha256": "40f488c7a9b8ccf677f29ecb4935ddfb5d62757f0ff645ec45b46ea03e0795c3"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/memory-pipeline_five-100000.log",
+      "copy": "final-candidate-08b086c/memory-pipeline_five-100000.log",
+      "original_sha256": "c26e2a66eb798148e040ba812558f336c8192c33d7a3f21c66e1434b0b81a436",
+      "copy_sha256": "7e66fc2143f0893ef576b3c4acdd7a3e07525c4ff3bf34ce0792fffefafa94b3"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/memory-pipeline_five-1000000.log",
+      "copy": "final-candidate-08b086c/memory-pipeline_five-1000000.log",
+      "original_sha256": "8486266944ad870f954835779dfdf1cfbd083434c29e629c1b21d261c6c310ec",
+      "copy_sha256": "1ebc5cff50de17d9f51ff268f49ba69a933d3d47afe717116d35a91350fd0b98"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/memory-rename-100000.log",
+      "copy": "final-candidate-08b086c/memory-rename-100000.log",
+      "original_sha256": "5e8373ab0d1a43d0e77a760f35aca6e22c10fa1de995a130ca2aea5222b1c239",
+      "copy_sha256": "59216d6b90d4437ecff9dc1c75af4c989ad2d05aa187603257b89b3e880c4195"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/memory-rename-1000000.log",
+      "copy": "final-candidate-08b086c/memory-rename-1000000.log",
+      "original_sha256": "48ed4f63f61c711600a7714a6e86fa17461ce8f0582431ba27f1ad1f40d8eb8b",
+      "copy_sha256": "20bb89f2f885aabe85854c9ee0f0d712c65022a530f58904f6c004b4fddd5858"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/owned-after-read.csv",
+      "copy": "final-candidate-08b086c/owned-after-read.csv",
+      "original_sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb",
+      "copy_sha256": "58d624c65ab70f4df0b23780a30c2d9ee81b05b93982bdf5dd4304787b2d9acb"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/owned-double-session.txt",
+      "copy": "final-candidate-08b086c/owned-double-session.txt",
+      "original_sha256": "adfee394202fd29effa7ecb74bc4078d9fe82070f5c695117a2f9b846870bf1f",
+      "copy_sha256": "9e64f8dfe9e5bba5238fff086dee6827f9a7fc54bcb1d98758ada67cb07235eb"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/owned-double-writes.csv",
+      "copy": "final-candidate-08b086c/owned-double-writes.csv",
+      "original_sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea",
+      "copy_sha256": "49cdf7e3c2246ebdf372e9197ec592eca842115c57fcd0914e4cb44c08ce4eea"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/owned-double.csv",
+      "copy": "final-candidate-08b086c/owned-double.csv",
+      "original_sha256": "96256f22ecb25448b4f9e148b6e1cdea5a7fc8708d11f8a73596f344ce27693d",
+      "copy_sha256": "96256f22ecb25448b4f9e148b6e1cdea5a7fc8708d11f8a73596f344ce27693d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/root-manifest.json",
+      "copy": "final-candidate-08b086c/root-manifest.json",
+      "original_sha256": "2309e30fe739fadb57e9f54995920583c3750d5c442180a4851b00eccd433666",
+      "copy_sha256": "2309e30fe739fadb57e9f54995920583c3750d5c442180a4851b00eccd433666"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/runner.log",
+      "copy": "final-candidate-08b086c/runner.log",
+      "original_sha256": "36de03ad210bd4967275cc43b41d5cfa46164a5c60f97cdca55341bd71c09bc7",
+      "copy_sha256": "36de03ad210bd4967275cc43b41d5cfa46164a5c60f97cdca55341bd71c09bc7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/snapshot-cost-100000.csv",
+      "copy": "final-candidate-08b086c/snapshot-cost-100000.csv",
+      "original_sha256": "391efa7a5588df4f3f0e38eddd6df23af2188534e20ac970afe7beb43a9e6d27",
+      "copy_sha256": "391efa7a5588df4f3f0e38eddd6df23af2188534e20ac970afe7beb43a9e6d27"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/root-owned-candidate-08b086c/snapshot-cost-1000000.csv",
+      "copy": "final-candidate-08b086c/snapshot-cost-1000000.csv",
+      "original_sha256": "88dd94b983e9165d2b1ce4b6d6ee959d7459d240e63e8573b82373dac0ee4da7",
+      "copy_sha256": "88dd94b983e9165d2b1ce4b6d6ee959d7459d240e63e8573b82373dac0ee4da7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/final-pair-08b086c/owned-comparison.csv",
+      "copy": "final-qualification-08b086c/owned-comparison.csv",
+      "original_sha256": "e5694d2173e80677158ccd9880e70c5199975448012e5f71f6c6dbf99e3758ad",
+      "copy_sha256": "9205a6c88c685b21573b63ec9667928d3d174ab0e5f38d350655d0d5fe8fb6a2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/final-pair-08b086c/owned-memory.csv",
+      "copy": "final-qualification-08b086c/owned-memory.csv",
+      "original_sha256": "06ff14842b635df803099c15f333b1cd3c712d0b3bcecda92d26c3aabfab64e6",
+      "copy_sha256": "f144aa2d7a0eb87e4ff69f5726a07545268b3692824793b8c7a77de5c49bcaec"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/root-qualification-exact-08b086c.log",
+      "copy": "final-qualification-08b086c/root-qualification-exact-08b086c.log",
+      "original_sha256": "ea73ca3501d22ac4d17e04567802c275e9ff76f864f34edcd2e0affcd76d6140",
+      "copy_sha256": "196a475425bb133462fb682365754bffbb9597160f5e00d4a75b93da3d36c7c2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/read-backing-exact-08b086c.csv",
+      "copy": "final-qualification-08b086c/read-backing-exact-08b086c.csv",
+      "original_sha256": "2a83797845b721d51e863cab3b7268eb381be71fb990f742705cca14d0138624",
+      "copy_sha256": "2a83797845b721d51e863cab3b7268eb381be71fb990f742705cca14d0138624"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/read-backing-exact-08b086c.log",
+      "copy": "final-qualification-08b086c/read-backing-exact-08b086c.log",
+      "original_sha256": "8221252d2cc410c01f7402f3ace4c723bb5e8bcea17bbcf1eea74ebf4bd3e7dc",
+      "copy_sha256": "fef63fe2a166977b633b4f14935a13e1443e8b673227cbd451de4fe77f56fe76"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/rename-allocation-exact-08b086c.log",
+      "copy": "final-qualification-08b086c/rename-allocation-exact-08b086c.log",
+      "original_sha256": "aefc92ff81a4bdf4fe8c958868b3a3916f607ed9dc485a8ed2cc74eccdd66b3b",
+      "copy_sha256": "aefc92ff81a4bdf4fe8c958868b3a3916f607ed9dc485a8ed2cc74eccdd66b3b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/run-reviewed-owned-qualification.py",
+      "copy": "final-qualification-08b086c/run-reviewed-owned-qualification.py",
+      "original_sha256": "4f4c461f5c206ab1cb0f804339b46752e2911a47b039c19dca7b29c59d162788",
+      "copy_sha256": "4f4c461f5c206ab1cb0f804339b46752e2911a47b039c19dca7b29c59d162788"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/external-86d1db1/aggregate-rename-baseline.log",
+      "copy": "review-followup-qualification/aggregate-rename-baseline.log",
+      "original_sha256": "aa11dde5714cbaffcb2a7fcd2f76164376aca3b4833764ceda1313023513a11c",
+      "copy_sha256": "aa11dde5714cbaffcb2a7fcd2f76164376aca3b4833764ceda1313023513a11c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/external-86d1db1/aggregate-rename-candidate.log",
+      "copy": "review-followup-qualification/aggregate-rename-candidate.log",
+      "original_sha256": "0cec8cbe25c0f45cc13d8db6a4c1a9242bacf354c6e5a451bcd9a69e34409b41",
+      "copy_sha256": "0cec8cbe25c0f45cc13d8db6a4c1a9242bacf354c6e5a451bcd9a69e34409b41"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/external-86d1db1/runner-identity-red.log",
+      "copy": "review-followup-qualification/runner-identity-red.log",
+      "original_sha256": "40d041cf91527ae8bfb20f0d61f34e7085c85dae0409e1918b10ae408b5a5c59",
+      "copy_sha256": "7aeef5f16e126348dc6e53c31e9329acf046d52aac5dd1b30564aa5be53cc1a6"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/external-86d1db1/runner-identity-green.log",
+      "copy": "review-followup-qualification/runner-identity-green.log",
+      "original_sha256": "499414e77ec7f4a06caefa542183d38f221a55e6b15f976cdc41f5a767f35a77",
+      "copy_sha256": "499414e77ec7f4a06caefa542183d38f221a55e6b15f976cdc41f5a767f35a77"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/external-86d1db1/provenance-with-runner-identity.log",
+      "copy": "review-followup-qualification/provenance-with-runner-identity.log",
+      "original_sha256": "181ef28c5b12f0f4ad146ac811188f2071932c08ba8c6d4c664a0919d4bcf453",
+      "copy_sha256": "181ef28c5b12f0f4ad146ac811188f2071932c08ba8c6d4c664a0919d4bcf453"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-exact-08b086c-verification.json",
+      "copy": "final-qualification-08b086c/fertility-exact-08b086c-verification.json",
+      "original_sha256": "efca7a082c58f7815932b14cbd0a442ee2cf5f042a2b17475813536ed843226c",
+      "copy_sha256": "efca7a082c58f7815932b14cbd0a442ee2cf5f042a2b17475813536ed843226c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/resume-audit/fertility-post-install-guard-exact-08b086c.log",
+      "copy": "final-qualification-08b086c/fertility-post-install-guard-exact-08b086c.log",
+      "original_sha256": "2794347e38cd211f9c0a3f561c3f6e3f13eae74cf695f88b8af4a35624d2c88b",
+      "copy_sha256": "2794347e38cd211f9c0a3f561c3f6e3f13eae74cf695f88b8af4a35624d2c88b"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/checks-08b086c/conformance.log",
+      "copy": "final-qualification-08b086c/conformance.log",
+      "original_sha256": "3f9265ab72773826a08f54a0da6db8e1a0a0b23563b5758292c74358b890c57f",
+      "copy_sha256": "3f9265ab72773826a08f54a0da6db8e1a0a0b23563b5758292c74358b890c57f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/checks-08b086c/final-artifact-verification.json",
+      "copy": "final-qualification-08b086c/final-artifact-verification.json",
+      "original_sha256": "55cf6ee9c5ab26090bc50f64f3a86aad595434014696fc2dc7866dfc637a7a3f",
+      "copy_sha256": "55cf6ee9c5ab26090bc50f64f3a86aad595434014696fc2dc7866dfc637a7a3f"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/checks-08b086c/final-install-guard.log",
+      "copy": "final-qualification-08b086c/final-install-guard.log",
+      "original_sha256": "5b9735fe456f62ea94bda816acb27dc1714fdfdf74cd396375bfe907c12d3c52",
+      "copy_sha256": "c7b0f4f984410219ed0e50c1e1de08adb943db18fde8c686af61e281516fd7fb"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/checks-08b086c/benchmark-provenance.log",
+      "copy": "final-qualification-08b086c/benchmark-provenance.log",
+      "original_sha256": "181ef28c5b12f0f4ad146ac811188f2071932c08ba8c6d4c664a0919d4bcf453",
+      "copy_sha256": "181ef28c5b12f0f4ad146ac811188f2071932c08ba8c6d4c664a0919d4bcf453"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/checks-08b086c/binary-installed-smoke.log",
+      "copy": "final-qualification-08b086c/binary-installed-smoke.log",
+      "original_sha256": "fd71c6fb4de94ac88b4b87bf30bbb28dc7c79f3297a01946182e6c9de6cef452",
+      "copy_sha256": "fd71c6fb4de94ac88b4b87bf30bbb28dc7c79f3297a01946182e6c9de6cef452"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/checks-08b086c/roxygen.log",
+      "copy": "final-qualification-08b086c/roxygen.log",
+      "original_sha256": "e96e074ea3ed1f424c6267eb62e6b5869c5760a0949cbdd52ac6d027557effbc",
+      "copy_sha256": "e96e074ea3ed1f424c6267eb62e6b5869c5760a0949cbdd52ac6d027557effbc"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/checks-08b086c/labelled-interop.log",
+      "copy": "final-qualification-08b086c/labelled-interop.log",
+      "original_sha256": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81",
+      "copy_sha256": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/checks-08b086c/haven-helper-interop.log",
+      "copy": "final-qualification-08b086c/haven-helper-interop.log",
+      "original_sha256": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264",
+      "copy_sha256": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/checks-08b086c/haven-conformance-loopback.log",
+      "copy": "final-qualification-08b086c/haven-conformance-loopback.log",
+      "original_sha256": "9f2478e81235409b338fe7248baec50fcdc565af8cba9938996a0f15528c5465",
+      "copy_sha256": "9f2478e81235409b338fe7248baec50fcdc565af8cba9938996a0f15528c5465"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/native-runner-exact-08b086c.log",
+      "copy": "final-qualification-08b086c/native-runner-exact-08b086c.log",
+      "original_sha256": "2432f9a108baf470f736ff59c323c39a29eca81f35dd753fb665cd34ee2070d3",
+      "copy_sha256": "2432f9a108baf470f736ff59c323c39a29eca81f35dd753fb665cd34ee2070d3"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage3-validation/native-runner-exact-08b086c.md",
+      "copy": "final-qualification-08b086c/native-runner-exact-08b086c.md",
+      "original_sha256": "7cf2910b5ccc52c3ee48337da26622ee06a500588bfa69a888c3f533f1d87eee",
+      "copy_sha256": "7cf2910b5ccc52c3ee48337da26622ee06a500588bfa69a888c3f533f1d87eee"
     }
   ]
 }

@@ -55,9 +55,10 @@ isolation. It verifies output metadata and both directions of later mutation.
 It is an experiment for column-only operations, not a general implementation.
 
 `check-rename-allocation.R LIBRARY` intentionally fails on the baseline. It
-requires that renaming an owned double column does not allocate its complete
-retained payload. Stage 3 requires this check to pass; it remains separate from
-the current CI workflow.
+bounds both the largest and summed recorded allocations below one retained
+double payload. This small check records allocations above 10,000 bytes;
+`owned-double.R` separately checks unthresholded cumulative allocation.
+Stage 3 requires this check to pass; it remains separate from the CI workflow.
 
 The dated result directory contains raw CSV files and package versions. The
 package build/check result and exact baseline revision are recorded in the report.
@@ -109,8 +110,10 @@ Run `test-provenance.R LIBRARY SOURCE_SHA` against a fresh `install.R` library
 for the bounded guard checks. It exercises every SOURCE_SHA runner with missing,
 mismatched, malformed and changed installation metadata, asserts no result
 output on rejection, and checks locale-independent fingerprints and matching
-result output. Older dated artifacts keep their recorded runner versions and
-manual exact-install verification; do not add provenance to an old library.
+result output. It also checks all owned-runner dependency identities and detects
+a change confined to the shared `helpers.R`. Older dated artifacts keep their
+recorded runner versions and manual exact-install verification; do not add
+provenance to an old library.
 
 ## Owned ordinary-double stage
 
@@ -120,12 +123,15 @@ retained heap and process peaks. Run the following from a clean checkout with
 the runner files from the candidate revision. Each library is created by the
 provenance installer described above; the reported comparison uses Stage 2
 `fd069a36832ed7c1bdedeed52a4281ecabb36e25` and candidate
-`45f2ba489a6e0a2f25d1728eef0a84a6b2fde7b7`.
+`08b086ccd338d394420112cf9f550d355e94cb24`. The final runner identities include
+`helpers.R`, both entry points and `owned-double-helpers.R`. Earlier owned-run
+records omitted `helpers.R`; the report preserves and distinguishes those
+historical measurements from the final qualification.
 
 ```sh
 owned_bench_root=$(mktemp -d /tmp/dibble-owned-benchmark.XXXXXX)
 owned_baseline=fd069a36832ed7c1bdedeed52a4281ecabb36e25
-owned_candidate=45f2ba489a6e0a2f25d1728eef0a84a6b2fde7b7
+owned_candidate=08b086ccd338d394420112cf9f550d355e94cb24
 Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \
   "$owned_bench_root/baseline-library" "$owned_baseline"
 Rscript --vanilla benchmarks/r-dibble-dplyr/install.R \

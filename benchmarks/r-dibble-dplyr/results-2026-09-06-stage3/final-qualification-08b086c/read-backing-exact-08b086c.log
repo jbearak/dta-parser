@@ -1,0 +1,34 @@
+Untimed original-backing qualification; source 08b086ccd338d394420112cf9f550d355e94cb24
+Runner MD5 ee0e2fa5ef4e447efaebbf89199e9939
+Selector dispatch warmed on a separate four-row fixture
+PASS 100000 sum original backing and post-read selector
+PASS 100000 mean original backing and post-read selector
+PASS 100000 range original backing and post-read selector
+PASS 100000 coercion_double original backing and post-read selector
+PASS 100000 coercion_integer original backing and post-read selector
+PASS 100000 export_data_frame original backing and post-read selector
+PASS 100000 export_tibble original backing and post-read selector
+PASS 100000 arithmetic original backing and post-read selector
+PASS 100000 mutate_arithmetic original backing and post-read selector
+PASS 100000 filter_half original backing and post-read selector
+PASS 100000 row_subset original backing and post-read selector
+PASS 100000 read_dta original backing and post-read selector
+PASS 100000 write_dta original backing and post-read selector
+PASS 100000 read_arrow original backing and post-read selector
+PASS 100000 write_arrow original backing and post-read selector
+PASS 1000000 sum original backing and post-read selector
+PASS 1000000 mean original backing and post-read selector
+PASS 1000000 range original backing and post-read selector
+PASS 1000000 coercion_double original backing and post-read selector
+PASS 1000000 coercion_integer original backing and post-read selector
+PASS 1000000 export_data_frame original backing and post-read selector
+PASS 1000000 export_tibble original backing and post-read selector
+PASS 1000000 arithmetic original backing and post-read selector
+PASS 1000000 mutate_arithmetic original backing and post-read selector
+PASS 1000000 filter_half original backing and post-read selector
+PASS 1000000 row_subset original backing and post-read selector
+PASS 1000000 read_dta original backing and post-read selector
+PASS 1000000 write_dta original backing and post-read selector
+PASS 1000000 read_arrow original backing and post-read selector
+PASS 1000000 write_arrow original backing and post-read selector
+All 30 untimed before/after original-backing checks passed

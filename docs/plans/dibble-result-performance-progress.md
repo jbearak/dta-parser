@@ -10,47 +10,51 @@ decisions are recorded in that plan.
 ## Stages 1 and 2 complete, Stage 3 active
 
 Stage 3 implementation and local acceptance use source
-`45f2ba489a6e0a2f25d1728eef0a84a6b2fde7b7`. The
+`08b086ccd338d394420112cf9f550d355e94cb24`. The
 [measured report](../../benchmarks/r-dibble-dplyr/results-2026-09-06-stage3.md)
-retains the exact Stage 2 baseline, the rejected first candidate, all paired
-repeats and memory evidence. Both final operation pairs and the historical
-matrix pass the agreed read-regression threshold. Those measurements remain
-bound to that source. The external-review corrections below require separate
-qualification; historical evidence and identities are unchanged.
+retains the exact Stage 2 baseline, rejected first candidate and earlier
+`45f2ba4` qualification. The corrected final operation pair and all twelve
+isolated memory runs pass with complete four-file runner identities. No final
+operation exceeds both read-regression thresholds. The earlier historical
+matrix and all original evidence retain their measured source labels.
 
 The exact native runner passes every original 159 assertion and all 15 added
 provenance/readiness conditions. Original budgets remain unchanged. Repeated
-generation at 400 and 1,600 columns takes 0.122 and 0.815 seconds and profiles
+generation at 400 and 1,600 columns takes 0.122 and 0.816 seconds and profiles
 3,256 and 12,856 R bytes above the original 1,000-byte threshold. The saved rename
-allocation gate passes, with its largest dibble allocation at 40,056 bytes.
+allocation gate passes, with its largest dibble allocation at 40,056 bytes and
+summed recorded allocations at 80,112 bytes.
 Root's 237 ownership/compatibility cases and 30 separate before/after read-backing
-checks pass. Independent API and storage reviewers have closed the actual
-source, tests, benchmark fixtures, report calculations and provenance reviews.
+checks pass. Independent API and storage reviews close the actual source,
+tests and benchmark fixtures. Both round 20 reviews also verify all 201 evidence
+artifacts, report calculations, provenance and unchanged historical records.
 
-The final source archive passes the complete R suite with 15,478 assertions,
+The final source archive passes the complete R suite with 15,482 assertions,
 four established test warnings and no failures or skips. Required conformance
 passes 22 TypeScript fixtures with 32,085 cell comparisons, ten deterministic
 native cases, the fixture oracle and a fresh R build/check. The standard check
-has the established three warnings and two notes. An additional `--as-cran`
-check returns no errors, five warnings and four notes; it is a separate check
+has the established three warnings and two notes. The earlier `45f2ba4`
+`--as-cran` check returned no errors, five warnings and four notes; it is a separate check
 mode, not a clean or same-mode baseline result. Its extra diagnostics include
 the unavailable `checkbashisms` tool and inherited undeclared test imports.
 
-Rust formatting, Clippy, 278 workspace tests, documentation and package
-verification pass. The isolated offline bridge passes formatting, checking and
-17 tests. All 32 archive/vendor unit checks, vendor integrity, Rust source-hash
-checks and the corpus framework pass. Haven conformance runs without skips
-after a permitted loopback-server retry; Haven 2.5.5 helper and labelled 2.16.0
-interoperability also pass. Initial network-blocked Cargo/R checks and the
-sandbox-skipped loopback attempt remain retained and are not acceptance evidence.
+Rust and vendor sources are unchanged from the earlier passing formatting,
+Clippy, 278 workspace tests, documentation, packaging, isolated bridge checks
+and 17 bridge tests. The same applies to all 32 archive/vendor unit checks,
+vendor integrity, Rust source-hash checks and the corpus framework. On final
+source, Haven conformance passes without skips with permitted loopback access;
+Haven 2.5.5 helper and labelled 2.16.0 interoperability pass. Pinned roxygen2
+8.1.0 leaves manuals unchanged. Earlier blocked or skipped attempts remain
+retained as diagnostics rather than acceptance evidence.
 
 Fresh source and macOS binary archives contain the same NOTICE as their
-installed packages. All 106 exports are unchanged. Every one of the 686 original
+installed packages. All 106 exports are unchanged. Every one of the 832 original
 git-export files remains byte-identical after checking. The provenance driver
 now tests both owned-double runners and passes 28 rejection/no-output cases,
-seven usage counterchecks, matching output and locale/copy checks. Full logs
+seven usage counterchecks, matching output, locale/copy and runner dependency
+identity checks. Full logs
 and artifact hashes are under
-`/private/tmp/dta-direct-stage3-validation/checks-45f2ba4/`.
+`/private/tmp/dta-direct-stage3-validation/checks-08b086c/`.
 
 The downstream comparison on exact source is byte-identical to the preserved
 Stage 2 output: 499 tests, the same four existing integration failure blocks
@@ -60,14 +64,15 @@ mtime remain unchanged. This closes Stage 3 compatibility comparison; it does
 not turn that downstream suite into a passing suite or replace the final
 integrated epic validation.
 
-The evidence and reproduction instructions are committed as
-`53571eb92d3c4296e0d95b1824724dee5c8fa68a`.
+The original evidence and reproduction instructions are retained in commit
+`53571eb92d3c4296e0d95b1824724dee5c8fa68a`. Corrected source is committed as
+`08b086c`; the reviewed final evidence is ready for publication.
 [PR #194](https://github.com/jbearak/dta-parser/pull/194) is open from
 `codex/direct-dibble-owned-doubles`. Latest-head external CI/CodeRabbit review
 and normal merge remain pending. Stage 3 stays active until those gates finish;
 stages 4 through 9 have not begun.
 
-### Stage 3 external-review corrections in progress
+### Stage 3 external-review corrections
 
 Windows CI on `6140a05` builds the package but terminates during its tests.
 The reviewed diagnostics-only head `86d1db1` retains the full failed output and
@@ -76,14 +81,14 @@ preceding error-injection case restores all state successfully. A bounded local
 subprocess reproduction confirms that CRT `SIGINT` delivery terminates R when
 its usual POSIX handler is absent.
 
-The working correction enters R's documented native interrupt handler in the
+The correction enters R's documented native interrupt handler in the
 two armed test controls and retains their disarm order and fallback errors.
 The older native-write rollback matrix now also runs on Windows; separate
 POSIX asynchronous signal tests are unchanged. The focused owned-column,
 owned-read and mutation suite passes. The complete working suite passes 15,482
 assertions with four established warnings and no failures or skips. Both
 independent round 19 reviews close the native, test, documentation and benchmark
-corrections. Exact-source checks and latest-head Windows CI remain pending.
+corrections. Exact-source checks pass; latest-head Windows CI remains pending.
 
 External review also prompted explicit writable access to the private ordinary
 string-view copy, while preserving allocation-free reads from its ordinary
@@ -101,8 +106,12 @@ The saved rename checker now also checks summed recorded allocation while
 retaining its original maximum-event bound and profiling threshold. Runner
 identity includes the sourced shared `helpers.R`; a regression test changes
 only that file in a copied runner and verifies that its identity changes.
-Historical measurements retain their original identities. Fresh corrected
-evidence and the remaining external review replies are pending.
+Historical measurements retain their original identities. CodeRabbit
+[agreed to preserve that history](https://github.com/jbearak/dta-parser/pull/194#discussion_r3945821144).
+Fresh corrected baseline/candidate measurements pass with identities checked
+against committed runner bytes and the actual runtime records. Both final
+round 20 reviews are clean. The remaining external review replies follow
+publication of this qualified head.
 
 ### Earlier Stage 3 checkpoints
 
