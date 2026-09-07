@@ -339,6 +339,27 @@ test_that("within-call captures keep their original generation and group", {
     expect_error(dplyr::ungroup(input, renamed = g), "Can't rename")
 })
 
+test_that("removed and re-added column generations retain values and expire", {
+    data <- dibble(x = c(1, 2), y = c(3, 4))
+    old <- new <- NULL
+    result <- dplyr::mutate(data, before = {
+        old <<- function() x
+        0L
+    }, x = NULL, x = c(10, 20), after = {
+        new <<- function() x
+        expect_identical(as.double(old()), c(1, 2))
+        expect_identical(as.double(new()), c(10, 20))
+        x
+    }, x = NULL)
+    expect_identical(names(result), c("y", "before", "after"))
+    expect_identical(as.double(result$after), c(10, 20))
+    expect_error(old(), "Obsolete data mask")
+    expect_warning(expect_error(new(), "Obsolete data mask"),
+        "restarting interrupted promise evaluation")
+    repl(data, x = 99, where = 1L)
+    expect_identical(as.double(result$after), c(10, 20))
+})
+
 
 test_that("expired capture masks release source payloads on success and failure", {
     for (kind in c("closure", "pronoun", "quosure", "promise")) {

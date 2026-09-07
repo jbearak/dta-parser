@@ -53,7 +53,7 @@
         generation$chunks <- chunks
         generation$used <- FALSE
         state$current[[name]] <- generation
-        state$names <- union(state$names, name)
+        if (!name %in% state$names) state$names <- c(state$names, name)
         state$generations[[length(state$generations) + 1L]] <- rlang::new_weakref(generation)
     }
     for (name in names(columns)) add(name, columns[[name]])
