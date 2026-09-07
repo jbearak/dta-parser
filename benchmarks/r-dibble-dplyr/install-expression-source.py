@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -146,12 +147,13 @@ def main():
                 dependency_rows.append({'package': name, 'version': description.get('Version'), 'path': str(directory)})
                 package_dirs.append(directory)
                 pending.append(description)
-    tool_names = ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun']
+    tool_names = ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'python3']
     tools = {name: Path(shutil.which(name)).resolve(strict=True) for name in tool_names}
     compiler = Path(subprocess.check_output(['/usr/bin/xcrun', '--find', 'clang'], text=True).strip())
     sdk = Path(subprocess.check_output(['/usr/bin/xcrun', '--show-sdk-path'], text=True).strip()).resolve(strict=True)
     inputs = {Path(__file__).resolve(), export / 'benchmarks/r-dibble-dplyr/expression-install-finish.R', ROOT / 'source.tar', compiler}
     inputs.update(tools.values())
+    inputs.add(Path(sys.executable).resolve(strict=True))
     inputs.update(path for path in export.rglob('*') if path.is_file())
     # Retain complete installed R, Rust, and selected R dependency file identities.
     rust_install = tools['rustc'].parent.parent

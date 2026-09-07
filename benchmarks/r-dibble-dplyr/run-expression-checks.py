@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tarfile
 
 
@@ -119,8 +120,9 @@ def main():
         require(directory.is_dir(), 'Missing input tree: ' + str(directory))
         inputs.update(p for p in directory.rglob('*') if p.is_file())
     tools = {name: Path(shutil.which(name)).resolve(strict=True) for name in
-             ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'bun', 'R', 'Rscript']}
+             ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'bun', 'R', 'Rscript', 'python3']}
     inputs.update(tools.values())
+    inputs.add(Path(sys.executable).resolve(strict=True))
     rust_root = tools['rustc'].parent.parent
     inputs.update(p for p in rust_root.rglob('*') if p.is_file())
     for config in [Path('/Users/jmb/.R/Makevars'), Path('/Users/jmb/.cargo/config'), Path('/Users/jmb/.cargo/config.toml')]:
