@@ -1,0 +1,28 @@
+{
+  "workspace_tests": {
+    "passed": 278,
+    "failed": 0,
+    "ignored": 0
+  },
+  "cargo_package_warnings": [
+    "warning: ignoring test `arrow` as `tests/arrow.rs` is not included in the published package",
+    "warning: ignoring test `conformance` as `tests/conformance.rs` is not included in the published package",
+    "warning: ignoring test `encoding` as `tests/encoding.rs` is not included in the published package",
+    "warning: ignoring test `file` as `tests/file.rs` is not included in the published package",
+    "warning: ignoring test `fuzz_smoke` as `tests/fuzz_smoke.rs` is not included in the published package",
+    "warning: ignoring test `legacy` as `tests/legacy.rs` is not included in the published package",
+    "warning: ignoring test `metadata` as `tests/metadata.rs` is not included in the published package",
+    "warning: ignoring test `observations` as `tests/observations.rs` is not included in the published package",
+    "warning: ignoring test `strl` as `tests/strl.rs` is not included in the published package",
+    "warning: ignoring test `value_labels` as `tests/value_labels.rs` is not included in the published package",
+    "warning: ignoring test `write` as `tests/write.rs` is not included in the published package"
+  ],
+  "bridge_results": [
+    "test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s"
+  ],
+  "haven_original_skip": true,
+  "haven_loopback_skips": [],
+  "r_check_status": [
+    "Status: 3 WARNINGs, 2 NOTEs"
+  ]
+}

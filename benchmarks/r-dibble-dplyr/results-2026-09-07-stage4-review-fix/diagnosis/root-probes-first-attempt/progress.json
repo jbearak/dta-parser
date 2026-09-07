@@ -1,0 +1,30 @@
+[
+  {
+    "case": "constructor-baseline",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes/constructor-final.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes-c8ca0a4/constructor-baseline.rds"
+    ],
+    "exit_code": 1,
+    "expected_exit_code": 1,
+    "log_sha256": "00f4f7889f41a6276191d307e7157e40a8beaff9ee0b6752f5fcaf2bca5b77da"
+  },
+  {
+    "case": "constructor-candidate",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes/constructor-final.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+      "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "/private/tmp/dta-direct-stage4-validation/root-review-probes-c8ca0a4/constructor-candidate.rds"
+    ],
+    "exit_code": 1,
+    "expected_exit_code": 0,
+    "log_sha256": "a000fab693b9a8d0cbd17f1107d62bd81d821a3c5d4b696774f29ef58be7208c"
+  }
+]

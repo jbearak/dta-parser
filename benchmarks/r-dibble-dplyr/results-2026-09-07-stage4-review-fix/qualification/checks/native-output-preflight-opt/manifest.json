@@ -1,0 +1,256 @@
+{
+  "scope": "Exercise the real native runner's output preflight without its workloads.\n\nUse an exact installed package and a new evidence directory. Only git is\nsynthetic: its sentinel proves whether preflight admitted the destination, then\nfails before runner identity files or measured workloads can start. Inputs and\nfailed child logs remain available for inspection; no timing claim is made.\n",
+  "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "library": "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+  "source_sha256": {
+    "benchmarks/r-reference-mutation/test-owned-atoms-preflight.py": "91eedf2e7a3c2119a51c31e8afb793c91c98fd1766ab268eed17a88a42cf4bf5",
+    "benchmarks/r-reference-mutation/owned-atoms.R": "ac7b6364aee3cef47d6ceb35e6d45e28a8d5af24ec091c98d5b92e459c3ff190",
+    "benchmarks/r-dibble-dplyr/helpers.R": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+  },
+  "sources_unchanged": true,
+  "synthetic_git_sha256": "01fe42896b0abefff1c99173c11081f7e64bd0002f36ad36ee76e35e9b8e2fe6",
+  "cases": [
+    {
+      "case": "empty",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+        "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+        "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/native-output-preflight-opt/empty"
+      ],
+      "exit_code": 1,
+      "before": [],
+      "after": [],
+      "sentinel_reached": true,
+      "unchanged": true,
+      "expected_diagnostic": true,
+      "passed": true,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75"
+    },
+    {
+      "case": "unrelated",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+        "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+        "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/native-output-preflight-opt/unrelated"
+      ],
+      "exit_code": 1,
+      "before": [
+        {
+          "path": "stale.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ],
+      "after": [
+        {
+          "path": "stale.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ],
+      "sentinel_reached": false,
+      "unchanged": true,
+      "expected_diagnostic": true,
+      "passed": true,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c"
+    },
+    {
+      "case": "hidden",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+        "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+        "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/native-output-preflight-opt/hidden"
+      ],
+      "exit_code": 1,
+      "before": [
+        {
+          "path": ".stale",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ],
+      "after": [
+        {
+          "path": ".stale",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ],
+      "sentinel_reached": false,
+      "unchanged": true,
+      "expected_diagnostic": true,
+      "passed": true,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c"
+    },
+    {
+      "case": "nested",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+        "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+        "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/native-output-preflight-opt/nested"
+      ],
+      "exit_code": 1,
+      "before": [
+        {
+          "path": "child",
+          "mode": 16877,
+          "sha256": null
+        },
+        {
+          "path": "child/stale.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ],
+      "after": [
+        {
+          "path": "child",
+          "mode": 16877,
+          "sha256": null
+        },
+        {
+          "path": "child/stale.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ],
+      "sentinel_reached": false,
+      "unchanged": true,
+      "expected_diagnostic": true,
+      "passed": true,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c"
+    },
+    {
+      "case": "empty-child",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+        "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+        "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/native-output-preflight-opt/empty-child"
+      ],
+      "exit_code": 1,
+      "before": [
+        {
+          "path": "child",
+          "mode": 16877,
+          "sha256": null
+        }
+      ],
+      "after": [
+        {
+          "path": "child",
+          "mode": 16877,
+          "sha256": null
+        }
+      ],
+      "sentinel_reached": false,
+      "unchanged": true,
+      "expected_diagnostic": true,
+      "passed": true,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c"
+    },
+    {
+      "case": "csv",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+        "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+        "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/native-output-preflight-opt/csv"
+      ],
+      "exit_code": 1,
+      "before": [
+        {
+          "path": "owned-native-atoms.csv",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ],
+      "after": [
+        {
+          "path": "owned-native-atoms.csv",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ],
+      "sentinel_reached": false,
+      "unchanged": true,
+      "expected_diagnostic": true,
+      "passed": true,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "359bf1a926cdd0c34638ac7ff4551f77158a50f829e250beebadf7af0210c3c1"
+    },
+    {
+      "case": "identity",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+        "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+        "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/native-output-preflight-opt/identity"
+      ],
+      "exit_code": 1,
+      "before": [
+        {
+          "path": "owned-native-atoms-session.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ],
+      "after": [
+        {
+          "path": "owned-native-atoms-session.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ],
+      "sentinel_reached": false,
+      "unchanged": true,
+      "expected_diagnostic": true,
+      "passed": true,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "91a64c9eea5b6f1c1ee00570dfa5ebfedd2b1502c339b978a87d52df4290970d"
+    },
+    {
+      "case": "missing",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+        "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library",
+        "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+        "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/native-output-preflight-opt/missing"
+      ],
+      "exit_code": 1,
+      "before": null,
+      "after": null,
+      "sentinel_reached": false,
+      "unchanged": true,
+      "expected_diagnostic": true,
+      "passed": true,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "a4b49b7a207110c7b8ad3b7378de96c0f995ddd1c2551e22f4fbf36fe55a3f85"
+    }
+  ]
+}

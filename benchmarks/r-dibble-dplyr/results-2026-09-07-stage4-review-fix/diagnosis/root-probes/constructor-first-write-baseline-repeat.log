@@ -1,0 +1,55 @@
+NULL
+$source
+[1] "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15"
+
+$dll_md5
+[1] "18837c14dcd6597169dc0e3d99186dab"
+
+$before
+$before$backing
+[1] "0xa91598000"
+
+$before$shared
+[1] TRUE
+
+$before$exposed
+[1] FALSE
+
+$before$bytes
+[1] 8e+05
+
+$before$depth
+[1] 1
+
+
+$after
+$after$backing
+[1] "0xa914d4000"
+
+$after$shared
+[1] FALSE
+
+$after$exposed
+[1] FALSE
+
+$after$bytes
+[1] 8e+05
+
+$after$depth
+[1] 1
+
+
+$copies
+           owned_capture             compact_copy               staged_new 
+                   8e+05                    0e+00                    0e+00 
+             old_journal native_scratch_allocated     mutation_target_copy 
+                   0e+00                    0e+00                    0e+00 
+
+$values_correct
+[1] TRUE
+
+$backing_stable
+[1] FALSE
+
+Error: Fresh constructor first private Set_elt replaced the full backing payload
+Execution halted

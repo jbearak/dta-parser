@@ -1,0 +1,414 @@
+   Compiling cfg-if v1.0.4
+   Compiling rand_core v0.10.1
+   Compiling bytes v1.12.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling libc v0.2.189
+   Compiling libm v0.2.16
+   Compiling arrow-schema v59.2.0
+   Compiling typenum v1.20.1
+   Compiling once_cell v1.21.4
+   Compiling hashbrown v0.17.1
+   Compiling serde_core v1.0.229
+   Compiling zerocopy v0.8.56
+   Compiling bitflags v2.13.1
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling zmij v1.0.23
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling chacha20 v0.10.2
+   Compiling zstd-safe v7.2.4
+   Compiling iana-time-zone v0.1.65
+   Compiling flatbuffers v25.12.19
+   Compiling encoding_rs v0.8.35
+   Compiling zstd v0.13.3
+   Compiling thiserror v2.0.19
+   Compiling unicode-general-category v1.1.0
+   Compiling getrandom v0.3.4
+   Compiling getrandom v0.4.3
+   Compiling cpufeatures v0.2.17
+   Compiling rand v0.10.2
+   Compiling generic-array v0.14.7
+   Compiling num-traits v0.2.19
+   Compiling twox-hash v2.1.4
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling sha2 v0.10.9
+   Compiling lz4_flex v0.14.0
+   Compiling num-integer v0.1.47
+   Compiling num-complex v0.4.6
+   Compiling chrono v0.4.45
+   Compiling num-bigint v0.5.1
+   Compiling serde_json v1.0.151
+   Compiling serde v1.0.229
+   Compiling half v2.7.1
+   Compiling ahash v0.8.12
+   Compiling arrow-buffer v59.2.0
+   Compiling arrow-data v59.2.0
+   Compiling arrow-array v59.2.0
+   Compiling arrow-select v59.2.0
+   Compiling arrow-ipc v59.2.0
+   Compiling dta-tools v0.7.1 (/private/tmp/dta-direct-stage4-validation/workspace-c8ca0a4/r-package/dtatools/src/dta-tools)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.90s
+     Running unittests src/lib.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/dta_tools-755fb309970d2899)
+
+running 113 tests
+test arrow::profile::tests::field_documents_reject_unknown_keys ... ok
+test arrow::profile::tests::checksum_documents_reject_unknown_keys ... ok
+test arrow::profile::tests::invalid_characteristic_stops_before_later_json_is_parsed ... ok
+test arrow::profile::tests::field_semantics_must_match_the_arrow_field ... ok
+test arrow::profile::tests::dataset_documents_reject_unknown_keys ... ok
+test arrow::profile::tests::discarded_value_label_entries_still_validate_label_types ... ok
+test arrow::profile::tests::field_documents_reject_invalid_string_storage ... ok
+test arrow::profile::tests::dataset_output_container_is_optional_and_validated ... ok
+test arrow::profile::tests::null_or_omitted_value_label_registries_are_empty ... ok
+test arrow::checksum::tests::value_changes_change_the_hash ... ok
+test arrow::checksum::tests::boolean_trailing_bits_do_not_affect_the_hash ... ok
+test arrow::profile::tests::dataset_documents_reject_duplicate_keys ... ok
+test arrow::profile::tests::projected_registry_is_consumed_once_without_reparsing_discarded_labels ... ok
+test arrow::profile::tests::value_label_entries_reject_system_missing ... ok
+test arrow::profile::tests::value_label_entries_require_exactly_one_code ... ok
+test arrow::profile::tests::writer_field_semantics_are_accepted ... ok
+test arrow::checksum::tests::sliced_and_rebuilt_arrays_hash_identically ... ok
+test arrow::profile::tests::decoded_duplicate_characteristic_stops_before_later_json_is_parsed ... ok
+test arrow::read::tests::compression_framed_uncompressed_buffer_reuses_the_input_allocation ... ok
+test arrow::read::tests::ipc_endianness_validation_follows_the_target_host ... ok
+test arrow::read::tests::ipc_metadata_allocations_are_bounded ... ok
+test arrow::read::tests::oversized_uncompressed_buffer_is_rejected_before_allocation ... ok
+test arrow::read::tests::oversized_compressed_declaration_is_rejected_before_decompression ... ok
+test arrow::read::tests::partial_batch_allocations_are_bounded_before_decode ... ok
+test arrow::read::tests::projected_profile_documents_iterate_once_in_source_order ... ok
+test arrow::read::tests::negative_field_null_counts_are_rejected ... ok
+test arrow::read::tests::malformed_flatbuffer_field_types_are_rejected_without_panicking ... ok
+test arrow::read::tests::parsed_profile_releases_raw_fields_and_owns_each_reference_key_once ... ok
+test arrow::write::tests::deferred_preflight_revalidates_same_length_dataset_mutations ... ok
+test arrow::write::tests::compact_footer_plan_is_exact ... ok
+test arrow::write::tests::checksum_json_length_matches_the_serialized_document ... ok
+test arrow::write::tests::deferred_preflight_rejects_dataset_metadata_length_changes ... ok
+test arrow::profile::tests::note_arrays_are_bounded_during_deserialization ... ok
+test arrow::read::tests::projected_profile_without_selected_value_labels_skips_wide_reference_scan ... ok
+test arrow::read::tests::projected_reference_scan_stops_when_the_last_table_becomes_shared ... ok
+test arrow::read::tests::selected_documents_can_satisfy_sharing_without_a_wide_reference_scan ... ok
+test arrow::read::tests::counted_read_keeps_the_selected_window ... ok
+test arrow::write::tests::final_validation_reuses_the_dataset_preflight_plan ... ok
+test arrow::write::tests::metadata_preflight_returns_the_validated_dataset_json_plan ... ok
+test data_reader::tests::rejects_a_value_labels_offset_too_small_for_the_strls_close ... ok
+test dta_metadata::tests::duplicate_variable_names_target_the_last_variable_without_panicking ... ok
+test dta_metadata::tests::characteristic_plan_preserves_source_order_and_stops_retaining_after_errors ... ok
+test dta_metadata::tests::dataset_and_structural_records_do_not_build_variable_indexes ... ok
+test dta_metadata::tests::characteristic_records_preserve_scope_gaps_and_last_duplicate_values ... ok
+test endian::tests::reads_both_byte_orders ... ok
+test dta_metadata::tests::malformed_duplicate_keeps_source_order_and_stops_later_retention ... ok
+test endian::tests::reports_truncation_and_arithmetic_overflow ... ok
+test file::tests::automatic_parallelism_accepts_large_byte_or_cell_workloads ... ok
+test file::tests::column_kernel_collects_v119_strl_pointers_in_both_byte_orders ... ok
+test file::tests::column_kernel_range_proof_rejects_truncation_and_output_overflow ... ok
+test file::tests::column_kernels_decode_big_endian_wide_numeric_values ... ok
+test file::tests::file_metadata_checks_modern_characteristic_terminator_before_value_decode ... ok
+test file::tests::file_metadata_frames_legacy_expansions_without_decoding_values ... ok
+test file::tests::full_value_label_name_index_preserves_duplicate_source_order ... ok
+test file::tests::file_metadata_rejects_forged_modern_terminator_before_value_decode ... ok
+test file::tests::owning_sink_moves_large_projected_tables_without_cloning_their_text ... ok
+test arrow::write::tests::metadata_preflight_drops_large_serialized_documents_before_cell_extraction ... ok
+test arrow::profile::tests::metadata_string_bounds_count_decoded_json_bytes ... ok
+test file::tests::legacy_framing_reads_dense_small_headers_in_blocks ... ok
+test file::tests::schema_summary_preserves_legacy_structural_error_precedence ... ok
+test file::tests::schema_preflight_frames_but_does_not_materialize_characteristic_payloads ... ok
+test file::tests::schema_summary_reads_only_legacy_type_codes_and_names ... ok
+test file::tests::legacy_framing_reads_only_headers_around_large_payloads ... ok
+test file::tests::schema_summary_reads_only_modern_type_codes_and_names ... ok
+test file::tests::scratch_limit_has_a_dedicated_error ... ok
+test file::tests::schema_summary_validates_modern_framing_before_type_codes ... ok
+test file::tests::short_strl_pointer_cells_return_a_truncation_error ... ok
+test file::tests::sparse_value_label_selection_preserves_duplicate_source_order ... ok
+test arrow::read::tests::parallel_decode_uses_the_prepared_file_snapshot ... ok
+test file::tests::streaming_modern_characteristics_validate_superseded_duplicate_values ... ok
+test file::tests::strl_materialization_polls_during_long_null_and_cache_hit_runs ... ok
+test file::tests::synchronous_column_kernel_polls_between_long_row_runs ... ok
+test file::tests::projected_location_plan_retains_only_source_referenced_table_names ... ok
+test legacy::tests::pre111_string_codes_cover_widths_one_through_128 ... ok
+test legacy::tests::unterminated_legacy_characteristics_are_framed_before_values_are_decoded ... ok
+test metadata::tests::enforces_type_boundaries_by_release ... ok
+test metadata::tests::forged_modern_terminator_is_framed_before_values_are_decoded ... ok
+test file::tests::characteristic_plan_retains_only_accepted_record_descriptors ... ok
+test metadata::tests::rejects_truncated_legacy_and_unknown_signatures_without_panicking ... ok
+test metadata::tests::unterminated_modern_characteristics_are_framed_before_values_are_decoded ... ok
+test missing::tests::classifies_all_27_missing_tags_exactly ... ok
+test missing::tests::missing_tag_serde_is_stable ... ok
+test missing::tests::rejects_numeric_boundaries_and_misaligned_raw_bits ... ok
+test missing::tests::release_105_accepts_both_double_missing_encodings ... ok
+test selection::tests::columns_preserve_request_order_deduplicate_and_reject_invalid_indices ... ok
+test selection::tests::row_windows_clamp_without_underflow ... ok
+test strl::tests::indexes_big_endian_v119_u64_gso_observations ... ok
+test strl::tests::reads_all_six_observation_bytes_in_both_orders ... ok
+test strl::tests::reads_release_119_three_byte_variables_and_five_byte_observations ... ok
+test text::tests::latin1_and_windows_1252_are_distinct ... ok
+test text::tests::malformed_utf8_uses_replacement_decoding ... ok
+test text::tests::resolves_only_the_documented_aliases ... ok
+test text::tests::utf8_boundaries_distinguish_valid_codepoints_from_malformed_bytes ... ok
+test types::tests::canonical_serde_uses_typescript_spellings_and_decimal_u64s ... ok
+test types::tests::read_options_default_to_a_full_read ... ok
+test value_labels::tests::oversized_offset_table_count_is_rejected_before_declared_payload_is_sliced ... ok
+test value_labels::tests::selected_value_labels_resolve_automatic_encoding ... ok
+test value_labels::tests::terminator_index_is_bounded_by_requested_offsets ... ok
+test value_labels::tests::unselected_fixed8_table_skips_entry_iteration_after_bounds_check ... ok
+test file::tests::parsed_schema_scales_to_release_119_variable_counts ... ok
+test file::tests::value_label_move_threshold_stops_visiting_entries ... ok
+test metadata::tests::in_memory_modern_characteristics_compact_adversarial_duplicates ... ok
+test arrow::read::tests::projected_profile_is_sparse_and_validates_only_selected_field_documents ... ok
+test arrow::profile::tests::note_and_characteristic_strings_are_bounded_before_deserialization ... ok
+test file::tests::streaming_modern_characteristics_validate_and_compact_duplicates ... ok
+test dta_metadata::tests::characteristic_plan_validates_but_compacts_duplicate_records ... ok
+test arrow::read::tests::wide_profile_reference_state_owns_one_key_per_distinct_name ... ok
+test data_reader::tests::wide_projection_borrows_selected_value_label_name_payloads ... ok
+test file::tests::wide_selected_value_label_index_retains_only_metadata_positions ... ok
+test dta_metadata::tests::decoded_plan_materializes_120_000_scopes_without_scope_staging ... ok
+test arrow::profile::tests::full_and_projected_registries_reject_more_than_dta_variable_limit ... ok
+test arrow::profile::tests::projected_registry_borrows_plain_keys_until_table_limit ... ok
+test arrow::write::tests::metadata_preflight_counts_fields_without_column_arrays ... ok
+
+test result: ok. 113 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.60s
+
+     Running tests/arrow.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/arrow-afac25807a3fafe3)
+
+running 45 tests
+test non_arrow_input_is_rejected ... ok
+test dataset_documents_reject_duplicate_value_label_table_names ... ok
+test malformed_note_and_characteristic_documents_are_rejected_before_output ... ok
+test dataset_signature_profile_version_is_pinned ... ok
+test dataset_signature_detects_value_order_and_names ... ok
+test path_writer_preserves_an_existing_file_when_profiled_data_contains_nulls ... ok
+test path_writer_preserves_an_existing_file_when_metadata_is_invalid ... ok
+test dangling_value_label_references_are_malformed ... ok
+test legacy_profile_note_arrays_are_read_as_consecutive_numbered_notes ... ok
+test nonnullable_profile_fields_reject_nulls ... ok
+test incompatible_field_semantics_are_malformed_with_an_escape_hatch ... ok
+test newer_profile_versions_are_a_hard_error_with_an_escape_hatch ... ok
+test checksum_free_writes_round_trip_without_verification ... ok
+test corrupted_buffers_fail_verification_by_default ... ok
+test nan_payloads_survive_bit_exactly ... ok
+test plain_arrow_files_read_without_dta_semantics ... ok
+test empty_datasets_round_trip ... ok
+test path_writer_reports_write_failures_as_file_io_errors ... ok
+test delta_dictionaries_are_accumulated ... ok
+test profiled_files_without_checksums_are_malformed_when_verifying ... ok
+test plain_dictionary_columns_accept_all_signed_key_widths ... ok
+test projected_reads_validate_but_do_not_retain_unselected_value_label_tables ... ok
+test projected_checksum_verification_uses_source_column_index ... ok
+test projected_reads_ignore_invalid_unselected_value_label_references ... ok
+test projected_reads_count_value_label_references_from_all_source_fields ... ok
+test dataset_signature_is_stable_across_thread_counts ... ok
+test row_limit_is_checked_before_body_decode ... ok
+test unsupported_columns_error_naming_the_column ... ok
+test the_arrow_ipc_reader_is_an_oracle_for_written_files ... ok
+test skip_and_limit_slice_across_batch_boundaries ... ok
+test writer_rejects_dangling_value_label_references_before_output ... ok
+test writer_rejects_incompatible_field_documents_before_output ... ok
+test standard_and_profiled_columns_round_trip_with_metadata ... ok
+test writer_rejects_unsupported_dataset_documents_before_output ... ok
+test projection_validates_selected_and_discards_unselected_field_documents ... ok
+test profiled_integer_metadata_does_not_decode_column_bodies ... ok
+test schema_only_plain_integer_metadata_does_not_decode_column_bodies ... ok
+test stored_signatures_require_complete_checksum_coverage ... ok
+test stored_signatures_reject_noncanonical_batch_boundaries ... ok
+test stored_signature_matches_recomputed_signature ... ok
+test compressed_files_round_trip_and_verify ... ok
+test parallel_checksum_hashing_matches_serial ... ok
+test projection_reads_io_proportional_to_selected_columns ... ok
+test parallel_decoding_matches_serial ... ok
+test writer_emits_only_footers_within_the_reader_metadata_limit ... ok
+
+test result: ok. 45 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.28s
+
+     Running tests/conformance.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/conformance-fd74b275cd0f5603)
+
+running 4 tests
+test invalid_signatures_do_not_disagree_between_slice_and_file ... ok
+test truncated_closing_tag_does_not_disagree_between_slice_and_file ... ok
+test every_fixture_has_exact_hash_and_slice_file_projection_parity ... ok
+test checked_manifest_has_an_honest_immutable_32_case_inventory ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/encoding.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/encoding-93571bcd8a49abaf)
+
+running 4 tests
+test override_reaches_modern_strl_payloads ... ok
+test auto_uses_utf8_for_unicode_release_118 ... ok
+test auto_uses_windows_1252_for_pre_unicode_release_117 ... ok
+test override_reaches_modern_metadata_fixed_strings_and_value_labels ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/file.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/file-4652a37b7a69fe20)
+
+running 32 tests
+test file_and_slice_reject_invalid_signatures_identically ... ok
+test modern_characteristic_lengths_cannot_cross_the_data_section ... ok
+test bounds_each_read_and_avoids_unselected_rows_and_gso_payloads ... ok
+test cancels_between_large_gso_chunks_without_returning_partial_data ... ok
+test file_and_slice_report_the_same_overlong_gso_error ... ok
+test file_and_slice_report_the_same_beyond_eof_gso_error ... ok
+test later_full_read_rescans_a_sparse_projected_value_label_cache ... ok
+test file_and_slice_match_for_mid_codepoint_and_malformed_utf8_label_offsets ... ok
+test labels_are_lazy_and_cancellation_never_returns_partial_data ... ok
+test file_and_slice_report_identical_value_label_structure_errors ... ok
+test rejects_zero_buffer_limit ... ok
+test cancels_between_large_label_chunks_and_leaves_cache_uninitialized ... ok
+test projected_slice_and_file_validate_unselected_utf8_label_offsets ... ok
+test pipelined_cancellation_does_not_dispatch_the_ready_block ... ok
+test parallel_sink_panics_are_returned_as_errors ... ok
+test file_reads_match_slice_for_modern_strl_and_legacy_projections ... ok
+test repeated_and_disjoint_projections_reuse_referenced_value_label_locations ... ok
+test split_interrupt_callbacks_keep_row_polling_separate ... ok
+test shared_gso_references_are_decoded_once_with_projection ... ok
+test unselected_value_label_validation_skips_value_arrays ... ok
+test projected_reads_retain_only_selected_value_label_tables ... ok
+test public_schema_summary_rejects_a_forged_characteristic_terminator ... ok
+test value_label_text_block_is_streamed_once_in_bounded_reads ... ok
+test retained_string_capacity_tracks_useful_text_not_source_ranges ... ok
+test stages_bounded_wide_rows_for_dense_and_sparse_projections ... ok
+test parallel_vectors_match_serial_across_supported_releases_and_strls ... ok
+test oversized_value_label_count_is_rejected_before_array_reads ... ok
+test large_unselected_value_label_offsets_use_bounded_staging ... ok
+test unordered_unselected_value_label_offsets_use_bounded_file_io ... ok
+test late_invalid_value_label_offset_batches_prior_utf8_validation ... ok
+test large_retained_value_label_tables_do_not_need_per_entry_lookup_arrays ... ok
+test widely_spaced_offset_batches_bound_repeated_page_reads ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+     Running tests/fuzz_smoke.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/fuzz_smoke-1ee650e853da7942)
+
+running 3 tests
+test oversized_value_label_declaration_preserves_slice_file_error_identity ... ok
+test hostile_declared_lengths_reject_before_materializing_unbounded_results ... ok
+test deterministic_fixture_seeded_mutations_never_panic_or_diverge_when_valid ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/legacy.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/legacy-5624f88adbf79873)
+
+running 24 tests
+test decodes_true_big_endian_v113_and_windows_1252 ... ok
+test decodes_big_endian_release_111_observations_notes_and_labels ... ok
+test decodes_release_111_metadata_observations_labels_and_missing_tags ... ok
+test generated_pre111_fixtures_decode_expected_semantics ... ok
+test legacy_layout_probe_is_interruptible_during_large_zero_padding ... ok
+test decodes_checked_legacy_fixtures_and_value_labels ... ok
+test preserves_empty_legacy_dataset_notes ... ok
+test rejects_negative_two_byte_expansion_lengths_with_file_parity ... ok
+test rejects_malformed_legacy_counts_filetype_and_expansion_fields ... ok
+test explicit_encoding_overrides_every_legacy_text_surface ... ok
+test release_108_prefers_complete_short_name_framing ... ok
+test release_108_prefers_long_names_for_empty_first_offset_table ... ok
+test accepts_alternate_release_105_and_108_offset_label_tables ... ok
+test alternate_value_label_layouts_do_not_fallback_after_selection ... ok
+test release_111_truncation_and_malformed_expansions_fail_without_panicking ... ok
+test decodes_pre111_layouts_types_expansions_missing_and_value_labels_with_file_parity ... ok
+test release_111_slice_and_file_projection_windows_are_identical ... ok
+test parallel_decoder_matches_serial_for_releases_113_and_114 ... ok
+test legacy_value_label_zero_padding_has_slice_file_parity ... ok
+test reads_every_checked_in_legacy_fixture_and_synthetic_v114 ... ok
+test legacy_slice_and_streaming_parsers_validate_superseded_duplicate_values ... ok
+test legacy_metadata_decoding_preserves_the_canonical_utf8_bound ... ok
+test legacy_metadata_bounds_and_raw_names_have_file_parity ... ok
+test legacy_slice_and_streaming_parsers_compact_adversarial_duplicates ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/metadata.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/metadata-1f3234e613ffe77d)
+
+running 8 tests
+test replaces_invalid_utf8_like_typescript_text_decoder ... ok
+test parses_deterministic_big_endian_v119_metadata_prefix ... ok
+test release_117_accepts_wide_fixed_string_type_codes ... ok
+test accepts_a_valid_metadata_prefix_but_rejects_required_section_truncation ... ok
+test rejects_truncated_or_malformed_modern_characteristics ... ok
+test matches_known_shared_fixture_metadata ... ok
+test rejects_malformed_tags_maps_and_type_codes ... ok
+test parses_every_checked_in_modern_fixture ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/observations.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/observations-710944c799614da4)
+
+running 9 tests
+test preserves_raw_numeric_missing_values_and_all_storage_tags ... ok
+test decodes_every_supported_storage_width_and_projected_row_window ... ok
+test validates_strls_envelope_while_projecting_a_real_strl_fixture ... ok
+test clamps_ranges_supports_empty_projection_and_resolves_strl_columns ... ok
+test validates_data_tags_geometry_and_closing_map_offset ... ok
+test canonical_data_serde_keeps_u64s_decimal_and_storage_explicit ... ok
+test decodes_big_endian_v119_observations_and_labels ... ok
+test matches_typescript_and_haven_derived_auto_values_across_v117_and_v118 ... ok
+test every_checked_fixture_matches_the_typescript_haven_oracle ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/strl.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/strl-5dfabbbda8e7ffed)
+
+running 3 tests
+test non_strl_projection_does_not_scan_gso_records ... ok
+test rejects_partial_dangling_duplicate_and_invalid_gso_records ... ok
+test resolves_v117_and_v118_strl_values_nulls_and_projection ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/value_labels.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/value_labels-a7e636dd6988373d)
+
+running 8 tests
+test parses_a_strict_big_endian_v119_label_table ... ok
+test preserves_duplicate_and_descending_value_label_keys_in_source_order ... ok
+test association_is_none_when_a_named_table_definition_is_absent ... ok
+test parses_empty_sections_and_classifies_labeled_missing_codes ... ok
+test rejects_bad_table_and_section_closes_truncation_and_trailing_bytes ... ok
+test rejects_negative_lengths_bad_offsets_and_missing_nuls ... ok
+test matches_typescript_tables_exactly_in_disk_order_across_v117_and_v118 ... ok
+test resolves_variable_to_table_associations_by_dta_name ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/write.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/deps/write-864892665696a622)
+
+running 24 tests
+test rejects_metadata_on_variable_named_dta_before_writing ... ok
+test prevalidated_strls_are_always_checked_during_planning ... ok
+test one_stable_strl_id_cannot_alias_different_values ... ok
+test rejects_raw_numeric_storage_that_does_not_match_the_column ... ok
+test prevalidated_bulk_sources_must_return_complete_rows ... ok
+test prevalidated_numeric_values_are_checked_while_encoding ... ok
+test canonical_strl_payloads_cannot_change_after_planning ... ok
+test prevalidated_fixed_strings_are_checked_while_encoding ... ok
+test strl_row_switches_call_begin_row_and_restore_the_active_row ... ok
+test rejects_reserved_dta_variable_names ... ok
+test rejects_invalid_destination_streams ... ok
+test variable_metadata_validation_reports_variable_scope ... ok
+test prevalidated_adapter_avoids_a_redundant_value_pass ... ok
+test writes_an_attached_empty_value_label_table ... ok
+test writes_deduplicated_strl_values_and_null_pointers_for_empty_strings ... ok
+test writes_a_release_118_dataset_that_the_public_parser_can_read ... ok
+test writes_every_storage_width_fixed_utf8_and_sorted_value_labels ... ok
+test validates_display_format_grammar_and_storage_compatibility ... ok
+test dense_metadata_writes_poll_at_bounded_byte_intervals ... ok
+test large_value_label_payloads_poll_for_interrupts ... ok
+test writes_numbered_notes_and_characteristics_at_both_scopes ... ok
+test large_strl_hashing_and_tail_writes_poll_for_interrupts ... ok
+test metadata_free_wide_writes_do_not_poll_per_column ... ok
+test release_119_uses_three_variable_bytes_in_strl_pointers ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+     Running unittests examples/bench.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/examples/bench-5c30206115419ab3)
+
+running 1 test
+test tests::parses_only_canonical_safe_unsigned_decimal_iterations ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/typescript_arrow_fixtures.rs (/private/tmp/dta-direct-stage4-validation/workspace-target-c8ca0a4/debug/examples/typescript_arrow_fixtures-b03761f8e66526af)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

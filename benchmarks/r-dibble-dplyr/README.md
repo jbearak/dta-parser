@@ -11,6 +11,40 @@ describes the staged architecture. Later dated reports record production changes
 and keep their exact source revisions separate from the initial prototype.
 
 
+## Stage 4 implementation review fixes
+
+The [review-fix report](results-2026-09-07-stage4-review-fix.md) and
+[indexed evidence](results-2026-09-07-stage4-review-fix/README.md) qualify
+`c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe`. Fresh constructors avoid the
+unnecessary first-private-write payload copy, width scans release temporary
+encoding buffers, and the native runner rejects every nonempty destination.
+The complete local gates and fresh paired baseline/candidate matrix pass their
+behavioral, allocation and memory checks. The same fifteen read flags remain:
+twelve base-R operations and three delegated filters. Stage 6 must resolve the
+filter regressions; integrated performance acceptance remains open.
+
+The new archive preserves failed attempts, exact source/installation identities,
+all fresh five-gate Cargo input snapshots and raw paired results. Run its
+`verify.py` to check archived bytes and executable bits without running workloads.
+The previous dated report and merged review supplement retain their original
+bytes and qualification scope. PR #195 still requires final substantive review,
+CI and normal merge on its eventual reviewed head.
+
+The diagnosis and local qualification records merged through
+[PR #198](https://github.com/jbearak/dta-parser/pull/198), followed by the paired
+benchmark evidence in [PR #199](https://github.com/jbearak/dta-parser/pull/199).
+Their additive [output-content record](results-2026-09-07-stage4-output-integrity/README.md)
+provides full-byte SHA-256 equality at both checkpoints of one fresh isolated
+c8 fertility run. The separate [comparison-identity audit](results-2026-09-07-stage4-comparison-integrity/README.md)
+binds the unchanged paired results to all six manifests and three comparators,
+with 87 small guard cases. Neither supplement rewrites historical records,
+claims absence of transient restored writes, or supplies new benchmark timings.
+The final actual fertility renv install/test/restore remains open.
+
+These evidence changes preserve the separately qualified c8 package and runner
+identities. The later two preflight helper docstrings leave its executable AST
+unchanged; archived c8 executions retain their original input hash.
+
 ## Stage 4 review supplement
 
 The [review supplement](results-2026-09-07-stage4-review-supplement/README.md),

@@ -1,0 +1,3 @@
+#!/bin/sh
+printf called > "$PREFLIGHT_SENTINEL"
+exit 71

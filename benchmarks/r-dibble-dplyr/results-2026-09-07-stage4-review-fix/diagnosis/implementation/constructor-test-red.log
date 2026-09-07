@@ -1,0 +1,4 @@
+Error in test_files(test_dir = dirname(path), test_package = package,  : 
+  unused argument (filter = "fresh unnamed")
+Calls: <Anonymous>
+Execution halted

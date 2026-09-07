@@ -1,0 +1,28 @@
+{
+  "kind": "Build recipe recorded after execution from the tool invocation; the build output was returned by the tool, not redirected to a raw log file.",
+  "command": [
+    "R",
+    "CMD",
+    "SHLIB",
+    "scan-vmax.c"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage4-validation/root-review-probes",
+  "observed_exit_code": 0,
+  "observed_toolchain": "R 4.6.1 Homebrew; Apple clang 21.0.0 clang-2100.1.1.101; MacOSX26.5.sdk; linked against /opt/homebrew/Cellar/r/4.6.1/lib/R/lib/libR.dylib",
+  "files": {
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.c": {
+      "sha256": "d53ee7b44098c11e6a1d00fb869e4f3ea91bf6f3bfaf4ad18e263e0c26a70231",
+      "bytes": 956
+    },
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.o": {
+      "sha256": "0270275db540d56c4000463255c1d5512e07f6ddc5dfdc530b3a1bcb7d7cb00f",
+      "bytes": 5256
+    },
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/scan-vmax.so": {
+      "sha256": "3c40b377ee8b4e1b8ceda8c722e69ba452aff35ad7833beb6f1e0e86558c9211",
+      "bytes": 50784
+    }
+  },
+  "reproduction": "Compile the retained C source with R CMD SHLIB for the target R, then supply the resulting library path as the third argument to scan-vmax.R or scan-vmax-minimal.R. Native binary hashes are host/toolchain specific.",
+  "scope": "The original compiled helper is unchanged and its exact bytes are bound by both red and green run manifests. This recipe is not a newly executed build or a raw build log."
+}

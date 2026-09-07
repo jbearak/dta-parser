@@ -1,0 +1,61 @@
+{
+  "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "vendor_archive_sha256": "31249dcf2962711a7e51ccb7983661543e3d87bcc0c574aadfbad4ee9c19252e",
+  "preparation": "Extracted the exact tracked vendor archive before Cargo, as package configuration does. Generated vendor files are separate from tracked source identity.",
+  "commands": [
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--manifest-path",
+        "rust/Cargo.toml",
+        "--",
+        "--check"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4/r-package/dtatools/src",
+      "seconds": 0.08386741699359845,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/bridge-fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "check",
+      "command": [
+        "cargo",
+        "check",
+        "--manifest-path",
+        "rust/Cargo.toml",
+        "--config",
+        "rust/cargo-config.toml",
+        "--locked",
+        "--offline",
+        "--all-targets"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4/r-package/dtatools/src",
+      "seconds": 7.815136374993017,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/bridge-check.log",
+      "sha256": "9122cdcdd0fa4d16b8c8104661e6f09747c2a5d07d064a12d848b478709b09f0"
+    },
+    {
+      "name": "tests",
+      "command": [
+        "cargo",
+        "test",
+        "--manifest-path",
+        "rust/Cargo.toml",
+        "--config",
+        "rust/cargo-config.toml",
+        "--locked",
+        "--offline",
+        "--all-targets"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage4-validation/source-c8ca0a4/r-package/dtatools/src",
+      "seconds": 8.280802999986918,
+      "exit_code": 0,
+      "log": "/private/tmp/dta-direct-stage4-validation/checks-c8ca0a4/bridge-tests.log",
+      "sha256": "2dabcd6400952d26a66244b96c6005a7c02c70f55afcb7625736ed229499a3d7"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "time_utc": "2026-09-07T10:09:25.206589+00:00",
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/constructor-first-write.R",
+    "/private/tmp/dta-direct-stage4-validation/root-review-probes/constructor-first-write-baseline-repeat.rds"
+  ],
+  "exit_code": 1,
+  "script_sha256": "70a06b859a73eedd83fe9b45b777ba08a26b14332f56c8330b527839a5c93370",
+  "log_sha256": "5f044800375f14078f95436533b6e6d868f2e92daec2adacf368352b11db1806",
+  "scope": "Second deterministic red run on exact e343 library with correct values, shared constructor output and full800000byte capture on first Set_elt. No timings or builds."
+}

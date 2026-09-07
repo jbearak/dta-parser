@@ -1,0 +1,7 @@
+memory-rename-100000.log passed
+memory-pipeline_five-100000.log passed
+memory-pipeline_50-100000.log passed
+memory-rename-1000000.log passed
+memory-pipeline_five-1000000.log passed
+memory-pipeline_50-1000000.log passed
+memory candidate complete: /private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/double-candidate

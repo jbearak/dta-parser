@@ -15,11 +15,13 @@ import subprocess
 
 
 def require(condition, message):
+    """Reject a failed invariant even when Python assertions are optimized away."""
     if not condition:
         raise RuntimeError(message)
 
 
 def digest(path):
+    """Hash exact file bytes for fixture preservation and runner identity checks."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 

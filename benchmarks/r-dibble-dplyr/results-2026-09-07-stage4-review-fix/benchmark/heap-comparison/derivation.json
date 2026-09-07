@@ -1,0 +1,12 @@
+{
+  "baseline_manifest": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-baseline/root-manifest.json",
+  "baseline_manifest_sha256": "5dba6b5e9cd8b355ebeebf348211d9689a997fc82782f64114ffe8b4f98743fb",
+  "candidate_manifest": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance/heap-candidate/root-manifest.json",
+  "candidate_manifest_sha256": "75a0601133b27d4ca1a4765124bec72b1b01f596e9fbec276d91b6d013ed4fb2",
+  "deriver_sha256": "3b7e989f6e15589c7e83f5e418eed572345533afaa0de00462fdec2d4f62d802",
+  "metric_verifier_sha256": "16c9dd392abe7fa31f074e49fc927eb05218d7b0a10b9b2d257303e01f64390b",
+  "scope": "72 raw logs and all five checkpoint derivations reverified. Tracked R heap only; native external allocation and peak RSS excluded.",
+  "files": {
+    "heap-comparison.csv": "4ad547ea89137cb5f9dbb8596aa54ca3f72668511e292df3db05a2184c86b4ee"
+  }
+}

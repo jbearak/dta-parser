@@ -1,0 +1,8 @@
+{
+  "head": "75b0c54c9171bdc747e35d0896611616d151138c",
+  "status": "",
+  "source_path": "r-package/dtatools/src/owned-columns.h",
+  "source_sha256": "6fc5e6c322476521e8fac9fe6bb5bfba7298283316604a5e1686d05216bf3f0d",
+  "extracted_helper": "static int owned_string_width(SEXP value) {\n    return Rf_getCharCE(value) == CE_BYTES ? LENGTH(value) :\n        (int) strlen(Rf_translateCharUTF8(value));\n}",
+  "prototype_sha256": "195c1830cb4c03c763ed42917d60460b839dc937475b31fba1501fdd10dc5dfd"
+}

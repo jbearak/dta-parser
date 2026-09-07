@@ -1,0 +1,114 @@
+[
+  {
+    "case": "empty",
+    "command": [
+      "Rscript",
+      "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/empty"
+    ],
+    "exit_code": 1,
+    "sentinel": true,
+    "unchanged": true,
+    "passed": true
+  },
+  {
+    "case": "unrelated",
+    "command": [
+      "Rscript",
+      "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/unrelated"
+    ],
+    "exit_code": 1,
+    "sentinel": false,
+    "unchanged": true,
+    "passed": true
+  },
+  {
+    "case": "hidden",
+    "command": [
+      "Rscript",
+      "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/hidden"
+    ],
+    "exit_code": 1,
+    "sentinel": false,
+    "unchanged": true,
+    "passed": true
+  },
+  {
+    "case": "nested",
+    "command": [
+      "Rscript",
+      "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/nested"
+    ],
+    "exit_code": 1,
+    "sentinel": false,
+    "unchanged": true,
+    "passed": true
+  },
+  {
+    "case": "empty-child",
+    "command": [
+      "Rscript",
+      "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/empty-child"
+    ],
+    "exit_code": 1,
+    "sentinel": false,
+    "unchanged": true,
+    "passed": true
+  },
+  {
+    "case": "csv",
+    "command": [
+      "Rscript",
+      "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/csv"
+    ],
+    "exit_code": 1,
+    "sentinel": false,
+    "unchanged": true,
+    "passed": true
+  },
+  {
+    "case": "identity",
+    "command": [
+      "Rscript",
+      "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/identity"
+    ],
+    "exit_code": 1,
+    "sentinel": false,
+    "unchanged": true,
+    "passed": true
+  },
+  {
+    "case": "missing",
+    "command": [
+      "Rscript",
+      "/private/tmp/dta-direct-stage4/benchmarks/r-reference-mutation/owned-atoms.R",
+      "/private/tmp/dta-direct-stage4-validation/candidate-e343b3b-library",
+      "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15",
+      "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/missing"
+    ],
+    "exit_code": 1,
+    "sentinel": false,
+    "unchanged": true,
+    "passed": true
+  }
+]

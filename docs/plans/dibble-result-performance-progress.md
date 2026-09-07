@@ -9,29 +9,60 @@ decisions are recorded in that plan.
 
 ## Stages 1 through 3 complete, Stage 4 active
 
-The evidence and additive review supplement have merged as
+The original evidence and additive review supplement merged as
 [PR #196](https://github.com/jbearak/dta-parser/pull/196) and
-[PR #197](https://github.com/jbearak/dta-parser/pull/197). The implementation
-[PR #195](https://github.com/jbearak/dta-parser/pull/195) remains open. Its actual
+[PR #197](https://github.com/jbearak/dta-parser/pull/197). The review-fix diagnosis
+and local qualification then merged as
+[PR #198](https://github.com/jbearak/dta-parser/pull/198), followed by paired
+benchmark evidence in [PR #199](https://github.com/jbearak/dta-parser/pull/199).
+The implementation [PR #195](https://github.com/jbearak/dta-parser/pull/195)
+remains open. Its actual
 34-file review at `75b0c54` found an incomplete native-runner output guard and
 an unnecessary first-write copy in fresh unnamed string construction. A width
 conversion lifetime comment also reproduced: Latin-1 scans retained temporary
-R conversion buffers until the enclosing native call returned. The focused
-fixes reject all nonempty destinations, construct callback-free public strings
-on one unpublished native handle, and release each width conversion buffer.
-Internal promise ordering, names dispatch and conservative dictionary/foreign
-fallbacks remain required. Both nested reviewers assess these changes; a new
-exact source archive, local gates and affected performance qualification are
-required before their acceptance. Existing dated reports and both merged
-evidence trees remain unchanged.
+R conversion buffers until the enclosing native call returned.
 
-Useful ownership, temporary-memory and runner-integrity documentation is being
-added to active code. CodeRabbit could not provide the function list underlying
-its advisory 20.15% docstring report; this work does not invent that inventory
-or change the configured threshold. The eleven existing Cargo package warnings,
-three R check warnings and two notes remain disclosed. The twelve measured
-base-R read costs, three required Stage 6 filter fixes, remaining stages and
-final actual downstream renv install/test/original-lock restore are still open.
+The fixes are committed and qualified at
+`c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe`, package tree
+`f88005766aee9b9dd5827b33a3930feff6672008`. Both nested source reviews are clean.
+The [new report](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-fix.md)
+and [indexed archive](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-review-fix/README.md)
+retain exact-source local qualification, independent constructor and temporary
+memory red/green probes, and fresh paired baseline/candidate measurements.
+All 16,445 full-suite assertions pass without failures or skips. The unchanged
+159 native assertions and 15 readiness checks, 18 atomic allocation cases,
+rename allocation, 219 independent R cases and strict isolated downstream
+log/state parity pass. Five fresh Cargo gates bind all 1,950 input files before
+and after each command and retain the actual verified 27-member package. No
+historical workspace reuse argument qualifies this new source.
+
+The later [output-content qualification](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-output-integrity/README.md)
+adds a full before/after digest for one fresh isolated c8 run, preserving the
+earlier metadata-only records. The [comparison-identity audit](../../benchmarks/r-dibble-dplyr/results-2026-09-07-stage4-comparison-integrity/README.md)
+verifies the unchanged measured comparison inputs, with 87 synthetic guard
+cases. These supplements do not retroactively strengthen historical checks,
+retest performance, or complete the actual fertility renv restoration gate.
+
+The fresh paired matrix retains exactly fifteen read flags: twelve base-R
+operations and three delegated filters. The Stage 6 filter criterion below
+remains required; these results do not establish broad read-performance or
+integrated epic acceptance. Internal promise ordering, names dispatch and
+conservative dictionary/foreign fallbacks remain covered. Useful ownership,
+temporary-memory and runner documentation was added to active code; the two
+Python driver changes have identical ASTs after removing docstrings. The later
+two preflight helper docstrings are likewise executable-AST equivalent; archived
+c8 executions retain their original input hash. CodeRabbit could not provide
+the function list underlying its advisory 20.15% report, and this work neither
+invents that inventory nor changes the configured threshold. Aggregate CodeRabbit
+documentation warnings are always nonblocking under the user's instruction.
+
+The four established test warnings, eleven existing Cargo package warnings,
+three R check warnings and two notes remain disclosed. The earlier dated reports
+and historical artifacts retain their exact bytes. Both independent evidence
+and supplement reviews are clean. Latest-head substantive CodeRabbit/CI and
+normal merge still gate Stage 4. Stages 5 through 9
+and the final actual downstream renv install/test/original-lock restore remain
+required; issue #172 stays open.
 
 Stage 3 merged normally as [PR #194](https://github.com/jbearak/dta-parser/pull/194)
 at 2026-09-07 02:14:48 UTC, producing

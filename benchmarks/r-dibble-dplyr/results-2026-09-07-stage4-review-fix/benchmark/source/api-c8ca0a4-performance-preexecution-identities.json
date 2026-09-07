@@ -1,0 +1,158 @@
+{
+  "recorded_utc": "2026-09-07T10:49:20.817959+00:00",
+  "candidate": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "baseline": "ec10a6ac34602f3bd691e8043019c1b479babda4",
+  "runner": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "committed_inputs": [
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/helpers.R",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+      "bytes": 4098,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2",
+      "bytes": 6118,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+      "bytes": 8386,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-double.R",
+      "sha256": "8f4a323d3e76ec648f3e1b16e32d25bdc1a3368cb3e7e7b2142f5f439cdbe685",
+      "bytes": 13771,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-double-memory.R",
+      "sha256": "5464ab8b5c522b6adf50122eff2139cb84d75a7f855e3d5200f984cc846de416",
+      "bytes": 3198,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012",
+      "bytes": 12810,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2",
+      "bytes": 2620,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/owned-heap.R",
+      "sha256": "cfe7259861d558b6ffdd48f0b05921269ca209aea0cd28d8d3ebe82808dd5f58",
+      "bytes": 3906,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-owned-qualification.py",
+      "sha256": "c681422c5f94328e669b5410f06fcfcacfe6b7c4f77c81d19ff5cf843a2dbab9",
+      "bytes": 5964,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "sha256": "5ee991fdbb5e01ed5b5a5efcd1215be664db7e9d41ee82c3225655f31419f55e",
+      "bytes": 9934,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4/benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "sha256": "16c9dd392abe7fa31f074e49fc927eb05218d7b0a10b9b2d257303e01f64390b",
+      "bytes": 8399,
+      "committed_match": true,
+      "commit": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe"
+    }
+  ],
+  "uncommitted_reviewed_inputs": [
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/run-c8ca0a4-performance.py",
+      "sha256": "191153050d0977e18137d156fec0150f6bc9fd7dfa59f54b8cbb45779596f2b9",
+      "bytes": 5235,
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/api-c8ca0a4-performance-preexecution-snapshot/run-c8ca0a4-performance.py"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/compare-heap-c8ca0a4.py",
+      "sha256": "3b7e989f6e15589c7e83f5e418eed572345533afaa0de00462fdec2d4f62d802",
+      "bytes": 3858,
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/api-c8ca0a4-performance-preexecution-snapshot/compare-heap-c8ca0a4.py"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/compare-heap-c8ca0a4-derivation.json",
+      "sha256": "bfb25739564189f733f7ea55dae0ad755a15e7c7476a537c135ca184e5501735",
+      "bytes": 893,
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/api-c8ca0a4-performance-preexecution-snapshot/compare-heap-c8ca0a4-derivation.json"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/compare-heap.py",
+      "sha256": "d30c84133f1893b7fe7f76ef6d7c580cbc48962dd9aba0e253a628f4eb93a4ad",
+      "bytes": 3858,
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/api-c8ca0a4-performance-preexecution-snapshot/compare-heap.py"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/compare-atomic.py",
+      "sha256": "4a9051ce97c5a84ff580f0ddda4cce2692c847695d0500ad8c239618e312b9bf",
+      "bytes": 4340,
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/api-c8ca0a4-performance-preexecution-snapshot/compare-atomic.py"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/compare-double.py",
+      "sha256": "6da73e867e3d33cbb8469bc253058a4044ae8011220d6f539f43107f2d9867ad",
+      "bytes": 4780,
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/api-c8ca0a4-performance-preexecution-snapshot/compare-double.py"
+    }
+  ],
+  "library_files": [
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/baseline-library/dtatools/libs/dtatools.so",
+      "sha256": "2699bada1ba737473019e3f5491bae0b865248a781348aac5d4912909c27d26e",
+      "md5": "b78286530e574c469f6233348f646cea",
+      "bytes": 8644520
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/baseline-library/dtatools/Meta/benchmark-provenance.rds",
+      "sha256": "0b935afb03da4f708e3b34c63e7669a10998f29fb14ce7d5a4a52ca56db0b5ec",
+      "md5": "924c82894a7e388acce547843e544289",
+      "bytes": 1839
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library/dtatools/libs/dtatools.so",
+      "sha256": "7839719fd30f468e9407e9378add8437eb2aa1e9c426e217b0f1967765944d1f",
+      "md5": "c655c59a09cbf1cd72a6f72e7e94758e",
+      "bytes": 8665784
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/candidate-c8ca0a4-library/dtatools/Meta/benchmark-provenance.rds",
+      "sha256": "c3e8e49bffe206ea0369de7b37553c472f4101170e98f38db816fd57290b824b",
+      "md5": "f36123ffefaea76aeda0dc75d0f6cc2b",
+      "bytes": 1841
+    }
+  ],
+  "derivation_replacement_counts": {
+    "39fd4814b59eec2e3fcbc8ff4cc7af608c8ef76b52f71e70f794e6a4d75fe9f3": 1,
+    "7003a46899ed508c4068e077e3aa1af7fff541f3": 1,
+    "e343b3b56a8529e9ee0ac40f8bd88beebcd2be15": 1
+  },
+  "exact_declared_derivation": true,
+  "output_path": "/private/tmp/dta-direct-stage4-validation/root-c8ca0a4-performance",
+  "output_absent_at_review": true,
+  "limits": "Source/AST/hash reads only. No R, build, benchmark, probe or coordinator/comparator execution. No worktree/index/external edits."
+}

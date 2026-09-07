@@ -1,0 +1,902 @@
+{
+  "recorded_utc": "2026-09-07T10:30:40.508137+00:00",
+  "head": "75b0c54c9171bdc747e35d0896611616d151138c",
+  "head_package_tree": "f12a2a1dd430636a33b7f6e953023d90d1ff2589",
+  "diff_sha256": "37133b1bec8365c97c33511245efe42f20b8c77123b1506b69285b55b6ce91a1",
+  "files": [
+    {
+      "path": "benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "bytes": 9934,
+      "sha256": "5ee991fdbb5e01ed5b5a5efcd1215be664db7e9d41ee82c3225655f31419f55e",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/benchmarks/r-dibble-dplyr/run-atomic-qualification.py",
+      "tracked": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "bytes": 8399,
+      "sha256": "16c9dd392abe7fa31f074e49fc927eb05218d7b0a10b9b2d257303e01f64390b",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/benchmarks/r-dibble-dplyr/run-heap-qualification.py",
+      "tracked": true
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/README.md",
+      "bytes": 11559,
+      "sha256": "684c631864441f4249ab2557e4d829c2fa0a6a004951da2f9813aec39d19288e",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/benchmarks/r-reference-mutation/README.md",
+      "tracked": true
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/owned-atoms.R",
+      "bytes": 8392,
+      "sha256": "ac7b6364aee3cef47d6ceb35e6d45e28a8d5af24ec091c98d5b92e459c3ff190",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/benchmarks/r-reference-mutation/owned-atoms.R",
+      "tracked": true
+    },
+    {
+      "path": "benchmarks/r-reference-mutation/test-owned-atoms-preflight.py",
+      "bytes": 5285,
+      "sha256": "91eedf2e7a3c2119a51c31e8afb793c91c98fd1766ab268eed17a88a42cf4bf5",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/benchmarks/r-reference-mutation/test-owned-atoms-preflight.py",
+      "tracked": false
+    },
+    {
+      "path": "docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md",
+      "bytes": 7631,
+      "sha256": "16e3133b28faa12b3e9fdc3d5ace1c26bc1e021ee6d7b6cd7d9b9541a9a749f7",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/docs/adr/0033-share-owned-atomic-backing-and-storage-facts.md",
+      "tracked": true
+    },
+    {
+      "path": "docs/plans/dibble-result-performance-progress.md",
+      "bytes": 61034,
+      "sha256": "8938e2aa2e8b65c800fdd446ff775e5a14e0639507e8be00b2d080caee1c4c25",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/docs/plans/dibble-result-performance-progress.md",
+      "tracked": true
+    },
+    {
+      "path": "r-package/dtatools/R/dta-string.R",
+      "bytes": 11516,
+      "sha256": "b958c28240e9aa0cec060d6d58d16477a3dc8e829cc2038737730ceb0fa40776",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/r-package/dtatools/R/dta-string.R",
+      "tracked": true
+    },
+    {
+      "path": "r-package/dtatools/src/init.c",
+      "bytes": 335925,
+      "sha256": "50ad819f6d9547604ac009bf528b82b05c8c8fe835831d850c6cfce2c4644471",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/r-package/dtatools/src/init.c",
+      "tracked": true
+    },
+    {
+      "path": "r-package/dtatools/src/owned-columns.h",
+      "bytes": 41614,
+      "sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/r-package/dtatools/src/owned-columns.h",
+      "tracked": true
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-owned-atoms.R",
+      "bytes": 49856,
+      "sha256": "fa9a7c9281ba1ad55f3aac544170fde9589374e9768023672689fb08640221b8",
+      "mode": "100644",
+      "snapshot": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-fix-source-snapshot/r-package/dtatools/tests/testthat/test-owned-atoms.R",
+      "tracked": true
+    }
+  ],
+  "all_11_source_files_stable_during_snapshot": true,
+  "historical_guards": [
+    {
+      "inventory": "/private/tmp/dta-direct-stage4-validation/evidence-split/api-split-identities.json",
+      "sha256": "5be9768ee608687dcc561f61caf326b38e32bc9948eca19c46d32aed57fdb60d",
+      "count": 887
+    },
+    {
+      "inventory": "/private/tmp/dta-direct-stage4-validation/evidence-review-followup/api-final-scope-161.json",
+      "sha256": "4acf7e50bf70d3b770c202b0feb79855e5716f8b53662f41f216e0df22a67828",
+      "count": 161
+    }
+  ],
+  "historical_file_count": 1048,
+  "historical_errors": [],
+  "retained_inputs": [
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-assessment.md",
+      "sha256": "32a985654471755856de5fad5f7a1c6ec29a3408ce604c7703261c0a7d592c1e",
+      "bytes": 10602
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/api-assessment-identities.json",
+      "sha256": "f6798a1aaa96db03897e92d8382a6c615bf4aaa3493d702b5ede5aa4e97e2038",
+      "bytes": 316532
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/storage-assessment.md",
+      "sha256": "417e43c8245ff79c01df57eb16686294eb9451012d87248aee72b6066c44c6db",
+      "bytes": 7616
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/storage-assessment-identities.json",
+      "sha256": "2ec175e6727ce2a42be8fb8e12810548158d374ee296ddf6c73ce57760efc22d",
+      "bytes": 4046
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/storage-initial-fix-observation.diff",
+      "sha256": "2342f01d4eb55a868532a00cb3fdfd7ebcded3bfc768d83587670fbb1bc4cdec",
+      "bytes": 6173
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/driver-docstrings-ast-proof.json",
+      "sha256": "1b936c894e8164e91518e968524837f463170f7eb9457626280455744ba5d757",
+      "bytes": 619
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/initial-source-identity.json",
+      "sha256": "25ef2d8f5f60f48df9f4cc2b6d52986a6e7f6b7bb365798557e1ddbb2516d624",
+      "bytes": 495
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-private.R",
+      "sha256": "7383df768c31a4c80ceb4fd0039115882665afb4e75f51af4a4ca06fdb35e1bd",
+      "bytes": 1607
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-private-red.csv",
+      "sha256": "74a0be285ccb2edafbe364576385ff947817138235ff84f36aa029b017325361",
+      "bytes": 409
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-private-red.log",
+      "sha256": "ed8c272b7ba96d0b41753e1f6c2852fc94fe290c72c89a916b360ef7bce82146",
+      "bytes": 869
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-test-red.log",
+      "sha256": "e47ed454e2ddca32515de60086606f0c7e968cfb9ea63c85f6c3d0249d43f3d7",
+      "bytes": 155
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/constructor-test-red-actual.log",
+      "sha256": "c82b98ca65a059cfe4514d58f8bcb637fdbd934a3464101985e2d4d098625113",
+      "bytes": 41800
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-red.c",
+      "sha256": "195c1830cb4c03c763ed42917d60460b839dc937475b31fba1501fdd10dc5dfd",
+      "bytes": 883
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-green.c",
+      "sha256": "49a0abffded5a276ffbfbc60d30502b094def84340a91e80197d71eeec0008e2",
+      "bytes": 1199
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe.R",
+      "sha256": "27d98f8b1bcb36897b406067468a8d7abfa018c9ceeabba1f042609c45f2ecf7",
+      "bytes": 721
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-red.log",
+      "sha256": "2f03188e5166c182b54e5f371d3c7d7223afa5d412a33cdc437aeee77f0e6cca",
+      "bytes": 244
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-green.log",
+      "sha256": "5bf39b9f02833b0e71d0ad7a8883c88450c4e2beebdfde73e0ff25b754b05c96",
+      "bytes": 241
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/width-probe-green-build.log",
+      "sha256": "2bf2873a76a556c719180425ba530494ac8fa80f698ac0c57ad733e7bdb1357f",
+      "bytes": 1055
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-guard-probe.py",
+      "sha256": "d813783a9fed00c3dbcdb8d0008010118caecb8b2e545e161e47ae4a3c54e250",
+      "bytes": 2513
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red.log",
+      "sha256": "6e683ff5b131dc7160e72631c0cff9a184913bbb0356c7555cb86b3a9cce79cd",
+      "bytes": 3760
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green.log",
+      "sha256": "59355a56b295456024578e4c858ade57c10d52fdb64d7f70614992a698d4b3b6",
+      "bytes": 3776
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable.log",
+      "sha256": "82a4dbdfad12c93da01e0e6af30b80dc4123a264e2d87a30fe528a8df3b26dbe",
+      "bytes": 65
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/working-22b-owned-atoms.log",
+      "sha256": "4d6b72b13d33bf0167824bcb2a5e4e983faaaa13416c2a784913caaa9c1abb99",
+      "bytes": 38800
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/working-22b-owned-atoms-fixture-fixed.log",
+      "sha256": "e06de620c24b0b247b059bec513f20d396ad962f8ba92a8d5a8debfcf6f7f840",
+      "bytes": 38817
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/csv/owned-native-atoms.csv",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/csv.stderr",
+      "sha256": "359bf1a926cdd0c34638ac7ff4551f77158a50f829e250beebadf7af0210c3c1",
+      "bytes": 57,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/csv.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/empty-child-sentinel",
+      "sha256": "8c90cbf5d27d61f534ee012ea472714b0149ee526e43e0903ff7f07ce7ea4758",
+      "bytes": 6,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/empty-child.stderr",
+      "sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+      "bytes": 152,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/empty-child.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/empty-sentinel",
+      "sha256": "8c90cbf5d27d61f534ee012ea472714b0149ee526e43e0903ff7f07ce7ea4758",
+      "bytes": 6,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/empty.stderr",
+      "sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+      "bytes": 152,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/empty.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/hidden/.stale",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/hidden-sentinel",
+      "sha256": "8c90cbf5d27d61f534ee012ea472714b0149ee526e43e0903ff7f07ce7ea4758",
+      "bytes": 6,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/hidden.stderr",
+      "sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+      "bytes": 152,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/hidden.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/identity/owned-native-atoms-session.txt",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/identity.stderr",
+      "sha256": "91a64c9eea5b6f1c1ee00570dfa5ebfedd2b1502c339b978a87d52df4290970d",
+      "bytes": 59,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/identity.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/manifest.json",
+      "sha256": "f7dfd88fc79c0e3956dd21b76b6a6f9c977f76b154584bb1375d9ccd1f6b6b53",
+      "bytes": 4245,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/missing.stderr",
+      "sha256": "a4b49b7a207110c7b8ad3b7378de96c0f995ddd1c2551e22f4fbf36fe55a3f85",
+      "bytes": 59,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/missing.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/nested/child/stale.txt",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/nested-sentinel",
+      "sha256": "8c90cbf5d27d61f534ee012ea472714b0149ee526e43e0903ff7f07ce7ea4758",
+      "bytes": 6,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/nested.stderr",
+      "sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+      "bytes": 152,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/nested.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/synthetic-bin/git",
+      "sha256": "01fe42896b0abefff1c99173c11081f7e64bd0002f36ad36ee76e35e9b8e2fe6",
+      "bytes": 56,
+      "mode": "100755"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/unrelated/stale.txt",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/unrelated-sentinel",
+      "sha256": "8c90cbf5d27d61f534ee012ea472714b0149ee526e43e0903ff7f07ce7ea4758",
+      "bytes": 6,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/unrelated.stderr",
+      "sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+      "bytes": 152,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-red/unrelated.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/csv/owned-native-atoms.csv",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/csv.stderr",
+      "sha256": "359bf1a926cdd0c34638ac7ff4551f77158a50f829e250beebadf7af0210c3c1",
+      "bytes": 57,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/csv.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/empty-child.stderr",
+      "sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c",
+      "bytes": 89,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/empty-child.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/empty-sentinel",
+      "sha256": "8c90cbf5d27d61f534ee012ea472714b0149ee526e43e0903ff7f07ce7ea4758",
+      "bytes": 6,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/empty.stderr",
+      "sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+      "bytes": 152,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/empty.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/hidden/.stale",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/hidden.stderr",
+      "sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c",
+      "bytes": 89,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/hidden.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/identity/owned-native-atoms-session.txt",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/identity.stderr",
+      "sha256": "91a64c9eea5b6f1c1ee00570dfa5ebfedd2b1502c339b978a87d52df4290970d",
+      "bytes": 59,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/identity.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/manifest.json",
+      "sha256": "dfe7c69e4506f0177ecaa739d573de5b4249048aac3ba9885ba9c6ff57ad42dd",
+      "bytes": 4261,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/missing.stderr",
+      "sha256": "a4b49b7a207110c7b8ad3b7378de96c0f995ddd1c2551e22f4fbf36fe55a3f85",
+      "bytes": 59,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/missing.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/nested/child/stale.txt",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/nested.stderr",
+      "sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c",
+      "bytes": 89,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/nested.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/synthetic-bin/git",
+      "sha256": "01fe42896b0abefff1c99173c11081f7e64bd0002f36ad36ee76e35e9b8e2fe6",
+      "bytes": 56,
+      "mode": "100755"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/unrelated/stale.txt",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/unrelated.stderr",
+      "sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c",
+      "bytes": 89,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green/unrelated.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/csv/owned-native-atoms.csv",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/csv.stderr",
+      "sha256": "359bf1a926cdd0c34638ac7ff4551f77158a50f829e250beebadf7af0210c3c1",
+      "bytes": 57,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/csv.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/empty-child.stderr",
+      "sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c",
+      "bytes": 89,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/empty-child.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/empty-sentinel",
+      "sha256": "8c90cbf5d27d61f534ee012ea472714b0149ee526e43e0903ff7f07ce7ea4758",
+      "bytes": 6,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/empty.stderr",
+      "sha256": "ceda576ff3b841d4683dfea6867d0a5cb5ba7742e92eef63f3bda510d32fdc75",
+      "bytes": 152,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/empty.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/hidden/.stale",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/hidden.stderr",
+      "sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c",
+      "bytes": 89,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/hidden.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/identity/owned-native-atoms-session.txt",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/identity.stderr",
+      "sha256": "91a64c9eea5b6f1c1ee00570dfa5ebfedd2b1502c339b978a87d52df4290970d",
+      "bytes": 59,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/identity.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/manifest.json",
+      "sha256": "210705ac1a8136177f941376c0f3119bcce64e66a2379174136882fb42f0f9b9",
+      "bytes": 9616,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/missing.stderr",
+      "sha256": "a4b49b7a207110c7b8ad3b7378de96c0f995ddd1c2551e22f4fbf36fe55a3f85",
+      "bytes": 59,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/missing.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/nested/child/stale.txt",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/nested.stderr",
+      "sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c",
+      "bytes": 89,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/nested.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/synthetic-bin/git",
+      "sha256": "01fe42896b0abefff1c99173c11081f7e64bd0002f36ad36ee76e35e9b8e2fe6",
+      "bytes": 56,
+      "mode": "100755"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/unrelated/stale.txt",
+      "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c",
+      "bytes": 12,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/unrelated.stderr",
+      "sha256": "465eca21ddb23378e3c2ddc053eba630d0b33c8bbdb66cc8b59d6afbd41e8c4c",
+      "bytes": 89,
+      "mode": "100644"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage4-validation/implementation-review-75b0c54/output-green-reusable/unrelated.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "mode": "100644"
+    }
+  ],
+  "preflight_artifact_checks": [
+    {
+      "folder": "output-red",
+      "case": "empty",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": true,
+      "retained_files": []
+    },
+    {
+      "folder": "output-red",
+      "case": "unrelated",
+      "recorded_exit": 1,
+      "recorded_passed": false,
+      "sentinel_actual": true,
+      "retained_files": [
+        {
+          "path": "stale.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ]
+    },
+    {
+      "folder": "output-red",
+      "case": "hidden",
+      "recorded_exit": 1,
+      "recorded_passed": false,
+      "sentinel_actual": true,
+      "retained_files": [
+        {
+          "path": ".stale",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ]
+    },
+    {
+      "folder": "output-red",
+      "case": "nested",
+      "recorded_exit": 1,
+      "recorded_passed": false,
+      "sentinel_actual": true,
+      "retained_files": [
+        {
+          "path": "child",
+          "mode": 16877,
+          "sha256": null
+        },
+        {
+          "path": "child/stale.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ]
+    },
+    {
+      "folder": "output-red",
+      "case": "empty-child",
+      "recorded_exit": 1,
+      "recorded_passed": false,
+      "sentinel_actual": true,
+      "retained_files": [
+        {
+          "path": "child",
+          "mode": 16877,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "folder": "output-red",
+      "case": "csv",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": false,
+      "retained_files": [
+        {
+          "path": "owned-native-atoms.csv",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ]
+    },
+    {
+      "folder": "output-red",
+      "case": "identity",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": false,
+      "retained_files": [
+        {
+          "path": "owned-native-atoms-session.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ]
+    },
+    {
+      "folder": "output-red",
+      "case": "missing",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": false,
+      "retained_files": null
+    },
+    {
+      "folder": "output-green-reusable",
+      "case": "empty",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": true,
+      "retained_files": []
+    },
+    {
+      "folder": "output-green-reusable",
+      "case": "unrelated",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": false,
+      "retained_files": [
+        {
+          "path": "stale.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ]
+    },
+    {
+      "folder": "output-green-reusable",
+      "case": "hidden",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": false,
+      "retained_files": [
+        {
+          "path": ".stale",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ]
+    },
+    {
+      "folder": "output-green-reusable",
+      "case": "nested",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": false,
+      "retained_files": [
+        {
+          "path": "child",
+          "mode": 16877,
+          "sha256": null
+        },
+        {
+          "path": "child/stale.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ]
+    },
+    {
+      "folder": "output-green-reusable",
+      "case": "empty-child",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": false,
+      "retained_files": [
+        {
+          "path": "child",
+          "mode": 16877,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "folder": "output-green-reusable",
+      "case": "csv",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": false,
+      "retained_files": [
+        {
+          "path": "owned-native-atoms.csv",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ]
+    },
+    {
+      "folder": "output-green-reusable",
+      "case": "identity",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": false,
+      "retained_files": [
+        {
+          "path": "owned-native-atoms-session.txt",
+          "mode": 33188,
+          "sha256": "b072885a36ba742a882e9a6db2be87feca22e4ea463bc6cb5f3adf9f685d978c"
+        }
+      ]
+    },
+    {
+      "folder": "output-green-reusable",
+      "case": "missing",
+      "recorded_exit": 1,
+      "recorded_passed": true,
+      "sentinel_actual": false,
+      "retained_files": null
+    }
+  ],
+  "limits": "Source/hash review only. No R, build, test, probe, benchmark or external operations. Focused running/new qualification logs excluded."
+}

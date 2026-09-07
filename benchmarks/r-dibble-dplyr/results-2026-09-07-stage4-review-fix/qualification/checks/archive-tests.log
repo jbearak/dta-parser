@@ -1,0 +1,11 @@
+test_cross_platform_path_aliases_fail (test_check_r_package_archive.PackageArchiveTests.test_cross_platform_path_aliases_fail) ... ok
+test_every_required_file_is_enforced (test_check_r_package_archive.PackageArchiveTests.test_every_required_file_is_enforced) ... ok
+test_excluded_build_files_fail (test_check_r_package_archive.PackageArchiveTests.test_excluded_build_files_fail) ... ok
+test_member_paths_must_be_canonical_and_inside_package (test_check_r_package_archive.PackageArchiveTests.test_member_paths_must_be_canonical_and_inside_package) ... ok
+test_required_file_must_not_be_a_symlink (test_check_r_package_archive.PackageArchiveTests.test_required_file_must_not_be_a_symlink) ... ok
+test_valid_required_files_pass (test_check_r_package_archive.PackageArchiveTests.test_valid_required_files_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.010s
+
+OK

@@ -1,0 +1,59 @@
+{
+  "source_sha": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+  "cases": [
+    {
+      "name": "generation-names",
+      "cases": 45,
+      "dll_md5": "c655c59a09cbf1cd72a6f72e7e94758e",
+      "baseline_and_candidate_rds_sha256": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5"
+    },
+    {
+      "name": "delayed-mask",
+      "cases": 72,
+      "dll_md5": "c655c59a09cbf1cd72a6f72e7e94758e",
+      "baseline_and_candidate_rds_sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283"
+    },
+    {
+      "name": "delayed-private-mask",
+      "cases": 72,
+      "dll_md5": "c655c59a09cbf1cd72a6f72e7e94758e",
+      "baseline_and_candidate_rds_sha256": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283"
+    },
+    {
+      "name": "symbol-private-callback",
+      "cases": 30,
+      "dll_md5": "c655c59a09cbf1cd72a6f72e7e94758e",
+      "baseline_and_candidate_rds_sha256": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23"
+    }
+  ],
+  "inputs_unchanged": true,
+  "raw_files": {
+    "delayed-mask-candidate.log": "866f05debac4bf20ed77cc381dce7c4f97e1f33ba0c5cef9c9681f793ae25094",
+    "delayed-mask-baseline.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "delayed-mask-matrix.R": "f01fdf0d670232e9a2bbb5249a92ed5df5303680e3430117b01156574e790091",
+    "historical-reused-input-identities.json": "0c38e907b8c8acef3c5dccd1e056c3ab003e2deb0d55ab92d55e1f4aedb86bd1",
+    "symbol-private-callback-baseline.rds": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23",
+    "delayed-mask-candidate.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "symbol-private-callback-matrix.R": "2e67b6f6ae5dc5eb2a77f34799cc67632d78212fd7e4970eb2bc90069838ddac",
+    "generation-names-candidate.log": "a6b82819074b104f68f1a7d7e82dfca229822ef843b667c04812e8f1a1a98506",
+    "generation-names-baseline.rds": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5",
+    "symbol-private-callback-candidate.rds": "9f6f735cdf342fb8c81e426f50975a18811bd22cadfcc4f3073e6569764c6e23",
+    "post-run-audit.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "delayed-private-mask-matrix.R": "53b4291399cf1bb5d2887095ecd496696ad2c7d1b5b0623f9909cbc799d238a8",
+    "delayed-private-mask-candidate.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "input-identities.json": "edefc3da8e9b18e0dca310af4fdf25bc04489f8ead702f17fc0f2b3107aa2b90",
+    "driver.log": "c43e97839282d42aa2d561ca026c3dc51f92456ff5c9fb48e0c2ee9f62d7734f",
+    "symbol-private-callback-candidate.log": "782ed52cb27604adfe799fc65023b1ea5c027e200fc5b39e52fd175ec0b0cd3d",
+    "generation-names-candidate.rds": "0c8d8b65d1130e746b404f7acb2e31ca945a9934838292082d60f888ca7cb7e5",
+    "generation-names-matrix.R": "d35583705f66c051aa7bd8ea3b2207c98ecf8c3360f727e672fd9c31b67015f6",
+    "run.R": "035e5473220ecb562661c9cad9e1e785c8948a048c37125265cb0f04b76a4c63",
+    "delayed-private-mask-baseline.rds": "3596bdc869888ae4fb04ab8ac086019add1467906a1fd1f9475d6a71769db283",
+    "delayed-private-mask-candidate.log": "866f05debac4bf20ed77cc381dce7c4f97e1f33ba0c5cef9c9681f793ae25094",
+    "historical-pre-run-input-identities.json": "b3e615bf82c912323d748f56a05ee3593a345a9ea5e9512235b8d59939eb3baa",
+    "historical-root-manifest.json": "768eae0ae91e3ac6947bb446dfd8b445f9d821d9333af4edc7fc0c8a27b211cd"
+  },
+  "auditor_sha256": "24d77addef1a347c692d46ef94f56bacbdfff2541855afe8f72e82364e4000ff",
+  "launch_coordinator_status": "Failed post-run DLL label assertion, preserved.",
+  "actual_R_result": "All 219 comparisons passed; all four unchanged workload/oracle RDS files are byte-identical to baseline. Exact DLL hashes agree.",
+  "scope": "No test rerun and no raw file rewrite. Corrected parsing of historical DLL and DLL_md5 labels only. Excludes the prior unavailable native observer."
+}
