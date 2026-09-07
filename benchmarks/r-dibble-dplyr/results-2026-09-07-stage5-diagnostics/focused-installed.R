@@ -1,0 +1,7 @@
+args <- commandArgs(TRUE)
+.libPaths(c(args[[1L]], .libPaths()))
+library(dtatools, lib.loc = args[[1L]])
+source('/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/helpers.R')
+validate_benchmark_install(args[[1L]], args[[2L]])
+testthat::test_local('/private/tmp/dta-direct-stage5/r-package/dtatools', filter = 'dibble(-expressions)?$', load_package = 'installed', reporter = 'summary', stop_on_failure = TRUE)
+validate_benchmark_install(args[[1L]], args[[2L]])

@@ -1,0 +1,12 @@
+{
+  "result": {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/installed-api-985e26b-output/result.json",
+    "bytes": 1204,
+    "sha256": "bfe49481c25dde6e813be97e069e1851ccd5d025934fd163e89e651368d405e4"
+  },
+  "manifest": {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/installed-api-985e26b-output/output-manifest.json",
+    "bytes": 710,
+    "sha256": "310fead3322ff1e47e529fb1ccf93ed8da0ce77a6f8ec87e97e38c1e279ce4b5"
+  }
+}

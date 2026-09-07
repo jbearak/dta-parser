@@ -1,0 +1,36 @@
+# Independent bounded API checks on the exact installed Stage 5 checkpoint.
+args <- commandArgs(trailingOnly = TRUE)
+source(args[[3L]])
+validate_benchmark_install(args[[1L]], args[[2L]])
+library(dtatools, lib.loc = args[[1L]])
+if ('dplyr' %in% loadedNamespaces()) stop('dtatools unexpectedly forced the dplyr namespace')
+if (length(getNamespaceExports('dtatools')) != 106L) stop('Wrong public export count')
+library(dplyr)
+data <- dibble(x = 1:2, g = c(1, 1))
+attr(data, 'row.names') <- c('r1', 'r2')
+plain <- dplyr::ungroup(data)
+stopifnot(identical(.row_names_info(plain, 0L), c('r1', 'r2')))
+repl(plain, x = 99, where = 1L)
+stopifnot(identical(as.double(data$x), c(1, 2)))
+grouped <- dplyr::group_by(data, g)
+renamed <- tryCatch(dplyr::ungroup(grouped, renamed = g), error = identity)
+stopifnot(inherits(renamed, 'error'), grepl("Can't rename", conditionMessage(renamed), fixed = TRUE))
+for (verb in c('mutate', 'transmute', 'group_by')) {
+  condition <- tryCatch(getExportedValue('dplyr', verb)(data, z = stop('intentional')), error = identity)
+  stopifnot(identical(condition$call, str2lang(paste0(verb, '()'))))
+}
+closure <- NULL
+out <- dplyr::mutate(data, z = { closure <<- function() x; x }, x = x + 10, observed = closure())
+stopifnot(identical(as.double(out$observed), c(1, 2)))
+expired <- tryCatch(closure(), error = identity)
+stopifnot(inherits(expired, 'error'), grepl('Obsolete data mask', conditionMessage(expired), fixed = TRUE))
+for (size in c(0L, 2L)) {
+  empty <- as_dibble(tibble::new_tibble(list(), nrow = size))
+  out <- dplyr::mutate(empty, x = 1)
+  stopifnot(nrow(out) == size, identical(names(out), 'x'))
+}
+stopifnot(identical(as.double(dplyr::mutate(data, y = c(NA_real_,1), z=y>0)$z), c(1,1)))
+validate_benchmark_install(args[[1L]], args[[2L]])
+cat('PASS installed API, namespace-only load, corrected selectors/row names/callers, within-call captures, zero-column input, and sequential Stata typing\n')
+cat('Package ', normalizePath(find.package('dtatools')), '\n', sep = '')
+cat('DLL ', getLoadedDLLs()[['dtatools']][['path']], '\n', sep = '')

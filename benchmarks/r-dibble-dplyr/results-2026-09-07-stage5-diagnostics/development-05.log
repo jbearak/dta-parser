@@ -1,0 +1,42 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+dibble-expressions: 1.................................................................................................................2
+dibble: ...............................................................................................................................................................................................................................................................................................................................................W.................W...................................................................................................................................................................................................................................................................................................................W..W.................................................................................
+
+══ Warnings ════════════════════════════════════════════════════════════════════
+1. gen and := accept factors as mutate does ('test-dibble.R:853:5') - Converted factor columns to labelled Stata long integers: `f`, `g`, `h`. Factor class and orderedness will not be restored on read.
+
+2. a logical overwriting a Stata numeric keeps its storage ('test-dibble.R:889:5') - There was 1 warning in `mutate()`.
+i In argument: `day = day > as.Date("2024-01-01")`.
+Caused by warning:
+! Incompatible methods (">.dta_temporal", "Ops.Date") for ">"
+
+3. copying replacement isolates vectors and preserves grouping ('test-dibble.R:1590:5') - Setting row names on a tibble is deprecated.
+
+4. copying replacement isolates vectors and preserves grouping ('test-dibble.R:1593:5') - Setting row names on a tibble is deprecated.
+
+══ Failed ══════════════════════════════════════════════════════════════════════
+── 1. Error ('test-dibble-expressions.R:15:5'): the core evaluator accepts ordin
+Error in `eval(code, test_env)`: object '.dibble_expression_groups' not found
+
+── 2. Failure ('test-dibble-expressions.R:273:5'): duplicate unpacked names and 
+Expected `dplyr::last_dplyr_warnings(Inf)` to have length 3.
+Actual length: 5.
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+Error:
+! Test failures.
+Execution halted

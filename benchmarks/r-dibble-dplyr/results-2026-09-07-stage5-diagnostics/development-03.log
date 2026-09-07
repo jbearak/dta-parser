@@ -1,0 +1,30 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+dibble: ...............................................................................................................................................................................................................................................................................................................................................W.................W...................................................................................................................................................................................................................................................................................................................W..W.................................................................................
+
+══ Warnings ════════════════════════════════════════════════════════════════════
+1. gen and := accept factors as mutate does ('test-dibble.R:853:5') - Converted factor columns to labelled Stata long integers: `f`, `g`, `h`. Factor class and orderedness will not be restored on read.
+
+2. a logical overwriting a Stata numeric keeps its storage ('test-dibble.R:889:5') - There was a warning in `mutate()`.
+i In argument: `day = day > as.Date("2024-01-01")`.
+Caused by warning:
+! Incompatible methods (">.dta_temporal", "Ops.Date") for ">"
+
+3. copying replacement isolates vectors and preserves grouping ('test-dibble.R:1590:5') - Setting row names on a tibble is deprecated.
+
+4. copying replacement isolates vectors and preserves grouping ('test-dibble.R:1593:5') - Setting row names on a tibble is deprecated.
+
+══ DONE ════════════════════════════════════════════════════════════════════════

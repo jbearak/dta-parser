@@ -1,0 +1,9 @@
+* checking for file ‘/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-01/export/r-package/dtatools/DESCRIPTION’ ... OK
+* preparing ‘dtatools’:
+* checking DESCRIPTION meta-information ... OK
+* cleaning src
+* running ‘cleanup’
+* checking for LF line-endings in source and make files and shell scripts
+* checking for empty or unneeded directories
+* building ‘dtatools_0.7.1.tar.gz’
+

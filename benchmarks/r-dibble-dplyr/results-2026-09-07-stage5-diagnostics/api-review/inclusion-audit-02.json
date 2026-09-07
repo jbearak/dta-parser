@@ -1,0 +1,9 @@
+{
+  "scope": "Additive correction review: original included bytes/records preserved, corrected historical-mode wording accurately limited to observed inclusion-time modes. No new runtime claims.",
+  "current_files": 276,
+  "original_copied_records_unchanged": 272,
+  "correction_sha256": "b26d487b3c4cca6654546995e33a89b74526953db879293535001ea0ad67771c",
+  "readme_sha256": "5f62a08a2adaf7aa9e73e08e004dc4705e7f1295bd55b3f26d7c396dc7471f3d",
+  "all_correction_bindings_match": true,
+  "finding_resolved": true
+}

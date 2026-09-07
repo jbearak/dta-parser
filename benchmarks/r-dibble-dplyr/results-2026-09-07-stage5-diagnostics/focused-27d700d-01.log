@@ -1,0 +1,29 @@
+dibble-expressions: ....................................................................................................................1.....W......................
+dibble: ...............................................................................................................................................................................................................................................................................................................................................W.................W...................................................................................................................................................................................................................................................................................................................W..W.................................................................................
+
+══ Warnings ════════════════════════════════════════════════════════════════════
+1. symbol results preserve attributes and rowwise frame columns remain frames ('test-dibble-expressions.R:291:5') - There was 1 warning in `mutate()`.
+i In argument: `y = x`.
+Caused by warning:
+! Dropped unknown attribute during Stata vector restoration: other
+
+2. gen and := accept factors as mutate does ('test-dibble.R:853:5') - Converted factor columns to labelled Stata long integers: `f`, `g`, `h`. Factor class and orderedness will not be restored on read.
+
+3. a logical overwriting a Stata numeric keeps its storage ('test-dibble.R:889:5') - There was 1 warning in `mutate()`.
+i In argument: `day = day > as.Date("2024-01-01")`.
+Caused by warning:
+! Incompatible methods (">.dta_temporal", "Ops.Date") for ">"
+
+4. copying replacement isolates vectors and preserves grouping ('test-dibble.R:1590:5') - Setting row names on a tibble is deprecated.
+
+5. copying replacement isolates vectors and preserves grouping ('test-dibble.R:1593:5') - Setting row names on a tibble is deprecated.
+
+══ Failed ══════════════════════════════════════════════════════════════════════
+── 1. Failure ('test-dibble-expressions.R:273:5'): duplicate unpacked names and 
+Expected `dplyr::last_dplyr_warnings(Inf)` to have length 3.
+Actual length: 5.
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+Error:
+! Test failures.
+Execution halted

@@ -1,0 +1,12 @@
+{
+  "scope": "Actual untracked inclusion inventory reviewed; source/destination bytes and observed current modes verified. Historical mode equality remains unestablished for original minimum-study files. No recipes executed or runtime qualification claimed.",
+  "manifest_sha256": "16c6a85bc7c83b119a80a1cd51f85f74ff4bda5e19c4d4964e6b105a16bf0ff1",
+  "receipt_sha256": "df46d88b02411236e1721d17f0dd53c3c012750466dcbb8f4fd470b244ddbfdc",
+  "copied_records": 272,
+  "total_current_files": 275,
+  "total_bytes": 13458392,
+  "all_sources_and_copies_match": true,
+  "no_native_or_downloaded_archives": true,
+  "readme_relative_links_checked": 32,
+  "open_finding": "Manifest scope incorrectly says historical bytes/modes preserved; parent notified."
+}

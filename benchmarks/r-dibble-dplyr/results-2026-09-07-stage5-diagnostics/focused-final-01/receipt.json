@@ -1,0 +1,13 @@
+{
+  "changed_inputs": [],
+  "manifest": {
+    "bytes": 1548844,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/focused-final-01/manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/focused-final-01/manifest.json",
+    "sha256": "2a214f89b306017b689de1434628b714219bba54e1e3e3df9607eb75b89739b9"
+  },
+  "runner_sha": "90375ec1871d159d2cb24a9ccd3e100f57931701",
+  "source_sha": "90375ec1871d159d2cb24a9ccd3e100f57931701",
+  "status": "complete"
+}

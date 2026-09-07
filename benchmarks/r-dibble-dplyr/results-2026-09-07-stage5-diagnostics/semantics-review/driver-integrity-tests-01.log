@@ -1,0 +1,8 @@
+test_deleted_and_changed_inputs_are_recorded (__main__.IntegrityTests.test_deleted_and_changed_inputs_are_recorded) ... ok
+test_existing_and_dangling_output_are_rejected (__main__.IntegrityTests.test_existing_and_dangling_output_are_rejected) ... ok
+test_new_package_source_is_rejected (__main__.IntegrityTests.test_new_package_source_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.002s
+
+OK

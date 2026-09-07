@@ -1,0 +1,144 @@
+{
+  "changed_bound_inputs": [],
+  "commands": [
+    {
+      "command": [
+        "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+        "--version"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d",
+      "finished_utc": "2026-09-07T15:45:22.009680+00:00",
+      "label": "r-version",
+      "log": {
+        "bytes": 381,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/r-version.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/r-version.log",
+        "sha256": "d5edd22a6841d31ea0be9e6fef9a2b7cbcb8f1bfa6c650a827dfe9138712e752"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T15:45:21.998983+00:00"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/rust/1.98.0/bin/rustc",
+        "-vV"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d",
+      "finished_utc": "2026-09-07T15:45:22.019806+00:00",
+      "label": "rustc-version",
+      "log": {
+        "bytes": 203,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/rustc-version.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/rustc-version.log",
+        "sha256": "75d92da7b8174054e6c19a9a80df6ccb5077af573190ddcc9cbfbe9f5c600c50"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T15:45:22.009939+00:00"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/rust/1.98.0/bin/cargo",
+        "-vV"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d",
+      "finished_utc": "2026-09-07T15:45:22.030196+00:00",
+      "label": "cargo-version",
+      "log": {
+        "bytes": 314,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/cargo-version.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/cargo-version.log",
+        "sha256": "30a8ffbf5019e716b5592ff2a57ead71e42015b7b082bb9a8e76aae1d85b34df"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T15:45:22.020057+00:00"
+    },
+    {
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/clang",
+        "--version"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d",
+      "finished_utc": "2026-09-07T15:45:22.035202+00:00",
+      "label": "clang-version",
+      "log": {
+        "bytes": 159,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/clang-version.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/clang-version.log",
+        "sha256": "55f7662ee66d47566d9f08f35a12158ac9588e4852f788eed57fa3bf625c9a5d"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T15:45:22.030448+00:00"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+        "CMD",
+        "build",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/export/r-package/dtatools"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/build",
+      "finished_utc": "2026-09-07T15:45:23.116540+00:00",
+      "label": "build",
+      "log": {
+        "bytes": 419,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/build.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/build.log",
+        "sha256": "a5d3a9cc5658f3070e07a192dcf900decab3826d5ccce8eeaa32c1076ce7ad74"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T15:45:22.035416+00:00"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+        "CMD",
+        "INSTALL",
+        "--library=/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/library",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/build/dtatools_0.7.1.tar.gz"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/build",
+      "finished_utc": "2026-09-07T15:45:44.077205+00:00",
+      "label": "install",
+      "log": {
+        "bytes": 13472,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/install.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/install.log",
+        "sha256": "2c60f692c37af8f7c1e006a7860c6651aa263372723fd3a315f58005dc00644b"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T15:45:23.120488+00:00"
+    },
+    {
+      "command": [
+        "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/export/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/library",
+        "27d700d51f30f09b5d0ae4fa7068098f12083b67",
+        "2d8d7ce8e62c02e7060142eecc8285efc1535bcb",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/build/dtatools_0.7.1.tar.gz",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/export/benchmarks/r-dibble-dplyr/helpers.R"
+      ],
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d",
+      "finished_utc": "2026-09-07T15:45:44.357645+00:00",
+      "label": "finish-install",
+      "log": {
+        "bytes": 278,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/finish-install.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-27d700d/finish-install.log",
+        "sha256": "917fffb07b142f8e4aa2ccc0e284025f8645aca960fed1c8691e72cf4fdd4e09"
+      },
+      "returncode": 0,
+      "started_utc": "2026-09-07T15:45:44.077595+00:00"
+    }
+  ],
+  "generated_export_files": [],
+  "status": "complete"
+}
