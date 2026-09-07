@@ -278,3 +278,38 @@ exceptions remain enabled under Python optimization. Run
 synthetic CLI guard cases across default Python, `-O` and `PYTHONOPTIMIZE=1`.
 These guard tests perform no R timing. The Stage 3 runners and historical raw
 evidence keep their original bytes and identities.
+## Retained header and vector heap supplement
+
+`owned-heap.R` sources the existing atomic or double memory runner unchanged
+in a local evaluation environment, then reads its five `gc()` checkpoints.
+This is a separate measurement. It includes R header cells, which the earlier
+vector-heap measurements omit, and is useful when an owned backing record uses
+an external pointer. No namespace is patched. The local argument adapter only
+supplies the original runner's expected command-line arguments.
+
+The wrapper reports raw header-cell counts and vector bytes. It infers the
+unique integer header size consistent with all five cell counts and R's reported
+MB totals, which are rounded upward to 0.1 MiB. It fails if the size is ambiguous.
+The Python driver independently checks that inference and every reported heap
+delta. Header bytes plus vector bytes measure used R heap; they exclude external
+native allocations, unused heap capacity, and process overhead. The existing
+peak-RSS runs retain their separate whole-process interpretation. Small residual
+heap after dropping the result can include fixed bookkeeping and caches.
+
+After committing the wrapper and driver, run each side in a quiet window:
+
+```sh
+python3 benchmarks/r-dibble-dplyr/run-heap-qualification.py REPO NEW_OUTPUT LIBRARY SOURCE_SHA RUNNER_SHA baseline
+python3 benchmarks/r-dibble-dplyr/run-heap-qualification.py REPO NEW_OUTPUT LIBRARY SOURCE_SHA RUNNER_SHA candidate
+```
+
+Use full commit identities and a fresh output directory for each command. The
+driver binds its own bytes and all eight R dependencies to `RUNNER_SHA`; the R
+wrapper records and rechecks their runtime identities. Every process validates
+the exact installed package before and after its workload. The matrix has 36
+fresh processes per side: doubles and the five atomic kinds, 100k/1M rows, and
+rename/five-verb/fifty-verb operations. Existing value, metadata, backing, depth
+and vector-heap checks remain active. Candidates must also retain less than
+1 MB of combined tracked R heap with source and result alive and leave less than
+1 MB above the reference-free checkpoint after both are dropped. The supplement
+reports no operation timing and does not replace the original qualification.
