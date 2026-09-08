@@ -210,6 +210,25 @@ Adapted from dplyr 1.2.1:
     implementation is incorporated by these changes.
     tests/testthat/test-dibble-result-history.R adds package-specific finite
     retained-heap budgets and atomic-copy/opaque-identity assertions.
+  Additional recoding sources:
+    R/recode.R: recode.character(), recode.factor(), find_template(),
+      validate_recode_default(), recode_default.default(),
+      recode_default.factor(), replace_with() and replacement checks.
+    R/error.R: bounded positional-argument formatting.
+  Destination: owned character/factor kernels and helpers in R/recode.R.
+  Changes: qualified public rlang/base calls replace dplyr helper access;
+    replacement type errors use the package's typeof wording. The private
+    dispatcher uses public S3 lookup and base dispatch to preserve available external
+    methods and NextMethod context. Numeric Stata and legacy kernels remain
+    distinct. Character-backed Haven inputs use the owned character kernel,
+    avoiding the former public-wrapper/generic recursion. Metadata wrappers
+    retain their existing separate restoration policy. No dplyr generic or
+    recode_factor implementation is incorporated.
+  Additional tests: tests/testthat/test-recode-core.R adapts named replacement,
+    default/missing, dynamic dots, factor-level order/collapse and validation
+    cases from tests/testthat/test-recode.R. Additional package-specific tests
+    cover metadata, missing tags, forcing and external S3 continuation; no
+    upstream snapshots or numeric tests were copied.
   The inspected files contain no separate file-level copyright or license.
 
 Adapted from R 4.6.1, released 2026-06-24 (SVN revision 90187):

@@ -55,6 +55,20 @@ replacement class. Stata date and datetime sources accept \code{Date} and
 \code{POSIXct} replacements, respectively. For other class changes, apply the
 desired class after recoding.
 
+Character recoding uses character values and does not restore source labels
+or Stata string-width declarations. Character-backed \code{haven_labelled}
+inputs follow this rule. Factor recoding changes levels in their existing order;
+character replacements retain factor attributes, while non-character
+replacements return the corresponding replacement vector. Factor replacement
+lengths are checked against the number of levels, including unused levels.
+Metadata-vector notes and characteristics are restored by their transparent
+wrapper. The wrapper's numeric route retains the legacy numeric policy.
+
+Character and factor recoding is implemented by dtatools. Existing visible
+S3 \code{recode} methods and methods registered with an already loaded dplyr
+namespace keep their dispatch context. Numeric inputs to this public function
+continue to use the Stata-preserving policy above.
+
 When the dtatools namespace is loaded, \code{dplyr::recode()} dispatches here
 for bare numeric, \code{haven_labelled}, \code{Date}, and \code{POSIXct}
 vectors. This also applies when \code{recode()} is called inside

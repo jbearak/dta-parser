@@ -39,6 +39,20 @@
 #' replacements, respectively. For other class changes, apply the desired class
 #' after recoding.
 #'
+#' Character recoding uses character values and does not restore source labels
+#' or Stata string-width declarations. Character-backed `haven_labelled` inputs
+#' follow this rule. Factor recoding changes levels in their existing order;
+#' character replacements retain factor attributes, while non-character
+#' replacements return the corresponding replacement vector. Factor replacement
+#' lengths are checked against the number of levels, including unused levels.
+#' Metadata-vector notes and characteristics are restored by their transparent
+#' wrapper. The wrapper's numeric route retains the legacy numeric policy.
+#'
+#' Character and factor recoding is implemented by dtatools. Existing visible
+#' S3 `recode` methods and methods registered with an already loaded dplyr
+#' namespace keep their dispatch context. Numeric inputs to this public function
+#' continue to use the Stata-preserving policy above.
+#'
 #' When the dtatools namespace is loaded, `dplyr::recode()` dispatches here
 #' for bare numeric, `haven_labelled`, `Date`, and `POSIXct` vectors. This also
 #' applies when `recode()` is called inside `dplyr::mutate()`, regardless of
@@ -57,7 +71,7 @@
 #' @export
 recode <- function(.x, ..., .default = NULL, .missing = NULL) {
     if (is.factor(.x)) {
-        return(dplyr::recode(
+        return(.recode_dispatch(
             .x, ..., .default = .default, .missing = .missing
         ))
     }
@@ -68,15 +82,188 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
         ))
     }
 
-    if (is.character(.x)) {
-        return(dplyr::recode(
-            .x, ..., .default = .default, .missing = .missing
-        ))
-    }
-
-    dplyr::recode(
+    .recode_dispatch(
         .x, ..., .default = .default, .missing = .missing
     )
+}
+
+# Keep real S3 call context for existing external methods, including NextMethod().
+# The generic is private: the public numeric branch above retains its stronger
+# Stata policy. Only public S3 lookup and base dispatch APIs are used; dplyr's recode
+# implementation is never called and this does not load an optional namespace.
+.recode_dispatch <- function(.x, ..., .default = NULL, .missing = NULL) {
+    recode <- function(.x, ..., .default = NULL, .missing = NULL) {
+        UseMethod("recode")
+    }
+    methods <- list(
+        character = .recode_character,
+        factor = .recode_factor,
+        numeric = recode.numeric,
+        dta_numeric = recode.dta_numeric,
+        haven_labelled = recode.haven_labelled,
+        Date = recode.Date,
+        POSIXct = recode.POSIXct,
+        dtatools_dta_metadata_vector = recode.dtatools_dta_metadata_vector
+    )
+    if ("dplyr" %in% loadedNamespaces()) {
+        namespace <- asNamespace("dplyr")
+        # getS3method normally checks visible functions before the registry.
+        # The former wrapper called the generic from our namespace, where the
+        # registry wins over methods visible above that namespace. Isolate the
+        # public generic binding to query its registry without global shadowing.
+        lookup <- new.env(parent = emptyenv())
+        lookup$recode <- getExportedValue("dplyr", "recode")
+        for (class in c(class(.x), "default")) {
+            # These methods were already visible in the old wrapper's namespace
+            # and therefore preceded any foreign registration for the same slot.
+            if (class %in% c("numeric", "dta_numeric", "haven_labelled",
+                             "Date", "POSIXct", "dtatools_dta_metadata_vector")) {
+                next
+            }
+            method <- utils::getS3method(
+                "recode", class, optional = TRUE, envir = lookup
+            )
+            builtin <- NULL
+            if (class %in% c("character", "factor")) {
+                builtin <- utils::getS3method(
+                    "recode", class, optional = TRUE, envir = namespace
+                )
+            }
+            is_builtin <- !is.null(builtin) && identical(method, builtin) &&
+                identical(environment(builtin), namespace)
+            if (!is.null(method) && !is_builtin) {
+                methods[[class]] <- method
+            }
+        }
+    }
+    # Call-local method bindings participate in both UseMethod and NextMethod.
+    # A table registered in this frame would not: R searches the top environment.
+    for (class in names(methods)) {
+        assign(paste0("recode.", class), methods[[class]], envir = environment())
+    }
+    recode(.x, ..., .default = .default, .missing = .missing)
+}
+
+# Adapted from dplyr 1.2.1 R/recode.R at
+# 95740975c465c29cdb2abdfa13effddb948444dc; MIT notice in inst/NOTICE.
+# Keep template selection, named duplicates/NULLs, promise forcing, factor-level
+# replacement, and asymmetric replacement-class checks. Helpers are owned here.
+.recode_character <- function(.x, ..., .default = NULL, .missing = NULL) {
+    .x <- as.character(.x)
+    values <- rlang::list2(...)
+    .recode_check_names(values)
+    template <- .recode_template(values, .default, .missing)
+    out <- template[rep(NA_integer_, length(.x))]
+    replaced <- rep(FALSE, length(.x))
+    for (name in names(values)) {
+        out <- .recode_replace_character_factor(
+            out, .x == name, values[[name]], paste0("`", name, "`")
+        )
+        replaced[.x == name] <- TRUE
+    }
+    .default <- .recode_default(.default, .x, out, replaced)
+    out <- .recode_replace_character_factor(
+        out, !replaced & !is.na(.x), .default, "`.default`"
+    )
+    .recode_replace_character_factor(out, is.na(.x), .missing, "`.missing`")
+}
+
+.recode_factor <- function(.x, ..., .default = NULL, .missing = NULL) {
+    values <- rlang::list2(...)
+    if (length(values) == 0L) {
+        rlang::abort("No replacements provided.")
+    }
+    .recode_check_names(values)
+    if (!is.null(.missing)) {
+        rlang::abort("`.missing` is not supported for factors.")
+    }
+    template <- .recode_template(values, .default, .missing)
+    out <- template[rep(NA_integer_, length(levels(.x)))]
+    replaced <- rep(FALSE, length(out))
+    for (name in names(values)) {
+        out <- .recode_replace_character_factor(
+            out, levels(.x) == name, values[[name]], paste0("`", name, "`")
+        )
+        replaced[levels(.x) == name] <- TRUE
+    }
+    .default <- .recode_default(.default, .x, out, replaced)
+    out <- .recode_replace_character_factor(out, !replaced, .default, "`.default`")
+    if (is.character(out)) {
+        levels(.x) <- out
+        .x
+    } else {
+        out[as.integer(.x)]
+    }
+}
+
+.recode_check_names <- function(values) {
+    bad <- which(!rlang::have_name(values)) + 1L
+    if (length(bad)) {
+        positions <- as.character(bad)
+        if (length(positions) > 6L) {
+            positions <- c(positions[seq_len(5L)], "...")
+        }
+        rlang::abort(paste0(
+            if (length(bad) == 1L) "Argument " else "Arguments ",
+            paste(positions, collapse = ", "), " must be named."
+        ))
+    }
+}
+
+.recode_template <- function(values, .default, .missing) {
+    candidates <- Filter(Negate(is.null), c(values, .default, .missing))
+    if (!length(candidates)) {
+        rlang::abort("No replacements provided.")
+    }
+    candidates[[1L]]
+}
+
+.recode_default <- function(default, x, out, replaced) {
+    if (is.null(default)) {
+        if (is.factor(x)) {
+            default <- if (is.character(out) || is.factor(out)) levels(x) else out[NA_integer_]
+        } else if (identical(typeof(x), typeof(out))) {
+            default <- x
+        }
+    }
+    if (is.null(default) && sum(replaced & !is.na(x)) < length(out[!is.na(x)])) {
+        rlang::warn(c(
+            "Unreplaced values treated as NA as `.x` is not compatible. ",
+            "Please specify replacements exhaustively or supply `.default`."
+        ))
+    }
+    default
+}
+
+.recode_replace_character_factor <- function(output, locations, value, name) {
+    if (is.null(value)) {
+        return(output)
+    }
+    size <- length(output)
+    if (!(length(value) %in% c(1L, size))) {
+        rlang::abort(paste0(
+            name, " must be length ", size,
+            if (size == 1L) "" else " or one", ", not ", length(value), "."
+        ))
+    }
+    if (!identical(typeof(value), typeof(output))) {
+        rlang::abort(paste0(
+            name, " must have type ", typeof(output), ", not ", typeof(value), "."
+        ))
+    }
+    if (is.object(value) && !identical(class(value), class(output))) {
+        rlang::abort(paste0(
+            name, " must have class `", paste(class(output), collapse = "/"),
+            "`, not class `", paste(class(value), collapse = "/"), "`."
+        ))
+    }
+    locations[is.na(locations)] <- FALSE
+    if (length(value) == 1L) {
+        output[locations] <- value
+    } else {
+        output[locations] <- value[locations]
+    }
+    output
 }
 
 .recode_numeric_like <- function(.x, ..., .default = NULL, .missing = NULL) {
@@ -331,6 +518,11 @@ recode.dta_numeric <- function(
 }
 
 recode.haven_labelled <- function(.x, ..., .default = NULL, .missing = NULL) {
+    if (is.character(.x)) {
+        return(.recode_character(
+            .x, ..., .default = .default, .missing = .missing
+        ))
+    }
     recode(.x, ..., .default = .default, .missing = .missing)
 }
 
@@ -346,7 +538,7 @@ recode.POSIXct <- function(.x, ..., .default = NULL, .missing = NULL) {
 recode.dtatools_dta_metadata_vector <- function(
     .x, ..., .default = NULL, .missing = NULL
 ) {
-    result <- dplyr::recode(
+    result <- .recode_dispatch(
         .dta_metadata_vector_base(.x), ...,
         .default = .default, .missing = .missing
     )

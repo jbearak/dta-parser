@@ -548,6 +548,13 @@ rather than a reduction in peak memory during construction.
 
 `recode()` changes selected values without losing unmatched system or extended missing codes. It also preserves classes and Stata metadata for numeric, `haven_labelled`, `Date`, and `POSIXct` vectors.
 
+Character and factor recoding uses package-owned kernels. Character output does
+not restore source labels or Stata string-width declarations; character-backed
+Haven vectors now follow that rule instead of recursing through the two recode
+interfaces. Character factor replacements retain factor attributes and level
+order. Numeric recoding keeps its separate Stata missing-value policy. See
+`?recode` for default, missing and metadata-wrapper behavior.
+
 `tab()` creates one-way and multidimensional frequency tables using Stata value labels. With `missing = TRUE`, it keeps `.`, `.a` through `.z`, and R `NaN` as separate categories when they occur:
 
 ```r
@@ -835,7 +842,8 @@ GPL-3.0. See the repository's [LICENSE](https://github.com/jbearak/dta-parser/bl
 ## Acknowledgements
 
 The direct dibble selectors, grouping metadata and row/reconstruction hooks
-adapt dplyr's selector, grouping and reconstruction rules.
+adapt dplyr's selector, grouping and reconstruction rules. Character/factor
+recoding kernels and their tests also adapt dplyr's legacy replacement rules.
 Its implementation and tests are credited in the [installed source notice](inst/NOTICE),
 which includes the upstream MIT copyright and license. The dtplyr implementation
 and tests were studied for operation planning and copying behavior; no dtplyr
