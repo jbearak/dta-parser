@@ -2,10 +2,19 @@
 
 This selective archive preserves 174 observed files from implementation and
 review, including failed attempts. The [inclusion manifest](inclusion-manifest.json)
-maps each copy to its original path, size, SHA-256 and mode at inclusion. Its
+maps each copy to its recorded source path, size, SHA-256 and mode at inclusion. Its
 [receipt](inclusion-receipt.json) binds the completed manifest. The
 [copy recipe](archive-diagnostics.py) checks both source and destination bytes.
 This README and the two inclusion records are new; copied records are unchanged.
+
+The preserved recipe follows file symlinks through `is_file()`, content reads
+and `copy2()`, and checks only a lexical path relative to `origin`. It did not
+reject symlinks or verify resolved-source containment. Its hashes and modes
+identify the copied content at the listed paths; they do not establish that
+every historical source was a non-symlink file physically beneath `origin`.
+The recipe's records contain no resolved-source inventory. This limitation
+cannot be repaired retrospectively by editing the executed recipe or inspecting
+today's source tree. The recipe remains a historical copy record.
 
 The development logs are diagnostics, not exact-source acceptance. They used
 installed native code with working R overrides. Their working source was not
@@ -27,6 +36,13 @@ assertions with no failures or skips and four established warnings. A later
 self-audit added an explicit Python executable binding to the installer and
 check runner. These earlier records keep their original input scope. Fresh
 source `4427a9b` installation and broad qualification are separate evidence.
+The additive [focused Rscript provenance note](review-fixes/focused-rscript-provenance.json)
+identifies the two Rscript candidates already present in the focused run's
+original input inventory and the preceding preflight's runtime version. The
+test launcher used the bare command `Rscript` without retaining a tool-name mapping or `PATH`.
+Those candidate identities do not establish the executable selected at process
+launch; that historical identity remains unresolved. The original command and
+records are preserved, and no new run supplies a replacement historical identity.
 
 The two review directories retain reproductions, comparisons and review
 checkpoints selected when this archive was made. Source review is clean through
@@ -35,6 +51,15 @@ completed full-test output audit are included. Later driver fixes and final
 qualification audits remain separate records. These checkpoints do not claim
 final measured
 acceptance or completion of external review and CI.
+
+The preserved [installed API runner](api-review/run-installed-api-985e26b.py)
+enumerated installed package files before execution, then re-read only the
+paths in its [initial input record](api-review/installed-api-985e26b-output/inputs-before.json).
+Its [empty change list](api-review/installed-api-985e26b-output/result.json)
+covers byte/size comparisons for those entries. Added files are outside that
+check; no complete post-run path set was retained for comparison. The recorded
+success remains a bounded API and NOTICE-distribution result. It does not
+certify unchanged membership of the installed package tree.
 
 Source tarballs, expanded Git exports, installed libraries and build trees are
 omitted from this readable archive. Their original identities remain in each
