@@ -34,7 +34,7 @@ change. The Stage 6 commits were rebased onto that exact main and published in
 [PR #209](https://github.com/jbearak/dta-parser/pull/209).
 Their row-operation and qualification-launcher changes remain intact; the
 shared DESCRIPTION change retains both version 0.8.0 and the Stage 6 stringi
-suggestion. Qualified candidate `7b614c6d` has package tree
+suggestion. Earlier qualification candidate `7b614c6d` has package tree
 `e812870e38317facc0a7c349cd3fa2b0515244e6`.
 
 Stage 6 owns direct filter/filter_out, arrange, distinct, slice and all five
