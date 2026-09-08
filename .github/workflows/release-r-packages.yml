@@ -18,6 +18,8 @@ jobs:
       contents: read
     env:
       RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
+      # Match the minimum macOS version of the R 4.6 ARM64 distribution.
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
     strategy:
       fail-fast: false
       matrix:
@@ -166,6 +168,15 @@ jobs:
         with:
           name: ${{ steps.package.outputs.artifact_name }}
           path: ${{ steps.package.outputs.asset }}
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Stage source for release
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: r-package-source
+          path: release-build/source/dtatools_*.tar.gz
           if-no-files-found: error
           retention-days: 1
 

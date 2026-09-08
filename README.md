@@ -27,6 +27,18 @@ cargo doc -p dta-tools --no-deps --open
 
 ## Compatibility
 
+Install the R package from the [dtatools package repository](https://jbearak.github.io/dta-parser/):
+
+```r
+install.packages("dtatools", repos = c(
+  dtatools = "https://jbearak.github.io/dta-parser",
+  CRAN = "https://cloud.r-project.org"
+))
+```
+
+See [installation and publishing details](docs/r-package-repository.md) for
+binary support, source requirements, and automatic release updates.
+
 Package-owned underscore identifiers use `dta_` and `_dta`. See the
 [naming migration](docs/dta-naming.md) for renamed classes, constants, and metadata fields.
 
