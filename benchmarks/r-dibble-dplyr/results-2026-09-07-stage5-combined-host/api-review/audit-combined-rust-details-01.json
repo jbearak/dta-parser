@@ -1,0 +1,29 @@
+{
+  "status": "pass",
+  "source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "full_git_export_files": 3237,
+  "cargo_resolved_dependency_files": 4263,
+  "rust_tests_passed": 278,
+  "crate_files": 26,
+  "crate_sha256": "aa8b8ea9fc3bb9c0c48cc72700b49bbb9b53e90b935bb7dedb368821554c510c",
+  "package_warnings": [
+    "arrow",
+    "conformance",
+    "encoding",
+    "file",
+    "fuzz_smoke",
+    "legacy",
+    "metadata",
+    "observations",
+    "strl",
+    "value_labels",
+    "write"
+  ],
+  "integrated_public_and_interrupt_tests": {
+    "removed and re-added column generations retain values and expire": 8,
+    "native generation interrupts leave reference state unchanged": 67,
+    "POSIX interrupts reach an active native generation checkpoint": 67,
+    "generation interrupt controls disarm after validation errors": 6
+  },
+  "limits": "Cargo doc is a documentation build, not a separate doctest run. Cargo creates and verifies its crate within one command; no separate pre-consumption hash is claimed for that internal step. External OS/SDK/Python closures remain outside scope."
+}

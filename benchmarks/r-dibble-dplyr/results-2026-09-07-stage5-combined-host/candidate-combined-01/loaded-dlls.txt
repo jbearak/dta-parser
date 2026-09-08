@@ -1,0 +1,15 @@
+base
+/opt/homebrew/Cellar/r/4.6.1/lib/R/library/methods/libs/methods.so
+/opt/homebrew/Cellar/r/4.6.1/lib/R/library/utils/libs/utils.so
+/opt/homebrew/Cellar/r/4.6.1/lib/R/library/grDevices/libs/grDevices.so
+/opt/homebrew/Cellar/r/4.6.1/lib/R/library/graphics/libs/graphics.so
+/opt/homebrew/Cellar/r/4.6.1/lib/R/library/stats/libs/stats.so
+/opt/homebrew/Cellar/r/4.6.1/lib/R/library/tools/libs/tools.so
+/opt/homebrew/lib/R/4.6/site-library/rlang/libs/rlang.so
+/opt/homebrew/lib/R/4.6/site-library/cli/libs/cli.so
+/opt/homebrew/lib/R/4.6/site-library/glue/libs/glue.so
+/opt/homebrew/lib/R/4.6/site-library/vctrs/libs/vctrs.so
+/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library/dtatools/libs/dtatools.so
+/opt/homebrew/lib/R/4.6/site-library/magrittr/libs/magrittr.so
+/opt/homebrew/lib/R/4.6/site-library/tibble/libs/tibble.so
+/opt/homebrew/Cellar/r/4.6.1/lib/R/modules//lapack.so

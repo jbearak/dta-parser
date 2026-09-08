@@ -1,0 +1,355 @@
+{
+  "assessment": "The exact combined installation, five Rust gates and full host R suite are independently bound to source/runner a2d8b6a and package tree b08. All completed products, manifests, expected receipts and declared input identities match. All234 exported Git file records and the consumed built source archive match. Public exports remain106. Full R results reproduce16750 passes with zero failures/errors/skips and four established warnings, including67 deterministic native checks,67 readiness/SIGINT checks,six disarm checks and eight remove/re-add/capture assertions. All other test result rows and assertion counts match ad976. Rust278 tests pass; the11 package warnings exactly match prior baseline warning text. Install linker warning categories/count match the prior ad976 installation.",
+  "full": {
+    "all_other_rows_identical_to_ad976": true,
+    "native_tests": [
+      {
+        "context": "mutate-data",
+        "error": "FALSE",
+        "failed": "0",
+        "file": "test-mutate-data.R",
+        "nb": "67",
+        "passed": "67",
+        "real": "0.334",
+        "skipped": "FALSE",
+        "system": "0.024",
+        "test": "native generation interrupts leave reference state unchanged",
+        "user": "0.0490000000000013",
+        "warning": "0"
+      },
+      {
+        "context": "mutate-data",
+        "error": "FALSE",
+        "failed": "0",
+        "file": "test-mutate-data.R",
+        "nb": "67",
+        "passed": "67",
+        "real": "0.337",
+        "skipped": "FALSE",
+        "system": "0.0289999999999999",
+        "test": "POSIX interrupts reach an active native generation checkpoint",
+        "user": "0.0530000000000008",
+        "warning": "0"
+      },
+      {
+        "context": "mutate-data",
+        "error": "FALSE",
+        "failed": "0",
+        "file": "test-mutate-data.R",
+        "nb": "6",
+        "passed": "6",
+        "real": "0.00900000000000034",
+        "skipped": "FALSE",
+        "system": "0.00099999999999989",
+        "test": "generation interrupt controls disarm after validation errors",
+        "user": "0.00799999999999912",
+        "warning": "0"
+      }
+    ],
+    "remove_readd_test": {
+      "context": "dibble-expressions",
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-dibble-expressions.R",
+      "nb": "8",
+      "passed": "8",
+      "real": "0.0129999999999999",
+      "skipped": "FALSE",
+      "system": "0.001",
+      "test": "removed and re-added column generations retain values and expire",
+      "user": "0.0129999999999999",
+      "warning": "0"
+    },
+    "totals": {
+      "error": 0,
+      "failed": 0,
+      "passed": 16750,
+      "skipped": 0,
+      "warning": 4
+    }
+  },
+  "install_linker_warning_count": 28,
+  "limits": [
+    "The ea031 change is outside the package; these executions retain exact a2 source/runner identities.",
+    "This report does not clear pending combined R CMD check/package/native allocation or minimum-runtime gates, nor final performance, memory/write-cost, external review, CI or normal merge.",
+    "No tests, compilation, profiling or timing were rerun by this reviewer. Original products and declared input files were read and rehashed; retained CSV/log summaries were independently recalculated.",
+    "Full OS dylib, SDK and Python runtime closures remain outside the recorded input scope. Prior diagnostic variant results remain distinct."
+  ],
+  "package_tree": "b08c77d91bdce67032f13aced90c29d068d6e95a",
+  "records": [
+    {
+      "bound_inputs": 11266,
+      "commands": [
+        {
+          "command": [
+            "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+            "--version"
+          ],
+          "exit_code": 0,
+          "label": "r-version"
+        },
+        {
+          "command": [
+            "/opt/homebrew/Cellar/rust/1.98.0/bin/rustc",
+            "-vV"
+          ],
+          "exit_code": 0,
+          "label": "rustc-version"
+        },
+        {
+          "command": [
+            "/opt/homebrew/Cellar/rust/1.98.0/bin/cargo",
+            "-vV"
+          ],
+          "exit_code": 0,
+          "label": "cargo-version"
+        },
+        {
+          "command": [
+            "/Library/Developer/CommandLineTools/usr/bin/clang",
+            "--version"
+          ],
+          "exit_code": 0,
+          "label": "clang-version"
+        },
+        {
+          "command": [
+            "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+            "CMD",
+            "build",
+            "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/export/r-package/dtatools"
+          ],
+          "exit_code": 0,
+          "label": "build"
+        },
+        {
+          "command": [
+            "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+            "CMD",
+            "INSTALL",
+            "--library=/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library",
+            "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/build/dtatools_0.7.1.tar.gz"
+          ],
+          "exit_code": 0,
+          "label": "install"
+        },
+        {
+          "command": [
+            "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+            "--vanilla",
+            "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/export/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+            "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library",
+            "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+            "b08c77d91bdce67032f13aced90c29d068d6e95a",
+            "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/build/dtatools_0.7.1.tar.gz",
+            "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/export/benchmarks/r-dibble-dplyr/helpers.R"
+          ],
+          "exit_code": 0,
+          "label": "finish-install"
+        }
+      ],
+      "input_bytes": 863252307,
+      "manifest": {
+        "bytes": 136205,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/output-manifest.json",
+        "sha256": "6e3f8cdd40e60278a29e8a8a1446f897ac269a27c3aa23f6df1e841c19ec0043"
+      },
+      "name": "candidate-combined-01",
+      "product_bytes": 51634093,
+      "products": 315,
+      "receipt": {
+        "bytes": 555,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/completed-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/completed-receipt.json",
+        "sha256": "fe4d3dfdeba63d6401becb4f7f41383812b7545383c86a4c0abf17b3c290a38e"
+      }
+    },
+    {
+      "bound_inputs": 63104,
+      "commands": [
+        {
+          "command": [
+            "Rscript",
+            "--vanilla",
+            "benchmarks/r-dibble-dplyr/expression-preflight.R",
+            "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library",
+            "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+            "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/source",
+            "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01"
+          ],
+          "exit_code": 0,
+          "label": "preflight"
+        },
+        {
+          "command": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--",
+            "--check"
+          ],
+          "exit_code": 0,
+          "label": "fmt"
+        },
+        {
+          "command": [
+            "cargo",
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "label": "clippy"
+        },
+        {
+          "command": [
+            "cargo",
+            "test",
+            "--workspace",
+            "--all-targets",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "label": "tests"
+        },
+        {
+          "command": [
+            "cargo",
+            "doc",
+            "--workspace",
+            "--locked",
+            "--no-deps"
+          ],
+          "exit_code": 0,
+          "label": "docs"
+        },
+        {
+          "command": [
+            "cargo",
+            "package",
+            "-p",
+            "dta-tools",
+            "--locked",
+            "--allow-dirty"
+          ],
+          "exit_code": 0,
+          "label": "package"
+        }
+      ],
+      "input_bytes": 2716161305,
+      "manifest": {
+        "bytes": 4918845,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/manifest.json",
+        "sha256": "7b4edccb7c7d08d2b7645ad337779527d8f559639b701ea4ef74add3fb1ec9cc"
+      },
+      "name": "rust-combined-01",
+      "product_bytes": 1914717401,
+      "products": 9263,
+      "receipt": {
+        "bytes": 526,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/receipt.json",
+        "sha256": "d919155ad571711c265212474c82dd706046c3f437d26ba134626ba72e211b68"
+      }
+    },
+    {
+      "bound_inputs": 58840,
+      "commands": [
+        {
+          "command": [
+            "Rscript",
+            "--vanilla",
+            "benchmarks/r-dibble-dplyr/expression-preflight.R",
+            "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library",
+            "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+            "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/source",
+            "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01"
+          ],
+          "exit_code": 0,
+          "label": "preflight"
+        },
+        {
+          "command": [
+            "Rscript",
+            "--vanilla",
+            "benchmarks/r-dibble-dplyr/expression-checks.R",
+            "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library",
+            "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+            "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/source",
+            "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01",
+            "all"
+          ],
+          "exit_code": 0,
+          "label": "tests"
+        }
+      ],
+      "input_bytes": 2669690450,
+      "manifest": {
+        "bytes": 1762653,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/manifest.json",
+        "sha256": "42b7e959779aaa9cf91b4c3b5ff5f44993150fc07f7f93250ad3159674ed4d51"
+      },
+      "name": "full-combined-01",
+      "product_bytes": 515463526,
+      "products": 3249,
+      "receipt": {
+        "bytes": 526,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/receipt.json",
+        "sha256": "a8901fe26df3acdecaa4d1a151aa6f0d9f9f654a7f09bccdcb8fa7d6d5352cec"
+      }
+    }
+  ],
+  "reviewer_script": {
+    "bytes": 8768,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-install-rust-full-evidence-review-01.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-install-rust-full-evidence-review-01.py",
+    "sha256": "df8b727f91d99ef4b4df795e8b2358925e95fcb32057ea132139d33d2869fcc6"
+  },
+  "runner": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "rust": {
+    "failed": 0,
+    "gates": 5,
+    "ignored": 0,
+    "package_warning_count": 11,
+    "package_warnings": [
+      "warning: ignoring test `arrow` as `tests/arrow.rs` is not included in the published package",
+      "warning: ignoring test `conformance` as `tests/conformance.rs` is not included in the published package",
+      "warning: ignoring test `encoding` as `tests/encoding.rs` is not included in the published package",
+      "warning: ignoring test `file` as `tests/file.rs` is not included in the published package",
+      "warning: ignoring test `fuzz_smoke` as `tests/fuzz_smoke.rs` is not included in the published package",
+      "warning: ignoring test `legacy` as `tests/legacy.rs` is not included in the published package",
+      "warning: ignoring test `metadata` as `tests/metadata.rs` is not included in the published package",
+      "warning: ignoring test `observations` as `tests/observations.rs` is not included in the published package",
+      "warning: ignoring test `strl` as `tests/strl.rs` is not included in the published package",
+      "warning: ignoring test `value_labels` as `tests/value_labels.rs` is not included in the published package",
+      "warning: ignoring test `write` as `tests/write.rs` is not included in the published package"
+    ],
+    "passed": 278,
+    "test_summaries": 14
+  },
+  "source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "source_review": {
+    "bytes": 13373,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-source-review-ea031-01.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-source-review-ea031-01.json",
+    "sha256": "964c4dbc74dca46d589cc7a751e1b3abcd17092e7f5d0a815aca699f8cd231d9"
+  },
+  "status": "combined_exact_install_rust_host_full_evidence_clear",
+  "utc": "2026-09-07T20:12:59.131244+00:00"
+}
