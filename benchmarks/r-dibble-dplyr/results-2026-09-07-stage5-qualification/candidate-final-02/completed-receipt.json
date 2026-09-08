@@ -1,0 +1,13 @@
+{
+  "changed_bound_inputs": [],
+  "manifest": {
+    "bytes": 133837,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/output-manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/output-manifest.json",
+    "sha256": "6e36c6ff23758202417eda9e1ad38484ae1c50d82f556080fa308733e7e364e1"
+  },
+  "package_tree": "f6331813d211255b4c949e04f34ce74537b142e2",
+  "revision": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+  "status": "complete"
+}

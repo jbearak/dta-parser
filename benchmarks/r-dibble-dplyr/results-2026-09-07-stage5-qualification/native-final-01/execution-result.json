@@ -1,0 +1,91 @@
+{
+  "changed_inputs": [],
+  "records": [
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "benchmarks/r-dibble-dplyr/expression-preflight.R",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library",
+        "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+        "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/source",
+        "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01"
+      ],
+      "completed_utc": "2026-09-07T16:29:13.005281+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/source",
+      "exit_code": 0,
+      "label": "preflight",
+      "log": {
+        "bytes": 60,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/preflight.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/preflight.log",
+        "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27"
+      },
+      "started_utc": "2026-09-07T16:29:12.796200+00:00"
+    },
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "benchmarks/r-reference-mutation/run.R",
+        "--markdown=/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/native.md"
+      ],
+      "completed_utc": "2026-09-07T16:29:26.663446+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/source",
+      "exit_code": 0,
+      "label": "native",
+      "log": {
+        "bytes": 26767,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/native.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/native.log",
+        "sha256": "70062ab08e4f67581787495aa3f556e6823e590f09af0c071ccd3555e34e9010"
+      },
+      "started_utc": "2026-09-07T16:29:18.344308+00:00"
+    },
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "benchmarks/r-reference-mutation/owned-atoms.R",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library",
+        "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+        "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/atoms"
+      ],
+      "completed_utc": "2026-09-07T16:29:32.479955+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5",
+      "exit_code": 0,
+      "label": "native-atoms",
+      "log": {
+        "bytes": 297,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/native-atoms.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/native-atoms.log",
+        "sha256": "4dc7294cda16cf77509148d3df1f9bb89287134e8a2e4434b1941b9da7575382"
+      },
+      "started_utc": "2026-09-07T16:29:31.997143+00:00"
+    },
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "benchmarks/r-dibble-dplyr/check-rename-allocation.R",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-02/library"
+      ],
+      "completed_utc": "2026-09-07T16:29:38.040785+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/source",
+      "exit_code": 0,
+      "label": "rename",
+      "log": {
+        "bytes": 174,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/rename.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-final-01/rename.log",
+        "sha256": "5e1c9b94a7cda3bde2ee5c70b36d93ab5110ad31efd3ff280923fe51b06a2046"
+      },
+      "started_utc": "2026-09-07T16:29:37.813198+00:00"
+    }
+  ],
+  "status": "complete"
+}

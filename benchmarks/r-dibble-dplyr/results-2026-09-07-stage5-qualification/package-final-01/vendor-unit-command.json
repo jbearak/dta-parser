@@ -1,0 +1,25 @@
+{
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "scripts",
+    "-p",
+    "test_check_r_cargo_vendor.py",
+    "-v"
+  ],
+  "completed_utc": "2026-09-07T16:18:47.941343+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/source",
+  "exit_code": 0,
+  "label": "vendor-unit",
+  "log": {
+    "bytes": 3313,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/vendor-unit.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/vendor-unit.log",
+    "sha256": "d46194add4720cdbcb100fe0dee92c820b97a0945aba3c2c45eb8dec48c3c97d"
+  },
+  "started_utc": "2026-09-07T16:18:47.854920+00:00"
+}

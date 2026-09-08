@@ -1,0 +1,32 @@
+{
+  "files": 174,
+  "total_included_files": 177,
+  "bytes": 56845047,
+  "manifest": {
+    "bytes": 53469,
+    "sha256": "e889eb59246f5d8a36c86faf9962e6ca34ea65335dfc4f5cc6ca21df572fd632",
+    "mode": "0o644"
+  },
+  "receipt": {
+    "bytes": 162,
+    "sha256": "4161089cfffa2760830168dd8d1df33512a2f63af99a35418612a0e4d1fc9005",
+    "mode": "0o644"
+  },
+  "readme": {
+    "bytes": 3162,
+    "sha256": "aa30200563f5f1f9865c87015596574028afcb2f63ff3ddbf136d473faf3c67f",
+    "mode": "0o644"
+  },
+  "checked_links": [
+    "inclusion-manifest.json",
+    "inclusion-receipt.json",
+    "archive-diagnostics.py",
+    "../results-2026-09-07-stage5-preparation/README.md",
+    "../../../r-package/dtatools/inst/NOTICE"
+  ],
+  "issues": [],
+  "extra": [],
+  "missing": [],
+  "broken_links": [],
+  "scope": "Source/copy identities and modes observed at audit. Original historical execution binding is not strengthened."
+}

@@ -1,0 +1,23 @@
+{
+  "atom_rows": 18,
+  "kinds": [
+    "factor",
+    "integer",
+    "ordered"
+  ],
+  "rows": [
+    100000,
+    1000000
+  ],
+  "operations": [
+    "first_shared",
+    "full_replacement",
+    "subsequent_private"
+  ],
+  "bad_atoms": [],
+  "native_metrics": 410,
+  "native_markdown_metrics": 410,
+  "log_markdown_mismatch": [],
+  "existing_payload_copy_detected": "false",
+  "scope": "No workload rerun. Counters and retained metric rendering checked against completed native artifact."
+}

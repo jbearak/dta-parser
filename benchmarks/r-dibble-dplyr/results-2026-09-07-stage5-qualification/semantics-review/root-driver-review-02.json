@@ -1,0 +1,235 @@
+{
+  "created_utc": "2026-09-07T16:27:54.523833+00:00",
+  "scope": "Source review and pure missing-input function probes only; no package/performance driver execution. All minimum-v3 installation/check products rehashed against manifests and receipts. Historical consumed-input results inspected; full current dependency/runtime input closure not independently rehashed.",
+  "minimum_runs": [
+    {
+      "run": "candidate-4900dc8-v3",
+      "receipt": {
+        "bytes": 567,
+        "sha256": "fb58470fed907ab79d527bc9bc7fd1f2eda784481fc464b90f68fcb1801aa026",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 141787,
+        "sha256": "e89af5d16252b024718171c2ec2875157e151f7804d7cbeb1144ded6d7b3bf8b",
+        "mode": "0o644"
+      },
+      "products_verified": 320,
+      "bytes": 52193312,
+      "errors": [],
+      "extra": [],
+      "missing": [],
+      "status": "complete",
+      "changed_inputs": []
+    },
+    {
+      "run": "candidate-4900dc8-v3-behavior",
+      "receipt": {
+        "bytes": 907,
+        "sha256": "fb0b1ed29c2ab7fb0a94ac866fcfa29ad64591a010b73b362a2fa8a9b6276335",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 5853,
+        "sha256": "806477894841b973314411c2327f5911a785b64894bec0f366d0eb481ae154e0",
+        "mode": "0o644"
+      },
+      "products_verified": 14,
+      "bytes": 1877099,
+      "errors": [],
+      "extra": [],
+      "missing": [],
+      "status": true,
+      "changed_inputs": [],
+      "runtime_coverage": {
+        "before": {
+          "namespaces": 8,
+          "images": 364,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ]
+        },
+        "after": {
+          "namespaces": 25,
+          "images": 378,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ]
+        }
+      },
+      "integrity_error": null
+    },
+    {
+      "run": "candidate-4900dc8-v3-observe",
+      "receipt": {
+        "bytes": 905,
+        "sha256": "043246270124fc7f2a39400373e9a5f82ac943205f5602250ba5eb4c9c679d1c",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 5843,
+        "sha256": "79eca8a54ec37d315ff7f0461dabb7f3ee5ee9c528b7a1591de402fb75cb8896",
+        "mode": "0o644"
+      },
+      "products_verified": 14,
+      "bytes": 1876956,
+      "errors": [],
+      "extra": [],
+      "missing": [],
+      "status": true,
+      "changed_inputs": [],
+      "runtime_coverage": {
+        "before": {
+          "namespaces": 8,
+          "images": 364,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ]
+        },
+        "after": {
+          "namespaces": 24,
+          "images": 376,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ]
+        }
+      },
+      "integrity_error": null
+    },
+    {
+      "run": "candidate-4900dc8-v3-focused",
+      "receipt": {
+        "bytes": 905,
+        "sha256": "ca0273e12cd66526304c904dc4dfd15e99c11b70918513fafa22a235357dda8f",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 6246,
+        "sha256": "19bda0217334c0211af0b0d8d04a4fd0138ff80eea5dc86abb807036add9bd3b",
+        "mode": "0o644"
+      },
+      "products_verified": 15,
+      "bytes": 2400124,
+      "errors": [],
+      "extra": [],
+      "missing": [],
+      "status": true,
+      "changed_inputs": [],
+      "runtime_coverage": {
+        "before": {
+          "namespaces": 8,
+          "images": 364,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ]
+        },
+        "after": {
+          "namespaces": 38,
+          "images": 388,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ]
+        }
+      },
+      "integrity_error": null,
+      "counts_R": "c(failed = 0, skipped = 3, error = 0, warning = 4, passed = 4960\n)\n"
+    },
+    {
+      "run": "candidate-4900dc8-v3-expressions",
+      "receipt": {
+        "bytes": 913,
+        "sha256": "ae18f2a44a0e3d728f3580d9893ac609ef6cd0820aa20e6402a813f83d69a186",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 6366,
+        "sha256": "30acb849a6d2f61a3b19868c1738bc8102df99852fbcd21961a20c3c67946132",
+        "mode": "0o644"
+      },
+      "products_verified": 15,
+      "bytes": 1892111,
+      "errors": [],
+      "extra": [],
+      "missing": [],
+      "status": true,
+      "changed_inputs": [],
+      "runtime_coverage": {
+        "before": {
+          "namespaces": 8,
+          "images": 364,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ]
+        },
+        "after": {
+          "namespaces": 32,
+          "images": 380,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ]
+        }
+      },
+      "integrity_error": null,
+      "counts_R": "c(failed = 0, skipped = 0, error = 0, warning = 0, passed = 179\n)\n"
+    }
+  ],
+  "missing_input_probes": [
+    {
+      "file": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/install-candidate-v3.py",
+      "identity": {
+        "bytes": 14909,
+        "sha256": "d0b5b900da1d23bfc1e05f35b5140c19efad9de83563b9520f3626e3cedbbcdb",
+        "mode": "0o644"
+      },
+      "deleted_input_recorded": true
+    },
+    {
+      "file": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/check-candidate-v3.py",
+      "identity": {
+        "bytes": 9322,
+        "sha256": "7afea86c39a71364fb8d9ee766368e1cf2f7b62d760ace12890ad41fd0af47d3",
+        "mode": "0o644"
+      },
+      "deleted_input_recorded": true
+    },
+    {
+      "file": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/qualify-v14.py",
+      "identity": {
+        "bytes": 5967,
+        "sha256": "d9c7fcb7cca039f3347f8961d04f54b811065fb5298699b80182d24616ae0008",
+        "mode": "0o644"
+      },
+      "deleted_input_recorded": true
+    },
+    {
+      "file": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure.py",
+      "identity": {
+        "bytes": 6464,
+        "sha256": "f05163a9ac197c84d4043fe9d5ea004126e5484d04ef2c36d907dfebc15f33a4",
+        "mode": "0o644"
+      },
+      "deleted_input_recorded": true
+    },
+    {
+      "file": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/memory.py",
+      "identity": {
+        "bytes": 6745,
+        "sha256": "f22129fc8d306b41c90321f186b6a90e9f3732e30cbc33352fc41f9ca93918e1",
+        "mode": "0o644"
+      },
+      "deleted_input_recorded": true
+    }
+  ],
+  "source_fixes_verified": [
+    "Installer consumes bound newly-built source tar and checks original export inventory before/after commands",
+    "Checker authenticates installed-file and source-input indexes via installation receipt and manifest before trusting their entries",
+    "All five driver missing-input checks retain errors instead of throwing during finalization",
+    "Performance original rowwise source/result pair undergo supported metadata writes in both directions",
+    "Mixed fixture state checks require owned unexposed depth-one double/string payload and expected bytes after setup before profiling/timing"
+  ],
+  "pending": [
+    "Qualification converted-pair assertion should address write_result; capture case should mutate source x to directly test saved original x isolation",
+    "Separate first/shared/private write-cost experiment",
+    "Performance execution and final acceptance"
+  ]
+}

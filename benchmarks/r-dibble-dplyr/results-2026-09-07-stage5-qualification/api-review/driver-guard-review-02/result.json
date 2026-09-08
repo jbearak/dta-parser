@@ -1,0 +1,159 @@
+{
+  "time_utc": "2026-09-07T16:25:57.719961+00:00",
+  "python_optimization": true,
+  "method": "Exact parsed helper functions executed without launching driver main or R. Tests missing/changed/broken input collection, not every driver failure path.",
+  "previous_attempt": "01 stopped in reviewer harness because check-candidate uses inline hashing rather than a separate sha helper. Four preceding drivers had passed; no result file was written. No driver defect was found.",
+  "runner_sha256": "0222242acf6baa25cba2aaab7657d8d9a00e4e7caaf4f2bd2c1409894c5f983f",
+  "results": [
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/qualify-v14.py",
+      "sha256": "d9c7fcb7cca039f3347f8961d04f54b811065fb5298699b80182d24616ae0008",
+      "bytes": 5967,
+      "unchanged": true,
+      "changed_content": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/qualify-v14/input.txt",
+          "current": {
+            "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/qualify-v14/input.txt",
+            "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/qualify-v14/input.txt",
+            "bytes": 8,
+            "mode": "0o644",
+            "sha256": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+          }
+        }
+      ],
+      "deleted_input": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/qualify-v14/input.txt",
+          "error": "[Errno 2] No such file or directory: '/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/qualify-v14/input.txt'"
+        }
+      ],
+      "broken_symlink": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/qualify-v14/input.txt",
+          "error": "[Errno 2] No such file or directory: '/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/qualify-v14/absent'"
+        }
+      ]
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure.py",
+      "sha256": "f05163a9ac197c84d4043fe9d5ea004126e5484d04ef2c36d907dfebc15f33a4",
+      "bytes": 6464,
+      "unchanged": true,
+      "changed_content": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/measure/input.txt",
+          "current": {
+            "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/measure/input.txt",
+            "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/measure/input.txt",
+            "bytes": 8,
+            "mode": "0o644",
+            "sha256": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+          }
+        }
+      ],
+      "deleted_input": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/measure/input.txt",
+          "error": "[Errno 2] No such file or directory: '/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/measure/input.txt'"
+        }
+      ],
+      "broken_symlink": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/measure/input.txt",
+          "error": "[Errno 2] No such file or directory: '/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/measure/absent'"
+        }
+      ]
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/memory.py",
+      "sha256": "f22129fc8d306b41c90321f186b6a90e9f3732e30cbc33352fc41f9ca93918e1",
+      "bytes": 6745,
+      "unchanged": true,
+      "changed_content": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/memory/input.txt",
+          "current": {
+            "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/memory/input.txt",
+            "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/memory/input.txt",
+            "bytes": 8,
+            "mode": "0o644",
+            "sha256": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+          }
+        }
+      ],
+      "deleted_input": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/memory/input.txt",
+          "error": "[Errno 2] No such file or directory: '/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/memory/input.txt'"
+        }
+      ],
+      "broken_symlink": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/memory/input.txt",
+          "error": "[Errno 2] No such file or directory: '/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/memory/absent'"
+        }
+      ]
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/install-candidate-v3.py",
+      "sha256": "d0b5b900da1d23bfc1e05f35b5140c19efad9de83563b9520f3626e3cedbbcdb",
+      "bytes": 14909,
+      "unchanged": true,
+      "changed_content": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/install-candidate-v3/input.txt",
+          "current": {
+            "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/install-candidate-v3/input.txt",
+            "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/install-candidate-v3/input.txt",
+            "bytes": 8,
+            "mode": "0o644",
+            "sha256": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+          }
+        }
+      ],
+      "deleted_input": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/install-candidate-v3/input.txt",
+          "error": "[Errno 2] No such file or directory: '/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/install-candidate-v3/input.txt'"
+        }
+      ],
+      "broken_symlink": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/install-candidate-v3/input.txt",
+          "error": "[Errno 2] No such file or directory: '/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/install-candidate-v3/absent'"
+        }
+      ]
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/check-candidate-v3.py",
+      "sha256": "7afea86c39a71364fb8d9ee766368e1cf2f7b62d760ace12890ad41fd0af47d3",
+      "bytes": 9322,
+      "unchanged": true,
+      "changed_content": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/check-candidate-v3/input.txt",
+          "current": {
+            "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/check-candidate-v3/input.txt",
+            "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/check-candidate-v3/input.txt",
+            "bytes": 8,
+            "mode": "0o644",
+            "sha256": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+          }
+        }
+      ],
+      "deleted_input": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/check-candidate-v3/input.txt",
+          "error": "[Errno 2] No such file or directory: '/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/check-candidate-v3/input.txt'"
+        }
+      ],
+      "broken_symlink": [
+        {
+          "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/check-candidate-v3/input.txt",
+          "error": "[Errno 2] No such file or directory: '/private/tmp/dta-direct-stage5-validation/implementation/api-review/driver-guard-review-02/check-candidate-v3/absent'"
+        }
+      ]
+    }
+  ]
+}

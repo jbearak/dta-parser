@@ -1,0 +1,21 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--workspace",
+    "--all-targets",
+    "--locked"
+  ],
+  "completed_utc": "2026-09-07T16:19:37.721425+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/source",
+  "exit_code": 0,
+  "label": "tests",
+  "log": {
+    "bytes": 25321,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/tests.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/rust-final-01/tests.log",
+    "sha256": "37ce6acf4de48bb8780bc1398fc09aa819254f8a8885877ba9252051b4f9ca34"
+  },
+  "started_utc": "2026-09-07T16:19:14.050042+00:00"
+}

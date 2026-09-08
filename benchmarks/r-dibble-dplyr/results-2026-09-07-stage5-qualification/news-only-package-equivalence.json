@@ -1,0 +1,1622 @@
+{
+  "old_source": "4900dc831a0df2307146a7425b6c84633fd30db4",
+  "new_source": "57309d40433a92d99849fefa155ae7b22b86b337",
+  "old_package_tree": "f6331813d211255b4c949e04f34ce74537b142e2",
+  "new_package_tree": "ebdab28c93febf3567f5004c97a8f6fb2c0dace5",
+  "changed_paths": [
+    "r-package/dtatools/NEWS.md"
+  ],
+  "files": [
+    {
+      "path": "r-package/dtatools/.Rbuildignore",
+      "identical": true,
+      "previous_sha256": "e83629afa88e670a76f857681177ec14f8ac8e238479213a77f443abda62cbaf",
+      "current_sha256": "e83629afa88e670a76f857681177ec14f8ac8e238479213a77f443abda62cbaf",
+      "git_metadata": "100644 blob 2aef87adbdb43538891f0737e613665fe6bf8a52"
+    },
+    {
+      "path": "r-package/dtatools/.gitignore",
+      "identical": true,
+      "previous_sha256": "af417e11d1a5486491406a59207d88115209f53d84e51afd24e6b885f0adc152",
+      "current_sha256": "af417e11d1a5486491406a59207d88115209f53d84e51afd24e6b885f0adc152",
+      "git_metadata": "100644 blob 8029d639750ca2a51aa059e59cb66fb56f171963"
+    },
+    {
+      "path": "r-package/dtatools/DESCRIPTION",
+      "identical": true,
+      "previous_sha256": "004c512b525091ab7e051691f1c41253918596850fc9e16b6305444ff7e4d076",
+      "current_sha256": "004c512b525091ab7e051691f1c41253918596850fc9e16b6305444ff7e4d076",
+      "git_metadata": "100644 blob e18e0bb107fe04918170874bf6f316fe6c7eaac9"
+    },
+    {
+      "path": "r-package/dtatools/NAMESPACE",
+      "identical": true,
+      "previous_sha256": "94a412e9883a444d27ea621362f8df4dc513b0fa7a3cb7eb4ae6bb0933fc1ff3",
+      "current_sha256": "94a412e9883a444d27ea621362f8df4dc513b0fa7a3cb7eb4ae6bb0933fc1ff3",
+      "git_metadata": "100644 blob 94891fb5c749b5d909c106d6242dcb684e1b5be7"
+    },
+    {
+      "path": "r-package/dtatools/NEWS.md",
+      "identical": false,
+      "previous_sha256": "9ad3700aff7742c7913d1e9a8baf3ca1823376e658461036c28ba583fd7c35a5",
+      "current_sha256": "1072b302ad8f850d781de8497402d839b7a41cd6dcc8c0a2cd869dc96b78a681",
+      "git_metadata": "100644 blob d1c627fd9d2d1b87aabc24a14495e3341989a2db"
+    },
+    {
+      "path": "r-package/dtatools/R/codebooks.R",
+      "identical": true,
+      "previous_sha256": "ae9ce74c8cda8700b099d36273a3342f02e7d31117a1576f701e4c64bd190daa",
+      "current_sha256": "ae9ce74c8cda8700b099d36273a3342f02e7d31117a1576f701e4c64bd190daa",
+      "git_metadata": "100644 blob d6d1455f8344bb3cef8fcd09a9494531985c21e4"
+    },
+    {
+      "path": "r-package/dtatools/R/datasig.R",
+      "identical": true,
+      "previous_sha256": "a6c744a1aa8af49db7e61685d12627695603344702d1d96d5c425592ae214c05",
+      "current_sha256": "a6c744a1aa8af49db7e61685d12627695603344702d1d96d5c425592ae214c05",
+      "git_metadata": "100644 blob 96b9b92d0752b7e554b4a295c60d3c023a748262"
+    },
+    {
+      "path": "r-package/dtatools/R/dibble-dplyr-context.R",
+      "identical": true,
+      "previous_sha256": "0fa7b1a317c8d7b4dbec7a561dc9704c46c50b13407b05fdee6a2e11ae8f0e05",
+      "current_sha256": "0fa7b1a317c8d7b4dbec7a561dc9704c46c50b13407b05fdee6a2e11ae8f0e05",
+      "git_metadata": "100644 blob 36ab02858d099328b161194bb0342c91d96459d6"
+    },
+    {
+      "path": "r-package/dtatools/R/dibble-expressions.R",
+      "identical": true,
+      "previous_sha256": "17833e1794bb3b82f0dcf05c73bb10df9c391c9630dbeae1b3c3f4f4d91682b8",
+      "current_sha256": "17833e1794bb3b82f0dcf05c73bb10df9c391c9630dbeae1b3c3f4f4d91682b8",
+      "git_metadata": "100644 blob 46ffc3ce99cbcdd1846460c2631d02015867b507"
+    },
+    {
+      "path": "r-package/dtatools/R/dibble-groups.R",
+      "identical": true,
+      "previous_sha256": "ea91b3549ce0bd11578673981c04dc83bd2e78c6226569abfd9624fd5e7381c5",
+      "current_sha256": "ea91b3549ce0bd11578673981c04dc83bd2e78c6226569abfd9624fd5e7381c5",
+      "git_metadata": "100644 blob 9e13cd765b9d9fabdffcf630541078b2a20d9d77"
+    },
+    {
+      "path": "r-package/dtatools/R/dibble-result.R",
+      "identical": true,
+      "previous_sha256": "20c86c603f7cd7300e9b7b06bb4fe1ba29a14b74e4192b67a6061b0bdc421fc7",
+      "current_sha256": "20c86c603f7cd7300e9b7b06bb4fe1ba29a14b74e4192b67a6061b0bdc421fc7",
+      "git_metadata": "100644 blob 1fc46194be45f0f56ad98bc0df24a1bff712fc75"
+    },
+    {
+      "path": "r-package/dtatools/R/dibble-rows.R",
+      "identical": true,
+      "previous_sha256": "1ce41f4cbe505584dea298b807d600c08b9a735d6b13a41dd9520f7c29d570b3",
+      "current_sha256": "1ce41f4cbe505584dea298b807d600c08b9a735d6b13a41dd9520f7c29d570b3",
+      "git_metadata": "100644 blob 9a1b17a90de5afe2ee89436f1f121b085ac64518"
+    },
+    {
+      "path": "r-package/dtatools/R/dibble.R",
+      "identical": true,
+      "previous_sha256": "1ebfc62751b92804ef3906ac323ff0616ec1b5589b6e039424d32f5799ee7e1e",
+      "current_sha256": "1ebfc62751b92804ef3906ac323ff0616ec1b5589b6e039424d32f5799ee7e1e",
+      "git_metadata": "100644 blob 4bd4af3e2662de1b8869aa44193a511994457a11"
+    },
+    {
+      "path": "r-package/dtatools/R/dta-append.R",
+      "identical": true,
+      "previous_sha256": "9d67e506fbc2a97bcfc5c6e9c0473d21ca5f8ddfddad997ae0df4cd37ac47258",
+      "current_sha256": "9d67e506fbc2a97bcfc5c6e9c0473d21ca5f8ddfddad997ae0df4cd37ac47258",
+      "git_metadata": "100644 blob e7a85f71fd5e32cbd05e123ba19bc485cb055d21"
+    },
+    {
+      "path": "r-package/dtatools/R/dta-match.R",
+      "identical": true,
+      "previous_sha256": "70b4f0224ed25c1face0de3aa911d40fa9ec6e22edd66f6dc3d8f939c34a3ea0",
+      "current_sha256": "70b4f0224ed25c1face0de3aa911d40fa9ec6e22edd66f6dc3d8f939c34a3ea0",
+      "git_metadata": "100644 blob eed4d3a813befd058e0ce473f09f406b88ad4ece"
+    },
+    {
+      "path": "r-package/dtatools/R/dta-merge.R",
+      "identical": true,
+      "previous_sha256": "53b4c9a3f93967629423b1eda885d8a02aae530f8828723525c69e63677d5618",
+      "current_sha256": "53b4c9a3f93967629423b1eda885d8a02aae530f8828723525c69e63677d5618",
+      "git_metadata": "100644 blob 336dc06827dabc9b36704508e1e407d7c56b3560"
+    },
+    {
+      "path": "r-package/dtatools/R/dta-metadata.R",
+      "identical": true,
+      "previous_sha256": "d7587595fe15329c9649aa434f36de68b06fba7099bcd308159b6e545ddeaa3d",
+      "current_sha256": "d7587595fe15329c9649aa434f36de68b06fba7099bcd308159b6e545ddeaa3d",
+      "git_metadata": "100644 blob 19406cdbf11fb0f5b83f7f4a4d1f16f84b7003d2"
+    },
+    {
+      "path": "r-package/dtatools/R/dta-numeric.R",
+      "identical": true,
+      "previous_sha256": "aa2a7b6442d7cb0604a249f14c25665c9a32bcd93e33e1063b9317799418d599",
+      "current_sha256": "aa2a7b6442d7cb0604a249f14c25665c9a32bcd93e33e1063b9317799418d599",
+      "git_metadata": "100644 blob f11fecc03b8a229ff51e59d5b9b9dd0a8ac862a9"
+    },
+    {
+      "path": "r-package/dtatools/R/dta-storage-defaults.R",
+      "identical": true,
+      "previous_sha256": "23754b7870c783fb0365d16ea19f2e0b5e416eb8b9fb0fe05dd21923d496f484",
+      "current_sha256": "23754b7870c783fb0365d16ea19f2e0b5e416eb8b9fb0fe05dd21923d496f484",
+      "git_metadata": "100644 blob 805f624527f2729a7789528899fc6b1b645dd67e"
+    },
+    {
+      "path": "r-package/dtatools/R/dta-string.R",
+      "identical": true,
+      "previous_sha256": "b958c28240e9aa0cec060d6d58d16477a3dc8e829cc2038737730ceb0fa40776",
+      "current_sha256": "b958c28240e9aa0cec060d6d58d16477a3dc8e829cc2038737730ceb0fa40776",
+      "git_metadata": "100644 blob 25ec905c67be79f20c2e6e6c6dd634ba96911166"
+    },
+    {
+      "path": "r-package/dtatools/R/egen-groups.R",
+      "identical": true,
+      "previous_sha256": "857146242ffa5ee6a6c1d1a40dfb2a89b8984abadfd6e3019e8b0f3592918f64",
+      "current_sha256": "857146242ffa5ee6a6c1d1a40dfb2a89b8984abadfd6e3019e8b0f3592918f64",
+      "git_metadata": "100644 blob f12fee15fbe5abe65f02041d1c23b00a0cff4000"
+    },
+    {
+      "path": "r-package/dtatools/R/egen-values.R",
+      "identical": true,
+      "previous_sha256": "48c55ff2676ae2cfb4a8f0a067ccfb54c05a4ea6ec8abca3fcc0535f762e5743",
+      "current_sha256": "48c55ff2676ae2cfb4a8f0a067ccfb54c05a4ea6ec8abca3fcc0535f762e5743",
+      "git_metadata": "100644 blob 86b3790fd4814d677ce95cbbc7845b2f08d2eb69"
+    },
+    {
+      "path": "r-package/dtatools/R/egen.R",
+      "identical": true,
+      "previous_sha256": "706cf0056765a5fcde0cb52db875d252c48d8d8e57f3cffe6ac307f60bc4d082",
+      "current_sha256": "706cf0056765a5fcde0cb52db875d252c48d8d8e57f3cffe6ac307f60bc4d082",
+      "git_metadata": "100644 blob a47ce43ebc5d9ef8d7d18aa91ea500775ccf59ec"
+    },
+    {
+      "path": "r-package/dtatools/R/factor-from-labels.R",
+      "identical": true,
+      "previous_sha256": "fbe65574deb7cacba644c3c7ee68208dd0aafa34e2968b97d10b46a7fe1c19fe",
+      "current_sha256": "fbe65574deb7cacba644c3c7ee68208dd0aafa34e2968b97d10b46a7fe1c19fe",
+      "git_metadata": "100644 blob e5d84217ed8404e0db0c8ffaf62326f8b8f23684"
+    },
+    {
+      "path": "r-package/dtatools/R/is-missing.R",
+      "identical": true,
+      "previous_sha256": "a71198e9cd9963b3c860a26d8053bb69aa898114f0380b55a39ed240decd3706",
+      "current_sha256": "a71198e9cd9963b3c860a26d8053bb69aa898114f0380b55a39ed240decd3706",
+      "git_metadata": "100644 blob e1fa04dad8087a50955a9ea7e95cce822228709b"
+    },
+    {
+      "path": "r-package/dtatools/R/keep-drop.R",
+      "identical": true,
+      "previous_sha256": "6807dc4fd094ca4544ff62825b6589f06dc9710d2c4c9d752c60040dbbcfaa3c",
+      "current_sha256": "6807dc4fd094ca4544ff62825b6589f06dc9710d2c4c9d752c60040dbbcfaa3c",
+      "git_metadata": "100644 blob 5779967b658ce8d23153619fbb3f4abfcee26706"
+    },
+    {
+      "path": "r-package/dtatools/R/labels.R",
+      "identical": true,
+      "previous_sha256": "b7199bd9bd1cec9efd3d841cc47af3b07326a9fdccb5cc464ff9533e35dc15eb",
+      "current_sha256": "b7199bd9bd1cec9efd3d841cc47af3b07326a9fdccb5cc464ff9533e35dc15eb",
+      "git_metadata": "100644 blob 8d23083d77e2e716871d666b00b9971cc1f31486"
+    },
+    {
+      "path": "r-package/dtatools/R/mutate-data.R",
+      "identical": true,
+      "previous_sha256": "afda9ab258515e423d9e6e852ce99030d892b66df876894316093ee1e3263020",
+      "current_sha256": "afda9ab258515e423d9e6e852ce99030d892b66df876894316093ee1e3263020",
+      "git_metadata": "100644 blob f55fe3a1d29fa56ad1cc7af1bc1ea0cedda33ca2"
+    },
+    {
+      "path": "r-package/dtatools/R/output-container.R",
+      "identical": true,
+      "previous_sha256": "d44157ab17ddd4127084f288ffd6182b4f6fdf9d8ba98f7b6bf320119208273e",
+      "current_sha256": "d44157ab17ddd4127084f288ffd6182b4f6fdf9d8ba98f7b6bf320119208273e",
+      "git_metadata": "100644 blob 4d6948684c653d6036facd67e1e9c0158662b041"
+    },
+    {
+      "path": "r-package/dtatools/R/print-dibble.R",
+      "identical": true,
+      "previous_sha256": "be5f73a80a4da83494a85d9c4cc88b297086ac5a8db459b302d0b8e1eda1934c",
+      "current_sha256": "be5f73a80a4da83494a85d9c4cc88b297086ac5a8db459b302d0b8e1eda1934c",
+      "git_metadata": "100644 blob e226329d7f04966259b3ee5f087ef961b4375616"
+    },
+    {
+      "path": "r-package/dtatools/R/read-arrow.R",
+      "identical": true,
+      "previous_sha256": "4a107e2e08402fecbbb54c38666812661e1a2e81d5275e62530487f67074866b",
+      "current_sha256": "4a107e2e08402fecbbb54c38666812661e1a2e81d5275e62530487f67074866b",
+      "git_metadata": "100644 blob d9704137fbe29d5543dfb7d5b301e2e231c923e9"
+    },
+    {
+      "path": "r-package/dtatools/R/read-dta.R",
+      "identical": true,
+      "previous_sha256": "c9509f29be86e835c13f897f4f7f74e4023ea694623a3ae8ed5b64e0e03fa3ac",
+      "current_sha256": "c9509f29be86e835c13f897f4f7f74e4023ea694623a3ae8ed5b64e0e03fa3ac",
+      "git_metadata": "100644 blob 4feee3183409e9ff57c888482058dba315d19084"
+    },
+    {
+      "path": "r-package/dtatools/R/recode.R",
+      "identical": true,
+      "previous_sha256": "6aa7ab2f01242c5049923381b1493677f4e172c42eb504ff08aa49ae4763a530",
+      "current_sha256": "6aa7ab2f01242c5049923381b1493677f4e172c42eb504ff08aa49ae4763a530",
+      "git_metadata": "100644 blob 624986feae68455d155a75d530cd18cfe9c4b02b"
+    },
+    {
+      "path": "r-package/dtatools/R/reorder-dta-rows.R",
+      "identical": true,
+      "previous_sha256": "deab5d8239714dff28ee9e229f2a03c138bff91353c3d43e09a5022f7efd342b",
+      "current_sha256": "deab5d8239714dff28ee9e229f2a03c138bff91353c3d43e09a5022f7efd342b",
+      "git_metadata": "100644 blob e154baa75aebbbfa30eeb9b624709e5c893a13c6"
+    },
+    {
+      "path": "r-package/dtatools/R/reserve-columns.R",
+      "identical": true,
+      "previous_sha256": "dfb29ebac3819832c664c547c1f1b24f89f723cff5e783a4d1dad9d17d3f7d6f",
+      "current_sha256": "dfb29ebac3819832c664c547c1f1b24f89f723cff5e783a4d1dad9d17d3f7d6f",
+      "git_metadata": "100644 blob f95be9f6ce658b525e131ca1aa58a9aefde354f8"
+    },
+    {
+      "path": "r-package/dtatools/R/save-arrow.R",
+      "identical": true,
+      "previous_sha256": "7cce2583a09d132b0fb9d35661815588917f6858ae6001cb66a8a01d4dc646de",
+      "current_sha256": "7cce2583a09d132b0fb9d35661815588917f6858ae6001cb66a8a01d4dc646de",
+      "git_metadata": "100644 blob b560d96d050c2e2a1d0cce9343417eacc6d207db"
+    },
+    {
+      "path": "r-package/dtatools/R/save-dta.R",
+      "identical": true,
+      "previous_sha256": "56d90f945eb6d7772bf8164683927b2fa5c72304b795f96d2d90b792928f961e",
+      "current_sha256": "56d90f945eb6d7772bf8164683927b2fa5c72304b795f96d2d90b792928f961e",
+      "git_metadata": "100644 blob 98d7036e7fd0481822d1e3fecd90a49f8a631683"
+    },
+    {
+      "path": "r-package/dtatools/R/set-metadata.R",
+      "identical": true,
+      "previous_sha256": "b18f5fd37f99d55ef4e203f6c22f275aff56c38400f030073ff8bee029af9162",
+      "current_sha256": "b18f5fd37f99d55ef4e203f6c22f275aff56c38400f030073ff8bee029af9162",
+      "git_metadata": "100644 blob 4fb06eeffc43eb6575b0514fc96e1cf9cc73d2aa"
+    },
+    {
+      "path": "r-package/dtatools/R/slice-dta-rows.R",
+      "identical": true,
+      "previous_sha256": "b0cc52cb5376f66bb910907c1140e6432696957b4f7293da8d060623a3f8c3eb",
+      "current_sha256": "b0cc52cb5376f66bb910907c1140e6432696957b4f7293da8d060623a3f8c3eb",
+      "git_metadata": "100644 blob 7f092c6895cafa3934e41cdd2b1ff64dcbfbad6d"
+    },
+    {
+      "path": "r-package/dtatools/R/tab.R",
+      "identical": true,
+      "previous_sha256": "7245dd7deeae02aaef9219f4c54c50c7a5191248fefe3e139cf83cc4f2490c80",
+      "current_sha256": "7245dd7deeae02aaef9219f4c54c50c7a5191248fefe3e139cf83cc4f2490c80",
+      "git_metadata": "100644 blob ceb3298617f2993b7f9289b958501e28bf427a4f"
+    },
+    {
+      "path": "r-package/dtatools/R/tagged-missing.R",
+      "identical": true,
+      "previous_sha256": "73dba3bb15254f2437c882cd197b70a5ef864811eb94ca359bfc51e1ee7009a3",
+      "current_sha256": "73dba3bb15254f2437c882cd197b70a5ef864811eb94ca359bfc51e1ee7009a3",
+      "git_metadata": "100644 blob d3b39421905cc0c2873199f3cce352e6c9409387"
+    },
+    {
+      "path": "r-package/dtatools/R/variable-names.R",
+      "identical": true,
+      "previous_sha256": "2d92c8627a567692c375f6a37502d461a2f84aaaf16eed013dd6f4c6d5ea6bb0",
+      "current_sha256": "2d92c8627a567692c375f6a37502d461a2f84aaaf16eed013dd6f4c6d5ea6bb0",
+      "git_metadata": "100644 blob 64f5a6cf4b435e3efdd662edb5d92ca2cd3777c0"
+    },
+    {
+      "path": "r-package/dtatools/R/zzz.R",
+      "identical": true,
+      "previous_sha256": "d51d1a3638a4b011630fb11d5dc4b0c18014accf369659d42308c1d23fe12c60",
+      "current_sha256": "d51d1a3638a4b011630fb11d5dc4b0c18014accf369659d42308c1d23fe12c60",
+      "git_metadata": "100644 blob 48927ef0f02c6dbe94cb8db6ab5501864f8cd97e"
+    },
+    {
+      "path": "r-package/dtatools/README.md",
+      "identical": true,
+      "previous_sha256": "f0b69794960fe38220995365e73f29d6d0ed9c0517f6495cbbe2ccf80f8ad5b1",
+      "current_sha256": "f0b69794960fe38220995365e73f29d6d0ed9c0517f6495cbbe2ccf80f8ad5b1",
+      "git_metadata": "100644 blob 375f631aaf268dc7465a31128cef9836e03374e2"
+    },
+    {
+      "path": "r-package/dtatools/cleanup",
+      "identical": true,
+      "previous_sha256": "f9df8209dcc491c06504c0e34ac2e43beec1e46bac7098b6622dabf086809ca7",
+      "current_sha256": "f9df8209dcc491c06504c0e34ac2e43beec1e46bac7098b6622dabf086809ca7",
+      "git_metadata": "100755 blob 9fa77cdc57ff9bdfe668949350e9286f2fce5ba5"
+    },
+    {
+      "path": "r-package/dtatools/configure",
+      "identical": true,
+      "previous_sha256": "7d7ba813c1b02c24a1a7cf98440756374da93443f0f485cb132e234d5e540f08",
+      "current_sha256": "7d7ba813c1b02c24a1a7cf98440756374da93443f0f485cb132e234d5e540f08",
+      "git_metadata": "100755 blob fd6202b4528bc65a4142be102db369dd58e482e9"
+    },
+    {
+      "path": "r-package/dtatools/configure.win",
+      "identical": true,
+      "previous_sha256": "b6d1bb8f6b959a4ac78c716ca264eb3122f8893434b15834900db72634848592",
+      "current_sha256": "b6d1bb8f6b959a4ac78c716ca264eb3122f8893434b15834900db72634848592",
+      "git_metadata": "100755 blob 65b192967af1ce2048bb82f73b4f3a7afb1d8b38"
+    },
+    {
+      "path": "r-package/dtatools/inst/NOTICE",
+      "identical": true,
+      "previous_sha256": "2b7092d0e91ef0012dc4496edfcef267781ef8a4c9165c2bfee72691408cda98",
+      "current_sha256": "2b7092d0e91ef0012dc4496edfcef267781ef8a4c9165c2bfee72691408cda98",
+      "git_metadata": "100644 blob 315a5c46615dcf63a66e2ad1777d592333c93f57"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/all_types.dta",
+      "identical": true,
+      "previous_sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8",
+      "current_sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8",
+      "git_metadata": "100644 blob dc824eaa58ce5faacd80e2cbee7250e39c395dd2"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/all_types_v115.dta",
+      "identical": true,
+      "previous_sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7",
+      "current_sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7",
+      "git_metadata": "100644 blob 81f4164a2eabecf06ffd5fc7bf70d2d035a151bc"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/all_types_v117.dta",
+      "identical": true,
+      "previous_sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2",
+      "current_sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2",
+      "git_metadata": "100644 blob 02f1707707ce12882548d693ecf523adfb0515b7"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/all_types_v118.dta",
+      "identical": true,
+      "previous_sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c",
+      "current_sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c",
+      "git_metadata": "100644 blob 1821a74243d726a4e552d29772ae57d2bfd5e42e"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/auto_v115.dta",
+      "identical": true,
+      "previous_sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693",
+      "current_sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693",
+      "git_metadata": "100644 blob 22517cb476f5fda345b0bfdf85aaacb4ceb92697"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/auto_v117.dta",
+      "identical": true,
+      "previous_sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35",
+      "current_sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35",
+      "git_metadata": "100644 blob d40149e8914e71962d1198858512a3401db5ab7b"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/auto_v118.dta",
+      "identical": true,
+      "previous_sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c",
+      "current_sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c",
+      "git_metadata": "100644 blob 1dde2af103a134856bf1d50c1598b36e901ac139"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/egen_labels_stata18.csv",
+      "identical": true,
+      "previous_sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a",
+      "current_sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a",
+      "git_metadata": "100644 blob e0ab408d6c4b32f7227f730656d1db7669840494"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/egen_number_labels_stata18.csv",
+      "identical": true,
+      "previous_sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d",
+      "current_sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d",
+      "git_metadata": "100644 blob 0ebfad39a8bc88da76ac6786dd0e5f4eebb390f7"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/egen_number_labels_stata18.dta",
+      "identical": true,
+      "previous_sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3",
+      "current_sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3",
+      "git_metadata": "100644 blob ad6d6630e9841c5df1355a52c0e48e1266bc49d5"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/egen_precision_stata18.csv",
+      "identical": true,
+      "previous_sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620",
+      "current_sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620",
+      "git_metadata": "100644 blob 3a90308f3c0747fe834265f7b8f25c479e84f174"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/egen_stata18.csv",
+      "identical": true,
+      "previous_sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6",
+      "current_sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6",
+      "git_metadata": "100644 blob fd1fb5b86ce9dd45ae895115724015c5b03c7f83"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/egen_unicode_names_stata18.dta",
+      "identical": true,
+      "previous_sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426",
+      "current_sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426",
+      "git_metadata": "100644 blob d83f57cb265323e85ed1625093358f38541e9a42"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/empty.dta",
+      "identical": true,
+      "previous_sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e",
+      "current_sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e",
+      "git_metadata": "100644 blob ca2e059ca79ea6094ecbdd140006394267ad8a82"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/empty_v115.dta",
+      "identical": true,
+      "previous_sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65",
+      "current_sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65",
+      "git_metadata": "100644 blob 1bbf90f7dfcbfaa2b367d2369e968b341e275bf0"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/empty_v118.dta",
+      "identical": true,
+      "previous_sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5",
+      "current_sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5",
+      "git_metadata": "100644 blob 4a7fe9e7c3ec7e00cab70a394ea2a6d3285a6620"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/missing_values.dta",
+      "identical": true,
+      "previous_sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198",
+      "current_sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198",
+      "git_metadata": "100644 blob 86cc275c7921607616c3eeaba19806c292644f87"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/missing_values_v115.dta",
+      "identical": true,
+      "previous_sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397",
+      "current_sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397",
+      "git_metadata": "100644 blob 4c6f27d9d8d93a192f26b52fbecc3f7797f4fb18"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/missing_values_v118.dta",
+      "identical": true,
+      "previous_sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e",
+      "current_sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e",
+      "git_metadata": "100644 blob 63b8908e1b04b2847a617acbade06a4715eef957"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/strl_test.dta",
+      "identical": true,
+      "previous_sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073",
+      "current_sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073",
+      "git_metadata": "100644 blob b0cce737d6fe62c7cd89704fad1fbc675a283bdc"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/strl_test_v118.dta",
+      "identical": true,
+      "previous_sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412",
+      "current_sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412",
+      "git_metadata": "100644 blob 688446189ca2a43c2ab4d358e10b412b7f604513"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/synthetic_v105.dta",
+      "identical": true,
+      "previous_sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec",
+      "current_sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec",
+      "git_metadata": "100644 blob af0180a49335203ed57ea26d6bd935d6e4e86648"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/synthetic_v108.dta",
+      "identical": true,
+      "previous_sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda",
+      "current_sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda",
+      "git_metadata": "100644 blob 727afeff89c1a373b8508fe1465e20c92b0a38b3"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/synthetic_v110.dta",
+      "identical": true,
+      "previous_sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322",
+      "current_sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322",
+      "git_metadata": "100644 blob 1e9b53947b47f568c3ecb103fd827f412a7c972e"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/synthetic_v111.dta",
+      "identical": true,
+      "previous_sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968",
+      "current_sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968",
+      "git_metadata": "100644 blob 86cbea4a7734a760dca068acedb56d1fa5b9731e"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/value_labels.dta",
+      "identical": true,
+      "previous_sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a",
+      "current_sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a",
+      "git_metadata": "100644 blob 183bf6c887a3cfc1206ae7ebcc1798de10eabd56"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/value_labels_v115.dta",
+      "identical": true,
+      "previous_sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86",
+      "current_sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86",
+      "git_metadata": "100644 blob 7fd9745a28f715bdc51bf0176bf3736f5896c180"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/value_labels_v117.dta",
+      "identical": true,
+      "previous_sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02",
+      "current_sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02",
+      "git_metadata": "100644 blob 89e597de017e89e9827a26ba45569e71ae5e3da1"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/value_labels_v118.dta",
+      "identical": true,
+      "previous_sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea",
+      "current_sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea",
+      "git_metadata": "100644 blob dd35d63766411001581552c8047d03f623dc048e"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/wide.dta",
+      "identical": true,
+      "previous_sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b",
+      "current_sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b",
+      "git_metadata": "100644 blob 73a5aae7608a7adf6c7779e148146b6922c98aea"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/wide_v115.dta",
+      "identical": true,
+      "previous_sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174",
+      "current_sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174",
+      "git_metadata": "100644 blob b14836055ba560f44d38e7dae2e0eafdaf70c6ed"
+    },
+    {
+      "path": "r-package/dtatools/inst/extdata/wide_v118.dta",
+      "identical": true,
+      "previous_sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c",
+      "current_sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c",
+      "git_metadata": "100644 blob 7fbe4e9cc8de62663056a7e875fb0f9671f20530"
+    },
+    {
+      "path": "r-package/dtatools/inst/raven/nse.toml",
+      "identical": true,
+      "previous_sha256": "678f2a1649caeb00e0444616f47c68422df395929e5b003d18e7d3533a40875f",
+      "current_sha256": "678f2a1649caeb00e0444616f47c68422df395929e5b003d18e7d3533a40875f",
+      "git_metadata": "100644 blob 78b743600754eac7837db7bbc34e3704f10e2733"
+    },
+    {
+      "path": "r-package/dtatools/man/codebook.Rd",
+      "identical": true,
+      "previous_sha256": "5658b9ff8a5d1bb102edb0b7a7545bca75905d43bc27bd540e1ae36fd624d5df",
+      "current_sha256": "5658b9ff8a5d1bb102edb0b7a7545bca75905d43bc27bd540e1ae36fd624d5df",
+      "git_metadata": "100644 blob 9296967b99dc13d33ba76cbb158f4e7f4e898819"
+    },
+    {
+      "path": "r-package/dtatools/man/column_capacity.Rd",
+      "identical": true,
+      "previous_sha256": "8e490ce2a83070e2e8c25beb2375f541d64b4ac24585ef3c5f49f740d67f4b2a",
+      "current_sha256": "8e490ce2a83070e2e8c25beb2375f541d64b4ac24585ef3c5f49f740d67f4b2a",
+      "git_metadata": "100644 blob de98d833a9602a5118e846553149741f5b9fbc52"
+    },
+    {
+      "path": "r-package/dtatools/man/datasig.Rd",
+      "identical": true,
+      "previous_sha256": "2147787c2be8e232a18889750cb6fa13f9175a1073dcaec6b4a7571663423d84",
+      "current_sha256": "2147787c2be8e232a18889750cb6fa13f9175a1073dcaec6b4a7571663423d84",
+      "git_metadata": "100644 blob 855de38e73cbcbda3b93f4ff31d49f1442e238ef"
+    },
+    {
+      "path": "r-package/dtatools/man/dibble-bracket.Rd",
+      "identical": true,
+      "previous_sha256": "43cf750ff10da1482ca2240cd55ba898407b0c881d50bf4be021ee4a27a9fd9f",
+      "current_sha256": "43cf750ff10da1482ca2240cd55ba898407b0c881d50bf4be021ee4a27a9fd9f",
+      "git_metadata": "100644 blob 3bd3db2462a6f341e0a2a6a2bc8be603bd937f73"
+    },
+    {
+      "path": "r-package/dtatools/man/dibble.Rd",
+      "identical": true,
+      "previous_sha256": "edcfcb131f7ae581dca2e010282bf39c404ead5060fa25278d1b89852278f894",
+      "current_sha256": "edcfcb131f7ae581dca2e010282bf39c404ead5060fa25278d1b89852278f894",
+      "git_metadata": "100644 blob 902e7b84ebfaebbbeb2e891f80c469f1449c64d8"
+    },
+    {
+      "path": "r-package/dtatools/man/dta-calculations.Rd",
+      "identical": true,
+      "previous_sha256": "bb0411f862185d59fce4520fb55460f83ca93ddb4a5aeaf6786bdb26ec5f172f",
+      "current_sha256": "bb0411f862185d59fce4520fb55460f83ca93ddb4a5aeaf6786bdb26ec5f172f",
+      "git_metadata": "100644 blob 4e0b0b6197f5992f4ea00247079ac5b59139caa6"
+    },
+    {
+      "path": "r-package/dtatools/man/dta-storage-defaults.Rd",
+      "identical": true,
+      "previous_sha256": "677f8428f966fa360c2c9e809a8e132c581e62e36c126a721d279a115b3e29cc",
+      "current_sha256": "677f8428f966fa360c2c9e809a8e132c581e62e36c126a721d279a115b3e29cc",
+      "git_metadata": "100644 blob 5a8cd12e536a6abff541a8236fe63e3624efdc71"
+    },
+    {
+      "path": "r-package/dtatools/man/dta_append.Rd",
+      "identical": true,
+      "previous_sha256": "745f96ff349c93ea47687be9d07208468eaeb037fb65187812857bfe0c034e4a",
+      "current_sha256": "745f96ff349c93ea47687be9d07208468eaeb037fb65187812857bfe0c034e4a",
+      "git_metadata": "100644 blob 504f971d0b159d0d755f3be54de81ce302fc7df7"
+    },
+    {
+      "path": "r-package/dtatools/man/dta_byte.Rd",
+      "identical": true,
+      "previous_sha256": "0475d3b6e83ab20d11e9804a65b68fe04d4a21c6c78b8404fe30d3775dd90df4",
+      "current_sha256": "0475d3b6e83ab20d11e9804a65b68fe04d4a21c6c78b8404fe30d3775dd90df4",
+      "git_metadata": "100644 blob d3e7bd7b0f4486addb3fa0bd4d5467a70f4e23d5"
+    },
+    {
+      "path": "r-package/dtatools/man/dta_group_id.Rd",
+      "identical": true,
+      "previous_sha256": "f4e8f5bac94f71abed2aba57449572c11f8f4a4ccf3fe24d4a214378ad99c8ec",
+      "current_sha256": "f4e8f5bac94f71abed2aba57449572c11f8f4a4ccf3fe24d4a214378ad99c8ec",
+      "git_metadata": "100644 blob 1a9cc3e5c496f9c54b4de72f8bdf870b26f743aa"
+    },
+    {
+      "path": "r-package/dtatools/man/dta_match.Rd",
+      "identical": true,
+      "previous_sha256": "b042e3e95b6674fc6970d9af53286c74a87c6cab48c62867e9aa8988aec3d2b7",
+      "current_sha256": "b042e3e95b6674fc6970d9af53286c74a87c6cab48c62867e9aa8988aec3d2b7",
+      "git_metadata": "100644 blob 97a298eee24c6e9ec1f1f4f7e8823a23f3c4a518"
+    },
+    {
+      "path": "r-package/dtatools/man/dta_merge.Rd",
+      "identical": true,
+      "previous_sha256": "5112c5ed363d9e17cd8be8eea7abecd181b2f9fa36a128dde2dcc848611603f1",
+      "current_sha256": "5112c5ed363d9e17cd8be8eea7abecd181b2f9fa36a128dde2dcc848611603f1",
+      "git_metadata": "100644 blob 698f3f0a69bbd695bd4d7c6cce17f6dd90c8737b"
+    },
+    {
+      "path": "r-package/dtatools/man/dta_notes.Rd",
+      "identical": true,
+      "previous_sha256": "a3c79f5f26151d6b1525f11b12d99dd40846d91cc8d21b697b8d628b6e815746",
+      "current_sha256": "a3c79f5f26151d6b1525f11b12d99dd40846d91cc8d21b697b8d628b6e815746",
+      "git_metadata": "100644 blob 8e0e9f6739528aef3b77fd1decb802abda62ae37"
+    },
+    {
+      "path": "r-package/dtatools/man/dta_string.Rd",
+      "identical": true,
+      "previous_sha256": "5e544dd5e9e988fca071fa026c323257cea2846d36652846e7b3cb26c449c011",
+      "current_sha256": "5e544dd5e9e988fca071fa026c323257cea2846d36652846e7b3cb26c449c011",
+      "git_metadata": "100644 blob 6f347e0213393f2e09b917a78ee047369e3e0a7b"
+    },
+    {
+      "path": "r-package/dtatools/man/egen.Rd",
+      "identical": true,
+      "previous_sha256": "61de922859756bbe56f6d9a33bb66671e5359767e1210dec59eae51ce66ef33e",
+      "current_sha256": "61de922859756bbe56f6d9a33bb66671e5359767e1210dec59eae51ce66ef33e",
+      "git_metadata": "100644 blob e42decad2cfc9673ae33f1e3af584e318a835326"
+    },
+    {
+      "path": "r-package/dtatools/man/factor_from_labels.Rd",
+      "identical": true,
+      "previous_sha256": "c2d5762894cb2c4dbefa094c5cfa023e315579454f9a3f4b7fef4397b1ea9aa4",
+      "current_sha256": "c2d5762894cb2c4dbefa094c5cfa023e315579454f9a3f4b7fef4397b1ea9aa4",
+      "git_metadata": "100644 blob 4cb18a73f70b33c84afe6cb2b420d447202dd2e1"
+    },
+    {
+      "path": "r-package/dtatools/man/is_missing.Rd",
+      "identical": true,
+      "previous_sha256": "ea873a2a0457f205dc2f335618d1aa087596342697dd6c7de2b5f2e1d4845780",
+      "current_sha256": "ea873a2a0457f205dc2f335618d1aa087596342697dd6c7de2b5f2e1d4845780",
+      "git_metadata": "100644 blob 18e022798e8f2c9cbebe140d40f9f4c54a03ae67"
+    },
+    {
+      "path": "r-package/dtatools/man/keep_vars.Rd",
+      "identical": true,
+      "previous_sha256": "7dad4f34301a65cdafed4c171cee2d8379e847840346e8b800ded984febb5502",
+      "current_sha256": "7dad4f34301a65cdafed4c171cee2d8379e847840346e8b800ded984febb5502",
+      "git_metadata": "100644 blob eff2a729effba7a281a31400151434c1191f4c1a"
+    },
+    {
+      "path": "r-package/dtatools/man/labelbook.Rd",
+      "identical": true,
+      "previous_sha256": "15acb41acdfe409371f2e36814210ea58c1d6c92b8f8562213bb79faa2ce3b1d",
+      "current_sha256": "15acb41acdfe409371f2e36814210ea58c1d6c92b8f8562213bb79faa2ce3b1d",
+      "git_metadata": "100644 blob 41a31f13176f8a825f092cd0bc213feaa9b4b608"
+    },
+    {
+      "path": "r-package/dtatools/man/mutation-containers.Rd",
+      "identical": true,
+      "previous_sha256": "01e3c6406bd1ebf051e3ba39892f0bc43313a30d8708776d8f7f54e40708ddfa",
+      "current_sha256": "01e3c6406bd1ebf051e3ba39892f0bc43313a30d8708776d8f7f54e40708ddfa",
+      "git_metadata": "100644 blob 1cdd4f4534c13aaef61440a552f2825dc3ec5408"
+    },
+    {
+      "path": "r-package/dtatools/man/order_vars.Rd",
+      "identical": true,
+      "previous_sha256": "0111831a28eac17c45d40d49aee28e8c7a7f633f405593fd8f3c2cacdc2b015b",
+      "current_sha256": "0111831a28eac17c45d40d49aee28e8c7a7f633f405593fd8f3c2cacdc2b015b",
+      "git_metadata": "100644 blob d81cb20f16fd8b0ead841a29eca5e363d2951f95"
+    },
+    {
+      "path": "r-package/dtatools/man/read_arrow.Rd",
+      "identical": true,
+      "previous_sha256": "26fc8ecf15dedee6f818f46ef620a4f57c46ca5633c37b3dfdfaed7b7fe38087",
+      "current_sha256": "26fc8ecf15dedee6f818f46ef620a4f57c46ca5633c37b3dfdfaed7b7fe38087",
+      "git_metadata": "100644 blob dea8dd500e785a535a4fb3a4efe333dc5898263d"
+    },
+    {
+      "path": "r-package/dtatools/man/read_dta.Rd",
+      "identical": true,
+      "previous_sha256": "bd691d3a07a727bb6ebe12d6e78b4426bd083693026a1c48458f93d97f0f96ee",
+      "current_sha256": "bd691d3a07a727bb6ebe12d6e78b4426bd083693026a1c48458f93d97f0f96ee",
+      "git_metadata": "100644 blob 6f4e41e2dfaa348686d8638713e55f38d6d61e61"
+    },
+    {
+      "path": "r-package/dtatools/man/recode.Rd",
+      "identical": true,
+      "previous_sha256": "a85e521d8a7aeaff2e460edc07963b6d9db2066f17fec360c4b6aa8ece3f86f9",
+      "current_sha256": "a85e521d8a7aeaff2e460edc07963b6d9db2066f17fec360c4b6aa8ece3f86f9",
+      "git_metadata": "100644 blob 2c538e20fb1de0d4d78e161e0b2f9c8f72ba3377"
+    },
+    {
+      "path": "r-package/dtatools/man/rename_vars.Rd",
+      "identical": true,
+      "previous_sha256": "77cb27e52a6c4ef8f317c91705e4243c50624905d1e5157a4c0230911f7a42a2",
+      "current_sha256": "77cb27e52a6c4ef8f317c91705e4243c50624905d1e5157a4c0230911f7a42a2",
+      "git_metadata": "100644 blob 900c8e5f95e058c60df91dc83b58923ff46f6bf2"
+    },
+    {
+      "path": "r-package/dtatools/man/reorder_dta_rows.Rd",
+      "identical": true,
+      "previous_sha256": "4b65fe1792e50176bf976f61f1f52f5951fea889cdf26c907e2eacbf8815d6ef",
+      "current_sha256": "4b65fe1792e50176bf976f61f1f52f5951fea889cdf26c907e2eacbf8815d6ef",
+      "git_metadata": "100644 blob defd3a51b0b6219842fe271b69dbb7d7d43d657c"
+    },
+    {
+      "path": "r-package/dtatools/man/replace_values.Rd",
+      "identical": true,
+      "previous_sha256": "0d9909d4dfe523684d05d6693f08b911a80aad6f151a059325656692364cb17d",
+      "current_sha256": "0d9909d4dfe523684d05d6693f08b911a80aad6f151a059325656692364cb17d",
+      "git_metadata": "100644 blob e755f51d553c6a2921b913d34e1827bf22501bbc"
+    },
+    {
+      "path": "r-package/dtatools/man/reserve_columns.Rd",
+      "identical": true,
+      "previous_sha256": "d35d88b8232c2d3b6440d30de9631af134e60248c07e235ff2adcda851c79ab3",
+      "current_sha256": "d35d88b8232c2d3b6440d30de9631af134e60248c07e235ff2adcda851c79ab3",
+      "git_metadata": "100644 blob cf6c16d18f58a8da6a799427f6f0391342505b61"
+    },
+    {
+      "path": "r-package/dtatools/man/resolve_var_name.Rd",
+      "identical": true,
+      "previous_sha256": "86b1a9aaebd5faa134188beb0425a458cb1e2b95bc3e114b1fc225477a8fc2f1",
+      "current_sha256": "86b1a9aaebd5faa134188beb0425a458cb1e2b95bc3e114b1fc225477a8fc2f1",
+      "git_metadata": "100644 blob 79783173e51e487db8858e19aeae98cbd83a3da3"
+    },
+    {
+      "path": "r-package/dtatools/man/save_arrow.Rd",
+      "identical": true,
+      "previous_sha256": "ee6bae43e1ad7a0c57a7d44c2a4239548051a425a05f17efdd9459947d256fe0",
+      "current_sha256": "ee6bae43e1ad7a0c57a7d44c2a4239548051a425a05f17efdd9459947d256fe0",
+      "git_metadata": "100644 blob 2da54c2605eaec5572dcb89f629685e2a9bff494"
+    },
+    {
+      "path": "r-package/dtatools/man/save_dta.Rd",
+      "identical": true,
+      "previous_sha256": "a52268f97f99b966a45d09b56950568bec5bb4c04713697e6d089815b5880831",
+      "current_sha256": "a52268f97f99b966a45d09b56950568bec5bb4c04713697e6d089815b5880831",
+      "git_metadata": "100644 blob 36c062883158c396c01ba7b15fdb7edf17fad073"
+    },
+    {
+      "path": "r-package/dtatools/man/set_dta_metadata.Rd",
+      "identical": true,
+      "previous_sha256": "3cc7da33e078e915dcae65321d64719c33ab9d86f22603d006b372021386afea",
+      "current_sha256": "3cc7da33e078e915dcae65321d64719c33ab9d86f22603d006b372021386afea",
+      "git_metadata": "100644 blob c753350da4b6e0516b11c9230567fbac73cd5ae9"
+    },
+    {
+      "path": "r-package/dtatools/man/set_var_format.Rd",
+      "identical": true,
+      "previous_sha256": "08e36806693f32d1a08b7036ac45e873f0096f53359f3e9e834b8f0955b4a68a",
+      "current_sha256": "08e36806693f32d1a08b7036ac45e873f0096f53359f3e9e834b8f0955b4a68a",
+      "git_metadata": "100644 blob 9620f6492ecd50535d4ca343f2bb42153eb4c423"
+    },
+    {
+      "path": "r-package/dtatools/man/slice_dta_rows.Rd",
+      "identical": true,
+      "previous_sha256": "119be18b800c9a6935bf11e541873885139094c7b133736e16483c38dedec1a9",
+      "current_sha256": "119be18b800c9a6935bf11e541873885139094c7b133736e16483c38dedec1a9",
+      "git_metadata": "100644 blob 7c9b2b4801a270eff03a9960c861b689ad1f0b83"
+    },
+    {
+      "path": "r-package/dtatools/man/tab.Rd",
+      "identical": true,
+      "previous_sha256": "54b7484df09b1d8fffc07ebec847f8fb856bc53dc7d0497413daebe52bafe6ff",
+      "current_sha256": "54b7484df09b1d8fffc07ebec847f8fb856bc53dc7d0497413daebe52bafe6ff",
+      "git_metadata": "100644 blob 767a56628e044f298209104994be3e77016b22cb"
+    },
+    {
+      "path": "r-package/dtatools/man/tagged_missing.Rd",
+      "identical": true,
+      "previous_sha256": "20aba3ab3149dcfd406585caef4f04d725bf0d8e3c6a052c9f5c7bf70c50a483",
+      "current_sha256": "20aba3ab3149dcfd406585caef4f04d725bf0d8e3c6a052c9f5c7bf70c50a483",
+      "git_metadata": "100644 blob b875c2f0e6d69a9824a24c0ba7c98a777f461ac6"
+    },
+    {
+      "path": "r-package/dtatools/man/tagged_missing_constants.Rd",
+      "identical": true,
+      "previous_sha256": "38c1d290eb81a4806d4d47b5b9f44294846eb5b03e739024f29a8b561f81878e",
+      "current_sha256": "38c1d290eb81a4806d4d47b5b9f44294846eb5b03e739024f29a8b561f81878e",
+      "git_metadata": "100644 blob 89b7da508479aea05273f820f5394c7b129a7add"
+    },
+    {
+      "path": "r-package/dtatools/man/var_label.Rd",
+      "identical": true,
+      "previous_sha256": "115a9db1a29be998eee0b032bb8814d94fb490b89a2bb3c4d235953a9b91042f",
+      "current_sha256": "115a9db1a29be998eee0b032bb8814d94fb490b89a2bb3c4d235953a9b91042f",
+      "git_metadata": "100644 blob a687cb8863794abec0e6d2aa99fe6f2accf6e854"
+    },
+    {
+      "path": "r-package/dtatools/src/Makevars.in",
+      "identical": true,
+      "previous_sha256": "670886cbb880b1ff23b497c4d19fefb85885f8e86b441161078f7696b27781a7",
+      "current_sha256": "670886cbb880b1ff23b497c4d19fefb85885f8e86b441161078f7696b27781a7",
+      "git_metadata": "100644 blob 867952612f7be821e2471b64a527ba788af6f529"
+    },
+    {
+      "path": "r-package/dtatools/src/Makevars.rust",
+      "identical": true,
+      "previous_sha256": "cabb38a3bda5e7d87661c3b3cbbd58e9c61360bf925f48e70d09809bd5656585",
+      "current_sha256": "cabb38a3bda5e7d87661c3b3cbbd58e9c61360bf925f48e70d09809bd5656585",
+      "git_metadata": "100644 blob ed23d0d682403a30dae4123ba187f026cf3e758d"
+    },
+    {
+      "path": "r-package/dtatools/src/Makevars.win.in",
+      "identical": true,
+      "previous_sha256": "271e7299d265fd2597e8685c3534fd5402b58c60788aaeae0fec5c253fbc25eb",
+      "current_sha256": "271e7299d265fd2597e8685c3534fd5402b58c60788aaeae0fec5c253fbc25eb",
+      "git_metadata": "100644 blob 23e3486d8db301fa77001cd864c9d36882aecf6e"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/Cargo.toml",
+      "identical": true,
+      "previous_sha256": "d68c81106cc10f6c33b6cbef0c0f722ce0c284208b1f44d759bed25e5d4d8bcf",
+      "current_sha256": "d68c81106cc10f6c33b6cbef0c0f722ce0c284208b1f44d759bed25e5d4d8bcf",
+      "git_metadata": "100644 blob 5b2bb8bb9963c1ca298706f9d00a9b9b6ba99298"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/LICENSE",
+      "identical": true,
+      "previous_sha256": "3fb86ad2fc6f9ee1bada36000b8a6905b492caab81e3601c2592a3d6504d803a",
+      "current_sha256": "3fb86ad2fc6f9ee1bada36000b8a6905b492caab81e3601c2592a3d6504d803a",
+      "git_metadata": "100644 blob 3e2cf8b6bff010af1d4aa3e37fd6f9b3d466f003"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/examples/bench.rs",
+      "identical": true,
+      "previous_sha256": "9ef961da13517fd8b9a611b4c3dc20a28d05c3814894cabbe94856492aa0bc97",
+      "current_sha256": "9ef961da13517fd8b9a611b4c3dc20a28d05c3814894cabbe94856492aa0bc97",
+      "git_metadata": "100644 blob 151ef8be8661772d32d445223367cdf407c509ac"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/examples/typescript_arrow_fixtures.rs",
+      "identical": true,
+      "previous_sha256": "487939221c686da1015714fb25815f4c5719374b76987002d7e9fc89363b54db",
+      "current_sha256": "487939221c686da1015714fb25815f4c5719374b76987002d7e9fc89363b54db",
+      "git_metadata": "100644 blob 98d338951f8321e709b9013dc32b1c0c0fbec2eb"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/arrow/checksum.rs",
+      "identical": true,
+      "previous_sha256": "610bd2b3c25029df5057c7bb1ec0d4fcb81bab51767deb5af92bca2b3af4779a",
+      "current_sha256": "610bd2b3c25029df5057c7bb1ec0d4fcb81bab51767deb5af92bca2b3af4779a",
+      "git_metadata": "100644 blob f50a5bc1364742cb78c28c318712deb018fbdf60"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/arrow/mod.rs",
+      "identical": true,
+      "previous_sha256": "36d33918bc76c176bad240fc0dfac971616081f81fe7d606070b907a42fd42ce",
+      "current_sha256": "36d33918bc76c176bad240fc0dfac971616081f81fe7d606070b907a42fd42ce",
+      "git_metadata": "100644 blob 06e84e68d01537ac807bbe476715ee4cab9b697e"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/arrow/profile.rs",
+      "identical": true,
+      "previous_sha256": "caa8af362db65435add3bc8c670028b7cf4b36a70d3cf87ce8d692a8e0bf5a0b",
+      "current_sha256": "caa8af362db65435add3bc8c670028b7cf4b36a70d3cf87ce8d692a8e0bf5a0b",
+      "git_metadata": "100644 blob 5d6a6286ee93b978bf2ac3b8f30cd259d0a0f412"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/arrow/read.rs",
+      "identical": true,
+      "previous_sha256": "80ab1e50fa19c7808f87e9cb192929a1193e537f5242ff8ccfeb68c09c0583d7",
+      "current_sha256": "80ab1e50fa19c7808f87e9cb192929a1193e537f5242ff8ccfeb68c09c0583d7",
+      "git_metadata": "100644 blob 492f1259b3e8ae84bfde7084df64ef8a957625ac"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/arrow/write.rs",
+      "identical": true,
+      "previous_sha256": "6bc26a47f5f5d043251c605d6138dcc681767716b0c65a60a509c2312acb4a55",
+      "current_sha256": "6bc26a47f5f5d043251c605d6138dcc681767716b0c65a60a509c2312acb4a55",
+      "git_metadata": "100644 blob 643db24bca5e4e1a47d5d08d5f29c34801d7898a"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/data_reader.rs",
+      "identical": true,
+      "previous_sha256": "e872eb4f68cd7941a3064c0a299541bf0395a1346e991cedb45b49eed0d90668",
+      "current_sha256": "e872eb4f68cd7941a3064c0a299541bf0395a1346e991cedb45b49eed0d90668",
+      "git_metadata": "100644 blob cd39c599014faaba81f5cdcc97d1a5d47c1ab46c"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/dta_metadata.rs",
+      "identical": true,
+      "previous_sha256": "fc823940eae74be61cd86667a367a620efff8145b9fca72acaf4b47f3be69543",
+      "current_sha256": "fc823940eae74be61cd86667a367a620efff8145b9fca72acaf4b47f3be69543",
+      "git_metadata": "100644 blob b153328f410749b709c299721e27235d46d8d84f"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/endian.rs",
+      "identical": true,
+      "previous_sha256": "fd0bca2750f1eec6a3951e3d3768399b2602ffe8b6a65a7b2e2bdd8c8078225f",
+      "current_sha256": "fd0bca2750f1eec6a3951e3d3768399b2602ffe8b6a65a7b2e2bdd8c8078225f",
+      "git_metadata": "100644 blob f963a961eb385c6f8b4d7e413b89be54f334fc3f"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/error.rs",
+      "identical": true,
+      "previous_sha256": "d716541fedca39464baa8a97f74b7e9cef7e8506828e183b4a9e49b0ebd39378",
+      "current_sha256": "d716541fedca39464baa8a97f74b7e9cef7e8506828e183b4a9e49b0ebd39378",
+      "git_metadata": "100644 blob 4443b69463c4c3bf53306c9cf7f0904c475dd4c8"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/file.rs",
+      "identical": true,
+      "previous_sha256": "ae4f8fafafef80183364588abcd32c32e09167f7e480f161bc1be94cc1cd7138",
+      "current_sha256": "ae4f8fafafef80183364588abcd32c32e09167f7e480f161bc1be94cc1cd7138",
+      "git_metadata": "100644 blob f684fbc80d732d204bd287c945f154e5b33e41f5"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/legacy.rs",
+      "identical": true,
+      "previous_sha256": "987ce81dbb1ed3f7481e1b6a13f380502eed5d2dc21add8395af0d7790a17e5c",
+      "current_sha256": "987ce81dbb1ed3f7481e1b6a13f380502eed5d2dc21add8395af0d7790a17e5c",
+      "git_metadata": "100644 blob 1e8ec320baea2d9c190fb6481ab7cebc42727579"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/lib.rs",
+      "identical": true,
+      "previous_sha256": "a4c5e7289893a89c28bb03d2a49543892c872ad96286a7cc691db8073b78f8db",
+      "current_sha256": "a4c5e7289893a89c28bb03d2a49543892c872ad96286a7cc691db8073b78f8db",
+      "git_metadata": "100644 blob 70c0b7b2f7a8750d5b174f7eeb801c904aa0bfed"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/metadata.rs",
+      "identical": true,
+      "previous_sha256": "e4ab8183377b4e813a2177a300560549a5712073fae415939e261aca23f722ac",
+      "current_sha256": "e4ab8183377b4e813a2177a300560549a5712073fae415939e261aca23f722ac",
+      "git_metadata": "100644 blob 0585cbdd3ae760b3104c0cc239740885a40ab3f5"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/missing.rs",
+      "identical": true,
+      "previous_sha256": "74bf2fc1aaeb8192fd5c2dc58720fb286477a236bcc9c3bc4611216399191f1e",
+      "current_sha256": "74bf2fc1aaeb8192fd5c2dc58720fb286477a236bcc9c3bc4611216399191f1e",
+      "git_metadata": "100644 blob 8f695a63a2791bb461c6357df2f0771dd77b3c79"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/selection.rs",
+      "identical": true,
+      "previous_sha256": "41139e996a585c67993c5b9f2b8bb735d661261006a0169473ddc496826ab209",
+      "current_sha256": "41139e996a585c67993c5b9f2b8bb735d661261006a0169473ddc496826ab209",
+      "git_metadata": "100644 blob 165bf4d6a7629d4e9b3594a3bf2c1dca4320fed5"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/strl.rs",
+      "identical": true,
+      "previous_sha256": "f456ba74f4313a0d2e64a373c1f83242d4f1e9a505950b009535bc9106dea8fc",
+      "current_sha256": "f456ba74f4313a0d2e64a373c1f83242d4f1e9a505950b009535bc9106dea8fc",
+      "git_metadata": "100644 blob 28bfa11ee2c3ac4261fd46d6427fc09942ce1e24"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/text.rs",
+      "identical": true,
+      "previous_sha256": "7a7b01c06a665b0f601df44c097411e1792476960c79f31aadefb1de9171a60d",
+      "current_sha256": "7a7b01c06a665b0f601df44c097411e1792476960c79f31aadefb1de9171a60d",
+      "git_metadata": "100644 blob d228a2dbb6f8920cc75ca1683eb25ae013cadb3a"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/types.rs",
+      "identical": true,
+      "previous_sha256": "46cb44d58cfd9fbb559c88ed501fc006cd004734f724835978e44c36dfebc20a",
+      "current_sha256": "46cb44d58cfd9fbb559c88ed501fc006cd004734f724835978e44c36dfebc20a",
+      "git_metadata": "100644 blob b81df1d05cbd4bfbd9ef278f84169df128780c31"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/value_labels.rs",
+      "identical": true,
+      "previous_sha256": "f8c025db968ef91e09b968ffcaf29e6d140fb7dde337820c9eabe03392abcd40",
+      "current_sha256": "f8c025db968ef91e09b968ffcaf29e6d140fb7dde337820c9eabe03392abcd40",
+      "git_metadata": "100644 blob 9dbc63bc5753ec387eb6fb902545ec7cd04d3286"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/src/write.rs",
+      "identical": true,
+      "previous_sha256": "c23f70b4e60f4c34269dd47e02f5706db7dc32adf19e7d0d3a65952a5b4d47ce",
+      "current_sha256": "c23f70b4e60f4c34269dd47e02f5706db7dc32adf19e7d0d3a65952a5b4d47ce",
+      "git_metadata": "100644 blob b46203402b60a55b36656a85d1980ab6878d70eb"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/arrow.rs",
+      "identical": true,
+      "previous_sha256": "310b22cd8f125f029b3617f4ce597844682c4fa41851d331b232e540f527506f",
+      "current_sha256": "310b22cd8f125f029b3617f4ce597844682c4fa41851d331b232e540f527506f",
+      "git_metadata": "100644 blob 07bc1e8744000ab5a98ef2f4ba5a97cdc578ef0a"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/conformance.rs",
+      "identical": true,
+      "previous_sha256": "e8bcd96fb45e18183ec00609024c14cdacac0ce665feadaa14c7fc20db2b0124",
+      "current_sha256": "e8bcd96fb45e18183ec00609024c14cdacac0ce665feadaa14c7fc20db2b0124",
+      "git_metadata": "100644 blob 8b419321637d9db1a2d475f5d16392ffcdb2d95f"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/data/modern-canonical.json",
+      "identical": true,
+      "previous_sha256": "c515d7b44af55f45bc9e1ff438ccd3388f259acae2cd24ed92f07406442122e4",
+      "current_sha256": "c515d7b44af55f45bc9e1ff438ccd3388f259acae2cd24ed92f07406442122e4",
+      "git_metadata": "100644 blob 7cdde13e49762d9f26fa1ec49c0f05f1f13748f6"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/data/synthetic-v105.dta",
+      "identical": true,
+      "previous_sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec",
+      "current_sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec",
+      "git_metadata": "100644 blob af0180a49335203ed57ea26d6bd935d6e4e86648"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/data/synthetic-v108.dta",
+      "identical": true,
+      "previous_sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda",
+      "current_sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda",
+      "git_metadata": "100644 blob 727afeff89c1a373b8508fe1465e20c92b0a38b3"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/data/synthetic-v110.dta",
+      "identical": true,
+      "previous_sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322",
+      "current_sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322",
+      "git_metadata": "100644 blob 1e9b53947b47f568c3ecb103fd827f412a7c972e"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/data/synthetic-v111.dta",
+      "identical": true,
+      "previous_sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968",
+      "current_sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968",
+      "git_metadata": "100644 blob 86cbea4a7734a760dca068acedb56d1fa5b9731e"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/encoding.rs",
+      "identical": true,
+      "previous_sha256": "151f5ed2619651ed723566b57c8d1729e20f60cd75bbd79b94174964edaf206e",
+      "current_sha256": "151f5ed2619651ed723566b57c8d1729e20f60cd75bbd79b94174964edaf206e",
+      "git_metadata": "100644 blob 65ae6cad4d3578b136dc30a3cf7fda438e4efed1"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/file.rs",
+      "identical": true,
+      "previous_sha256": "fb91837922354d6be55a2b35755829326f6d807eb0c9676cfd1d2428ec54ffbc",
+      "current_sha256": "fb91837922354d6be55a2b35755829326f6d807eb0c9676cfd1d2428ec54ffbc",
+      "git_metadata": "100644 blob 288fa127c559e9539eaec5414a50165633cb208e"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/fuzz_smoke.rs",
+      "identical": true,
+      "previous_sha256": "e12705de3b93c77722c9a9fea91f16f22b5837e1ae0e750d8ed6b144c5fb94ce",
+      "current_sha256": "e12705de3b93c77722c9a9fea91f16f22b5837e1ae0e750d8ed6b144c5fb94ce",
+      "git_metadata": "100644 blob 7b1b771eb45fb75e7ad1e3c4a75500c31def247c"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/legacy.rs",
+      "identical": true,
+      "previous_sha256": "cf28be104122ce90e90475b6b11c9392b043ffc680916b0236c90f7e0105aa97",
+      "current_sha256": "cf28be104122ce90e90475b6b11c9392b043ffc680916b0236c90f7e0105aa97",
+      "git_metadata": "100644 blob 579932118579329f0c380704eec0055a1624a5b2"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/metadata.rs",
+      "identical": true,
+      "previous_sha256": "c0f8bd5b0487f69cb3ebc7234785220793269ec2b0fb168fa8b7d80366e850e5",
+      "current_sha256": "c0f8bd5b0487f69cb3ebc7234785220793269ec2b0fb168fa8b7d80366e850e5",
+      "git_metadata": "100644 blob 435154d2a1667aad9296571e57394c5d9d452f9c"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/observations.rs",
+      "identical": true,
+      "previous_sha256": "17d1f24f9f6efc05608dcf6b6964dedee13d45bbcc43a7de9c0fe0df2f70283a",
+      "current_sha256": "17d1f24f9f6efc05608dcf6b6964dedee13d45bbcc43a7de9c0fe0df2f70283a",
+      "git_metadata": "100644 blob 1c3aef23ee1c2e980de7ac4be76a3f6faced6744"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/strl.rs",
+      "identical": true,
+      "previous_sha256": "3ceaa89efd1c04c813368f52fa82d17596fcd079c98226b185c8778c35db5926",
+      "current_sha256": "3ceaa89efd1c04c813368f52fa82d17596fcd079c98226b185c8778c35db5926",
+      "git_metadata": "100644 blob 05ea9ddcf760b7f28970cde59fedc99d984f5bf5"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/support/generate-modern-canonical.ts",
+      "identical": true,
+      "previous_sha256": "cf89302fc964fb6afbf8085f17586e05031201819e566f31e49ae70a690c30d2",
+      "current_sha256": "cf89302fc964fb6afbf8085f17586e05031201819e566f31e49ae70a690c30d2",
+      "git_metadata": "100644 blob c0796b9cc67a0401bdfbce9b13182dd676d782cf"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/support/mod.rs",
+      "identical": true,
+      "previous_sha256": "05523b8e88e4e8b230f7990c07e444aa78d31791005e3023cc32e971f2052b62",
+      "current_sha256": "05523b8e88e4e8b230f7990c07e444aa78d31791005e3023cc32e971f2052b62",
+      "git_metadata": "100644 blob 018e8325cac1c896a0eca7c9e7603398c7df79e3"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/value_labels.rs",
+      "identical": true,
+      "previous_sha256": "d100865f5133e4d90fdb37d48caac355de391c840e6b36413346d6d9d66711df",
+      "current_sha256": "d100865f5133e4d90fdb37d48caac355de391c840e6b36413346d6d9d66711df",
+      "git_metadata": "100644 blob 9d0bcc0f4ba2b673c73481f033933c5ac201e6ba"
+    },
+    {
+      "path": "r-package/dtatools/src/dta-tools/tests/write.rs",
+      "identical": true,
+      "previous_sha256": "7ad087cc43aa7cb2185146fe3b9968e3b1d3bcd700031cc22354a8337d90200b",
+      "current_sha256": "7ad087cc43aa7cb2185146fe3b9968e3b1d3bcd700031cc22354a8337d90200b",
+      "git_metadata": "100644 blob 6f3b47c1286fa81aaf3bbdc7ceb8415913d90944"
+    },
+    {
+      "path": "r-package/dtatools/src/egen-groups.h",
+      "identical": true,
+      "previous_sha256": "fd18c269dc2c05896c7292b53ee129dd8010b7c128e12f5d803c88a23a95801f",
+      "current_sha256": "fd18c269dc2c05896c7292b53ee129dd8010b7c128e12f5d803c88a23a95801f",
+      "git_metadata": "100644 blob 4d85ee18c738314ec792b84f76e7055526a264c2"
+    },
+    {
+      "path": "r-package/dtatools/src/egen-values.h",
+      "identical": true,
+      "previous_sha256": "bcd53a9eae7126d65de4dc6a1b6a068142a9cd1628e00514db1375d78e12e236",
+      "current_sha256": "bcd53a9eae7126d65de4dc6a1b6a068142a9cd1628e00514db1375d78e12e236",
+      "git_metadata": "100644 blob 5ae2704b5ab2faf13b1babe95bb3047216319f46"
+    },
+    {
+      "path": "r-package/dtatools/src/init.c",
+      "identical": true,
+      "previous_sha256": "50ad819f6d9547604ac009bf528b82b05c8c8fe835831d850c6cfce2c4644471",
+      "current_sha256": "50ad819f6d9547604ac009bf528b82b05c8c8fe835831d850c6cfce2c4644471",
+      "git_metadata": "100644 blob 667bee8ee4b74e72a107e594bebbbeb8ae625fcd"
+    },
+    {
+      "path": "r-package/dtatools/src/mutation-write.h",
+      "identical": true,
+      "previous_sha256": "d8e5f6abbe970c4ed12fb923fa55b76e6278e9c1072089356a7698f9cd8c489d",
+      "current_sha256": "d8e5f6abbe970c4ed12fb923fa55b76e6278e9c1072089356a7698f9cd8c489d",
+      "git_metadata": "100644 blob 3652f34f8282f2f6e810f59e3ed0f133fdcdc0ac"
+    },
+    {
+      "path": "r-package/dtatools/src/owned-columns.h",
+      "identical": true,
+      "previous_sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1",
+      "current_sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1",
+      "git_metadata": "100644 blob 2b94fc64c0c0fd54e0bb6d0aad517084a3cc21fe"
+    },
+    {
+      "path": "r-package/dtatools/src/rust/Cargo.lock",
+      "identical": true,
+      "previous_sha256": "5d71904510bb84b70d691b446979794d75cbfba7b82054de704250cd3b7e3b7f",
+      "current_sha256": "5d71904510bb84b70d691b446979794d75cbfba7b82054de704250cd3b7e3b7f",
+      "git_metadata": "100644 blob cb2c787e2f6aea4af8a056a5bb1f8f7e63ff9fe2"
+    },
+    {
+      "path": "r-package/dtatools/src/rust/Cargo.toml",
+      "identical": true,
+      "previous_sha256": "86c196918de6f7ee161d78325e51643868f34d732666d1e85e714cd3878bcd65",
+      "current_sha256": "86c196918de6f7ee161d78325e51643868f34d732666d1e85e714cd3878bcd65",
+      "git_metadata": "100644 blob 00a2063a8c038d3fb1872c05be7bdf269788ea71"
+    },
+    {
+      "path": "r-package/dtatools/src/rust/cargo-config.toml",
+      "identical": true,
+      "previous_sha256": "60f1bbe1f3f7449d5ec772629f7e7623fe96077ebb87ccbf426f833a0b6f2688",
+      "current_sha256": "60f1bbe1f3f7449d5ec772629f7e7623fe96077ebb87ccbf426f833a0b6f2688",
+      "git_metadata": "100644 blob 2bc6b4a6d8f26e684ab1aa4d62484eec8986af3b"
+    },
+    {
+      "path": "r-package/dtatools/src/rust/src/arrow_ffi.rs",
+      "identical": true,
+      "previous_sha256": "d9c295d7f808eb1bfd7d6e57381b1b10a10d9bd4873369ff375f2228897f2d8b",
+      "current_sha256": "d9c295d7f808eb1bfd7d6e57381b1b10a10d9bd4873369ff375f2228897f2d8b",
+      "git_metadata": "100644 blob d52ccc7e2ff7599b66fa70349e9bf0ba4607564d"
+    },
+    {
+      "path": "r-package/dtatools/src/rust/src/lib.rs",
+      "identical": true,
+      "previous_sha256": "e2fa30dad4c852a018d7607dbb23a35dd78ff8348daa991ac06834ff018591dd",
+      "current_sha256": "e2fa30dad4c852a018d7607dbb23a35dd78ff8348daa991ac06834ff018591dd",
+      "git_metadata": "100644 blob 2bf636e3b2a0c4bf833e0ce6826ede957feaebda"
+    },
+    {
+      "path": "r-package/dtatools/src/rust/vendor.sha256",
+      "identical": true,
+      "previous_sha256": "147065f56a04e8833bbff3f840406a1354dc456706ce1ae58514c4a35ba5f639",
+      "current_sha256": "147065f56a04e8833bbff3f840406a1354dc456706ce1ae58514c4a35ba5f639",
+      "git_metadata": "100644 blob ede1e2c70f5df3b231ddd040f624a15889f4d397"
+    },
+    {
+      "path": "r-package/dtatools/src/rust/vendor.tar.gz",
+      "identical": true,
+      "previous_sha256": "31249dcf2962711a7e51ccb7983661543e3d87bcc0c574aadfbad4ee9c19252e",
+      "current_sha256": "31249dcf2962711a7e51ccb7983661543e3d87bcc0c574aadfbad4ee9c19252e",
+      "git_metadata": "100644 blob 785b0da077607319009c4c9344268476a2d5a426"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat.R",
+      "identical": true,
+      "previous_sha256": "c3a7c04fdc9005f1850dbf7fcddafb4880772f561fa64148f54f164b5be86f77",
+      "current_sha256": "c3a7c04fdc9005f1850dbf7fcddafb4880772f561fa64148f54f164b5be86f77",
+      "git_metadata": "100644 blob 1a88caf2b8d1522734e5842e8106fc7b49cb966a"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/helper-fixtures.R",
+      "identical": true,
+      "previous_sha256": "0cbb2ffc21363beb4aa71353c9ec73ed6280b08ce6149425468a4db91fddbe16",
+      "current_sha256": "0cbb2ffc21363beb4aa71353c9ec73ed6280b08ce6149425468a4db91fddbe16",
+      "git_metadata": "100644 blob 8539ddf1b6ec263d234109664590dc62bf933fa1"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-arrow.R",
+      "identical": true,
+      "previous_sha256": "ced7425bf3ebd50d3d70f5951cb2606b58cd70e2491464ca60cada03e80e93a3",
+      "current_sha256": "ced7425bf3ebd50d3d70f5951cb2606b58cd70e2491464ca60cada03e80e93a3",
+      "git_metadata": "100644 blob 546190b1c48b7164cba18b1b7db25a82d13a867f"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-codebooks.R",
+      "identical": true,
+      "previous_sha256": "aef04cdec341b4eb2fb7acf9f9ef6cd5ca3caf60de69e5956ef30363b0fe5890",
+      "current_sha256": "aef04cdec341b4eb2fb7acf9f9ef6cd5ca3caf60de69e5956ef30363b0fe5890",
+      "git_metadata": "100644 blob 31d2806e8bbedb17bc1d276f01ee60d8c6bcd31e"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-copy-data.R",
+      "identical": true,
+      "previous_sha256": "cbd704afda0f4c07333653e13084817667f57a2d556410cde010a3abf18a7d73",
+      "current_sha256": "cbd704afda0f4c07333653e13084817667f57a2d556410cde010a3abf18a7d73",
+      "git_metadata": "100644 blob 9e00610af53272a1e925198247c63fbd7b559fc7"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-data-table-compatibility.R",
+      "identical": true,
+      "previous_sha256": "1bd35095356c578c2931ff99b0122efc3f988970b835ff9350a4ad447ddaface",
+      "current_sha256": "1bd35095356c578c2931ff99b0122efc3f988970b835ff9350a4ad447ddaface",
+      "git_metadata": "100644 blob 5763ca47134d6f9a3ca8330891b90da90a3f03ec"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-datasig.R",
+      "identical": true,
+      "previous_sha256": "b0cbd5aa049670ca5d1890196ac4749d0e5ed25aa483dca95dfd5ef0c2a6b5fd",
+      "current_sha256": "b0cbd5aa049670ca5d1890196ac4749d0e5ed25aa483dca95dfd5ef0c2a6b5fd",
+      "git_metadata": "100644 blob ff6c6b4606bed6f9ea422f04e326235a5ca04b75"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dibble-bracket.R",
+      "identical": true,
+      "previous_sha256": "ae8ecf89edb684747a174e2edef23ea95c34c440afca0a937d60e4c9193d5388",
+      "current_sha256": "ae8ecf89edb684747a174e2edef23ea95c34c440afca0a937d60e4c9193d5388",
+      "git_metadata": "100644 blob 7a919aa57f185959bef1e726197744d5330d976c"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dibble-class.R",
+      "identical": true,
+      "previous_sha256": "559b688934c97c074c2992421c70b1f13a3dcf6b254e5e585142557568def439",
+      "current_sha256": "559b688934c97c074c2992421c70b1f13a3dcf6b254e5e585142557568def439",
+      "git_metadata": "100644 blob 6b9d8a1dfcca10faf8b52b8b5792fb5aa6b6f834"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dibble-columns.R",
+      "identical": true,
+      "previous_sha256": "07a27397ecb617cb822255ca46d48cd2971ada75f1198244de66ced8e0848c90",
+      "current_sha256": "07a27397ecb617cb822255ca46d48cd2971ada75f1198244de66ced8e0848c90",
+      "git_metadata": "100644 blob f068c9013d02c2b9e62c92f638e9b808337dccd0"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dibble-expressions.R",
+      "identical": true,
+      "previous_sha256": "62d0d192ea5bae864db4361b8bcf10ab1ad32ace6fd99efcd5e54d81d8a3ed72",
+      "current_sha256": "62d0d192ea5bae864db4361b8bcf10ab1ad32ace6fd99efcd5e54d81d8a3ed72",
+      "git_metadata": "100644 blob d7c2ef748b5ac5ec3b531889689a8370ea4d96df"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dibble-print.R",
+      "identical": true,
+      "previous_sha256": "e2d1a43254656f76406462e23278623e6286e277f4dbae1fab4f16b3fe3ec6c9",
+      "current_sha256": "e2d1a43254656f76406462e23278623e6286e277f4dbae1fab4f16b3fe3ec6c9",
+      "git_metadata": "100644 blob 151f9efb203c74cd5ddd2968386e3bb718f1dd3f"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dibble-rows.R",
+      "identical": true,
+      "previous_sha256": "0e20c6ac8b6f4b05890456920dc2e91d6f8296b900daf762118218222fd2e5f6",
+      "current_sha256": "0e20c6ac8b6f4b05890456920dc2e91d6f8296b900daf762118218222fd2e5f6",
+      "git_metadata": "100644 blob 859acc1b3046ef8cecc09ffa9df5bd7b1a5689ab"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dibble.R",
+      "identical": true,
+      "previous_sha256": "e595ad7620aa81b226ae69713abf4ee35a8e9473aba6a0d3ebde8dd3d5b5b6c5",
+      "current_sha256": "e595ad7620aa81b226ae69713abf4ee35a8e9473aba6a0d3ebde8dd3d5b5b6c5",
+      "git_metadata": "100644 blob 464b25eeca4f8e3d675d68e93fb117ec7a998c9a"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dta-append.R",
+      "identical": true,
+      "previous_sha256": "84c6fac5573b22cd43a10b27ed81f240a982ce0fb9bae24240ae4d89ae9f02f3",
+      "current_sha256": "84c6fac5573b22cd43a10b27ed81f240a982ce0fb9bae24240ae4d89ae9f02f3",
+      "git_metadata": "100644 blob 66969280559de68e6dcecc8e9c607caeb766031b"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dta-compare-native.R",
+      "identical": true,
+      "previous_sha256": "de340d4f47395bc96bf17b0720152e3523bc23889e4d9b0b139396988cb1cead",
+      "current_sha256": "de340d4f47395bc96bf17b0720152e3523bc23889e4d9b0b139396988cb1cead",
+      "git_metadata": "100644 blob 33a4f5f84355aa7422c594aeefe8a01ed158f39d"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dta-identical.R",
+      "identical": true,
+      "previous_sha256": "283d3d5c74bbb0b180f6d02256b8bc50cf673df4c94ce11b32f7ccef0e39226d",
+      "current_sha256": "283d3d5c74bbb0b180f6d02256b8bc50cf673df4c94ce11b32f7ccef0e39226d",
+      "git_metadata": "100644 blob 98754e501ca6336e7a244eb5c663b1a052997197"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dta-match.R",
+      "identical": true,
+      "previous_sha256": "330c0697e50973c6fa9034cbaec8c0c780b17c09433f4c206c99c3f167b07821",
+      "current_sha256": "330c0697e50973c6fa9034cbaec8c0c780b17c09433f4c206c99c3f167b07821",
+      "git_metadata": "100644 blob 7c2d1fa6c7b777ef902ec04d7a0d6aa29e5c93e1"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dta-merge.R",
+      "identical": true,
+      "previous_sha256": "4bdfc7cd8c75f9c2381c3571134b79862b5782755d9581b7d36ab3095da23156",
+      "current_sha256": "4bdfc7cd8c75f9c2381c3571134b79862b5782755d9581b7d36ab3095da23156",
+      "git_metadata": "100644 blob 6bde302e6480708866be6bae5ebb6e4debaafbca"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dta-metadata.R",
+      "identical": true,
+      "previous_sha256": "180874c434a2c9e973b4868a3bceb953188faa9cefe1095557f826bd37786c30",
+      "current_sha256": "180874c434a2c9e973b4868a3bceb953188faa9cefe1095557f826bd37786c30",
+      "git_metadata": "100644 blob 6de9c410cafd941e8972f67092ab11b1a1307ee0"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dta-numeric-summary.R",
+      "identical": true,
+      "previous_sha256": "0a01e55bea84150e798b1537f5fd3362b0a9aefc054a0ce060a00bf7b924123b",
+      "current_sha256": "0a01e55bea84150e798b1537f5fd3362b0a9aefc054a0ce060a00bf7b924123b",
+      "git_metadata": "100644 blob e0bd5ac32253f8f147c34d0a67f47f5757a19c27"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dta-numeric.R",
+      "identical": true,
+      "previous_sha256": "426f02a2b560c81c701f3d53c1d5b0ebc28f6f8f08eb6644bb99a25d86b3cd9d",
+      "current_sha256": "426f02a2b560c81c701f3d53c1d5b0ebc28f6f8f08eb6644bb99a25d86b3cd9d",
+      "git_metadata": "100644 blob 8a6c2cfe63a28c99542834b183f0a88cc503fcaf"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dta-string-metadata-coercion.R",
+      "identical": true,
+      "previous_sha256": "59de9581f8796f4d567f2e236e1e2612ecfd579d27fe9a6d53882c0e2d87745f",
+      "current_sha256": "59de9581f8796f4d567f2e236e1e2612ecfd579d27fe9a6d53882c0e2d87745f",
+      "git_metadata": "100644 blob 984643e7104d3817a7cd1630df3d3ecd9f9e92ac"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-dta-string.R",
+      "identical": true,
+      "previous_sha256": "a44c7e2a4b7317583d68bb1c8ddbffabdc16efc425890076cc806ed8c760e846",
+      "current_sha256": "a44c7e2a4b7317583d68bb1c8ddbffabdc16efc425890076cc806ed8c760e846",
+      "git_metadata": "100644 blob 730aaf612c10effb396128c44bead9ae5260da64"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-egen-command.R",
+      "identical": true,
+      "previous_sha256": "407e6aceda56a62e3e50d144a80e9ece2b247092099c5fa641ddd0d213ee718b",
+      "current_sha256": "407e6aceda56a62e3e50d144a80e9ece2b247092099c5fa641ddd0d213ee718b",
+      "git_metadata": "100644 blob 311770f694db80c96c2e0789db59e88c481de54e"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-egen-groups.R",
+      "identical": true,
+      "previous_sha256": "472c77124887ea6941b5fad5cb6fc388622fe0434813734cbe7bdc6bbcad79b8",
+      "current_sha256": "472c77124887ea6941b5fad5cb6fc388622fe0434813734cbe7bdc6bbcad79b8",
+      "git_metadata": "100644 blob 9ff8c17f78900eb33e2d1599fcc959c3342d0e92"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-egen-stata-fixture.R",
+      "identical": true,
+      "previous_sha256": "1de8da374f3b3b77669d8b159341f7c829bdf24ebdaa11f69cee2f8f3bd4b9d4",
+      "current_sha256": "1de8da374f3b3b77669d8b159341f7c829bdf24ebdaa11f69cee2f8f3bd4b9d4",
+      "git_metadata": "100644 blob 50f0cae07e2743f74f0510e6629d4173a7917823"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-egen-values.R",
+      "identical": true,
+      "previous_sha256": "ee8023f4da0b0adf0153169b9a3de223e9b6555df347d54021a6d884d600869f",
+      "current_sha256": "ee8023f4da0b0adf0153169b9a3de223e9b6555df347d54021a6d884d600869f",
+      "git_metadata": "100644 blob 59a7ea3182f8dcc27104d82dae92b7df9abdfcb5"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-explicit-metadata.R",
+      "identical": true,
+      "previous_sha256": "8a954e71acfc01bfd22b0e3e0daf6ee31cb391d3ace2551449e9b6fe9fb07a18",
+      "current_sha256": "8a954e71acfc01bfd22b0e3e0daf6ee31cb391d3ace2551449e9b6fe9fb07a18",
+      "git_metadata": "100644 blob 22e3ae0a0d92386fe4a88234d8817a202d171d4c"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-factor-from-labels.R",
+      "identical": true,
+      "previous_sha256": "88c7a9512382417cb69ead2c235f3469ae8a29cd871a19ed73ba213d51ee539b",
+      "current_sha256": "88c7a9512382417cb69ead2c235f3469ae8a29cd871a19ed73ba213d51ee539b",
+      "git_metadata": "100644 blob 8abec6b4ea8be062ed47f490e7382c8bfa65f050"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-input-sources.R",
+      "identical": true,
+      "previous_sha256": "7e3fc78036593f5aa8019bc3adc09184e75d1e1da6c2dc6b8043408b4c824d6a",
+      "current_sha256": "7e3fc78036593f5aa8019bc3adc09184e75d1e1da6c2dc6b8043408b4c824d6a",
+      "git_metadata": "100644 blob a305e9e3b3ec36a3cdb9d1a286ccdcbc0856578a"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-is-missing.R",
+      "identical": true,
+      "previous_sha256": "cb3d22d5bb76080a28c15f70a9bd3d0f877f5aeec73af98ea7a7e975ed313aae",
+      "current_sha256": "cb3d22d5bb76080a28c15f70a9bd3d0f877f5aeec73af98ea7a7e975ed313aae",
+      "git_metadata": "100644 blob 86d560c4ba696388620e31dd4ef1d44159e5ce06"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-keep-drop.R",
+      "identical": true,
+      "previous_sha256": "280a280804c110b28a4e16377b95fb45ec0af8ca62d35735e0fe4cbd0b96d862",
+      "current_sha256": "280a280804c110b28a4e16377b95fb45ec0af8ca62d35735e0fe4cbd0b96d862",
+      "git_metadata": "100644 blob fed070e17c47572ac438387a56b1b9471c10481a"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-label-dual-shape.R",
+      "identical": true,
+      "previous_sha256": "eb738bba6f0f8cbfc5f48f9d780e9f0337adfbf7816804617592408ea19c93b3",
+      "current_sha256": "eb738bba6f0f8cbfc5f48f9d780e9f0337adfbf7816804617592408ea19c93b3",
+      "git_metadata": "100644 blob 320f81b6b7ef02e5638cbc8459cbba3f7d13c24f"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-label-metadata.R",
+      "identical": true,
+      "previous_sha256": "ad0603958382736a38eb946f056678e2a91f9ee731d7fc502d85c8fea7288902",
+      "current_sha256": "ad0603958382736a38eb946f056678e2a91f9ee731d7fc502d85c8fea7288902",
+      "git_metadata": "100644 blob e16646b7a5a44a22062dd12dd771bbdd6113f71b"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-mutate-data.R",
+      "identical": true,
+      "previous_sha256": "7709d22e753795093b9c1fe59c0ac71c0bf7f084285039bd08e3c27dea4f7c9d",
+      "current_sha256": "7709d22e753795093b9c1fe59c0ac71c0bf7f084285039bd08e3c27dea4f7c9d",
+      "git_metadata": "100644 blob 9328bbb31d2d67425771b46abf3ac7964d25d0df"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-mutation-containers.R",
+      "identical": true,
+      "previous_sha256": "28dc58db85d463c4f0c9a98077a07d9803410e4e4eabb66c4c1553548187aff0",
+      "current_sha256": "28dc58db85d463c4f0c9a98077a07d9803410e4e4eabb66c4c1553548187aff0",
+      "git_metadata": "100644 blob 43622236438c38ee90183ab8c68152d786431dbb"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-name-strings.R",
+      "identical": true,
+      "previous_sha256": "fc74ec0c45f29cae13193287db085af3855a6ba5616d9d9c4e7b14978a4a17a0",
+      "current_sha256": "fc74ec0c45f29cae13193287db085af3855a6ba5616d9d9c4e7b14978a4a17a0",
+      "git_metadata": "100644 blob 1085963d7bfba7e6d59efbd4eccd5d493645899a"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-order-rename-vars.R",
+      "identical": true,
+      "previous_sha256": "86a30926e84d032082b72b19552bfc3f798664c320220f13b55de72d642c68cc",
+      "current_sha256": "86a30926e84d032082b72b19552bfc3f798664c320220f13b55de72d642c68cc",
+      "git_metadata": "100644 blob 561e2cd1aa8b2d80a1370cee93f8d90a2fb764e4"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-owned-atoms.R",
+      "identical": true,
+      "previous_sha256": "fa9a7c9281ba1ad55f3aac544170fde9589374e9768023672689fb08640221b8",
+      "current_sha256": "fa9a7c9281ba1ad55f3aac544170fde9589374e9768023672689fb08640221b8",
+      "git_metadata": "100644 blob 892c6219bb7b7ee1abb57b25060dcd4342a75beb"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-owned-columns.R",
+      "identical": true,
+      "previous_sha256": "ef9dff710c5eaccb7a65dc6983149930b82243668a1243d515e63af6474f28ad",
+      "current_sha256": "ef9dff710c5eaccb7a65dc6983149930b82243668a1243d515e63af6474f28ad",
+      "git_metadata": "100644 blob 8bc292955bd0c47175f4568191f7342c12482d8e"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-owned-reads.R",
+      "identical": true,
+      "previous_sha256": "b8002a460bf962ddd0f0e68af8fb59094a7c99393254399a6ed95f74225d695e",
+      "current_sha256": "b8002a460bf962ddd0f0e68af8fb59094a7c99393254399a6ed95f74225d695e",
+      "git_metadata": "100644 blob 86ebd281182ffc0e36d6f2551b52d4986bf48e6c"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-raven-nse.R",
+      "identical": true,
+      "previous_sha256": "9e96c06aac46aa578d12720f98f8a6ad7790bbc19bc67aff47a02aa42c8fc410",
+      "current_sha256": "9e96c06aac46aa578d12720f98f8a6ad7790bbc19bc67aff47a02aa42c8fc410",
+      "git_metadata": "100644 blob 2f24315e83660c4b17b52478a1bcc763159423a9"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-read-dta.R",
+      "identical": true,
+      "previous_sha256": "e788a37a46ff2c33a38485c01e1ab9df796eafde61011c4f873c57059185a774",
+      "current_sha256": "e788a37a46ff2c33a38485c01e1ab9df796eafde61011c4f873c57059185a774",
+      "git_metadata": "100644 blob 8d2cc3cf0b4887b581ea1a6a579bcb005d264fcc"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-reference-copy.R",
+      "identical": true,
+      "previous_sha256": "7382f561752b3cb6171cfdf88b397237a35c32e86b31d1430910d0a5d4f859a0",
+      "current_sha256": "7382f561752b3cb6171cfdf88b397237a35c32e86b31d1430910d0a5d4f859a0",
+      "git_metadata": "100644 blob f8ae862f8cb1922e00b082d83053c2b33707aaf6"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-reserve-columns.R",
+      "identical": true,
+      "previous_sha256": "c445cd86d493366c5b9715f05ef3ee92f808b4b6b2bbfb0aaf50efff47533363",
+      "current_sha256": "c445cd86d493366c5b9715f05ef3ee92f808b4b6b2bbfb0aaf50efff47533363",
+      "git_metadata": "100644 blob ae8955f3a5a3bb1defcf4cf17a80c2728153d1f6"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-save-dta.R",
+      "identical": true,
+      "previous_sha256": "a048b975feee2554716f4267b8b0e80be972a37fd505b4015307da2066389253",
+      "current_sha256": "a048b975feee2554716f4267b8b0e80be972a37fd505b4015307da2066389253",
+      "git_metadata": "100644 blob 3ee8124dc8ecdb30829453730d00209c02f59244"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-slice-dta-rows.R",
+      "identical": true,
+      "previous_sha256": "e802d9b7ad00483978895ac36987db1a3169532b18fe128d928a3fd736627503",
+      "current_sha256": "e802d9b7ad00483978895ac36987db1a3169532b18fe128d928a3fd736627503",
+      "git_metadata": "100644 blob a79f4953b49ea26ab289795d8aa69f3b14425cc2"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-tab.R",
+      "identical": true,
+      "previous_sha256": "6261327b91a0f9fe17c3b9327221cd27e0049257884e59d7610d479cbce52204",
+      "current_sha256": "6261327b91a0f9fe17c3b9327221cd27e0049257884e59d7610d479cbce52204",
+      "git_metadata": "100644 blob de7fc970f50f62516655d1924f8e4e8d7eda9e2a"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-tagged-missing.R",
+      "identical": true,
+      "previous_sha256": "c1b02ef8d1b317ba2c8f943fb276a8fd792441e56f1930c35e0a7eb61b93d5c7",
+      "current_sha256": "c1b02ef8d1b317ba2c8f943fb276a8fd792441e56f1930c35e0a7eb61b93d5c7",
+      "git_metadata": "100644 blob 04d8085edb9152fc12e443b517d3f84a14e5eb4d"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-value-label-table-names.R",
+      "identical": true,
+      "previous_sha256": "1fd234c05f7e59c676b3358d94154bf69a2af2618e58fc84ce48202b175f1003",
+      "current_sha256": "1fd234c05f7e59c676b3358d94154bf69a2af2618e58fc84ce48202b175f1003",
+      "git_metadata": "100644 blob ed5083509f4f3de9bcef73f18f8f64a0366ca89c"
+    },
+    {
+      "path": "r-package/dtatools/tests/testthat/test-variable-names.R",
+      "identical": true,
+      "previous_sha256": "26ea884386abb2d7aa86612d0e49ccc1baded688752a2c58a03faf8682a5a5d6",
+      "current_sha256": "26ea884386abb2d7aa86612d0e49ccc1baded688752a2c58a03faf8682a5a5d6",
+      "git_metadata": "100644 blob 0ad400781cab399e83a13f3af0151a85df3ce5c3"
+    },
+    {
+      "path": "r-package/dtatools/tools/configure-rust.sh",
+      "identical": true,
+      "previous_sha256": "90720c10ddd9180a5e0a09f8a719bc9e7f9e52c03e8350ae55580d3228730124",
+      "current_sha256": "90720c10ddd9180a5e0a09f8a719bc9e7f9e52c03e8350ae55580d3228730124",
+      "git_metadata": "100644 blob 379fc7c04632fcb19418673c1ab6f9d0335e4aa6"
+    },
+    {
+      "path": "r-package/dtatools/tools/rust-source-hash.R",
+      "identical": true,
+      "previous_sha256": "f67e3c4ebff9c9c6e7c4c3faf9252dc91634fc8e16885ef0ea5934a23fabf101",
+      "current_sha256": "f67e3c4ebff9c9c6e7c4c3faf9252dc91634fc8e16885ef0ea5934a23fabf101",
+      "git_metadata": "100644 blob 1fee939e36f4718a5d38e007bd6287b38ab99443"
+    }
+  ],
+  "scope": "NEWS-only package difference. Earlier runtime/native checks retain original source identities; this record does not relabel their installations or executions."
+}

@@ -1,0 +1,23 @@
+{
+  "command": [
+    "R",
+    "CMD",
+    "INSTALL",
+    "--build",
+    "--clean",
+    "--library=/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/binary/library",
+    "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/dtatools_0.7.1.tar.gz"
+  ],
+  "completed_utc": "2026-09-07T16:27:21.135496+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/binary",
+  "exit_code": 0,
+  "label": "binary",
+  "log": {
+    "bytes": 12619,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/binary.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-01/binary.log",
+    "sha256": "8e2c809781e7f2ed4422b571cd51b69a976b7412659b0768ee2a83cee8bd8476"
+  },
+  "started_utc": "2026-09-07T16:26:59.605041+00:00"
+}

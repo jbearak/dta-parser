@@ -1,0 +1,98 @@
+{
+  "created_utc": "2026-09-07T17:06:49.842184+00:00",
+  "scope": "All final installation/package output products and receipts independently rehashed; exact inventories verified; bound built source archive records match final consumed tar identities. No tests/builds/timings run by reviewer. Historical driver input guards inspected; full current dependency/runtime closure not independently rehashed.",
+  "runs": [
+    {
+      "name": "candidate-final-03",
+      "receipt": {
+        "bytes": 549,
+        "sha256": "7e1878c7d41c9718d97688909239ed2f13722dacf7c5ddb9b63be22875deb31b",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 133837,
+        "sha256": "75779fa7baa466de955532f133841531babf7072cd90103481d2fa7f03d01a67",
+        "mode": "0o644"
+      },
+      "products_verified": 314,
+      "product_bytes": 51610829,
+      "errors": [],
+      "unexpected": [],
+      "missing": [],
+      "status": "complete",
+      "changed_inputs": [],
+      "consumed_archive": {
+        "bytes": 9577518,
+        "sha256": "085a759173284fbcc952b065828732c3777e99ae5600f7110dac89a76d274fa0",
+        "mode": "0o644"
+      },
+      "consumed_record": {
+        "bytes": 360,
+        "sha256": "1beba3e42730da938ce2b261fbe49806637408caf20548160954b30f2842f595",
+        "mode": "0o644"
+      },
+      "command_exits": {
+        "r-version": 0,
+        "rustc-version": 0,
+        "cargo-version": 0,
+        "clang-version": 0,
+        "build": 0,
+        "install": 0,
+        "finish-install": 0
+      }
+    },
+    {
+      "name": "package-final-02",
+      "receipt": {
+        "bytes": 526,
+        "sha256": "56d83a1608abef21958bf42ef0bc3d858121f77d25aca3f7c81aed9903cf41bf",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 5688118,
+        "sha256": "eb08474c6ca705ddd0112c582ce6fd8880aa393145409dd967d6c5a0eaebeb53",
+        "mode": "0o644"
+      },
+      "products_verified": 10971,
+      "product_bytes": 1328056940,
+      "errors": [],
+      "unexpected": [],
+      "missing": [],
+      "status": "complete",
+      "changed_inputs": [],
+      "consumed_archive": {
+        "bytes": 9577552,
+        "sha256": "4d377342e51e5da2fa0e2c77acfea733211fd3767830ed686bf090796bdd69e3",
+        "mode": "0o644"
+      },
+      "consumed_record": {
+        "bytes": 344,
+        "sha256": "82cbe0b67f1bee423561284f4af748ad47459868bfeb08c5bf00d6081f5f60c4",
+        "mode": "0o644"
+      },
+      "command_exits": {
+        "preflight": 0,
+        "archive-unit": 0,
+        "vendor-unit": 0,
+        "vendor-rebuild-unit": 0,
+        "vendor": 0,
+        "rust-source-hash": 0,
+        "haven": 0,
+        "labelled": 0,
+        "haven-conformance": 0,
+        "corpus-framework": 0,
+        "roxygen": 0,
+        "conformance": 0,
+        "build": 0,
+        "archive": 0,
+        "check": 0,
+        "binary": 0
+      }
+    }
+  ],
+  "notice_and_news_archives_verified": [
+    "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/dtatools_0.7.1.tar.gz",
+    "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/binary/dtatools_0.7.1.tgz"
+  ],
+  "review": "Final source57309d4 differs from reviewed4900dc8 package only at NEWS heading. Final package check runs16624assertions with0failures/0skips/4established warnings. Rcheck NEWS sub-note absent;3warning2note contents match retained prior categories. Source fixes have observed clean final outcomes."
+}

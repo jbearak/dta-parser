@@ -1,0 +1,25 @@
+{
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "scripts",
+    "-p",
+    "test_rebuild_r_vendor.py",
+    "-v"
+  ],
+  "completed_utc": "2026-09-07T16:40:28.914477+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/source",
+  "exit_code": 0,
+  "label": "vendor-rebuild-unit",
+  "log": {
+    "bytes": 674,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/vendor-rebuild-unit.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/vendor-rebuild-unit.log",
+    "sha256": "a26bda261b56851b5ce9f8721adbfb7ef74490fbb47e7dc912cb533603bee47e"
+  },
+  "started_utc": "2026-09-07T16:40:28.877759+00:00"
+}
