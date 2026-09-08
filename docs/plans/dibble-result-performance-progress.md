@@ -27,16 +27,50 @@ memory-profiling capability skip. Earlier a2 performance/native evidence keeps
 its original source identity.
 
 Stage 6 is active on `codex/direct-dibble-row-operations` in
-`/private/tmp/dta-direct-stage6`, based on that verified merge. It owns direct
-filter/filter_out, arrange, distinct, slice and all five slice helpers, reusing
-the shared evaluator and batch gatherer. The predecessor test draft has 28
+`/private/tmp/dta-direct-stage6`. Main subsequently advanced to
+`235b6354f9b1f5878417255d3a20bc6501e69035` through the 0.8.0 version update and
+[PR #208](https://github.com/jbearak/dta-parser/pull/208)'s macOS binary linkage
+change. The unpublished Stage 6 commits were rebased onto that exact main.
+Their row-operation and qualification-launcher changes remain intact; the
+shared DESCRIPTION change retains both version 0.8.0 and the Stage 6 stringi
+suggestion. The rebased package tree is
+`e812870e38317facc0a7c349cd3fa2b0515244e6`.
+
+Stage 6 owns direct filter/filter_out, arrange, distinct, slice and all five
+slice helpers, reusing the shared evaluator and batch gatherer. A private native
+accumulator preserves complete predicate evaluation and TRUE-only conjunction,
+then applies filter_out inversion. It replaces the large temporary R buffers
+identified in the first candidate. The predecessor test draft has 28
 blocks; its first run exposed five draft expectation/instrumentation failures,
 which remain preserved. The corrected draft passes 730 assertions on exact f9
 with no failures, errors, unhandled warnings or skips. These are baseline
-expectations, not Stage 6 candidate acceptance. The three whole-filter timing
-flags remain mandatory Stage 6 work; twelve base-R read costs remain visible for
-final assessment. Stages 7–9 and final actual downstream renv validation remain
-required, and issue #172 stays open.
+expectations, not Stage 6 candidate acceptance.
+
+Before the rebase, exact source `6f9b6f327492f9b17702922c1341cd927644248e`
+passed fresh host installation, 17,623 full-suite assertions, package and native
+gates, and 5,955 assertions on the selected clean R 4.6.0 lane. Both reviewers
+cleared the host and minimum installation, full-test and package records within
+their scopes. The host suite has four
+established warnings; package check has three warnings and two notes. Minimum
+tests have four established warnings and four capability skips, including the
+new allocation test on an R build without memory profiling. The host allocation
+witness passed its unchanged budget. The first memory-smoke R child passed its
+functional checks, but its time launcher failed on a sandbox-denied system
+query. That failed attempt has no accepted RSS result and no candidate child.
+A separate approved time/true capability probe succeeded; a fresh smoke remains
+required.
+
+Those 6f results retain their original 0.7.1 source and installed-library
+identities. They do not qualify the rebased 0.8.0 artifact. Fresh installation,
+host/minimum/package/native and Rust qualification remain pending for the new
+source, including the new macOS linkage check on installed and binary DLLs.
+The changed Cargo manifests and lockfiles also end the prior exact-input reuse
+of the 057 full Rust gate. Final whole-row timings, the original ec10 owned
+comparison and isolated row-memory qualification remain pending. The rejected
+057 performance results remain preserved. The three original whole-filter flags
+are one-million-row, eight-column cases and remain mandatory Stage 6 work;
+twelve base-R read costs remain visible for final assessment. Stages 7–9 and
+final actual downstream renv validation remain required, and issue #172 stays open.
 
 The following Stage 5 paragraphs retain their historical checkpoint status.
 
