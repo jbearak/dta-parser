@@ -67,11 +67,10 @@
             track(dots[[index]], rlang::names2(dots)[[index]])
             adapter$expand_filter(dots[[index]], mask$helpers, index)
         })
-        keep <- logical(size)
+        keep <- .Call(C_dtatools_filter_start, size)
         for (id in seq_along(mask$rows)) {
             rows <- mask$rows[[id]]
-            reduced <- mask$with_group(id, function(evaluate) {
-                reduced <- rep(TRUE, length(rows))
+            mask$with_group(id, function(evaluate) {
                 for (index in seq_along(expanded)) {
                     track(dots[[index]], rlang::names2(dots)[[index]])
                     value <- warn_eval(function() evaluate(expanded[[index]]))
@@ -90,18 +89,13 @@
                         with = I("one dimensional logical vectors"),
                         user_env = globalenv(), always = TRUE,
                         id = "dplyr-filter-one-column-matrix")
-                    # Strip class/dim dispatch: the upstream reduction reads
-                    # logical payloads directly and treats only TRUE as kept.
-                    value <- unclass(value)
-                    attributes(value) <- NULL
-                    reduced <- reduced & (value %in% TRUE)
+                    # Reduction reads logical payloads without class/dim
+                    # dispatch or temporary copies of the predicate.
+                    .Call(C_dtatools_filter_reduce, keep, rows, value)
                 }
-                reduced
             })
-            keep[rows] <- reduced
         }
-        if (invert) keep <- !keep
-        which(keep)
+        .Call(C_dtatools_filter_finish, keep, invert)
     }, warning_policy = "call")
 }
 

@@ -167,3 +167,113 @@ test_that("S6-F07 aliases and arbitrary helpers use the active group context", {
     expect_identical(.s6_ids(out), 1L)
     expect_s3_class(out, "rowwise_df")
 })
+
+test_that("S6-F08 filter reduction avoids repeated full-size logical temporaries", {
+    skip_if_not(capabilities("profmem"), "R memory profiling is unavailable")
+    rows <- 100000L
+    data <- dibble(x = rep(TRUE, rows))
+    predicate <- rep(c(TRUE, FALSE), length.out = rows)
+    expected <- seq.int(1L, rows, by = 2L)
+    context <- .begin_dibble_result(data, "filter()", "rows")
+    groups <- .dibble_expression_groups(data, rlang::quo(NULL))
+    dots <- rlang::quos(.env$predicate)
+    invoke <- function() .dibble_filter_locations(context, groups, rows, dots)
+    expect_identical(invoke(), expected)
+    path <- tempfile()
+    on.exit(unlink(path), add = TRUE)
+    Rprofmem(path)
+    result <- tryCatch(invoke(), finally = Rprofmem(NULL))
+    events <- readLines(path, warn = FALSE)
+    sizes <- as.numeric(sub(" .*", "", events[grepl("^[0-9]+ :", events)]))
+    expect_identical(result, expected)
+    # The original R reduction allocated 3.42 MB for this precomputed predicate.
+    # Leave room for group indices and runtime bookkeeping, while rejecting
+    # the repeated full-length temporary vectors that caused the regression.
+    expect_lte(sum(sizes), 12 * rows + 131072)
+    expect_identical(as.logical(data$x), rep(TRUE, rows))
+})
+
+test_that("S6-F09 native reduction preserves predicate attributes and later evaluation", {
+    data <- dibble(id = 1:6, g = c("b", "a", "b", "a", "b", "a"),
+                   keep = c(TRUE, FALSE, NA, TRUE, FALSE, NA))
+    predicate <- structure(c(TRUE, FALSE, NA, TRUE, FALSE, NA),
+                           class = "s6_logical_predicate", note = "preserved")
+    before <- attributes(predicate)
+    alias <- predicate
+    for (verb in list(dplyr::filter, dplyr::filter_out)) {
+        expected <- if (identical(verb, dplyr::filter)) c(1L, 4L) else c(2L, 3L, 5L, 6L)
+        expect_identical(.s6_ids(verb(data, .env$predicate)), expected)
+        expect_identical(.s6_ids(verb(data, keep)), expected)
+        events <- new.env(parent = emptyenv())
+        events$ids <- integer()
+        grouped <- dplyr::group_by(data, g)
+        verb(grouped, FALSE, {
+            events$ids <- c(events$ids, dplyr::cur_group_id())
+            rep(NA, dplyr::n())
+        })
+        expect_identical(events$ids, 1:2)
+        expect_error(verb(grouped, FALSE, stop("later group predicate")),
+                     "later group predicate")
+        expect_identical(.s6_ids(verb(data, keep)), expected)
+    }
+    expect_identical(attributes(predicate), before)
+    expect_identical(predicate, alias)
+    expect_identical(as.logical(data$keep), c(TRUE, FALSE, NA, TRUE, FALSE, NA))
+})
+
+test_that("S6-F10 private filter reduction rejects invalid inputs and expires", {
+    start <- function(n) .Call(C_dtatools_filter_start, n)
+    reduce <- function(state, rows, value) .Call(C_dtatools_filter_reduce, state, rows, value)
+    finish <- function(state, inverse = FALSE) .Call(C_dtatools_filter_finish, state, inverse)
+    for (n in list(-1L, NA_integer_, Inf, 1.5, integer(), "3")) {
+        expect_error(start(n), "filter row count")
+    }
+    expect_error(reduce(NULL, 1L, TRUE), "filter reduction state")
+    for (rows in list(0L, -1L, NA_integer_, 4L)) {
+        expect_error(reduce(start(3L), rows, TRUE), "filter group row")
+    }
+    expect_error(reduce(start(3L), 1, TRUE), "filter reduction input")
+    expect_error(reduce(start(3L), 1:3, c(TRUE, FALSE)), "filter reduction input")
+    expect_error(reduce(start(3L), 1:3, 1L), "filter reduction input")
+    expect_error(finish(start(3L), NA), "filter inversion")
+    state <- start(3L)
+    reduce(state, c(3L, 1L), c(FALSE, TRUE))
+    reduce(state, 2L, NA)
+    expect_identical(finish(state), 1L)
+    expect_error(finish(state), "expired filter reduction state")
+    expect_error(reduce(state, 1L, TRUE), "expired filter reduction state")
+    expect_identical(finish(start(0L)), integer())
+})
+
+test_that("S6-F11 reduction state and owned predicates survive forced collection", {
+    data <- dibble(keep = c(TRUE, FALSE, NA, TRUE))
+    predicate <- data$keep
+    state <- .Call(C_dtatools_filter_start, 4L)
+    invisible(gc())
+    .Call(C_dtatools_filter_reduce, state, 1:4, predicate)
+    rm(data)
+    invisible(gc())
+    .Call(C_dtatools_filter_reduce, state, c(4L, 1L), c(FALSE, TRUE))
+    invisible(gc())
+    expect_identical(.Call(C_dtatools_filter_finish, state, FALSE), 1L)
+    expect_identical(as.logical(predicate), c(TRUE, FALSE, NA, TRUE))
+})
+
+test_that("S6-F12 errors and R interrupts expire active masks before a later filter", {
+    data <- dibble(id = 1:3, keep = c(TRUE, FALSE, NA))
+    for (kind in c("error", "interrupt")) {
+        captured <- new.env(parent = emptyenv())
+        trigger <- if (kind == "error") function() stop("filter abort") else
+            function() rlang::interrupt()
+        # Interrupt after the first native update. This qualifies R unwinding
+        # of an active state, not POSIX delivery inside the native loop.
+        condition <- tryCatch(dplyr::filter(data, {
+            captured$read <- function() keep
+            TRUE
+        }, trigger()), error = identity, interrupt = identity)
+        expect_s3_class(condition, kind)
+        expect_error(captured$read(), "Obsolete data mask")
+        expect_identical(.s6_ids(dplyr::filter(data, keep)), 1L)
+        expect_identical(as.logical(data$keep), c(TRUE, FALSE, NA))
+    }
+})
