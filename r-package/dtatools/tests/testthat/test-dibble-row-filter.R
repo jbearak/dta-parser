@@ -246,17 +246,19 @@ test_that("S6-F10 private filter reduction rejects invalid inputs and expires", 
 })
 
 test_that("S6-F11 reduction state and owned predicates survive forced collection", {
-    data <- dibble(keep = c(TRUE, FALSE, NA, TRUE))
-    predicate <- data$keep
-    state <- .Call(C_dtatools_filter_start, 4L)
-    invisible(gc())
-    .Call(C_dtatools_filter_reduce, state, 1:4, predicate)
-    rm(data)
-    invisible(gc())
-    .Call(C_dtatools_filter_reduce, state, c(4L, 1L), c(FALSE, TRUE))
-    invisible(gc())
-    expect_identical(.Call(C_dtatools_filter_finish, state, FALSE), 1L)
-    expect_identical(as.logical(predicate), c(TRUE, FALSE, NA, TRUE))
+    for (rows in list(1:4, NULL)) {
+        data <- dibble(keep = c(TRUE, FALSE, NA, TRUE))
+        predicate <- data$keep
+        state <- .Call(C_dtatools_filter_start, 4L)
+        invisible(gc())
+        .Call(C_dtatools_filter_reduce, state, rows, predicate)
+        rm(data)
+        invisible(gc())
+        .Call(C_dtatools_filter_reduce, state, c(4L, 1L), c(FALSE, TRUE))
+        invisible(gc())
+        expect_identical(.Call(C_dtatools_filter_finish, state, FALSE), 1L)
+        expect_identical(as.logical(predicate), c(TRUE, FALSE, NA, TRUE))
+    }
 })
 
 test_that("S6-F12 errors and R interrupts expire active masks before a later filter", {
@@ -275,5 +277,60 @@ test_that("S6-F12 errors and R interrupts expire active masks before a later fil
         expect_error(captured$read(), "Obsolete data mask")
         expect_identical(.s6_ids(dplyr::filter(data, keep)), 1L)
         expect_identical(as.logical(data$keep), c(TRUE, FALSE, NA))
+    }
+})
+
+test_that("S6-F13 fresh ungrouped filtering avoids materializing group locations", {
+    skip_if_not(capabilities("profmem"), "R memory profiling is unavailable")
+    rows <- 100000L
+    data <- dibble(x = rep(TRUE, rows))
+    predicate <- rep(c(TRUE, FALSE), length.out = rows)
+    context <- .begin_dibble_result(data, "filter()", "rows")
+    dots <- rlang::quos(.env$predicate)
+    invoke <- function(invert) .dibble_filter_locations(context,
+        .dibble_expression_groups(data, rlang::quo(NULL)), rows, dots, invert)
+    path <- tempfile()
+    on.exit(unlink(path), add = TRUE)
+    for (invert in c(FALSE, TRUE)) {
+        expected <- seq.int(if (invert) 2L else 1L, rows, by = 2L)
+        expect_identical(invoke(invert), expected)
+        Rprofmem(path)
+        actual <- tryCatch(invoke(invert), finally = Rprofmem(NULL))
+        events <- readLines(path, warn = FALSE)
+        sizes <- as.numeric(sub(" .*", "", events[grepl("^[0-9]+ :", events)]))
+        expect_identical(actual, expected)
+        # One byte per input row and half as many integer result locations.
+        # Allow bookkeeping, but reject a fresh full-size integer group vector.
+        expect_lte(sum(sizes), 4 * rows + 131072)
+    }
+    expect_identical(as.logical(data$x), rep(TRUE, rows))
+})
+
+test_that("S6-F14 contiguous reduction validates payloads and retains TRUE-only inversion", {
+    reduce <- function(state, rows, value) .Call(C_dtatools_filter_reduce, state, rows, value)
+    for (value in list(logical(), c(TRUE, FALSE), 1L, NULL,
+                       new.env(parent = emptyenv()))) {
+        state <- .Call(C_dtatools_filter_start, 3L)
+        expect_error(reduce(state, NULL, value), "filter reduction input")
+    }
+    for (rows in list(TRUE, 1, new.env(parent = emptyenv()))) {
+        state <- .Call(C_dtatools_filter_start, 3L)
+        expect_error(reduce(state, rows, TRUE), "filter reduction input")
+    }
+    for (n in c(0L, 1L, 4L)) {
+        value <- rep(c(TRUE, FALSE, NA, TRUE), length.out = n)
+        for (inverse in c(FALSE, TRUE)) {
+            state <- .Call(C_dtatools_filter_start, n)
+            reduce(state, NULL, value)
+            reduce(state, NULL, TRUE)
+            expected <- which(if (inverse) !(value %in% TRUE) else value %in% TRUE)
+            expect_identical(.Call(C_dtatools_filter_finish, state, inverse), expected)
+            expect_error(reduce(state, NULL, TRUE), "expired filter reduction state")
+            state <- .Call(C_dtatools_filter_start, n)
+            reduce(state, NULL, FALSE)
+            reduce(state, NULL, value)
+            expect_identical(.Call(C_dtatools_filter_finish, state, inverse),
+                             if (inverse) seq_len(n) else integer())
+        }
     }
 })

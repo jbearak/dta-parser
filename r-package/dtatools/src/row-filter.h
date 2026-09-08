@@ -33,27 +33,41 @@ SEXP C_dtatools_filter_start(SEXP size) {
 
 SEXP C_dtatools_filter_reduce(SEXP state, SEXP rows, SEXP value) {
     SEXP storage = PROTECT(filter_storage(state));
-    if (TYPEOF(rows) != INTSXP || TYPEOF(value) != LGLSXP ||
-        (XLENGTH(value) != 1 && XLENGTH(value) != XLENGTH(rows))) {
+    /* NULL is the caller's explicit ungrouped, all-physical-rows policy.
+       Indexed group plans still validate every supplied row. No ALTREP class
+       or vector contents are used to infer a contiguous plan. */
+    int contiguous = rows == R_NilValue;
+    R_xlen_t count = XLENGTH(storage);
+    if ((!contiguous && TYPEOF(rows) != INTSXP) || TYPEOF(value) != LGLSXP) {
+        Rf_error("invalid filter reduction input");
+    }
+    R_xlen_t length = contiguous ? count : XLENGTH(rows);
+    if (XLENGTH(value) != 1 && XLENGTH(value) != length) {
         Rf_error("invalid filter reduction input");
     }
     /* A foreign ALTREP element reader can allocate or run R. Root the exact
        backing records before taking owned pointers, since a callback can
        replace a handle's current record. Ordinary values remain R arguments. */
-    SEXP row_record = PROTECT(owned_column(rows) ? R_altrep_data1(rows) : R_NilValue);
+    SEXP row_record = PROTECT(!contiguous && owned_column(rows) ? R_altrep_data1(rows) : R_NilValue);
     SEXP value_record = PROTECT(owned_column(value) ? R_altrep_data1(value) : R_NilValue);
-    const int *row_data = row_record != R_NilValue
+    const int *row_data = contiguous ? NULL : row_record != R_NilValue
         ? (const int *) R_ExternalPtrAddr(row_record)
         : (const int *) DATAPTR_RO(rows);
     const int *value_data = value_record != R_NilValue
         ? (const int *) R_ExternalPtrAddr(value_record)
         : ALTREP(value) ? NULL : (const int *) DATAPTR_RO(value);
-    R_xlen_t count = XLENGTH(storage);
-    R_xlen_t length = XLENGTH(rows);
     int scalar = XLENGTH(value) == 1;
     int scalar_value = scalar ? (value_data ? value_data[0] : LOGICAL_ELT(value, 0)) : 0;
     Rbyte *keep = RAW(storage);
-    for (R_xlen_t i = 0; i < length; i++) {
+    if (contiguous) {
+        for (R_xlen_t i = 0; i < length; i++) {
+            if ((i & 16383) == 0) R_CheckUserInterrupt();
+            /* Preserve all payload reads, including foreign callbacks after
+               an earlier predicate has already discarded this row. */
+            int current = scalar ? scalar_value : value_data ? value_data[i] : LOGICAL_ELT(value, i);
+            keep[i] = keep[i] && current == 1;
+        }
+    } else for (R_xlen_t i = 0; i < length; i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
         int row = row_data[i];
         if (row == NA_INTEGER || row < 1 || (R_xlen_t) row > count) {
@@ -83,10 +97,11 @@ SEXP C_dtatools_filter_finish(SEXP state, SEXP inverse) {
         if ((keep[i] != 0) != invert) selected++;
     }
     SEXP result = PROTECT(Rf_allocVector(INTSXP, selected));
+    int *result_data = INTEGER(result);
     R_xlen_t output = 0;
     for (R_xlen_t i = 0; i < count; i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
-        if ((keep[i] != 0) != invert) INTEGER(result)[output++] = (int) i + 1;
+        if ((keep[i] != 0) != invert) result_data[output++] = (int) i + 1;
     }
     R_SetExternalPtrProtected(state, R_NilValue);
     UNPROTECT(2);

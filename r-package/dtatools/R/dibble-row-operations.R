@@ -68,8 +68,13 @@
             adapter$expand_filter(dots[[index]], mask$helpers, index)
         })
         keep <- .Call(C_dtatools_filter_start, size)
+        contiguous <- identical(groups$type, "ungrouped")
         for (id in seq_along(mask$rows)) {
             rows <- mask$rows[[id]]
+            # Only the group planner's explicit ungrouped policy covers every
+            # physical row. Keep its compact rows for n()/cur_group_rows(),
+            # without forcing a full integer vector merely for reduction.
+            reduction_rows <- if (contiguous) NULL else rows
             mask$with_group(id, function(evaluate) {
                 for (index in seq_along(expanded)) {
                     track(dots[[index]], rlang::names2(dots)[[index]])
@@ -91,7 +96,7 @@
                         id = "dplyr-filter-one-column-matrix")
                     # Reduction reads logical payloads without class/dim
                     # dispatch or temporary copies of the predicate.
-                    .Call(C_dtatools_filter_reduce, keep, rows, value)
+                    .Call(C_dtatools_filter_reduce, keep, reduction_rows, value)
                 }
             })
         }

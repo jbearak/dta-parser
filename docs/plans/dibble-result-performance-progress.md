@@ -30,10 +30,11 @@ Stage 6 is active on `codex/direct-dibble-row-operations` in
 `/private/tmp/dta-direct-stage6`. Main subsequently advanced to
 `235b6354f9b1f5878417255d3a20bc6501e69035` through the 0.8.0 version update and
 [PR #208](https://github.com/jbearak/dta-parser/pull/208)'s macOS binary linkage
-change. The unpublished Stage 6 commits were rebased onto that exact main.
+change. The Stage 6 commits were rebased onto that exact main and published in
+[PR #209](https://github.com/jbearak/dta-parser/pull/209).
 Their row-operation and qualification-launcher changes remain intact; the
 shared DESCRIPTION change retains both version 0.8.0 and the Stage 6 stringi
-suggestion. The rebased package tree is
+suggestion. Qualified candidate `7b614c6d` has package tree
 `e812870e38317facc0a7c349cd3fa2b0515244e6`.
 
 Stage 6 owns direct filter/filter_out, arrange, distinct, slice and all five
@@ -57,20 +58,41 @@ new allocation test on an R build without memory profiling. The host allocation
 witness passed its unchanged budget. The first memory-smoke R child passed its
 functional checks, but its time launcher failed on a sandbox-denied system
 query. That failed attempt has no accepted RSS result and no candidate child.
-A separate approved time/true capability probe succeeded; a fresh smoke remains
-required.
+A separate approved time/true capability probe succeeded; a fresh smoke remained
+required at that checkpoint.
 
-Those 6f results retain their original 0.7.1 source and installed-library
-identities. They do not qualify the rebased 0.8.0 artifact. Fresh installation,
-host/minimum/package/native and Rust qualification remain pending for the new
-source, including the new macOS linkage check on installed and binary DLLs.
-The changed Cargo manifests and lockfiles also end the prior exact-input reuse
-of the 057 full Rust gate. Final whole-row timings, the original ec10 owned
-comparison and isolated row-memory qualification remain pending. The rejected
-057 performance results remain preserved. The three original whole-filter flags
-are one-million-row, eight-column cases and remain mandatory Stage 6 work;
-twelve base-R read costs remain visible for final assessment. Stages 7–9 and
-final actual downstream renv validation remain required, and issue #172 stays open.
+Those 6f results retain their original 0.7.1 identities. Fresh 0.8.0 candidate
+`7b614c6d` subsequently passed host installation, 17,623 full-suite assertions,
+5,955 selected clean R 4.6.0 assertions, package, Rust and native gates, plus
+host/minimum/binary macOS linkage checks. The known warning and capability-skip
+categories remain. A package attempt rejected a changed shared-site installation;
+its failed records remain, and a fresh stable-input retry passed. The later
+`7272e9ea` head preserves the package bytes while correcting workflow dependencies
+and qualification-runner Git selection. Both independent reviews and substantive
+CodeRabbit review covered those changes. The 12-child, eight-row memory smoke
+passed functional checks and recorded valid RSS; it is not full memory acceptance.
+
+The original ec10 comparison and fresh main235/7b row grids completed with
+retained results and unresolved timing flags. Original one-million-row,
+eight-column half-filter remains flagged for logical and factor; ordered is
+below the dual threshold. Logical/factor row subsets and declared-character
+Arrow writing also flag. The fresh grid has three inverse-filter flags and five
+safe-delegation comparison flags. These remain separate from the twelve legacy
+base-R read costs. Passing diagnostic or allocation checks do not resolve them.
+
+A bounded ordinary-logical control supports trying cached result writes and an
+explicit contiguous-row reduction for ungrouped filter plans. Its combined
+one-million-row median is 1.220 ms versus 2.200 ms for the original fresh-row
+control, with 4,000,048 fewer R-profile bytes. Different inlining and overlapping
+work limit causal attribution; the diagnostic does not measure filter_out.
+The new fresh-plan allocation regression fails on 7b with correct values and
+724,504/702,128 bytes for the two inversions against a 531,072-byte limit.
+The current correction retains predicate evaluation, owned/foreign access,
+indexed-group validation and final inversion. Fresh installed qualification and
+original/fresh whole-operation comparisons remain required for this changed
+package. Original failed candidates and diagnostic records stay preserved.
+Full row-memory qualification follows the final candidate decision. Stages 7–9
+and final actual downstream renv validation remain required; issue #172 stays open.
 
 The following Stage 5 paragraphs retain their historical checkpoint status.
 

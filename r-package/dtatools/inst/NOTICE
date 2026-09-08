@@ -97,6 +97,9 @@ Adapted from dplyr 1.2.1:
     no installed namespace functions are patched. R evaluates and validates
     every filter predicate; an R-managed private byte buffer in C accumulates
     TRUE-only results and emits physical row locations after final inversion.
+    An explicitly ungrouped plan reduces contiguous rows without materializing
+    group indices; indexed groups retain row validation. The finish pass caches
+    its rooted ordinary result pointer. These are package-specific changes.
     Public lifecycle and optional stringi APIs provide the
     adapted deprecation and explicit-locale policies.
   Additional tests: tests/testthat/test-dibble-row-filter.R,
