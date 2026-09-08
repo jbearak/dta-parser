@@ -1,0 +1,38 @@
+{
+  "status": "pass",
+  "source_sha": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "package_tree": "b08c77d91bdce67032f13aced90c29d068d6e95a",
+  "runs": [
+    {
+      "run": "candidate-combined-01",
+      "receipt_sha256": "fe4d3dfdeba63d6401becb4f7f41383812b7545383c86a4c0abf17b3c290a38e",
+      "manifest_sha256": "6e3f8cdd40e60278a29e8a8a1446f897ac269a27c3aa23f6df1e841c19ec0043",
+      "products": 315,
+      "bound_inputs": 11266
+    },
+    {
+      "run": "full-combined-01",
+      "receipt_sha256": "a8901fe26df3acdecaa4d1a151aa6f0d9f9f654a7f09bccdcb8fa7d6d5352cec",
+      "manifest_sha256": "42b7e959779aaa9cf91b4c3b5ff5f44993150fc07f7f93250ad3159674ed4d51",
+      "products": 3249,
+      "bound_inputs": 58840
+    },
+    {
+      "run": "rust-combined-01",
+      "receipt_sha256": "d919155ad571711c265212474c82dd706046c3f437d26ba134626ba72e211b68",
+      "manifest_sha256": "7b4edccb7c7d08d2b7645ad337779527d8f559639b701ea4ef74add3fb1ec9cc",
+      "products": 9263,
+      "bound_inputs": 63104
+    }
+  ],
+  "test_counts": {
+    "failed": 0.0,
+    "skipped": 0,
+    "error": 0,
+    "warning": 4.0,
+    "passed": 16750.0
+  },
+  "public_exports": 106,
+  "archived_source_files": 234,
+  "limits": "Completed artifacts and current bound-file identities; no workload rerun, timing acceptance, cross-platform claim, or full external OS/SDK/Python closure qualification."
+}

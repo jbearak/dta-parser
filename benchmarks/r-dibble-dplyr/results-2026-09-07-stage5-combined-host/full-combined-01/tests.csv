@@ -1,0 +1,974 @@
+"file","context","test","nb","failed","skipped","error","warning","user","system","real","passed"
+"test-arrow.R","arrow","legacy Arrow numeric metadata reads into current DTA classes",6,0,FALSE,FALSE,0,0.141,0.027,0.175,6
+"test-arrow.R","arrow","standard R columns round-trip with full fidelity",10,0,FALSE,FALSE,0,0.04,0.003,0.046,10
+"test-arrow.R","arrow","Arrow field names are not restricted to Stata syntax",2,0,FALSE,FALSE,0,0.003,0.001,0.00800000000000001,2
+"test-arrow.R","arrow","empty data and default POSIXct timezones round-trip",6,0,FALSE,FALSE,0,0.00900000000000001,0.003,0.024,6
+"test-arrow.R","arrow","compression variants round-trip identically",3,0,FALSE,FALSE,0,0.00900000000000001,0.002,0.025,3
+"test-arrow.R","arrow","profiled Stata columns keep raw missing storage bit-exactly",20,0,FALSE,FALSE,0,0.018,0.005,0.027,20
+"test-arrow.R","arrow","profiled columns read back as compact ALTREP by default",3,0,FALSE,FALSE,0,0.004,0.002,0.00900000000000001,3
+"test-arrow.R","arrow","string columns without missing values defer through ALTREP",7,0,FALSE,FALSE,0,0.00700000000000001,0.002,0.014,7
+"test-arrow.R","arrow","multithreaded Arrow reads match single-threaded reads",3,0,FALSE,FALSE,0,0.005,0.002,0.012,3
+"test-arrow.R","arrow","multithreaded Arrow writes match single-threaded writes",2,0,FALSE,FALSE,0,0.004,0.001,0.014,2
+"test-arrow.R","arrow","native Arrow write cancellation remains an interrupt",2,0,FALSE,FALSE,0,0.124,0.01,0.135,2
+"test-arrow.R","arrow","checksum-free writes round trip without verification",4,0,FALSE,FALSE,0,0.01,0.002,0.0209999999999999,4
+"test-arrow.R","arrow","save_arrow validates threads",4,0,FALSE,FALSE,0,0.006,0.001,0.012,4
+"test-arrow.R","arrow","read_arrow validates threads",4,0,FALSE,FALSE,0,0.006,0.001,0.011,4
+"test-arrow.R","arrow","deferred string columns are written without materializing",5,0,FALSE,FALSE,0,0.005,0.002,0.016,5
+"test-arrow.R","arrow","owned Stata strings are writable and signable",4,0,FALSE,FALSE,0,0.003,0.000999999999999987,0.00900000000000001,4
+"test-arrow.R","arrow","compact ALTREP columns are written without materializing",5,0,FALSE,FALSE,0,0.005,0.002,0.012,5
+"test-arrow.R","arrow","compact datetime timezone adjustment matches eager writing",5,0,FALSE,FALSE,0,0.012,0.003,0.025,5
+"test-arrow.R","arrow","a DTA fixture survives a semantic Arrow round-trip",26,0,FALSE,FALSE,0,0.019,0.005,0.028,26
+"test-arrow.R","arrow","legacy integer tails and value-label codes survive Arrow",25,0,FALSE,FALSE,0,0.031,0.00699999999999999,0.0469999999999999,25
+"test-arrow.R","arrow","tagged NaN payloads on bare doubles survive bit-exactly",2,0,FALSE,FALSE,0,0.003,0.001,0.00800000000000001,2
+"test-arrow.R","arrow","byte-encoded strings are rejected instead of replaced",6,0,FALSE,FALSE,0,0.011,0.001,0.012,6
+"test-arrow.R","arrow","byte-encoded Stata metadata is rejected instead of serialized",12,0,FALSE,FALSE,0,0.017,0.001,0.0189999999999999,12
+"test-arrow.R","arrow","haven labelled doubles round-trip with their labels",4,0,FALSE,FALSE,0,0.003,0.001,0.00800000000000001,4
+"test-arrow.R","arrow","label-free haven labelled doubles retain their class",4,0,FALSE,FALSE,0,0.004,0.001,0.0089999999999999,4
+"test-arrow.R","arrow","temporal classes and empty value-label tables round-trip",14,0,FALSE,FALSE,0,0.01,0.002,0.016,14
+"test-arrow.R","arrow","profiled storage uses its materialized R type for selection",2,0,FALSE,FALSE,0,0.0269999999999999,0.002,0.032,2
+"test-arrow.R","arrow","declared Stata storage overrides mismatched compact backing",3,0,FALSE,FALSE,0,0.003,0.001,0.00800000000000001,3
+"test-arrow.R","arrow","invalid NaNs in Stata storage become system missing",3,0,FALSE,FALSE,0,0.005,0.001,0.01,3
+"test-arrow.R","arrow","value labels on profiled columns round-trip",2,0,FALSE,FALSE,0,0.003,0.001,0.0089999999999999,2
+"test-arrow.R","arrow","integer-coded value labels work in Arrow and datasig",5,0,FALSE,FALSE,0,0.004,0.000999999999999987,0.01,5
+"test-arrow.R","arrow","display formats round-trip on profiled columns",1,0,FALSE,FALSE,0,0.002,0.001,0.00599999999999978,1
+"test-arrow.R","arrow","column projection, skip, and n_max select the requested window",8,0,FALSE,FALSE,0,0.012,0.002,0.0169999999999999,8
+"test-arrow.R","arrow","zero-row selections preserve factor levels",6,0,FALSE,FALSE,0,0.005,0.002,0.0109999999999999,6
+"test-arrow.R","arrow","corrupted buffers fail checksum verification by default",3,0,FALSE,FALSE,0,0.004,0.001,0.0089999999999999,3
+"test-arrow.R","arrow","newer profile versions are a hard error with an escape hatch",4,0,FALSE,FALSE,0,0.005,0.001,0.0109999999999999,4
+"test-arrow.R","arrow","profile = FALSE reads raw storage arrays without Stata semantics",3,0,FALSE,FALSE,0,0.003,0.001,0.00800000000000001,3
+"test-arrow.R","arrow","unsupported columns are an error naming the column",4,0,FALSE,FALSE,0,0.006,0.001,0.00700000000000012,4
+"test-arrow.R","arrow","write validation failures leave existing destinations unchanged",2,0,FALSE,FALSE,0,0.003,0.001,0.004,2
+"test-arrow.R","arrow","extensionless output paths gain .arrow with a warning",3,0,FALSE,FALSE,0,0.004,0.001,0.01,3
+"test-arrow.R","arrow","non-Arrow input is rejected by name",1,0,FALSE,FALSE,0,0.002,0,0.002,1
+"test-arrow.R","arrow","unrepresentable values in declared storage warn and count",3,0,FALSE,FALSE,0,0.003,0.001,0.00900000000000012,3
+"test-arrow.R","arrow","save_arrow reports attributes the profile drops",3,0,FALSE,FALSE,0,0.004,0.001,0.00800000000000001,3
+"test-arrow.R","arrow","Arrow owned-attribute allowlists share the metadata registry",2,0,FALSE,FALSE,0,0.001,0.001,0.002,2
+"test-arrow.R","arrow","save_arrow reports custom row metadata the profile drops",5,0,FALSE,FALSE,0,0.005,0.001,0.012,5
+"test-arrow.R","arrow","dta_merge accepts .arrow paths in either position",12,0,FALSE,FALSE,0,0.018,0.004,0.0309999999999999,12
+"test-arrow.R","arrow","the arrow package is an independent oracle for written files",5,0,FALSE,FALSE,0,0.005,0.001,0.0109999999999999,5
+"test-arrow.R","arrow","plain Arrow files never acquire Stata semantics",5,0,FALSE,FALSE,0,0.004,0.002,0.006,5
+"test-arrow.R","arrow","plain Arrow ordered dictionaries remain ordered factors",2,0,FALSE,FALSE,0,0.002,0,0.00299999999999989,2
+"test-arrow.R","arrow","NA-valued factor levels survive profiled and plain Arrow",4,0,FALSE,FALSE,0,0.0099999999999999,0.000999999999999973,0.016,4
+"test-arrow.R","arrow","plain Arrow dictionaries cannot create duplicate factor levels",1,0,FALSE,FALSE,0,0.005,0.001,0.006,1
+"test-arrow.R","arrow","plain Int32 selection predicates match the returned R type",3,0,FALSE,FALSE,0,0.01,0.001,0.012,3
+"test-arrow.R","arrow","plain UInt16 columns use R integer storage",3,0,FALSE,FALSE,0,0.011,0.002,0.0130000000000001,3
+"test-arrow.R","arrow","profiled UInt16 columns retain projected shared value labels",12,0,FALSE,FALSE,0,0.013,0.003,0.02,12
+"test-arrow.R","arrow","Arrow selection parses profile metadata only for predicates",6,0,FALSE,FALSE,0,0.01,0.001,0.0109999999999999,6
+"test-arrow.R","arrow","predicate and datasig projections validate every field document",3,0,FALSE,FALSE,0,0.00900000000000012,0.002,0.014,3
+"test-arrow.R","arrow","Arrow selection and decoding share one file snapshot",2,0,FALSE,FALSE,0,0.00299999999999989,0.001,0.014,2
+"test-arrow.R","arrow","wide Arrow integers are rejected instead of rounded",6,0,FALSE,FALSE,0,0.012,0.002,0.014,6
+"test-arrow.R","arrow","wide Arrow temporal counts are rejected instead of rounded",4,0,FALSE,FALSE,0,0.012,0.001,0.012,4
+"test-arrow.R","arrow","declared strings take the same default format as save_dta",4,0,FALSE,FALSE,0,0.0069999999999999,0.002,0.0130000000000001,4
+"test-codebooks.R","codebooks","labelbook reports assigned tables as structured data",12,0,FALSE,FALSE,0,0.01,0.003,0.0130000000000001,12
+"test-codebooks.R","codebooks","labelbook selection, ordering, and print limits are deterministic",7,0,FALSE,FALSE,0,0.012,0.001,0.0130000000000001,7
+"test-codebooks.R","codebooks","labelbook diagnoses table problems and malformed sharing",5,0,FALSE,FALSE,0,0.006,0.001,0.00700000000000012,5
+"test-codebooks.R","codebooks","labelbook diagnoses missing value-label names as malformed",4,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.004,4
+"test-codebooks.R","codebooks","labelbook diagnoses malformed registry entries",4,0,FALSE,FALSE,0,0.004,0.001,0.004,4
+"test-codebooks.R","codebooks","labelbook detail restores the normal report",4,0,FALSE,FALSE,0,0.006,0.001,0.006,4
+"test-codebooks.R","codebooks","codebook classifies and summarizes numeric and string variables",10,0,FALSE,FALSE,0,0.0109999999999999,0.002,0.0139999999999998,10
+"test-codebooks.R","codebooks","codebook handles string variables containing only Stata missing values",3,0,FALSE,FALSE,0,0.004,0.001,0.00499999999999989,3
+"test-codebooks.R","codebooks","codebook selections and where use report semantics",8,0,FALSE,FALSE,0,0.0109999999999999,0.001,0.012,8
+"test-codebooks.R","codebooks","codebook distinguishes duplicate names by position",3,0,FALSE,FALSE,0,0.00500000000000012,0.001,0.00499999999999989,3
+"test-codebooks.R","codebooks","codebook detects duplicate rows under Stata missing identity",2,0,FALSE,FALSE,0,0.00499999999999989,0.000999999999999973,0.006,2
+"test-codebooks.R","codebooks","codebook returns Stata-style missingness relationships",3,0,FALSE,FALSE,0,0.01,0.001,0.0109999999999999,3
+"test-codebooks.R","codebooks","codebook retains diagnostics and bounds row evidence",10,0,FALSE,FALSE,0,0.02,0.002,0.0230000000000001,10
+"test-codebooks.R","codebooks","codebook compact mode enforces Stata option combinations",7,0,FALSE,FALSE,0,0.0109999999999999,0.002,0.0129999999999999,7
+"test-codebooks.R","codebooks","codebooks accept DTA and Arrow paths",6,0,FALSE,FALSE,0,0.014,0.002,0.0210000000000001,6
+"test-codebooks.R","codebooks","codebook reports declared string storage and a wide declaration",8,0,FALSE,FALSE,0,0.026,0.002,0.028,8
+"test-copy-data.R","copy-data","copy_data preserves dibble identity and independent reference writes",11,0,FALSE,FALSE,0,0.0089999999999999,0.002,0.0109999999999999,11
+"test-copy-data.R","copy-data","copied dibbles share explicit metadata writes with aliases, including zero rows",26,0,FALSE,FALSE,0,0.0189999999999999,0.005,0.024,26
+"test-copy-data.R","copy-data","copy_data preserves ordinary containers and their column types",6,0,FALSE,FALSE,0,0.00500000000000012,0.001,0.006,6
+"test-data-table-compatibility.R","data-table-compatibility","read_dta selects a compact-preserving output container",7,0,FALSE,FALSE,0,0.024,0.002,0.026,7
+"test-data-table-compatibility.R","data-table-compatibility","reader output validation never silently falls back",2,0,FALSE,FALSE,0,0.01,0.001,0.0109999999999999,2
+"test-data-table-compatibility.R","data-table-compatibility","data-table output uses the reader name-repair contract",1,0,FALSE,FALSE,0,0.0189999999999999,0,0.02,1
+"test-data-table-compatibility.R","data-table-compatibility","save_arrow restores tibble and data-table provenance",7,0,FALSE,FALSE,0,0.00800000000000001,0.002,0.0229999999999999,7
+"test-data-table-compatibility.R","data-table-compatibility","gen installs a physical data-table column",8,0,FALSE,FALSE,0,0.0129999999999999,0.002,0.0149999999999999,8
+"test-data-table-compatibility.R","data-table-compatibility","repl invalidates only affected data-table lookup state",5,0,FALSE,FALSE,0,0.006,0.001,0.0069999999999999,5
+"test-data-table-compatibility.R","data-table-compatibility","repl retains aliases and copy_data isolates data tables",5,0,FALSE,FALSE,0,0.006,0.001,0.00800000000000001,5
+"test-data-table-compatibility.R","data-table-compatibility","whole-table mutations reject data-table subclasses",4,0,FALSE,FALSE,0,0.006,0,0.00700000000000012,4
+"test-data-table-compatibility.R","data-table-compatibility","metadata changes preserve data-table lookup state",6,0,FALSE,FALSE,0,0.006,0.001,0.0069999999999999,6
+"test-data-table-compatibility.R","data-table-compatibility","keep and drop preserve unaffected data-table lookup state",3,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00299999999999989,3
+"test-data-table-compatibility.R","data-table-compatibility","repaired and edge-shaped data tables remain usable",5,0,FALSE,FALSE,0,0.00800000000000001,0.001,0.0089999999999999,5
+"test-data-table-compatibility.R","data-table-compatibility","writers and read-only operations do not mutate data tables",6,0,FALSE,FALSE,0,0.006,0.002,0.0130000000000001,6
+"test-data-table-compatibility.R","data-table-compatibility","dta_merge follows x or an explicit output container",6,0,FALSE,FALSE,0,0.006,0.001,0.0069999999999999,6
+"test-data-table-compatibility.R","data-table-compatibility","dataset metadata never marks a data.table with the frame class",3,0,FALSE,FALSE,0,0.004,0.001,0.006,3
+"test-data-table-compatibility.R","data-table-compatibility","dataset metadata setters keep data.table output ordinary",3,0,FALSE,FALSE,0,0.00500000000000012,0.001,0.006,3
+"test-data-table-compatibility.R","data-table-compatibility","setDT() on a read result drops the stale reference state",8,0,FALSE,FALSE,0,0.01,0.003,0.012,8
+"test-data-table-compatibility.R","data-table-compatibility","promotion invalidates affected data-table keys and indexes",9,0,FALSE,FALSE,0,0.014,0.002,0.016,9
+"test-data-table-compatibility.R","data-table-compatibility","clearing a replaced data-table key preserves unrelated indexes",12,0,FALSE,FALSE,0,0.0130000000000001,0.003,0.016,12
+"test-data-table-compatibility.R","data-table-compatibility","strict zero-row replacement preserves data-table lookup state",16,0,FALSE,FALSE,0,0.016,0.003,0.0190000000000001,16
+"test-datasig.R","datasig","datasig is container-independent and shaped as rows:columns:digest",8,0,FALSE,FALSE,0,0.012,0.003,0.0229999999999999,8
+"test-datasig.R","datasig","datasig detects changes Stata's datasignature misses",3,0,FALSE,FALSE,0,0.004,0,0.004,3
+"test-datasig.R","datasig","datasig covers names, storage types, labels, and metadata",8,0,FALSE,FALSE,0,0.0089999999999999,0.001,0.0110000000000001,8
+"test-datasig.R","datasig","datasig recomputes from current content",3,0,FALSE,FALSE,0,0.00500000000000012,0.002,0.00599999999999978,3
+"test-datasig.R","datasig","datasig validates its inputs",4,0,FALSE,FALSE,0,0.006,0,0.00700000000000012,4
+"test-datasig.R","datasig","datasig recognizes Arrow URLs with fragments",3,0,FALSE,FALSE,0,0.00299999999999989,0.001,0.004,3
+"test-datasig.R","datasig","datasig agrees between serial and parallel hashing",1,0,FALSE,FALSE,0,0.0130000000000001,0.001,0.0139999999999998,1
+"test-datasig.R","datasig","readers record the disk signature as a datasig attribute",18,0,FALSE,FALSE,0,0.026,0.00499999999999998,0.04,18
+"test-dibble-bracket.R","dibble-bracket","one := creates a missing column and overwrites an existing one",9,0,FALSE,FALSE,0,0.01,0.002,0.0110000000000001,9
+"test-dibble-bracket.R","dibble-bracket","i selects rows as a logical, positions, or nothing",8,0,FALSE,FALSE,0,0.012,0.001,0.0129999999999999,8
+"test-dibble-bracket.R","dibble-bracket","bracket assignments chain",4,0,FALSE,FALSE,0,0.00500000000000012,0,0.00600000000000023,4
+"test-dibble-bracket.R","dibble-bracket","several assignments apply left to right",5,0,FALSE,FALSE,0,0.0069999999999999,0.001,0.00800000000000001,5
+"test-dibble-bracket.R","dibble-bracket","each assignment in j commits or fails on its own",10,0,FALSE,FALSE,0,0.0130000000000001,0.002,0.0150000000000001,10
+"test-dibble-bracket.R","dibble-bracket","rows are selected once before any assignment writes",4,0,FALSE,FALSE,0,0.00499999999999989,0.001,0.00599999999999978,4
+"test-dibble-bracket.R","dibble-bracket","the target name takes .(), !!, strings, and string vectors",16,0,FALSE,FALSE,0,0.0229999999999999,0.002,0.0260000000000002,16
+"test-dibble-bracket.R","dibble-bracket","by, bysort, and grouped dibbles follow Stata's order",17,0,FALSE,FALSE,0,0.0599999999999998,0.004,0.0640000000000001,17
+"test-dibble-bracket.R","dibble-bracket","by and bysort need a := in j",3,0,FALSE,FALSE,0,0.006,0,0.00499999999999989,3
+"test-dibble-bracket.R","dibble-bracket","the shadow check fires in i and in values",5,0,FALSE,FALSE,0,0.00700000000000012,0.001,0.00700000000000012,5
+"test-dibble-bracket.R","dibble-bracket","a compact target stays compact after a bracket replacement",10,0,FALSE,FALSE,0,0.0129999999999999,0.002,0.0150000000000001,10
+"test-dibble-bracket.R","dibble-bracket","brackets without := subset the current contents into a dibble",13,0,FALSE,FALSE,0,0.0169999999999999,0.003,0.02,13
+"test-dibble-bracket.R","dibble-bracket","plain containers do not gain bracket assignment",9,0,FALSE,FALSE,0,0.012,0.002,0.0129999999999999,9
+"test-dibble-bracket.R","dibble-bracket","the next top-level print after a bracket assignment is skipped",3,0,FALSE,FALSE,0,0.00900000000000012,0.001,0.00999999999999979,3
+"test-dibble-bracket.R","dibble-bracket","the autoprint skip does not outlive its top-level statement",7,0,FALSE,FALSE,0,0.018,0.01,0.257,7
+"test-dibble-bracket.R","dibble-bracket","each prepared bracket assignment reaches aliases before the next expression",30,0,FALSE,FALSE,0,0.038,0.00700000000000001,0.0460000000000003,30
+"test-dibble-bracket.R","dibble-bracket","bracket assignments keep the supplied object when bindings change",9,0,FALSE,FALSE,0,0.00800000000000001,0.002,0.00999999999999979,9
+"test-dibble-class.R","dibble-class","dibble class is public identity independently of reference ownership",14,0,FALSE,FALSE,0,0.01,0.003,0.0129999999999999,14
+"test-dibble-class.R","dibble-class","reference support does not grant ordinary containers dibble identity",18,0,FALSE,FALSE,0,0.0149999999999999,0.003,0.0180000000000002,18
+"test-dibble-class.R","dibble-class","grouping and metadata classes follow dibble identity",66,0,FALSE,FALSE,0,0.0870000000000002,0.018,0.104,66
+"test-dibble-class.R","dibble-class","legacy flags recognize type and assigned upgrade isolates aliases",62,0,FALSE,FALSE,0,0.065,0.01,0.0760000000000001,62
+"test-dibble-class.R","dibble-class","class snapshots and display dispatch preserve compact source columns",19,0,FALSE,FALSE,0,0.0210000000000004,0.004,0.0249999999999999,19
+"test-dibble-class.R","dibble-class","class-preserving replacement and structural helpers retain alias contracts",8,0,FALSE,FALSE,0,0.00599999999999978,0.001,0.00599999999999978,8
+"test-dibble-columns.R","dibble-columns","direct column selectors match typed tibble selections",199,0,FALSE,FALSE,0,0.157,0.035,0.192,199
+"test-dibble-columns.R","dibble-columns","selectors preserve dataset metadata",228,0,FALSE,FALSE,0,0.246,0.043,0.288,228
+"test-dibble-columns.R","dibble-columns","selectors retain established tibble row-name policies",287,0,FALSE,FALSE,0,0.23,0.054,0.283,287
+"test-dibble-columns.R","dibble-columns","direct selectors retain grouped and rowwise policies",271,0,FALSE,FALSE,0,0.247,0.051,0.298,271
+"test-dibble-columns.R","dibble-columns","shadowing every omitted grouping key clears the grouping attribute",12,0,FALSE,FALSE,0,0.0100000000000002,0.002,0.0119999999999996,12
+"test-dibble-columns.R","dibble-columns","selector expressions run once in their captured environment",6,0,FALSE,FALSE,0,0.0139999999999998,0.001,0.0149999999999997,6
+"test-dibble-columns.R","dibble-columns","column results isolate later writes in both directions and duplicated slots",40,0,FALSE,FALSE,0,0.036,0.00800000000000001,0.0440000000000005,40
+"test-dibble-columns.R","dibble-columns","borrowed and stale strings are checked on every column result",20,0,FALSE,FALSE,0,0.0180000000000002,0.004,0.0220000000000002,20
+"test-dibble-columns.R","dibble-columns","string validation counts current UTF-8 bytes",7,0,FALSE,FALSE,0,0.0089999999999999,0.002,0.0129999999999999,7
+"test-dibble-columns.R","dibble-columns","isolated string results preserve encodings and complete metadata",68,0,FALSE,FALSE,0,0.065,0.013,0.077,68
+"test-dibble-columns.R","dibble-columns","column results preserve metadata, compact columns and legacy recognition",9,0,FALSE,FALSE,0,0.0089999999999999,0.002,0.0110000000000001,9
+"test-dibble-columns.R","dibble-columns","selectors retain automatic row-name bookkeeping and rename policy",9,0,FALSE,FALSE,0,0.00999999999999979,0.002,0.0129999999999999,9
+"test-dibble-expressions.R","dibble-expressions","the core evaluator accepts ordinary quosures without whole verbs",3,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00399999999999956,3
+"test-dibble-expressions.R","dibble-expressions","qualified and aliased helpers see original group rows and keys",9,0,FALSE,FALSE,0,0.00999999999999979,0.002,0.0110000000000001,9
+"test-dibble-expressions.R","dibble-expressions","pick expansion and arbitrary fallback preserve selection rules",6,0,FALSE,FALSE,0,0.0210000000000004,0.003,0.0230000000000006,6
+"test-dibble-expressions.R","dibble-expressions","across expansion counts and side effects follow real dplyr",15,0,FALSE,FALSE,0,0.04,0.004,0.0440000000000005,15
+"test-dibble-expressions.R","dibble-expressions","across fallback supports dots unpacking and logical helpers",6,0,FALSE,FALSE,0,0.0469999999999997,0.002,0.048,6
+"test-dibble-expressions.R","dibble-expressions","nested verbs and failures restore every helper context binding",23,0,FALSE,FALSE,0,0.044,0.004,0.0479999999999992,23
+"test-dibble-expressions.R","dibble-expressions","captures retain earlier values while deferred column resolution expires",11,0,FALSE,FALSE,0,0.0270000000000001,0.001,0.0270000000000001,11
+"test-dibble-expressions.R","dibble-expressions","mask snapshots survive explicit writes inside arbitrary helpers",4,0,FALSE,FALSE,0,0.00499999999999989,0.001,0.00499999999999989,4
+"test-dibble-expressions.R","dibble-expressions","foreign callback values are captured before the next group",2,0,FALSE,FALSE,0,0.00500000000000034,0.001,0.00499999999999989,2
+"test-dibble-expressions.R","dibble-expressions","empty groups and empty rowwise list prototypes remain observable",15,0,FALSE,FALSE,0,0.0259999999999998,0.003,0.0300000000000002,15
+"test-dibble-expressions.R","dibble-expressions","placement keep and transmute retain their separate column order",9,0,FALSE,FALSE,0,0.0140000000000002,0.002,0.016,9
+"test-dibble-expressions.R","dibble-expressions","computed grouping ignores old partitions and owns its metadata",10,0,FALSE,FALSE,0,0.0209999999999999,0.002,0.0229999999999997,10
+"test-dibble-expressions.R","dibble-expressions","duplicate unpacked names and grouped warning aggregation retain their contracts",5,0,FALSE,FALSE,0,0.0300000000000002,0.001,0.032,5
+"test-dibble-expressions.R","dibble-expressions","persistent grouping keys cannot be removed by mutation",5,0,FALSE,FALSE,0,0.0139999999999998,0.001,0.016,5
+"test-dibble-expressions.R","dibble-expressions","symbol results preserve attributes and rowwise frame columns remain frames",4,0,FALSE,FALSE,0,0.0089999999999999,0.001,0.00999999999999979,4
+"test-dibble-expressions.R","dibble-expressions","diagnostics identify the actual expression entry point",6,0,FALSE,FALSE,0,0.0310000000000001,0.00099999999999989,0.032,6
+"test-dibble-expressions.R","dibble-expressions","within-call captures keep their original generation and group",12,0,FALSE,FALSE,0,0.028,0.003,0.0309999999999997,12
+"test-dibble-expressions.R","dibble-expressions","removed and re-added column generations retain values and expire",8,0,FALSE,FALSE,0,0.0129999999999999,0.001,0.0129999999999999,8
+"test-dibble-expressions.R","dibble-expressions","expired capture masks release source payloads on success and failure",20,0,FALSE,FALSE,0,0.869,0.004,0.872,20
+"test-dibble-expressions.R","dibble-expressions","ungroup preserves raw row names on an already ungrouped dibble",3,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00400000000000045,3
+"test-dibble-expressions.R","dibble-expressions","expired column promises retain repeated-resolution warnings",5,0,FALSE,FALSE,0,0.00800000000000001,0.001,0.00899999999999945,5
+"test-dibble-expressions.R","dibble-expressions","mutate preserves existing group order until a key changes",6,0,FALSE,FALSE,0,0.0179999999999998,0.002,0.0200000000000005,6
+"test-dibble-print.R","dibble-print","dibble printing names its container and declared storage",20,0,FALSE,FALSE,0,0.024,0.003,0.0270000000000001,20
+"test-dibble-print.R","dibble-print","declared string labels cover constructed generated and imported columns",10,0,FALSE,FALSE,0,0.0129999999999999,0.001,0.0139999999999993,10
+"test-dibble-print.R","dibble-print","temporal labels show storage and meaning in dibbles and tibbles",13,0,FALSE,FALSE,0,0.0149999999999997,0.002,0.016,13
+"test-dibble-print.R","dibble-print","metadata wrappers preserve string storage labels and cell formatting",11,0,FALSE,FALSE,0,0.0200000000000005,0.001,0.0219999999999994,11
+"test-dibble-print.R","dibble-print","metadata setters leave declared string types visible",96,0,FALSE,FALSE,0,0.336,0.00800000000000001,0.345000000000001,96
+"test-dibble-print.R","dibble-print","display snapshots retain grouping and empty dimensions",11,0,FALSE,FALSE,0,0.0199999999999996,0.002,0.0220000000000002,11
+"test-dibble-print.R","dibble-print","narrow output and row slicing retain omitted string declarations",16,0,FALSE,FALSE,0,0.0259999999999998,0.002,0.0279999999999996,16
+"test-dibble-print.R","dibble-print","ordinary reference containers keep their usual display",6,0,FALSE,FALSE,0,0.0209999999999999,0.001,0.0220000000000002,6
+"test-dibble-print.R","dibble-print","printing preserves cells metadata aliases and compact backing",11,0,FALSE,FALSE,0,0.0409999999999995,0.002,0.0449999999999999,11
+"test-dibble-rows.R","dibble-rows","bracket row plans preserve tibble call shapes and index policies",143,0,FALSE,FALSE,0,0.175,0.027,0.203,143
+"test-dibble-rows.R","dibble-rows","bracket subscript evaluation is once, ordered, and outside the data mask",5,0,FALSE,FALSE,0,0.00599999999999934,0.001,0.00699999999999967,5
+"test-dibble-rows.R","dibble-rows","plain reference containers retain base and tibble row rules",18,0,FALSE,FALSE,0,0.0180000000000007,0.004,0.0220000000000002,18
+"test-dibble-rows.R","dibble-rows","group metadata rebuild matches sorted factor expansion",30,0,FALSE,FALSE,0,0.0359999999999996,0.006,0.0419999999999998,30
+"test-dibble-rows.R","dibble-rows","group validation preserves empty keys and equality casting",46,0,FALSE,FALSE,0,0.0499999999999998,0.00800000000000001,0.0570000000000004,46
+"test-dibble-rows.R","dibble-rows","group partitions reject repeated rows and retain rowwise order",4,0,FALSE,FALSE,0,0.00499999999999989,0,0.00600000000000023,4
+"test-dibble-rows.R","dibble-rows","row entry points retain their grouped and rowwise policies",144,0,FALSE,FALSE,0,0.339,0.037,0.372999999999999,144
+"test-dibble-rows.R","dibble-rows","padding is typed before rebuilding grouped string keys",9,0,FALSE,FALSE,0,0.00999999999999979,0.002,0.0110000000000001,9
+"test-dibble-rows.R","dibble-rows","row results preserve metadata and symmetric later-write isolation",68,0,FALSE,FALSE,0,0.0599999999999996,0.0119999999999999,0.0720000000000001,68
+"test-dibble-rows.R","dibble-rows","direct reconstruction isolates and validates unknown columns",6,0,FALSE,FALSE,0,0.0130000000000008,0.002,0.0140000000000002,6
+"test-dibble-rows.R","dibble-rows","bracket planning never executes language-valued indices",23,0,FALSE,FALSE,0,0.132000000000001,0.004,0.137,23
+"test-dibble-rows.R","dibble-rows","plain grouped reference frames retain row slicing support",8,0,FALSE,FALSE,0,0.0110000000000001,0.002,0.0130000000000008,8
+"test-dibble-rows.R","dibble-rows","drop and unused-argument validation follows each bracket container",34,0,FALSE,FALSE,0,0.0710000000000006,0.00700000000000001,0.077,34
+"test-dibble-rows.R","dibble-rows","row gather and reconstruction isolate aliases and foreign columns",20,0,FALSE,FALSE,0,0.0189999999999992,0.004,0.0230000000000006,20
+"test-dibble-rows.R","dibble-rows","serialized grouping works without loading the dplyr namespace",10,0,FALSE,FALSE,0,0.024,0.013,0.539,10
+"test-dibble-rows.R","dibble-rows","the dplyr row hook keeps vctrs row-name repair",12,0,FALSE,FALSE,0,0.0210000000000008,0.00700000000000001,0.0289999999999999,12
+"test-dibble-rows.R","dibble-rows","group rebuild honors the legacy locale compatibility option",3,0,FALSE,FALSE,0,0.0279999999999996,0.004,0.0310000000000006,3
+"test-dibble-rows.R","dibble-rows","bracket planning does not introduce named-argument warnings",3,0,FALSE,FALSE,0,0.00499999999999989,0.001,0.00499999999999989,3
+"test-dibble-rows.R","dibble-rows","base reference gathers retain base observation metadata and drop shapes",9,0,FALSE,FALSE,0,0.0110000000000001,0.003,0.0140000000000002,9
+"test-dibble-rows.R","dibble-rows","reference row subsets preserve the metadata wrapper's policies",72,0,FALSE,FALSE,0,0.0919999999999996,0.019,0.114000000000001,72
+"test-dibble-rows.R","dibble-rows","metadata subscript forcing precedes container argument validation",15,0,FALSE,FALSE,0,0.0259999999999998,0.002,0.0309999999999997,15
+"test-dibble-rows.R","dibble-rows","legacy factor expansion retains contiguous missing-value prefixes",2,0,FALSE,FALSE,0,0.0270000000000001,0.001,0.0279999999999996,2
+"test-dibble-rows.R","dibble-rows","row results retain automatic versus explicit row-name bookkeeping",20,0,FALSE,FALSE,0,0.0340000000000007,0.00700000000000001,0.0509999999999993,20
+"test-dibble-rows.R","dibble-rows","plain-reference reconstruction preserves raw payload row names",8,0,FALSE,FALSE,0,0.00800000000000001,0.001,0.00900000000000034,8
+"test-dibble-rows.R","dibble-rows","the row helper retains its shell's raw row-name policy",18,0,FALSE,FALSE,0,0.0250000000000004,0.00700000000000001,0.0349999999999984,18
+"test-dibble.R","dibble","dibble() builds a tibble that carries reference state",18,0,FALSE,FALSE,0,0.016,0.003,0.0199999999999996,18
+"test-dibble.R","dibble","is_dibble distinguishes dibbles from other reference frames",9,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00799999999999912,9
+"test-dibble.R","dibble","as_dibble converts frames, tibbles, and data tables",15,0,FALSE,FALSE,0,0.0170000000000003,0.003,0.0199999999999996,15
+"test-dibble.R","dibble","as_dibble copies a data table without its runtime state",16,0,FALSE,FALSE,0,0.0129999999999999,0.003,0.016,16
+"test-dibble.R","dibble","dibble construction keeps compact columns unmaterialized",17,0,FALSE,FALSE,0,0.0170000000000003,0.004,0.020999999999999,17
+"test-dibble.R","dibble","grouping keeps a dibble a dibble",21,0,FALSE,FALSE,0,0.0280000000000005,0.005,0.0329999999999995,21
+"test-dibble.R","dibble","readers, save_arrow, and dta_merge take the dibble container",31,0,FALSE,FALSE,0,0.0599999999999996,0.011,0.0809999999999995,31
+"test-dibble.R","dibble","a file recording an unknown container still reads",5,0,FALSE,FALSE,0,0.00700000000000056,0.002,0.0139999999999993,5
+"test-dibble.R","dibble","unknown stored containers fall back to a tibble",5,0,FALSE,FALSE,0,0.00599999999999934,0.001,0.00699999999999967,5
+"test-dibble.R","dibble","dataset metadata setters keep a dibble's bracket dispatch",12,0,FALSE,FALSE,0,0.0120000000000005,0.00199999999999989,0.0150000000000006,12
+"test-dibble.R","dibble","slice_dta_rows accepts the default read container",7,0,FALSE,FALSE,0,0.0120000000000005,0.003,0.0149999999999988,7
+"test-dibble.R","dibble","dataset-scoped metadata setters return the same dibble",6,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.0080000000000009,6
+"test-dibble.R","dibble","slicing a grouped dibble keeps dataset metadata",5,0,FALSE,FALSE,0,0.00800000000000001,0.001,0.00999999999999979,5
+"test-dibble.R","dibble","slice_dta_rows keeps a grouped dibble's grouping",7,0,FALSE,FALSE,0,0.0110000000000001,0.002,0.0140000000000011,7
+"test-dibble.R","dibble","gen() and a new := column take Stata's generate default",18,0,FALSE,FALSE,0,0.0309999999999997,0.004,0.0340000000000007,18
+"test-dibble.R","dibble","mutate and transmute type new columns by the container mapping",42,0,FALSE,FALSE,0,0.048,0.00800000000000001,0.0549999999999997,42
+"test-dibble.R","dibble","mutate keeps untouched compact columns compact",5,0,FALSE,FALSE,0,0.00499999999999989,0.002,0.00699999999999967,5
+"test-dibble.R","dibble","a dibble is closed under dataset operations",24,0,FALSE,FALSE,0,0.032,0.005,0.036999999999999,24
+"test-dibble.R","dibble","replacement operators type their columns and keep the dibble",16,0,FALSE,FALSE,0,0.0180000000000007,0.004,0.0229999999999997,16
+"test-dibble.R","dibble","logical columns stay logical in a dibble",7,0,FALSE,FALSE,0,0.0100000000000007,0.002,0.0119999999999987,7
+"test-dibble.R","dibble","Arrow strings enter a dibble compact with an inferred width",10,0,FALSE,FALSE,0,0.0109999999999992,0.004,0.0210000000000008,10
+"test-dibble.R","dibble","Stata numerics coerce to integer and logical and add to dates",6,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00600000000000023,6
+"test-dibble.R","dibble","bracket assignment and partial replacement promote storage",26,0,FALSE,FALSE,0,0.04,0.006,0.0449999999999999,26
+"test-dibble.R","dibble","gen and := accept factors as mutate does",11,0,FALSE,FALSE,1,0.0120000000000005,0.002,0.0139999999999993,10
+"test-dibble.R","dibble","computed distinct and group_by type columns as mutate does",8,0,FALSE,FALSE,0,0.0120000000000005,0.002,0.0149999999999988,8
+"test-dibble.R","dibble","a logical overwriting a Stata numeric keeps its storage",9,0,FALSE,FALSE,1,0.0200000000000005,0.002,0.0229999999999997,8
+"test-dibble.R","dibble","overwriting a typed column with an untypable one passes through",4,0,FALSE,FALSE,0,0.00400000000000045,0,0.00399999999999956,4
+"test-dibble.R","dibble","reframe, group_modify, and nest_by return dibbles",12,0,FALSE,FALSE,0,0.0229999999999997,0.004,0.0259999999999998,12
+"test-dibble.R","dibble","a := value with declared storage widens the column to it",21,0,FALSE,FALSE,0,0.032,0.006,0.0380000000000003,21
+"test-dibble.R","dibble","grouped and rowwise row verbs return dibbles",15,0,FALSE,FALSE,0,0.0590000000000002,0.005,0.0630000000000006,15
+"test-dibble.R","dibble","difftime arithmetic with Stata numerics works",4,0,FALSE,FALSE,0,0.00399999999999956,0.001,0.004999999999999,4
+"test-dibble.R","dibble","the first gen on a tibble leaves its columns alone",8,0,FALSE,FALSE,0,0.00699999999999967,0.002,0.0100000000000016,8
+"test-dibble.R","dibble","a stale string declaration is redone on entering a dibble",14,0,FALSE,FALSE,0,0.0199999999999996,0.005,0.0319999999999983,14
+"test-dibble.R","dibble","a derived dibble owns its columns",48,0,FALSE,FALSE,0,0.0579999999999998,0.013,0.0709999999999997,48
+"test-dibble.R","dibble","a dta_string column padded with NA is retyped on closure",13,0,FALSE,FALSE,0,0.0280000000000005,0.004,0.0329999999999995,13
+"test-dibble.R","dibble","subsetting keeps compact dictionary strings compact",30,0,FALSE,FALSE,0,0.032,0.00800000000000001,0.0399999999999991,30
+"test-dibble.R","dibble","generated columns reach consumers that read the column list",21,0,FALSE,FALSE,0,0.0339999999999998,0.006,0.0389999999999997,21
+"test-dibble.R","dibble","column binding isolates every input, not only the first",29,0,FALSE,FALSE,0,0.0529999999999999,0.00800000000000001,0.0609999999999999,29
+"test-dibble.R","dibble","gen on a tibble evaluates against the tibble's own columns",18,0,FALSE,FALSE,0,0.0260000000000007,0.005,0.0309999999999988,18
+"test-dibble.R","dibble","data-masking verbs type each result as it enters the mask",12,0,FALSE,FALSE,0,0.0180000000000007,0.004,0.0219999999999985,12
+"test-dibble.R","dibble","mask typing keeps dplyr's names, arguments, and messages",14,0,FALSE,FALSE,0,0.0280000000000005,0.00299999999999989,0.0309999999999988,14
+"test-dibble.R","dibble","grouped gen() keeps a factor's attributes",3,0,FALSE,FALSE,0,0.00800000000000001,0.001,0.00900000000000034,3
+"test-dibble.R","dibble","ordinary replacement stays local while explicit metadata reaches callers",29,0,FALSE,FALSE,0,0.0289999999999999,0.006,0.0350000000000001,29
+"test-dibble.R","dibble","copying replacement isolates vectors and preserves grouping",34,0,FALSE,FALSE,2,0.0830000000000002,0.01,0.0920000000000005,32
+"test-dibble.R","dibble","serialized legacy dibbles retain typing and closure",12,0,FALSE,FALSE,0,0.0139999999999993,0.003,0.016,12
+"test-dibble.R","dibble","across results are typed before later mask expressions",10,0,FALSE,FALSE,0,0.024,0.003,0.0280000000000005,10
+"test-dibble.R","dibble","caller-backed symbols are typed on entry to the data mask",7,0,FALSE,FALSE,0,0.00900000000000034,0.002,0.011000000000001,7
+"test-dibble.R","dibble","unnamed computations use their natural names in the mask",11,0,FALSE,FALSE,0,0.0190000000000001,0.003,0.0229999999999997,11
+"test-dibble.R","dibble","mask promotion sees prior clauses' storage and metadata",9,0,FALSE,FALSE,0,0.0110000000000001,0.002,0.0129999999999999,9
+"test-dibble.R","dibble","mask warning labels leave caller-binding messages unchanged",12,0,FALSE,FALSE,0,0.0380000000000003,0.001,0.0389999999999997,12
+"test-dta-append.R","dta-append","the result is the union of variables in first-appearance order",3,0,FALSE,FALSE,0,0.00400000000000045,0.001,0.00500000000000078,3
+"test-dta-append.R","dta-append","duplicate source columns survive planning until name repair",10,0,FALSE,FALSE,0,0.0359999999999996,0.003,0.0389999999999997,10
+"test-dta-append.R","dta-append","a source missing a variable contributes missing values",2,0,FALSE,FALSE,0,0.00699999999999967,0.001,0.00700000000000145,2
+"test-dta-append.R","dta-append","string storage and format widen to the widest contributor",2,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999956,2
+"test-dta-append.R","dta-append","numeric storage promotes along the Stata lattice",2,0,FALSE,FALSE,0,0.00399999999999956,0.00100000000000011,0.004999999999999,2
+"test-dta-append.R","dta-append","promotion clears the int ceiling into long",2,0,FALSE,FALSE,0,0.00400000000000045,0.00099999999999989,0.00500000000000078,2
+"test-dta-append.R","dta-append","the numeric result keeps compact unmaterialized storage",2,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00399999999999956,2
+"test-dta-append.R","dta-append","the missing fill for an absent numeric stays compact",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,2
+"test-dta-append.R","dta-append","a missing temporal contribution preserves the Stata type",6,0,FALSE,FALSE,0,0.0140000000000002,0.002,0.0170000000000012,6
+"test-dta-append.R","dta-append","the combined row count cannot exceed R's frame limit",1,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00300000000000011,1
+"test-dta-append.R","dta-append","force fills a string/numeric conflict with missing values",6,0,FALSE,FALSE,0,0.0199999999999996,0.00099999999999989,0.0220000000000002,6
+"test-dta-append.R","dta-append","force = FALSE makes a storage conflict an error",1,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00600000000000023,1
+"test-dta-append.R","dta-append","variable labels come from the first contributor",2,0,FALSE,FALSE,0,0.00500000000000078,0,0.00600000000000023,2
+"test-dta-append.R","dta-append","formats come from the first contributor after promotion",2,0,FALSE,FALSE,0,0.00399999999999956,0,0.00400000000000134,2
+"test-dta-append.R","dta-append","the first source to define a value-label table owns it",7,0,FALSE,FALSE,0,0.00999999999999979,0.00099999999999989,0.0119999999999987,7
+"test-dta-append.R","dta-append","a variable takes the owning definition of its table name",11,0,FALSE,FALSE,0,0.0120000000000005,0.00299999999999989,0.0139999999999993,11
+"test-dta-append.R","dta-append","unnamed labels define a table named after the variable",7,0,FALSE,FALSE,0,0.00800000000000001,0.002,0.00999999999999979,7
+"test-dta-append.R","dta-append","value-label ownership survives a file round trip",3,0,FALSE,FALSE,0,0.0129999999999999,0.002,0.0149999999999988,3
+"test-dta-append.R","dta-append","a widened string format takes the new width and keeps its flag",16,0,FALSE,FALSE,0,0.0250000000000004,0.004,0.0289999999999999,16
+"test-dta-append.R","dta-append","a string format is kept when storage does not widen",6,0,FALSE,FALSE,0,0.0110000000000001,0.00100000000000011,0.0129999999999999,6
+"test-dta-append.R","dta-append","logical placeholders do not clear temporal structure",4,0,FALSE,FALSE,0,0.00699999999999967,0.00100000000000011,0.00900000000000034,4
+"test-dta-append.R","dta-append","a logical first contributor retains its user metadata",7,0,FALSE,FALSE,0,0.0169999999999995,0.002,0.0190000000000001,7
+"test-dta-append.R","dta-append","a variable label survives a missing-fill contribution",2,0,FALSE,FALSE,0,0.00400000000000045,0.00099999999999989,0.00400000000000134,2
+"test-dta-append.R","dta-append",".dta and .arrow paths append like in-memory frames",10,0,FALSE,FALSE,0,0.0209999999999999,0.00500000000000012,0.032,10
+"test-dta-append.R","dta-append","mixed memory and file sources dispatch per element",2,0,FALSE,FALSE,0,0.00599999999999934,0.00099999999999989,0.00699999999999967,2
+"test-dta-append.R","dta-append","dataset notes follow the requested policy",3,0,FALSE,FALSE,0,0.00800000000000001,0.00099999999999989,0.0080000000000009,3
+"test-dta-append.R","dta-append","the output container is honoured",3,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00699999999999967,3
+"test-dta-append.R","dta-append","a single source is returned unchanged in shape",2,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999956,2
+"test-dta-append.R","dta-append","invalid input is rejected",4,0,FALSE,FALSE,0,0.0149999999999997,0,0.016,4
+"test-dta-append.R","dta-append","appending in either order stacks the rows in source order",3,0,FALSE,FALSE,0,0.00700000000000056,0.00099999999999989,0.0080000000000009,3
+"test-dta-append.R","dta-append","a wrapped and a bare Stata string column append together",2,0,FALSE,FALSE,0,0.00400000000000045,0.00100000000000011,0.00500000000000078,2
+"test-dta-append.R","dta-append","a buffered column is written in place, not duplicated",4,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.004999999999999,4
+"test-dta-append.R","dta-append","a buffered column keeps values that do not fit the buffer",3,0,FALSE,FALSE,0,0.00700000000000056,0.00100000000000011,0.0080000000000009,3
+"test-dta-append.R","dta-append","an undeclared numeric widens a declared Stata prototype",6,0,FALSE,FALSE,0,0.00800000000000001,0.002,0.00999999999999979,6
+"test-dta-append.R","dta-append","widening an undeclared numeric preserves variable metadata",5,0,FALSE,FALSE,0,0.00700000000000056,0.002,0.00900000000000034,5
+"test-dta-append.R","dta-append","values outside Stata double storage obey force",3,0,FALSE,FALSE,0,0.0110000000000001,0,0.0120000000000005,3
+"test-dta-append.R","dta-append","a character source holding NA obeys force like the pieces path",3,0,FALSE,FALSE,0,0.00600000000000023,0,0.00699999999999967,3
+"test-dta-append.R","dta-append","append name repair preserves implicit label-table identity",23,0,FALSE,FALSE,0,0.024,0.00700000000000012,0.032,23
+"test-dta-append.R","dta-append","append gives blank implicit label names a stable repaired identity",10,0,FALSE,FALSE,0,0.0309999999999997,0.00300000000000011,0.0350000000000001,10
+"test-dta-compare-native.R","dta-compare-native","native scalar comparisons match Stata total order",24,0,FALSE,FALSE,0,0.0180000000000007,0.006,0.0240000000000009,24
+"test-dta-compare-native.R","dta-compare-native","native comparisons keep every missing code distinct and ordered",24,0,FALSE,FALSE,0,0.0220000000000002,0.006,0.0280000000000005,24
+"test-dta-compare-native.R","dta-compare-native","narrow storage understands constants it cannot represent",6,0,FALSE,FALSE,0,0.00499999999999989,0.00099999999999989,0.00600000000000023,6
+"test-dta-compare-native.R","dta-compare-native","scalar-on-the-left comparisons flip correctly",6,0,FALSE,FALSE,0,0.00499999999999989,0.002,0.00699999999999967,6
+"test-dta-compare-native.R","dta-compare-native","compact-versus-compact comparisons agree elementwise",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,3
+"test-dta-compare-native.R","dta-compare-native","comparisons never materialize compact operands",2,0,FALSE,FALSE,0,0.00199999999999978,0.00099999999999989,0.00200000000000067,2
+"test-dta-compare-native.R","dta-compare-native","the native kernel is engaged for compact storage",5,0,FALSE,FALSE,0,0.00399999999999956,0.00100000000000011,0.004999999999999,5
+"test-dta-compare-native.R","dta-compare-native","decoded double vectors compare natively with full semantics",10,0,FALSE,FALSE,0,0.00999999999999979,0.00299999999999989,0.0120000000000005,10
+"test-dta-compare-native.R","dta-compare-native","multi-threaded comparisons match single-threaded results",3,0,FALSE,FALSE,0,0.0129999999999999,0.00100000000000011,0.0139999999999993,3
+"test-dta-compare-native.R","dta-compare-native","fallback-owned errors survive the native fast path",2,0,FALSE,FALSE,0,0.00500000000000078,0.00099999999999989,0.00500000000000078,2
+"test-dta-identical.R","dta-identical","dta_identical compares numeric values across storage and bare vectors",32,0,FALSE,FALSE,0,0.0299999999999994,0.00700000000000012,0.036999999999999,32
+"test-dta-identical.R","dta-identical","dta_identical distinguishes every Stata missing code",55,0,FALSE,FALSE,0,0.0530000000000008,0.014,0.0669999999999984,55
+"test-dta-identical.R","dta-identical","dta_identical compares strings exactly",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00399999999999956,3
+"test-dta-identical.R","dta-identical","dta_identical keeps date and datetime identity domains separate",5,0,FALSE,FALSE,0,0.00499999999999989,0.00100000000000011,0.00600000000000023,5
+"test-dta-identical.R","dta-identical","dta_identical returns false for incompatible kinds",2,0,FALSE,FALSE,0,0.00199999999999978,0.00099999999999989,0.00299999999999834,2
+"test-dta-identical.R","dta-identical","dta_identical handles empty vectors and NULL without recycling",6,0,FALSE,FALSE,0,0.00499999999999989,0.00300000000000011,0.00699999999999967,6
+"test-dta-identical.R","dta-identical","dta_identical ignores names, classes, and variable metadata",2,0,FALSE,FALSE,0,0.00199999999999978,0.00099999999999989,0.00300000000000011,2
+"test-dta-identical.R","dta-identical","dta_identical rejects noncanonical NaN payloads",3,0,FALSE,FALSE,0,0.00600000000000023,0,0.00699999999999967,3
+"test-dta-match.R","dta-match","matching distinguishes every Stata missing identity",3,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00400000000000134,3
+"test-dta-match.R","dta-match","matching retains names and rejects noncanonical NaNs",5,0,FALSE,FALSE,0,0.00699999999999967,0.00100000000000011,0.00799999999999912,5
+"test-dta-match.R","dta-match","base matching interoperates with bare vectors",8,0,FALSE,FALSE,0,0.011000000000001,0.002,0.0120000000000005,8
+"test-dta-match.R","dta-match","base matching supports Stata-backed dates and datetimes",6,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.0080000000000009,6
+"test-dta-match.R","dta-match","matching and sets support owned Stata strings",6,0,FALSE,FALSE,0,0.00599999999999845,0.00100000000000011,0.00600000000000023,6
+"test-dta-match.R","dta-match","union accepts bare tagged missings on either side",1,0,FALSE,FALSE,0,0.00200000000000067,0.00099999999999989,0.00200000000000067,1
+"test-dta-match.R","dta-match","union widens losslessly for bare numeric operands in either order",4,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00500000000000078,4
+"test-dta-match.R","dta-match","union widens Stata-backed dates with bare dates in either order",10,0,FALSE,FALSE,0,0.0080000000000009,0.002,0.00900000000000034,10
+"test-dta-match.R","dta-match","union widens Stata-backed datetimes with bare datetimes in either order",12,0,FALSE,FALSE,0,0.00900000000000034,0.002,0.0109999999999992,12
+"test-dta-match.R","dta-match","matching rejects incompatible kinds",2,0,FALSE,FALSE,0,0.00399999999999956,0,0.00399999999999956,2
+"test-dta-match.R","dta-match","date and datetime operands keep separate identity domains",3,0,FALSE,FALSE,0,0.00699999999999967,0.00099999999999989,0.0080000000000009,3
+"test-dta-match.R","dta-match","set operations use stable Stata identity",10,0,FALSE,FALSE,0,0.00899999999999856,0.002,0.0120000000000005,10
+"test-dta-match.R","dta-match","set operations follow base NULL behavior",6,0,FALSE,FALSE,0,0.00500000000000078,0.00099999999999989,0.00699999999999967,6
+"test-dta-match.R","dta-match","set operations retain left metadata where promised",4,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.00500000000000078,4
+"test-dta-match.R","dta-match","union reconciles metadata left-first with one warning",14,0,FALSE,FALSE,0,0.00799999999999912,0.002,0.00999999999999979,14
+"test-dta-match.R","dta-match","union chooses the first compatible display format",2,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00400000000000134,2
+"test-dta-match.R","dta-match","temporal union reconciles variable metadata left-first",4,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.00999999999999979,4
+"test-dta-match.R","dta-match","base matching transforms two Stata-backed operands",2,0,FALSE,FALSE,0,0.00199999999999889,0,0.00300000000000011,2
+"test-dta-merge.R","dta-merge","1:1 merges match keys under Stata missing-code identity",11,0,FALSE,FALSE,0,0.0129999999999999,0.002,0.016,11
+"test-dta-merge.R","dta-merge","compact gathers retain exact missing counts",6,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.0080000000000009,6
+"test-dta-merge.R","dta-merge","each of the 27 Stata missing codes matches only itself",4,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00699999999999967,4
+"test-dta-merge.R","dta-merge","NaN key values are rejected with a Stata remedy",2,0,FALSE,FALSE,0,0.004999999999999,0.00100000000000011,0.00500000000000078,2
+"test-dta-merge.R","dta-merge","character missing keys require Stata's empty string",3,0,FALSE,FALSE,0,0.00600000000000023,0,0.00600000000000023,3
+"test-dta-merge.R","dta-merge","key columns coalesce storage and metadata",10,0,FALSE,FALSE,0,0.00899999999999856,0.002,0.00999999999999979,10
+"test-dta-merge.R","dta-merge","ordinary coalesced columns use y's label when x has none",4,0,FALSE,FALSE,0,0.00500000000000078,0.00099999999999989,0.004999999999999,4
+"test-dta-merge.R","dta-merge","coalesced variables reconcile notes and characteristics x first",6,0,FALSE,FALSE,0,0.0169999999999995,0.00100000000000011,0.0229999999999997,6
+"test-dta-merge.R","dta-merge","explicit empty metadata falls back without a conflict warning",3,0,FALSE,FALSE,0,0.00500000000000078,0.00099999999999989,0.00600000000000023,3
+"test-dta-merge.R","dta-merge","coalesced metadata scanning stays width-linear",1,0,FALSE,FALSE,0,0.388,0.002,0.391,1
+"test-dta-merge.R","dta-merge","coalesced variables with matching metadata merge silently",3,0,FALSE,FALSE,0,0.00500000000000078,0,0.00500000000000078,3
+"test-dta-merge.R","dta-merge","overlapping non-key variables follow the master-wins rule",5,0,FALSE,FALSE,0,0.0190000000000001,0.00300000000000011,0.0259999999999998,5
+"test-dta-merge.R","dta-merge","compact variables retain values across merge partitions",16,0,FALSE,FALSE,0,0.0169999999999995,0.004,0.0219999999999985,16
+"test-dta-merge.R","dta-merge","Stata doubles retain values and metadata across merge partitions",11,0,FALSE,FALSE,0,0.0169999999999995,0.00500000000000012,0.0220000000000002,11
+"test-dta-merge.R","dta-merge","compact variables keep legacy observed encodings",2,0,FALSE,FALSE,0,0.00500000000000078,0.00099999999999989,0.00699999999999967,2
+"test-dta-merge.R","dta-merge","compact coalescing handles legacy and modern missing layouts",3,0,FALSE,FALSE,0,0.00500000000000078,0.002,0.00699999999999967,3
+"test-dta-merge.R","dta-merge","merge relationships are validated with explicit diagnostics",10,0,FALSE,FALSE,0,0.0329999999999995,0.00100000000000011,0.0350000000000001,10
+"test-dta-merge.R","dta-merge","keep filters match results and assert validates them",10,0,FALSE,FALSE,0,0.0170000000000012,0.00100000000000011,0.0190000000000001,10
+"test-dta-merge.R","dta-merge","inputs and by keys are validated",9,0,FALSE,FALSE,0,0.0190000000000001,0.00099999999999989,0.0210000000000008,9
+"test-dta-merge.R","dta-merge","zero-row inputs merge cleanly",7,0,FALSE,FALSE,0,0.011000000000001,0.00300000000000011,0.0139999999999993,7
+"test-dta-merge.R","dta-merge","temporal keys merge with promoted storage",5,0,FALSE,FALSE,0,0.00699999999999967,0.002,0.00999999999999979,5
+"test-dta-merge.R","dta-merge","dataset notes append master then using with stable numbering",4,0,FALSE,FALSE,0,0.00400000000000134,0.002,0.004999999999999,4
+"test-dta-merge.R","dta-merge","dataset-note merge preserves one side and renumbers using notes",7,0,FALSE,FALSE,0,0.00799999999999912,0.00099999999999989,0.00899999999999856,7
+"test-dta-merge.R","dta-merge","dataset-note merge rejects Stata note-number exhaustion",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,1
+"test-dta-merge.R","dta-merge","base, tibble, and data.table inputs merge identically",87,0,FALSE,FALSE,0,0.109,0.018,0.125999999999999,87
+"test-dta-merge.R","dta-merge","plain keyed data.tables retain their values, aliases, and keys",10,0,FALSE,FALSE,0,0.0129999999999999,0.002,0.0150000000000006,10
+"test-dta-merge.R","dta-merge","master and using accept DTA file paths in any combination",11,0,FALSE,FALSE,0,0.0190000000000001,0.004,0.0229999999999997,11
+"test-dta-merge.R","dta-merge","every x and y source combination merges identically",76,0,FALSE,FALSE,0,0.110000000000001,0.022,0.144,76
+"test-dta-merge.R","dta-merge","Arrow URLs with query strings dispatch to read_arrow",2,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00199999999999889,2
+"test-dta-merge.R","dta-merge","multiple keys match jointly under missing-code identity",2,0,FALSE,FALSE,0,0.00299999999999834,0.00100000000000011,0.00399999999999956,2
+"test-dta-merge.R","dta-merge","unmatched rows fill string columns with the empty string",4,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00600000000000023,4
+"test-dta-metadata.R","dta-metadata","note accessors preserve gaps, empty text, scope, and stable renumbering",10,0,FALSE,FALSE,0,0.00900000000000034,0.002,0.011000000000001,10
+"test-dta-metadata.R","dta-metadata","characteristic accessors preserve order, Unicode, and empty values",7,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00799999999999912,7
+"test-dta-metadata.R","dta-metadata","metadata accessors reject malformed and reserved input atomically",20,0,FALSE,FALSE,0,0.0370000000000008,0.00099999999999989,0.0380000000000003,20
+"test-dta-metadata.R","dta-metadata","base and tibble subsetting preserve Stata metadata",46,0,FALSE,FALSE,0,0.0429999999999993,0.012,0.0650000000000013,46
+"test-dta-metadata.R","dta-metadata","vctrs preserves metadata on supported plain vector types",65,0,FALSE,FALSE,0,0.0609999999999999,0.0109999999999999,0.0719999999999992,65
+"test-dta-metadata.R","dta-metadata","dplyr recode treats metadata vector markers as transparent",6,0,FALSE,FALSE,0,0.00500000000000078,0.00099999999999989,0.00600000000000023,6
+"test-dta-metadata.R","dta-metadata","metadata vector markers remain writable",11,0,FALSE,FALSE,0,0.0119999999999987,0.00300000000000011,0.0199999999999996,11
+"test-dta-metadata.R","dta-metadata","Arrow writes labelled numeric vectors with Stata metadata",6,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.0129999999999999,6
+"test-dta-metadata.R","dta-metadata","wide subsets restore only metadata-bearing variables",6,0,FALSE,FALSE,0,0.093,0.002,0.0950000000000006,6
+"test-dta-metadata.R","dta-metadata","writers reject manually attached over-limit metadata safely",5,0,FALSE,FALSE,0,0.00699999999999967,0.00099999999999989,0.00900000000000034,5
+"test-dta-metadata.R","dta-metadata","legacy decoded metadata survives R access and Arrow round trips",6,0,FALSE,FALSE,0,0.00999999999999979,0.002,0.0169999999999995,6
+"test-dta-metadata.R","dta-metadata","native metadata envelopes validate counts before allocation",3,0,FALSE,FALSE,0,0.00399999999999956,0.00100000000000011,0.00500000000000078,3
+"test-dta-metadata.R","dta-metadata","empty write metadata uses one native sentinel at high column counts",6,0,FALSE,FALSE,0,0.406000000000001,0.00499999999999989,0.417,6
+"test-dta-metadata.R","dta-metadata","Arrow retains `_dta` variable metadata that DTA cannot represent",5,0,FALSE,FALSE,0,0.00900000000000034,0.002,0.0140000000000011,5
+"test-dta-metadata.R","dta-metadata","DTA and Arrow round trips retain dataset and projected variable metadata",21,0,FALSE,FALSE,0,0.0219999999999985,0.006,0.036999999999999,21
+"test-dta-metadata.R","dta-metadata","metadata helpers edit dibbles through function parameters and aliases",303,0,FALSE,FALSE,0,0.207000000000001,0.0510000000000002,0.257000000000001,303
+"test-dta-metadata.R","dta-metadata","metadata helpers keep copy semantics on vectors",2,0,FALSE,FALSE,0,0.000999999999999446,0,0.000999999999999446,2
+"test-dta-metadata.R","dta-metadata","failed dibble metadata edits leave all bindings unchanged",6,0,FALSE,FALSE,0,0.0109999999999992,0,0.0119999999999987,6
+"test-dta-metadata.R","dta-metadata","dibble metadata edits preserve other scopes and grouping",12,0,FALSE,FALSE,0,0.0120000000000005,0.002,0.0139999999999993,12
+"test-dta-numeric-summary.R","dta-numeric-summary","numeric summaries match base R for every Stata storage",120,0,FALSE,FALSE,0,0.0719999999999992,0.016,0.0899999999999999,120
+"test-dta-numeric-summary.R","dta-numeric-summary","numeric summaries forward rounding and quantile arguments",47,0,FALSE,FALSE,0,0.0339999999999989,0.00800000000000001,0.0419999999999998,47
+"test-dta-numeric-summary.R","dta-numeric-summary","summaries work on typed columns and whole dibbles",2,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.00600000000000023,2
+"test-dta-numeric.R","dta-numeric","storage constructors create declared compact vectors",25,0,FALSE,FALSE,0,0.0139999999999993,0.004,0.0180000000000007,25
+"test-dta-numeric.R","dta-numeric","size allocation creates system-missing compact vectors",12,0,FALSE,FALSE,0,0.00999999999999979,0.00299999999999989,0.0120000000000005,12
+"test-dta-numeric.R","dta-numeric","constructors enforce Stata ranges and precision rules",13,0,FALSE,FALSE,0,0.0180000000000007,0.00100000000000011,0.0190000000000001,13
+"test-dta-numeric.R","dta-numeric","constructors preserve Stata extended missing codes",5,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.004999999999999,5
+"test-dta-numeric.R","dta-numeric","Stata numeric comparisons use missing-code identity and order",7,0,FALSE,FALSE,0,0.00500000000000078,0.002,0.00700000000000145,7
+"test-dta-numeric.R","dta-numeric","Stata numeric comparisons return empty results for empty operands",4,0,FALSE,FALSE,0,0.00200000000000067,0.00099999999999989,0.00300000000000011,4
+"test-dta-numeric.R","dta-numeric","Stata numeric ordering retains and ranks missing codes",9,0,FALSE,FALSE,0,0.0080000000000009,0.00100000000000011,0.00900000000000034,9
+"test-dta-numeric.R","dta-numeric","vctrs identity distinguishes Stata missing codes",10,0,FALSE,FALSE,0,0.00799999999999912,0.002,0.00900000000000034,10
+"test-dta-numeric.R","dta-numeric","identity operations reject noncanonical NaN payloads",4,0,FALSE,FALSE,0,0.0080000000000009,0,0.00900000000000034,4
+"test-dta-numeric.R","dta-numeric","Stata temporal vectors use numeric missing identity",4,0,FALSE,FALSE,0,0.00399999999999956,0.002,0.00600000000000023,4
+"test-dta-numeric.R","dta-numeric","native construction rejects unsupported tagged missing payloads",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999956,2
+"test-dta-numeric.R","dta-numeric","storage inspection does not materialize imported columns",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00500000000000078,3
+"test-dta-numeric.R","dta-numeric","serialization preserves compact numeric backing",4,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00600000000000023,4
+"test-dta-numeric.R","dta-numeric","saveRDS preserves compact numeric backing",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00399999999999956,3
+"test-dta-numeric.R","dta-numeric","serialization preserves writable materialized values",4,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00400000000000134,4
+"test-dta-numeric.R","dta-numeric","stored public coercions are isolated from reference mutation",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00299999999999834,3
+"test-dta-numeric.R","dta-numeric","stored vctrs proxies are isolated from reference mutation",2,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999956,2
+"test-dta-numeric.R","dta-numeric","data-frame coercion preserves vector and explicit row names",5,0,FALSE,FALSE,0,0.00400000000000134,0.00100000000000011,0.00600000000000023,5
+"test-dta-numeric.R","dta-numeric","lazy public snapshots release stripped source attributes",3,0,FALSE,FALSE,0,0.0719999999999992,0.00099999999999989,0.0730000000000004,3
+"test-dta-numeric.R","dta-numeric","base subsetting and duplication preserve compact backing",5,0,FALSE,FALSE,0,0.00399999999999956,0.002,0.00600000000000023,5
+"test-dta-numeric.R","dta-numeric","vctrs proxy slicing preserves compact backing",12,0,FALSE,FALSE,0,0.00799999999999912,0.002,0.00999999999999979,12
+"test-dta-numeric.R","dta-numeric","vctrs restoration distinguishes storage and temporal encoding",8,0,FALSE,FALSE,0,0.00699999999999967,0.002,0.00899999999999856,8
+"test-dta-numeric.R","dta-numeric","legacy compact widths preserve system missing encoding",16,0,FALSE,FALSE,0,0.0120000000000005,0.00300000000000011,0.0139999999999993,16
+"test-dta-numeric.R","dta-numeric","narrow dates validate and encode in Stata source units",18,0,FALSE,FALSE,0,0.0199999999999996,0.004,0.0250000000000004,18
+"test-dta-numeric.R","dta-numeric","temporal summaries, concatenation, and recodes retain storage",16,0,FALSE,FALSE,0,0.0129999999999999,0.004,0.016,16
+"test-dta-numeric.R","dta-numeric","temporal common operations reject mixed kinds",9,0,FALSE,FALSE,0,0.0250000000000004,0.00099999999999989,0.0260000000000016,9
+"test-dta-numeric.R","dta-numeric","empty temporal extrema retain base infinity behavior",6,0,FALSE,FALSE,0,0.00500000000000078,0.002,0.00699999999999967,6
+"test-dta-numeric.R","dta-numeric","common types follow the Stata storage promotion lattice",25,0,FALSE,FALSE,0,0.0229999999999997,0.00500000000000012,0.0280000000000005,25
+"test-dta-numeric.R","dta-numeric","bare vectors meet declared storage at their own mapping",14,0,FALSE,FALSE,0,0.0129999999999999,0.00299999999999989,0.016,14
+"test-dta-numeric.R","dta-numeric","casts into declared storage are strict and preserve missing tags",6,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00799999999999912,6
+"test-dta-numeric.R","dta-numeric","assignment and vctrs recodes re-encode compact storage",17,0,FALSE,FALSE,0,0.0150000000000006,0.002,0.0170000000000012,17
+"test-dta-numeric.R","dta-numeric","base right and full merges can append native Stata keys",10,0,FALSE,FALSE,0,0.00999999999999979,0.00100000000000011,0.0120000000000005,10
+"test-dta-numeric.R","dta-numeric","base full merges promote native Stata temporal keys",5,0,FALSE,FALSE,0,0.0080000000000009,0.00100000000000011,0.00999999999999979,5
+"test-dta-numeric.R","dta-numeric","extension promotes declared inputs without weakening assignment",10,0,FALSE,FALSE,0,0.0139999999999993,0.00100000000000011,0.016,10
+"test-dta-numeric.R","dta-numeric","dplyr joins preserve compatible Stata key information",9,0,FALSE,FALSE,0,0.00999999999999979,0.002,0.011000000000001,9
+"test-dta-numeric.R","dta-numeric","value labels compose with declared storage classes",7,0,FALSE,FALSE,0,0.00400000000000134,0.00099999999999989,0.004999999999999,7
+"test-dta-numeric.R","dta-numeric","common types reconcile value and variable labels",19,0,FALSE,FALSE,0,0.0199999999999996,0.00299999999999989,0.0220000000000002,19
+"test-dta-numeric.R","dta-numeric","common types reconcile notes and characteristics left first",6,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.00699999999999967,6
+"test-dta-numeric.R","dta-numeric","arithmetic promotes from operand storage according to result values",16,0,FALSE,FALSE,0,0.011000000000001,0.004,0.0140000000000011,16
+"test-dta-numeric.R","dta-numeric","arithmetic collapses tags and returns bare logical comparisons",7,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00600000000000023,7
+"test-dta-numeric.R","dta-numeric","missing operands yield system missing whatever their tag",15,0,FALSE,FALSE,0,0.00999999999999979,0.00300000000000011,0.0129999999999999,15
+"test-dta-numeric.R","dta-numeric","rounding keeps a missing tag and other math functions drop it",30,0,FALSE,FALSE,0,0.0190000000000001,0.006,0.0249999999999986,30
+"test-dta-numeric.R","dta-numeric","computed results preserve Stata construction semantics",27,0,FALSE,FALSE,0,0.0169999999999995,0.00499999999999989,0.0220000000000002,27
+"test-dta-numeric.R","dta-numeric","Complex group members use value-dependent storage",7,0,FALSE,FALSE,0,0.011000000000001,0.00100000000000011,0.0119999999999987,7
+"test-dta-numeric.R","dta-numeric","math and summary generics use value-dependent storage",13,0,FALSE,FALSE,0,0.00900000000000034,0.00300000000000011,0.0109999999999992,13
+"test-dta-numeric.R","dta-numeric","Summary generics accept bare numeric and logical arguments",6,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00600000000000023,6
+"test-dta-numeric.R","dta-numeric","base ifelse strips declared storage as documented",2,0,FALSE,FALSE,0,0.00100000000000122,0.00100000000000011,0.00200000000000067,2
+"test-dta-numeric.R","dta-numeric","undefined Stata arithmetic becomes system missing",4,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00399999999999956,4
+"test-dta-string-metadata-coercion.R","dta-string-metadata-coercion","a wrapped Stata string has a common type with a bare one",4,0,FALSE,FALSE,0,0.00200000000000067,0,0.00300000000000011,4
+"test-dta-string-metadata-coercion.R","dta-string-metadata-coercion","vec_c() combines wrapped and bare Stata strings either way",4,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.004999999999999,4
+"test-dta-string-metadata-coercion.R","dta-string-metadata-coercion","c() combines wrapped and bare Stata strings",2,0,FALSE,FALSE,0,0.00200000000000067,0,0.00300000000000011,2
+"test-dta-string-metadata-coercion.R","dta-string-metadata-coercion","combining keeps the variable label and dataset-level notes",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00399999999999956,3
+"test-dta-string-metadata-coercion.R","dta-string-metadata-coercion","casting works in both directions",5,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00399999999999956,5
+"test-dta-string.R","dta-string","dta_string infers UTF-8 byte storage and validates declarations",5,0,FALSE,FALSE,0,0.00799999999999912,0.00100000000000011,0.00799999999999912,5
+"test-dta-string.R","dta-string","dta_storage_type reports declared string storage",5,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999956,5
+"test-dta-string.R","dta-string","Stata strings restore metadata through slicing and conversion",10,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00700000000000145,10
+"test-dta-string.R","dta-string","Stata string concatenation widens and replacement stays strict",12,0,FALSE,FALSE,0,0.0129999999999999,0.002,0.0149999999999988,12
+"test-dta-string.R","dta-string","common type with bare character can hold values chosen later",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00300000000000011,3
+"test-dta-string.R","dta-string","Stata string sorting preserves metadata and rejects partial sorting",5,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00600000000000023,5
+"test-dta-string.R","dta-string","Stata restoration drops unknown attributes once",6,0,FALSE,FALSE,0,0.0080000000000009,0.00100000000000011,0.00799999999999912,6
+"test-dta-string.R","dta-string","Stata string subset and restore padding use empty missing strings",48,0,FALSE,FALSE,0,0.032,0.00800000000000001,0.0399999999999991,48
+"test-egen-command.R","egen-command","egen, gen and := agree without filters and distinguish filtered inputs",7,0,FALSE,FALSE,0,0.0129999999999999,0.002,0.0140000000000011,7
+"test-egen-command.R","egen-command","egen reuses target capture and formula conventions",7,0,FALSE,FALSE,0,0.00799999999999912,0.00099999999999989,0.00900000000000034,7
+"test-egen-command.R","egen-command","egen calls actual functions and supports namespace qualification",8,0,FALSE,FALSE,0,0.0100000000000016,0.002,0.0109999999999992,8
+"test-egen-command.R","egen-command","egen type, placement and row positions validate before mutation",11,0,FALSE,FALSE,0,0.0149999999999988,0.00100000000000011,0.016,11
+"test-egen-command.R","egen-command","egen uses Stata key identity and does not reorder for by",3,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00400000000000134,3
+"test-egen-command.R","egen-command","egen stages bysort and commits only after success",8,0,FALSE,FALSE,0,0.011000000000001,0.00100000000000011,0.0120000000000005,8
+"test-egen-command.R","egen-command","egen grouped inputs supply groups and counters describe the sample",5,0,FALSE,FALSE,0,0.0109999999999992,0.00100000000000011,0.0120000000000005,5
+"test-egen-command.R","egen-command","egen tag fills excluded rows with zero and forces byte",10,0,FALSE,FALSE,0,0.0120000000000005,0.002,0.0139999999999993,10
+"test-egen-command.R","egen-command","egen does not evaluate values separately for each admitted row",2,0,FALSE,FALSE,0,0.00500000000000078,0.00099999999999989,0.00600000000000023,2
+"test-egen-command.R","egen-command","egen validates source NaN and normalizes arithmetic NaN",15,0,FALSE,FALSE,0,0.0219999999999985,0.00100000000000011,0.0239999999999991,15
+"test-egen-command.R","egen-command","egen handles empty samples without inventing observations",4,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00700000000000145,4
+"test-egen-command.R","egen-command","egen preserves aliases and copy isolation through pipelines",4,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.004999999999999,4
+"test-egen-command.R","egen-command","egen keeps data.table keys unless bysort changes row order",4,0,FALSE,FALSE,0,0.004999999999999,0.00100000000000011,0.00600000000000023,4
+"test-egen-command.R","egen-command","egen grouped calculations leave compact source columns untouched",6,0,FALSE,FALSE,0,0.00799999999999912,0.00199999999999978,0.00999999999999979,6
+"test-egen-groups.R","egen-groups","group IDs sort mixed keys and tags select first eligible rows",7,0,FALSE,FALSE,0,0.004999999999999,0.002,0.00600000000000023,7
+"test-egen-groups.R","egen-groups","group keys preserve every missing identity and signed zero",4,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,4
+"test-egen-groups.R","egen-groups","group keys compare mixed encodings by their UTF-8 text",4,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999956,4
+"test-egen-groups.R","egen-groups","cached group text remains rooted through GC without materializing sources",4,0,FALSE,FALSE,0,0.0300000000000011,0.00100000000000011,0.0310000000000006,4
+"test-egen-groups.R","egen-groups","group inputs and options are checked without changing sources",23,0,FALSE,FALSE,0,0.0309999999999988,0.00099999999999989,0.032,23
+"test-egen-groups.R","egen-groups","autotype uses Stata integer storage thresholds",7,0,FALSE,FALSE,0,0.0170000000000012,0.00100000000000011,0.0169999999999995,7
+"test-egen-groups.R","egen-groups","group labels own mappings and truncate Unicode components",8,0,FALSE,FALSE,0,0.0879999999999992,0.002,0.0899999999999999,8
+"test-egen-groups.R","egen-groups","group metadata survives DTA and Arrow round trips",14,0,FALSE,FALSE,0,0.0129999999999999,0.004,0.0250000000000004,14
+"test-egen-groups.R","egen-groups","group keys use encoded temporal values",5,0,FALSE,FALSE,0,0.00500000000000078,0.002,0.00600000000000023,5
+"test-egen-groups.R","egen-groups","computed NaN group labels use the normalized system missing",1,0,FALSE,FALSE,0,0.00200000000000067,0,0.00200000000000067,1
+"test-egen-stata-fixture.R","egen-stata-fixture","numeric egen values match the Stata 18 differential fixture",56,0,FALSE,FALSE,0,0.0459999999999994,0.0110000000000001,0.0579999999999998,56
+"test-egen-stata-fixture.R","egen-stata-fixture","group identifiers and tags match the Stata 18 fixture",8,0,FALSE,FALSE,0,0.0109999999999992,0.002,0.0119999999999987,8
+"test-egen-stata-fixture.R","egen-stata-fixture","group labels match Stata numeric formatting and Unicode truncation",3,0,FALSE,FALSE,0,0.00700000000000145,0.00099999999999989,0.00799999999999912,3
+"test-egen-stata-fixture.R","egen-stata-fixture","egen commands reproduce source call shapes and Stata storage",15,0,FALSE,FALSE,0,0.0189999999999984,0.00299999999999989,0.0229999999999997,15
+"test-egen-stata-fixture.R","egen-stata-fixture","egen accumulation follows Stata double precision and input order",24,0,FALSE,FALSE,0,0.0179999999999989,0.00499999999999989,0.0229999999999997,24
+"test-egen-stata-fixture.R","egen-stata-fixture","group numeric labels match Stata fixed and exponential formatting",2,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00399999999999956,2
+"test-egen-stata-fixture.R","egen-stata-fixture","Unicode descriptions follow the measured group width contract",8,0,FALSE,FALSE,0,0.00999999999999979,0.002,0.0120000000000005,8
+"test-egen-values.R","egen-values","numeric summaries apply Stata missing rules without rounding",21,0,FALSE,FALSE,0,0.0149999999999988,0.004,0.0200000000000014,21
+"test-egen-values.R","egen-values","row calculations accept columns and preserve all-missing rules",8,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00799999999999912,8
+"test-egen-values.R","egen-values","numeric calculations validate input classes, shapes, and options",33,0,FALSE,FALSE,0,0.0549999999999997,0.002,0.0570000000000004,33
+"test-egen-values.R","egen-values","calculations discard metadata and use encoded temporal numbers",10,0,FALSE,FALSE,0,0.0129999999999999,0.00300000000000011,0.0149999999999988,10
+"test-egen-values.R","egen-values","datetime calculations use the package epoch conversion order",4,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.004999999999999,4
+"test-egen-values.R","egen-values","numeric calculations leave compact inputs unmaterialized",8,0,FALSE,FALSE,0,0.00700000000000145,0.00300000000000011,0.00999999999999979,8
+"test-egen-values.R","egen-values","Arrow numeric calculations preserve compact input storage",6,0,FALSE,FALSE,0,0.00599999999999845,0.002,0.0129999999999999,6
+"test-egen-values.R","egen-values","egen calculation scope normalizes only ordinary NaN payloads",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999956,3
+"test-egen-values.R","egen-values","numeric value functions compose with grouped dibble assignment",5,0,FALSE,FALSE,0,0.00699999999999967,0.002,0.00900000000000034,5
+"test-explicit-metadata.R","explicit-metadata","all table metadata setters reach aliases and function callers",84,0,FALSE,FALSE,0,0.0860000000000003,0.016,0.102,84
+"test-explicit-metadata.R","explicit-metadata","format setters support literal and runtime target forms",31,0,FALSE,FALSE,0,0.032,0.00900000000000012,0.0410000000000004,31
+"test-explicit-metadata.R","explicit-metadata","singular vector formats accept positional or named values without mutation",36,0,FALSE,FALSE,0,0.0359999999999996,0.0069999999999999,0.0440000000000005,36
+"test-explicit-metadata.R","explicit-metadata","plural vector formats require one explicitly supplied value",30,0,FALSE,FALSE,0,0.036999999999999,0.00500000000000012,0.0419999999999998,30
+"test-explicit-metadata.R","explicit-metadata","table labels preserve container classes alongside notes and characteristics",64,0,FALSE,FALSE,0,0.0589999999999993,0.0149999999999999,0.0739999999999998,64
+"test-explicit-metadata.R","explicit-metadata","table metadata commits repair markers left by base attribute copies",81,0,FALSE,FALSE,0,0.0589999999999993,0.016,0.0730000000000004,81
+"test-explicit-metadata.R","explicit-metadata","metadata bundles restore downstream runtime column metadata atomically",48,0,FALSE,FALSE,0,0.0390000000000015,0.0089999999999999,0.0479999999999983,48
+"test-explicit-metadata.R","explicit-metadata","failed metadata bundles and plural formats leave all state unchanged",26,0,FALSE,FALSE,0,0.0449999999999999,0.00100000000000011,0.0459999999999994,26
+"test-explicit-metadata.R","explicit-metadata","declared empty label tables reject nonnumeric targets atomically",12,0,FALSE,FALSE,0,0.0169999999999995,0.002,0.0260000000000016,12
+"test-explicit-metadata.R","explicit-metadata","metadata bundles preserve complete raw value-label mappings",44,0,FALSE,FALSE,0,0.0640000000000001,0.0109999999999999,0.0939999999999994,44
+"test-explicit-metadata.R","explicit-metadata","metadata setters isolate copied and serialized bookkeeping both ways",66,0,FALSE,FALSE,0,0.0649999999999995,0.0150000000000001,0.0800000000000001,66
+"test-explicit-metadata.R","explicit-metadata","metadata edits preserve compact storage, capacity, and data.table indexes",13,0,FALSE,FALSE,0,0.0150000000000006,0.004,0.0200000000000014,13
+"test-factor-from-labels.R","factor-from-labels","factor_from_labels has an ordinary factor interface",4,0,FALSE,FALSE,0,0.00399999999999956,0.00100000000000011,0.004999999999999,4
+"test-factor-from-labels.R","factor-from-labels","factor_from_labels controls unused levels, display, and ordering",4,0,FALSE,FALSE,0,0.00400000000000134,0.00099999999999989,0.00500000000000078,4
+"test-factor-from-labels.R","factor-from-labels","factor_from_labels does not invent non-Stata missing tags",2,0,FALSE,FALSE,0,0.000999999999999446,0.00100000000000011,0.00200000000000067,2
+"test-factor-from-labels.R","factor-from-labels","factor_from_labels applies Stata missing-value semantics",7,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.0080000000000009,7
+"test-factor-from-labels.R","factor-from-labels","factor_from_labels supports unlabelled numeric vectors",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999956,3
+"test-factor-from-labels.R","factor-from-labels","factor_from_labels converts Date and POSIXct label codes",3,0,FALSE,FALSE,0,0.00400000000000134,0.00100000000000011,0.00399999999999956,3
+"test-factor-from-labels.R","factor-from-labels","factor_from_labels matches base factor numeric ordering",2,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00600000000000023,2
+"test-factor-from-labels.R","factor-from-labels","factor_from_labels validates its vector and metadata boundary",11,0,FALSE,FALSE,0,0.0240000000000009,0.00100000000000011,0.0249999999999986,11
+"test-factor-from-labels.R","factor-from-labels","factor_from_labels warns for nonportable label metadata",2,0,FALSE,FALSE,0,0.0470000000000006,0.002,0.0489999999999995,2
+"test-factor-from-labels.R","factor-from-labels","factor conversion and tabulation share compact-source semantics",5,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00699999999999967,5
+"test-factor-from-labels.R","factor-from-labels","factor conversion handles every compact numeric missing width",15,0,FALSE,FALSE,0,0.032,0.00499999999999989,0.0359999999999996,15
+"test-factor-from-labels.R","factor-from-labels","compact non-Stata float NaNs follow ordinary missing semantics",5,0,FALSE,FALSE,0,0.0120000000000005,0.002,0.0149999999999988,5
+"test-input-sources.R","input-sources","plain local paths retain the direct path fast path",2,0,FALSE,FALSE,0,0.00199999999999889,0.00100000000000011,0.00300000000000011,2
+"test-input-sources.R","input-sources","extensionless local reads resolve to the matching .dta file",3,0,FALSE,FALSE,0,0.00400000000000134,0.002,0.00600000000000023,3
+"test-input-sources.R","input-sources","caller-supplied datasource paths are never deleted",4,0,FALSE,FALSE,0,0.00399999999999956,0.002,0.00600000000000023,4
+"test-input-sources.R","input-sources","temporary sources are cleaned automatically after reads and errors",12,0,FALSE,FALSE,0,0.0130000000000017,0.004,0.0180000000000007,12
+"test-input-sources.R","input-sources","temporary sources are cleaned when an interrupt unwinds the read",2,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00399999999999956,2
+"test-is-missing.R","is-missing","is_missing classifies Stata and R missing values",3,0,FALSE,FALSE,0,0.00200000000000067,0.00100000000000011,0.00399999999999956,3
+"test-is-missing.R","is-missing","is_mi is an exported alias for is_missing",2,0,FALSE,FALSE,0,0.00500000000000078,0.00099999999999989,0.00699999999999967,2
+"test-is-missing.R","is-missing","is_missing uses rowwise any with size-one recycling",6,0,FALSE,FALSE,0,0.0080000000000009,0.00100000000000011,0.00900000000000034,6
+"test-is-missing.R","is-missing","is_missing handles zero-length vectors and names",4,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.004999999999999,4
+"test-is-missing.R","is-missing","is_missing supports semantic atomic classes",4,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00400000000000134,4
+"test-is-missing.R","is-missing","is_missing treats Stata metadata markers as transparent",3,0,FALSE,FALSE,0,0.00299999999999834,0.00100000000000011,0.00399999999999956,3
+"test-is-missing.R","is-missing","is_missing rejects containers and unsupported classes",10,0,FALSE,FALSE,0,0.0149999999999988,0,0.016,10
+"test-is-missing.R","is-missing","is_missing preserves tagged payloads and does not mutate attributes",5,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00399999999999956,5
+"test-is-missing.R","is-missing","is_missing inspects compact DTA numerics without materializing",3,0,FALSE,FALSE,0,0.00799999999999912,0.00099999999999989,0.00900000000000034,3
+"test-is-missing.R","is-missing","compact non-Stata float NaNs match eager R missing semantics",4,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.00599999999999845,4
+"test-is-missing.R","is-missing","is_missing matches compact and eager Arrow numerics",2,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.0129999999999999,2
+"test-is-missing.R","is-missing","is_missing leaves dictionary-string caches untouched",9,0,FALSE,FALSE,0,0.00699999999999967,0.002,0.0139999999999993,9
+"test-is-missing.R","is-missing","is_missing works in bare and stored data-mask expressions",2,0,FALSE,FALSE,0,0.00200000000000067,0,0.00200000000000067,2
+"test-is-missing.R","is-missing","fertility-surveys egen total expressions translate exactly",3,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,3
+"test-keep-drop.R","keep-drop","keep_vars keeps physical order and resolves generated columns",6,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00500000000000078,6
+"test-keep-drop.R","keep-drop","drop_vars removes physical and generated columns",7,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.00600000000000023,7
+"test-keep-drop.R","keep-drop","physical-only selection mutates ordinary data aliases",4,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00400000000000134,4
+"test-keep-drop.R","keep-drop","structural mutation does not alter shared names vectors",3,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00599999999999845,3
+"test-keep-drop.R","keep-drop","same-size selection materializes generated columns",4,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00600000000000023,4
+"test-keep-drop.R","keep-drop","ordinary gen keeps physical columns authoritative",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00399999999999956,3
+"test-keep-drop.R","keep-drop","legacy serialized reference state remains readable",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999956,3
+"test-keep-drop.R","keep-drop","ALTREP data-frame wrappers support structural mutation",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,3
+"test-keep-drop.R","keep-drop","selection errors are atomic",28,0,FALSE,FALSE,0,0.052999999999999,0.002,0.0569999999999986,28
+"test-keep-drop.R","keep-drop","strict name selection supports ranges, c, and all_of",2,0,FALSE,FALSE,0,0.00199999999999889,0,0.00300000000000011,2
+"test-keep-drop.R","keep-drop","multiple ranges resolve together",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00199999999999889,1
+"test-keep-drop.R","keep-drop","all_of snapshots promises as character names before selection",6,0,FALSE,FALSE,0,0.0169999999999995,0.00099999999999989,0.0169999999999995,6
+"test-keep-drop.R","keep-drop","data.table materialization clears keys and indexes",5,0,FALSE,FALSE,0,0.004999999999999,0.00100000000000011,0.00600000000000023,5
+"test-keep-drop.R","keep-drop","validated keep-all is a structural no-op",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999956,3
+"test-keep-drop.R","keep-drop","serialized data.tables require assigned repair and preserve old aliases",8,0,FALSE,FALSE,0,0.0080000000000009,0.002,0.00900000000000034,8
+"test-keep-drop.R","keep-drop","structural mutation uses values installed by repl",4,0,FALSE,FALSE,0,0.00399999999999956,0.00100000000000011,0.00500000000000078,4
+"test-keep-drop.R","keep-drop","surviving columns keep Stata values and metadata",5,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00500000000000078,5
+"test-keep-drop.R","keep-drop","keep and drop support zero-row and zero-column results",4,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00699999999999967,4
+"test-keep-drop.R","keep-drop","later reference mutations see a consistent overlay",7,0,FALSE,FALSE,0,0.00699999999999967,0.00099999999999989,0.0080000000000009,7
+"test-keep-drop.R","keep-drop","renaming a data.table carries its key and indexes over",3,0,FALSE,FALSE,0,0.00399999999999956,0,0.00399999999999956,3
+"test-keep-drop.R","keep-drop","renaming every data.table column carries its key over",2,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00300000000000011,2
+"test-label-dual-shape.R","label-dual-shape","the accessors keep their vector and whole-data-frame shapes",4,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,4
+"test-label-dual-shape.R","label-dual-shape","the accessors read one column in the (data, variable) shape",10,0,FALSE,FALSE,0,0.00599999999999845,0.002,0.00799999999999912,10
+"test-label-dual-shape.R","label-dual-shape","a symbol names the column literally, not a caller variable",2,0,FALSE,FALSE,0,0.00199999999999889,0,0.00199999999999889,2
+"test-label-dual-shape.R","label-dual-shape","asking for an absent column names it in the error",2,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,2
+"test-label-dual-shape.R","label-dual-shape","a variable argument requires a data frame",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,2
+"test-label-dual-shape.R","label-dual-shape","set_var_label accepts a bare vector and a label",2,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00200000000000067,2
+"test-label-dual-shape.R","label-dual-shape","set_var_label still rejects other non-data-frame calls",2,0,FALSE,FALSE,0,0.00699999999999967,0,0.00699999999999967,2
+"test-label-dual-shape.R","label-dual-shape","set_var_labels accepts the positional (data, variable) shape",5,0,FALSE,FALSE,0,0.00400000000000134,0.00100000000000011,0.00600000000000023,5
+"test-label-dual-shape.R","label-dual-shape","set_val_labels accepts the positional (data, variable) shape",5,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00600000000000023,5
+"test-label-dual-shape.R","label-dual-shape","the positional labels argument evaluates in the caller",1,0,FALSE,FALSE,0,0.00100000000000122,0,0.00199999999999889,1
+"test-label-dual-shape.R","label-dual-shape","every pre-existing setter convention still works",12,0,FALSE,FALSE,0,0.00999999999999979,0.00300000000000011,0.0119999999999987,12
+"test-label-dual-shape.R","label-dual-shape","dots forwarded from a wrapper keep the tagged path",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00200000000000067,1
+"test-label-dual-shape.R","label-dual-shape","dots forwarded from a wrapper keep the positional shape",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00200000000000067,1
+"test-label-dual-shape.R","label-dual-shape","a computed first argument still errors as before",4,0,FALSE,FALSE,0,0.004999999999999,0.00100000000000011,0.00599999999999845,4
+"test-label-dual-shape.R","label-dual-shape","the positional shape validates the column and the labels",2,0,FALSE,FALSE,0,0.00400000000000134,0,0.00400000000000134,2
+"test-label-metadata.R","label-metadata","var_label returns a vector's variable label",1,0,FALSE,FALSE,0,0.00399999999999956,0,0.00399999999999956,1
+"test-label-metadata.R","label-metadata","val_labels returns a vector's value-label table",1,0,FALSE,FALSE,0,0.00199999999999889,0,0.00199999999999889,1
+"test-label-metadata.R","label-metadata","dataset_label returns a data frame's dataset label",1,0,FALSE,FALSE,0,0.00100000000000122,0,0.000999999999999446,1
+"test-label-metadata.R","label-metadata","data-frame getters retain names and NULL entries",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.000999999999999446,1
+"test-label-metadata.R","label-metadata","var_label replacement preserves vector values and attributes",1,0,FALSE,FALSE,0,0.00100000000000122,0.00099999999999989,0.00100000000000122,1
+"test-label-metadata.R","label-metadata","dataset_label replacement sets and removes dataset metadata",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.000999999999999446,1
+"test-label-metadata.R","label-metadata","data-frame replacement syntax follows R copy semantics",11,0,FALSE,FALSE,0,0.0080000000000009,0.002,0.00999999999999979,11
+"test-label-metadata.R","label-metadata","label replacement isolates metadata and later value writes",4,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999956,4
+"test-label-metadata.R","label-metadata","dataset-label replacement detaches reference state",7,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00700000000000145,7
+"test-label-metadata.R","label-metadata","var_label replacement updates named columns and can clear all",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.000999999999999446,1
+"test-label-metadata.R","label-metadata","set_var_labels combines named dots and .labels",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00100000000000122,1
+"test-label-metadata.R","label-metadata","set_var_labels supports vector pipelines",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.000999999999999446,1
+"test-label-metadata.R","label-metadata","bulk variable-label limits produce one complete portability warning",1,0,FALSE,FALSE,0,0.00100000000000122,0,0.000999999999999446,1
+"test-label-metadata.R","label-metadata","variable-label setters keep imported numeric storage compact",1,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00200000000000067,1
+"test-label-metadata.R","label-metadata","val_labels replacement labels ordinary numeric vectors in place",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00100000000000122,1
+"test-label-metadata.R","label-metadata","val_labels replacement updates named columns and can clear all",1,0,FALSE,FALSE,0,0.00399999999999956,0.00100000000000011,0.00399999999999956,1
+"test-label-metadata.R","label-metadata","set_val_labels combines named dots and .labels",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00200000000000067,1
+"test-label-metadata.R","label-metadata","set_val_labels supports vector pipelines",1,0,FALSE,FALSE,0,0.00100000000000122,0.00099999999999989,0.00100000000000122,1
+"test-label-metadata.R","label-metadata","bulk value-label limits produce one complete portability warning",1,0,FALSE,FALSE,0,0.0359999999999996,0.00100000000000011,0.036999999999999,1
+"test-label-metadata.R","label-metadata","Stata 19 metadata boundaries do not warn",2,0,FALSE,FALSE,0,0.0329999999999995,0.00099999999999989,0.0329999999999995,2
+"test-label-metadata.R","label-metadata","value-label codes cover Stata long boundaries and extended missings",1,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00399999999999956,1
+"test-label-metadata.R","label-metadata","value-label setters reject codes outside Stata's label domain",1,0,FALSE,FALSE,0,0.00200000000000067,0.00099999999999989,0.00200000000000067,1
+"test-label-metadata.R","label-metadata","empty value-label text is discarded and duplicate text is allowed",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00100000000000122,1
+"test-label-metadata.R","label-metadata","value-label setters preserve Date and POSIXct classes",1,0,FALSE,FALSE,0,0.00100000000000122,0,0.00200000000000067,1
+"test-label-metadata.R","label-metadata","removing value labels retains unrelated numeric classes",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00199999999999889,1
+"test-label-metadata.R","label-metadata","value-label setters keep imported numeric storage compact",1,0,FALSE,FALSE,0,0.00200000000000067,0.00100000000000011,0.00199999999999889,1
+"test-label-metadata.R","label-metadata","repeated metadata setters keep numeric backing unmaterialized",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,1
+"test-label-metadata.R","label-metadata","aggregate operations keep metadata proxies unmaterialized",1,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00199999999999889,1
+"test-label-metadata.R","label-metadata","compactness probe detects materialized metadata proxies",1,0,FALSE,FALSE,0,0.000999999999999446,0.00100000000000011,0.00199999999999889,1
+"test-label-metadata.R","label-metadata","metadata proxies preserve copy-on-write in both directions",1,0,FALSE,FALSE,0,0.00200000000000067,0,0.00300000000000011,1
+"test-label-metadata.R","label-metadata","tab consumes value labels created by dtatools helpers",1,0,FALSE,FALSE,0,0.00100000000000122,0,0.000999999999999446,1
+"test-label-metadata.R","label-metadata","bulk setters reject ambiguous column updates atomically",1,0,FALSE,FALSE,0,0.00199999999999889,0,0.00200000000000067,1
+"test-label-metadata.R","label-metadata","named updates reject duplicated data-frame column names",4,0,FALSE,FALSE,0,0.00999999999999979,0,0.0109999999999992,4
+"test-label-metadata.R","label-metadata","value labels can only be attached to numeric Stata variables",3,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.004999999999999,3
+"test-label-metadata.R","label-metadata","value-label tables must be numeric vectors",1,0,FALSE,FALSE,0,0.00200000000000067,0,0.00100000000000122,1
+"test-label-metadata.R","label-metadata","label helpers reject non-vector reference objects",1,0,FALSE,FALSE,0,0.000999999999999446,0.00100000000000011,0.000999999999999446,1
+"test-label-metadata.R","label-metadata","bulk value-label setters normalize each table once",1,0,FALSE,FALSE,0,0.0820000000000007,0,0.081999999999999,1
+"test-label-metadata.R","label-metadata","data frame set functions mutate by reference",6,0,FALSE,FALSE,0,0.004999999999999,0.00100000000000011,0.00600000000000023,6
+"test-label-metadata.R","label-metadata","label setters still return the data frame for pipeline use",2,0,FALSE,FALSE,0,0.00200000000000067,0.00099999999999989,0.00200000000000067,2
+"test-label-metadata.R","label-metadata","copy_data isolates a data frame from later label setters",2,0,FALSE,FALSE,0,0.00200000000000067,0,0.00200000000000067,2
+"test-label-metadata.R","label-metadata","vector label setters keep copy semantics",2,0,FALSE,FALSE,0,0.000999999999999446,0.00100000000000011,0.00200000000000067,2
+"test-label-metadata.R","label-metadata","set_var_label requires one unquoted existing column",3,0,FALSE,FALSE,0,0.00400000000000134,0,0.004999999999999,3
+"test-label-metadata.R","label-metadata","set_var_label labels a generated reference column",2,0,FALSE,FALSE,0,0.00200000000000067,0.00099999999999989,0.00300000000000011,2
+"test-mutate-data.R","mutate-data","reference mutation exports one coherent API",9,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00799999999999912,9
+"test-mutate-data.R","mutate-data","matrix columns use data-frame row sizes",6,0,FALSE,FALSE,0,0.00599999999999845,0.002,0.00600000000000023,6
+"test-mutate-data.R","mutate-data","targets are bare names and support tidy injection",10,0,FALSE,FALSE,0,0.011000000000001,0.00100000000000011,0.0129999999999999,10
+"test-mutate-data.R","mutate-data","data masks, formulas, and alias calls use the right environments",9,0,FALSE,FALSE,0,0.00999999999999979,0.00100000000000011,0.0120000000000005,9
+"test-mutate-data.R","mutate-data","values and selection see the unchanged dataset",8,0,FALSE,FALSE,0,0.00700000000000145,0.002,0.00799999999999912,8
+"test-mutate-data.R","mutate-data","where has documented logical and position semantics",34,0,FALSE,FALSE,0,0.036999999999999,0.00499999999999989,0.0410000000000004,34
+"test-mutate-data.R","mutate-data","full-dataset values are gathered by selected row",7,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00699999999999967,7
+"test-mutate-data.R","mutate-data","metadata-bearing numerics remain valid row positions",2,0,FALSE,FALSE,0,0.00200000000000067,0,0.00300000000000011,2
+"test-mutate-data.R","mutate-data","compact selected positions use one native patch plan",4,0,FALSE,FALSE,0,0.00200000000000067,0.00100000000000011,0.00300000000000011,4
+"test-mutate-data.R","mutate-data","excluded full-dataset values do not affect validation",8,0,FALSE,FALSE,0,0.00900000000000034,0.00099999999999989,0.0109999999999992,8
+"test-mutate-data.R","mutate-data","native mutation writers reject untrusted row plans",7,0,FALSE,FALSE,0,0.00900000000000034,0,0.00999999999999979,7
+"test-mutate-data.R","mutate-data","validation errors leave an unmarked dataset unchanged",24,0,FALSE,FALSE,0,0.0250000000000004,0.00299999999999989,0.0280000000000005,24
+"test-mutate-data.R","mutate-data","gen rejects unsupported classed numeric results atomically",8,0,FALSE,FALSE,0,0.00999999999999979,0.002,0.0109999999999992,8
+"test-mutate-data.R","mutate-data","evaluation interrupts leave the dataset unchanged",4,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00300000000000011,4
+"test-mutate-data.R","mutate-data","native write interrupts roll back values and compact state",64,0,FALSE,FALSE,0,0.0519999999999996,0.0269999999999999,0.383999999999999,64
+"test-mutate-data.R","mutate-data","native generation interrupts leave reference state unchanged",67,0,FALSE,FALSE,0,0.0490000000000013,0.024,0.334,67
+"test-mutate-data.R","mutate-data","POSIX interrupts reach an active native generation checkpoint",67,0,FALSE,FALSE,0,0.0530000000000008,0.0289999999999999,0.337,67
+"test-mutate-data.R","mutate-data","generation interrupt controls disarm after validation errors",6,0,FALSE,FALSE,0,0.00799999999999912,0.00099999999999989,0.00900000000000034,6
+"test-mutate-data.R","mutate-data","generic ALTREP detachment interrupts before installation",5,0,FALSE,FALSE,0,0.0150000000000006,0.01,0.355999999999998,5
+"test-mutate-data.R","mutate-data","compact replacement patches every storage without materializing",36,0,FALSE,FALSE,0,0.0250000000000004,0.01,0.0339999999999989,36
+"test-mutate-data.R","mutate-data","compact validation is strict and atomic",14,0,FALSE,FALSE,0,0.0169999999999995,0.004,0.0199999999999996,14
+"test-mutate-data.R","mutate-data","compact replacement updates the missing-value cache",12,0,FALSE,FALSE,0,0.011000000000001,0.00300000000000011,0.0189999999999984,12
+"test-mutate-data.R","mutate-data","DTA-loaded compact and temporal columns use native patching",8,0,FALSE,FALSE,0,0.00799999999999912,0.002,0.00999999999999801,8
+"test-mutate-data.R","mutate-data","legacy compact columns reject scalar extended missing values",2,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00400000000000134,2
+"test-mutate-data.R","mutate-data","ordinary, materialized, temporal, and character columns mutate",10,0,FALSE,FALSE,0,0.00999999999999979,0.002,0.0119999999999969,10
+"test-mutate-data.R","mutate-data","base numeric ALTREP columns remain internally consistent",16,0,FALSE,FALSE,0,0.0129999999999999,0.00300000000000011,0.0160000000000018,16
+"test-mutate-data.R","mutate-data","gen appends one variable with Stata missing and storage rules",53,0,FALSE,FALSE,0,0.0440000000000005,0.0089999999999999,0.0530000000000008,53
+"test-mutate-data.R","mutate-data","gen preserves metadata on otherwise supported numeric classes",8,0,FALSE,FALSE,0,0.00699999999999967,0.002,0.00900000000000034,8
+"test-mutate-data.R","mutate-data","gen handles zero rows and evaluates before insertion",4,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.004999999999999,4
+"test-mutate-data.R","mutate-data","repeated gen appends ordered reference-state bindings",4,0,FALSE,FALSE,0,0.0409999999999986,0.002,0.0429999999999993,4
+"test-mutate-data.R","mutate-data","copy_data isolates every mutable column backing",24,0,FALSE,FALSE,0,0.027000000000001,0.00299999999999989,0.0309999999999988,24
+"test-mutate-data.R","mutate-data","subsets, metadata proxies, and serialized data stay isolated",7,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00800000000000267,7
+"test-mutate-data.R","mutate-data","detached metadata payloads do not retain former proxy owners",2,0,FALSE,FALSE,0,0.072000000000001,0.00300000000000011,0.0750000000000028,2
+"test-mutate-data.R","mutate-data","downstream metadata proxies revoke exclusive patch ownership",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999778,3
+"test-mutate-data.R","mutate-data","metadata copies remain isolated from later source patches",36,0,FALSE,FALSE,0,0.036999999999999,0.00700000000000012,0.0549999999999997,36
+"test-mutate-data.R","mutate-data","writable access detaches shared materialized payloads",4,0,FALSE,FALSE,0,0.00300000000000011,0.002,0.0100000000000016,4
+"test-mutate-data.R","mutate-data","is_missing masks preserve dictionary-string caches and aliases",12,0,FALSE,FALSE,0,0.00900000000000034,0.00299999999999989,0.0169999999999995,12
+"test-mutate-data.R","mutate-data","materialized metadata-proxy copies remain independent",4,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.0100000000000016,4
+"test-mutate-data.R","mutate-data","materialized metadata proxies release former sources",4,0,FALSE,FALSE,0,0.0709999999999997,0.002,0.0760000000000005,4
+"test-mutate-data.R","mutate-data","copy_data keeps Arrow dictionary strings independent and compact",2,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00799999999999912,2
+"test-mutate-data.R","mutate-data","generated variables participate in package writes",7,0,FALSE,FALSE,0,0.00599999999999845,0.002,0.0139999999999993,7
+"test-mutate-data.R","mutate-data","reference data preserves base and tibble access semantics",34,0,FALSE,FALSE,0,0.0329999999999995,0.006,0.0399999999999991,34
+"test-mutate-data.R","mutate-data","explicit replacement isolates separate tables sharing target vectors",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,3
+"test-mutate-data.R","mutate-data","rowwise inputs fail before reference mutation",5,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00700000000000145,5
+"test-mutate-data.R","mutate-data",".n and .N describe the whole dataset without groups",6,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.0069999999999979,6
+"test-mutate-data.R","mutate-data","by evaluates where and values within each group",8,0,FALSE,FALSE,0,0.0080000000000009,0.002,0.00900000000000034,8
+"test-mutate-data.R","mutate-data","by accepts every column-name spelling",11,0,FALSE,FALSE,0,0.0169999999999995,0.00199999999999978,0.0180000000000007,11
+"test-mutate-data.R","mutate-data","groups follow Stata's by order, not data.table's",4,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00600000000000023,4
+"test-mutate-data.R","mutate-data","per-group value sizes must be 1, the selection, or .N",7,0,FALSE,FALSE,0,0.00900000000000034,0.00100000000000033,0.0100000000000016,7
+"test-mutate-data.R","mutate-data","missing values in a by column form their own groups",4,0,FALSE,FALSE,0,0.00699999999999967,0.00099999999999989,0.00700000000000145,4
+"test-mutate-data.R","mutate-data","bysort sorts by reference and then groups",13,0,FALSE,FALSE,0,0.0149999999999988,0.00199999999999978,0.0179999999999971,13
+"test-mutate-data.R","mutate-data","by and bysort are exclusive and reject a grouped input",5,0,FALSE,FALSE,0,0.00900000000000034,0,0.00900000000000034,5
+"test-mutate-data.R","mutate-data","a grouped tibble supplies the assignment groups",10,0,FALSE,FALSE,0,0.011000000000001,0.00199999999999978,0.0120000000000005,10
+"test-mutate-data.R","mutate-data","compact targets stay compact under by",13,0,FALSE,FALSE,0,0.0129999999999999,0.00200000000000022,0.0150000000000006,13
+"test-mutate-data.R","mutate-data","data.table containers support by and bysort",9,0,FALSE,FALSE,0,0.0109999999999992,0.00199999999999978,0.0120000000000005,9
+"test-mutate-data.R","mutate-data","the shadow check still fires inside grouped expressions",6,0,FALSE,FALSE,0,0.00700000000000145,0.00099999999999989,0.00799999999999912,6
+"test-mutate-data.R","mutate-data","grouped gen keeps value attributes and string storage",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000033,0.00399999999999778,3
+"test-mutate-data.R","mutate-data","ordinary assignments and metadata helpers materialize current state",11,0,FALSE,FALSE,0,0.00900000000000034,0.00199999999999978,0.0100000000000016,11
+"test-mutate-data.R","mutate-data","sparse compact replacement and generation keep existing payloads",6,0,FALSE,FALSE,0,0.0179999999999989,0.00200000000000022,0.0199999999999996,6
+"test-mutate-data.R","mutate-data","plain-expression evaluation matches tidy-eval semantics",10,0,FALSE,FALSE,0,0.0119999999999987,0.00199999999999978,0.0150000000000006,10
+"test-mutate-data.R","mutate-data","plain expressions evaluate against reference-state columns",3,0,FALSE,FALSE,0,0.00400000000000134,0.00099999999999989,0.00400000000000134,3
+"test-mutate-data.R","mutate-data","materialized compact replacements retain Stata semantics",28,0,FALSE,FALSE,0,0.0190000000000001,0.00600000000000023,0.0240000000000009,28
+"test-mutate-data.R","mutate-data","materialized compact replacement keeps fallback errors atomic",8,0,FALSE,FALSE,0,0.0120000000000005,0.00099999999999989,0.0129999999999981,8
+"test-mutate-data.R","mutate-data","fused comparison replacement matches the general path",20,0,FALSE,FALSE,0,0.0149999999999988,0.004,0.0180000000000007,20
+"test-mutate-data.R","mutate-data","fused comparison replacement handles full-row values",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00300000000000011,3
+"test-mutate-data.R","mutate-data","fused comparison replacement handles empty and full matches",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000033,0.00300000000000011,3
+"test-mutate-data.R","mutate-data","fused replacement preserves recycling errors and shared data",5,0,FALSE,FALSE,0,0.00500000000000078,0.00099999999999989,0.00600000000000023,5
+"test-mutate-data.R","mutate-data","threaded fused replacement matches the general path",2,0,FALSE,FALSE,0,0.0250000000000004,0.00099999999999989,0.0259999999999998,2
+"test-mutate-data.R","mutate-data","fused comparison evaluates scalar operands once",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00300000000000011,3
+"test-mutate-data.R","mutate-data","fused row-value errors roll back before the fallback error",4,0,FALSE,FALSE,0,0.00699999999999967,0,0.00799999999999912,4
+"test-mutate-data.R","mutate-data","targets and values arrive as one tagged pair",20,0,FALSE,FALSE,0,0.0119999999999987,0.00199999999999978,0.0160000000000018,20
+"test-mutate-data.R","mutate-data","tagged pairs reach reference, data.table, and compact targets",10,0,FALSE,FALSE,0,0.00899999999999856,0.00100000000000033,0.0109999999999992,10
+"test-mutate-data.R","mutate-data","mutation dots must be one target pair and at most one where",15,0,FALSE,FALSE,0,0.0250000000000004,0.00099999999999989,0.0249999999999986,15
+"test-mutate-data.R","mutate-data","a symbol bound as both column and object is an error",29,0,FALSE,FALSE,0,0.0340000000000007,0.004,0.0380000000000003,29
+"test-mutate-data.R","mutate-data","replacing a grouping column rebuilds the dplyr groups",8,0,FALSE,FALSE,0,0.011000000000001,0.00200000000000022,0.0129999999999981,8
+"test-mutate-data.R","mutate-data","an aliased grouping column is regrouped after replacement",3,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00700000000000145,3
+"test-mutate-data.R","mutate-data","row counters mask a column named .n or .N",5,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.0069999999999979,5
+"test-mutate-data.R","mutate-data","`repl()` widens typed columns and reports the storage change",21,0,FALSE,FALSE,0,0.0259999999999998,0.00300000000000011,0.0289999999999999,21
+"test-mutate-data.R","mutate-data","float replacement preserves precision unless promotion is disabled",6,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00700000000000145,6
+"test-mutate-data.R","mutate-data","byte replacement preserves the R double or rejects it unchanged",7,0,FALSE,FALSE,0,0.0080000000000009,0.00099999999999989,0.00900000000000034,7
+"test-mutate-data.R","mutate-data","`repl()` reports nothing when the storage does not change",2,0,FALSE,FALSE,0,0.00199999999999889,0.00100000000000033,0.00199999999999889,2
+"test-mutate-data.R","mutate-data","`repl()` widens a string target to the smallest fitting width",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00299999999999656,2
+"test-mutate-data.R","mutate-data","`repl()` promotes nothing when no rows are selected",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00199999999999889,3
+"test-mutate-data.R","mutate-data","`repl()` promotes the whole column when some rows are selected",3,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00700000000000145,3
+"test-mutate-data.R","mutate-data","`promote = FALSE` keeps the target at its declared storage",5,0,FALSE,FALSE,0,0.00599999999999845,0,0.0069999999999979,5
+"test-mutate-data.R","mutate-data","`repl()` promotion keeps variable metadata",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00199999999999889,2
+"test-mutate-data.R","mutate-data","`:=` promotes silently, unlike `repl()`",2,0,FALSE,FALSE,0,0.00200000000000067,0.00100000000000033,0.00199999999999889,2
+"test-mutate-data.R","mutate-data","promotion never narrows the integers a column can hold",6,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00600000000000023,6
+"test-mutate-data.R","mutate-data","unselected replacement groups do not contribute value types",9,0,FALSE,FALSE,0,0.00799999999999912,0.00099999999999989,0.00900000000000034,9
+"test-mutate-data.R","mutate-data","strict grouped zero-selection replacement is a no-op",24,0,FALSE,FALSE,0,0.0200000000000014,0.004,0.0240000000000009,24
+"test-mutation-containers.R","mutation-containers","explicit helper boundaries reject subclasses before evaluating updates",281,0,FALSE,FALSE,0,0.348000000000001,0.0370000000000004,0.384,281
+"test-mutation-containers.R","mutation-containers","explicit conversion removes custom container classes in isolation",32,0,FALSE,FALSE,0,0.0250000000000004,0.00599999999999978,0.0299999999999976,32
+"test-mutation-containers.R","mutation-containers","supported containers preserve existing column classes and true aliases",44,0,FALSE,FALSE,0,0.0379999999999985,0.00800000000000001,0.0459999999999994,44
+"test-mutation-containers.R","mutation-containers","grouped and rowwise metadata writes preserve grouping",64,0,FALSE,FALSE,0,0.100000000000001,0.0089999999999999,0.109000000000002,64
+"test-mutation-containers.R","mutation-containers","malformed frames and grouping fail before metadata evaluation",12,0,FALSE,FALSE,0,0.0129999999999999,0.00200000000000022,0.0140000000000029,12
+"test-mutation-containers.R","mutation-containers","dropping the last column keeps each container's public empty shape",30,0,FALSE,FALSE,0,0.0250000000000004,0.00599999999999978,0.0310000000000024,30
+"test-mutation-containers.R","mutation-containers","a stray reference marker on data.table requires explicit conversion",7,0,FALSE,FALSE,0,0.00900000000000034,0.00099999999999989,0.00999999999999801,7
+"test-mutation-containers.R","mutation-containers","ordinary dibble brackets keep omitted-column forms",22,0,FALSE,FALSE,0,0.0269999999999992,0.00499999999999989,0.032,22
+"test-mutation-containers.R","mutation-containers","duplicate grouped keys cannot split a logical group",7,0,FALSE,FALSE,0,0.00999999999999979,0.00099999999999989,0.0110000000000028,7
+"test-mutation-containers.R","mutation-containers","grouping validation ignores label wrappers on keys and identifiers",7,0,FALSE,FALSE,0,0.0119999999999987,0.00099999999999989,0.0139999999999993,7
+"test-mutation-containers.R","mutation-containers","group row positions follow physical order before using dot-n",4,0,FALSE,FALSE,0,0.004999999999999,0.00100000000000033,0.00600000000000023,4
+"test-mutation-containers.R","mutation-containers","rowwise grouping frames reject ambiguous or inconsistent columns",12,0,FALSE,FALSE,0,0.0129999999999999,0.00199999999999978,0.0140000000000029,12
+"test-mutation-containers.R","mutation-containers","non-dibble reference markers do not enable bracket assignment",100,0,FALSE,FALSE,0,0.0899999999999999,0.0150000000000001,0.105,100
+"test-name-strings.R","name-strings","a runtime string names the target through `!!`",5,0,FALSE,FALSE,0,0.00699999999999967,0.00099999999999989,0.00800000000000267,5
+"test-name-strings.R","name-strings","a string literal names the target",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00200000000000244,2
+"test-name-strings.R","name-strings","an unquoted string reads as a name, not a caller variable",2,0,FALSE,FALSE,0,0.00200000000000067,0.00100000000000033,0.00200000000000244,2
+"test-name-strings.R","name-strings","a column named like the caller variable is not selected",4,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00400000000000134,4
+"test-name-strings.R","name-strings","empty, missing, and non-scalar strings are rejected",9,0,FALSE,FALSE,0,0.0129999999999999,0,0.0139999999999993,9
+"test-name-strings.R","name-strings","a string target keeps the existence checks",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999778,2
+"test-name-strings.R","name-strings","invalid non-string targets still error as before",4,0,FALSE,FALSE,0,0.00600000000000023,0,0.00700000000000145,4
+"test-name-strings.R","name-strings","existing unquoted forms are untouched",3,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00600000000000023,3
+"test-name-strings.R","name-strings","the `.data` pronoun reaches a runtime name in values and where",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000033,0.00399999999999778,3
+"test-name-strings.R","name-strings","the `.data` pronoun does not name a target",1,0,FALSE,FALSE,0,0.00200000000000067,0,0.00199999999999889,1
+"test-name-strings.R","name-strings","the downstream call shapes work without inject or sym",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00400000000000134,3
+"test-name-strings.R","name-strings","`set_var_label()` accepts a runtime string name",5,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00600000000000023,5
+"test-name-strings.R","name-strings","a string target leaves a compact column unmaterialized",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00300000000000011,3
+"test-name-strings.R","name-strings","`.()` names the target and reads columns at run time",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000033,0.00400000000000134,3
+"test-name-strings.R","name-strings","`.()` rejects invalid runtime names",5,0,FALSE,FALSE,0,0.00700000000000145,0,0.00799999999999912,5
+"test-name-strings.R","name-strings","`set_var_label()` accepts a `.()` runtime name",1,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00100000000000122,1
+"test-name-strings.R","name-strings","`.()` tags name columns in the plural label setters",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00300000000000011,3
+"test-name-strings.R","name-strings","`.()` tags coexist with splices and `:=` names",7,0,FALSE,FALSE,0,0.0080000000000009,0.00200000000000022,0.00999999999999801,7
+"test-name-strings.R","name-strings","`.()` tags keep a spliced value's own frame and reject empties",4,0,FALSE,FALSE,0,0.00399999999999956,0,0.00400000000000134,4
+"test-name-strings.R","name-strings","forwarded dots keep their own frames alongside a `.()` tag",3,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,3
+"test-order-rename-vars.R","order-rename-vars","order_vars moves selected columns to the front",3,0,FALSE,FALSE,0,0.00200000000000067,0,0.00299999999999656,3
+"test-order-rename-vars.R","order-rename-vars","order_vars permutes a tibble and a data.table by reference",6,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000033,0.00600000000000023,6
+"test-order-rename-vars.R","order-rename-vars","order_vars leaves an unchanged order alone",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00199999999999889,1
+"test-order-rename-vars.R","order-rename-vars","order_vars moves generated columns alongside physical ones",5,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00799999999999912,5
+"test-order-rename-vars.R","order-rename-vars","order_vars keeps compact columns unmaterialized",3,0,FALSE,FALSE,0,0.00300000000000011,0.00200000000000022,0.00500000000000256,3
+"test-order-rename-vars.R","order-rename-vars","order_vars permutes a structural reference state",2,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.004999999999999,2
+"test-order-rename-vars.R","order-rename-vars","order_vars rejects absent and empty selections",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00400000000000134,2
+"test-order-rename-vars.R","order-rename-vars","rename_vars renames by reference",6,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00600000000000023,6
+"test-order-rename-vars.R","order-rename-vars","rename_vars accepts a permutation of existing names",2,0,FALSE,FALSE,0,0.00200000000000067,0,0.00300000000000011,2
+"test-order-rename-vars.R","order-rename-vars","rename_vars renames generated columns and keeps them writable",4,0,FALSE,FALSE,0,0.004999999999999,0.00200000000000022,0.00600000000000023,4
+"test-order-rename-vars.R","order-rename-vars","rename_vars keeps compact columns and metadata",3,0,FALSE,FALSE,0,0.00400000000000134,0.00099999999999989,0.00400000000000134,3
+"test-order-rename-vars.R","order-rename-vars","rename_vars rejects malformed replacements",5,0,FALSE,FALSE,0,0.00799999999999912,0,0.00799999999999912,5
+"test-order-rename-vars.R","order-rename-vars","rename_vars replaces every name through .names",6,0,FALSE,FALSE,0,0.00699999999999967,0.00200000000000022,0.00799999999999912,6
+"test-order-rename-vars.R","order-rename-vars","rename_vars rejects a malformed .names",4,0,FALSE,FALSE,0,0.00900000000000034,0.00099999999999989,0.00900000000000034,4
+"test-owned-atoms.R","owned-atoms","validated discrete batches retain vctrs and base gather behavior",20,0,FALSE,FALSE,0,0.0130000000000017,0.004,0.0169999999999995,20
+"test-owned-atoms.R","owned-atoms","discrete gather declines whole callback or metadata fallback batches",9,0,FALSE,FALSE,0,0.004999999999999,0.00199999999999978,0.00900000000000034,9
+"test-owned-atoms.R","owned-atoms","mixed gather fallbacks retain cross-column callback order",8,0,FALSE,FALSE,0,0.00699999999999967,0.00200000000000022,0.00999999999999801,8
+"test-owned-atoms.R","owned-atoms","owned record reads follow each replacement allocation through GC",36,0,FALSE,FALSE,0,1.263,0.00999999999999979,1.276,36
+"test-owned-atoms.R","owned-atoms","factor integer exports use an isolated ordinary deep copy",21,0,FALSE,FALSE,0,0.0130000000000017,0.004,0.0169999999999995,21
+"test-owned-atoms.R","owned-atoms","public logical subsets are fresh ordinary values and batch results stay owned",30,0,FALSE,FALSE,0,0.0180000000000007,0.00599999999999978,0.0239999999999974,30
+"test-owned-atoms.R","owned-atoms","ordinary atom handles share flat backing with independent attributes",103,0,FALSE,FALSE,0,0.0760000000000005,0.0190000000000001,0.0949999999999989,103
+"test-owned-atoms.R","owned-atoms","unchanged owned string selectors reuse validation facts",4,0,FALSE,FALSE,0,0.120000000000001,0.00199999999999978,0.120999999999999,4
+"test-owned-atoms.R","owned-atoms","string facts distinguish subset bounds from exact maxima",8,0,FALSE,FALSE,0,0.00799999999999912,0.00100000000000033,0.00900000000000034,8
+"test-owned-atoms.R","owned-atoms","missingness-only string validation is included in scan counters",5,0,FALSE,FALSE,0,0.00400000000000134,0.00099999999999989,0.00399999999999778,5
+"test-owned-atoms.R","owned-atoms","foreign index callbacks cannot propagate facts from a changed source",4,0,FALSE,FALSE,0,0.00199999999999889,0,0.00300000000000011,4
+"test-owned-atoms.R","owned-atoms","writable pointers isolate all atom types and remain unsafe to share",24,0,FALSE,FALSE,0,0.0169999999999995,0.00300000000000011,0.0210000000000008,24
+"test-owned-atoms.R","owned-atoms","Set_elt and retained writable strings invalidate missingness and width facts",9,0,FALSE,FALSE,0,0.00600000000000023,0.00200000000000022,0.00800000000000267,9
+"test-owned-atoms.R","owned-atoms","foreign data.table atoms are captured at constructors and callback ingress",60,0,FALSE,FALSE,0,0.0599999999999987,0.0129999999999999,0.0740000000000016,60
+"test-owned-atoms.R","owned-atoms","owned atom serialization restores values without live ownership records",80,0,FALSE,FALSE,0,0.070999999999998,0.016,0.088000000000001,80
+"test-owned-atoms.R","owned-atoms","ordinary base copies and explicit atom writes preserve both alias contracts",21,0,FALSE,FALSE,0,0.0229999999999997,0.00499999999999989,0.027000000000001,21
+"test-owned-atoms.R","owned-atoms","owned atomic native patches stage fully and keep prior state on interruption",18,0,FALSE,FALSE,0,0.0120000000000005,0.00300000000000011,0.0150000000000006,18
+"test-owned-atoms.R","owned-atoms","generation and atomic staging root detached integer row payload",8,0,FALSE,FALSE,0,0.308,0.00300000000000011,0.311,8
+"test-owned-atoms.R","owned-atoms","legacy vector patches root detached integer row payloads",19,0,FALSE,FALSE,0,0.422000000000001,0.00700000000000012,0.447000000000003,19
+"test-owned-atoms.R","owned-atoms","legacy foreign rows finish callbacks before numeric readers are retained",20,0,FALSE,FALSE,0,0.193999999999999,0.00499999999999989,0.198999999999998,20
+"test-owned-atoms.R","owned-atoms","legacy journaling and writes use captured operands without later callbacks",6,0,FALSE,FALSE,0,0.004999999999999,0.00199999999999978,0.00700000000000145,6
+"test-owned-atoms.R","owned-atoms","legacy dictionary targets validate state after declared-width callbacks",4,0,FALSE,FALSE,0,0.097999999999999,0.00200000000000022,0.108000000000001,4
+"test-owned-atoms.R","owned-atoms","legacy compact targets reject materialization during operand callbacks",10,0,FALSE,FALSE,0,0.182000000000002,0.00199999999999978,0.184000000000001,10
+"test-owned-atoms.R","owned-atoms","generation rejects live rows moved out of bounds by value callbacks",3,0,FALSE,FALSE,0,0.004999999999999,0,0.004999999999999,3
+"test-owned-atoms.R","owned-atoms","factor ownership preserves existing replacement restrictions and levels",18,0,FALSE,FALSE,0,0.0210000000000008,0.004,0.0249999999999986,18
+"test-owned-atoms.R","owned-atoms","public atom exports and source mutations remain symmetrically isolated",131,0,FALSE,FALSE,0,0.129999999999999,0.0309999999999997,0.161000000000001,131
+"test-owned-atoms.R","owned-atoms","dictionary read pins survive callback materialization in subsets and atom patches",11,0,FALSE,FALSE,0,0.328999999999997,0.004,0.341999999999999,11
+"test-owned-atoms.R","owned-atoms","DTA and Arrow writer pointers survive later metadata callbacks",22,0,FALSE,FALSE,0,0.771000000000001,0.0110000000000001,0.815999999999999,22
+"test-owned-atoms.R","owned-atoms","DTA planning retains already UTF-8 owned strings without a payload copy",8,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.0069999999999979,8
+"test-owned-atoms.R","owned-atoms","writer specifications isolate initially private strings from public callback writes",8,0,FALSE,FALSE,0,0.152999999999999,0.00199999999999978,0.16,8
+"test-owned-atoms.R","owned-atoms","Arrow readers adopt fresh logical and factor allocations",12,0,FALSE,FALSE,0,0.0110000000000028,0.004,0.027000000000001,12
+"test-owned-atoms.R","owned-atoms","fresh unnamed string construction keeps its first write private",36,0,FALSE,FALSE,0,0.236999999999998,0.00800000000000001,0.244,36
+"test-owned-atoms.R","owned-atoms","constructing from an owned string preserves real aliases in both directions",6,0,FALSE,FALSE,0,0.00399999999999778,0.00099999999999989,0.00600000000000023,6
+"test-owned-atoms.R","owned-atoms","internal string construction captures before forcing metadata promises",6,0,FALSE,FALSE,0,0.151,0.00200000000000022,0.153000000000002,6
+"test-owned-atoms.R","owned-atoms","named string construction preserves replacement dispatch and escaped aliases",5,0,FALSE,FALSE,0,0.00400000000000134,0.00199999999999978,0.00600000000000023,5
+"test-owned-atoms.R","owned-atoms","owned width scans preserve encoded bytes and missingness",12,0,FALSE,FALSE,0,0.00999999999999801,0.00300000000000011,0.0130000000000017,12
+"test-owned-atoms.R","owned-atoms","large string constructors and restoration retain owned facts",51,0,FALSE,FALSE,0,0.0390000000000015,0.012,0.0510000000000019,51
+"test-owned-atoms.R","owned-atoms","owned string metadata leaves names replacement dispatch to R",6,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00600000000000023,6
+"test-owned-atoms.R","owned-atoms","string metadata declines compact storage without changing its source",9,0,FALSE,FALSE,0,0.00800000000000267,0.00200000000000022,0.017000000000003,9
+"test-owned-atoms.R","owned-atoms","large string construction captures borrowed values before removing metadata",30,0,FALSE,FALSE,0,0.244,0.00999999999999979,0.253,30
+"test-owned-atoms.R","owned-atoms","string construction validates values captured after declaration callbacks",8,0,FALSE,FALSE,0,0.226000000000003,0.00200000000000022,0.228999999999999,8
+"test-owned-atoms.R","owned-atoms","Arrow UTF-8 readiness reads current owned strings and retains conversion fallbacks",7,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00799999999999912,7
+"test-owned-atoms.R","owned-atoms","Arrow UTF-8 preflight retains its original fallback when base conversion is traced",4,0,FALSE,FALSE,0,0.00400000000000134,0.00100000000000033,0.00500000000000256,4
+"test-owned-atoms.R","owned-atoms","table atom exports retain isolation under each explicit write API",36,0,FALSE,FALSE,0,0.0339999999999989,0.00699999999999967,0.0410000000000004,36
+"test-owned-columns.R","owned-columns","bounded generation shape checks retain wide and encoded fallbacks",15,0,FALSE,FALSE,0,0.0229999999999997,0.00300000000000011,0.0250000000000021,15
+"test-owned-columns.R","owned-columns","generation shape checks decline foreign length callbacks",2,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00200000000000244,2
+"test-owned-columns.R","owned-columns","generation shape validation never invokes foreign class callbacks",4,0,FALSE,FALSE,0,0.00400000000000134,0,0.004999999999999,4
+"test-owned-columns.R","owned-columns","attributed env members retain ordinary evaluation without eligibility callbacks",5,0,FALSE,FALSE,0,0.00399999999999778,0.00099999999999989,0.00600000000000023,5
+"test-owned-columns.R","owned-columns","journaled append restores shape and metadata after errors and interrupts",432,0,FALSE,FALSE,0,0.327999999999999,0.0899999999999999,0.417999999999999,432
+"test-owned-columns.R","owned-columns","classed column names retain R validation dispatch",4,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.004999999999999,4
+"test-owned-columns.R","owned-columns","private append reuses names without a collection or prior names read",192,0,FALSE,FALSE,0,0.167999999999999,0.0449999999999999,0.213999999999999,192
+"test-owned-columns.R","owned-columns","generation preserves saved names, attributes and shallow table copies",21,0,FALSE,FALSE,0,0.0229999999999997,0.00499999999999989,0.0279999999999987,21
+"test-owned-columns.R","owned-columns","generation protects shallow table names before any public names read",9,0,FALSE,FALSE,0,0.00900000000000034,0.00200000000000022,0.0109999999999992,9
+"test-owned-columns.R","owned-columns","generation checks physical rows again after argument capture",3,0,FALSE,FALSE,0,0.00399999999999778,0,0.004999999999999,3
+"test-owned-columns.R","owned-columns","captured mutation masks preserve unread columns and lexical lookup",210,0,FALSE,FALSE,0,0.299000000000003,0.0460000000000003,0.344999999999999,210
+"test-owned-columns.R","owned-columns","direct reads retain shadow checks and dynamic env subscripts",2,0,FALSE,FALSE,0,0.00399999999999778,0.00099999999999989,0.00400000000000134,2
+"test-owned-columns.R","owned-columns","plain table staging guards aliases introduced by row callbacks",9,0,FALSE,FALSE,0,0.251000000000001,0.00300000000000011,0.253999999999998,9
+"test-owned-columns.R","owned-columns","ordinary private string writes retain sparse allocation and snapshot isolation",5,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00799999999999912,5
+"test-owned-columns.R","owned-columns","promotion checks revalidate rows changed by a value callback",2,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00400000000000134,2
+"test-owned-columns.R","owned-columns","generic table transactions reject callback target replacement",2,0,FALSE,FALSE,0,0.0850000000000009,0.00100000000000033,0.0859999999999985,2
+"test-owned-columns.R","owned-columns","native promotion fits preserve ranges, precision and selected values",114,0,FALSE,FALSE,0,0.0850000000000009,0.0249999999999999,0.111000000000001,114
+"test-owned-columns.R","owned-columns","grouped proxy callbacks retain isolated Date inputs",4,0,FALSE,FALSE,0,0.00399999999999778,0.00099999999999989,0.00600000000000023,4
+"test-owned-columns.R","owned-columns","owned subsetting roots the payload across foreign index callbacks",3,0,FALSE,FALSE,0,0.167999999999999,0.00199999999999978,0.169,3
+"test-owned-columns.R","owned-columns","compact subsetting retains storage across index materialization callbacks",24,0,FALSE,FALSE,0,0.713999999999999,0.00800000000000001,0.721999999999998,24
+"test-owned-columns.R","owned-columns","native readers cannot export aliases after the effective write guard",20,0,FALSE,FALSE,0,0.0190000000000019,0.00500000000000034,0.0240000000000009,20
+"test-owned-columns.R","owned-columns","failed fused writes retain sharing introduced by an operand callback",41,0,FALSE,FALSE,0,0.0340000000000025,0.0089999999999999,0.0420000000000016,41
+"test-owned-columns.R","owned-columns","direct owned writes retain callback forks after an interrupt",9,0,FALSE,FALSE,0,0.00700000000000145,0.00199999999999978,0.00999999999999801,9
+"test-owned-columns.R","owned-columns","materialized partial writes roll back completed writes and original state",11,0,FALSE,FALSE,0,0.0069999999999979,0.00200000000000022,0.0100000000000016,11
+"test-owned-columns.R","owned-columns","plain doubles capture once and preserve private sparse backing afterwards",22,0,FALSE,FALSE,0,0.0199999999999996,0.00599999999999978,0.0250000000000021,22
+"test-owned-columns.R","owned-columns","materialized full replacement copies new values without reading old payloads",20,0,FALSE,FALSE,0,0.0150000000000006,0.004,0.0190000000000019,20
+"test-owned-columns.R","owned-columns","native-generated private numeric writes stage new bytes without copying old values",50,0,FALSE,FALSE,0,0.0429999999999993,0.0110000000000001,0.0539999999999985,50
+"test-owned-columns.R","owned-columns","full numeric replacement protects borrowed aliases without copying their old payload",20,0,FALSE,FALSE,0,0.0160000000000018,0.004,0.0210000000000008,20
+"test-owned-columns.R","owned-columns","validation never exposes an internal read handle to R methods",6,0,FALSE,FALSE,0,0.00799999999999912,0.00100000000000033,0.00900000000000034,6
+"test-owned-columns.R","owned-columns","custom classes on owned handles use conservative shape validation",6,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00700000000000145,6
+"test-owned-columns.R","owned-columns","comparison callbacks cannot retain a view changed by the patch",2,0,FALSE,FALSE,0,0.00199999999999889,0,0.00300000000000011,2
+"test-owned-columns.R","owned-columns","native comparison decline isolates handles before R fallback errors",6,0,FALSE,FALSE,0,0.0069999999999979,0.00100000000000033,0.00900000000000034,6
+"test-owned-columns.R","owned-columns","ordinary doubles are captured once and column results fork backing",7,0,FALSE,FALSE,0,0.00800000000000267,0.00099999999999989,0.0100000000000016,7
+"test-owned-columns.R","owned-columns","ordinary dictionary cast prototypes do not decode target values",5,0,FALSE,FALSE,0,0.00500000000000256,0.00099999999999989,0.0179999999999971,5
+"test-owned-columns.R","owned-columns","plain integer and logical cast prototypes need no target payload",4,0,FALSE,FALSE,0,0.00399999999999778,0,0.004999999999999,4
+"test-owned-columns.R","owned-columns","foreign integer prototypes and full replacements skip old payload reads",17,0,FALSE,FALSE,0,0.0919999999999987,0.004,0.0970000000000013,17
+"test-owned-columns.R","owned-columns","capture preserves identical owned columns within one physical table",8,0,FALSE,FALSE,0,0.00799999999999912,0.0139999999999998,0.0209999999999972,8
+"test-owned-columns.R","owned-columns","public writable and retained pointers cannot change another fork",6,0,FALSE,FALSE,0,0.110000000000003,0.00600000000000023,0.116,6
+"test-owned-columns.R","owned-columns","public column exports isolate later ordinary and explicit writes",28,0,FALSE,FALSE,0,0.0380000000000003,0.0089999999999999,0.0459999999999994,28
+"test-owned-columns.R","owned-columns","foreign double ingress and data table exports preserve both write directions",42,0,FALSE,FALSE,0,0.0650000000000013,0.0139999999999998,0.122,42
+"test-owned-columns.R","owned-columns","read pointers and ordinary aggregates retain safe backing forks",8,0,FALSE,FALSE,0,0.00900000000000034,0.00200000000000022,0.0110000000000028,8
+"test-owned-columns.R","owned-columns","owned doubles preserve metadata and ordinary serialized values",8,0,FALSE,FALSE,0,0.0129999999999981,0.004,0.0229999999999997,8
+"test-owned-reads.R","owned-reads","owned integer and logical exports preserve base values and argument evaluation",28,0,FALSE,FALSE,0,0.0300000000000011,0.00599999999999978,0.0390000000000015,28
+"test-owned-reads.R","owned-reads","integer warnings can rewrite and collect the original source safely",4,0,FALSE,FALSE,0,0.105999999999998,0.00299999999999967,0.148000000000003,4
+"test-owned-reads.R","owned-reads","owned public read helpers retain traced base callbacks",3,0,FALSE,FALSE,0,0.0139999999999993,0.00200000000000022,0.0219999999999985,3
+"test-owned-reads.R","owned-reads","owned coercions and range snapshots stay separate from writable pointers",14,0,FALSE,FALSE,0,0.0129999999999981,0.004,0.0159999999999982,14
+"test-owned-reads.R","owned-reads","owned range keeps ordinary summary behavior across missing and empty inputs",42,0,FALSE,FALSE,0,0.0440000000000005,0.0110000000000001,0.0890000000000022,42
+"test-owned-reads.R","owned-reads","owned constructor validation agrees with ordinary detailed validation",18,0,FALSE,FALSE,0,0.0160000000000018,0.004,0.0199999999999996,18
+"test-owned-reads.R","owned-reads","owned missing masks keep names dimensions classes and foreign callbacks",6,0,FALSE,FALSE,0,0.00500000000000256,0.00199999999999978,0.00600000000000023,6
+"test-raven-nse.R","raven-nse","every declared function is exported by the package",10,0,FALSE,FALSE,0,0.0160000000000018,0.004,0.027000000000001,10
+"test-raven-nse.R","raven-nse","the declaration file still carries the expected policy",19,0,FALSE,FALSE,0,0.0259999999999998,0.00500000000000034,0.032,19
+"test-raven-nse.R","raven-nse","declared formals match the function signatures",9,0,FALSE,FALSE,0,0.0120000000000005,0.00299999999999967,0.0219999999999985,9
+"test-raven-nse.R","raven-nse","captured arguments name real formals",9,0,FALSE,FALSE,0,0.0160000000000018,0.00199999999999978,0.0209999999999972,9
+"test-read-dta.R","read-dta","read_dta extends the haven-compatible public signature",10,0,FALSE,FALSE,0,0.00999999999999801,0.00299999999999967,0.0130000000000017,10
+"test-read-dta.R","read-dta","numeric ALTREP can be disabled explicitly or by option",7,0,FALSE,FALSE,0,0.0110000000000028,0.00300000000000011,0.0219999999999985,7
+"test-read-dta.R","read-dta","dtatools recognizes every Stata numeric missing code",620,0,FALSE,FALSE,0,0.565000000000001,0.208,0.827999999999999,620
+"test-read-dta.R","read-dta","base R recoding preserves tags with complete predicates",200,0,FALSE,FALSE,0,0.161999999999999,0.0409999999999999,0.204000000000001,200
+"test-read-dta.R","read-dta","both recode interfaces preserve every Stata missing code",380,0,FALSE,FALSE,0,0.361000000000001,0.073,0.436,380
+"test-read-dta.R","read-dta","dplyr recode keeps its ordinary numeric behavior",10,0,FALSE,FALSE,0,0.0109999999999992,0.00199999999999978,0.0129999999999981,10
+"test-read-dta.R","read-dta","tag detection distinguishes R missing payloads",18,0,FALSE,FALSE,0,0.0109999999999992,0.00300000000000011,0.0129999999999981,18
+"test-read-dta.R","read-dta","dtatools recode retains the familiar vector interface",31,0,FALSE,FALSE,0,0.0330000000000013,0.004,0.036999999999999,31
+"test-read-dta.R","read-dta","parallel decoding is identical across supported releases",15,0,FALSE,FALSE,0,0.0180000000000007,0.00500000000000034,0.0219999999999985,15
+"test-read-dta.R","read-dta","internal metadata projection is bounded and preserves attributes",19,0,FALSE,FALSE,0,0.0229999999999997,0.00099999999999989,0.0240000000000009,19
+"test-read-dta.R","read-dta","an empty projection retains the selected row count",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999778,2
+"test-read-dta.R","read-dta","the largest exact skip is deterministic in both collectors",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00400000000000134,2
+"test-read-dta.R","read-dta","typed predicates and duplicate selections are deterministic",6,0,FALSE,FALSE,0,0.0069999999999979,0.00099999999999989,0.00900000000000034,6
+"test-read-dta.R","read-dta","native materialization survives forced garbage collection",4,0,FALSE,FALSE,0,116.72,0.141,116.878,4
+"test-read-dta.R","read-dta","native strings serialize and preserve copy-on-modify semantics",10,0,FALSE,FALSE,0,0.149000000000001,0.004,0.152999999999992,10
+"test-read-dta.R","read-dta","native numerics use width-aware storage with R value semantics",1353,0,FALSE,FALSE,0,1.066,0.247,1.31999999999999,1353
+"test-read-dta.R","read-dta","explicit encodings apply consistently to strL text",4,0,FALSE,FALSE,0,0.007000000000005,0.00099999999999989,0.00899999999998613,4
+"test-read-dta.R","read-dta","explicit UTF-8 replaces malformed sequences in both collectors",3,0,FALSE,FALSE,0,0.0190000000000055,0.00199999999999978,0.021000000000015,3
+"test-read-dta.R","read-dta","argument and native parse failures are ordinary R errors",20,0,FALSE,FALSE,0,0.0320000000000107,0.00100000000000033,0.0319999999999823,20
+"test-read-dta.R","read-dta","unsafe row-window coercions fail before parsing",32,0,FALSE,FALSE,0,0.0529999999999973,0.00099999999999989,0.054000000000002,32
+"test-reference-copy.R","reference-copy","replacement isolates unchanged columns and caller bindings",35,0,FALSE,FALSE,0,0.0300000000000011,0.00600000000000023,0.0369999999999777,35
+"test-reference-copy.R","reference-copy","explicit helpers isolate distinct tables while preserving table and slot aliases",20,0,FALSE,FALSE,0,0.0170000000000243,0.00300000000000011,0.021000000000015,20
+"test-reference-copy.R","reference-copy","base copies read physical columns and never rewrite source bookkeeping",24,0,FALSE,FALSE,0,0.0160000000000196,0.004,0.0209999999999866,24
+"test-reference-copy.R","reference-copy","assigned repair isolates serialized copies and restores growth aliases",22,0,FALSE,FALSE,0,0.0169999999999959,0.004,0.021000000000015,22
+"test-reference-copy.R","reference-copy","legacy generated columns can be explicitly replaced after preparation",4,0,FALSE,FALSE,0,0.00399999999999068,0,0.00500000000002387,4
+"test-reference-copy.R","reference-copy","preparation and ordinary metadata replacement preserve within-table aliases",29,0,FALSE,FALSE,0,0.0219999999999914,0.00499999999999989,0.0289999999999964,29
+"test-reference-copy.R","reference-copy","all changed same-vector data.table columns invalidate lookup state",10,0,FALSE,FALSE,0,0.0099999999999909,0.00200000000000022,0.0120000000000005,10
+"test-reference-copy.R","reference-copy","promotion replaces its named column without promoting other slots",6,0,FALSE,FALSE,0,0.00499999999999545,0.00099999999999989,0.007000000000005,6
+"test-reference-copy.R","reference-copy","ordinary duplication of compact metadata wrappers keeps both sides compact",9,0,FALSE,FALSE,0,0.007000000000005,0.00300000000000011,0.0149999999999864,9
+"test-reserve-columns.R","reserve-columns","public capacity separates type, preparation, and spare slots",63,0,FALSE,FALSE,0,0.140999999999991,0.00599999999999978,0.14700000000002,63
+"test-reserve-columns.R","reserve-columns","preparation preserves containers and isolates column values",80,0,FALSE,FALSE,0,0.056999999999988,0.0129999999999999,0.0699999999999932,80
+"test-reserve-columns.R","reserve-columns","capacity exhaustion fails before writes and assigned repair isolates aliases",21,0,FALSE,FALSE,0,0.0150000000000148,0.004,0.0180000000000007,21
+"test-reserve-columns.R","reserve-columns","capacity contract is identical for all target expressions",90,0,FALSE,FALSE,0,0.0679999999999836,0.0139999999999998,0.0829999999999984,90
+"test-reserve-columns.R","reserve-columns","getters run once and RHS target changes cannot redirect writes",63,0,FALSE,FALSE,0,0.0409999999999968,0.0110000000000001,0.0519999999999925,63
+"test-reserve-columns.R","reserve-columns","growth rejects row selection and sorting before they run",48,0,FALSE,FALSE,0,0.0600000000000023,0.00499999999999989,0.0649999999999977,48
+"test-reserve-columns.R","reserve-columns","multi-assignment preflights all new names before its first write",25,0,FALSE,FALSE,0,0.0220000000000198,0.004,0.0269999999999868,25
+"test-reserve-columns.R","reserve-columns","same-size writes need no spare capacity but shrinking needs preparation",87,0,FALSE,FALSE,0,0.0570000000000164,0.0130000000000003,0.0700000000000216,87
+"test-reserve-columns.R","reserve-columns","copying, subsetting, and serialization have assigned preparation paths",186,0,FALSE,FALSE,0,0.12299999999999,0.032,0.155000000000001,186
+"test-reserve-columns.R","reserve-columns","legacy overlays require assigned preparation even for no-op helpers",304,0,FALSE,FALSE,0,0.227000000000004,0.0489999999999999,0.27600000000001,304
+"test-reserve-columns.R","reserve-columns","zero-column tables can reserve and consume their first slot",36,0,FALSE,FALSE,0,0.0320000000000107,0.00599999999999978,0.0380000000000109,36
+"test-reserve-columns.R","reserve-columns","prepared physical columns remain visible to direct consumers",14,0,FALSE,FALSE,0,0.0239999999999725,0.004,0.0279999999999916,14
+"test-reserve-columns.R","reserve-columns","data.table readiness requires valid self-reference and preserves lookups on failure",72,0,FALSE,FALSE,0,0.0580000000000211,0.012,0.0699999999999932,72
+"test-reserve-columns.R","reserve-columns","assigned repair preserves identical column slots without sharing another table",12,0,FALSE,FALSE,0,0.0109999999999957,0.00200000000000022,0.01400000000001,12
+"test-reserve-columns.R","reserve-columns","data.table structural commits isolate names shared by ordinary copies",360,0,FALSE,FALSE,0,1.08599999999998,0.0640000000000001,1.15299999999999,360
+"test-reserve-columns.R","reserve-columns","rename preflight runs before a computed names selection",6,0,FALSE,FALSE,0,0.007000000000005,0.00099999999999989,0.007000000000005,6
+"test-reserve-columns.R","reserve-columns","unprepared keep-all is a validated no-op and invalid selectors keep their diagnostics",16,0,FALSE,FALSE,0,0.0169999999999959,0.00199999999999978,0.0180000000000007,16
+"test-reserve-columns.R","reserve-columns","an unsupported loaded data.table version is rejected before mutation",3,0,FALSE,FALSE,0,0.00900000000001455,0.0100000000000002,0.253000000000014,3
+"test-save-dta.R","save-dta","save_dta writes a typed release-118 dataset and returns its input invisibly",8,0,FALSE,FALSE,0,0.00600000000000023,0.00200000000000022,0.00899999999998613,8
+"test-save-dta.R","save-dta","dataset labels over 80 characters leave destinations unchanged",2,0,FALSE,FALSE,0,0.0029999999999859,0.00099999999999989,0.00399999999999068,2
+"test-save-dta.R","save-dta","unsupported target versions leave destinations unchanged",4,0,FALSE,FALSE,0,0.00499999999999545,0.00200000000000022,0.007000000000005,4
+"test-save-dta.R","save-dta","Stata 18 rejects release-119-width datasets",2,0,FALSE,FALSE,0,0.562000000000012,0.004,0.566000000000003,2
+"test-save-dta.R","save-dta","bare logical columns write as Stata bytes",3,0,FALSE,FALSE,0,0.0029999999999859,0.00099999999999989,0.00399999999999068,3
+"test-save-dta.R","save-dta","compact reader storage and materialized fallbacks write identically",10,0,FALSE,FALSE,0,0.0110000000000241,0.004,0.0150000000000148,10
+"test-save-dta.R","save-dta","compact datetimes preserve millisecond integer storage",7,0,FALSE,FALSE,0,0.00600000000000023,0.00200000000000022,0.00699999999997658,7
+"test-save-dta.R","save-dta","malformed compact numerics follow materialized write semantics",8,0,FALSE,FALSE,0,0.0139999999999816,0.00199999999999978,0.0169999999999959,8
+"test-save-dta.R","save-dta","legacy compact numerics widen around modern missing ranges",10,0,FALSE,FALSE,0,0.00900000000001455,0.00300000000000011,0.0190000000000055,10
+"test-save-dta.R","save-dta","character missing values become empty strings and long values use strL",5,0,FALSE,FALSE,0,0.00899999999998613,0.00099999999999989,0.0100000000000193,5
+"test-save-dta.R","save-dta","fixed strings retain declared storage through Arrow",9,0,FALSE,FALSE,0,0.007000000000005,0.00300000000000011,0.0150000000000148,9
+"test-save-dta.R","save-dta","multiple strL columns write interleaved observations",7,0,FALSE,FALSE,0,0.00600000000000023,0.00199999999999978,0.0120000000000005,7
+"test-save-dta.R","save-dta","ordered and unordered factors become labelled long integers",8,0,FALSE,FALSE,0,0.007000000000005,0.00300000000000011,0.00899999999998613,8
+"test-save-dta.R","save-dta","R system-missing payload variants remain system missing",4,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.007000000000005,4
+"test-save-dta.R","save-dta","unrepresentable numerics become system missing in one aggregated warning",9,0,FALSE,FALSE,0,0.007000000000005,0.00200000000000022,0.00899999999998613,9
+"test-save-dta.R","save-dta","Date and POSIXct columns use Stata epochs and both timezone modes",11,0,FALSE,FALSE,0,0.00900000000001455,0.00300000000000011,0.0109999999999957,11
+"test-save-dta.R","save-dta","timezone adjustment retains invalid datetimes for native warnings",4,0,FALSE,FALSE,0,0.00399999999999068,0.00099999999999989,0.00499999999999545,4
+"test-save-dta.R","save-dta","timezone adjustment retains extreme finite datetimes for native warnings",6,0,FALSE,FALSE,0,0.00799999999998136,0.00199999999999978,0.00899999999998613,6
+"test-save-dta.R","save-dta","value labels and ordered dataset notes round-trip",3,0,FALSE,FALSE,0,0.00300000000001432,0.00100000000000033,0.0040000000000191,3
+"test-save-dta.R","save-dta","empty value-label text from source metadata round-trips",3,0,FALSE,FALSE,0,0.00199999999998113,0.00099999999999989,0.0029999999999859,3
+"test-save-dta.R","save-dta","an attached empty value-label table round-trips",3,0,FALSE,FALSE,0,0.00300000000001432,0.00099999999999989,0.0029999999999859,3
+"test-save-dta.R","save-dta","duplicate value-label keys from source metadata round-trip stably",7,0,FALSE,FALSE,0,0.00600000000000023,0.00200000000000022,0.01400000000001,7
+"test-save-dta.R","save-dta","value-label text limits count UTF-8 bytes before touching the destination",2,0,FALSE,FALSE,0,0.007000000000005,0.00099999999999989,0.007000000000005,2
+"test-save-dta.R","save-dta","warnings promoted to errors leave an existing destination unchanged",2,0,FALSE,FALSE,0,0.00399999999999068,0.00099999999999989,0.00399999999999068,2
+"test-save-dta.R","save-dta","native temporary DTA files are private on Unix",2,0,FALSE,FALSE,0,0.00200000000000955,0,0.0029999999999859,2
+"test-save-dta.R","save-dta","writes preserve existing Unix destination permissions",2,0,FALSE,FALSE,0,0.00199999999998113,0,0.00300000000001432,2
+"test-save-dta.R","save-dta","new Unix destinations use normal creation permissions",2,0,FALSE,FALSE,0,0.00200000000000955,0,0.0029999999999859,2
+"test-save-dta.R","save-dta","existing FIFO destinations are rejected without replacement",4,0,FALSE,FALSE,0,0.00499999999999545,0.00199999999999978,0.0229999999999961,4
+"test-save-dta.R","save-dta","extensionless output appends .dta with one classed warning",4,0,FALSE,FALSE,0,0.00499999999999545,0.00099999999999989,0.00600000000000023,4
+"test-save-dta.R","save-dta","unsupported columns are reported together with their classes",3,0,FALSE,FALSE,0,0.007000000000005,0.00100000000000033,0.007000000000005,3
+"test-save-dta.R","save-dta","dependency-free haven_labelled-compatible vectors are supported",3,0,FALSE,FALSE,0,0.00300000000001432,0.00199999999999978,0.00399999999999068,3
+"test-save-dta.R","save-dta","Stata reserved variable names are rejected",78,0,FALSE,FALSE,0,0.0979999999999848,0.0089999999999999,0.108000000000004,78
+"test-save-dta.R","save-dta","zero-row data frames with columns are supported",3,0,FALSE,FALSE,0,0.00300000000001432,0.00200000000000022,0.00499999999999545,3
+"test-save-dta.R","save-dta","malformed and storage-incompatible explicit display formats fail",30,0,FALSE,FALSE,0,0.049999999999983,0.004,0.054000000000002,30
+"test-save-dta.R","save-dta","documented numeric display formats are preserved",2,0,FALSE,FALSE,0,0.00300000000001432,0.00099999999999989,0.00499999999999545,2
+"test-save-dta.R","save-dta","documented string and temporal display formats are preserved",2,0,FALSE,FALSE,0,0.00200000000000955,0.00099999999999989,0.00399999999999068,2
+"test-save-dta.R","save-dta","generic ALTSTRING columns are materialized before native writing",6,0,FALSE,FALSE,0,0.0300000000000011,0.004,0.0340000000000202,6
+"test-save-dta.R","save-dta","generic ALTSTRING metadata stays rooted through native writing",5,0,FALSE,FALSE,0,14.076,0.0230000000000001,14.101,5
+"test-save-dta.R","save-dta","numeric Stata calendar formats that remain numeric are preserved",4,0,FALSE,FALSE,0,0.00399999999999068,0.00099999999999989,0.00399999999999068,4
+"test-slice-dta-rows.R","slice-dta-rows","slice_dta_rows matches imported Stata column slicing",15,0,FALSE,FALSE,0,0.0169999999999959,0.004,0.021000000000015,15
+"test-slice-dta-rows.R","slice-dta-rows","slice_dta_rows preserves every numeric storage and missing tag",12,0,FALSE,FALSE,0,0.00900000000001455,0.00299999999999967,0.0109999999999957,12
+"test-slice-dta-rows.R","slice-dta-rows","slice_dta_rows preserves temporal and ordinary columns",5,0,FALSE,FALSE,0,0.00799999999998136,0.00100000000000033,0.0099999999999909,5
+"test-slice-dta-rows.R","slice-dta-rows","slice_dta_rows handles named and empty columns",5,0,FALSE,FALSE,0,0.0040000000000191,0.00099999999999989,0.00499999999999545,5
+"test-slice-dta-rows.R","slice-dta-rows","slice_dta_rows slices ordinary data.tables",24,0,FALSE,FALSE,0,0.0190000000000055,0.00599999999999978,0.0250000000000057,24
+"test-slice-dta-rows.R","slice-dta-rows","slice_dta_rows validates its container and locations",4,0,FALSE,FALSE,0,0.0169999999999959,0,0.0180000000000007,4
+"test-slice-dta-rows.R","slice-dta-rows","slice_dta_rows rejects data.table subclasses",1,0,FALSE,FALSE,0,0.00200000000000955,0.00100000000000033,0.00200000000000955,1
+"test-slice-dta-rows.R","slice-dta-rows","reorder_dta_rows permutes a data.table in place",9,0,FALSE,FALSE,0,0.00799999999998136,0.00199999999999978,0.0100000000000193,9
+"test-slice-dta-rows.R","slice-dta-rows","reorder_dta_rows permutes other ordinary containers",6,0,FALSE,FALSE,0,0.0040000000000191,0.00099999999999989,0.00600000000000023,6
+"test-slice-dta-rows.R","slice-dta-rows","reorder_dta_rows permutes reference-state columns",6,0,FALSE,FALSE,0,0.00499999999999545,0.00200000000000022,0.007000000000005,6
+"test-slice-dta-rows.R","slice-dta-rows","reorder_dta_rows permutes a physically complete generated table",6,0,FALSE,FALSE,0,0.00799999999998136,0.00099999999999989,0.0099999999999909,6
+"test-slice-dta-rows.R","slice-dta-rows","reorder_dta_rows validates its container",2,0,FALSE,FALSE,0,0.0040000000000191,0,0.00499999999999545,2
+"test-slice-dta-rows.R","slice-dta-rows","reorder_dta_rows validates data.table permutations",5,0,FALSE,FALSE,0,0.0120000000000005,0,0.0130000000000052,5
+"test-tab.R","tab","tab is exported and returns ordinary table objects",12,0,FALSE,FALSE,0,0.00900000000001455,0.00199999999999978,0.0120000000000005,12
+"test-tab.R","tab","tab supports data frames and pipes",10,0,FALSE,FALSE,0,0.0109999999999957,0.00200000000000022,0.0129999999999768,10
+"test-tab.R","tab","labelled temporal vectors match Stata codes and format fallbacks",2,0,FALSE,FALSE,0,0.000999999999976353,0.00099999999999989,0.00200000000000955,2
+"test-tab.R","tab","missing modes distinguish every numeric payload",8,0,FALSE,FALSE,0,0.00499999999999545,0.00200000000000022,0.007000000000005,8
+"test-tab.R","tab","labels apply to observed and missing values without adding levels",4,0,FALSE,FALSE,0,0.00300000000001432,0.000999999999999446,0.0040000000000191,4
+"test-tab.R","tab","cross-tabs handle labelled and ordinary vectors in either order",3,0,FALSE,FALSE,0,0.00199999999998113,0.00100000000000033,0.0029999999999859,3
+"test-tab.R","tab","tab preserves source values and metadata",1,0,FALSE,FALSE,0,0.00100000000000477,0,0.00100000000000477,1
+"test-tab.R","tab","tab handles imported labelled ALTREP columns",10,0,FALSE,FALSE,0,0.00899999999998613,0.00300000000000011,0.0109999999999957,10
+"test-tab.R","tab","tab distinguishes all missing codes read by dtatools",10,0,FALSE,FALSE,0,0.0110000000000241,0.00199999999999978,0.0130000000000052,10
+"test-tab.R","tab","tab validates its arguments",6,0,FALSE,FALSE,0,0.00899999999998613,0.00100000000000033,0.00900000000001455,6
+"test-tagged-missing.R","tagged-missing","tagged_missing creates canonical Stata extended missings",1,0,FALSE,FALSE,0,0.00100000000000477,0,0.000999999999976353,1
+"test-tagged-missing.R","tagged-missing","missing_tag inspects imported missing codes without materializing",1,0,FALSE,FALSE,0,0.00199999999998113,0,0.00300000000001432,1
+"test-tagged-missing.R","tagged-missing","is_tagged_missing matches one or more tags without materializing",1,0,FALSE,FALSE,0,0.00200000000000955,0,0.0029999999999859,1
+"test-tagged-missing.R","tagged-missing","tagged-missing inspectors reject nonnumeric vectors",1,0,FALSE,FALSE,0,0.00100000000000477,0.000999999999999446,0.00200000000000955,1
+"test-tagged-missing.R","tagged-missing","tag arguments reject values outside Stata's extended missings",1,0,FALSE,FALSE,0,0.00199999999998113,0,0.00199999999998113,1
+"test-tagged-missing.R","tagged-missing","inspectors preserve shape but not source metadata",1,0,FALSE,FALSE,0,0.00100000000000477,0.00100000000000033,0.00200000000000955,1
+"test-tagged-missing.R","tagged-missing","inspectors reject noncanonical NaN payloads",1,0,FALSE,FALSE,0,0.00100000000000477,0,0.00200000000000955,1
+"test-tagged-missing.R","tagged-missing","extended missing constants match the tagged missing constructor",3,0,FALSE,FALSE,0,0.00199999999998113,0.00100000000000033,0.0029999999999859,3
+"test-value-label-table-names.R","value-label-table-names","DTA reads retain nondefault table names across releases",4,0,FALSE,FALSE,0,0.00800000000000978,0.00199999999999978,0.00899999999998613,4
+"test-value-label-table-names.R","value-label-table-names","shared DTA tables survive projection and emit one table record",7,0,FALSE,FALSE,0,0.00600000000000023,0.000999999999999446,0.007000000000005,7
+"test-value-label-table-names.R","value-label-table-names","the variable matching a shared table name still retains identity",3,0,FALSE,FALSE,0,0.0029999999999859,0.00100000000000033,0.00399999999999068,3
+"test-value-label-table-names.R","value-label-table-names","DTA and Arrow round trips preserve table identity",5,0,FALSE,FALSE,0,0.00800000000000978,0.00300000000000011,0.0229999999999961,5
+"test-value-label-table-names.R","value-label-table-names","conflicting names warn once and fall back without harming other tables",18,0,FALSE,FALSE,0,0.0149999999999864,0.00300000000000011,0.0240000000000009,18
+"test-value-label-table-names.R","value-label-table-names","explicit and implicit name collisions share or fall back safely",16,0,FALSE,FALSE,0,0.0149999999999864,0.00399999999999956,0.0269999999999868,16
+"test-value-label-table-names.R","value-label-table-names","fallback names are checked for secondary collisions",14,0,FALSE,FALSE,0,0.0120000000000005,0.00199999999999978,0.0180000000000007,14
+"test-value-label-table-names.R","value-label-table-names","mapping order participates in shared-name comparison",2,0,FALSE,FALSE,0,0.0040000000000191,0,0.0099999999999909,2
+"test-value-label-table-names.R","value-label-table-names","different tagged missing codes conflict even with identical text",6,0,FALSE,FALSE,0,0.0800000000000125,0.000999999999999446,0.0859999999999843,6
+"test-value-label-table-names.R","value-label-table-names","shared write mappings use one prepared vector",8,0,FALSE,FALSE,0,0.00600000000000023,0.000999999999999446,0.007000000000005,8
+"test-value-label-table-names.R","value-label-table-names","shared tables never hide malformed later claimants",6,0,FALSE,FALSE,0,0.0120000000000005,0,0.0120000000000005,6
+"test-value-label-table-names.R","value-label-table-names","empty mappings are usable and missing mappings are malformed",8,0,FALSE,FALSE,0,0.00900000000001455,0.00200000000000067,0.0149999999999864,8
+"test-value-label-table-names.R","value-label-table-names","malformed table names fail before touching destinations",4,0,FALSE,FALSE,0,0.007000000000005,0.000999999999999446,0.00800000000000978,4
+"test-value-label-table-names.R","value-label-table-names","conflict warning handlers run before output starts",4,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000033,0.007000000000005,4
+"test-value-label-table-names.R","value-label-table-names","metadata operations preserve or clear table identity deliberately",11,0,FALSE,FALSE,0,0.007000000000005,0.00199999999999978,0.0100000000000193,11
+"test-value-label-table-names.R","value-label-table-names","renaming R columns does not rename preserved tables",2,0,FALSE,FALSE,0,0.0040000000000191,0.00199999999999978,0.0109999999999957,2
+"test-variable-names.R","variable-names","resolve_var_name resolves exact names and unique abbreviations",3,0,FALSE,FALSE,0,0.0029999999999859,0.00100000000000033,0.0029999999999859,3
+"test-variable-names.R","variable-names","resolve_var_name reports absent and ambiguous references",5,0,FALSE,FALSE,0,0.00600000000000023,0.000999999999999446,0.007000000000005,5
+"test-variable-names.R","variable-names","confirm_var returns logical results and errors by default",6,0,FALSE,FALSE,0,0.00900000000001455,0.00100000000000033,0.0099999999999909,6
+"test-variable-names.R","variable-names","variable names are read from each supported container",8,0,FALSE,FALSE,0,0.00699999999997658,0.00100000000000033,0.007000000000005,8
+"test-variable-names.R","variable-names","resolution observes current names without modifying data",4,0,FALSE,FALSE,0,0.00300000000001432,0.000999999999999446,0.0029999999999859,4
+"test-variable-names.R","variable-names","zero-column data has no resolvable variables",2,0,FALSE,FALSE,0,0.00200000000000955,0.00100000000000033,0.00200000000000955,2
+"test-variable-names.R","variable-names","missing column names do not become prefix candidates",2,0,FALSE,FALSE,0,0.00199999999998113,0,0.00200000000000955,2
+"test-variable-names.R","variable-names","variable-name helpers validate their arguments",15,0,FALSE,FALSE,0,0.0340000000000202,0,0.0349999999999966,15

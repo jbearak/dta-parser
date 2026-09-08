@@ -1,0 +1,613 @@
+{
+  "schema": "stage5-host-partial-publication-v1",
+  "source_git": "ccb7182f02c65a845d8714dfb0e30c77a2d411fb",
+  "source_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-combined-host",
+  "original_package_source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "original_package_tree": "b08c77d91bdce67032f13aced90c29d068d6e95a",
+  "publication_base": "0e258c09cce98a89077cb4850dc03de57724fa8b",
+  "publication_base_package_tree": "f88005766aee9b9dd5827b33a3930feff6672008",
+  "counts": {
+    "copied_originals": 63,
+    "installation": 23,
+    "full_R": 13,
+    "Rust": 20,
+    "reviews": 7,
+    "additive_files": 2,
+    "total_publication_files": 65,
+    "deferred_originals": 92
+  },
+  "original_archive_metadata": [
+    {
+      "path": "inclusion-manifest.json",
+      "bytes": 48606,
+      "mode": "0o644",
+      "sha256": "7576409531918d57dd1fb24960076c8aeb1f17011bfcbb0caca0e76eca3a5a90",
+      "git_mode": "100644",
+      "git_blob": "41ca8db01ee8441d0eec040812314bfc2f6fc4db"
+    },
+    {
+      "path": "inclusion-receipt.json",
+      "bytes": 192,
+      "mode": "0o644",
+      "sha256": "b8e6d8006e0368ae639f07d7649a152a72ba197a7a5eaf2ae119dc27092dc8af",
+      "git_mode": "100644",
+      "git_blob": "486e3f89f887717cfab904f423a2db0891267607"
+    }
+  ],
+  "publication_note": {
+    "path": "PUBLICATION-INSTALL-FULL-RUST.md",
+    "bytes": 3630,
+    "mode": "0o644",
+    "sha256": "a7d4d08c2266e3dbdba1a3a8586e4900a8032b4b4013781c260162353fb182c9"
+  },
+  "files": [
+    {
+      "path": "api-review/audit-combined-install-full-rust-01.json",
+      "bytes": 1374,
+      "mode": "0o644",
+      "sha256": "30b87406a01afcddea930b872c11e89b6e0d083ac1f08e4a72138eae12adc8f9",
+      "git_mode": "100644",
+      "git_blob": "63bdd196dcbdb2e2f7532d20f016d8532ae3f47b",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-install-full-rust-01.json"
+    },
+    {
+      "path": "api-review/audit-combined-install-full-rust-01.py",
+      "bytes": 6024,
+      "mode": "0o644",
+      "sha256": "3d6d0946ce156e7e39a8fd8faa5e5ec2f2bc4d23094f6d87f300e4c65c4f829b",
+      "git_mode": "100644",
+      "git_blob": "341236b12543c5ee6ce3e2accff2f0f73ab5dfa0",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-install-full-rust-01.py"
+    },
+    {
+      "path": "api-review/audit-combined-rust-details-01.json",
+      "bytes": 1089,
+      "mode": "0o644",
+      "sha256": "b63e034b1451ddef7a4845368fa0a2f416e8e435be857b28b11695036203dcab",
+      "git_mode": "100644",
+      "git_blob": "9c8312597878c04784680ea16f65c62501ec83a9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-rust-details-01.json"
+    },
+    {
+      "path": "api-review/audit-combined-rust-details-01.py",
+      "bytes": 5784,
+      "mode": "0o644",
+      "sha256": "25e410f87d5635643c92b3cead7b821a9150e89f8f922f1a1794c7579b5b55f4",
+      "git_mode": "100644",
+      "git_blob": "87eadae65262d007533d05c8c9d63f652c942b03",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-rust-details-01.py"
+    },
+    {
+      "path": "api-review/combined-install-full-rust-review-01.md",
+      "bytes": 3992,
+      "mode": "0o644",
+      "sha256": "6563aa0c35d0173190c538ba004393ca7d4dbb2df80769864b07dc8e27c38b3c",
+      "git_mode": "100644",
+      "git_blob": "552c0b67ee596be744342bb42b87fd232da8d75e",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/combined-install-full-rust-review-01.md"
+    },
+    {
+      "path": "candidate-combined-01/build-command.json",
+      "bytes": 791,
+      "mode": "0o644",
+      "sha256": "27fcd527797d2f1963cf73441d8b0dba8ce24d6358ced79f1fe138e4aec7a711",
+      "git_mode": "100644",
+      "git_blob": "b67623427458af9b947a1b1c67eae2a1bc597e08",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/build-command.json"
+    },
+    {
+      "path": "candidate-combined-01/build.log",
+      "bytes": 423,
+      "mode": "0o644",
+      "sha256": "443e78ae030831a3fa578f1bb9964d5a7a9675710d5fec5abdcb73c577195bda",
+      "git_mode": "100644",
+      "git_blob": "c5a001ff3c010778a28b91bc32b67f395997ba93",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/build.log"
+    },
+    {
+      "path": "candidate-combined-01/built-source-before-install.json",
+      "bytes": 366,
+      "mode": "0o644",
+      "sha256": "9eb295ae01e62b9a5e9a37e406d074f9c9861673802f6ba36f0fd2db509c9e67",
+      "git_mode": "100644",
+      "git_blob": "06c4ac9e6fc314a64d1fccea8c943bc49aa9478b",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/built-source-before-install.json"
+    },
+    {
+      "path": "candidate-combined-01/cargo-version-command.json",
+      "bytes": 692,
+      "mode": "0o644",
+      "sha256": "86245f50711a2d1e841e038d17d4c8bc7cd0d54f083d43953adac9dc4d8fccc7",
+      "git_mode": "100644",
+      "git_blob": "1b57aef549559ec5eb7049be47d563232b6e241a",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/cargo-version-command.json"
+    },
+    {
+      "path": "candidate-combined-01/cargo-version.log",
+      "bytes": 314,
+      "mode": "0o644",
+      "sha256": "30a8ffbf5019e716b5592ff2a57ead71e42015b7b082bb9a8e76aae1d85b34df",
+      "git_mode": "100644",
+      "git_blob": "c0f5ec81321f6eb155918044f3f0d135af052925",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/cargo-version.log"
+    },
+    {
+      "path": "candidate-combined-01/clang-version-command.json",
+      "bytes": 705,
+      "mode": "0o644",
+      "sha256": "e7645062b3eca9461315f374538cd6b8b80ca48dac074465b73002c3a3fc432e",
+      "git_mode": "100644",
+      "git_blob": "b8ef9093e2d83c310bf42ea99b0ec8da78befd42",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/clang-version-command.json"
+    },
+    {
+      "path": "candidate-combined-01/clang-version.log",
+      "bytes": 159,
+      "mode": "0o644",
+      "sha256": "55f7662ee66d47566d9f08f35a12158ac9588e4852f788eed57fa3bf625c9a5d",
+      "git_mode": "100644",
+      "git_blob": "9d9eb86f2559c84edb47b026df71222582dec405",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/clang-version.log"
+    },
+    {
+      "path": "candidate-combined-01/completed-receipt.json",
+      "bytes": 555,
+      "mode": "0o644",
+      "sha256": "fe4d3dfdeba63d6401becb4f7f41383812b7545383c86a4c0abf17b3c290a38e",
+      "git_mode": "100644",
+      "git_blob": "e8587fdbb2c39b646cd07d5f3283427246792785",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/completed-receipt.json"
+    },
+    {
+      "path": "candidate-combined-01/execution-result.json",
+      "bytes": 6408,
+      "mode": "0o644",
+      "sha256": "ef96eabcadce5ab05c80ec6af7c3acd7694dd095229006d37a66b45e4dc6d4d3",
+      "git_mode": "100644",
+      "git_blob": "2d3a5750c5802cb9e5498b137d27470140d352e6",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/execution-result.json"
+    },
+    {
+      "path": "candidate-combined-01/finish-install-command.json",
+      "bytes": 1279,
+      "mode": "0o644",
+      "sha256": "ec403511cbb976af82734fc230baa6e73c56fc744456b090f5431b80f6da0c7e",
+      "git_mode": "100644",
+      "git_blob": "2b22d9ca8793c765def1830c1967cde7f56e7a21",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/finish-install-command.json"
+    },
+    {
+      "path": "candidate-combined-01/finish-install.log",
+      "bytes": 283,
+      "mode": "0o644",
+      "sha256": "3cf6a22ea15102adcf2a06dae1270849aa353ca6aadf4af342d46c993dcf3440",
+      "git_mode": "100644",
+      "git_blob": "31a1432784186a1f3df99a1fa3ad66aecf9c6005",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/finish-install.log"
+    },
+    {
+      "path": "candidate-combined-01/inputs-before.json",
+      "bytes": 4224095,
+      "mode": "0o644",
+      "sha256": "4647a13d838bdce0686233911dfeb9b8a53c0a30834fb8843fab797313f70ec6",
+      "git_mode": "100644",
+      "git_blob": "77d2cc381aff2b8c8624089a4846f16fc609e7a3",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/inputs-before.json"
+    },
+    {
+      "path": "candidate-combined-01/install-command.json",
+      "bytes": 907,
+      "mode": "0o644",
+      "sha256": "6bda4f15d8f41f8c7cb50eec6943a8c2681c38611a01f4e08d72ed04dc176324",
+      "git_mode": "100644",
+      "git_blob": "2f167c024c9130bcdfe90326c5ae0846cf136909",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/install-command.json"
+    },
+    {
+      "path": "candidate-combined-01/install.log",
+      "bytes": 13596,
+      "mode": "0o644",
+      "sha256": "2331c79da43d6e9c31d6ba2e958c988a7b181047d5e84a34a53ad8f074a92482",
+      "git_mode": "100644",
+      "git_blob": "cef44b07a884655f652a44fd32b9c0d69112809a",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/install.log"
+    },
+    {
+      "path": "candidate-combined-01/installed-files.json",
+      "bytes": 23572,
+      "mode": "0o644",
+      "sha256": "5ecc3e17bb72de8ab1efd1388ab648afb658cb05af2b1f0de9ae11cd337548fc",
+      "git_mode": "100644",
+      "git_blob": "dee8ac716104991b05a059d68d516cb1e88e598f",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/installed-files.json"
+    },
+    {
+      "path": "candidate-combined-01/installed-identity.R",
+      "bytes": 32027,
+      "mode": "0o644",
+      "sha256": "286238c023511c28ba716b930d849e554f70cc2fa93432d7fa29bb6bec913543",
+      "git_mode": "100644",
+      "git_blob": "33668bf74058862272ed1bce2848dcc3040b7e59",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/installed-identity.R"
+    },
+    {
+      "path": "candidate-combined-01/loaded-dlls.txt",
+      "bytes": 912,
+      "mode": "0o644",
+      "sha256": "277357c9eda7942060edd73895dbe7d800c961d32b76ccbd3170467e574693e2",
+      "git_mode": "100644",
+      "git_blob": "672a48670a427940c5f2eeffe6cf6e812401122a",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/loaded-dlls.txt"
+    },
+    {
+      "path": "candidate-combined-01/loaded-namespaces.tsv",
+      "bytes": 1099,
+      "mode": "0o644",
+      "sha256": "19b7047e518f21b784646697bb39b045c1ddef86fe1f3d0d33e53757d6934a19",
+      "git_mode": "100644",
+      "git_blob": "e4a6570031eede00caae564bae05d23c1c5683ad",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/loaded-namespaces.tsv"
+    },
+    {
+      "path": "candidate-combined-01/output-manifest.json",
+      "bytes": 136205,
+      "mode": "0o644",
+      "sha256": "6e3f8cdd40e60278a29e8a8a1446f897ac269a27c3aa23f6df1e841c19ec0043",
+      "git_mode": "100644",
+      "git_blob": "fb66f9c535e5e4d01b856d2327e3ee864a3c6009",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/output-manifest.json"
+    },
+    {
+      "path": "candidate-combined-01/r-version-command.json",
+      "bytes": 678,
+      "mode": "0o644",
+      "sha256": "7707b1d8cd93c2afbbf0512f62fa792b1d337f13a20b31c1327791363017c281",
+      "git_mode": "100644",
+      "git_blob": "5198b2bd0db2a01025f77cb99648752b8bf69813",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/r-version-command.json"
+    },
+    {
+      "path": "candidate-combined-01/r-version.log",
+      "bytes": 381,
+      "mode": "0o644",
+      "sha256": "d5edd22a6841d31ea0be9e6fef9a2b7cbcb8f1bfa6c650a827dfe9138712e752",
+      "git_mode": "100644",
+      "git_blob": "b85a872726e18aef2d09faf62ff0332f7848b25a",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/r-version.log"
+    },
+    {
+      "path": "candidate-combined-01/rustc-version-command.json",
+      "bytes": 692,
+      "mode": "0o644",
+      "sha256": "60320942a1c85c4b0fb6cf41e4af609072a451f86b9b73f8f1ea4dd7c754f852",
+      "git_mode": "100644",
+      "git_blob": "90b1de39ffee2bd7c496d04ed729a4f9161283f0",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/rustc-version-command.json"
+    },
+    {
+      "path": "candidate-combined-01/rustc-version.log",
+      "bytes": 203,
+      "mode": "0o644",
+      "sha256": "75d92da7b8174054e6c19a9a80df6ccb5077af573190ddcc9cbfbe9f5c600c50",
+      "git_mode": "100644",
+      "git_blob": "b91f95b4a22aa11cb79225eb027d288be4597231",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/rustc-version.log"
+    },
+    {
+      "path": "full-combined-01/counts.R",
+      "bytes": 68,
+      "mode": "0o644",
+      "sha256": "69c83b0c729e84a468ab896ce593cbd660f941f66fcef239ad81fc990f2ac102",
+      "git_mode": "100644",
+      "git_blob": "b2575f56f60b0a045e3e53096ab57983df448798",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/counts.R"
+    },
+    {
+      "path": "full-combined-01/execution-result.json",
+      "bytes": 2277,
+      "mode": "0o644",
+      "sha256": "e80ff2dd282fd4f0b0346c6f76cfadc18eac1421b85e55b18bc4eccf8c03c2ab",
+      "git_mode": "100644",
+      "git_blob": "50bdcf95660de069573d068c3c0f268ebcd34043",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/execution-result.json"
+    },
+    {
+      "path": "full-combined-01/inputs-before.json",
+      "bytes": 20419905,
+      "mode": "0o644",
+      "sha256": "9f1798b6de4a1245ed904029d9335002b04fda5159bb1f488f435be124025c3c",
+      "git_mode": "100644",
+      "git_blob": "20f2b2ce58ffecb8c975b6b866df447538e58fea",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/inputs-before.json"
+    },
+    {
+      "path": "full-combined-01/loaded-dlls.R",
+      "bytes": 2153,
+      "mode": "0o644",
+      "sha256": "b57213f4d47a34923f2c8ec48a3d5eec37bbe13cd3d6ceb5610e598e01db113e",
+      "git_mode": "100644",
+      "git_blob": "7f7cc124b49f57185e81c9e6bc1a6038aa4830e0",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/loaded-dlls.R"
+    },
+    {
+      "path": "full-combined-01/manifest.json",
+      "bytes": 1762653,
+      "mode": "0o644",
+      "sha256": "42b7e959779aaa9cf91b4c3b5ff5f44993150fc07f7f93250ad3159674ed4d51",
+      "git_mode": "100644",
+      "git_blob": "f31b8c9c5b1c3245ce63d6206793ac0d4fe55c3d",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/manifest.json"
+    },
+    {
+      "path": "full-combined-01/namespaces.tsv",
+      "bytes": 2486,
+      "mode": "0o644",
+      "sha256": "f7e03bfd621e202ec01d24aeb01577f940179f1f2b972f1cc5be08d84d5386c0",
+      "git_mode": "100644",
+      "git_blob": "2c0092950928d5ea1b00d60ecedfd8accef7dbad",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/namespaces.tsv"
+    },
+    {
+      "path": "full-combined-01/preflight-command.json",
+      "bytes": 1009,
+      "mode": "0o644",
+      "sha256": "9e005c8b17f14d50fafb86e7b2b0f53107744778a38a7b65556d28ea5d14fc38",
+      "git_mode": "100644",
+      "git_blob": "1656a180dacd812a2f230b81c34712f42bda1c99",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/preflight-command.json"
+    },
+    {
+      "path": "full-combined-01/preflight-identity.R",
+      "bytes": 5192,
+      "mode": "0o644",
+      "sha256": "d532c4c382eefeac42e55bb04937550ade5a370d6d8aa9e586cfe456892aeea8",
+      "git_mode": "100644",
+      "git_blob": "504b10c0c0f52cd40678e9d440063b97a78dfe7e",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/preflight-identity.R"
+    },
+    {
+      "path": "full-combined-01/preflight.log",
+      "bytes": 60,
+      "mode": "0o644",
+      "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27",
+      "git_mode": "100644",
+      "git_blob": "e3a41f9fff62e46fc31ba1b61233327b836f75d9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/preflight.log"
+    },
+    {
+      "path": "full-combined-01/receipt.json",
+      "bytes": 526,
+      "mode": "0o644",
+      "sha256": "a8901fe26df3acdecaa4d1a151aa6f0d9f9f654a7f09bccdcb8fa7d6d5352cec",
+      "git_mode": "100644",
+      "git_blob": "6f2e1db0b90b4f08734bb00a85f698b47d19dbc9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/receipt.json"
+    },
+    {
+      "path": "full-combined-01/tests-command.json",
+      "bytes": 1008,
+      "mode": "0o644",
+      "sha256": "1940cc3ba4cc8cd8a617e6bd3a8ca350c10cb475434e0c88c917c5e4adb7ae41",
+      "git_mode": "100644",
+      "git_blob": "5f420936c28a2359d24ea5c974a04cf2077119b5",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/tests-command.json"
+    },
+    {
+      "path": "full-combined-01/tests.csv",
+      "bytes": 160595,
+      "mode": "0o644",
+      "sha256": "c1a84d51f87e95831e6f285f33f3b9fe8a3b52d9659fd4f5a70607f7dedfeb90",
+      "git_mode": "100644",
+      "git_blob": "eba08488b095a44b3a8d1073b37d17cec0a87dcd",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/tests.csv"
+    },
+    {
+      "path": "full-combined-01/tests.log",
+      "bytes": 20102,
+      "mode": "0o644",
+      "sha256": "4a4db61202517fc91f32ce244bcc9fb586cc814bcc8af4c1d383b188b8c81951",
+      "git_mode": "100644",
+      "git_blob": "6d14c1dfd956b2655a1be5a9513f1ed88232a519",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/tests.log"
+    },
+    {
+      "path": "rust-combined-01/cargo-metadata-command.json",
+      "bytes": 521,
+      "mode": "0o644",
+      "sha256": "254a7c2bbb46f61c074001eb10f0dcf0df7ce07f9bd253562e366abb90a7f572",
+      "git_mode": "100644",
+      "git_blob": "062e2b0d4f7b2cb5751c0a85dbcdfa42718c4c4a",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/cargo-metadata-command.json"
+    },
+    {
+      "path": "rust-combined-01/cargo-metadata.json",
+      "bytes": 412455,
+      "mode": "0o644",
+      "sha256": "6abf2ab7885bbe13f950cf971fa07969062f30325835ebde1d38ef15188719c4",
+      "git_mode": "100644",
+      "git_blob": "16fea5e4bd6aa618679ca56c459cba9cc3df5f1c",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/cargo-metadata.json"
+    },
+    {
+      "path": "rust-combined-01/cargo-metadata.log",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_mode": "100644",
+      "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/cargo-metadata.log"
+    },
+    {
+      "path": "rust-combined-01/clippy-command.json",
+      "bytes": 722,
+      "mode": "0o644",
+      "sha256": "7cae1ea410086afafbc713140c76d1ab762b41baf98f02cd6a1922b2a66fb58c",
+      "git_mode": "100644",
+      "git_blob": "290916d114591f6c360f487b5abcf0f102e4e46e",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/clippy-command.json"
+    },
+    {
+      "path": "rust-combined-01/clippy.log",
+      "bytes": 2296,
+      "mode": "0o644",
+      "sha256": "b0a756e36a080514fedcd4c79dddc09b34019604d1c887332dc1fcfeb7d1819c",
+      "git_mode": "100644",
+      "git_blob": "a9006cba6a5cf17aa22879e4112e3c2264f0a7f7",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/clippy.log"
+    },
+    {
+      "path": "rust-combined-01/docs-command.json",
+      "bytes": 672,
+      "mode": "0o644",
+      "sha256": "ac0d420936dae96e8e95cff8e7cc1748cf155bb808da8d46afe6f5a49fbc14f4",
+      "git_mode": "100644",
+      "git_blob": "8bd896aa61b9c5625e02c6bd627303d246c5d103",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/docs-command.json"
+    },
+    {
+      "path": "rust-combined-01/docs.log",
+      "bytes": 344,
+      "mode": "0o644",
+      "sha256": "5e42e9a93cb964d2bf870b439a4e4eda35c61e28eab08e1be7754f9cda7f812d",
+      "git_mode": "100644",
+      "git_blob": "2c6d6d1c880b4046cc9696e01efb4c430e2b2647",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/docs.log"
+    },
+    {
+      "path": "rust-combined-01/execution-result.json",
+      "bytes": 5040,
+      "mode": "0o644",
+      "sha256": "e2d032812300152d2afaa699247f364dc792da33a380054badd074ab21a78f07",
+      "git_mode": "100644",
+      "git_blob": "66c7a6859e22ff5e4892c43fe9a4529daa7fe022",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/execution-result.json"
+    },
+    {
+      "path": "rust-combined-01/fmt-command.json",
+      "bytes": 653,
+      "mode": "0o644",
+      "sha256": "ad6eee351b1f190099a4076fdf04172223099a5537563d81c1c572f2d451bc38",
+      "git_mode": "100644",
+      "git_blob": "a14013cd105bbbebbf6941d7acdabb265a994e6f",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/fmt-command.json"
+    },
+    {
+      "path": "rust-combined-01/fmt.log",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_mode": "100644",
+      "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/fmt.log"
+    },
+    {
+      "path": "rust-combined-01/inputs-before.json",
+      "bytes": 22065465,
+      "mode": "0o644",
+      "sha256": "ae460685d85841e59072a7a50a752311584364b0a1a781576ac7813d8916516c",
+      "git_mode": "100644",
+      "git_blob": "448130b0f71a9b83ee2c0eb05bfa5edf33c5e132",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/inputs-before.json"
+    },
+    {
+      "path": "rust-combined-01/manifest.json",
+      "bytes": 4918845,
+      "mode": "0o644",
+      "sha256": "7b4edccb7c7d08d2b7645ad337779527d8f559639b701ea4ef74add3fb1ec9cc",
+      "git_mode": "100644",
+      "git_blob": "f3ac4ff7004fb27c15044966cae5ca86a1806767",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/manifest.json"
+    },
+    {
+      "path": "rust-combined-01/package-command.json",
+      "bytes": 698,
+      "mode": "0o644",
+      "sha256": "54880b805fa430303c69695f57d17dc31fa7a592e6d56cbe9a299a9ef9f4f255",
+      "git_mode": "100644",
+      "git_blob": "9205cad7b36a5d87166ab73f2c9e028a90467eee",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/package-command.json"
+    },
+    {
+      "path": "rust-combined-01/package.log",
+      "bytes": 1634,
+      "mode": "0o644",
+      "sha256": "e971c091c96ea4c78425743dc2405678bc26e2ece42f0b8f9290c97f2a9e5fda",
+      "git_mode": "100644",
+      "git_blob": "b7db0fe0ce27cb3fe93e77497e9b7ee6b6cafda9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/package.log"
+    },
+    {
+      "path": "rust-combined-01/preflight-command.json",
+      "bytes": 1009,
+      "mode": "0o644",
+      "sha256": "cb6aaa30f1bd1dbc82890fa7d195614bac1050572db0f41dbf4224a83efc5e92",
+      "git_mode": "100644",
+      "git_blob": "8f95b12d7e2d468a7e84a20d03e642cdfb2b51e5",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/preflight-command.json"
+    },
+    {
+      "path": "rust-combined-01/preflight-identity.R",
+      "bytes": 5192,
+      "mode": "0o644",
+      "sha256": "d532c4c382eefeac42e55bb04937550ade5a370d6d8aa9e586cfe456892aeea8",
+      "git_mode": "100644",
+      "git_blob": "504b10c0c0f52cd40678e9d440063b97a78dfe7e",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/preflight-identity.R"
+    },
+    {
+      "path": "rust-combined-01/preflight.log",
+      "bytes": 60,
+      "mode": "0o644",
+      "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27",
+      "git_mode": "100644",
+      "git_blob": "e3a41f9fff62e46fc31ba1b61233327b836f75d9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/preflight.log"
+    },
+    {
+      "path": "rust-combined-01/receipt.json",
+      "bytes": 526,
+      "mode": "0o644",
+      "sha256": "d919155ad571711c265212474c82dd706046c3f437d26ba134626ba72e211b68",
+      "git_mode": "100644",
+      "git_blob": "2eb2498c4c58032341a7924b6cc7848d7c175614",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/receipt.json"
+    },
+    {
+      "path": "rust-combined-01/tests-command.json",
+      "bytes": 682,
+      "mode": "0o644",
+      "sha256": "fc84d1699b5a769684ce1484747ee8fd929d341b97806089ab778007a1693060",
+      "git_mode": "100644",
+      "git_blob": "741cee15988bba9526e45c1bec660a3bf0421c86",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/tests-command.json"
+    },
+    {
+      "path": "rust-combined-01/tests.log",
+      "bytes": 25324,
+      "mode": "0o644",
+      "sha256": "e06fef2e6c7e1b03340cbafcd4bcae89f81411a7aa7dbc5c38ee27968958d1fe",
+      "git_mode": "100644",
+      "git_blob": "f4d0335f91564a0a70717140543e7f308d2a1067",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/rust-combined-01/tests.log"
+    },
+    {
+      "path": "semantics-review/combined-install-rust-full-evidence-review-01.json",
+      "bytes": 14097,
+      "mode": "0o644",
+      "sha256": "f74f748cc45a6b5805a7ebfee6dc85b438e0712f36ad03455f28e922e07056e8",
+      "git_mode": "100644",
+      "git_blob": "248bda6555b1175129454f4362f3b364b1416a0f",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-install-rust-full-evidence-review-01.json"
+    },
+    {
+      "path": "semantics-review/combined-install-rust-full-evidence-review-01.py",
+      "bytes": 8768,
+      "mode": "0o644",
+      "sha256": "df8b727f91d99ef4b4df795e8b2358925e95fcb32057ea132139d33d2869fcc6",
+      "git_mode": "100644",
+      "git_blob": "df1d13fe255fca87baedafd7b8d76686812a9a25",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-install-rust-full-evidence-review-01.py"
+    }
+  ],
+  "scope": "Current partial publication identity record, not new execution or portable replay. 63 originals preserve their indexed bytes and Unix modes and reviewed Git executable modes. The remaining92 original host files and complete original index are deferred. Historical absolute dependencies and unrecorded optimization/launcher limits remain unchanged."
+}

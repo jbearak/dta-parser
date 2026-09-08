@@ -1,0 +1,24 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "benchmarks/r-dibble-dplyr/expression-checks.R",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library",
+    "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+    "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/source",
+    "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01",
+    "all"
+  ],
+  "completed_utc": "2026-09-07T20:10:09.165234+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/source",
+  "exit_code": 0,
+  "label": "tests",
+  "log": {
+    "bytes": 20102,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/tests.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/full-combined-01/tests.log",
+    "sha256": "4a4db61202517fc91f32ce244bcc9fb586cc814bcc8af4c1d383b188b8c81951"
+  },
+  "started_utc": "2026-09-07T20:07:21.165346+00:00"
+}
