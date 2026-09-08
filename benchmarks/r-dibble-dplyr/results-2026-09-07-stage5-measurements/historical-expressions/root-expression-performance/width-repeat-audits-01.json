@@ -1,0 +1,29 @@
+{
+  "scope": "Six completed-run raw sample audits. No measured operations. audit-width-repeat differs only in expected6grid/12measurement counts and R script path from the reviewed full audit.",
+  "audits": [
+    {
+      "run": "baseline-width-repeat-01",
+      "audit_receipt_sha256": "a3019b2f3bfdf43ab629cfdce8a7eee63b046484d5627a1804d37ba9bc3e551a"
+    },
+    {
+      "run": "candidate-width-repeat-01",
+      "audit_receipt_sha256": "bc502c4abe0d154ea6e254bfef868d8feede251f7403647c1fd6c42183c4a9b7"
+    },
+    {
+      "run": "baseline-width-repeat-02",
+      "audit_receipt_sha256": "801a6ed7dd218a8078b63a89edb8a0ba272aab48846baf18fdac33dce30eceac"
+    },
+    {
+      "run": "candidate-width-repeat-02",
+      "audit_receipt_sha256": "a5c726400a9ec20dda62c636e0e622dc29525f5ec793846916ef807b3d84b60a"
+    },
+    {
+      "run": "baseline-width-repeat-03",
+      "audit_receipt_sha256": "f774de37fbb3825ebe31718703bf3744d88abe2f11baad6db09ed5178ef81d38"
+    },
+    {
+      "run": "candidate-width-repeat-03",
+      "audit_receipt_sha256": "052a6b282c1cd0170b05b9f3497cae06b08c415c882d269bd8127e4d5ae07f03"
+    }
+  ]
+}

@@ -1,0 +1,135 @@
+{
+  "utc": "2026-09-07T21:22:36.647327+00:00",
+  "records": [
+    {
+      "repeat": 1,
+      "mode": "safe_reference",
+      "baseline_ms": 113.777213991852,
+      "candidate_ms": 107.783137005754,
+      "delta_ms": -5.994076986097994,
+      "ratio": 0.947317421689309,
+      "flag": false
+    },
+    {
+      "repeat": 1,
+      "mode": "direct",
+      "baseline_ms": 111.548904998926,
+      "candidate_ms": 89.2861510073999,
+      "delta_ms": -22.26275399152611,
+      "ratio": 0.8004215819802045,
+      "flag": false
+    },
+    {
+      "repeat": 2,
+      "mode": "safe_reference",
+      "baseline_ms": 110.227188008139,
+      "candidate_ms": 112.418228003662,
+      "delta_ms": 2.191039995522999,
+      "ratio": 1.0198774915256046,
+      "flag": false
+    },
+    {
+      "repeat": 2,
+      "mode": "direct",
+      "baseline_ms": 107.825038998271,
+      "candidate_ms": 93.2615520141553,
+      "delta_ms": -14.563486984115698,
+      "ratio": 0.8649340902686877,
+      "flag": false
+    },
+    {
+      "repeat": 3,
+      "mode": "safe_reference",
+      "baseline_ms": 109.754048011382,
+      "candidate_ms": 108.161936004763,
+      "delta_ms": -1.59211200661899,
+      "ratio": 0.9854938197226777,
+      "flag": false
+    },
+    {
+      "repeat": 3,
+      "mode": "direct",
+      "baseline_ms": 108.24049198709,
+      "candidate_ms": 89.620916012791,
+      "delta_ms": -18.619575974298996,
+      "ratio": 0.8279795700067607,
+      "flag": false
+    }
+  ],
+  "input_bindings": [
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01-receipt.json",
+      "sha256": "7352c1b1a2d335f67863aeb784ad4821c6508fe53174f2a2f24a7d9b6d26ffa9"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01-audit-01-receipt.json",
+      "sha256": "c2d7fec4355a9bd87eb9a122425c0a417fa2bc16e7b553bd806a6981a6a96fca"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/measurements.csv",
+      "sha256": "04ddbd31d8fbf865eadc553adb51130665710ea4db0965b39426a957c75986ea"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01-receipt.json",
+      "sha256": "22f399b482247a8a30cdbbbeccd071a6bf9ba8b42a2da5ecc471b8f958b16445"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01-audit-01-receipt.json",
+      "sha256": "14239a6d21face4c264bd25b5fdd04ae028e48ea1b4b98c2fa5f9a6271a05a82"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/measurements.csv",
+      "sha256": "9f1c30ef501bde13ff039d60267ef2a8f32390a22930a29d69f96fcae2043345"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02-receipt.json",
+      "sha256": "8a91c4cc632d41dac98854b111881f0c8030c9ab4adf1510da0f9ee02a4597e6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02-audit-01-receipt.json",
+      "sha256": "7080ebf4df05b8370d50fae5dfe94864e71c9e55f0ad37a0df5b38a76884bb47"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/measurements.csv",
+      "sha256": "423e4bb76fea86627ca867dc337bf1845460ac1a833e50c594bc892e962e3c4b"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02-receipt.json",
+      "sha256": "05a2c40aa3391f696742bc9b80445649392fb4ba3838be8ce22b51b2dd7da0f8"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02-audit-01-receipt.json",
+      "sha256": "7d7f2d45b8c0c8a323356c0a21b6b653bced9834ee9fe7dd6afea3944d04f0d8"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/measurements.csv",
+      "sha256": "52bf4dc874393afda18ddb575269817812d3d10f644945f2fb06f31fb0330c58"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03-receipt.json",
+      "sha256": "8315bbba0f3efad51f458bba6d7520c77cd83dc6b6d799b1af88072ccb1680a9"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03-audit-01-receipt.json",
+      "sha256": "45966afb94776fa3d1e91c0838c4dbeead9236a370ce6212c4fcde58d6bb7df6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/measurements.csv",
+      "sha256": "2d107bd53d8c4cbecee3402b97874f3afd211f06aa28a8faecce27aa34203ac2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03-receipt.json",
+      "sha256": "dfc9c9a28029a6a6fdfff1b3b5eac1fae07976eee9d18d50116f7728aa36da52"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03-audit-01-receipt.json",
+      "sha256": "32e8e600e9db04d264e9a218100b31108e6cc3ef3fad252ea65ba89ba017a421"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/measurements.csv",
+      "sha256": "643b646e6dbadc21940f9900ac1d316898cb597fb50f57bc63d244b0a420bc66"
+    }
+  ],
+  "assessment": "The reference pipeline flag does not recur in any of three coordinated paired repeats. This is bounded repeatability evidence, not causal attribution or overall performance acceptance. Original full matrix and flagged row remain unchanged.",
+  "raw_scope": "Six audited runs, twelve series and eighty-four saved samples. Existing corpus, two modes and seven iterations retained."
+}

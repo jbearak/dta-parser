@@ -1,0 +1,24 @@
+{
+  "utc": "2026-09-07T22:16:44.964593+00:00",
+  "command": [
+    "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+    "-B",
+    "/private/tmp/dta-direct-stage5-validation/test-bundle-evidence-v1.py"
+  ],
+  "exit_code": 0,
+  "tests": 11,
+  "result": "OK",
+  "scope": "Root observed the tool execution output. Identities below were collected after that execution; this is not a pre-consumption input guard or a benchmark run.",
+  "post_run_files": [
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/bundle-evidence-v1.py",
+      "bytes": 7149,
+      "sha256": "d3167d6290b79d4ab5637c42b14cc0b8d83402c7245c771f3a474db4009af9e7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/test-bundle-evidence-v1.py",
+      "bytes": 5047,
+      "sha256": "e9c34cd5b8b9592facd435927a016536fa83fe65669bb94961704eb641bdc0a1"
+    }
+  ]
+}

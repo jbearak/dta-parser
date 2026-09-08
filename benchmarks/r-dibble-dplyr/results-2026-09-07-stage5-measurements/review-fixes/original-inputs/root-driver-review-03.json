@@ -1,0 +1,152 @@
+{
+  "created_utc": "2026-09-07T17:08:50.209992+00:00",
+  "scope": "Actual latest sources reviewed; four qualification output sets independently rehashed, exact inventories/receipts and current driver input bindings verified. All outputs are small qualification with no timings or profiles; no tests/timings run by reviewer. Historical full input closure guards inspected, not independently rehashed.",
+  "files": {
+    "/private/tmp/dta-direct-stage5-validation/root-expression-performance/qualify-v6.R": {
+      "bytes": 5507,
+      "sha256": "0a285cff745d64d35c14b3e72f7cb0b4b8aaf9a7faabfb85fa55ee0921256af7",
+      "mode": "0o644"
+    },
+    "/private/tmp/dta-direct-stage5-validation/root-expression-performance/qualify-v15.py": {
+      "bytes": 5967,
+      "sha256": "b2b4fab9a49cb87cfb45ef5a9a81b9b09c7e32daca369661a2fae3bc889493c0",
+      "mode": "0o644"
+    },
+    "/private/tmp/dta-direct-stage5-validation/root-expression-performance/write-cases-v2.R": {
+      "bytes": 5513,
+      "sha256": "a47c885ee17b635314e3c466547bb97413945a428eda439eb0f54e7980501209",
+      "mode": "0o644"
+    },
+    "/private/tmp/dta-direct-stage5-validation/root-expression-performance/writes-v2.R": {
+      "bytes": 5628,
+      "sha256": "6671fcb76d8a3b1a21254a8a97877d629c9dc5189fab187b4313ef239c44a742",
+      "mode": "0o644"
+    },
+    "/private/tmp/dta-direct-stage5-validation/root-expression-performance/writes-v2.py": {
+      "bytes": 6708,
+      "sha256": "af27c5119d1eed94062b043c26b0d89ef72169046f4873d376f4588c6c48f3a5",
+      "mode": "0o644"
+    },
+    "/private/tmp/dta-direct-stage5-validation/root-r460-integration/check-candidate-v4.py": {
+      "bytes": 10327,
+      "sha256": "d7970103fb5194809ae6ca5b2ac7d2a82e4a445d1a176ba864a2f442cd2efcf0",
+      "mode": "0o644"
+    },
+    "/private/tmp/dta-direct-stage5-validation/root-r460-integration/minimum-export-guard-v4-checks.json": {
+      "bytes": 2857,
+      "sha256": "c5e80d529bd2f2949fe26dd42ea810633d67c25ad00fede50073430be9e6bae7",
+      "mode": "0o644"
+    }
+  },
+  "runs": [
+    {
+      "name": "baseline-f622-qualification-15",
+      "receipt": {
+        "bytes": 529,
+        "sha256": "b4adbc03854e7378792f4ac70089336a67c8186c742f6399d42f1944440e2e57",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 2550,
+        "sha256": "b0fbec834e338e3c9bc6fbfc36a22e8067eb2bb105ac56916572f508e7dfd638",
+        "mode": "0o644"
+      },
+      "products_verified": 6,
+      "bytes": 1113581,
+      "errors": [],
+      "unexpected": [],
+      "missing": [],
+      "source": "f622f1ddba04b2bb7ac07415faccf2b417aab0e6",
+      "accepted": true,
+      "changed_inputs": [],
+      "namespace_coverage": true,
+      "integrity_error": null,
+      "current_driver_bindings_verified": 3,
+      "bounded_checks_passed": 16
+    },
+    {
+      "name": "candidate-57309d4-qualification-15",
+      "receipt": {
+        "bytes": 537,
+        "sha256": "27196fc2286e5bd1fc8e5c65e5b07dbaba279bfcb0c0152dc9941b567f22a3ca",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 2598,
+        "sha256": "e30395127219821f1d54f2e6212055f88e7f90e9804af6081d34871126c186e9",
+        "mode": "0o644"
+      },
+      "products_verified": 6,
+      "bytes": 1115387,
+      "errors": [],
+      "unexpected": [],
+      "missing": [],
+      "source": "57309d40433a92d99849fefa155ae7b22b86b337",
+      "accepted": true,
+      "changed_inputs": [],
+      "namespace_coverage": true,
+      "integrity_error": null,
+      "current_driver_bindings_verified": 3,
+      "bounded_checks_passed": 16
+    },
+    {
+      "name": "baseline-f622-write-qualification-02",
+      "receipt": {
+        "bytes": 541,
+        "sha256": "98a42b6058ba82f210ed0718f3b77d183bb4b4cd748501e5d9845046a6665441",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 3036,
+        "sha256": "1854d3003b5ab2f1b21311ccbfb665378a2689dc4ac84e5ec338822ca41902b9",
+        "mode": "0o644"
+      },
+      "products_verified": 7,
+      "bytes": 1174827,
+      "errors": [],
+      "unexpected": [],
+      "missing": [],
+      "source": "f622f1ddba04b2bb7ac07415faccf2b417aab0e6",
+      "accepted": true,
+      "changed_inputs": [],
+      "namespace_coverage": true,
+      "integrity_error": null,
+      "current_driver_bindings_verified": 4,
+      "write_cases_passed": 15
+    },
+    {
+      "name": "candidate-57309d4-write-qualification-02",
+      "receipt": {
+        "bytes": 549,
+        "sha256": "caf40844b83460a3f67185200ab68ebd5e23a4461d3ace63afde7092acef38fd",
+        "mode": "0o644"
+      },
+      "manifest": {
+        "bytes": 3092,
+        "sha256": "7e8e65b0ddc35554d81c193765f5adf4e9c135254b55e2f7dc978ba8147baf2a",
+        "mode": "0o644"
+      },
+      "products_verified": 7,
+      "bytes": 1176616,
+      "errors": [],
+      "unexpected": [],
+      "missing": [],
+      "source": "57309d40433a92d99849fefa155ae7b22b86b337",
+      "accepted": true,
+      "changed_inputs": [],
+      "namespace_coverage": true,
+      "integrity_error": null,
+      "current_driver_bindings_verified": 4,
+      "write_cases_passed": 15
+    }
+  ],
+  "resolved_findings": [
+    "Rowwise payload check compares converted pair; original pair metadata writes remain separate",
+    "Saved original numeric input is checked after result and source numeric writes",
+    "Minimum checker exact export path/resolution/size/mode/hash guard runs before execution and in final records",
+    "Separate write experiment covers retained shared string, natural computed first, explicitly captured computed shared, prepared private, and full replacement; every profile/timing receives fresh prepared pair",
+    "Table-only mutation_info avoids extracting measured columns; metadata and owned identity inspection use separate fixture",
+    "Independent expected arithmetic/strings and all values, metadata, table aliases, saved column, backing detachment/private persistence and native target-copy budgets validated outside measurements"
+  ],
+  "status": "Clean for reviewer semantics scope. Final performance/RSS/retained-memory outcomes and second independent review remain pending; this report does not authorize bypassing those gates. README versions must be updated with final evidence archive."
+}

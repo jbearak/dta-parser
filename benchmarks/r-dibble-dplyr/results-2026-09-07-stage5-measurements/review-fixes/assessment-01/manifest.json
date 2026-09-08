@@ -1,0 +1,71 @@
+{
+  "excluded": [
+    "manifest.json",
+    "receipt.json"
+  ],
+  "products": [
+    {
+      "bytes": 10062,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/current-facts.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/current-facts.json",
+      "sha256": "18d507b4a40580d72e7476b99951448d4aa65da637891f5b0df0e5124fa44294"
+    },
+    {
+      "bytes": 1534,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/guard-tests-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/guard-tests-01.json",
+      "sha256": "65b3ef27342a3ab25d3b305ecc192aff821b5476b37cbe4ebf3737bc19310473"
+    },
+    {
+      "bytes": 1553,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/guard-tests-02.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/guard-tests-02.json",
+      "sha256": "4d594555ee6842c5e10e0ac348018e0e3e29a5e50682d8bccc5515c3a578b48d"
+    },
+    {
+      "bytes": 9379,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/inputs-after.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/inputs-after.json",
+      "sha256": "63c114d869f003b29d7d773de5aaa1155f1ba51bca3e17e490c8bf073cb0b862"
+    },
+    {
+      "bytes": 11369,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/inputs-before.json",
+      "sha256": "a2ba649a247cc090a86c5061aa2cfb38c42fbdd69869512f1c0190848bbc1697"
+    },
+    {
+      "bytes": 3359,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/result.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/result.json",
+      "sha256": "ee45aaca7533a1f9350a209d46c7ce2e2106c943ecc8add9bcaa48376c683cce"
+    },
+    {
+      "bytes": 3674,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/source-snapshots/README.md",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/source-snapshots/README.md",
+      "sha256": "56e7f95fd5d12b03e88f62451176682182fe95f63eef6ecf6510a3a9c40909f5"
+    },
+    {
+      "bytes": 14395,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/source-snapshots/check-current-records.py",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/source-snapshots/check-current-records.py",
+      "sha256": "c12606e36107e5e761e04a595df546083204e701e85c2a6add8713249880a12f"
+    },
+    {
+      "bytes": 1094,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/source-snapshots/superseded-measurement.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/source-snapshots/superseded-measurement.json",
+      "sha256": "7691ee51557383959bda824feb038040b894c987a499812e7d73cfa224adb9d1"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "manifest": {
+    "bytes": 4635,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01/manifest.json",
+    "sha256": "6ab71799b97bb6d0c9889a203beb8bc7988fc24f518f2eed795a1b6eb377a508"
+  },
+  "status": "complete"
+}

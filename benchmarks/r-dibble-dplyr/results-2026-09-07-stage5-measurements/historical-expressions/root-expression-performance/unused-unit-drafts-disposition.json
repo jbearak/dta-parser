@@ -1,0 +1,10 @@
+{
+  "drafts": [
+    "measure-v2.R",
+    "measure-v2.py",
+    "writes-v3.R",
+    "writes-v3.py"
+  ],
+  "executed": false,
+  "note": "as.numeric ignores units= in this runtime. measure-v2 numeric median would be correctly scaled because mark returns ms, but units argument is misleading. writes-v3 incorrectly reports system_time seconds as ms and is rejected. Use measure-v4 and reviewed writes-v2."
+}

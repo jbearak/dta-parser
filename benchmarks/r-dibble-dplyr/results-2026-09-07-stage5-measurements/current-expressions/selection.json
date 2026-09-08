@@ -1,0 +1,3579 @@
+{
+  "scope": "Selected completed current full expression, qualification, pipeline repeats, explicit write and isolated-memory records, plus their bound plain drivers/reviews. Original historical failures and other source variants retain separate evidence.",
+  "sources": {
+    "baseline": "f622f1ddba04b2bb7ac07415faccf2b417aab0e6",
+    "candidate": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9"
+  },
+  "run_receipts": [
+    {
+      "run": "baseline-f622-measure-02",
+      "sha256": "998d368fde0b9cc29d3da78771b72717b52a753cad5fc2ecf69048ed3b210232"
+    },
+    {
+      "run": "baseline-f622-measure-02-audit",
+      "sha256": "d89fdb6dc69212a7577360e16f8c8a2957dae87ac796bd60222310792141a2bb"
+    },
+    {
+      "run": "candidate-a2d8b6a-measure-01",
+      "sha256": "57d80de9edcf11505a6035bea8f2d32bdebfc23b87ade47a1210ea5b8de36d23"
+    },
+    {
+      "run": "candidate-a2d8b6a-measure-01-audit-01",
+      "sha256": "01b04cb204cde1f82e4db471d2ffa14a88dbd37381db7c79018691991833d76e"
+    },
+    {
+      "run": "baseline-f622-qualification-15",
+      "sha256": "b4adbc03854e7378792f4ac70089336a67c8186c742f6399d42f1944440e2e57"
+    },
+    {
+      "run": "candidate-a2d8b6a-qualify-01",
+      "sha256": "3fb1d84382d368c12cb86dfcad856b3375d5e1c854ba700838bdb54439674569"
+    },
+    {
+      "run": "baseline-f622-write-qualification-02",
+      "sha256": "98a42b6058ba82f210ed0718f3b77d183bb4b4cd748501e5d9845046a6665441"
+    },
+    {
+      "run": "candidate-a2d8b6a-write-qualify-01",
+      "sha256": "8faabcabd13582d2979d511d428b4c56d27af7c37dd44f5d039566930e6f2940"
+    },
+    {
+      "run": "baseline-f622-write-measure-01",
+      "sha256": "742a1541cc2d330713df2205cf2bc75aaf4c4f0f4de91813ded6a5f2ff295a29"
+    },
+    {
+      "run": "candidate-a2d8b6a-write-measure-01",
+      "sha256": "479f46cc325892958bf60a3cf20e98c4709945ca63aa862467d50dd070632d5b"
+    },
+    {
+      "run": "baseline-f622-memory-100k-direct-01",
+      "sha256": "9c61015a345983fac7cd4604bcbb6a7824e4dfc811390b1dd83193e1d96adf58"
+    },
+    {
+      "run": "baseline-f622-memory-100k-safe-01",
+      "sha256": "d3e497d053b078744d9532abde230f252bbb9afac90459ceef987a058af6cffc"
+    },
+    {
+      "run": "baseline-f622-memory-1m-direct-01",
+      "sha256": "57f04c4dd323ecc7371146b9504d98c8d768379b01d5ff5bcc7ea7ce157c937b"
+    },
+    {
+      "run": "baseline-f622-memory-1m-safe-01",
+      "sha256": "63aeafe2dbc7a30dfba2aea1d9a904c63fee3077c10fe52a78f1156f477d9292"
+    },
+    {
+      "run": "candidate-a2d8b6a-memory-100k-direct-01",
+      "sha256": "2283291f9132b4ad93c294b3eadd2ee51ea1589e99bf5c044a430130871144c9"
+    },
+    {
+      "run": "candidate-a2d8b6a-memory-100k-safe-01",
+      "sha256": "9c862f32a9702de1efd378cef4f5f303fa4a0235610fe3e49f8937199563197e"
+    },
+    {
+      "run": "candidate-a2d8b6a-memory-1m-direct-01",
+      "sha256": "d0f12dafc1cfe2bf964ce5143d9f23df26c39f9296db50710e65c7cbc59558e5"
+    },
+    {
+      "run": "candidate-a2d8b6a-memory-1m-safe-01",
+      "sha256": "0068b4b52f2101243b1bfc2a02d7e9115563352940c8957664f76c880f4f4dc7"
+    },
+    {
+      "run": "baseline-pipeline-repeat-01",
+      "sha256": "7352c1b1a2d335f67863aeb784ad4821c6508fe53174f2a2f24a7d9b6d26ffa9"
+    },
+    {
+      "run": "baseline-pipeline-repeat-01-audit-01",
+      "sha256": "c2d7fec4355a9bd87eb9a122425c0a417fa2bc16e7b553bd806a6981a6a96fca"
+    },
+    {
+      "run": "candidate-pipeline-repeat-01",
+      "sha256": "22f399b482247a8a30cdbbbeccd071a6bf9ba8b42a2da5ecc471b8f958b16445"
+    },
+    {
+      "run": "candidate-pipeline-repeat-01-audit-01",
+      "sha256": "14239a6d21face4c264bd25b5fdd04ae028e48ea1b4b98c2fa5f9a6271a05a82"
+    },
+    {
+      "run": "baseline-pipeline-repeat-02",
+      "sha256": "8a91c4cc632d41dac98854b111881f0c8030c9ab4adf1510da0f9ee02a4597e6"
+    },
+    {
+      "run": "baseline-pipeline-repeat-02-audit-01",
+      "sha256": "7080ebf4df05b8370d50fae5dfe94864e71c9e55f0ad37a0df5b38a76884bb47"
+    },
+    {
+      "run": "candidate-pipeline-repeat-02",
+      "sha256": "05a2c40aa3391f696742bc9b80445649392fb4ba3838be8ce22b51b2dd7da0f8"
+    },
+    {
+      "run": "candidate-pipeline-repeat-02-audit-01",
+      "sha256": "7d7f2d45b8c0c8a323356c0a21b6b653bced9834ee9fe7dd6afea3944d04f0d8"
+    },
+    {
+      "run": "baseline-pipeline-repeat-03",
+      "sha256": "8315bbba0f3efad51f458bba6d7520c77cd83dc6b6d799b1af88072ccb1680a9"
+    },
+    {
+      "run": "baseline-pipeline-repeat-03-audit-01",
+      "sha256": "45966afb94776fa3d1e91c0838c4dbeead9236a370ce6212c4fcde58d6bb7df6"
+    },
+    {
+      "run": "candidate-pipeline-repeat-03",
+      "sha256": "dfc9c9a28029a6a6fdfff1b3b5eac1fae07976eee9d18d50116f7728aa36da52"
+    },
+    {
+      "run": "candidate-pipeline-repeat-03-audit-01",
+      "sha256": "32e8e600e9db04d264e9a218100b31108e6cc3ef3fad252ea65ba89ba017a421"
+    }
+  ],
+  "files": [
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/current-expression-README-v1.md",
+      "path": "README.md",
+      "presentation": "plain",
+      "bytes": 4422,
+      "mode": "0o644",
+      "sha256": "a43afa019a6aae29c87558538f9846345598f96168e3f69fa6319f2e17a006b1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/bundle-tests-v1-observed-result.json",
+      "path": "bundle-tests-v1-observed-result.json",
+      "presentation": "plain",
+      "bytes": 858,
+      "mode": "0o644",
+      "sha256": "6f36d917d70263a0eb220c12192e9d8cb828d7f003159db3ca21ab5f250776f2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-measurement-01.py",
+      "path": "implementation/api-review/audit-combined-measurement-01.py",
+      "bytes": 9732,
+      "mode": "0o644",
+      "sha256": "b2da5ca82ca35dc26bcc2e1ee61cd5908c0cc15996932c0c81dfc9fbe5dfb9e5",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-measurement-02.json",
+      "path": "implementation/api-review/audit-combined-measurement-02.json",
+      "bytes": 2010,
+      "mode": "0o644",
+      "sha256": "385f9c2d8d0c5665d7e294fb545abddf55e385caaae6b2352f116a4139cb005a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-measurement-02.py",
+      "path": "implementation/api-review/audit-combined-measurement-02.py",
+      "bytes": 9730,
+      "mode": "0o644",
+      "sha256": "f5b9c743a9f4e7346cce9d7a825bf30dcdaafb7496a69533d85f877094878e8e",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-setup-01.json",
+      "path": "implementation/api-review/audit-combined-setup-01.json",
+      "bytes": 790,
+      "mode": "0o644",
+      "sha256": "dc940f2c55cdb099f0975e66f591b78eeaec9994c0d0b05589be24f745bd30cb",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-setup-01.py",
+      "path": "implementation/api-review/audit-combined-setup-01.py",
+      "bytes": 6039,
+      "mode": "0o644",
+      "sha256": "d25cb501563d05fad5b59c1a8206efe6c3e71b69eb0c6003b443362c69f68504",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-expression-write-memory-01.json",
+      "path": "implementation/api-review/audit-expression-write-memory-01.json",
+      "bytes": 16513,
+      "mode": "0o644",
+      "sha256": "a387c6e557e2e88562abda483432231e3dc538b0508cbb412fe6cc88cc6ded89",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-expression-write-memory-01.py",
+      "path": "implementation/api-review/audit-expression-write-memory-01.py",
+      "bytes": 9336,
+      "mode": "0o644",
+      "sha256": "cf5a1efe951d7d7c8882afc0e8c10a0908e786dcbc703bcb9148a54666f19a87",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-pipeline-repeat-evidence-01.json",
+      "path": "implementation/api-review/audit-pipeline-repeat-evidence-01.json",
+      "bytes": 7330,
+      "mode": "0o644",
+      "sha256": "3783406c3f298a39adf6c7b0786116fc84889fbfdf2881f4fffcfecb3cc21230",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-pipeline-repeat-evidence-01.py",
+      "path": "implementation/api-review/audit-pipeline-repeat-evidence-01.py",
+      "bytes": 7759,
+      "mode": "0o644",
+      "sha256": "446f94390500f6b00b717f0d9a5462b1d161de9dce57b7225ef003feff52f55f",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/check-combined-measurement-raw-01.R",
+      "path": "implementation/api-review/check-combined-measurement-raw-01.R",
+      "bytes": 2347,
+      "mode": "0o644",
+      "sha256": "a4bd6cbcaf020478d8d795c35a33021a900b7e8483cab45e59340fa8f3fbeb3a",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/check-combined-measurement-raw-01.log",
+      "path": "implementation/api-review/check-combined-measurement-raw-01.log",
+      "bytes": 3218,
+      "mode": "0o644",
+      "sha256": "8ee5c7a6a7a2bfb6b02f09ec127d7798e93639af0dd7ff7f28688dbc96b52e7c",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/check-combined-setup-saved-01.R",
+      "path": "implementation/api-review/check-combined-setup-saved-01.R",
+      "bytes": 908,
+      "mode": "0o644",
+      "sha256": "2e0a814dc580c04304bbdca7f808541722ac0f422bcbe2f19987754ef72ff303",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/check-combined-setup-saved-01.log",
+      "path": "implementation/api-review/check-combined-setup-saved-01.log",
+      "bytes": 119,
+      "mode": "0o644",
+      "sha256": "ec6a98ec8f6e9dc92fc0a6ec0aa56d7e56d8bc2485bc6d4f0f8661fb5be09aab",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/combined-measurement-comparison-review-01.md",
+      "path": "implementation/api-review/combined-measurement-comparison-review-01.md",
+      "bytes": 3630,
+      "mode": "0o644",
+      "sha256": "1e84798cb49b7f4f0b8a04017b09e45811a3f6be4a51ba7cb32b0a02083f601a",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/combined-performance-preparation-review-01.md",
+      "path": "implementation/api-review/combined-performance-preparation-review-01.md",
+      "bytes": 3329,
+      "mode": "0o644",
+      "sha256": "faf2b4ef7fb4df84c839945a812674489d308af9f81515a849480bf41e1276f4",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/expression-write-memory-review-01.md",
+      "path": "implementation/api-review/expression-write-memory-review-01.md",
+      "bytes": 3136,
+      "mode": "0o644",
+      "sha256": "fd53c8c6f85cff1c46894920eac179dee751687492a66833a4c05230108f9c8f",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/pipeline-repeat-evidence-review-01.md",
+      "path": "implementation/api-review/pipeline-repeat-evidence-review-01.md",
+      "bytes": 2589,
+      "mode": "0o644",
+      "sha256": "a45cfce2f8388e7ff4f7474d22c87b5642bb96e83d50b89b2deca6def79089e8",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/baseline-measure02-raw-review-01.R",
+      "path": "implementation/semantics-review/baseline-measure02-raw-review-01.R",
+      "presentation": "plain",
+      "bytes": 1886,
+      "mode": "0o644",
+      "sha256": "9e27647c066bc1f7dec18401acadb4a799ce006f7eff8bf4b444abeee8d98993"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-benchmark-qualification-reader-01.R",
+      "path": "implementation/semantics-review/combined-benchmark-qualification-reader-01.R",
+      "bytes": 3355,
+      "mode": "0o644",
+      "sha256": "fb7cac5f42be013ea3a4191bbe811b611ac1f23d58bc1d44fdcbf8bccecaba67",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-benchmark-qualification-reader-01.log",
+      "path": "implementation/semantics-review/combined-benchmark-qualification-reader-01.log",
+      "bytes": 69,
+      "mode": "0o644",
+      "sha256": "1de21ac3975323ec1486ed738610c9273615d9c17382e3826acaa188f48422ef",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-benchmark-qualification-reader-02.R",
+      "path": "implementation/semantics-review/combined-benchmark-qualification-reader-02.R",
+      "presentation": "plain",
+      "bytes": 3355,
+      "mode": "0o644",
+      "sha256": "87e24785c41a2ffba824a744873894024a88b7af20aedf0b35534698d6fe2b09"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-benchmark-qualification-reader-02.log",
+      "path": "implementation/semantics-review/combined-benchmark-qualification-reader-02.log",
+      "bytes": 175,
+      "mode": "0o644",
+      "sha256": "47c46b5205c9ab31aaf8ad616b3cb97425ae161a25be01ab8ab7f0ed27e0d557",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-benchmark-source-states-02.csv",
+      "path": "implementation/semantics-review/combined-benchmark-source-states-02.csv",
+      "bytes": 37421,
+      "mode": "0o644",
+      "sha256": "6d16610ca2864d00142af93db52d72dedaca6189f7639bea2191fae0fcad621e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-comparison-review-01.log",
+      "path": "implementation/semantics-review/combined-measurement-comparison-review-01.log",
+      "bytes": 781,
+      "mode": "0o644",
+      "sha256": "447d673282fa880988e156b6d502743393e7e4e3de356595a4989ef7e1d07d1a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-comparison-review-01.py",
+      "path": "implementation/semantics-review/combined-measurement-comparison-review-01.py",
+      "bytes": 15625,
+      "mode": "0o644",
+      "sha256": "d9e7aac244c532d0fa2b03ad1570c11f8b629ca62eae81c7b34678fc7423781c",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-comparison-review-02.json",
+      "path": "implementation/semantics-review/combined-measurement-comparison-review-02.json",
+      "bytes": 12985,
+      "mode": "0o644",
+      "sha256": "fab4be8ea165d2c5548f20aa4a5d71bbc50feb19b11a757aadf380ceceee6d00",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-comparison-review-02.log",
+      "path": "implementation/semantics-review/combined-measurement-comparison-review-02.log",
+      "bytes": 294,
+      "mode": "0o644",
+      "sha256": "2d73a26b8f6982b4b6d355e4e91917b945bb329d16519c9d507cb78982f3c143",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-comparison-review-02.py",
+      "path": "implementation/semantics-review/combined-measurement-comparison-review-02.py",
+      "presentation": "plain",
+      "bytes": 15883,
+      "mode": "0o644",
+      "sha256": "666785d0edc348396ba3e0f0ac8212bf1a9bd4bc3d3ded57ce8092b80010dfc2"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-raw-review-01.csv",
+      "path": "implementation/semantics-review/combined-measurement-raw-review-01.csv",
+      "bytes": 23529,
+      "mode": "0o644",
+      "sha256": "ff4686e91ed330cbdbe39b98a64445b7009f980f88e9bc6e2948dda6d6bfcfe7",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-raw-review-01.log",
+      "path": "implementation/semantics-review/combined-measurement-raw-review-01.log",
+      "bytes": 115,
+      "mode": "0o644",
+      "sha256": "e6d3b108ca8f8952a763086cab616e8fa72cc1210078488f17466db8119dfafb",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-performance-preparation-review-01.json",
+      "path": "implementation/semantics-review/combined-performance-preparation-review-01.json",
+      "bytes": 11377,
+      "mode": "0o644",
+      "sha256": "a4f55fdfaa84917c8d9b1e25f656029d6b9091e62170b800f0546d2aefb05f64",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-performance-preparation-review-01.py",
+      "path": "implementation/semantics-review/combined-performance-preparation-review-01.py",
+      "presentation": "plain",
+      "bytes": 10975,
+      "mode": "0o644",
+      "sha256": "53513c9c96004aa7e95c8379028930934f63148cf7c7e061577e9e7a9b49ba89"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/comparator-synthetic-04.py",
+      "path": "implementation/semantics-review/comparator-synthetic-04.py",
+      "presentation": "plain",
+      "bytes": 10427,
+      "mode": "0o644",
+      "sha256": "32e7de17bcb7d0699bd52af6ec855b22da348a823be220ff636e0ec63add4c22"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/compare-measurements-reviewed-04.py",
+      "path": "implementation/semantics-review/compare-measurements-reviewed-04.py",
+      "presentation": "plain",
+      "bytes": 14570,
+      "mode": "0o644",
+      "sha256": "599d07b4abcb6b803dc37b9e70267abcf4a71aacd809eaca9b1a2bb1e0d9fb3c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/expression-memory-record-reader-01.R",
+      "path": "implementation/semantics-review/expression-memory-record-reader-01.R",
+      "presentation": "plain",
+      "bytes": 1624,
+      "mode": "0o644",
+      "sha256": "17c1872ffd6ca74382a86a1c89df6733779a663af8c1aef3e313d142d0bf0e8d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/expression-writes-memory-evidence-review-01.json",
+      "path": "implementation/semantics-review/expression-writes-memory-evidence-review-01.json",
+      "bytes": 38714,
+      "mode": "0o644",
+      "sha256": "a8bcaf6bfb59d7552648622b9b6b90a57f5c1349af855866e080490f7cb03477",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/expression-writes-memory-evidence-review-01.log",
+      "path": "implementation/semantics-review/expression-writes-memory-evidence-review-01.log",
+      "bytes": 195,
+      "mode": "0o644",
+      "sha256": "9fdbb671c95d37e0a3925d07b40ee935ed2e0b917dd0ca9671cabb5108aa78d0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/expression-writes-memory-evidence-review-01.py",
+      "path": "implementation/semantics-review/expression-writes-memory-evidence-review-01.py",
+      "presentation": "plain",
+      "bytes": 11350,
+      "mode": "0o644",
+      "sha256": "56b0ada32a51394a40f048f00638e3acd6d36b4fb4dec1e712dafe9d53d23797"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/pipeline-repeat-evidence-review-01.json",
+      "path": "implementation/semantics-review/pipeline-repeat-evidence-review-01.json",
+      "bytes": 16321,
+      "mode": "0o644",
+      "sha256": "c67e4d5a56c214f415c6971c37414a4c1b9fd98534a65a25f993c374c541aab6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/pipeline-repeat-evidence-review-01.log",
+      "path": "implementation/semantics-review/pipeline-repeat-evidence-review-01.log",
+      "bytes": 141,
+      "mode": "0o644",
+      "sha256": "c41f1f038f3a53c4b4904966276324a496188b49022be6d44a5138da41450dc3",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/pipeline-repeat-evidence-review-01.py",
+      "path": "implementation/semantics-review/pipeline-repeat-evidence-review-01.py",
+      "presentation": "plain",
+      "bytes": 9134,
+      "mode": "0o644",
+      "sha256": "a1ddd1c8393dc3b077fd5c348f10299f633343f5babfa4ac96dbac50ccc29ca5"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/pipeline-repeat-record-reader-01.R",
+      "path": "implementation/semantics-review/pipeline-repeat-record-reader-01.R",
+      "presentation": "plain",
+      "bytes": 1763,
+      "mode": "0o644",
+      "sha256": "8ecfbef1443327874ad04120f2fe039b901a08251fb5dd5a38ba9582d5ff5395"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/audit-measurement.R",
+      "path": "root-expression-performance/audit-measurement.R",
+      "presentation": "plain",
+      "bytes": 1579,
+      "mode": "0o644",
+      "sha256": "3eac0311d4155f18cb4b24417c11c179094e3001b536538bba4f1054fad5a34c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/audit-measurement.py",
+      "path": "root-expression-performance/audit-measurement.py",
+      "presentation": "plain",
+      "bytes": 5488,
+      "mode": "0o644",
+      "sha256": "08aaa50e1387e5627752e850a12a23e774bd7e6f30fce2e64bb59ca0b9234785"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/audit-pipeline-repeat.R",
+      "path": "root-expression-performance/audit-pipeline-repeat.R",
+      "presentation": "plain",
+      "bytes": 1721,
+      "mode": "0o644",
+      "sha256": "29f98d3c7645d001ebb1e598e0508191579df333080ee5ffe6a62958fee28618"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/audit-pipeline-repeat.py",
+      "path": "root-expression-performance/audit-pipeline-repeat.py",
+      "presentation": "plain",
+      "bytes": 5514,
+      "mode": "0o644",
+      "sha256": "cf1c6058941707bdc52a67b188103de23d945f1206db51ae7ad91a595a5b0969"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02-audit-receipt.json",
+      "path": "root-expression-performance/baseline-f622-measure-02-audit-receipt.json",
+      "bytes": 429,
+      "mode": "0o644",
+      "sha256": "d89fdb6dc69212a7577360e16f8c8a2957dae87ac796bd60222310792141a2bb",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02-audit/execution.log",
+      "path": "root-expression-performance/baseline-f622-measure-02-audit/execution.log",
+      "bytes": 74,
+      "mode": "0o644",
+      "sha256": "52082020edec624dedcee20e4cac3e762a0f3dba49820482e87039a8ddb2140d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02-audit/inputs.json",
+      "path": "root-expression-performance/baseline-f622-measure-02-audit/inputs.json",
+      "bytes": 819922,
+      "mode": "0o644",
+      "sha256": "29a0f3e39bb370a89be08138841d0482dfc46a19211ae580c4dbf740c3370a7f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02-audit/manifest.json",
+      "path": "root-expression-performance/baseline-f622-measure-02-audit/manifest.json",
+      "bytes": 1274,
+      "mode": "0o644",
+      "sha256": "d9ac6bd5fc7c7c598c36460358480887a7a9444e93137b5cb94902d24e8b5cf4",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02-audit/result.json",
+      "path": "root-expression-performance/baseline-f622-measure-02-audit/result.json",
+      "bytes": 152,
+      "mode": "0o644",
+      "sha256": "6973e1a507594aad788c49c1cba6e7a62b5e15de99e19e2bf46799ff4416dc81",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02-receipt.json",
+      "path": "root-expression-performance/baseline-f622-measure-02-receipt.json",
+      "bytes": 518,
+      "mode": "0o644",
+      "sha256": "998d368fde0b9cc29d3da78771b72717b52a753cad5fc2ecf69048ed3b210232",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/execution-result.json",
+      "path": "root-expression-performance/baseline-f622-measure-02/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "1c0551aa50c159463d29abe3646bf30b8f8a656f54db48bffbdd5f2b24ddd560",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/execution.log",
+      "path": "root-expression-performance/baseline-f622-measure-02/execution.log",
+      "bytes": 5921,
+      "mode": "0o644",
+      "sha256": "3295ad73b3bc063b8cced57ccecc6d7798b416b72e4e1ecf82335dfc55f867f8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/grid.csv",
+      "path": "root-expression-performance/baseline-f622-measure-02/grid.csv",
+      "bytes": 913,
+      "mode": "0o644",
+      "sha256": "d74717c02ce16f7a13269678345ac5459df257ee0a1083c015f35b523dd6f9a6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/inputs-before.json",
+      "path": "root-expression-performance/baseline-f622-measure-02/inputs-before.json",
+      "bytes": 1073668,
+      "mode": "0o644",
+      "sha256": "b781b0045b41a0aa38d64a430eb95bb11318ca5254f295d5cdfdaca6f67b6463",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/manifest.json",
+      "path": "root-expression-performance/baseline-f622-measure-02/manifest.json",
+      "bytes": 24469,
+      "mode": "0o644",
+      "sha256": "c6fd3593d181a2cf63cea1c8b95add4c5dd12712cf35222df6d9a8ccbd8cf5c6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/measurements.csv",
+      "path": "root-expression-performance/baseline-f622-measure-02/measurements.csv",
+      "bytes": 5959,
+      "mode": "0o644",
+      "sha256": "afaaaff0773698364b61352c0d96da9fe02410bb3723476b485d3531a2e73ed7",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/namespaces.tsv",
+      "path": "root-expression-performance/baseline-f622-measure-02/namespaces.tsv",
+      "bytes": 1388,
+      "mode": "0o644",
+      "sha256": "59f66e0d4d5ddfe7eb5f12e898ebc644385b24c936f2da5ef3b0e78a8dac35d9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-1-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-1-direct.rds",
+      "bytes": 250,
+      "mode": "0o644",
+      "sha256": "3d2a877caf582e8ac4b783373844c3c5230f06972319aa300d1ac4565a4dba2e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-1-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-1-safe_reference.rds",
+      "bytes": 247,
+      "mode": "0o644",
+      "sha256": "1ee5b9019f8df159fae2220e06a95d2683ca4bd04b872d6e2e073751983233c0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-10-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-10-direct.rds",
+      "bytes": 258,
+      "mode": "0o644",
+      "sha256": "24a9f52a1230fa8a48012130c729ffe5b7b9e1175ca24f7435b6ca8f8db0bd9f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-10-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-10-safe_reference.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "01c3d30cd1d7f1dacbcbd7f9c345a17216b3c0282d51ff2f7f38c14a2101b8a0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-11-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-11-direct.rds",
+      "bytes": 262,
+      "mode": "0o644",
+      "sha256": "aa791942c17a4c35548316ffa47866613b88a262aabfecbc82af6bc239a943b0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-11-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-11-safe_reference.rds",
+      "bytes": 262,
+      "mode": "0o644",
+      "sha256": "65b15683b24b026eea67a169ad9e8ae0ce99c7eb56b992fb24ac6fa3a6012f19",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-12-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-12-direct.rds",
+      "bytes": 262,
+      "mode": "0o644",
+      "sha256": "440e37695c3871cdeddfc34619de24b5440fa8b56a7ab41a21fafebd43e591c0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-12-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-12-safe_reference.rds",
+      "bytes": 258,
+      "mode": "0o644",
+      "sha256": "6b59369a12f7139ea998cade9c105a6f237b61e4be55858a96efd7b725204a3f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-13-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-13-direct.rds",
+      "bytes": 251,
+      "mode": "0o644",
+      "sha256": "cafc48ae2e842501cef024950f700aecceba486349cbe4b851087a488b630787",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-13-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-13-safe_reference.rds",
+      "bytes": 243,
+      "mode": "0o644",
+      "sha256": "363416e9206ec40041a4f0bef3fc7e90480c4d6298f22a5037e64a8151248545",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-14-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-14-direct.rds",
+      "bytes": 251,
+      "mode": "0o644",
+      "sha256": "e95e21fd92e5daa350e6c3f08764f3ef9602ae4ca6d94a984cce564d7bfd2362",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-14-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-14-safe_reference.rds",
+      "bytes": 253,
+      "mode": "0o644",
+      "sha256": "9b4c2b9c2fc6646d0a3f6c1f9720e8f80b0b9839ef3cf6cf1ca05d3e3f2a8e16",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-15-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-15-direct.rds",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "d60573261029951af50feb470d808ea9f332f1ad8d4cb86a74e21ee802943439",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-15-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-15-safe_reference.rds",
+      "bytes": 248,
+      "mode": "0o644",
+      "sha256": "c54cc701b02ebb26e7b0f3cef19d976ce2d17be21c21dc1de71272f08887082b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-16-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-16-direct.rds",
+      "bytes": 253,
+      "mode": "0o644",
+      "sha256": "5273498fbdf23202c3156458ffb52f8502b0b9083261e4c62da7a1a7310f825a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-16-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-16-safe_reference.rds",
+      "bytes": 255,
+      "mode": "0o644",
+      "sha256": "26701f72bd5a617f7df529985c15538b56b48aa4b8c99416adf8a086665393c9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-17-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-17-direct.rds",
+      "bytes": 258,
+      "mode": "0o644",
+      "sha256": "39d0fb0689d07dd5dfc932bd7b2cf9c41d9d122784ce1532bccf5f60476c9d9e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-17-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-17-safe_reference.rds",
+      "bytes": 259,
+      "mode": "0o644",
+      "sha256": "cd1c16e976d94a1190398c2a2545865ccf87e93713fc292bd57d27eb62877dfd",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-18-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-18-direct.rds",
+      "bytes": 259,
+      "mode": "0o644",
+      "sha256": "c56f16415a74cce21c93ee67b38ab3459967765918793b94e97507477bf50421",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-18-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-18-safe_reference.rds",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "eab642b9bb2b67e143849cc4595d58a1cccc953ab283702e3f42c2044aef76bc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-19-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-19-direct.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "10a52d982e808a31272c6115660ea9f13bc327fc3076164d87c34fc87cde5a7f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-19-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-19-safe_reference.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "75ad135e61ae8b5cc6d63545ab90e626eb80a7053062588f9b3de4b7f13adaed",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-2-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-2-direct.rds",
+      "bytes": 253,
+      "mode": "0o644",
+      "sha256": "54324e117f9fc73a2fdacb8f2157cbda0fc549438c66ccc7e25d1a1febe9ffdc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-2-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-2-safe_reference.rds",
+      "bytes": 254,
+      "mode": "0o644",
+      "sha256": "09aacc2bcdc860b1531534ed881ddb02adf86d8008443573cc0fc9310a26986d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-20-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-20-direct.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "105763fb0a8df7c3126d8f115d416d06c8505634481200315d96cebcfe2c76af",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-20-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-20-safe_reference.rds",
+      "bytes": 264,
+      "mode": "0o644",
+      "sha256": "68817300cfd901ff3d2ab0ba1bbfa4ba2439fe35a39c655d3319052682041ebf",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-21-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-21-direct.rds",
+      "bytes": 263,
+      "mode": "0o644",
+      "sha256": "deeed2c9166a01c614c62b10325eff06f6b9650f69b73581f9cde857454a883a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-21-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-21-safe_reference.rds",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "5d39d56e79019df0709d7b3ff794b4ddf5db11d202918582ecee7b0ee207b5e6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-22-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-22-direct.rds",
+      "bytes": 263,
+      "mode": "0o644",
+      "sha256": "45f38bc82c8104420a1f1de15cbbd8cabcfa23504a6ffe05a866a98473dcd08b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-22-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-22-safe_reference.rds",
+      "bytes": 262,
+      "mode": "0o644",
+      "sha256": "8ea2bfdb9c203978e84eb9d1d6f5311ab950b55a630cc845924fb2aef4c6dd30",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-23-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-23-direct.rds",
+      "bytes": 258,
+      "mode": "0o644",
+      "sha256": "cbf24dc05a5761202c98283e21ab8308da3147c35ecfdee826c0255245389666",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-23-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-23-safe_reference.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "a80a65ed5453bd302a16477ee9f0f229926550e7f6f7b34a0b6ffa50126a1687",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-24-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-24-direct.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "b3988c46d6881cf358768ac25506ee2e697afcf8c19d2d3312aa5d2ad04c5628",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-24-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-24-safe_reference.rds",
+      "bytes": 264,
+      "mode": "0o644",
+      "sha256": "ab83fd02a7cd375a0add70224d8583613d56ed5a03785592c242f41c58601dce",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-25-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-25-direct.rds",
+      "bytes": 265,
+      "mode": "0o644",
+      "sha256": "3e6dcdfc6ebd26d56529f81cc6a0bea5effbad6e87713e2fd6ec2a4247d58f53",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-25-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-25-safe_reference.rds",
+      "bytes": 266,
+      "mode": "0o644",
+      "sha256": "274955ce3100b8cdb32400903b6d781ef6ecde30696e704a545b9699c4c9dec0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-3-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-3-direct.rds",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "88e40970933b975027dea2ca981b0e642f4ee08dea0a3909f641d45e58ff828d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-3-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-3-safe_reference.rds",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "496df1695f16b43fbbf4e9ef7d4a5f7e54c9db556d9de1fc284714a4066dd693",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-4-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-4-direct.rds",
+      "bytes": 250,
+      "mode": "0o644",
+      "sha256": "663bf3c77a23f93f4eb538c949cf6eab34aed45953b0a7e422670681de7fc04e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-4-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-4-safe_reference.rds",
+      "bytes": 252,
+      "mode": "0o644",
+      "sha256": "dc1755d839bb8aac18c5eacbdceedda64386e3923c11a1150d3fb68aa9ef890e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-5-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-5-direct.rds",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "d4892c0fba0879b35c878ea08d1dbe0cb2794171ff2284ce3f81d93b0c91146a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-5-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-5-safe_reference.rds",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "cd60b58aa9d6cbeab71c8b1e6b9f1c87185739a2ebbd631472887f051ea07e1a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-6-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-6-direct.rds",
+      "bytes": 256,
+      "mode": "0o644",
+      "sha256": "d78832d3ca74e2415e78d855c7bea528216030438b0a023edb42e54a83d424bb",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-6-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-6-safe_reference.rds",
+      "bytes": 254,
+      "mode": "0o644",
+      "sha256": "be8ac64d2ce49a1e1503c1c7b39b8d94488623bd90628ab686dab1a33a36d60f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-7-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-7-direct.rds",
+      "bytes": 253,
+      "mode": "0o644",
+      "sha256": "9e8d435e819cc95ccef796d334542fc601b00a6d8eb59a5570a3b4e364bb308d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-7-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-7-safe_reference.rds",
+      "bytes": 252,
+      "mode": "0o644",
+      "sha256": "98773f692716c5d182286b6e7f6544e6f561a1de7418aa2721554b1a472f2559",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-8-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-8-direct.rds",
+      "bytes": 254,
+      "mode": "0o644",
+      "sha256": "ba41927f8a681791b327c56e59e9c92472f3dca5ae5a840f5d40d34294ab84dc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-8-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-8-safe_reference.rds",
+      "bytes": 257,
+      "mode": "0o644",
+      "sha256": "0e85f5fc1c9b80bda0fb97dde0666131c4f406353e2da0490e5afb63fb9d2b35",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-9-direct.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-9-direct.rds",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "721e41ffb586687ef1118f46ddd98aa860afd08975b4b5e2a6d938599e64414c",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/raw-timing-9-safe_reference.rds",
+      "path": "root-expression-performance/baseline-f622-measure-02/raw-timing-9-safe_reference.rds",
+      "bytes": 248,
+      "mode": "0o644",
+      "sha256": "571cf87e2b470e0b8d17d26d64b59439bf44efcbd619a86a96fcc4730c6323b5",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/session.R",
+      "path": "root-expression-performance/baseline-f622-measure-02/session.R",
+      "bytes": 43341,
+      "mode": "0o644",
+      "sha256": "65e01ba75c0615664290028b668c6ffc92cc2d22b5218c38086342cf35dd7bd2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-measure-02/source-states.csv",
+      "path": "root-expression-performance/baseline-f622-measure-02/source-states.csv",
+      "bytes": 423098,
+      "mode": "0o644",
+      "sha256": "927c9203b8ef85dcafbd3c0b1ac36400a26ab4df581cb21cff815402fb4cee32",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-direct-01-receipt.json",
+      "path": "root-expression-performance/baseline-f622-memory-100k-direct-01-receipt.json",
+      "bytes": 539,
+      "mode": "0o644",
+      "sha256": "9c61015a345983fac7cd4604bcbb6a7824e4dfc811390b1dd83193e1d96adf58",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-direct-01/execution-result.json",
+      "path": "root-expression-performance/baseline-f622-memory-100k-direct-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "f2c5b900c712f105d213dd10925aa3b4ece7601dc8cb02354ecaf89a024b946d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-direct-01/execution.log",
+      "path": "root-expression-performance/baseline-f622-memory-100k-direct-01/execution.log",
+      "bytes": 819,
+      "mode": "0o644",
+      "sha256": "aa99787c1c7625a1e26fa9139f441fc1640577385ee4514d0587ee723a2ace70",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-direct-01/inputs-before.json",
+      "path": "root-expression-performance/baseline-f622-memory-100k-direct-01/inputs-before.json",
+      "bytes": 1073899,
+      "mode": "0o644",
+      "sha256": "0c6d6e05f7046c997d00f85da79fc46bf45a74e60d23091fe1a18741ec8f3a70",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-direct-01/manifest.json",
+      "path": "root-expression-performance/baseline-f622-memory-100k-direct-01/manifest.json",
+      "bytes": 3025,
+      "mode": "0o644",
+      "sha256": "2d2a106de459e0cfa609e3b8cfcf8ef8383186909bf7d300cf164366da04efd2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-direct-01/namespaces.tsv",
+      "path": "root-expression-performance/baseline-f622-memory-100k-direct-01/namespaces.tsv",
+      "bytes": 1237,
+      "mode": "0o644",
+      "sha256": "49c4acd762a8f7b0f637e64b2385c46aa08cffdbe6f3a9641f58654fd3fc10c4",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-direct-01/retained.csv",
+      "path": "root-expression-performance/baseline-f622-memory-100k-direct-01/retained.csv",
+      "bytes": 225,
+      "mode": "0o644",
+      "sha256": "5d904557ce59fceaf80ed41488b176def3863c6b5007f440ef5f434868eef705",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-direct-01/session.R",
+      "path": "root-expression-performance/baseline-f622-memory-100k-direct-01/session.R",
+      "bytes": 36582,
+      "mode": "0o644",
+      "sha256": "00468f6e7231a5fee387c7e960faf05fcddb295e02c1fb11447af8e54a2ed529",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-direct-01/source-result-states.rds",
+      "path": "root-expression-performance/baseline-f622-memory-100k-direct-01/source-result-states.rds",
+      "bytes": 566,
+      "mode": "0o644",
+      "sha256": "779b1e9aff7c8e18d8a648da274cd4fbc5ce5f084e1e0d7ef5fa11bd93026f57",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-safe-01-receipt.json",
+      "path": "root-expression-performance/baseline-f622-memory-100k-safe-01-receipt.json",
+      "bytes": 535,
+      "mode": "0o644",
+      "sha256": "d3e497d053b078744d9532abde230f252bbb9afac90459ceef987a058af6cffc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-safe-01/execution-result.json",
+      "path": "root-expression-performance/baseline-f622-memory-100k-safe-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "5a9c383d99109eeee99c252f325b53fb5277eb9440eead75815165b00082514b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-safe-01/execution.log",
+      "path": "root-expression-performance/baseline-f622-memory-100k-safe-01/execution.log",
+      "bytes": 819,
+      "mode": "0o644",
+      "sha256": "c398f29819bfedcdebf37eaf854dd390db13435830d643cbfd0d246f5e4e75e2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-safe-01/inputs-before.json",
+      "path": "root-expression-performance/baseline-f622-memory-100k-safe-01/inputs-before.json",
+      "bytes": 1073899,
+      "mode": "0o644",
+      "sha256": "0c6d6e05f7046c997d00f85da79fc46bf45a74e60d23091fe1a18741ec8f3a70",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-safe-01/manifest.json",
+      "path": "root-expression-performance/baseline-f622-memory-100k-safe-01/manifest.json",
+      "bytes": 2997,
+      "mode": "0o644",
+      "sha256": "2207d135f08ea5624cf164784cbae588615f3811a26457f1e80734054ec7997b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-safe-01/namespaces.tsv",
+      "path": "root-expression-performance/baseline-f622-memory-100k-safe-01/namespaces.tsv",
+      "bytes": 1237,
+      "mode": "0o644",
+      "sha256": "49c4acd762a8f7b0f637e64b2385c46aa08cffdbe6f3a9641f58654fd3fc10c4",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-safe-01/retained.csv",
+      "path": "root-expression-performance/baseline-f622-memory-100k-safe-01/retained.csv",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "39d6c89ee18ec9522f75d5050669371dcd33857cfe0dca44598f23d966772f31",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-safe-01/session.R",
+      "path": "root-expression-performance/baseline-f622-memory-100k-safe-01/session.R",
+      "bytes": 36582,
+      "mode": "0o644",
+      "sha256": "00468f6e7231a5fee387c7e960faf05fcddb295e02c1fb11447af8e54a2ed529",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-100k-safe-01/source-result-states.rds",
+      "path": "root-expression-performance/baseline-f622-memory-100k-safe-01/source-result-states.rds",
+      "bytes": 566,
+      "mode": "0o644",
+      "sha256": "09a0836f0f84d80ab261533494e350a35b4f72a12ccd0358b18ce654cfd47431",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-direct-01-receipt.json",
+      "path": "root-expression-performance/baseline-f622-memory-1m-direct-01-receipt.json",
+      "bytes": 535,
+      "mode": "0o644",
+      "sha256": "57f04c4dd323ecc7371146b9504d98c8d768379b01d5ff5bcc7ea7ce157c937b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-direct-01/execution-result.json",
+      "path": "root-expression-performance/baseline-f622-memory-1m-direct-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "89528aae5cfdc9cb9eae06bc812f7c16046a0fe53640e80568a44baef58e602f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-direct-01/execution.log",
+      "path": "root-expression-performance/baseline-f622-memory-1m-direct-01/execution.log",
+      "bytes": 819,
+      "mode": "0o644",
+      "sha256": "0bdbc44d5ad46c5df736ae106b6ab7429cb8c5b5b2e60b2fff64fafafb23d377",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-direct-01/inputs-before.json",
+      "path": "root-expression-performance/baseline-f622-memory-1m-direct-01/inputs-before.json",
+      "bytes": 1073899,
+      "mode": "0o644",
+      "sha256": "0c6d6e05f7046c997d00f85da79fc46bf45a74e60d23091fe1a18741ec8f3a70",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-direct-01/manifest.json",
+      "path": "root-expression-performance/baseline-f622-memory-1m-direct-01/manifest.json",
+      "bytes": 2997,
+      "mode": "0o644",
+      "sha256": "68280a5a9d1754437cf0021e6698068a1e0747dfdc1b6edeb27c05dd3eb1546c",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-direct-01/namespaces.tsv",
+      "path": "root-expression-performance/baseline-f622-memory-1m-direct-01/namespaces.tsv",
+      "bytes": 1237,
+      "mode": "0o644",
+      "sha256": "49c4acd762a8f7b0f637e64b2385c46aa08cffdbe6f3a9641f58654fd3fc10c4",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-direct-01/retained.csv",
+      "path": "root-expression-performance/baseline-f622-memory-1m-direct-01/retained.csv",
+      "bytes": 234,
+      "mode": "0o644",
+      "sha256": "cf8c54d787f7be30429b14dae328f72d4b24ce7efd322be24ff6e4855500eb0c",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-direct-01/session.R",
+      "path": "root-expression-performance/baseline-f622-memory-1m-direct-01/session.R",
+      "bytes": 36582,
+      "mode": "0o644",
+      "sha256": "00468f6e7231a5fee387c7e960faf05fcddb295e02c1fb11447af8e54a2ed529",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-direct-01/source-result-states.rds",
+      "path": "root-expression-performance/baseline-f622-memory-1m-direct-01/source-result-states.rds",
+      "bytes": 546,
+      "mode": "0o644",
+      "sha256": "46ff615e4d2d94753d0f8f81b061b22110f045b3ab4b8f963c19ecbc3c239736",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-safe-01-receipt.json",
+      "path": "root-expression-performance/baseline-f622-memory-1m-safe-01-receipt.json",
+      "bytes": 531,
+      "mode": "0o644",
+      "sha256": "63aeafe2dbc7a30dfba2aea1d9a904c63fee3077c10fe52a78f1156f477d9292",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-safe-01/execution-result.json",
+      "path": "root-expression-performance/baseline-f622-memory-1m-safe-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "e0678a08da473966e6cfefb7900e99e9a617d82775bf47597203281fd7aa2862",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-safe-01/execution.log",
+      "path": "root-expression-performance/baseline-f622-memory-1m-safe-01/execution.log",
+      "bytes": 819,
+      "mode": "0o644",
+      "sha256": "009d5b3da37170cee550cb1ea3386c4dcbf6200fb220b0410b27c8d4471706b5",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-safe-01/inputs-before.json",
+      "path": "root-expression-performance/baseline-f622-memory-1m-safe-01/inputs-before.json",
+      "bytes": 1073899,
+      "mode": "0o644",
+      "sha256": "0c6d6e05f7046c997d00f85da79fc46bf45a74e60d23091fe1a18741ec8f3a70",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-safe-01/manifest.json",
+      "path": "root-expression-performance/baseline-f622-memory-1m-safe-01/manifest.json",
+      "bytes": 2969,
+      "mode": "0o644",
+      "sha256": "3f3e4e011cb0b6fb42c97779a9ce6a8f829ab4eddf90de8f1cc00d83142aca45",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-safe-01/namespaces.tsv",
+      "path": "root-expression-performance/baseline-f622-memory-1m-safe-01/namespaces.tsv",
+      "bytes": 1237,
+      "mode": "0o644",
+      "sha256": "49c4acd762a8f7b0f637e64b2385c46aa08cffdbe6f3a9641f58654fd3fc10c4",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-safe-01/retained.csv",
+      "path": "root-expression-performance/baseline-f622-memory-1m-safe-01/retained.csv",
+      "bytes": 258,
+      "mode": "0o644",
+      "sha256": "28542efb9a7963de33c96e292ff793757aec6706061df4eec6f3d197fa653d9a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-safe-01/session.R",
+      "path": "root-expression-performance/baseline-f622-memory-1m-safe-01/session.R",
+      "bytes": 36582,
+      "mode": "0o644",
+      "sha256": "00468f6e7231a5fee387c7e960faf05fcddb295e02c1fb11447af8e54a2ed529",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-memory-1m-safe-01/source-result-states.rds",
+      "path": "root-expression-performance/baseline-f622-memory-1m-safe-01/source-result-states.rds",
+      "bytes": 547,
+      "mode": "0o644",
+      "sha256": "eca41b24d5df3bacc81ebfa366221f8d843330ddf3e6aa8b88c44762d020e500",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-15-receipt.json",
+      "path": "root-expression-performance/baseline-f622-qualification-15-receipt.json",
+      "bytes": 529,
+      "mode": "0o644",
+      "sha256": "b4adbc03854e7378792f4ac70089336a67c8186c742f6399d42f1944440e2e57",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-15/execution-result.json",
+      "path": "root-expression-performance/baseline-f622-qualification-15/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "786dbabe8f3ba9bb1bb75eda6ee19a4f518c998ef32330516b944d262220b7ba",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-15/execution.log",
+      "path": "root-expression-performance/baseline-f622-qualification-15/execution.log",
+      "bytes": 2259,
+      "mode": "0o644",
+      "sha256": "e44d6d6681b1d137c0e6bd85ad32dadd74f8512ace8918a54f6ab99e3ba2eb02",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-15/inputs-before.json",
+      "path": "root-expression-performance/baseline-f622-qualification-15/inputs-before.json",
+      "bytes": 1057024,
+      "mode": "0o644",
+      "sha256": "addcf9f8e7b45f19908368588d4c9c0721952ac8bbc6ec203496747072fc6f22",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-15/manifest.json",
+      "path": "root-expression-performance/baseline-f622-qualification-15/manifest.json",
+      "bytes": 2550,
+      "mode": "0o644",
+      "sha256": "b0fbec834e338e3c9bc6fbfc36a22e8067eb2bb105ac56916572f508e7dfd638",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-15/namespaces.tsv",
+      "path": "root-expression-performance/baseline-f622-qualification-15/namespaces.tsv",
+      "bytes": 1345,
+      "mode": "0o644",
+      "sha256": "f5bc5944febe502fd32d3bf679bcc6bd9bbecae65a55dee36ba0bddce90bdbf2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-15/qualification.R",
+      "path": "root-expression-performance/baseline-f622-qualification-15/qualification.R",
+      "bytes": 50608,
+      "mode": "0o644",
+      "sha256": "01f18716c436f24570bdf77ba341c002954d0708dfb465f932a425862dd895fb",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-qualification-15/source-states.rds",
+      "path": "root-expression-performance/baseline-f622-qualification-15/source-states.rds",
+      "bytes": 2134,
+      "mode": "0o644",
+      "sha256": "d1013f404a6b658f169e9986a178361ced4c800c98e0136829de6214fb657d41",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-measure-01-receipt.json",
+      "path": "root-expression-performance/baseline-f622-write-measure-01-receipt.json",
+      "bytes": 529,
+      "mode": "0o644",
+      "sha256": "742a1541cc2d330713df2205cf2bc75aaf4c4f0f4de91813ded6a5f2ff295a29",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-measure-01/execution-result.json",
+      "path": "root-expression-performance/baseline-f622-write-measure-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "731a550d8133c5c7e4b2bbd85b908ba2eae070535027d4ef4f20c19ee1f08f36",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-measure-01/execution.log",
+      "path": "root-expression-performance/baseline-f622-write-measure-01/execution.log",
+      "bytes": 1213,
+      "mode": "0o644",
+      "sha256": "4c322d0351b40e8e3e3c7b1c5145004ce2438bb78bca87fc6d200f452fdcf3ae",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-measure-01/inputs-before.json",
+      "path": "root-expression-performance/baseline-f622-write-measure-01/inputs-before.json",
+      "bytes": 1074070,
+      "mode": "0o644",
+      "sha256": "184674d9cdb7165c53c0825ebfbf32e50b9eb6d5e741ee52ab578b3a4e30b1ef",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-measure-01/manifest.json",
+      "path": "root-expression-performance/baseline-f622-write-measure-01/manifest.json",
+      "bytes": 3380,
+      "mode": "0o644",
+      "sha256": "2b2c50cef474049433cc582d5098171164ac06d027217011023034e2b68c7aa5",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-measure-01/namespaces.tsv",
+      "path": "root-expression-performance/baseline-f622-write-measure-01/namespaces.tsv",
+      "bytes": 1286,
+      "mode": "0o644",
+      "sha256": "5e1fb4ffee3a5cb67e5a1119e77f030b7146f2a2b9e8d35a3504d3557f345b49",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-measure-01/session.R",
+      "path": "root-expression-performance/baseline-f622-write-measure-01/session.R",
+      "bytes": 38655,
+      "mode": "0o644",
+      "sha256": "bb298b33d468152cca5f79ecd7d2771da07b0b586152d3e209cd3cbf9c15ce6e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-measure-01/write-measurements.csv",
+      "path": "root-expression-performance/baseline-f622-write-measure-01/write-measurements.csv",
+      "bytes": 2056,
+      "mode": "0o644",
+      "sha256": "92d515e2c914248086da2bd2da7ad8163ee4ee551dedc8f459f4b7fab5e86586",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-measure-01/write-samples.csv",
+      "path": "root-expression-performance/baseline-f622-write-measure-01/write-samples.csv",
+      "bytes": 8220,
+      "mode": "0o644",
+      "sha256": "104c63215cfa92c9d6513c82d98f3952890a419be2b05048679f791fdf99a2a7",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-measure-01/write-states.csv",
+      "path": "root-expression-performance/baseline-f622-write-measure-01/write-states.csv",
+      "bytes": 742247,
+      "mode": "0o644",
+      "sha256": "3fd0f1211d4c633430b57cdad0399c8c38687c5d990b14badc702461e85a3a5a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-qualification-02-receipt.json",
+      "path": "root-expression-performance/baseline-f622-write-qualification-02-receipt.json",
+      "bytes": 541,
+      "mode": "0o644",
+      "sha256": "98a42b6058ba82f210ed0718f3b77d183bb4b4cd748501e5d9845046a6665441",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-qualification-02/execution-result.json",
+      "path": "root-expression-performance/baseline-f622-write-qualification-02/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "03710d828fee172a7de7298e4dbb1ca4291fb6701a67ebcdc4ca758f7d2018af",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-qualification-02/execution.log",
+      "path": "root-expression-performance/baseline-f622-write-qualification-02/execution.log",
+      "bytes": 1183,
+      "mode": "0o644",
+      "sha256": "6488c49c66b0ed90feb8401038bce2664c6db2e4b78c9de44e706b06cbed87ab",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-qualification-02/inputs-before.json",
+      "path": "root-expression-performance/baseline-f622-write-qualification-02/inputs-before.json",
+      "bytes": 1074070,
+      "mode": "0o644",
+      "sha256": "8fd4bc976aebf4f3737b2fabdec864bff1a7a3031bc511bf60ce5d5ce4e78b19",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-qualification-02/manifest.json",
+      "path": "root-expression-performance/baseline-f622-write-qualification-02/manifest.json",
+      "bytes": 3036,
+      "mode": "0o644",
+      "sha256": "1854d3003b5ab2f1b21311ccbfb665378a2689dc4ac84e5ec338822ca41902b9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-qualification-02/namespaces.tsv",
+      "path": "root-expression-performance/baseline-f622-write-qualification-02/namespaces.tsv",
+      "bytes": 1237,
+      "mode": "0o644",
+      "sha256": "f622f5280c46662fa6a0831d7c80cef110d3b20e3fee8b88ae0dc616175925f3",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-qualification-02/qualification.csv",
+      "path": "root-expression-performance/baseline-f622-write-qualification-02/qualification.csv",
+      "bytes": 546,
+      "mode": "0o644",
+      "sha256": "9abf940bdd373ca5199a1d1a7c15064705e372f341484231d185ac791995d270",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-qualification-02/session.R",
+      "path": "root-expression-performance/baseline-f622-write-qualification-02/session.R",
+      "bytes": 36513,
+      "mode": "0o644",
+      "sha256": "f4ab2f55b22d8d76e9a1d53b895add66966328f417ab45e13b18b668674c51d4",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-f622-write-qualification-02/write-states.csv",
+      "path": "root-expression-performance/baseline-f622-write-qualification-02/write-states.csv",
+      "bytes": 61067,
+      "mode": "0o644",
+      "sha256": "f9da102094d5fbf3cf4aa3de96d4179d2060328d335a47e3d33197002e8f34ae",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01-audit-01-receipt.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01-audit-01-receipt.json",
+      "bytes": 441,
+      "mode": "0o644",
+      "sha256": "c2d7fec4355a9bd87eb9a122425c0a417fa2bc16e7b553bd806a6981a6a96fca",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01-audit-01/execution.log",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01-audit-01/execution.log",
+      "bytes": 73,
+      "mode": "0o644",
+      "sha256": "489298ca42fc11414d96ab4f2dd558c9aa6e4c99d2a65698120cf80cc42d18bf",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01-audit-01/inputs.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01-audit-01/inputs.json",
+      "bytes": 799644,
+      "mode": "0o644",
+      "sha256": "4acd885ac47fba6a790c98e48458d074fd13270c9408a53f296b3d0fbb59d73a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01-audit-01/manifest.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01-audit-01/manifest.json",
+      "bytes": 1310,
+      "mode": "0o644",
+      "sha256": "df99e22f27388403b2ac6b7739530e55de90417874c20130ec2285a26a56e9a9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01-audit-01/result.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01-audit-01/result.json",
+      "bytes": 150,
+      "mode": "0o644",
+      "sha256": "3cdb41fe01fd9bcbc13580cebb1f08f9e12cca26deb79d80888975dea28aa1b2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01-receipt.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01-receipt.json",
+      "bytes": 523,
+      "mode": "0o644",
+      "sha256": "7352c1b1a2d335f67863aeb784ad4821c6508fe53174f2a2f24a7d9b6d26ffa9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/execution-result.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "8fe02796ad038ab879c877ef92a8e6ceb90d30c70c39186d2f6535b62285acfb",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/execution.log",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/execution.log",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "775eb7e495bc4fe5510fa9e25527993b2738357438924758cae1b3a5d337805a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/grid.csv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/grid.csv",
+      "bytes": 86,
+      "mode": "0o644",
+      "sha256": "e723a79247c7892b0516012c6f72645ba499316a69610a4fc86568365e490abc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/inputs-before.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/inputs-before.json",
+      "bytes": 1073824,
+      "mode": "0o644",
+      "sha256": "65f3415e58b54b6842c7370333d963ab9275af02858358ff7a48c855e6400e69",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/manifest.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/manifest.json",
+      "bytes": 4157,
+      "mode": "0o644",
+      "sha256": "9d39f9b063ce11c635c8cfa22032073f1f0394d7efb040d16d234efedfe84a2c",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/measurements.csv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/measurements.csv",
+      "bytes": 616,
+      "mode": "0o644",
+      "sha256": "04ddbd31d8fbf865eadc553adb51130665710ea4db0965b39426a957c75986ea",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/namespaces.tsv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/namespaces.tsv",
+      "bytes": 1339,
+      "mode": "0o644",
+      "sha256": "527102c2dfe784868bbe25517bc0e5aacb2ccfae908ca31e5d3952e114eedf98",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/raw-timing-1-direct.rds",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/raw-timing-1-direct.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "ecb3b69336c365bad7f95ed17f3be1080ebf0d7eddca3895551748e8bf28cb03",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/raw-timing-1-safe_reference.rds",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/raw-timing-1-safe_reference.rds",
+      "bytes": 263,
+      "mode": "0o644",
+      "sha256": "21a8909c2c77da13df886d21685d59a6a3382503679d9766aff33e3113231377",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/session.R",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/session.R",
+      "bytes": 40441,
+      "mode": "0o644",
+      "sha256": "9d1d2387fe7c36d133c9c51539ec5fa8eae8d202182c5bbf7a15a02e8c2656d2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-01/source-states.csv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-01/source-states.csv",
+      "bytes": 16602,
+      "mode": "0o644",
+      "sha256": "a4185f7e6c89baf15db5a177495aa033dc38b4789e6553a12cdcf341dc0aecdd",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02-audit-01-receipt.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02-audit-01-receipt.json",
+      "bytes": 441,
+      "mode": "0o644",
+      "sha256": "7080ebf4df05b8370d50fae5dfe94864e71c9e55f0ad37a0df5b38a76884bb47",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02-audit-01/execution.log",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02-audit-01/execution.log",
+      "bytes": 73,
+      "mode": "0o644",
+      "sha256": "489298ca42fc11414d96ab4f2dd558c9aa6e4c99d2a65698120cf80cc42d18bf",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02-audit-01/inputs.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02-audit-01/inputs.json",
+      "bytes": 799644,
+      "mode": "0o644",
+      "sha256": "76c293d7f577f7bfc170e5c39075064217f327fa5fe8081a30c12e90c5b8a1d8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02-audit-01/manifest.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02-audit-01/manifest.json",
+      "bytes": 1310,
+      "mode": "0o644",
+      "sha256": "9764d457e6038a01e2d9bc4969067ee6fd03ec0f88eec9cf971aa5ee1ce0a644",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02-audit-01/result.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02-audit-01/result.json",
+      "bytes": 150,
+      "mode": "0o644",
+      "sha256": "6f0e16291095ea3da5925ce02a7a04cdb4d260bb3398812925320437ab5cdd53",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02-receipt.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02-receipt.json",
+      "bytes": 523,
+      "mode": "0o644",
+      "sha256": "8a91c4cc632d41dac98854b111881f0c8030c9ab4adf1510da0f9ee02a4597e6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/execution-result.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "03c117e91f2aca7a719d3e0e9c421ca234975c3495d43858d1fec8ea5cfb5e1f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/execution.log",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/execution.log",
+      "bytes": 259,
+      "mode": "0o644",
+      "sha256": "6c062daf9c9e5ac4e28321586226617e05337d6c507d0077b494fbae4e4af319",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/grid.csv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/grid.csv",
+      "bytes": 86,
+      "mode": "0o644",
+      "sha256": "e723a79247c7892b0516012c6f72645ba499316a69610a4fc86568365e490abc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/inputs-before.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/inputs-before.json",
+      "bytes": 1073824,
+      "mode": "0o644",
+      "sha256": "65f3415e58b54b6842c7370333d963ab9275af02858358ff7a48c855e6400e69",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/manifest.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/manifest.json",
+      "bytes": 4157,
+      "mode": "0o644",
+      "sha256": "ee7c2df9d6bcce8e611c5bd98adbf1480d7e2bfdacb8c5859d9e99e91d18108d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/measurements.csv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/measurements.csv",
+      "bytes": 616,
+      "mode": "0o644",
+      "sha256": "423e4bb76fea86627ca867dc337bf1845460ac1a833e50c594bc892e962e3c4b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/namespaces.tsv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/namespaces.tsv",
+      "bytes": 1339,
+      "mode": "0o644",
+      "sha256": "527102c2dfe784868bbe25517bc0e5aacb2ccfae908ca31e5d3952e114eedf98",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/raw-timing-1-direct.rds",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/raw-timing-1-direct.rds",
+      "bytes": 262,
+      "mode": "0o644",
+      "sha256": "8db3b38cc19acf00f323e9877d53e29e72ffbc5a4d9ab008a14382ed6077a7bd",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/raw-timing-1-safe_reference.rds",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/raw-timing-1-safe_reference.rds",
+      "bytes": 262,
+      "mode": "0o644",
+      "sha256": "a640cc4e56ca8421c29f44f85a12e89e1e58ac0b0cd7d2a3a72fa73d2c07d520",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/session.R",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/session.R",
+      "bytes": 40441,
+      "mode": "0o644",
+      "sha256": "9d1d2387fe7c36d133c9c51539ec5fa8eae8d202182c5bbf7a15a02e8c2656d2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-02/source-states.csv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-02/source-states.csv",
+      "bytes": 16602,
+      "mode": "0o644",
+      "sha256": "8c692d45fa4578c24fe31309848cbf4f8fa63703c543f0cd49b7c4b4a0c64729",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03-audit-01-receipt.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03-audit-01-receipt.json",
+      "bytes": 441,
+      "mode": "0o644",
+      "sha256": "45966afb94776fa3d1e91c0838c4dbeead9236a370ce6212c4fcde58d6bb7df6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03-audit-01/execution.log",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03-audit-01/execution.log",
+      "bytes": 73,
+      "mode": "0o644",
+      "sha256": "489298ca42fc11414d96ab4f2dd558c9aa6e4c99d2a65698120cf80cc42d18bf",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03-audit-01/inputs.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03-audit-01/inputs.json",
+      "bytes": 799644,
+      "mode": "0o644",
+      "sha256": "648eb78acd836f2c19b62cd7de6567240ee0a68c4fbd88239d73a6bcced3f46b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03-audit-01/manifest.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03-audit-01/manifest.json",
+      "bytes": 1310,
+      "mode": "0o644",
+      "sha256": "bdee0c612c8a10f09cf28f152862984167d429873574b7ca209214958de2bf46",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03-audit-01/result.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03-audit-01/result.json",
+      "bytes": 150,
+      "mode": "0o644",
+      "sha256": "ffd44b523007d2e91cc46e9fa8f5b44611d764888d1ceb338c0c09744f008a87",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03-receipt.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03-receipt.json",
+      "bytes": 523,
+      "mode": "0o644",
+      "sha256": "8315bbba0f3efad51f458bba6d7520c77cd83dc6b6d799b1af88072ccb1680a9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/execution-result.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "d07debe7cfe997e87b82921a949a458bd7014eb6bd6bdd6ceda1ca3418ab286d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/execution.log",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/execution.log",
+      "bytes": 259,
+      "mode": "0o644",
+      "sha256": "1efb3a0464d19907adc69c716fe15a37dc8720ee2a814acde975c27ed6370bc0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/grid.csv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/grid.csv",
+      "bytes": 86,
+      "mode": "0o644",
+      "sha256": "e723a79247c7892b0516012c6f72645ba499316a69610a4fc86568365e490abc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/inputs-before.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/inputs-before.json",
+      "bytes": 1073824,
+      "mode": "0o644",
+      "sha256": "65f3415e58b54b6842c7370333d963ab9275af02858358ff7a48c855e6400e69",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/manifest.json",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/manifest.json",
+      "bytes": 4157,
+      "mode": "0o644",
+      "sha256": "1956cbd6aa486c3fb6e73fdd8f9fb17b5dd10cdb3110f01ec07fd6758802ba74",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/measurements.csv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/measurements.csv",
+      "bytes": 615,
+      "mode": "0o644",
+      "sha256": "2d107bd53d8c4cbecee3402b97874f3afd211f06aa28a8faecce27aa34203ac2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/namespaces.tsv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/namespaces.tsv",
+      "bytes": 1339,
+      "mode": "0o644",
+      "sha256": "527102c2dfe784868bbe25517bc0e5aacb2ccfae908ca31e5d3952e114eedf98",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/raw-timing-1-direct.rds",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/raw-timing-1-direct.rds",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "900024b3b1c3efa0d3ef1bc26f22928f1d0cfb97e1a493c56dc29f68a4817ca2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/raw-timing-1-safe_reference.rds",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/raw-timing-1-safe_reference.rds",
+      "bytes": 263,
+      "mode": "0o644",
+      "sha256": "b38d297517c0c1b4e1cc56e7cb7121cf61c7289c85fc9aae11593f7e6e417ddf",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/session.R",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/session.R",
+      "bytes": 40441,
+      "mode": "0o644",
+      "sha256": "9d1d2387fe7c36d133c9c51539ec5fa8eae8d202182c5bbf7a15a02e8c2656d2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-pipeline-repeat-03/source-states.csv",
+      "path": "root-expression-performance/baseline-pipeline-repeat-03/source-states.csv",
+      "bytes": 16602,
+      "mode": "0o644",
+      "sha256": "d3ac0b710ba9452c7132297c679ab6d395eafcff8100993750fbb30ad1b0590f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-audit-01-receipt.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01-audit-01-receipt.json",
+      "bytes": 443,
+      "mode": "0o644",
+      "sha256": "01b04cb204cde1f82e4db471d2ffa14a88dbd37381db7c79018691991833d76e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-audit-01/execution.log",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01-audit-01/execution.log",
+      "bytes": 74,
+      "mode": "0o644",
+      "sha256": "52082020edec624dedcee20e4cac3e762a0f3dba49820482e87039a8ddb2140d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-audit-01/inputs.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01-audit-01/inputs.json",
+      "bytes": 820406,
+      "mode": "0o644",
+      "sha256": "3eb20a61899737bebae84e52d646a9b19b26143121a4eaae2b8fdbcbc8115227",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-audit-01/manifest.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01-audit-01/manifest.json",
+      "bytes": 1316,
+      "mode": "0o644",
+      "sha256": "8d84343686b0d4528570e6539d48b0d5deae125a968df5e9dfd378e90122196b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-audit-01/result.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01-audit-01/result.json",
+      "bytes": 152,
+      "mode": "0o644",
+      "sha256": "23e78cc4c92f8c50aa14f631bb44a84b1a3532c3fdf2c9d6455fb88c745787c3",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01-receipt.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01-receipt.json",
+      "bytes": 526,
+      "mode": "0o644",
+      "sha256": "57d80de9edcf11505a6035bea8f2d32bdebfc23b87ade47a1210ea5b8de36d23",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/execution-result.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "aba87279ce2f7245f06163f8a0fc6ef98cabb756420d1886b0d12efabfbbcdda",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/execution.log",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/execution.log",
+      "bytes": 5917,
+      "mode": "0o644",
+      "sha256": "e1a5b283c813de35190142805852adfb90f87146b706f9deacd447f88b5dc0b6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/grid.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/grid.csv",
+      "bytes": 913,
+      "mode": "0o644",
+      "sha256": "d74717c02ce16f7a13269678345ac5459df257ee0a1083c015f35b523dd6f9a6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/inputs-before.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/inputs-before.json",
+      "bytes": 1075733,
+      "mode": "0o644",
+      "sha256": "bbe52447f228cb088cc4119bf1af3c29def359a048dd95d5931469d276fd3d28",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/manifest.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/manifest.json",
+      "bytes": 24933,
+      "mode": "0o644",
+      "sha256": "38a7fcf1434f2911db401f26c0a19836b67b3a9268f562477924a4f5cce8e4b9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/measurements.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/measurements.csv",
+      "bytes": 5961,
+      "mode": "0o644",
+      "sha256": "141c5fdfb2bb01850ddbdea93235db301aa7d7ca05486f23979df3c96c0ef3b2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/namespaces.tsv",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/namespaces.tsv",
+      "bytes": 1403,
+      "mode": "0o644",
+      "sha256": "e2cf4f2ffb98038d30452e1fc0d669daa84f32d047f46b09663ded387014ab10",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-1-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-1-direct.rds",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "be0cc73e48682e4af002f4fcffcda218744b0525b640908f6f7d805ec0d1c2aa",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-1-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-1-safe_reference.rds",
+      "bytes": 246,
+      "mode": "0o644",
+      "sha256": "aa312a2e950138cc2ea85c13533ab367430b4cc40a4b79258e065282e24971bb",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-10-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-10-direct.rds",
+      "bytes": 258,
+      "mode": "0o644",
+      "sha256": "d6d313cf046c5aaa514a4840d35da91caf37b78ff2cf05c6469569c18a34ce66",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-10-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-10-safe_reference.rds",
+      "bytes": 257,
+      "mode": "0o644",
+      "sha256": "7062de418aa62697d5c9a4003612eca85cc990399d34970e1a48c1bc6dbbcd84",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-11-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-11-direct.rds",
+      "bytes": 259,
+      "mode": "0o644",
+      "sha256": "551376495390dfda9b5a0f1b0329fe3f8474d2386913a0e550c6cab433be4633",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-11-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-11-safe_reference.rds",
+      "bytes": 255,
+      "mode": "0o644",
+      "sha256": "dd51a8a9d38b9a4066598b7680bba3dbdff3ef353fd2713dab36aeca711c86b0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-12-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-12-direct.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "cb1567e530dad1bc3035b1fb4b2d26e044c8df63a859fba70ac0f508987cd391",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-12-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-12-safe_reference.rds",
+      "bytes": 264,
+      "mode": "0o644",
+      "sha256": "13fe729305953042dc730295cd97e9e6a5bf9fc1bc97946940b100a4928b7daa",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-13-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-13-direct.rds",
+      "bytes": 247,
+      "mode": "0o644",
+      "sha256": "c53328269431bbc929219de2501053e24cf4c0724c40e30c927872d89ddba7b1",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-13-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-13-safe_reference.rds",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "0a5e70b9a7348d57e9bbd2a3b094375eb137c6a21ac11bcc4eebf63ee82af5fb",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-14-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-14-direct.rds",
+      "bytes": 253,
+      "mode": "0o644",
+      "sha256": "b9b3346f81e494b4f0cfebcca3fe8196e89ff4c28ae432154445e1ca188a152d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-14-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-14-safe_reference.rds",
+      "bytes": 252,
+      "mode": "0o644",
+      "sha256": "735a6289cddc1f71d2a23dbac1a0b28598f80656c66942345b1b1f074e90b9f6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-15-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-15-direct.rds",
+      "bytes": 248,
+      "mode": "0o644",
+      "sha256": "742f47704442bc34b44dc74cd689ca366285640db124ca9e36b3d29c02f983a8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-15-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-15-safe_reference.rds",
+      "bytes": 250,
+      "mode": "0o644",
+      "sha256": "741d6783f64a8fca4f89040e3d39d497477968a0c33e69d7e16656acc5cb31e5",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-16-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-16-direct.rds",
+      "bytes": 254,
+      "mode": "0o644",
+      "sha256": "865b4f854a61600a947c55b45e4b78b335f7e3f8ced2d45caca51536ceb046dc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-16-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-16-safe_reference.rds",
+      "bytes": 253,
+      "mode": "0o644",
+      "sha256": "b334223e9a0921e405a1bb77aa09acb8e8e9c7b4dcbd5a6be172b90e338f5019",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-17-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-17-direct.rds",
+      "bytes": 259,
+      "mode": "0o644",
+      "sha256": "ab82cf5e2b4869527d4dcb3342c8383c7afcec28a00ea4bb713020c467628b10",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-17-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-17-safe_reference.rds",
+      "bytes": 256,
+      "mode": "0o644",
+      "sha256": "ce433b8bdd2eb8840a7637f8d75743b6fdba49c0baf4d4aa169c10243d0e9f0a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-18-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-18-direct.rds",
+      "bytes": 258,
+      "mode": "0o644",
+      "sha256": "44a87fcd68cf5641e0d69d15eeddddb6f4a368385925a6441cca91263e4611c6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-18-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-18-safe_reference.rds",
+      "bytes": 257,
+      "mode": "0o644",
+      "sha256": "5db16e513b483d75d5dd43ca48d1a5ff6951e3fb96a11879a653f9fbeb5af3d2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-19-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-19-direct.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "5baf915229b5f0250c4c97b6077fe69a48eb50a818eaecfbbef5b0dd2f14b0b4",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-19-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-19-safe_reference.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "50c1750b5fcccf6c5264a767a6c0393570fe4f82d6f9d88c5691f47c262ad76c",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-2-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-2-direct.rds",
+      "bytes": 250,
+      "mode": "0o644",
+      "sha256": "6eb946a03e7f5e12fa253003da5e56f3883c969c1de83eab00cff807bf96e419",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-2-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-2-safe_reference.rds",
+      "bytes": 252,
+      "mode": "0o644",
+      "sha256": "526984aa852185a5056c6f61523c8d82f3b71a2b51ef551a62339b841e084bf1",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-20-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-20-direct.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "fdc61bd8ad331c745dd4f4d64558f0bd83e37d6bc6fc9cc657d582c2fe45f854",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-20-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-20-safe_reference.rds",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "05417b3574f6a22255a650f7eea9f21122d30578cce2cc3c3c30eef1db44a7c0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-21-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-21-direct.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "463c5c163786a058b1ac42e9820d1009c8e4c138a20f1e258c41204e3acf736b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-21-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-21-safe_reference.rds",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "c84864a6381bbe3ca50216fb7b4f7ece0e38a7a456abf5441983e63bf413bfbc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-22-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-22-direct.rds",
+      "bytes": 262,
+      "mode": "0o644",
+      "sha256": "314fb4ca12f4eefed0466a3c4112c6907f92b0a42405514f99d59391369f14ac",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-22-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-22-safe_reference.rds",
+      "bytes": 262,
+      "mode": "0o644",
+      "sha256": "e53a89c73dc5178d0bd947e5946160a27eff5168abb1ba9c7f21fce8a76c8403",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-23-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-23-direct.rds",
+      "bytes": 259,
+      "mode": "0o644",
+      "sha256": "e1f44c469ca4da2eadd8d2651f6fa097fb8cf6ed8899ef5d85a1309af6da76bc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-23-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-23-safe_reference.rds",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "ff099561388395b7ef96741fd41c6c1307caf209fe5898878e3563e896a02305",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-24-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-24-direct.rds",
+      "bytes": 261,
+      "mode": "0o644",
+      "sha256": "8f43fae18e88526326c69397d657d1ba7a94d32f4f39ec9bb71f846d09e30f75",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-24-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-24-safe_reference.rds",
+      "bytes": 259,
+      "mode": "0o644",
+      "sha256": "5b06b8385ac21282a4f3ca81666f4932437fe57ff2a187168b2beb51e7136703",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-25-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-25-direct.rds",
+      "bytes": 266,
+      "mode": "0o644",
+      "sha256": "c6eb8ec0b14f581cdbddd72822132ee5e4944806ff147c17519d77cbbfef0b24",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-25-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-25-safe_reference.rds",
+      "bytes": 268,
+      "mode": "0o644",
+      "sha256": "bef75653f56caa7e19454a744660ddad9285a9338ab7493c1d3c17f99f48dcf2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-3-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-3-direct.rds",
+      "bytes": 250,
+      "mode": "0o644",
+      "sha256": "a5065651bbc715799bd2f017e09e4ee9bff4ecc34c48bcc9d85de7664214f2ad",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-3-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-3-safe_reference.rds",
+      "bytes": 248,
+      "mode": "0o644",
+      "sha256": "2bf1ed6e94ef33c5085ab537be3d4f895fe5461bee75baf778eb4808757ae418",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-4-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-4-direct.rds",
+      "bytes": 253,
+      "mode": "0o644",
+      "sha256": "e458359eff0a1752dce689e02cfaddecd1bdc6698e50989a33ffe08f83c7a50f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-4-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-4-safe_reference.rds",
+      "bytes": 252,
+      "mode": "0o644",
+      "sha256": "885e3f0dde3f5a78611087d0da1fa7634071be844c6656a19785d07c5f3b07c9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-5-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-5-direct.rds",
+      "bytes": 250,
+      "mode": "0o644",
+      "sha256": "5cc9e5cb53d08afa36f49dad3a216ab9ad0c4b1054870ee0a2fe8a995307a32a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-5-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-5-safe_reference.rds",
+      "bytes": 250,
+      "mode": "0o644",
+      "sha256": "d29f03fabca977bd462d6680a1b81f8207369d129c4912fae68ca758e2d51580",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-6-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-6-direct.rds",
+      "bytes": 252,
+      "mode": "0o644",
+      "sha256": "bec698a1caeb1e690333cf1795a19a4c71717c37c6dec6a3dcd664d2823c3704",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-6-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-6-safe_reference.rds",
+      "bytes": 254,
+      "mode": "0o644",
+      "sha256": "7e5306fde97da1bdc42ff609d0a5fdbaea86cdd8cb76ba7621460f8f5d036711",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-7-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-7-direct.rds",
+      "bytes": 253,
+      "mode": "0o644",
+      "sha256": "085d69412c6f6fa0ccd88bf350ae8b01c96304c4a322d5dcdb772f6d56e45bf3",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-7-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-7-safe_reference.rds",
+      "bytes": 252,
+      "mode": "0o644",
+      "sha256": "464a3c358cdce22a53bc9eeea942f49fa8694b23d0091722ee44f8a3eb65f0c8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-8-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-8-direct.rds",
+      "bytes": 253,
+      "mode": "0o644",
+      "sha256": "060407d36dfd6cbde59e5ea757c2a4300b4b654920fb7d9ee4761f73918768df",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-8-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-8-safe_reference.rds",
+      "bytes": 253,
+      "mode": "0o644",
+      "sha256": "31e56d1394f460fc79e8555ab4f3f27150622941ee50ae2782e9dabce2ee47d7",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-9-direct.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-9-direct.rds",
+      "bytes": 250,
+      "mode": "0o644",
+      "sha256": "6d9bb83dac347e1017ae3c191cf3c466a46a639b7032ceae321840c789d91c08",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-9-safe_reference.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/raw-timing-9-safe_reference.rds",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "1a7375a56fcc3c192176baa6bb4a2b332e9d4d43f612a8d61ce1f3ab9460e1d4",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/session.R",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/session.R",
+      "bytes": 43403,
+      "mode": "0o644",
+      "sha256": "6fc7448b436653c40cf109012409cb82d3c5020ecaa81a0cff1ee87b78ef1db9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-measure-01/source-states.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-measure-01/source-states.csv",
+      "bytes": 423098,
+      "mode": "0o644",
+      "sha256": "806c3bcbe94ff17d116bc51d95f50e4910ed5f7539785d6573ae17ce9d9f8866",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01-receipt.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01-receipt.json",
+      "bytes": 547,
+      "mode": "0o644",
+      "sha256": "2283291f9132b4ad93c294b3eadd2ee51ea1589e99bf5c044a430130871144c9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/execution-result.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "67f610dd10eb12a80cdafbd48e1fa8e6d9f6d70d89df376a2388a0db7203fb9e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/execution.log",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/execution.log",
+      "bytes": 819,
+      "mode": "0o644",
+      "sha256": "43730bf4442bb127edbfd9d80d974de660f80ab7f9606c061208ccc76000c9bc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/inputs-before.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/inputs-before.json",
+      "bytes": 1075964,
+      "mode": "0o644",
+      "sha256": "06a9106bd03b16f43356a07475ca2472ee827ce39398b35ff1799eb48cac5ea8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/manifest.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/manifest.json",
+      "bytes": 3081,
+      "mode": "0o644",
+      "sha256": "9bb37b1242ec210e240c3a8515e6161a3330fc40572d5b659e9c91f2947ab68a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/namespaces.tsv",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/namespaces.tsv",
+      "bytes": 1252,
+      "mode": "0o644",
+      "sha256": "03089c19884ced7ecd0550b71217044bdf41b4054c2649920bc27808f4da2ae0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/retained.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/retained.csv",
+      "bytes": 225,
+      "mode": "0o644",
+      "sha256": "e2591028e7b69df9ddb81822adaaf7d7e864e166c209fcef5a27acb40676ea4b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/session.R",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/session.R",
+      "bytes": 36644,
+      "mode": "0o644",
+      "sha256": "a2c340a9a387905e2c31c2c88b8f5268289a7a565de48b554ae4698bfa52b22b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/source-result-states.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-direct-01/source-result-states.rds",
+      "bytes": 565,
+      "mode": "0o644",
+      "sha256": "ceb8ca6685f48f35c9f17f1f62dce9d11764fe24a4b2ef831c2b8082a33f38b9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01-receipt.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01-receipt.json",
+      "bytes": 543,
+      "mode": "0o644",
+      "sha256": "9c862f32a9702de1efd378cef4f5f303fa4a0235610fe3e49f8937199563197e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/execution-result.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "18e91d82257fa07bc74ebf95711dbddd5f64717c9da20ec2afc44d333e75a4d2",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/execution.log",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/execution.log",
+      "bytes": 819,
+      "mode": "0o644",
+      "sha256": "c1a0e204d66adf213b51138420b874c780749a07d3c039e88612fe8eb2c8f181",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/inputs-before.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/inputs-before.json",
+      "bytes": 1075964,
+      "mode": "0o644",
+      "sha256": "06a9106bd03b16f43356a07475ca2472ee827ce39398b35ff1799eb48cac5ea8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/manifest.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/manifest.json",
+      "bytes": 3053,
+      "mode": "0o644",
+      "sha256": "d847f962f02af50710d35e66859bcc5a677f26ee9f9957772e71d4ed2251f2ce",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/namespaces.tsv",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/namespaces.tsv",
+      "bytes": 1252,
+      "mode": "0o644",
+      "sha256": "03089c19884ced7ecd0550b71217044bdf41b4054c2649920bc27808f4da2ae0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/retained.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/retained.csv",
+      "bytes": 249,
+      "mode": "0o644",
+      "sha256": "58c58eb8231430c4f44aa49f4a72f20610f747dc908056da279e5d2f45e0f942",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/session.R",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/session.R",
+      "bytes": 36644,
+      "mode": "0o644",
+      "sha256": "a2c340a9a387905e2c31c2c88b8f5268289a7a565de48b554ae4698bfa52b22b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/source-result-states.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-100k-safe-01/source-result-states.rds",
+      "bytes": 567,
+      "mode": "0o644",
+      "sha256": "e7b7f64d12774e8c180c8c4df592146cb438c3feba6b1722dfa8d1eed7c2fb6a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01-receipt.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01-receipt.json",
+      "bytes": 543,
+      "mode": "0o644",
+      "sha256": "d0f12dafc1cfe2bf964ce5143d9f23df26c39f9296db50710e65c7cbc59558e5",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/execution-result.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "89235f2ad641d663ea196d23ea39c8124554e30f03891030d3bf6e14e1878fe7",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/execution.log",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/execution.log",
+      "bytes": 819,
+      "mode": "0o644",
+      "sha256": "d6f1a3b6524fd87ea3924e10e9a3f722a53890df9c10daee30fdf5e1182ad969",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/inputs-before.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/inputs-before.json",
+      "bytes": 1075964,
+      "mode": "0o644",
+      "sha256": "06a9106bd03b16f43356a07475ca2472ee827ce39398b35ff1799eb48cac5ea8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/manifest.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/manifest.json",
+      "bytes": 3053,
+      "mode": "0o644",
+      "sha256": "ca358261736ce6f5bab0929a5ac8a46469860032766882a972d076c289028b69",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/namespaces.tsv",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/namespaces.tsv",
+      "bytes": 1252,
+      "mode": "0o644",
+      "sha256": "03089c19884ced7ecd0550b71217044bdf41b4054c2649920bc27808f4da2ae0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/retained.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/retained.csv",
+      "bytes": 234,
+      "mode": "0o644",
+      "sha256": "7a04a8b71832a7fe174abd81a3dbf50725ef0be36b4232850725721bef87aa1e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/session.R",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/session.R",
+      "bytes": 36644,
+      "mode": "0o644",
+      "sha256": "a2c340a9a387905e2c31c2c88b8f5268289a7a565de48b554ae4698bfa52b22b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/source-result-states.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-direct-01/source-result-states.rds",
+      "bytes": 544,
+      "mode": "0o644",
+      "sha256": "45dc25f8db6a565723b8ade674ea58596aa4a64c7591bc962db3f8d74dc817ff",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01-receipt.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01-receipt.json",
+      "bytes": 539,
+      "mode": "0o644",
+      "sha256": "0068b4b52f2101243b1bfc2a02d7e9115563352940c8957664f76c880f4f4dc7",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/execution-result.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "9ca877ce6f5d74b4d9798dc22631457749fdc28ef41affd3f32571d3b907a0b9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/execution.log",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/execution.log",
+      "bytes": 819,
+      "mode": "0o644",
+      "sha256": "99642117f036524756dc7ddc43a45583a032b8fe2a20b6484337bd200395cc0a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/inputs-before.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/inputs-before.json",
+      "bytes": 1075964,
+      "mode": "0o644",
+      "sha256": "06a9106bd03b16f43356a07475ca2472ee827ce39398b35ff1799eb48cac5ea8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/manifest.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/manifest.json",
+      "bytes": 3025,
+      "mode": "0o644",
+      "sha256": "f970e1768bcd829b9227beaf85c0c84379b3645ccad7bb79d9116f57b6bacc15",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/namespaces.tsv",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/namespaces.tsv",
+      "bytes": 1252,
+      "mode": "0o644",
+      "sha256": "03089c19884ced7ecd0550b71217044bdf41b4054c2649920bc27808f4da2ae0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/retained.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/retained.csv",
+      "bytes": 258,
+      "mode": "0o644",
+      "sha256": "d4c5fe6093a411cb17b1e17c0ed0156165eabe8dc3aff38dd78b6ac050582696",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/session.R",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/session.R",
+      "bytes": 36644,
+      "mode": "0o644",
+      "sha256": "a2c340a9a387905e2c31c2c88b8f5268289a7a565de48b554ae4698bfa52b22b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/source-result-states.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-memory-1m-safe-01/source-result-states.rds",
+      "bytes": 545,
+      "mode": "0o644",
+      "sha256": "e3b1fedd9a14a8853269b68ee45c4f796c9cc20d6ac790d5fd493396f081772b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-qualify-01-receipt.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-qualify-01-receipt.json",
+      "bytes": 525,
+      "mode": "0o644",
+      "sha256": "3fb1d84382d368c12cb86dfcad856b3375d5e1c854ba700838bdb54439674569",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-qualify-01/execution-result.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-qualify-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "ea11d3af55174e68a3d4d6078b1c50d5dc45882bdef4c1f9827792568d20c02f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-qualify-01/execution.log",
+      "path": "root-expression-performance/candidate-a2d8b6a-qualify-01/execution.log",
+      "bytes": 2259,
+      "mode": "0o644",
+      "sha256": "e44d6d6681b1d137c0e6bd85ad32dadd74f8512ace8918a54f6ab99e3ba2eb02",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-qualify-01/inputs-before.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-qualify-01/inputs-before.json",
+      "bytes": 1059089,
+      "mode": "0o644",
+      "sha256": "de0e51f15cf2efc050529df736c54e74c6bfeafec3ca0f98afd56b41657ee1fe",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-qualify-01/manifest.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-qualify-01/manifest.json",
+      "bytes": 2526,
+      "mode": "0o644",
+      "sha256": "18035c7358be322c18bc65a1396775d99df75ed4dae82f201787641f89018286",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-qualify-01/namespaces.tsv",
+      "path": "root-expression-performance/candidate-a2d8b6a-qualify-01/namespaces.tsv",
+      "bytes": 1360,
+      "mode": "0o644",
+      "sha256": "eff8a606f5fb0e88a53d8754d3c64da9aa5df71682d30693867e69b278d234a7",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-qualify-01/qualification.R",
+      "path": "root-expression-performance/candidate-a2d8b6a-qualify-01/qualification.R",
+      "bytes": 50670,
+      "mode": "0o644",
+      "sha256": "87ca48d65cb39692e3d55b47ff368eb6cab0de222a82f7785cc49049e93c82b7",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-qualify-01/source-states.rds",
+      "path": "root-expression-performance/candidate-a2d8b6a-qualify-01/source-states.rds",
+      "bytes": 2148,
+      "mode": "0o644",
+      "sha256": "c847d86255daea62d6e28eaefab69cb942cdda64f1ab031790353b9c42ecad55",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-measure-01-receipt.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-measure-01-receipt.json",
+      "bytes": 537,
+      "mode": "0o644",
+      "sha256": "479f46cc325892958bf60a3cf20e98c4709945ca63aa862467d50dd070632d5b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-measure-01/execution-result.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-measure-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "bb8bf4b6d15342da51cfd8fe6f06a6594e6a2a838340c5fe9bc0ffdeeb2757a8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-measure-01/execution.log",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-measure-01/execution.log",
+      "bytes": 1214,
+      "mode": "0o644",
+      "sha256": "762758b136715210e08c69eb19effd4bb562a07fbd42441ee5058e722adfbfcd",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-measure-01/inputs-before.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-measure-01/inputs-before.json",
+      "bytes": 1076135,
+      "mode": "0o644",
+      "sha256": "64e29f54317cf67656d6d57282b88f45da6fb2dda3d7681f760bf83b2817bf8b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-measure-01/manifest.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-measure-01/manifest.json",
+      "bytes": 3444,
+      "mode": "0o644",
+      "sha256": "223cd11e760d82ecaed20867377a666ac3b724869e0923f442912f19fd7e9e1d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-measure-01/namespaces.tsv",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-measure-01/namespaces.tsv",
+      "bytes": 1301,
+      "mode": "0o644",
+      "sha256": "7bf519718a3678c01f30a70ade9ce67e46e892697b4776d4bc831b318166f962",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-measure-01/session.R",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-measure-01/session.R",
+      "bytes": 38702,
+      "mode": "0o644",
+      "sha256": "77240d03ab2cac603657abddd1526c50e8b1cb58a2afa111b33852c5e8dd0144",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-measure-01/write-measurements.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-measure-01/write-measurements.csv",
+      "bytes": 2056,
+      "mode": "0o644",
+      "sha256": "a616842aa1833a3d245c4997e2a4a71a50872dd95bcf6badb232d78197164a84",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-measure-01/write-samples.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-measure-01/write-samples.csv",
+      "bytes": 8217,
+      "mode": "0o644",
+      "sha256": "73bcd86b292412195bd53f6221817d5dc71058d48026392fc96c1ed8f74d1509",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-measure-01/write-states.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-measure-01/write-states.csv",
+      "bytes": 742417,
+      "mode": "0o644",
+      "sha256": "e37702678df03de790f6de39141b2d7188de95fb58af96f357d928f40e7836ce",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-qualify-01-receipt.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-qualify-01-receipt.json",
+      "bytes": 537,
+      "mode": "0o644",
+      "sha256": "8faabcabd13582d2979d511d428b4c56d27af7c37dd44f5d039566930e6f2940",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-qualify-01/execution-result.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-qualify-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "297571635eab691707456466957502ec0b28b5246fe31be17023f8f4d0bc4db9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-qualify-01/execution.log",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-qualify-01/execution.log",
+      "bytes": 1183,
+      "mode": "0o644",
+      "sha256": "6488c49c66b0ed90feb8401038bce2664c6db2e4b78c9de44e706b06cbed87ab",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-qualify-01/inputs-before.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-qualify-01/inputs-before.json",
+      "bytes": 1076135,
+      "mode": "0o644",
+      "sha256": "f1d4ccf1648d8eaae1f1c16d4e112c130533694d7ec59031a5369b075d4ad1df",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-qualify-01/manifest.json",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-qualify-01/manifest.json",
+      "bytes": 3008,
+      "mode": "0o644",
+      "sha256": "c2719f236fa1cbe252290c40a520bab8479988ea764517e2479f2294689fa685",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-qualify-01/namespaces.tsv",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-qualify-01/namespaces.tsv",
+      "bytes": 1252,
+      "mode": "0o644",
+      "sha256": "f8f9724eb3f1844ad0bb8694829179ee9866f29f6f8f54759fbdc9a9991bc54b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-qualify-01/qualification.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-qualify-01/qualification.csv",
+      "bytes": 546,
+      "mode": "0o644",
+      "sha256": "9abf940bdd373ca5199a1d1a7c15064705e372f341484231d185ac791995d270",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-qualify-01/session.R",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-qualify-01/session.R",
+      "bytes": 36560,
+      "mode": "0o644",
+      "sha256": "93bbf7aa0e002a201462f3824b4ae9b39f3334b1aa0bd41ef46f7bb8ab35944b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-write-qualify-01/write-states.csv",
+      "path": "root-expression-performance/candidate-a2d8b6a-write-qualify-01/write-states.csv",
+      "bytes": 61077,
+      "mode": "0o644",
+      "sha256": "95c46ad7928d25825cfd59baf721279a908cbee3119b783fd3a00203d5e26eb8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01-audit-01-receipt.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01-audit-01-receipt.json",
+      "bytes": 443,
+      "mode": "0o644",
+      "sha256": "14239a6d21face4c264bd25b5fdd04ae028e48ea1b4b98c2fa5f9a6271a05a82",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01-audit-01/execution.log",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01-audit-01/execution.log",
+      "bytes": 73,
+      "mode": "0o644",
+      "sha256": "489298ca42fc11414d96ab4f2dd558c9aa6e4c99d2a65698120cf80cc42d18bf",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01-audit-01/inputs.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01-audit-01/inputs.json",
+      "bytes": 799669,
+      "mode": "0o644",
+      "sha256": "8081d513f7af4cf0e00301f4df1c6b4364c2e01d68f1ba58764375eb9b401f6b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01-audit-01/manifest.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01-audit-01/manifest.json",
+      "bytes": 1316,
+      "mode": "0o644",
+      "sha256": "9a4f95e864f623cc6d64bf2a731e443edaf6309976050055cbfcb34dbba8ef60",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01-audit-01/result.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01-audit-01/result.json",
+      "bytes": 150,
+      "mode": "0o644",
+      "sha256": "ace78a8f1a4ec3d1be6021913c2c6664e45aedeeb87b773405a4be8f70b50d91",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01-receipt.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01-receipt.json",
+      "bytes": 525,
+      "mode": "0o644",
+      "sha256": "22f399b482247a8a30cdbbbeccd071a6bf9ba8b42a2da5ecc471b8f958b16445",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/execution-result.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "c751ed03612ba435e006fcfe88308de4039eb7e61002dd840f1e013d422e022f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/execution.log",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/execution.log",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "09a1ee8f35532f30328215da302b3a656bfffb54c6d25a0931f706f5a5539fb0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/grid.csv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/grid.csv",
+      "bytes": 86,
+      "mode": "0o644",
+      "sha256": "e723a79247c7892b0516012c6f72645ba499316a69610a4fc86568365e490abc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/inputs-before.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/inputs-before.json",
+      "bytes": 1075889,
+      "mode": "0o644",
+      "sha256": "39b161ac1810bf7fb4935abe3ae903352922874fdb21d4baca38f42ae5cea860",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/manifest.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/manifest.json",
+      "bytes": 4177,
+      "mode": "0o644",
+      "sha256": "0bb0f2b2b136606795957d12edeec14f867f626faa08f08808a4ee3fef2c6587",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/measurements.csv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/measurements.csv",
+      "bytes": 616,
+      "mode": "0o644",
+      "sha256": "9f1c30ef501bde13ff039d60267ef2a8f32390a22930a29d69f96fcae2043345",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/namespaces.tsv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/namespaces.tsv",
+      "bytes": 1354,
+      "mode": "0o644",
+      "sha256": "69e031af8dac252180411d18209b7bc2006694ff178c34f0fe44e0897780ee5b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/raw-timing-1-direct.rds",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/raw-timing-1-direct.rds",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "aecb381971a019500cd4b356146e8804ea6039c9bebd818807b4d2d24a2f4410",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/raw-timing-1-safe_reference.rds",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/raw-timing-1-safe_reference.rds",
+      "bytes": 264,
+      "mode": "0o644",
+      "sha256": "f016ec79b4ad59e784fb8d393b422819513b968d4c3a996065ac7dac4f5559d0",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/session.R",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/session.R",
+      "bytes": 40503,
+      "mode": "0o644",
+      "sha256": "43d465661989f5c9849df03624eb5c6b0660c0895ee7b558bda7dc825c45b659",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-01/source-states.csv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-01/source-states.csv",
+      "bytes": 16602,
+      "mode": "0o644",
+      "sha256": "d51a84d1e6bdcb6717c3f617afde42ee0272228e8979a5fc6e9d6ee8ab6453f3",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02-audit-01-receipt.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02-audit-01-receipt.json",
+      "bytes": 443,
+      "mode": "0o644",
+      "sha256": "7d7f2d45b8c0c8a323356c0a21b6b653bced9834ee9fe7dd6afea3944d04f0d8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02-audit-01/execution.log",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02-audit-01/execution.log",
+      "bytes": 73,
+      "mode": "0o644",
+      "sha256": "489298ca42fc11414d96ab4f2dd558c9aa6e4c99d2a65698120cf80cc42d18bf",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02-audit-01/inputs.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02-audit-01/inputs.json",
+      "bytes": 799669,
+      "mode": "0o644",
+      "sha256": "5e285d990eb1554adc61ec458a5c203b92263504455fbdc7af2019a46f298ce3",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02-audit-01/manifest.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02-audit-01/manifest.json",
+      "bytes": 1316,
+      "mode": "0o644",
+      "sha256": "d98d3ba264e39cfd4f9ef26d1b1ca172458806f10cdae6d88d9ec3c722d980ed",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02-audit-01/result.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02-audit-01/result.json",
+      "bytes": 150,
+      "mode": "0o644",
+      "sha256": "b955884122fe01095239d6cfa1f08c1f7dc77e585ee76083bab50f04c903bf0e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02-receipt.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02-receipt.json",
+      "bytes": 525,
+      "mode": "0o644",
+      "sha256": "05a2c40aa3391f696742bc9b80445649392fb4ba3838be8ce22b51b2dd7da0f8",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/execution-result.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "f0ff0e13405b15cbb0ed31264e71790e0fdb7d7fffb11a6be39ff96f0a86527a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/execution.log",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/execution.log",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "34af4160193bf3cce8a03c48dcde38db94615b5802b9707e8acd54e428c70b5d",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/grid.csv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/grid.csv",
+      "bytes": 86,
+      "mode": "0o644",
+      "sha256": "e723a79247c7892b0516012c6f72645ba499316a69610a4fc86568365e490abc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/inputs-before.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/inputs-before.json",
+      "bytes": 1075889,
+      "mode": "0o644",
+      "sha256": "39b161ac1810bf7fb4935abe3ae903352922874fdb21d4baca38f42ae5cea860",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/manifest.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/manifest.json",
+      "bytes": 4177,
+      "mode": "0o644",
+      "sha256": "454accec388387b84e9e8bd06a09a7941c45f8fe89d3e77705d10bc53d1d9184",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/measurements.csv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/measurements.csv",
+      "bytes": 616,
+      "mode": "0o644",
+      "sha256": "52bf4dc874393afda18ddb575269817812d3d10f644945f2fb06f31fb0330c58",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/namespaces.tsv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/namespaces.tsv",
+      "bytes": 1354,
+      "mode": "0o644",
+      "sha256": "69e031af8dac252180411d18209b7bc2006694ff178c34f0fe44e0897780ee5b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/raw-timing-1-direct.rds",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/raw-timing-1-direct.rds",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "2941555732f16985e100013febf9dc621801069f1662f499997f51d5d351f63b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/raw-timing-1-safe_reference.rds",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/raw-timing-1-safe_reference.rds",
+      "bytes": 262,
+      "mode": "0o644",
+      "sha256": "2c70d3d1c0228f0cb2548ba9fedb1df9836df175f40ff80240a58611818ae120",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/session.R",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/session.R",
+      "bytes": 40503,
+      "mode": "0o644",
+      "sha256": "43d465661989f5c9849df03624eb5c6b0660c0895ee7b558bda7dc825c45b659",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-02/source-states.csv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-02/source-states.csv",
+      "bytes": 16602,
+      "mode": "0o644",
+      "sha256": "2eb3cddaeea5bbec5f2e315f4d05b5011727cc880b260c622a3ec4b172f2bf3a",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03-audit-01-receipt.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03-audit-01-receipt.json",
+      "bytes": 443,
+      "mode": "0o644",
+      "sha256": "32e8e600e9db04d264e9a218100b31108e6cc3ef3fad252ea65ba89ba017a421",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03-audit-01/execution.log",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03-audit-01/execution.log",
+      "bytes": 73,
+      "mode": "0o644",
+      "sha256": "489298ca42fc11414d96ab4f2dd558c9aa6e4c99d2a65698120cf80cc42d18bf",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03-audit-01/inputs.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03-audit-01/inputs.json",
+      "bytes": 799669,
+      "mode": "0o644",
+      "sha256": "33f39114c5b78d8cd1b2062a14d4f1e88a5c5bd86e58e1053b0740dc3ea9da76",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03-audit-01/manifest.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03-audit-01/manifest.json",
+      "bytes": 1316,
+      "mode": "0o644",
+      "sha256": "adb3367a204b143128fe4c953bc1ced0727eebb22c0fc1fb258cdd3b900e2b28",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03-audit-01/result.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03-audit-01/result.json",
+      "bytes": 150,
+      "mode": "0o644",
+      "sha256": "61433c67de73d532e9cf54d262acdc2a6592fc2a1023daba122794cc0543c677",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03-receipt.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03-receipt.json",
+      "bytes": 525,
+      "mode": "0o644",
+      "sha256": "dfc9c9a28029a6a6fdfff1b3b5eac1fae07976eee9d18d50116f7728aa36da52",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/execution-result.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/execution-result.json",
+      "bytes": 211,
+      "mode": "0o644",
+      "sha256": "e544efedfa530b098552f000fdf7bf46bd20f487d5643dec3d5b1812cf1b8bc4",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/execution.log",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/execution.log",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "2c84bcd3f00ba101879ef659e1ec935981ea68ac46978db4c3de2e6f175c8146",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/grid.csv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/grid.csv",
+      "bytes": 86,
+      "mode": "0o644",
+      "sha256": "e723a79247c7892b0516012c6f72645ba499316a69610a4fc86568365e490abc",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/inputs-before.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/inputs-before.json",
+      "bytes": 1075889,
+      "mode": "0o644",
+      "sha256": "39b161ac1810bf7fb4935abe3ae903352922874fdb21d4baca38f42ae5cea860",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/manifest.json",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/manifest.json",
+      "bytes": 4177,
+      "mode": "0o644",
+      "sha256": "1fe1a1ac029e6f552e0781498a0362b73a7bbcd66844da9a3a590ba3872ffcce",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/measurements.csv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/measurements.csv",
+      "bytes": 615,
+      "mode": "0o644",
+      "sha256": "643b646e6dbadc21940f9900ac1d316898cb597fb50f57bc63d244b0a420bc66",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/namespaces.tsv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/namespaces.tsv",
+      "bytes": 1354,
+      "mode": "0o644",
+      "sha256": "69e031af8dac252180411d18209b7bc2006694ff178c34f0fe44e0897780ee5b",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/raw-timing-1-direct.rds",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/raw-timing-1-direct.rds",
+      "bytes": 260,
+      "mode": "0o644",
+      "sha256": "4df81c7d279043e6f1697b20dc33eb4b517db964acb42f2b90296a49a9706d72",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/raw-timing-1-safe_reference.rds",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/raw-timing-1-safe_reference.rds",
+      "bytes": 262,
+      "mode": "0o644",
+      "sha256": "1538be5d23196d0c7d87a9e5c7b1387d585155195d47bcb6e42d65d78a8a57ed",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/session.R",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/session.R",
+      "bytes": 40503,
+      "mode": "0o644",
+      "sha256": "43d465661989f5c9849df03624eb5c6b0660c0895ee7b558bda7dc825c45b659",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-pipeline-repeat-03/source-states.csv",
+      "path": "root-expression-performance/candidate-pipeline-repeat-03/source-states.csv",
+      "bytes": 16602,
+      "mode": "0o644",
+      "sha256": "7e5984dc8ea88f1f11cf2df3a9817fc840a54efdbae77a187c255205f75adedd",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/cases-v10.R",
+      "path": "root-expression-performance/cases-v10.R",
+      "presentation": "plain",
+      "bytes": 8150,
+      "mode": "0o644",
+      "sha256": "cb6ca67c6a71a5cc6aac68847e1e2d6f73754777f6fbdec8a99d2fd23f54ca8d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/compare-measurements-v4.py",
+      "path": "root-expression-performance/compare-measurements-v4.py",
+      "presentation": "plain",
+      "bytes": 14570,
+      "mode": "0o644",
+      "sha256": "599d07b4abcb6b803dc37b9e70267abcf4a71aacd809eaca9b1a2bb1e0d9fb3c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/expression-comparison-a2d8b6a-01/assessment.json",
+      "path": "root-expression-performance/expression-comparison-a2d8b6a-01/assessment.json",
+      "bytes": 1454,
+      "mode": "0o644",
+      "sha256": "08db318668c7e235758e75c6ea2d8ad828295c0070412c2e633ad03d329a57e6",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/expression-comparison-a2d8b6a-01/comparisons.csv",
+      "path": "root-expression-performance/expression-comparison-a2d8b6a-01/comparisons.csv",
+      "bytes": 31824,
+      "mode": "0o644",
+      "sha256": "c270eca2b3dd55b72f9fa5554b4282c341d3fc91a52faae36e368e5b5c74470f",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/expression-comparison-a2d8b6a-01/completed-receipt.json",
+      "path": "root-expression-performance/expression-comparison-a2d8b6a-01/completed-receipt.json",
+      "bytes": 461,
+      "mode": "0o644",
+      "sha256": "e69e7b13a18e50b31bb7f38d537520901addb8c9c8395b5ce710becc7fb191a9",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/expression-comparison-a2d8b6a-01/inputs.json",
+      "path": "root-expression-performance/expression-comparison-a2d8b6a-01/inputs.json",
+      "bytes": 1363488,
+      "mode": "0o644",
+      "sha256": "44c84abd8b1188f3885e44d95227ffe7f950ace390e8cbb07fe1c357567a8e59",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/expression-comparison-a2d8b6a-01/manifest.json",
+      "path": "root-expression-performance/expression-comparison-a2d8b6a-01/manifest.json",
+      "bytes": 1758,
+      "mode": "0o644",
+      "sha256": "bf3835ac0faabbbf89fc992dbe9728ac8e3885db6ada5ca75c7a1610711f2334",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/expression-comparison-a2d8b6a-01/result.json",
+      "path": "root-expression-performance/expression-comparison-a2d8b6a-01/result.json",
+      "bytes": 137,
+      "mode": "0o644",
+      "sha256": "a677abc5886788b783c72c0f9ebcc660b1d2a80ec1782642181a46bde4b9af23",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure-v4.R",
+      "path": "root-expression-performance/measure-v4.R",
+      "presentation": "plain",
+      "bytes": 5325,
+      "mode": "0o644",
+      "sha256": "c9754a5afc89309fadf1a17069f528494b92f8e7b62c781a37a66732bfed2b21"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/measure-v4.py",
+      "path": "root-expression-performance/measure-v4.py",
+      "presentation": "plain",
+      "bytes": 6467,
+      "mode": "0o644",
+      "sha256": "b964807ebfc60d6b9c32b7c0444b9fbaa8983a7d87396afe413e72c95a2520e7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/memory.R",
+      "path": "root-expression-performance/memory.R",
+      "presentation": "plain",
+      "bytes": 3474,
+      "mode": "0o644",
+      "sha256": "dd8327472c009a22aa210f2e2f2ad7cc08baddf62fba70d0af548bae259acdd3"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/memory.py",
+      "path": "root-expression-performance/memory.py",
+      "presentation": "plain",
+      "bytes": 6745,
+      "mode": "0o644",
+      "sha256": "f22129fc8d306b41c90321f186b6a90e9f3732e30cbc33352fc41f9ca93918e1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/pipeline-repeat-assessment-a2d8b6a-01.json",
+      "path": "root-expression-performance/pipeline-repeat-assessment-a2d8b6a-01.json",
+      "bytes": 5999,
+      "mode": "0o644",
+      "sha256": "1941b470f02a10278e27f9ff7cc40ba031cf25dc2d923ab2bc73960fea48394d",
+      "presentation": "plain"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/pipeline-repeat-v1.R",
+      "path": "root-expression-performance/pipeline-repeat-v1.R",
+      "presentation": "plain",
+      "bytes": 5494,
+      "mode": "0o644",
+      "sha256": "aca82a615cf12f59d41c3cf4a38a6cca84170f327a0a7d9c9b1c635e38d810a8"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/pipeline-repeat-v1.py",
+      "path": "root-expression-performance/pipeline-repeat-v1.py",
+      "presentation": "plain",
+      "bytes": 6583,
+      "mode": "0o644",
+      "sha256": "21a47af61930d7d436fceccd18327e415eaa0cb1dcc8c28ecb1ef26353ddc7e9"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/pipeline-repeats-a2d8b6a-01/plan.json",
+      "path": "root-expression-performance/pipeline-repeats-a2d8b6a-01/plan.json",
+      "bytes": 3934,
+      "mode": "0o644",
+      "sha256": "a8c54347de7aae5c5cf58da03a423df8620044f2bdf4a235fd8c7ae3759c920e",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/pipeline-repeats-a2d8b6a-01/receipt.json",
+      "path": "root-expression-performance/pipeline-repeats-a2d8b6a-01/receipt.json",
+      "bytes": 705,
+      "mode": "0o644",
+      "sha256": "2d5ee79e3544336e5a981f418d0b9db1f17e4fe9a75dafce8bbdcc41950b3be1",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/pipeline-repeats-a2d8b6a-01/result.json",
+      "path": "root-expression-performance/pipeline-repeats-a2d8b6a-01/result.json",
+      "bytes": 2690,
+      "mode": "0o644",
+      "sha256": "3ef49dca746a698ea70ec08a16e93ddfe03c3ae25ec626749121964b2984a9e4",
+      "presentation": "bundle"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/qualify-v15.py",
+      "path": "root-expression-performance/qualify-v15.py",
+      "presentation": "plain",
+      "bytes": 5967,
+      "mode": "0o644",
+      "sha256": "b2b4fab9a49cb87cfb45ef5a9a81b9b09c7e32daca369661a2fae3bc889493c0"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/qualify-v6.R",
+      "path": "root-expression-performance/qualify-v6.R",
+      "presentation": "plain",
+      "bytes": 5507,
+      "mode": "0o644",
+      "sha256": "0a285cff745d64d35c14b3e72f7cb0b4b8aaf9a7faabfb85fa55ee0921256af7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/run-pipeline-repeats-v1.py",
+      "path": "root-expression-performance/run-pipeline-repeats-v1.py",
+      "presentation": "plain",
+      "bytes": 3502,
+      "mode": "0o644",
+      "sha256": "975606181523c884d9cbfb4858f5d298bc8da0fea4414bb5a82832c6cbf78f79"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/write-cases-v2.R",
+      "path": "root-expression-performance/write-cases-v2.R",
+      "presentation": "plain",
+      "bytes": 5513,
+      "mode": "0o644",
+      "sha256": "a47c885ee17b635314e3c466547bb97413945a428eda439eb0f54e7980501209"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/writes-v2.R",
+      "path": "root-expression-performance/writes-v2.R",
+      "presentation": "plain",
+      "bytes": 5628,
+      "mode": "0o644",
+      "sha256": "6671fcb76d8a3b1a21254a8a97877d629c9dc5189fab187b4313ef239c44a742"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/writes-v2.py",
+      "path": "root-expression-performance/writes-v2.py",
+      "presentation": "plain",
+      "bytes": 6708,
+      "mode": "0o644",
+      "sha256": "af27c5119d1eed94062b043c26b0d89ef72169046f4873d376f4588c6c48f3a5"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/test-bundle-evidence-v1.py",
+      "path": "test-bundle-evidence-v1.py",
+      "presentation": "plain",
+      "bytes": 5047,
+      "mode": "0o644",
+      "sha256": "e9c34cd5b8b9592facd435927a016536fa83fe65669bb94961704eb641bdc0a1"
+    }
+  ]
+}

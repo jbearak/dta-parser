@@ -1,0 +1,42 @@
+{
+  "source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "package_tree": "b08c77d91bdce67032f13aced90c29d068d6e95a",
+  "receipts": [
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/completed-receipt.json",
+      "bytes": 567,
+      "sha256": "27df31274f66b218ba0f6637d39554169caf379e0914d297b55de71e12e10d63"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior-receipt.json",
+      "bytes": 907,
+      "sha256": "649143db58480da0dd32dbf9b84696d4112bb72fa4496ed17005e30b1109225e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe-receipt.json",
+      "bytes": 905,
+      "sha256": "4e53bc1de323446e8c60427d34155ed1cb0288959c3babf6ae15c6dc5c3455c5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused-receipt.json",
+      "bytes": 905,
+      "sha256": "6b233bae0a5f4b1d64c06d7eccb3a8d0d01a9e5b46ae637674658848f6013dd9"
+    }
+  ],
+  "focused_csv": {
+    "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/tests.csv",
+    "bytes": 74754,
+    "sha256": "6bf0875fed192c33d9cf36422808bd5db41e5fadb51906296daf05d1bcbaaa87"
+  },
+  "focused_counts": {
+    "passed": 8859,
+    "failed": 0,
+    "error": 0,
+    "skipped": 3,
+    "warning": 4
+  },
+  "expression_rows": 22,
+  "expression_assertions": 187,
+  "scope": "Completed-run receipt identities and test CSV count reconciliation. Root inspected both public logs and source/DLL identity dumps; full independent artifact/input audits are separate reviewer records. This summary does not rerun tests or claim full OS closure.",
+  "utc": "2026-09-07T20:15:28.696277+00:00"
+}

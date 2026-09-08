@@ -1,0 +1,16 @@
+{
+  "utc": "2026-09-07T17:36:07.586778+00:00",
+  "attempt": "baseline-f622-measure-01",
+  "receipt_sha256": "a676a28aecc77e55b574f2d31ff1e79a9be2372f64998d8b1743d350744d3464",
+  "process_and_bound_input_integrity": "completed successfully with all 50 rows; original accepted:true is retained unchanged",
+  "performance_acceptance": false,
+  "reasons": [
+    "median_ms multiplies an already-millisecond bench summary by 1000",
+    "Only aggregate 50+ warnings retained; tiny probe reproduces a reporting row-name warning but does not establish every historical warning"
+  ],
+  "diagnostics": {
+    "unit_check": "bench-time-units-02",
+    "warning_reproduction": "measure-warning-probe-01"
+  },
+  "next": "Reviewed measure-v4 will rerun both sources with raw timing samples, explicit median/raw-sample unit assertion, corrected state cbind and warning-to-error rejection. Original attempt is preserved, no raw data silently rewritten."
+}

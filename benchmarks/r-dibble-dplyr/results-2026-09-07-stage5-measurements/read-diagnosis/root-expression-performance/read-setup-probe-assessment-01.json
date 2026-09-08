@@ -1,0 +1,20 @@
+{
+  "utc": "2026-09-07T21:46:08.443371+00:00",
+  "source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "cold": {
+    "run": "candidate-a2d8b6a-read-setup-cold-01",
+    "expected_gate_failure": true,
+    "r_allocated_bytes": 2191016,
+    "largest_bytes": 82104,
+    "receipt_sha256": "d40409404f4ae99facc2905f187288fe82b8723505178a0b78cf211ccbf4d61d"
+  },
+  "warm": {
+    "run": "candidate-a2d8b6a-read-setup-warm-01",
+    "passed_unchanged_gate": true,
+    "r_allocated_bytes": 83192,
+    "largest_bytes": 40112,
+    "receipt_sha256": "79b928f65b9b0b3db1ec9ebd07937a5391ec99d70c176c82fe11204db4139b15"
+  },
+  "interpretation": "Restoring one independent four-row rename before measured source creation removes the cold setup allocation excess. This includes rename dependencies and does not identify a single internal cause. No production code changed. Raw allocation events are not retained by the unchanged profiler. Both original failed v1 and cold failure stay rejected; performance reads are not qualified by this allocation-only contrast.",
+  "next": "Independent output audits and minimal v2 warm-up fix review, then new paired runs."
+}

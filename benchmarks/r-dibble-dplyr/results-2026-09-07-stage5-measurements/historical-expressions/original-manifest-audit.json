@@ -1,0 +1,197 @@
+{
+  "scope": "Current original receipt/manifest/retained-product consistency. No experiment rerun or promotion of rejected reporting; original source/runtime limits retained.",
+  "checked": [
+    {
+      "run": "baseline-f622-measure-01",
+      "products": 8,
+      "receipt_accepted": true,
+      "disposition": "Rejected for unit reporting"
+    },
+    {
+      "run": "baseline-wide-minimum-01",
+      "products": 10,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "baseline-wide-minimum-01-audit",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "baseline-width-repeat-01",
+      "products": 20,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "baseline-width-repeat-01-audit",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "baseline-width-repeat-02",
+      "products": 20,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "baseline-width-repeat-02-audit",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "baseline-width-repeat-03",
+      "products": 20,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "baseline-width-repeat-03-audit",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-57309d4-measure-01",
+      "products": 58,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-57309d4-measure-01-audit",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-57309d4-qualification-15",
+      "products": 6,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-57309d4-write-qualification-02",
+      "products": 7,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-622-wide-minimum-01",
+      "products": 10,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-622-wide-minimum-audit-01",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-622-wide-profile-01",
+      "products": 20,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-622-width-repeat-01",
+      "products": 20,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-622-width-repeat-audit-01",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-ad976-wide-minimum-01",
+      "products": 10,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-ad976-wide-minimum-audit-01",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-ad976-width-repeat-01",
+      "products": 20,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-ad976-width-repeat-audit-01",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-wide-minimum-01",
+      "products": 10,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-wide-minimum-01-audit",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-wide-profile-01",
+      "products": 20,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-wide-profile-prepare-01",
+      "products": 12,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-width-repeat-01",
+      "products": 20,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-width-repeat-01-audit",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-width-repeat-02",
+      "products": 20,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-width-repeat-02-audit",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-width-repeat-03",
+      "products": 20,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    },
+    {
+      "run": "candidate-width-repeat-03-audit",
+      "products": 3,
+      "receipt_accepted": true,
+      "disposition": "Original receipt scope retained"
+    }
+  ]
+}

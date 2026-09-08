@@ -1,0 +1,1805 @@
+{
+  "source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "package_tree": "b08c77d91bdce67032f13aced90c29d068d6e95a",
+  "accepted_run_receipts": [
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/completed-receipt.json",
+      "bytes": 567,
+      "sha256": "27df31274f66b218ba0f6637d39554169caf379e0914d297b55de71e12e10d63"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior-receipt.json",
+      "bytes": 907,
+      "sha256": "649143db58480da0dd32dbf9b84696d4112bb72fa4496ed17005e30b1109225e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe-receipt.json",
+      "bytes": 905,
+      "sha256": "4e53bc1de323446e8c60427d34155ed1cb0288959c3babf6ae15c6dc5c3455c5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused-receipt.json",
+      "bytes": 905,
+      "sha256": "6b233bae0a5f4b1d64c06d7eccb3a8d0d01a9e5b46ae637674658848f6013dd9"
+    }
+  ],
+  "scope": "Current exact-a2 clean-R4.6.0 runtime records and their shared dependency preparation. Explicit selected archive only, not original runtime closure or replay bundle.",
+  "files": [
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-minimum-01.py",
+      "path": "implementation/api-review/audit-combined-minimum-01.py",
+      "presentation": "plain",
+      "bytes": 5195,
+      "sha256": "f9c548f11bbc2ab28fc8326d6840f83dd6d5290e2e682261e710f2adb400dde8",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-minimum-02.json",
+      "path": "implementation/api-review/audit-combined-minimum-02.json",
+      "presentation": "bundle",
+      "bytes": 1586,
+      "sha256": "1fa4c87d48e5cbc85f8c05d5639a66f3df34d31258aa6903b38839225de4cdf6",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-minimum-02.py",
+      "path": "implementation/api-review/audit-combined-minimum-02.py",
+      "presentation": "plain",
+      "bytes": 5344,
+      "sha256": "3c2bb8fa0fd867b620845159107de17e74cd9fc1cb38ac57db4ec857ca359f4e",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/check-combined-minimum-saved-01.R",
+      "path": "implementation/api-review/check-combined-minimum-saved-01.R",
+      "presentation": "plain",
+      "bytes": 2939,
+      "sha256": "cc8c109b3e7b40878bcd4bd1fc306e9cdf2ffe8320bf2d48f22488ebdf67aef0",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/check-combined-minimum-saved-01.log",
+      "path": "implementation/api-review/check-combined-minimum-saved-01.log",
+      "presentation": "bundle",
+      "bytes": 749,
+      "sha256": "90237a94565b2bb573d5d38d5cefbc1c06f400c8844b739b837f920ccef69702",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/combined-minimum-review-01.md",
+      "path": "implementation/api-review/combined-minimum-review-01.md",
+      "presentation": "plain",
+      "bytes": 3622,
+      "sha256": "cf245d20ce744a004a814f4b7aa7fd35aca80c4ee87907958d3d333702c3d616",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-evidence-review-01.log",
+      "path": "implementation/semantics-review/combined-minimum-evidence-review-01.log",
+      "presentation": "bundle",
+      "bytes": 347,
+      "sha256": "024db6f680776883a1f170d1785b020c757859befc64ffca30d5761b30f23376",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-evidence-review-01.py",
+      "path": "implementation/semantics-review/combined-minimum-evidence-review-01.py",
+      "presentation": "plain",
+      "bytes": 8623,
+      "sha256": "64b5ee191741e606cb441844e8896a78354811a097cd486df97d6d72270a486a",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-evidence-review-02.log",
+      "path": "implementation/semantics-review/combined-minimum-evidence-review-02.log",
+      "presentation": "bundle",
+      "bytes": 330,
+      "sha256": "82f900036feb0c5bdddcdd05b87173bdbb470b21c72bd8a39e2f653be8d245ef",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-evidence-review-02.py",
+      "path": "implementation/semantics-review/combined-minimum-evidence-review-02.py",
+      "presentation": "plain",
+      "bytes": 9175,
+      "sha256": "dd608c5f305d97992cb2d606dc7df43d2bc1d22abaccea3ec920f1254987bd92",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-evidence-review-03.json",
+      "path": "implementation/semantics-review/combined-minimum-evidence-review-03.json",
+      "presentation": "plain",
+      "bytes": 14335,
+      "sha256": "765d459652924af517bea425ca9583dd377af24dd4c07b6697ec6c2490ab4654",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-evidence-review-03.py",
+      "path": "implementation/semantics-review/combined-minimum-evidence-review-03.py",
+      "presentation": "plain",
+      "bytes": 9484,
+      "sha256": "ce1e5f1839a2d14a96c2ccfce03847cace4299318182ae7c99d334dba7b6773f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-expression-rows-01.csv",
+      "path": "implementation/semantics-review/combined-minimum-expression-rows-01.csv",
+      "presentation": "bundle",
+      "bytes": 3918,
+      "sha256": "5706b132a19b09de99bb50552042d58fed8c49ded0d8a5c266d0336609ab6041",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-issues-01.csv",
+      "path": "implementation/semantics-review/combined-minimum-issues-01.csv",
+      "presentation": "bundle",
+      "bytes": 1379,
+      "sha256": "8497b1cfd7b41502f77146ed48e6187f2bd7c721d002d3f7c411028a77804a45",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-record-reader-01.R",
+      "path": "implementation/semantics-review/combined-minimum-record-reader-01.R",
+      "presentation": "plain",
+      "bytes": 4316,
+      "sha256": "b93d1d1c997fec20d9001c0876581d600495a55a1602750cbfc51f6d993cec15",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-record-reader-01.log",
+      "path": "implementation/semantics-review/combined-minimum-record-reader-01.log",
+      "presentation": "bundle",
+      "bytes": 203,
+      "sha256": "f03909a5e032bc4359c593c5c4407b10aad7927a4ff800d0a2fb77470c13360d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/minimum-current-README-v1.md",
+      "path": "README.md",
+      "presentation": "plain",
+      "bytes": 2717,
+      "sha256": "9fa2e6f32885b45d22341836cbe3b929ec9a04f8ab844fc3d3b73c622823bc02",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/behavior-minimum.R",
+      "path": "root-r460-integration/behavior-minimum.R",
+      "presentation": "plain",
+      "bytes": 7509,
+      "sha256": "9113ee550b34f0bc64667bc0a6e1c8dba082ac49928fb8e60f1680cc6fd71823",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-root-summary.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-root-summary.json",
+      "presentation": "plain",
+      "bytes": 1835,
+      "sha256": "ddcdc24d4a8e31b02c0030bf0ac8d38dd1f3d867f35709033c959f1c4215235a",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/build-command.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/build-command.json",
+      "presentation": "bundle",
+      "bytes": 854,
+      "sha256": "e5df16c49298d94f3659b151b2dd7dfd584d2e3fadb06130e56a10b55a9dfbae",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/build.log",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/build.log",
+      "presentation": "bundle",
+      "bytes": 429,
+      "sha256": "c857ad4b9a36eb8860532e66f4a7fbc08b7af60fc287b2fe280b5a8286c10655",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/built-source-before-install.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/built-source-before-install.json",
+      "presentation": "bundle",
+      "bytes": 378,
+      "sha256": "4f5ef89b4cf012dd7c4c45e8b874834bc08736610ee6fc8fa0d243705ce13a0b",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/cargo-version-command.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/cargo-version-command.json",
+      "presentation": "bundle",
+      "bytes": 710,
+      "sha256": "6c72669b1dea3a8e1bd6332e53d93bf784075cadde245d079020c09e838b628d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/cargo-version.log",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/cargo-version.log",
+      "presentation": "bundle",
+      "bytes": 314,
+      "sha256": "30a8ffbf5019e716b5592ff2a57ead71e42015b7b082bb9a8e76aae1d85b34df",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/clang-version-command.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/clang-version-command.json",
+      "presentation": "bundle",
+      "bytes": 723,
+      "sha256": "b72b54202d4fe4f9c15f82f9bb635becf7f52d6a6579b4eab6540511e7174a10",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/clang-version.log",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/clang-version.log",
+      "presentation": "bundle",
+      "bytes": 159,
+      "sha256": "55f7662ee66d47566d9f08f35a12158ac9588e4852f788eed57fa3bf625c9a5d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/completed-receipt.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/completed-receipt.json",
+      "presentation": "bundle",
+      "bytes": 567,
+      "sha256": "27df31274f66b218ba0f6637d39554169caf379e0914d297b55de71e12e10d63",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/execution-result.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/execution-result.json",
+      "presentation": "bundle",
+      "bytes": 6675,
+      "sha256": "3ab6185567ad63054647a5b2b2b79ee87d2edee390edcd7548467f86eafdcfa6",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/finish-install-command.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/finish-install-command.json",
+      "presentation": "bundle",
+      "bytes": 1303,
+      "sha256": "c6235cde5635fb9432faa57c88cb55f97a781d8dadc5ebbc140841c953d1685d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/finish-install.log",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/finish-install.log",
+      "presentation": "bundle",
+      "bytes": 219,
+      "sha256": "b82989e2d21fd7183c947296120c3cd9e7db5572d066665c9d248a4b447c51d6",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/guard-dlls-after.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/guard-dlls-after.txt",
+      "presentation": "bundle",
+      "bytes": 1588,
+      "sha256": "d78e7f2953905e0b0eafd4b319b86dfd8d209fce39d3068e768939143b3d3794",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/guard-dlls-before.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/guard-dlls-before.txt",
+      "presentation": "bundle",
+      "bytes": 612,
+      "sha256": "cb8da82273fd8ca4d5b9b98319cfd3108d5e7e3e88f42cf5d9f3f36db2cfa623",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/guard-namespaces-after.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/guard-namespaces-after.tsv",
+      "presentation": "bundle",
+      "bytes": 2139,
+      "sha256": "ccc33ea8801adc62b54f90511def471aeda48c82b06b4445ff12e65732134046",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/guard-namespaces-before.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/guard-namespaces-before.tsv",
+      "presentation": "bundle",
+      "bytes": 790,
+      "sha256": "6e3ea891080ed877c47db00805a5836d6b3d8e6a9f24a9323ca821151a65c77f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/inputs-before.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/inputs-before.json",
+      "presentation": "bundle",
+      "bytes": 4753520,
+      "sha256": "9441ab38b35750ade7b006a3e9a76b455e6c3955636c4ecf6d5d49c427619ae5",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/install-command.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/install-command.json",
+      "presentation": "bundle",
+      "bytes": 976,
+      "sha256": "6ccfa86d801e65fe787f91da6bfae4993726bf6a938dc71563192ba8f3724ea2",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/install.log",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/install.log",
+      "presentation": "bundle",
+      "bytes": 13766,
+      "sha256": "9eebaf7c5b4659e1ab4496977b372d0905a54075ba2f86493d09e9d72901aca3",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/installed-files.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/installed-files.json",
+      "presentation": "bundle",
+      "bytes": 24256,
+      "sha256": "5533f4fc6c6bdc9d8dffa47f779150c64d2ffbb8a2a1f4158912c07e65b1c58b",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/installed-identity.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/installed-identity.R",
+      "presentation": "bundle",
+      "bytes": 38300,
+      "sha256": "527286c0413a4583d52369eb45e17e49f6906900e179579c76efe6915061f704",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/loaded-images-after.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/loaded-images-after.txt",
+      "presentation": "bundle",
+      "bytes": 25694,
+      "sha256": "4c94e16e940d905a18ec247110409c65bbbbcc8a532a2fc19f59dab2b661d849",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/loaded-images-before.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/loaded-images-before.txt",
+      "presentation": "bundle",
+      "bytes": 24623,
+      "sha256": "e6e8168585b2cf47f9ef964d97d980f61fb55d2db1967be49cd0bd9a231bf25d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/loaded-namespaces.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/loaded-namespaces.tsv",
+      "presentation": "bundle",
+      "bytes": 2139,
+      "sha256": "ccc33ea8801adc62b54f90511def471aeda48c82b06b4445ff12e65732134046",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/output-manifest.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/output-manifest.json",
+      "presentation": "bundle",
+      "bytes": 142277,
+      "sha256": "cafceca8ceae980a29cd3e5fbaac2e177239ae2e9743b91a3eea665ccd6ac20b",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/r-version-command.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/r-version-command.json",
+      "presentation": "bundle",
+      "bytes": 735,
+      "sha256": "fad311314d88900a571a7d5e21b7d77cda96f8de8428bbe208ea35e40351b3dd",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/r-version.log",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/r-version.log",
+      "presentation": "bundle",
+      "bytes": 392,
+      "sha256": "8ea526281639b3621d5ed8510c88c5e07792eebc808618184ab864f2354f7a75",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/runtime-guard-after.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/runtime-guard-after.R",
+      "presentation": "bundle",
+      "bytes": 3148,
+      "sha256": "6f2180ecc56c3fa3b2be2a44f1ee780f577ffbcdc3bd36641786d69ce1a945b2",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/runtime-guard-before.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/runtime-guard-before.R",
+      "presentation": "bundle",
+      "bytes": 1787,
+      "sha256": "95b3f4a544a48241b3c668c9e9b7b680e416df08288dcaa744fb761db4b93f07",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/rustc-version-command.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/rustc-version-command.json",
+      "presentation": "bundle",
+      "bytes": 710,
+      "sha256": "01ad42a94eedfd8fd6731531412820667dc5f40397179b9188f297308a6a3159",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/rustc-version.log",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1/rustc-version.log",
+      "presentation": "bundle",
+      "bytes": 203,
+      "sha256": "75d92da7b8174054e6c19a9a80df6ccb5077af573190ddcc9cbfbe9f5c600c50",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/execution-result.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/execution-result.json",
+      "presentation": "bundle",
+      "bytes": 589,
+      "sha256": "6f9ef649a8b015a765e5f092904f227e94bd636ab450b7ec46ce4c5d8d45238e",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/execution.log",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/execution.log",
+      "presentation": "bundle",
+      "bytes": 608,
+      "sha256": "6f7e35d7a44b3ee9ec0b209f5835d75002cdde26dba3faab29c4c59e71c71e36",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/guard-dlls-after.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/guard-dlls-after.txt",
+      "presentation": "bundle",
+      "bytes": 1614,
+      "sha256": "c3be58bb3c93529304895570e65c3814671ce756ef49366aa5333ac51b80bf03",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/guard-dlls-before.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/guard-dlls-before.txt",
+      "presentation": "bundle",
+      "bytes": 612,
+      "sha256": "cb8da82273fd8ca4d5b9b98319cfd3108d5e7e3e88f42cf5d9f3f36db2cfa623",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/guard-namespaces-after.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/guard-namespaces-after.tsv",
+      "presentation": "bundle",
+      "bytes": 2335,
+      "sha256": "359029f255d5ed86dccbf658197593c6487c82ae482e4ed63e4af3204d86949f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/guard-namespaces-before.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/guard-namespaces-before.tsv",
+      "presentation": "bundle",
+      "bytes": 790,
+      "sha256": "6e3ea891080ed877c47db00805a5836d6b3d8e6a9f24a9323ca821151a65c77f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/inputs-before.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/inputs-before.json",
+      "presentation": "bundle",
+      "bytes": 1808303,
+      "sha256": "581db6f8dbdf3ed4430e598bf3bd599d527e3aefd2e5bfa5f06d183e5766e71a",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/loaded-images-after.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/loaded-images-after.txt",
+      "presentation": "bundle",
+      "bytes": 25773,
+      "sha256": "b12c45a8296d94b91a962ff37fdc93897408290aec7c6841eb1f030231053758",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/loaded-images-before.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/loaded-images-before.txt",
+      "presentation": "bundle",
+      "bytes": 24623,
+      "sha256": "e6e8168585b2cf47f9ef964d97d980f61fb55d2db1967be49cd0bd9a231bf25d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/namespaces.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/namespaces.tsv",
+      "presentation": "bundle",
+      "bytes": 2243,
+      "sha256": "b4c94d6d9b18ab6400a28cff3086f7e915f3c122acb06b8174f2cd04e12cb9ce",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/output-manifest.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/output-manifest.json",
+      "presentation": "bundle",
+      "bytes": 5853,
+      "sha256": "20e99401590ba94a36f5e78b4d11c626f36067bf389ff0510f15472e16157191",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/results.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/results.R",
+      "presentation": "bundle",
+      "bytes": 3789,
+      "sha256": "ed5437d1bb52e1dd5975b70037e27f0d512e71a28cba9ebb07eb6f94dc1fef1e",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/results.rds",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/results.rds",
+      "presentation": "bundle",
+      "bytes": 1178,
+      "sha256": "4b0891245fe0180639c75f749f1e51ab804ee69b35b3b8ca14023f5d231ce9c0",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/runtime-guard-after.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/runtime-guard-after.R",
+      "presentation": "bundle",
+      "bytes": 3343,
+      "sha256": "e68427022176eecacf089a9b75c1f71e16131ec8531bb5585acbefddc151ac40",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/runtime-guard-before.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior/runtime-guard-before.R",
+      "presentation": "bundle",
+      "bytes": 1787,
+      "sha256": "95b3f4a544a48241b3c668c9e9b7b680e416df08288dcaa744fb761db4b93f07",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior-receipt.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-behavior-receipt.json",
+      "presentation": "bundle",
+      "bytes": 907,
+      "sha256": "649143db58480da0dd32dbf9b84696d4112bb72fa4496ed17005e30b1109225e",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/counts.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/counts.R",
+      "presentation": "bundle",
+      "bytes": 67,
+      "sha256": "936594520c917aef873430252faf9c7ed3d5c839458dd68f22887dba1972e174",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/execution-result.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/execution-result.json",
+      "presentation": "bundle",
+      "bytes": 589,
+      "sha256": "1b3afded76efaa35b2afdbda897acae39e28412c73f5c0ae253e633d129388dd",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/execution.log",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/execution.log",
+      "presentation": "bundle",
+      "bytes": 11798,
+      "sha256": "7191631ab5b3fd0a96b3f818369c6eabff4cbadb9ec077fbe90b48d87e063a36",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/expectation-details.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/expectation-details.R",
+      "presentation": "bundle",
+      "bytes": 866261,
+      "sha256": "8c53ef281de95a13769aada861c806b06123cf772f092353b06e333ecabbd72f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/expectation-details.rds",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/expectation-details.rds",
+      "presentation": "bundle",
+      "bytes": 7839,
+      "sha256": "d7c2b7cb06bbca73438c112621652a3d5955a1190fe646aa07635ef730b17753",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/guard-dlls-after.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/guard-dlls-after.txt",
+      "presentation": "bundle",
+      "bytes": 2258,
+      "sha256": "532da5ec56ef9252be0f3fa430a0ef2b76fe182e3e372b7fa4416f5d67605596",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/guard-dlls-before.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/guard-dlls-before.txt",
+      "presentation": "bundle",
+      "bytes": 612,
+      "sha256": "cb8da82273fd8ca4d5b9b98319cfd3108d5e7e3e88f42cf5d9f3f36db2cfa623",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/guard-namespaces-after.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/guard-namespaces-after.tsv",
+      "presentation": "bundle",
+      "bytes": 3642,
+      "sha256": "89baf98cceae794afd66e585a8cda4149934cdfb563a09e77943d2656f766121",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/guard-namespaces-before.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/guard-namespaces-before.tsv",
+      "presentation": "bundle",
+      "bytes": 790,
+      "sha256": "6e3ea891080ed877c47db00805a5836d6b3d8e6a9f24a9323ca821151a65c77f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/inputs-before.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/inputs-before.json",
+      "presentation": "bundle",
+      "bytes": 1807988,
+      "sha256": "fec43e8beeb549317374f7ca552a50aa5e2c608654058376e583188fe728e564",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/loaded-images-after.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/loaded-images-after.txt",
+      "presentation": "bundle",
+      "bytes": 26556,
+      "sha256": "1a8ab93039a9120c9963e6e6b6ca3cb37058668ea9e9e9bcc9deab35e53b7434",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/loaded-images-before.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/loaded-images-before.txt",
+      "presentation": "bundle",
+      "bytes": 24623,
+      "sha256": "e6e8168585b2cf47f9ef964d97d980f61fb55d2db1967be49cd0bd9a231bf25d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/output-manifest.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/output-manifest.json",
+      "presentation": "bundle",
+      "bytes": 6247,
+      "sha256": "1330c6ba4b12f07f08e16a174121c6f4a7a152d6a9e7ec52019f8c0a408b101d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/runtime-guard-after.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/runtime-guard-after.R",
+      "presentation": "bundle",
+      "bytes": 4671,
+      "sha256": "dfa0ea2c2528568223a4898f60f6e5ee58c4c75517155994891aa268a39e0797",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/runtime-guard-before.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/runtime-guard-before.R",
+      "presentation": "bundle",
+      "bytes": 1787,
+      "sha256": "95b3f4a544a48241b3c668c9e9b7b680e416df08288dcaa744fb761db4b93f07",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/tests.csv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused/tests.csv",
+      "presentation": "bundle",
+      "bytes": 74754,
+      "sha256": "6bf0875fed192c33d9cf36422808bd5db41e5fadb51906296daf05d1bcbaaa87",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused-receipt.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-focused-receipt.json",
+      "presentation": "bundle",
+      "bytes": 905,
+      "sha256": "6b233bae0a5f4b1d64c06d7eccb3a8d0d01a9e5b46ae637674658848f6013dd9",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/execution-result.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/execution-result.json",
+      "presentation": "bundle",
+      "bytes": 589,
+      "sha256": "cbc92b679277d942a8564184c460bb4e802a488afb2f4e909b095dc7f5639a62",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/execution.log",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/execution.log",
+      "presentation": "bundle",
+      "bytes": 504,
+      "sha256": "d88d99444fd66e8eb1618b512fa1d2e076987425aadb01d62fbac9e73d344868",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/guard-dlls-after.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/guard-dlls-after.txt",
+      "presentation": "bundle",
+      "bytes": 1495,
+      "sha256": "a53048a74cf1a5f186e3f438b1e479913cd1373ed0ad3bdef1201b17a400c8e3",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/guard-dlls-before.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/guard-dlls-before.txt",
+      "presentation": "bundle",
+      "bytes": 612,
+      "sha256": "cb8da82273fd8ca4d5b9b98319cfd3108d5e7e3e88f42cf5d9f3f36db2cfa623",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/guard-namespaces-after.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/guard-namespaces-after.tsv",
+      "presentation": "bundle",
+      "bytes": 2224,
+      "sha256": "01853e9f018c68ac6162a47aa06cb1098379fbec71a1904176d7033b6eeb54bc",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/guard-namespaces-before.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/guard-namespaces-before.tsv",
+      "presentation": "bundle",
+      "bytes": 790,
+      "sha256": "6e3ea891080ed877c47db00805a5836d6b3d8e6a9f24a9323ca821151a65c77f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/inputs-before.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/inputs-before.json",
+      "presentation": "bundle",
+      "bytes": 1808296,
+      "sha256": "e5e89f82eee15add5042a1077a3b032c53896892e8acff4fb6f4a5133b3faccf",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/loaded-images-after.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/loaded-images-after.txt",
+      "presentation": "bundle",
+      "bytes": 25602,
+      "sha256": "cf4a747771d0e920e7249ab8ff9f6c52d0ca4a96feed80cd33a9c5a290cb4351",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/loaded-images-before.txt",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/loaded-images-before.txt",
+      "presentation": "bundle",
+      "bytes": 24623,
+      "sha256": "e6e8168585b2cf47f9ef964d97d980f61fb55d2db1967be49cd0bd9a231bf25d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/namespaces.tsv",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/namespaces.tsv",
+      "presentation": "bundle",
+      "bytes": 2132,
+      "sha256": "bbb365f2c8301b72f52e3b0014f10c451092ff075d379c7fa0d0df80988010e8",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/observations.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/observations.R",
+      "presentation": "bundle",
+      "bytes": 4591,
+      "sha256": "0ab00c14f35e427a3d9dc8aa231491900a8156ba62dc97c64c7c70cf33eb9fb8",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/observations.rds",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/observations.rds",
+      "presentation": "bundle",
+      "bytes": 966,
+      "sha256": "c998a70ae65da17660b7f91ab433753a0bd601d4a0dbf6405eb6c727934bb4db",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/output-manifest.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/output-manifest.json",
+      "presentation": "bundle",
+      "bytes": 5843,
+      "sha256": "b4c8086dc73990a2435f8524a6b260f5304f0c4c00af94c35b4bdb040417f5e4",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/runtime-guard-after.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/runtime-guard-after.R",
+      "presentation": "bundle",
+      "bytes": 3235,
+      "sha256": "6abf6a865ea5ddb224fd62ca3bd199650be7bcc4a1f96954568e7e78225964f6",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/runtime-guard-before.R",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe/runtime-guard-before.R",
+      "presentation": "bundle",
+      "bytes": 1787,
+      "sha256": "95b3f4a544a48241b3c668c9e9b7b680e416df08288dcaa744fb761db4b93f07",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe-receipt.json",
+      "path": "root-r460-integration/candidate-a2d8b6a-v1-observe-receipt.json",
+      "presentation": "bundle",
+      "bytes": 905,
+      "sha256": "4e53bc1de323446e8c60427d34155ed1cb0288959c3babf6ae15c6dc5c3455c5",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/check-candidate-v4.py",
+      "path": "root-r460-integration/check-candidate-v4.py",
+      "presentation": "plain",
+      "bytes": 10327,
+      "sha256": "d7970103fb5194809ae6ca5b2ac7d2a82e4a445d1a176ba864a2f442cd2efcf0",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/check-candidate.R",
+      "path": "root-r460-integration/check-candidate.R",
+      "presentation": "plain",
+      "bytes": 2263,
+      "sha256": "2828c031e65b919b205b9e99fea3c1f7d620479b5f7188e546799524135cf814",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/bit-inputs.json",
+      "path": "root-r460-integration/dependency-build/bit-inputs.json",
+      "presentation": "bundle",
+      "bytes": 33679,
+      "sha256": "80cddaf14e94685a7be3ec14b4cb4b082d05542f64ace00670f2ad450afd038a",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/bit-result.json",
+      "path": "root-r460-integration/dependency-build/bit-result.json",
+      "presentation": "bundle",
+      "bytes": 446,
+      "sha256": "16e10e2411ccbe281f580e52da1786558cb8d391d0adbb2b8eed8f26b540dace",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/bit.log",
+      "path": "root-r460-integration/dependency-build/bit.log",
+      "presentation": "bundle",
+      "bytes": 2965,
+      "sha256": "d7716ea77448cb37a4f8f7828ead1bc89978ea20b011e501bca2ea5b21ad6752",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/bit64-inputs.json",
+      "path": "root-r460-integration/dependency-build/bit64-inputs.json",
+      "presentation": "bundle",
+      "bytes": 46300,
+      "sha256": "ae5a32d1f27e3c3f58c9a9616cf08969594818f900fa32d206184123309a9bff",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/bit64-result.json",
+      "path": "root-r460-integration/dependency-build/bit64-result.json",
+      "presentation": "bundle",
+      "bytes": 452,
+      "sha256": "5598edd599109ef92c2f3853a840b971e296d876a2abf71f6b1da1544ca8c07f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/bit64.log",
+      "path": "root-r460-integration/dependency-build/bit64.log",
+      "presentation": "bundle",
+      "bytes": 5765,
+      "sha256": "aa5347de18ef30681fc9de9e0bf8db9b86de0eb114c24565029be101b1742117",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/brio-inputs.json",
+      "path": "root-r460-integration/dependency-build/brio-inputs.json",
+      "presentation": "bundle",
+      "bytes": 216791,
+      "sha256": "fc5b1a90b22c4aec478882f2ec6575bd6378591f3b674a953b73ab42818cf7b5",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/brio-result.json",
+      "path": "root-r460-integration/dependency-build/brio-result.json",
+      "presentation": "bundle",
+      "bytes": 449,
+      "sha256": "4dd0b4e567010e9a1d2a66086684b9f90a17be2bcf34c93c40da601619d791f5",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/brio.log",
+      "path": "root-r460-integration/dependency-build/brio.log",
+      "presentation": "bundle",
+      "bytes": 3060,
+      "sha256": "1d100f1a4482d96d2a754040eed3150f3aa957c7b5a67669e648a85cf97fccc9",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/callr-inputs.json",
+      "path": "root-r460-integration/dependency-build/callr-inputs.json",
+      "presentation": "bundle",
+      "bytes": 267297,
+      "sha256": "65007f28f79922af17049e3d96cc3f26709c9a674decafda9dfef49f8b3a022e",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/callr-result.json",
+      "path": "root-r460-integration/dependency-build/callr-result.json",
+      "presentation": "bundle",
+      "bytes": 451,
+      "sha256": "e08d142d3c667793298d14f15d5c57a89bfecdc1e98845508c0c244f2700b2f9",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/callr.log",
+      "path": "root-r460-integration/dependency-build/callr.log",
+      "presentation": "bundle",
+      "bytes": 571,
+      "sha256": "525c3467d277d2fbfd9dd65d4150b501630bd726c91aa83e28b754c50049124a",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/clipr-inputs.json",
+      "path": "root-r460-integration/dependency-build/clipr-inputs.json",
+      "presentation": "bundle",
+      "bytes": 1747,
+      "sha256": "19367bbee586678a471b92500175c3bcb553440be25256e23735ec451a38ab49",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/clipr-result.json",
+      "path": "root-r460-integration/dependency-build/clipr-result.json",
+      "presentation": "bundle",
+      "bytes": 451,
+      "sha256": "c413267bf13585cc664134dd609de54ee93920f554e89d32a0ddb7c59cbffd28",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/clipr.log",
+      "path": "root-r460-integration/dependency-build/clipr.log",
+      "presentation": "bundle",
+      "bytes": 575,
+      "sha256": "6da406f894c9d0b6a75883d3191adb04167bf1e3e3d00c0291e5d5260c9ab0c0",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/cpp11-inputs.json",
+      "path": "root-r460-integration/dependency-build/cpp11-inputs.json",
+      "presentation": "bundle",
+      "bytes": 55830,
+      "sha256": "2b141eab5c6b642002c8347b0c8fc14bcfb8499bd2066f00225e19a54ebcb16c",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/cpp11-result.json",
+      "path": "root-r460-integration/dependency-build/cpp11-result.json",
+      "presentation": "bundle",
+      "bytes": 451,
+      "sha256": "3556867cfcc0370875477f97b8dcb2c4b5b4b734dbf56068876981df58d3c3d2",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/cpp11.log",
+      "path": "root-r460-integration/dependency-build/cpp11.log",
+      "presentation": "bundle",
+      "bytes": 575,
+      "sha256": "616fca5875e729888bcbe660d1c475d3dead54b8e273426c49170b8d07e1157b",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/crayon-inputs.json",
+      "path": "root-r460-integration/dependency-build/crayon-inputs.json",
+      "presentation": "bundle",
+      "bytes": 12514,
+      "sha256": "07e39f5dcc2a7b7d6f33ce59fa8a10d05c096797b867d892b5d8372127bec819",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/crayon-result.json",
+      "path": "root-r460-integration/dependency-build/crayon-result.json",
+      "presentation": "bundle",
+      "bytes": 454,
+      "sha256": "0d34603ee7700be6e630f248890f10fa7ef67b725fde960b2d08bd24884e308f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/crayon.log",
+      "path": "root-r460-integration/dependency-build/crayon.log",
+      "presentation": "bundle",
+      "bytes": 547,
+      "sha256": "6535373bee97e955ff1a1bae86819f63b6a52c8b56a28eb028a2a594643fc345",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/data.table-inputs.json",
+      "path": "root-r460-integration/dependency-build/data.table-inputs.json",
+      "presentation": "bundle",
+      "bytes": 433361,
+      "sha256": "aca4d70b8491abf6d62174bb1143bf5c5f463bcac122f86d6e6de09f07a71fa2",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/data.table-result.json",
+      "path": "root-r460-integration/dependency-build/data.table-result.json",
+      "presentation": "bundle",
+      "bytes": 468,
+      "sha256": "a9ad57dab3c350a201d3eefb9d75f61bf199b0ff1571540effa567c66675e33f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/data.table.log",
+      "path": "root-r460-integration/dependency-build/data.table.log",
+      "presentation": "bundle",
+      "bytes": 15320,
+      "sha256": "75d338cd882dfffe2663188d955f15ab6434e2d2a9c9b76c75d3b351f7214003",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/desc-inputs.json",
+      "path": "root-r460-integration/dependency-build/desc-inputs.json",
+      "presentation": "bundle",
+      "bytes": 294060,
+      "sha256": "9cf17c5ef1a7d37f1f8600c7f81629eee6e0011eee94136bedc2f3af6fa04e0c",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/desc-result.json",
+      "path": "root-r460-integration/dependency-build/desc-result.json",
+      "presentation": "bundle",
+      "bytes": 448,
+      "sha256": "33001d8b4f15a7d4bd1b894221584035ca10182a5cbf99686439cb46afd9919f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/desc.log",
+      "path": "root-r460-integration/dependency-build/desc.log",
+      "presentation": "bundle",
+      "bytes": 547,
+      "sha256": "5c95d1cf95e5d45053ce869c0683d65b26d1e4d9418a44b932e4e4c52dd8aa23",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/diffobj-inputs.json",
+      "path": "root-r460-integration/dependency-build/diffobj-inputs.json",
+      "presentation": "bundle",
+      "bytes": 381478,
+      "sha256": "8a89b2a00397df642273a80a999c84c9fe55f283524e28c69bbf72d74b32ecc2",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/diffobj-result.json",
+      "path": "root-r460-integration/dependency-build/diffobj-result.json",
+      "presentation": "bundle",
+      "bytes": 458,
+      "sha256": "580f526d3aa93a5005553e30d2fb1a4bd5623cab126c717710c907f5a8a67734",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/diffobj.log",
+      "path": "root-r460-integration/dependency-build/diffobj.log",
+      "presentation": "bundle",
+      "bytes": 1868,
+      "sha256": "a2bf834a1b70675371a37e26cc488af4ab7ac7533dcda8ce0bfb140bb7c80ac3",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/evaluate-inputs.json",
+      "path": "root-r460-integration/dependency-build/evaluate-inputs.json",
+      "presentation": "bundle",
+      "bytes": 303071,
+      "sha256": "249c66cbbddad005d1e3d389c7f53238b961c854eef0cdc2f53a98f85bebb7fd",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/evaluate-result.json",
+      "path": "root-r460-integration/dependency-build/evaluate-result.json",
+      "presentation": "bundle",
+      "bytes": 460,
+      "sha256": "dbcf742d59a910bd0837030d671c413b25b3346bce409ba52bf27700bb2f52ef",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/evaluate.log",
+      "path": "root-r460-integration/dependency-build/evaluate.log",
+      "presentation": "bundle",
+      "bytes": 555,
+      "sha256": "39f25883d0fc33f84cea3e1a1e8042cc53a59d3c40b0fcfd9680935884d5adb4",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/execution-result.json",
+      "path": "root-r460-integration/dependency-build/execution-result.json",
+      "presentation": "bundle",
+      "bytes": 17748,
+      "sha256": "947d869375e4217900ac7e48807b2693bfa7b199a228dd866f759adea4006143",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/forcats-inputs.json",
+      "path": "root-r460-integration/dependency-build/forcats-inputs.json",
+      "presentation": "bundle",
+      "bytes": 503060,
+      "sha256": "46a175febb91d1fa6b326d510538b4240050373dd7702a1dc24d313a94342264",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/forcats-result.json",
+      "path": "root-r460-integration/dependency-build/forcats-result.json",
+      "presentation": "bundle",
+      "bytes": 457,
+      "sha256": "34c2464f3cea8f6e30d8a44f6718bbfed68b4eb8d0ae5fa793ec96a22afb8cda",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/forcats.log",
+      "path": "root-r460-integration/dependency-build/forcats.log",
+      "presentation": "bundle",
+      "bytes": 646,
+      "sha256": "45790eb98d4688cbb50b1f71e6c22ba9d1e42fa56ab890c4ec125ed1f913c12a",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/fs-inputs.json",
+      "path": "root-r460-integration/dependency-build/fs-inputs.json",
+      "presentation": "bundle",
+      "bytes": 326518,
+      "sha256": "8d0e2066aa10345ba0452372a9b8d902eedbccbe5be4079634bf982626dd39db",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/fs-result.json",
+      "path": "root-r460-integration/dependency-build/fs-result.json",
+      "presentation": "bundle",
+      "bytes": 443,
+      "sha256": "f85e8ec3fdaab6bc9f075543d080f01d96336596b58f6edacf7940aba478b71a",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/fs.log",
+      "path": "root-r460-integration/dependency-build/fs.log",
+      "presentation": "bundle",
+      "bytes": 4109,
+      "sha256": "a57edeb563f9e5c0880e8d9e52cb7969c6192938bd14858be559ea334df0aff5",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/haven-inputs.json",
+      "path": "root-r460-integration/dependency-build/haven-inputs.json",
+      "presentation": "bundle",
+      "bytes": 520326,
+      "sha256": "392660b96e69e3c00c141404a7c33bca116707266916c67235c5f01aec945b90",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/haven-result.json",
+      "path": "root-r460-integration/dependency-build/haven-result.json",
+      "presentation": "bundle",
+      "bytes": 453,
+      "sha256": "b3fa1dad98c30efa81174e3a56eb3ec614c32d3c1e671c65856e4d42a5e111ea",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/haven.log",
+      "path": "root-r460-integration/dependency-build/haven.log",
+      "presentation": "bundle",
+      "bytes": 19367,
+      "sha256": "253e310377530266360cba075a0437c675bc5848ed2ab5fb8cb630265c028252",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/hms-inputs.json",
+      "path": "root-r460-integration/dependency-build/hms-inputs.json",
+      "presentation": "bundle",
+      "bytes": 21213,
+      "sha256": "e7eb94b0792a12205dd2ddcd14f2c3534723a63bd2b505201ffce34e3edea5d9",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/hms-result.json",
+      "path": "root-r460-integration/dependency-build/hms-result.json",
+      "presentation": "bundle",
+      "bytes": 445,
+      "sha256": "ac092de59e37ddd5d4730a3297566fd76cfd479db3b3efd98bd8865d195b3e84",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/hms.log",
+      "path": "root-r460-integration/dependency-build/hms.log",
+      "presentation": "bundle",
+      "bytes": 555,
+      "sha256": "e7a16ea0349c336152c3c2c770e25b18a2794ba896b78ac198b150eecf5ab9d2",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/inputs-before.json",
+      "path": "root-r460-integration/dependency-build/inputs-before.json",
+      "presentation": "bundle",
+      "bytes": 1095526,
+      "sha256": "ea7131b59e6a8dac6d64f41a10d1477ed52c7c59aa084dcc0770fd0f96d52b5d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/installed-files.json",
+      "path": "root-r460-integration/dependency-build/installed-files.json",
+      "presentation": "bundle",
+      "bytes": 629068,
+      "sha256": "2a6750aca3e98110678e32db4d6922e002bd0ef67cfcee453793f68874e7a0c7",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/jsonlite-inputs.json",
+      "path": "root-r460-integration/dependency-build/jsonlite-inputs.json",
+      "presentation": "bundle",
+      "bytes": 311896,
+      "sha256": "09d3e7c04faba43b37db054149342952946ed3fec38c1b077ab94a67e09e95ac",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/jsonlite-result.json",
+      "path": "root-r460-integration/dependency-build/jsonlite-result.json",
+      "presentation": "bundle",
+      "bytes": 461,
+      "sha256": "fd0346f50026a94d8115ceb73800479a261fc9042fdca8dd43e43ecc8198f1db",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/jsonlite.log",
+      "path": "root-r460-integration/dependency-build/jsonlite.log",
+      "presentation": "bundle",
+      "bytes": 8955,
+      "sha256": "212a0aee09485f2579542e588c2a0a93a9cb6b1c2d12e33c85b08de5b5463db8",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/labelled-inputs.json",
+      "path": "root-r460-integration/dependency-build/labelled-inputs.json",
+      "presentation": "bundle",
+      "bytes": 609713,
+      "sha256": "dc3a86ed0733e2fc26c8b22e3e39fd4bec232b454ce2eb8257a632920239200d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/labelled-result.json",
+      "path": "root-r460-integration/dependency-build/labelled-result.json",
+      "presentation": "bundle",
+      "bytes": 460,
+      "sha256": "624d4c74d7d01e2030cda7d13707dc6fee9be09bbc2dc8f8efe217d2d037faf5",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/labelled.log",
+      "path": "root-r460-integration/dependency-build/labelled.log",
+      "presentation": "bundle",
+      "bytes": 651,
+      "sha256": "29266fe04de8db6be6e3dfa76d449940d3250c893373efd45228e1db22ed2fcd",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/otel-inputs.json",
+      "path": "root-r460-integration/dependency-build/otel-inputs.json",
+      "presentation": "bundle",
+      "bytes": 225783,
+      "sha256": "e05338681fba984692fa76b414d7ad419b7bfd1d42a0d8e6ce5882295cb02abe",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/otel-result.json",
+      "path": "root-r460-integration/dependency-build/otel-result.json",
+      "presentation": "bundle",
+      "bytes": 448,
+      "sha256": "8b3a098e4c9334594a7023f173092b194bcae4bd7ac28a7db937e1528b54a63a",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/otel.log",
+      "path": "root-r460-integration/dependency-build/otel.log",
+      "presentation": "bundle",
+      "bytes": 547,
+      "sha256": "2d709a71371e9dfcfc36c9ff864cfc6a40e1d2b8a3fb8e0e09594936ae6ba4e6",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/output-manifest.json",
+      "path": "root-r460-integration/dependency-build/output-manifest.json",
+      "presentation": "bundle",
+      "bytes": 669850,
+      "sha256": "2bd14060c7159738f3e81d81c03fe4fbf42b5d73284c4c079c04da732ff53da0",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/pkgbuild-inputs.json",
+      "path": "root-r460-integration/dependency-build/pkgbuild-inputs.json",
+      "presentation": "bundle",
+      "bytes": 338645,
+      "sha256": "beb8425278e457293ec74c5670642a9ed10ba6f6589f7652a26c61406e9f6049",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/pkgbuild-result.json",
+      "path": "root-r460-integration/dependency-build/pkgbuild-result.json",
+      "presentation": "bundle",
+      "bytes": 460,
+      "sha256": "a581cb351a1fae8aaca87afa0751e8993a210fb4115e2ec1d58b63a1bc1946a4",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/pkgbuild.log",
+      "path": "root-r460-integration/dependency-build/pkgbuild.log",
+      "presentation": "bundle",
+      "bytes": 555,
+      "sha256": "4bd0a287b5c44050775520d52c39527686d4b83f2536212bad74586db7fbe49f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/pkgload-inputs.json",
+      "path": "root-r460-integration/dependency-build/pkgload-inputs.json",
+      "presentation": "bundle",
+      "bytes": 362832,
+      "sha256": "7948722618ca5efae9e3440817e3cc2cc8bd1167bf164bd8eb2ce717e52df3d8",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/pkgload-result.json",
+      "path": "root-r460-integration/dependency-build/pkgload-result.json",
+      "presentation": "bundle",
+      "bytes": 457,
+      "sha256": "c7485a6f4159d1ba970628c0243f12e8cfcc8d9a84e9f0ac780d70dab4ac496d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/pkgload.log",
+      "path": "root-r460-integration/dependency-build/pkgload.log",
+      "presentation": "bundle",
+      "bytes": 559,
+      "sha256": "2b5dab1750d7e19958e8ad75386c302de50a760c6d3e5e40e4bfba158d483bfb",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/praise-inputs.json",
+      "path": "root-r460-integration/dependency-build/praise-inputs.json",
+      "presentation": "bundle",
+      "bytes": 372377,
+      "sha256": "50b0dbb5aa53ee5f17c880934ae7c4bd69e35893486b1f46ce22a3b63a778120",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/praise-result.json",
+      "path": "root-r460-integration/dependency-build/praise-result.json",
+      "presentation": "bundle",
+      "bytes": 454,
+      "sha256": "494688762aad26505d2fc8d2a0b11d63a56dac4095a7af02143566a53ab5b4f9",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/praise.log",
+      "path": "root-r460-integration/dependency-build/praise.log",
+      "presentation": "bundle",
+      "bytes": 555,
+      "sha256": "66ff810d7c205f0d24dd1b7aa238424c359711c95f6ab2350c77a1721d66814e",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/prettyunits-inputs.json",
+      "path": "root-r460-integration/dependency-build/prettyunits-inputs.json",
+      "presentation": "bundle",
+      "bytes": 113127,
+      "sha256": "5f6da062e1d15ef0c404390e844d95e7035a6207978c372c8c72cccc4a9de857",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/prettyunits-result.json",
+      "path": "root-r460-integration/dependency-build/prettyunits-result.json",
+      "presentation": "bundle",
+      "bytes": 469,
+      "sha256": "5abde81fa9b0370d8dd3ed2cbd5f70ac974edb768d3826ba3bf078fb3d1fa713",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/prettyunits.log",
+      "path": "root-r460-integration/dependency-build/prettyunits.log",
+      "presentation": "bundle",
+      "bytes": 567,
+      "sha256": "18e665fd3222b04196eae1e81e13b0b1f1aa4da624412f2f211620336f23f9ae",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/processx-inputs.json",
+      "path": "root-r460-integration/dependency-build/processx-inputs.json",
+      "presentation": "bundle",
+      "bytes": 251228,
+      "sha256": "99db49704767683b77bba9a2d7b2dd25527d9b14006b522b0e3f52de55ceb1e6",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/processx-result.json",
+      "path": "root-r460-integration/dependency-build/processx-result.json",
+      "presentation": "bundle",
+      "bytes": 461,
+      "sha256": "05c7508a708706a14a5e22750c15b46c3c6d21a9a6a7f2863b8795d1fb615c9f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/processx.log",
+      "path": "root-r460-integration/dependency-build/processx.log",
+      "presentation": "bundle",
+      "bytes": 5476,
+      "sha256": "0cd9c0d7ff40d7dc2832a3f2490f0399aa061495f5e2e4f04e757962abb11425",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/progress-inputs.json",
+      "path": "root-r460-integration/dependency-build/progress-inputs.json",
+      "presentation": "bundle",
+      "bytes": 122905,
+      "sha256": "fecd26dab9c900615f161014b720c0fe230ae61da65740d5b4961ff5d0bd0f2e",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/progress-result.json",
+      "path": "root-r460-integration/dependency-build/progress-result.json",
+      "presentation": "bundle",
+      "bytes": 460,
+      "sha256": "f404e9bde710a30ef6571d0a98334431912225cbaa9557b4f5ff4438c9e7053a",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/progress.log",
+      "path": "root-r460-integration/dependency-build/progress.log",
+      "presentation": "bundle",
+      "bytes": 583,
+      "sha256": "8798381d5ef73302a22d6480c13b09d29110b11a7e989242af1f6591f7b62633",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/ps-inputs.json",
+      "path": "root-r460-integration/dependency-build/ps-inputs.json",
+      "presentation": "bundle",
+      "bytes": 240372,
+      "sha256": "0c05e467251fb52ce1047c9baf7333a1ce44f7e8d8a127b1717ef3b1180b5ff8",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/ps-result.json",
+      "path": "root-r460-integration/dependency-build/ps-result.json",
+      "presentation": "bundle",
+      "bytes": 443,
+      "sha256": "5795870603c8e5528114afdcb73b2ea019e2f4d4ed34a82d5cce3b23374ab11a",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/ps.log",
+      "path": "root-r460-integration/dependency-build/ps.log",
+      "presentation": "bundle",
+      "bytes": 4487,
+      "sha256": "ea974209c7ec02edec7d727344cef6f4caacaa87fbe4cfd8da86803103439168",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/purrr-inputs.json",
+      "path": "root-r460-integration/dependency-build/purrr-inputs.json",
+      "presentation": "bundle",
+      "bytes": 569170,
+      "sha256": "8acdb2d55b637891f48237ddcb5795dd9258d03ca1e606e2566027079e082e56",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/purrr-result.json",
+      "path": "root-r460-integration/dependency-build/purrr-result.json",
+      "presentation": "bundle",
+      "bytes": 452,
+      "sha256": "ecc5f4123c79daf1e92ceb63bab8e08d861c5a3f4171892b726528666b77889e",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/purrr.log",
+      "path": "root-r460-integration/dependency-build/purrr.log",
+      "presentation": "bundle",
+      "bytes": 4604,
+      "sha256": "f3cff2ca6af53e5752eaa551bcf3a4cd2f27adb7b17f4e1ed29b421340f43b73",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/readr-inputs.json",
+      "path": "root-r460-integration/dependency-build/readr-inputs.json",
+      "presentation": "bundle",
+      "bytes": 191436,
+      "sha256": "2248bd3719b4588fa4e1bf24963935790a0adda16dda1bb8f28b444ee91a67a0",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/readr-result.json",
+      "path": "root-r460-integration/dependency-build/readr-result.json",
+      "presentation": "bundle",
+      "bytes": 452,
+      "sha256": "fe6fcf72e1b56e6b85f95b71fd6df4163ac5c5427b2b5c1c3d91abeeb51761c5",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/readr.log",
+      "path": "root-r460-integration/dependency-build/readr.log",
+      "presentation": "bundle",
+      "bytes": 9606,
+      "sha256": "9269d5caff999594f0d2293425e101eaf7b271ac2e1049377d15505531c16ac3",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/rprojroot-inputs.json",
+      "path": "root-r460-integration/dependency-build/rprojroot-inputs.json",
+      "presentation": "bundle",
+      "bytes": 347470,
+      "sha256": "bee6d74b5888dd310fcd749d276a634605e32125614ce1b4f885c4314e9e8cc4",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/rprojroot-result.json",
+      "path": "root-r460-integration/dependency-build/rprojroot-result.json",
+      "presentation": "bundle",
+      "bytes": 463,
+      "sha256": "01a834173548a93b196eb8dc869853723d2f5a2002744cc7916fd3ddfa1fba64",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/rprojroot.log",
+      "path": "root-r460-integration/dependency-build/rprojroot.log",
+      "presentation": "bundle",
+      "bytes": 611,
+      "sha256": "e0d080e55e704b4797767da2d665619788cc1c190b13e63ff7d01b4b8407b526",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/stringi-inputs.json",
+      "path": "root-r460-integration/dependency-build/stringi-inputs.json",
+      "presentation": "bundle",
+      "bytes": 537383,
+      "sha256": "c58c32d80a80fbba11060b0b09cebe030bf8144c2a2a67cd0a360dbe539dfca4",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/stringi-result.json",
+      "path": "root-r460-integration/dependency-build/stringi-result.json",
+      "presentation": "bundle",
+      "bytes": 459,
+      "sha256": "abaaca4e210ed266e0723389f6476d70c9b1b1f6a8d7cb22624bcc78c097aba5",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/stringi.log",
+      "path": "root-r460-integration/dependency-build/stringi.log",
+      "presentation": "bundle",
+      "bytes": 29232,
+      "sha256": "2ca9170f84573e2ba83328c2a0a3c819ea528e1f0e4f7605b7c62ba00442b03c",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/stringr-inputs.json",
+      "path": "root-r460-integration/dependency-build/stringr-inputs.json",
+      "presentation": "bundle",
+      "bytes": 547765,
+      "sha256": "6d0ef8039ed28ef28a197aa022fc9042713d42770fb43d28a09c83288a4885bd",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/stringr-result.json",
+      "path": "root-r460-integration/dependency-build/stringr-result.json",
+      "presentation": "bundle",
+      "bytes": 457,
+      "sha256": "4476ba438552454f916e96f4d0f085a02d633f1cead6f4374b0b94619c8694d3",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/stringr.log",
+      "path": "root-r460-integration/dependency-build/stringr.log",
+      "presentation": "bundle",
+      "bytes": 646,
+      "sha256": "fb2dbad7acd8488600e8cdf298016d16dd6e6326b8682080347e9ff5b66add8e",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/testthat-inputs.json",
+      "path": "root-r460-integration/dependency-build/testthat-inputs.json",
+      "presentation": "bundle",
+      "bytes": 403356,
+      "sha256": "e65a17d1520d343a4c262e5e590f7690b734d7015651ad43b7be0adc18c66a36",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/testthat-result.json",
+      "path": "root-r460-integration/dependency-build/testthat-result.json",
+      "presentation": "bundle",
+      "bytes": 461,
+      "sha256": "4acb5ac6d6bdea0bdbd3381738bee1f391ceb250e0c535c9a288ecec53d4827c",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/testthat.log",
+      "path": "root-r460-integration/dependency-build/testthat.log",
+      "presentation": "bundle",
+      "bytes": 2373,
+      "sha256": "a9b275f42dc7eb1223f32c1729fb90208c7ce91e827e5b165c1cfe7cbbed309d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/tidyr-inputs.json",
+      "path": "root-r460-integration/dependency-build/tidyr-inputs.json",
+      "presentation": "bundle",
+      "bytes": 586619,
+      "sha256": "6cf40cfff67d10836fb507cebda83e2bf5762688f035ed81a64bc82e2fa58150",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/tidyr-result.json",
+      "path": "root-r460-integration/dependency-build/tidyr-result.json",
+      "presentation": "bundle",
+      "bytes": 452,
+      "sha256": "187b482b430b6d4f9a0d46ea021b5dc03057cd23399078782f089b3d1580657b",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/tidyr.log",
+      "path": "root-r460-integration/dependency-build/tidyr.log",
+      "presentation": "bundle",
+      "bytes": 2278,
+      "sha256": "408fde0a47bca850308890659b7c5707c4b56677ded34716d44daee37ee43d88",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/tzdb-inputs.json",
+      "path": "root-r460-integration/dependency-build/tzdb-inputs.json",
+      "presentation": "bundle",
+      "bytes": 82626,
+      "sha256": "a1cf65350d953f58fc9d91c65d32816b844e21843ae003d7458c8cf454b4a4d2",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/tzdb-result.json",
+      "path": "root-r460-integration/dependency-build/tzdb-result.json",
+      "presentation": "bundle",
+      "bytes": 449,
+      "sha256": "ab0259d05911ca0c828e110983aef318d1848c6c3728e09258b5d4d605786617",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/tzdb.log",
+      "path": "root-r460-integration/dependency-build/tzdb.log",
+      "presentation": "bundle",
+      "bytes": 3657,
+      "sha256": "0b00fa950e8980cde968dde35d71dc7f2d0f1eacf13464274765c5a0aa552a71",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/vroom-inputs.json",
+      "path": "root-r460-integration/dependency-build/vroom-inputs.json",
+      "presentation": "bundle",
+      "bytes": 132958,
+      "sha256": "4b1a6c9ceb60d280ad333f865923a404e60f7e74ff5345c1b2b4a74f3eae4809",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/vroom-result.json",
+      "path": "root-r460-integration/dependency-build/vroom-result.json",
+      "presentation": "bundle",
+      "bytes": 453,
+      "sha256": "62a66f969ae062f0bfbc297504ccbf915839fa96339d2452575e57174315a032",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/vroom.log",
+      "path": "root-r460-integration/dependency-build/vroom.log",
+      "presentation": "bundle",
+      "bytes": 16910,
+      "sha256": "85146155738132cfc7ddec829d8d19f161edc961985796a50bcf1632ed439f1f",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/waldo-inputs.json",
+      "path": "root-r460-integration/dependency-build/waldo-inputs.json",
+      "presentation": "bundle",
+      "bytes": 394685,
+      "sha256": "edaf09229cd8f13a0680e3d48cdf28d1d334a553bacc768ed1ac1f68cb0baed9",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/waldo-result.json",
+      "path": "root-r460-integration/dependency-build/waldo-result.json",
+      "presentation": "bundle",
+      "bytes": 451,
+      "sha256": "fe997fa4099c41d2c5751b2f33ba927e8e1a2c4c71828b2871d57d5cce343ba8",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build/waldo.log",
+      "path": "root-r460-integration/dependency-build/waldo.log",
+      "presentation": "bundle",
+      "bytes": 563,
+      "sha256": "3c003ed4c2e819968cdb882cb8a82fde09288e7fc226fd2fcd90dedbc5d5c2ee",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build-preflight-01.json",
+      "path": "root-r460-integration/dependency-build-preflight-01.json",
+      "presentation": "bundle",
+      "bytes": 346,
+      "sha256": "400c432fd8ee38bbc5d98d46961205f5e1d8b782b7ccebf7483722d14eaa14f0",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-build-receipt.json",
+      "path": "root-r460-integration/dependency-build-receipt.json",
+      "presentation": "bundle",
+      "bytes": 433,
+      "sha256": "75ec59652f67951012ee0236c0c4b00d33014547b4693502bc8c2659c37b0eb3",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/dependency-plan.json",
+      "path": "root-r460-integration/dependency-plan.json",
+      "presentation": "bundle",
+      "bytes": 23669,
+      "sha256": "183e4c45bd10357fe1521d1b0cdaea0351ad27a85d167497018adb8fd233e2b1",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/download-sources.py",
+      "path": "root-r460-integration/download-sources.py",
+      "presentation": "plain",
+      "bytes": 4902,
+      "sha256": "9b8c286db7733eee32ccaa2cc406d7492393dc0f48f68e87ea6a1a4114a1df13",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/finish-minimum-install.R",
+      "path": "root-r460-integration/finish-minimum-install.R",
+      "presentation": "plain",
+      "bytes": 2545,
+      "sha256": "fb6a75db580ad5752f9fa4f6899405977f048707a75bfc34e174951b3ea90dbe",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/install-candidate-v3.py",
+      "path": "root-r460-integration/install-candidate-v3.py",
+      "presentation": "plain",
+      "bytes": 14909,
+      "sha256": "d0b5b900da1d23bfc1e05f35b5140c19efad9de83563b9520f3626e3cedbbcdb",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/install-dependencies-v2.py",
+      "path": "root-r460-integration/install-dependencies-v2.py",
+      "presentation": "plain",
+      "bytes": 6973,
+      "sha256": "de95a8ab8904cb5df7ce84de8869e4718c3010a5e1928f64b1d2acc2cc395f76",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/observe-minimum.R",
+      "path": "root-r460-integration/observe-minimum.R",
+      "presentation": "plain",
+      "bytes": 3539,
+      "sha256": "341e60054c77d23ac2319e0e552cfad0d6e71197c5075666457ff8b887cc5887",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/root-dependency-build-audit.json",
+      "path": "root-r460-integration/root-dependency-build-audit.json",
+      "presentation": "bundle",
+      "bytes": 682,
+      "sha256": "e6eade3c023fbcc8d6cfd8f358dc0bf7e208d4e3075f08b4b60f5ee0a8aa4f04",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/runtime-guard.R",
+      "path": "root-r460-integration/runtime-guard.R",
+      "presentation": "plain",
+      "bytes": 2201,
+      "sha256": "1412019583c18e941cc9f0aa12e945f55bfd5596c431d9b78d5976182ac03754",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/source-downloads-receipt.json",
+      "path": "root-r460-integration/source-downloads-receipt.json",
+      "presentation": "bundle",
+      "bytes": 48554,
+      "sha256": "5556f23116b531afb8bc0ba028793a803de124545813f79bdb4f5cb7d7f6105d",
+      "mode": "0o644"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/test-bundle-evidence-v1.py",
+      "path": "test-bundle-evidence-v1.py",
+      "presentation": "plain",
+      "bytes": 5047,
+      "mode": "0o644",
+      "sha256": "e9c34cd5b8b9592facd435927a016536fa83fe65669bb94961704eb641bdc0a1"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage5-validation/bundle-tests-v1-observed-result.json",
+      "path": "bundle-tests-v1-observed-result.json",
+      "presentation": "plain",
+      "bytes": 858,
+      "mode": "0o644",
+      "sha256": "6f36d917d70263a0eb220c12192e9d8cb828d7f003159db3ca21ab5f250776f2"
+    }
+  ]
+}

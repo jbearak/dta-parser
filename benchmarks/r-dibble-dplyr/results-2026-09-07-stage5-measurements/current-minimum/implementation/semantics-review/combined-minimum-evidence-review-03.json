@@ -1,0 +1,272 @@
+{
+  "assessment": "The expected exact-a2 install and all three check receipts match. All completed products, declared inputs,233 exported Git files, consumed archive and installed provenance are verified. Each before/after image list contains exactly the qualified cleanR4.6.0 libR and namespaces from declared clean libraries, including realdplyr1.2.1 and the exact combined package. Retained RDS and text records agree. Eight public oracles pass; four expansion/fallback forms preserve the explicit factory/event contract and across outputs read their common input values. Late captures retain obsolete-mask errors and three restarting-promise warnings. All8859 focused assertions pass, with three explicitly classified capability skips and four established warnings. The22 expression rows have187 assertions and no issues.",
+  "capability_skips": [
+    {
+      "classes": "expectation_skip/expectation/condition",
+      "file": "test-dibble.R",
+      "message": "Reason: {arrow} is not installed",
+      "test": "a file recording an unknown container still reads"
+    },
+    {
+      "classes": "expectation_skip/expectation/condition",
+      "file": "test-dibble.R",
+      "message": "Reason: {arrow} is not installed",
+      "test": "Arrow strings enter a dibble compact with an inferred width"
+    },
+    {
+      "classes": "expectation_skip/expectation/condition",
+      "file": "test-mutate-data.R",
+      "message": "Reason: R was built without memory profiling",
+      "test": "sparse compact replacement and generation keep existing payloads"
+    }
+  ],
+  "established_warnings": [
+    {
+      "classes": "expectation_warning/expectation/condition",
+      "file": "test-dibble.R",
+      "message": "Converted factor columns to labelled Stata long integers: `f`, `g`, `h`. Factor class and orderedness will not be restored on read.",
+      "test": "gen and := accept factors as mutate does"
+    },
+    {
+      "classes": "expectation_warning/expectation/condition",
+      "file": "test-dibble.R",
+      "message": "There was 1 warning in `mutate()`.\ni In argument: `day = day > as.Date(\"2024-01-01\")`.\nCaused by warning:\n! Incompatible methods (\">.dta_temporal\", \"Ops.Date\") for \">\"",
+      "test": "a logical overwriting a Stata numeric keeps its storage"
+    },
+    {
+      "classes": "expectation_warning/expectation/condition",
+      "file": "test-dibble.R",
+      "message": "Setting row names on a tibble is deprecated.",
+      "test": "copying replacement isolates vectors and preserves grouping"
+    },
+    {
+      "classes": "expectation_warning/expectation/condition",
+      "file": "test-dibble.R",
+      "message": "Setting row names on a tibble is deprecated.",
+      "test": "copying replacement isolates vectors and preserves grouping"
+    }
+  ],
+  "expansion_shapes": 4,
+  "expression_only_subset": {
+    "assertions": 187,
+    "errors": 0,
+    "failures": 0,
+    "skips": 0,
+    "test_rows": 22,
+    "warnings": 0
+  },
+  "focused": {
+    "errors": 0,
+    "failed": 0,
+    "filter": "dibble|group|mutat|data-table|metadata|owned",
+    "known_warnings": 4,
+    "passed": 8859,
+    "skips": 3
+  },
+  "independent_reader": {
+    "command": [
+      "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-record-reader-01.R",
+      "/private/tmp/dta-direct-stage5-validation/root-r460-integration",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review"
+    ],
+    "exit_code": 0,
+    "products": [
+      {
+        "bytes": 4316,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-record-reader-01.R",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-record-reader-01.R",
+        "sha256": "b93d1d1c997fec20d9001c0876581d600495a55a1602750cbfc51f6d993cec15"
+      },
+      {
+        "bytes": 203,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-record-reader-01.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-record-reader-01.log",
+        "sha256": "f03909a5e032bc4359c593c5c4407b10aad7927a4ff800d0a2fb77470c13360d"
+      },
+      {
+        "bytes": 1379,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-issues-01.csv",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-issues-01.csv",
+        "sha256": "8497b1cfd7b41502f77146ed48e6187f2bd7c721d002d3f7c411028a77804a45"
+      },
+      {
+        "bytes": 3918,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-expression-rows-01.csv",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-expression-rows-01.csv",
+        "sha256": "5706b132a19b09de99bb50552042d58fed8c49ded0d8a5c266d0336609ab6041"
+      }
+    ]
+  },
+  "limits": [
+    "This is bounded cleanR4.6.0 integration under the recorded filter, not a complete minimum-runtime package check or profiler/allocation qualification.",
+    "Two Arrow-package cases and one memory-profiling case were skipped for recorded capabilities; host affected gates remain separate and necessary.",
+    "Runtime image checks observe the instrumented R processes before and after execution. They do not freeze OS shared-cache binaries or the fullPython closure and do not claim a complete process-tree image trace.",
+    "The reviewer host R process only read serialized results and guard records; it did not rerun any package oracle, expression, native signal, timing or profile operation.",
+    "All results retain a2 source and its clean-R DLL. ea031 is only a package-identical progress correction. Final combined package/native/performance and external gates remain separate."
+  ],
+  "package_tree": "b08c77d91bdce67032f13aced90c29d068d6e95a",
+  "public_behavior_cases": 8,
+  "records": [
+    {
+      "bound_inputs": 11858,
+      "input_bytes": 1019746812,
+      "manifest": {
+        "bytes": 142277,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/output-manifest.json",
+        "sha256": "cafceca8ceae980a29cd3e5fbaac2e177239ae2e9743b91a3eea665ccd6ac20b"
+      },
+      "name": "candidate-a2d8b6a-v1",
+      "product_bytes": 52202387,
+      "products": 321,
+      "receipt": {
+        "bytes": 567,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/completed-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1/completed-receipt.json",
+        "sha256": "27df31274f66b218ba0f6637d39554169caf379e0914d297b55de71e12e10d63"
+      },
+      "runtime_coverage": null,
+      "scope": "Exact Git export and committed helpers, bound local clean-R installer/guard; installed clean R/Rust/dependency trees. Full SDK/system dynamic-library and Python runtime closures are not frozen."
+    },
+    {
+      "bound_inputs": 4575,
+      "input_bytes": 294103904,
+      "manifest": {
+        "bytes": 5853,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior/output-manifest.json",
+        "sha256": "20e99401590ba94a36f5e78b4d11c626f36067bf389ff0510f15472e16157191"
+      },
+      "name": "candidate-a2d8b6a-v1-behavior",
+      "product_bytes": 1877587,
+      "products": 14,
+      "receipt": {
+        "bytes": 907,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-behavior-receipt.json",
+        "sha256": "649143db58480da0dd32dbf9b84696d4112bb72fa4496ed17005e30b1109225e"
+      },
+      "runtime_coverage": {
+        "after": {
+          "images": 378,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ],
+          "namespaces": 25
+        },
+        "before": {
+          "images": 364,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ],
+          "namespaces": 8
+        }
+      },
+      "scope": "Exact installation/export, full clean R and selected dependency libraries, native image probe and previously observed Homebrew dylibs plus ICU. OS shared-cache binaries and full Python closure are not frozen. Image checks observe this R process."
+    },
+    {
+      "bound_inputs": 4575,
+      "input_bytes": 294099934,
+      "manifest": {
+        "bytes": 5843,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe/output-manifest.json",
+        "sha256": "b4c8086dc73990a2435f8524a6b260f5304f0c4c00af94c35b4bdb040417f5e4"
+      },
+      "name": "candidate-a2d8b6a-v1-observe",
+      "product_bytes": 1877446,
+      "products": 14,
+      "receipt": {
+        "bytes": 905,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-observe-receipt.json",
+        "sha256": "4e53bc1de323446e8c60427d34155ed1cb0288959c3babf6ae15c6dc5c3455c5"
+      },
+      "runtime_coverage": {
+        "after": {
+          "images": 376,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ],
+          "namespaces": 24
+        },
+        "before": {
+          "images": 364,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ],
+          "namespaces": 8
+        }
+      },
+      "scope": "Exact installation/export, full clean R and selected dependency libraries, native image probe and previously observed Homebrew dylibs plus ICU. OS shared-cache binaries and full Python closure are not frozen. Image checks observe this R process."
+    },
+    {
+      "bound_inputs": 4574,
+      "input_bytes": 294096395,
+      "manifest": {
+        "bytes": 6247,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused/output-manifest.json",
+        "sha256": "1330c6ba4b12f07f08e16a174121c6f4a7a152d6a9e7ec52019f8c0a408b101d"
+      },
+      "name": "candidate-a2d8b6a-v1-focused",
+      "product_bytes": 2834235,
+      "products": 15,
+      "receipt": {
+        "bytes": 905,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/candidate-a2d8b6a-v1-focused-receipt.json",
+        "sha256": "6b233bae0a5f4b1d64c06d7eccb3a8d0d01a9e5b46ae637674658848f6013dd9"
+      },
+      "runtime_coverage": {
+        "after": {
+          "images": 388,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ],
+          "namespaces": 38
+        },
+        "before": {
+          "images": 364,
+          "libR": [
+            "/private/tmp/dta-direct-stage5-minimum-preflight/r460-clean-install/lib/R/lib/libR.dylib"
+          ],
+          "namespaces": 8
+        }
+      },
+      "scope": "Exact installation/export, full clean R and selected dependency libraries, native image probe and previously observed Homebrew dylibs plus ICU. OS shared-cache binaries and full Python closure are not frozen. Image checks observe this R process."
+    }
+  ],
+  "reviewed_driver": {
+    "bytes": 10327,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/check-candidate-v4.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/check-candidate-v4.py",
+    "sha256": "d7970103fb5194809ae6ca5b2ac7d2a82e4a445d1a176ba864a2f442cd2efcf0"
+  },
+  "reviewer_attempt_history": "The initial review script stopped because it expected the host installer exports field in the clean-runtime installed-identity record. The clean installer instead asserts106 exports and records that result in finish-install.log. The corrected review checks that actual recorded schema and the DLL hash. Attempt02 then stopped on the newly installed namespace being a product rather than a pre-install input. Attempt03 checks installer namespaces against its already verified inputs plus products; check-run namespaces still require prebound inputs. Original inputs and outputs were not changed.",
+  "reviewer_script": {
+    "bytes": 9484,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-evidence-review-03.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-minimum-evidence-review-03.py",
+    "sha256": "ce1e5f1839a2d14a96c2ccfce03847cace4299318182ae7c99d334dba7b6773f"
+  },
+  "source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "status": "combined_clean_r460_install_and_bounded_integration_evidence_clear",
+  "utc": "2026-09-07T20:19:29.830732+00:00"
+}
