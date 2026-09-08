@@ -78,6 +78,14 @@ scripts/check-r-cargo-vendor.sh
 
 Commit the updated `vendor.tar.gz`, checksum, and bridge lock together.
 
+Generation interrupt tests use a private, one-use checkpoint after native
+staging and before installation. The POSIX test sends SIGINT only after the
+worker reports readiness; a fixed sleep cannot establish that overlap. The
+[test helpers](r-package/dtatools/tests/testthat/helper-generation-interrupt.R)
+also disarm the checkpoint on exit, including when R validation fails before
+native entry. Keep the default control unarmed and preserve the bounded waits
+and successful-retry checks when extending these tests.
+
 ## Conformance
 
 The conformance inventory covers format and byte order, metadata, values, labels, long strings, missing tags, projections, row windows, and representative errors. Run the shared gate from the repository root:

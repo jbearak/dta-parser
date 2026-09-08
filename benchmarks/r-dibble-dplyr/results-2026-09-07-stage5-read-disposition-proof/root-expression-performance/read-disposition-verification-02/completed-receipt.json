@@ -1,0 +1,11 @@
+{
+  "accepted": true,
+  "changed_inputs": [],
+  "manifest": {
+    "bytes": 1372,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-02/manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-02/manifest.json",
+    "sha256": "57a1c98ad429fea4e97ca2949e4d335ec848702c11f0e1c21e03d8007543326b"
+  }
+}

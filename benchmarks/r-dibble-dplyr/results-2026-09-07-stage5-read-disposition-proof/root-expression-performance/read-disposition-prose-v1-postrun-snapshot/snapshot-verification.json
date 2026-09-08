@@ -1,0 +1,29 @@
+{
+  "scope": "Post-run snapshot compared with original verification01 input identities; no original pre-run snapshot claim.",
+  "files": [
+    {
+      "original": "/private/tmp/dta-direct-stage5/docs/research/stage5-base-r-read-costs.md",
+      "snapshot": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-prose-v1-postrun-snapshot/docs/research/stage5-base-r-read-costs.md",
+      "bytes": 9411,
+      "sha256": "69f94ecafffedf6217a019455fde16d5dcb984f86cb42a53562bbdf2fbc3260d",
+      "mode": "0o644",
+      "matches_v1_before": true
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance.md",
+      "snapshot": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-prose-v1-postrun-snapshot/docs/plans/dibble-result-performance.md",
+      "bytes": 41151,
+      "sha256": "e36f0cce1c8fa9dc7e01c1d59396e25114d611db9ddf7d1ab2873260d8f8517d",
+      "mode": "0o644",
+      "matches_v1_before": true
+    },
+    {
+      "original": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance-progress.md",
+      "snapshot": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-prose-v1-postrun-snapshot/docs/plans/dibble-result-performance-progress.md",
+      "bytes": 74063,
+      "sha256": "3990e083d01162f4b850cda60cccb44d0a97b5021ae0d628840d4e299488632f",
+      "mode": "0o644",
+      "matches_v1_before": true
+    }
+  ]
+}

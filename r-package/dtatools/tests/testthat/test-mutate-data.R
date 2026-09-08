@@ -610,114 +610,66 @@ test_that("native write interrupts roll back values and compact state", {
 })
 
 test_that("native generation interrupts leave reference state unchanged", {
+    skip_if_not_installed("callr")
+    package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
+    result <- callr::r(native_generation_interrupt_cases,
+        args = list(package_path = package_path,
+            load_package = load_dtatools_for_subprocess, mode = 1L),
+        libpath = .libPaths(), timeout = 120)
+    expect_generation_interrupt_cases(result)
+})
+
+test_that("POSIX interrupts reach an active native generation checkpoint", {
     skip_on_os("windows")
     skip_if_not_installed("callr")
-
     package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
-    result <- callr::r(
-        function(package_path, load_package) {
-            load_package(package_path)
-            interrupt_generation <- function(character, existing) {
-                size <- 20000000L
-                data <- reserve_columns(data.frame(anchor = dta_byte(.size = size)))
-                if (existing) gen(data, prior, 1)
-                values <- if (character) "x" else seq_len(size)
-                before <- serialize(data, NULL)
-                names_before <- names(data)
-                reference_before <- inherits(data, "dtatools_ref_data")
-                parent <- Sys.getpid()
-                signal <- parallel::mcparallel({
-                    Sys.sleep(0.02)
-                    tools::pskill(parent, tools::SIGINT)
-                }, silent = TRUE)
-                condition <- tryCatch(
-                    {
-                        gen(data, created, .env$values)
-                        NULL
-                    },
-                    condition = identity
-                )
-                tryCatch(
-                    suppressWarnings(parallel::mccollect(signal)),
-                    condition = function(...) NULL
-                )
-                list(
-                    interrupted = inherits(condition, "interrupt"),
-                    unchanged = identical(serialize(data, NULL), before),
-                    names = identical(names(data), names_before),
-                    reference = identical(
-                        inherits(data, "dtatools_ref_data"),
-                        reference_before
-                    )
-                )
-            }
-            interrupt_dictionary_generation <- function() {
-                size <- 10000000L
-                path <- tempfile(fileext = ".arrow")
-                on.exit(unlink(path), add = TRUE)
-                dictionary <- sprintf("value-%05d", 1:10000)
-                save_arrow(data.frame(
-                    source = rep(dictionary, length.out = size)
-                ), path)
-                source <- read_arrow(path)$source
-                data <- reserve_columns(data.frame(anchor = dta_byte(.size = size)))
-                before <- serialize(data, NULL)
-                cache_before <- dtatools:::.dictstring_cached_count(source)
-                parent <- Sys.getpid()
-                signal <- parallel::mcparallel({
-                    Sys.sleep(0.02)
-                    tools::pskill(parent, tools::SIGINT)
-                }, silent = TRUE)
-                condition <- tryCatch(
-                    {
-                        gen(data, created, .env$source)
-                        NULL
-                    },
-                    condition = identity
-                )
-                tryCatch(
-                    suppressWarnings(parallel::mccollect(signal)),
-                    condition = function(...) NULL
-                )
-                list(
-                    interrupted = inherits(condition, "interrupt"),
-                    unchanged = identical(serialize(data, NULL), before),
-                    names = identical(names(data), "anchor"),
-                    reference = !inherits(data, "dtatools_ref_data"),
-                    source_compact =
-                        dtatools:::.is_unmaterialized_dictstring(source),
-                    cache_before = cache_before,
-                    cache_after =
-                        dtatools:::.dictstring_cached_count(source)
-                )
-            }
-            list(
-                numeric_first = interrupt_generation(FALSE, FALSE),
-                numeric_existing = interrupt_generation(FALSE, TRUE),
-                character_first = interrupt_generation(TRUE, FALSE),
-                character_existing = interrupt_generation(TRUE, TRUE),
-                dictionary = interrupt_dictionary_generation()
-            )
-        },
-        args = list(
-            package_path = package_path,
-            load_package = load_dtatools_for_subprocess
-        ),
-        libpath = .libPaths(),
-        timeout = 120
-    )
+    result <- run_posix_generation_interrupt_cases(
+        package_path, load_dtatools_for_subprocess)
+    expect_generation_interrupt_cases(result)
+})
 
-    for (case in result) {
-        expect_true(case$interrupted)
-        expect_true(case$unchanged)
-        expect_true(case$names)
-        expect_true(case$reference)
+test_that("POSIX generation checkpoints tolerate a full child stderr pipe", {
+    skip_on_os("windows")
+    skip_if_not_installed("callr")
+    package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
+    noisy_loader <- local({
+        load <- load_dtatools_for_subprocess
+        function(package_path) {
+            load(package_path)
+            cat(rep(paste0("induced-stderr:", strrep("x", 1010L)), 2048L),
+                sep = "\n", file = stderr())
+            flush(stderr())
+        }
+    })
+    result <- run_posix_generation_interrupt_cases(package_path, noisy_loader)
+    expect_generation_interrupt_cases(result)
+})
+
+test_that("generation interrupt controls disarm after validation errors", {
+    withr::defer(.Call(C_dtatools_inject_generation_interrupt, 0L))
+    data <- reserve_columns(data.frame(x = 1:2))
+    .Call(C_dtatools_inject_generation_interrupt, 1L)
+    expect_error(.Call(C_dtatools_generate_numeric,
+        1, NULL, 2, -1L, 0L, list()), "invalid reference generation storage")
+    gen(data, after_validation, 1)
+    expect_identical(as.double(data$after_validation), c(1, 1))
+
+    .Call(C_dtatools_inject_generation_interrupt, 1L)
+    expect_error(.Call(C_dtatools_inject_generation_interrupt, NA_integer_),
+        "invalid generation interrupt injection")
+    gen(data, after_invalid_control, 2)
+    expect_identical(as.double(data$after_invalid_control), c(2, 2))
+
+    # R can reject a request before native entry consumes the control. The
+    # scoped test helper must clear it during that unwind as well.
+    fail_before_native <- function() {
+        on.exit(.Call(C_dtatools_inject_generation_interrupt, 0L), add = TRUE)
+        .Call(C_dtatools_inject_generation_interrupt, 1L)
+        gen(data, x, 3)
     }
-    expect_true(result$dictionary$source_compact)
-    expect_identical(
-        result$dictionary$cache_after,
-        result$dictionary$cache_before
-    )
+    expect_error(fail_before_native())
+    gen(data, after_r_validation, 3)
+    expect_identical(as.double(data$after_r_validation), c(3, 3))
 })
 
 test_that("generic ALTREP detachment interrupts before installation", {

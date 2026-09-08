@@ -1,0 +1,163 @@
+{
+  "controls": [
+    {
+      "assessment": "read-control-v3-root-assessment-01.json",
+      "delta_max_ms": 2.344502994674258,
+      "delta_min_ms": 2.1212170104263386,
+      "operation": "public_table"
+    },
+    {
+      "assessment": "read-control-v3-root-assessment-01.json",
+      "delta_max_ms": 2.344010994420382,
+      "delta_min_ms": 2.338065984076817,
+      "operation": "public_column"
+    },
+    {
+      "assessment": "read-control-v3-root-assessment-01.json",
+      "delta_max_ms": 4.58826900285203,
+      "delta_min_ms": 4.58220099972096,
+      "operation": "native_elt"
+    },
+    {
+      "assessment": "read-control-v3-root-assessment-01.json",
+      "delta_max_ms": 0.0018859864212570077,
+      "delta_min_ms": -0.0017220008885489857,
+      "operation": "native_pointer"
+    },
+    {
+      "assessment": "read-count-control-v1-root-assessment-01.json",
+      "delta_max_ms": 2.4078890128294,
+      "delta_min_ms": 1.97054198361002,
+      "operation": "public_table"
+    },
+    {
+      "assessment": "read-count-control-v1-root-assessment-01.json",
+      "delta_max_ms": 2.1986660140100804,
+      "delta_min_ms": 1.97456000023522,
+      "operation": "public_column"
+    },
+    {
+      "assessment": "read-count-control-v1-root-assessment-01.json",
+      "delta_max_ms": 4.37560200225562,
+      "delta_min_ms": 4.15235701075289,
+      "operation": "native_elt"
+    },
+    {
+      "assessment": "read-count-control-v1-root-assessment-01.json",
+      "delta_max_ms": 0.0014349934644996981,
+      "delta_min_ms": -0.0004100147634744991,
+      "operation": "native_pointer"
+    }
+  ],
+  "historical_preparation_inputs": 27,
+  "limit": "Saved assessments supply arithmetic, not a new raw-sample audit or causal decomposition.",
+  "package_comparisons": [
+    {
+      "a2": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+      "c8": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "identical": true,
+      "path": "r-package/dtatools/src/owned-columns.h",
+      "sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1"
+    },
+    {
+      "a2": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+      "c8": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "identical": true,
+      "path": "benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "a2": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+      "c8": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "identical": true,
+      "path": "benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    }
+  ],
+  "residual_reads": [
+    {
+      "delta_max_ms": 2.345200002309871,
+      "delta_min_ms": 2.335195997147817,
+      "kind": "declared_character",
+      "minimum_delta_ms": 2.342698993743396,
+      "operation": "any_na"
+    },
+    {
+      "delta_max_ms": 2.38697898748796,
+      "delta_min_ms": 2.3522520059486904,
+      "kind": "declared_character",
+      "minimum_delta_ms": 2.3804600205039597,
+      "operation": "nonmissing_count"
+    },
+    {
+      "delta_max_ms": 2.19686199852731,
+      "delta_min_ms": 2.18521797796711,
+      "kind": "logical",
+      "minimum_delta_ms": 2.3945230059325704,
+      "operation": "nonmissing_count"
+    },
+    {
+      "delta_max_ms": 2.22695601405576,
+      "delta_min_ms": 2.0050640159752198,
+      "kind": "logical",
+      "minimum_delta_ms": 2.25815700832754,
+      "operation": "coercion_character"
+    },
+    {
+      "delta_max_ms": 2.269513992359857,
+      "delta_min_ms": 2.170129999285564,
+      "kind": "logical",
+      "minimum_delta_ms": 2.260166016640145,
+      "operation": "coercion_integer"
+    },
+    {
+      "delta_max_ms": 2.41174300026614,
+      "delta_min_ms": 2.00510500872042,
+      "kind": "logical",
+      "minimum_delta_ms": 2.0123620051890603,
+      "operation": "mean"
+    },
+    {
+      "delta_max_ms": 2.1970669913571332,
+      "delta_min_ms": 2.18001098255627,
+      "kind": "factor",
+      "minimum_delta_ms": 2.196205998188818,
+      "operation": "any_na"
+    },
+    {
+      "delta_max_ms": 2.19116298831068,
+      "delta_min_ms": 2.15573898458388,
+      "kind": "factor",
+      "minimum_delta_ms": 2.40899599157274,
+      "operation": "nonmissing_count"
+    },
+    {
+      "delta_max_ms": 2.3443390091415495,
+      "delta_min_ms": 2.10985999729019,
+      "kind": "factor",
+      "minimum_delta_ms": 2.20145400089678,
+      "operation": "coercion_character"
+    },
+    {
+      "delta_max_ms": 2.1958779980195637,
+      "delta_min_ms": 2.185915014706556,
+      "kind": "ordered",
+      "minimum_delta_ms": 2.189441031077878,
+      "operation": "any_na"
+    },
+    {
+      "delta_max_ms": 2.19464799738489,
+      "delta_min_ms": 1.9695990049513,
+      "kind": "ordered",
+      "minimum_delta_ms": 2.36287100415211,
+      "operation": "nonmissing_count"
+    },
+    {
+      "delta_max_ms": 2.18985103128943,
+      "delta_min_ms": 2.1470469800988203,
+      "kind": "ordered",
+      "minimum_delta_ms": 2.30555300367996,
+      "operation": "coercion_character"
+    }
+  ]
+}

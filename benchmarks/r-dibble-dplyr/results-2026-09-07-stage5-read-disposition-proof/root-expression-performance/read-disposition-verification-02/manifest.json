@@ -1,0 +1,27 @@
+{
+  "excluded_receipt": "completed-receipt.json",
+  "excluded_self": "manifest.json",
+  "products": [
+    {
+      "bytes": 5084,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-02/derivation.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-02/derivation.json",
+      "sha256": "bd17a7a32fe12884f4c806c11831bffa24702acbd4d771624500656843214bdd"
+    },
+    {
+      "bytes": 64,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-02/execution-result.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-02/execution-result.json",
+      "sha256": "a91065cf8b38af6a1a6d45fb6a24a55933f7307f685218ec442d92d16fe0d9b4"
+    },
+    {
+      "bytes": 14267,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-02/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-02/inputs-before.json",
+      "sha256": "d0aa5efe4e7cba7e09f30e53eecee6223a1808aa2bd04d102835e541648b00f2"
+    }
+  ]
+}

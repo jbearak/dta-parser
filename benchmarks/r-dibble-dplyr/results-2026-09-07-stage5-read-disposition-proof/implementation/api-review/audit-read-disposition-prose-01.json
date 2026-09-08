@@ -1,0 +1,106 @@
+{
+  "status": "clear",
+  "reviewer_source": {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-read-disposition-prose-01.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-read-disposition-prose-01.py",
+    "bytes": 7515,
+    "mode": "0o644",
+    "sha256": "af8a7691c16e981641fefccc2e31fb742c49857ca82f63359338cd21a57c2962"
+  },
+  "docs": [
+    {
+      "path": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance-progress.md",
+      "resolved": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance-progress.md",
+      "bytes": 74074,
+      "mode": "0o644",
+      "sha256": "3972d1323b450039e4e7a1f69512e9895c46749142f3cbfe82474e6984396d36"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance.md",
+      "resolved": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance.md",
+      "bytes": 41151,
+      "mode": "0o644",
+      "sha256": "e36f0cce1c8fa9dc7e01c1d59396e25114d611db9ddf7d1ab2873260d8f8517d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5/docs/research/stage5-base-r-read-costs.md",
+      "resolved": "/private/tmp/dta-direct-stage5/docs/research/stage5-base-r-read-costs.md",
+      "bytes": 9464,
+      "mode": "0o644",
+      "sha256": "b1f63b362d1a9a7ec5f5912c9ea0a2172f6ee3e54502b6c2914d29272741f942"
+    }
+  ],
+  "derivation_runs": [
+    {
+      "version": "01",
+      "receipt": {
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-01/completed-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-01/completed-receipt.json",
+        "bytes": 457,
+        "mode": "0o644",
+        "sha256": "9d16c8eba32b12afc87c11d9680bb25182e7591e2b5964accef95e833c950f46"
+      },
+      "products": 3,
+      "inputs": 41,
+      "scope": "Original v1 prose resolved to explicitly post-run snapshots"
+    },
+    {
+      "version": "02",
+      "receipt": {
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-02/completed-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-verification-02/completed-receipt.json",
+        "bytes": 457,
+        "mode": "0o644",
+        "sha256": "6a206719d9c1b7f0cffc1bd8e19847dd0bdd3570558f2781a3ee1f413a5d964a"
+      },
+      "products": 3,
+      "inputs": 41,
+      "scope": "All inputs match current exact files"
+    }
+  ],
+  "snapshot_record": {
+    "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-prose-v1-postrun-snapshot/snapshot-verification.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/read-disposition-prose-v1-postrun-snapshot/snapshot-verification.json",
+    "bytes": 1485,
+    "mode": "0o644",
+    "sha256": "b85983a8042b8c723260d45350b6f8be21be08bbe1035baa2c48af21dfa89319"
+  },
+  "historical_preparation_inputs": 27,
+  "source_comparisons": [
+    {
+      "a2": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+      "c8": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "identical": true,
+      "path": "r-package/dtatools/src/owned-columns.h",
+      "sha256": "bde55acf09c37029e0adc58d2294f76df53900b330f1baf7ffa4206e9a88c5a1"
+    },
+    {
+      "a2": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+      "c8": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "identical": true,
+      "path": "benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "a2": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+      "c8": "c8ca0a4a74c7ef6aa811d78b3422979e9007b1fe",
+      "identical": true,
+      "path": "benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    }
+  ],
+  "residual_rows_recalculated": 12,
+  "control_ranges_recalculated": 8,
+  "package_diff_empty": true,
+  "findings_resolved": [
+    "Coerce registration setter distinguished from invoked ALTREP_COERCE method.",
+    "Full expression counts explicitly per source."
+  ],
+  "scope": "Actual three-file prose diff, current 41-input derivation and original post-run prose snapshots, exact pinned source/recorded arithmetic review. No production changes or experiments.",
+  "limits": [
+    "Primary R copies are reading references, not attestation of complete installed R build inputs.",
+    "Future Coerce hook/backing redesign remains unimplemented and unqualified; no isolated getter, irreducibility or overall acceptance claim.",
+    "Publication links target the separately prepared measurements archive; publish/merge that archive before these links become final repository navigation.",
+    "Remote PR/CI/provenance publication status remains owned by root and was not independently rechecked."
+  ]
+}
