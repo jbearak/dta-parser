@@ -1,0 +1,221 @@
+{
+  "assessment": "All completed receipts, manifests, products and declared inputs match. Independent saved-RDS readers reproduce all 14 numeric millisecond medians from98 raw second samples and allocation/GC values. All2336 expected owned/unexposed state rows retain their backing. Both2000-call raw profiles exactly reproduce saved RDS and CSV summaries; source snapshots and four obsolete-mask checks pass. Common driver/corpus/runtime bindings and R commands exactly match corresponding57309 records after excluding only each recorded installed dtatools package directory.",
+  "limits": [
+    "This clears retained evidence for the isolated repair guard diagnostic. It does not establish overall Stage5 performance acceptance or a combined native/mask-name implementation result.",
+    "Only one new minimum and one width run are included. Same-source direct/safe-reference comparisons and historical-source comparisons answer different questions; neither is relabeled as paired full-matrix qualification.",
+    "The64-column dependent case remains above both same-candidate diagnosis thresholds. Root owns further diagnosis and any new measurement.",
+    "Rprof sampled stack counts and nominal interval totals include profiler/loop/GC effects, have overlapping cumulative frames and cannot by themselves identify a unique cause or independent wall-clock cost.",
+    "Separate allocation summaries overlap. Temporary Rprofmem events were not retained; these are neither retained heap nor peak RSS measurements.",
+    "No benchmark or profiled operation was rerun. The only R process read retained RDS/raw stacks and regenerated summaries."
+  ],
+  "raw_audits": [
+    {
+      "bytes": 799902,
+      "input_bindings": 2516,
+      "manifest": {
+        "bytes": 1304,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-minimum-audit-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-minimum-audit-01/manifest.json",
+        "sha256": "64cbf27bdb331e9659b28a24f3292f90a56a7855e4475d66eacf5cb399194574"
+      },
+      "name": "candidate-622-wide-minimum-audit-01",
+      "products": 3,
+      "receipt": {
+        "bytes": 439,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-minimum-audit-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-minimum-audit-01-receipt.json",
+        "sha256": "0b28e0d912d203e891d1c19bb3e1e17c4f3891ceccdb51e71ed193943591d59b"
+      }
+    },
+    {
+      "bytes": 804239,
+      "input_bindings": 2526,
+      "manifest": {
+        "bytes": 1304,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-width-repeat-audit-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-width-repeat-audit-01/manifest.json",
+        "sha256": "827ad7b9beba56fe9b62113da569cf447be9117349d2663fdbe846d1b4451605"
+      },
+      "name": "candidate-622-width-repeat-audit-01",
+      "products": 3,
+      "receipt": {
+        "bytes": 439,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-width-repeat-audit-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-width-repeat-audit-01-receipt.json",
+        "sha256": "311c6ddeb36190681ee1fe3ec5f357c6212b7444eab88cabb387cc6fb9f99db7"
+      }
+    }
+  ],
+  "raw_recalculation": {
+    "command": [
+      "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-retained-records-01.R",
+      "/private/tmp/dta-direct-stage5-validation/root-expression-performance",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review"
+    ],
+    "exit_code": 0,
+    "products": [
+      {
+        "bytes": 4655,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-retained-records-01.R",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-retained-records-01.R",
+        "sha256": "1efb328c988b49f7d8a1043595c19da735bb6a4fddacb012576be4565d02677f"
+      },
+      {
+        "bytes": 210,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-retained-records-01.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-retained-records-01.log",
+        "sha256": "f1382216c8720ab9888cc8a39320a9fb0f256e5f7f96939676f93c732266428c"
+      },
+      {
+        "bytes": 9529,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-raw-recalculation-01.csv",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-raw-recalculation-01.csv",
+        "sha256": "526b270285e5044996effff85cf8a291322b5c0df9ff61b2e6037d8ac33aaeb9"
+      },
+      {
+        "bytes": 164,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-profile-recalculation-01.csv",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-profile-recalculation-01.csv",
+        "sha256": "4558ac7a76207ce51c09541bc30704b9a1a3a72d564976b6b39138edfbf47a0d"
+      }
+    ]
+  },
+  "records": [
+    {
+      "bytes": 1176531,
+      "input_bindings": 3404,
+      "manifest": {
+        "bytes": 4197,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-minimum-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-minimum-01/manifest.json",
+        "sha256": "1ab82a3b5dc875c2323635615bd7d22d3e9a583d8a44e3403e13642bbfa442ad"
+      },
+      "name": "candidate-622-wide-minimum-01",
+      "products": 10,
+      "receipt": {
+        "bytes": 527,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-minimum-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-minimum-01-receipt.json",
+        "sha256": "68923e47764244cf36b29b33ab6e661f1fed496820b88c43547683c1a48722bc"
+      }
+    },
+    {
+      "bytes": 1283506,
+      "input_bindings": 3404,
+      "manifest": {
+        "bytes": 8531,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-width-repeat-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-width-repeat-01/manifest.json",
+        "sha256": "7af4159fc9e028f42e7d4e55a63f0c9e196ec897db0f0fb5becb0d33bd6d6111"
+      },
+      "name": "candidate-622-width-repeat-01",
+      "products": 20,
+      "receipt": {
+        "bytes": 527,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-width-repeat-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-width-repeat-01-receipt.json",
+        "sha256": "055be9f85789865adde411e6ca55fad223b917183a12fc8c7cf4d80f1b89e07e"
+      }
+    },
+    {
+      "bytes": 1367634,
+      "input_bindings": 3404,
+      "manifest": {
+        "bytes": 8430,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-profile-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-profile-01/manifest.json",
+        "sha256": "8b7878c045ee0969ad7ad7d5a7d8a6cb1d6c3177e130e16fa9c788501cb26cb2"
+      },
+      "name": "candidate-622-wide-profile-01",
+      "products": 20,
+      "receipt": {
+        "bytes": 527,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-profile-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-622-wide-profile-01-receipt.json",
+        "sha256": "91ad73192126eb9f5df612b3a5da34db1b88b3275401ee1c43a010bbfbd5d3d1"
+      }
+    }
+  ],
+  "reviewer_script": {
+    "bytes": 9299,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-measurement-review-01.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-measurement-review-01.py",
+    "sha256": "396681fec1fed2455dcb5ebbde69c72f91a9719a912bf513787582332f809e92"
+  },
+  "same_candidate_64_column_observations": [
+    {
+      "columns": 64,
+      "delta_ms": 0.744437013054267,
+      "diagnose": false,
+      "direct_ms": 1.37350001023151,
+      "operation": "retain",
+      "ratio": 2.183406139599269,
+      "run": "candidate-622-wide-minimum-01",
+      "safe_reference_ms": 0.629062997177243
+    },
+    {
+      "columns": 64,
+      "delta_ms": 0.717008006176913,
+      "diagnose": false,
+      "direct_ms": 1.35677201615181,
+      "operation": "retain",
+      "ratio": 2.1207382644188546,
+      "run": "candidate-622-width-repeat-01",
+      "safe_reference_ms": 0.639764009974897
+    },
+    {
+      "columns": 64,
+      "delta_ms": 1.2979370076209298,
+      "diagnose": true,
+      "direct_ms": 8.02542200835887,
+      "operation": "dependent",
+      "ratio": 1.192930494453508,
+      "run": "candidate-622-width-repeat-01",
+      "safe_reference_ms": 6.72748500073794
+    }
+  ],
+  "source": "622ffc194372d9882a78637077dff42f657b14a3",
+  "status": "repair_guard_retained_measurement_profile_evidence_clear",
+  "totals": {
+    "profile_calls_per_mode": 2000,
+    "profile_samples": [
+      {
+        "gc_samples": "1",
+        "interval_seconds": "0.001",
+        "mode": "safe_reference",
+        "samples": "194",
+        "samples_with_profile_loop": "194",
+        "sampling_time": "0.194"
+      },
+      {
+        "gc_samples": "30",
+        "interval_seconds": "0.001",
+        "mode": "direct",
+        "samples": "553",
+        "samples_with_profile_loop": "553",
+        "sampling_time": "0.553"
+      }
+    ],
+    "source_state_rows": 2336,
+    "timing_samples": 98,
+    "timing_series": 14
+  },
+  "utc": "2026-09-07T19:56:01.339394+00:00"
+}

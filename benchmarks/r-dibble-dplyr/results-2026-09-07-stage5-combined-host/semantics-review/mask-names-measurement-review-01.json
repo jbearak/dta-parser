@@ -1,0 +1,174 @@
+{
+  "assessment": "Both completed measurement receipts and both raw audits bind unchanged inputs and exact products. Independent saved-RDS readers reproduce all14 numeric millisecond medians from98 raw second samples and allocation/GC fields. All1824 expected source-state rows remain owned, unexposed and backing-stable. Common driver/corpus/runtime identities and R commands match the corresponding622 records exactly after excluding only each recorded installed dtatools package directory.",
+  "limits": [
+    "These are one minimum run and one six-case width run of ad976f7a, which includes the622 repair guard and the mask-name change. They are diagnostic evidence, not final combined-source or overallStage5 performance qualification.",
+    "The64-column same-candidate comparisons do not exceed both diagnosis thresholds in these retained observations. This does not replace required repeated or full-matrix checks, and differs from comparing public dispatch across source revisions.",
+    "R/native allocation fields have overlapping scopes and cannot be summed. Temporary Rprofmem events were not retained, and no retained-heap or peak-RSS interpretation is made.",
+    "No profiling or benchmark operations were rerun. The only R process read saved raw timing RDS records.",
+    "Native interrupt patch725 is not part of these measured package identities. OS/Homebrew/fullPython closure exclusions remain explicit."
+  ],
+  "raw_audits": [
+    {
+      "bytes": 799952,
+      "input_bindings": 2516,
+      "manifest": {
+        "bytes": 1316,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-wide-minimum-audit-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-wide-minimum-audit-01/manifest.json",
+        "sha256": "741eadb811ed665c07918c84a4fd5db78de5a89bf9d9127e55a14a11df13aab5"
+      },
+      "name": "candidate-ad976-wide-minimum-audit-01",
+      "products": 3,
+      "receipt": {
+        "bytes": 443,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-wide-minimum-audit-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-wide-minimum-audit-01-receipt.json",
+        "sha256": "1dd2b0a14bba1ec50017756ebc67d4706e696937517b626659b5ca387937bbf2"
+      }
+    },
+    {
+      "bytes": 804329,
+      "input_bindings": 2526,
+      "manifest": {
+        "bytes": 1316,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-width-repeat-audit-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-width-repeat-audit-01/manifest.json",
+        "sha256": "4ebde6aac561244cb05094b12dc247c87bf7df27bd37d41ccd199576eae10fdf"
+      },
+      "name": "candidate-ad976-width-repeat-audit-01",
+      "products": 3,
+      "receipt": {
+        "bytes": 443,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-width-repeat-audit-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-width-repeat-audit-01-receipt.json",
+        "sha256": "3d4f39117f0d1f3695fe55a976a7b61617ff6a0be5835fa85a46468c28bf820b"
+      }
+    }
+  ],
+  "raw_recalculation": {
+    "command": [
+      "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-retained-records-01.R",
+      "/private/tmp/dta-direct-stage5-validation/root-expression-performance",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review"
+    ],
+    "exit_code": 0,
+    "products": [
+      {
+        "bytes": 2132,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-retained-records-01.R",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-retained-records-01.R",
+        "sha256": "b7f884caf89900c86af18951a2a92badd84f1f03e83347399c729540b314f0fd"
+      },
+      {
+        "bytes": 93,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-retained-records-01.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-retained-records-01.log",
+        "sha256": "c89451806969d89f7f94cd9ddc1fa42ab1959805c8165a5011c264dc048f5d5b"
+      },
+      {
+        "bytes": 9732,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-raw-recalculation-01.csv",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-raw-recalculation-01.csv",
+        "sha256": "3622e3cec3419a14fecea40c5403ee26439553bb97d91026320aa929875f9c56"
+      }
+    ]
+  },
+  "records": [
+    {
+      "bytes": 1176299,
+      "input_bindings": 3404,
+      "manifest": {
+        "bytes": 4237,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-wide-minimum-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-wide-minimum-01/manifest.json",
+        "sha256": "b8b9e6bac51569c967bc7f5fc8f6fa52bc025ac1eeaf76c35c57c65479853179"
+      },
+      "name": "candidate-ad976-wide-minimum-01",
+      "products": 10,
+      "receipt": {
+        "bytes": 531,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-wide-minimum-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-wide-minimum-01-receipt.json",
+        "sha256": "802b57c94b13acbaa84d0f038600c01d6ee07d110639d57ac46c9e61c795e62c"
+      }
+    },
+    {
+      "bytes": 1283268,
+      "input_bindings": 3404,
+      "manifest": {
+        "bytes": 8611,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-width-repeat-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-width-repeat-01/manifest.json",
+        "sha256": "95c72eda0256442f77a5cc1387c1f24e8864eefb0d34dfa1c8e389ac7df04da8"
+      },
+      "name": "candidate-ad976-width-repeat-01",
+      "products": 20,
+      "receipt": {
+        "bytes": 531,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-width-repeat-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-ad976-width-repeat-01-receipt.json",
+        "sha256": "e403eb940865265a36a3c76152336b937e983dfc1cebac1cae2bf9fde6adb1d4"
+      }
+    }
+  ],
+  "reviewer_script": {
+    "bytes": 8198,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-measurement-review-01.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-measurement-review-01.py",
+    "sha256": "5a939c36d6e185fb982d413c58cc70f91bf57ae91052304535714a23b89bb7f5"
+  },
+  "same_candidate_64_column_observations": [
+    {
+      "columns": 64,
+      "delta_ms": 0.218078988837078,
+      "diagnose": false,
+      "direct_ms": 0.866863003466278,
+      "operation": "retain",
+      "ratio": 1.3361349600478625,
+      "run": "candidate-ad976-wide-minimum-01",
+      "safe_reference_ms": 0.6487840146292
+    },
+    {
+      "columns": 64,
+      "delta_ms": 0.23263398907147304,
+      "diagnose": false,
+      "direct_ms": 0.846691007609479,
+      "operation": "retain",
+      "ratio": 1.3788475370338504,
+      "run": "candidate-ad976-width-repeat-01",
+      "safe_reference_ms": 0.614057018538006
+    },
+    {
+      "columns": 64,
+      "delta_ms": 0.3933540283469501,
+      "diagnose": false,
+      "direct_ms": 7.08779301203322,
+      "operation": "dependent",
+      "ratio": 1.0587583260233633,
+      "run": "candidate-ad976-width-repeat-01",
+      "safe_reference_ms": 6.69443898368627
+    }
+  ],
+  "source": "ad976f7a6854be19db08549a3ef87373448fdfe9",
+  "status": "mask_names_retained_measurement_evidence_clear",
+  "totals": {
+    "source_state_rows": 1824,
+    "timing_samples": 98,
+    "timing_series": 14
+  },
+  "utc": "2026-09-07T20:03:58.560540+00:00"
+}

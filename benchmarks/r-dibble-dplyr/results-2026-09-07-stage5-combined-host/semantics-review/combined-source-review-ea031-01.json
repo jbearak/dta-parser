@@ -1,0 +1,208 @@
+{
+  "assessment": [
+    "The actual combined diff was read in context, including all changed R/C code, helper and public tests, native generation protection/return paths, metadata-copy callers, mask cleanup and four documentation files. Exact variant blob equality supplements that review; it is not its sole basis.",
+    "The non-data.table early return occurs after C_dtatools_metadata_copy has produced the isolated metadata handle. It preserves all copying, markers, captured values and ordinary-table capacity repair. It does not bypass ownership copying or native validation.",
+    "Mask name history preserves unique first-seen scalar character names. Removing and re-adding a name leaves one expiry promise while every generation retains its own metadata copy and weak cleanup reference. The current-column order, old capture values, group IDs, delayed obsolete-read warnings and release of generation values/chunks/groups/rows remain unchanged.",
+    "The native control remains private and unarmed by default. Both generation entry points copy and reset it before validation. Numeric compact, numeric double and character checkpoints keep staged values protected and private before return/install; no table slot or reference state is committed by the checkpoint. Existing polling loops and ordinary zero-mode installation policies are unchanged.",
+    "The native control is armed only by the private test paths. Metadata-copy and name-history changes do not arm it or share its state. Real native errors/interrupts still unwind through existing evaluator/context cleanup; the two R changes add no callback, persistent group root or delayed source handle.",
+    "The seven-case helper tests preserve the original compact numeric/character/dictionary cases and add double first/existing cases, alias/reference/cache checks and successful retries. POSIX readiness precedes SIGINT, with bounded waits. Native entry and scoped R validation unwind both disarm the control.",
+    "The added public test checks removed/re-added captured generations during the call, both post-call obsolete reads and the shared interrupted-promise warning, final output order and isolation after a later input write.",
+    "CONTRIBUTING describes the private readiness procedure. ADR and NEWS describe the setup changes without relabeling prior measured libraries. The corrected progress text confines the12-row minimization to retain and explicitly states dependent was not separately minimized. Both distinct source variants, unproven original CI cause and pending combined qualification retain their scopes.",
+    "NAMESPACE, DESCRIPTION, optional dplyr adapter and qualification runners are unchanged in this combined delta. The final progress-only correction has the same package tree as a2d8b6a; gates running with exact a2 identities must retain those original source/runner identities."
+  ],
+  "changed_files": [
+    {
+      "bytes": 6006,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/CONTRIBUTING.md",
+      "resolved": "/private/tmp/dta-direct-stage5/CONTRIBUTING.md",
+      "sha256": "bf480cf0b36c74ed5edea51978a437c6b452467c6f3fda911a624870a2e87387"
+    },
+    {
+      "bytes": 4806,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/docs/adr/0034-evaluate-dibble-expressions-with-call-local-group-context.md",
+      "resolved": "/private/tmp/dta-direct-stage5/docs/adr/0034-evaluate-dibble-expressions-with-call-local-group-context.md",
+      "sha256": "33170e10548a377184f80e9b28a9cc6ae0235d45e4ec8ec91bfe9432b8784a94"
+    },
+    {
+      "bytes": 70790,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance-progress.md",
+      "resolved": "/private/tmp/dta-direct-stage5/docs/plans/dibble-result-performance-progress.md",
+      "sha256": "cac60cd3adb2221d4026629a92f3ccd37c67f3fe6ba7c1770970e118a3c08af3"
+    },
+    {
+      "bytes": 779,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/r-package/dtatools/NEWS.md",
+      "resolved": "/private/tmp/dta-direct-stage5/r-package/dtatools/NEWS.md",
+      "sha256": "929767a8e99fb6495f4f54751736f0dd5b0f71e7523bc1dad1d11edf6a483f9c"
+    },
+    {
+      "bytes": 20888,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/r-package/dtatools/R/dibble-expressions.R",
+      "resolved": "/private/tmp/dta-direct-stage5/r-package/dtatools/R/dibble-expressions.R",
+      "sha256": "737990459cdb6c43ed8d6064a7e5095ef394bd85e15a9f1c9e343f9e9f3da78f"
+    },
+    {
+      "bytes": 9703,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/r-package/dtatools/R/output-container.R",
+      "resolved": "/private/tmp/dta-direct-stage5/r-package/dtatools/R/output-container.R",
+      "sha256": "b84d0c3a9db5079c49ec0582b8010740c0ead96da0fe1397a840101d493bdefc"
+    },
+    {
+      "bytes": 337687,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/r-package/dtatools/src/init.c",
+      "resolved": "/private/tmp/dta-direct-stage5/r-package/dtatools/src/init.c",
+      "sha256": "e654c9f73d07158fdf5ac1a20ce4c29bded2909df3172204d14d9ad7530afccf"
+    },
+    {
+      "bytes": 5105,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/r-package/dtatools/tests/testthat/helper-generation-interrupt.R",
+      "resolved": "/private/tmp/dta-direct-stage5/r-package/dtatools/tests/testthat/helper-generation-interrupt.R",
+      "sha256": "3ecad46272d33198ac8342e0b69fd358342361c4cd9c91e600ce11d08cf60196"
+    },
+    {
+      "bytes": 21914,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/r-package/dtatools/tests/testthat/test-dibble-expressions.R",
+      "resolved": "/private/tmp/dta-direct-stage5/r-package/dtatools/tests/testthat/test-dibble-expressions.R",
+      "sha256": "e08552a8e0b4322321ade5262a4faf85f886d6e1dfed93570c73f0d672bdd957"
+    },
+    {
+      "bytes": 112390,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5/r-package/dtatools/tests/testthat/test-mutate-data.R",
+      "resolved": "/private/tmp/dta-direct-stage5/r-package/dtatools/tests/testthat/test-mutate-data.R",
+      "sha256": "802824c6dfc173d536b4dece0d5d876ab7e5ae7f5723521063993e9dfd0d2588"
+    }
+  ],
+  "final_combined": "ea031bec2df4d6711f1214b5dd3d00ebf029b3f1",
+  "initial_combined": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "limits": [
+    "Source and documentation clearance only. Fresh combined exact installation/full/package/Rust/native and minimum-runtime evidence remain subject to their separate reviews. This report does not mark those gates complete.",
+    "Earlier57309,622,ad976 and725 measurements and tests keep their exact source/library identities. None is relabeled as a result for the combined native DLL or final package tree.",
+    "Full performance, memory/write-cost acceptance, external substantive review, CI and normal merge remain pending. The bounded width observations alone do not satisfy them.",
+    "No tests, builds, R operations, profiling or timing runs were performed for this review. No production or documentation files were edited by this reviewer."
+  ],
+  "package_tree": "b08c77d91bdce67032f13aced90c29d068d6e95a",
+  "prior_bounded_reviews": [
+    {
+      "bytes": 5091,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-source-evidence-review-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-source-evidence-review-01.json",
+      "sha256": "e5e9f8671b9341ef6f940fef7b30e03a3e6302a106f6ce19d7116118e2f458f0"
+    },
+    {
+      "bytes": 4666,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-source-install-review-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-source-install-review-01.json",
+      "sha256": "8dabffdca3edaafb17adbf541889304ac74cea7c00214a7b468d7ff4f8576c31"
+    },
+    {
+      "bytes": 5545,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-full-evidence-review-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-full-evidence-review-01.json",
+      "sha256": "6a4fc3406c0d050df8fea5b824d4777ba9694d53257bcafb218918e5be1a0379"
+    },
+    {
+      "bytes": 7136,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-generation-fix-review-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-generation-fix-review-01.json",
+      "sha256": "750a7199d612b2adf7980caf2c2f7635b355412625ebae6874ef42c39b639078"
+    },
+    {
+      "bytes": 7040,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-generation-final-evidence-review-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-generation-final-evidence-review-01.json",
+      "sha256": "d2832a9f279820e9df14c69c2e09e9326e6053011c87756825e32b01da2f086b"
+    },
+    {
+      "bytes": 23493,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/width-profile-evidence-review-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/width-profile-evidence-review-01.json",
+      "sha256": "4215f3762c02c888444018107889c5e2a509b9c5c2aefb0aa3845e21769f6978"
+    },
+    {
+      "bytes": 10919,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-measurement-review-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-measurement-review-01.json",
+      "sha256": "8ebf7b4dea2250ac4f17f6b6054e59903fc8fe2c215276766ef7ccdc059b2e44"
+    },
+    {
+      "bytes": 8808,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-measurement-review-01.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-measurement-review-01.json",
+      "sha256": "a87c1b2b086f19a830f30ebeaf0d624561757e1f5ad7fc0f4ff130cc3bd40f57"
+    }
+  ],
+  "resolved_findings": [
+    {
+      "fix_source": "ea031bec2df4d6711f1214b5dd3d00ebf029b3f1",
+      "initial_source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+      "issue": "Initial progress text could imply that the12-row retain witness minimized both flagged cases and excluded payload size as the main cause for both.",
+      "kind": "documentation_scope",
+      "resolution": "Actual corrected diff distinguishes three width repeats for both cases from the12-row retain-only minimization and states dependent was not separately minimized."
+    },
+    {
+      "issue": "Diagnostics evidence branch is based on helper head805cc079 while progress says PR201 remains unmerged.",
+      "kind": "status_clarification",
+      "resolution": "Parent confirmed root current20:01 capture has15CI passes but no substantive review and a rate-limited uncompleted CodeRabbit action. Diagnostics branch is stacked and unpublished, so the existing no-merge claim is consistent. No external action was taken by this reviewer."
+    }
+  ],
+  "reviewed_base": "f74f15f98be26a0fc0d7d73a144e5f6319af2c5f",
+  "reviewer_script": {
+    "bytes": 8231,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-source-review-ea031-01.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-source-review-ea031-01.py",
+    "sha256": "66c26db3b6db7ee1fbbffb73d8466ebf5d5495360dfeebd6c0da5745c7d66ce7"
+  },
+  "status": "combined_actual_source_and_documentation_clear",
+  "utc": "2026-09-07T20:10:01.094887+00:00",
+  "variant_blob_checks": [
+    {
+      "git_blob": "3adf4608edca54429a82bbce68085fdc5b9ecfe4",
+      "path": "r-package/dtatools/R/output-container.R",
+      "reviewed_variant": "622ffc194372d9882a78637077dff42f657b14a3"
+    },
+    {
+      "git_blob": "a41ca5ff4309c527ae7153e90ef6fa12d58e787a",
+      "path": "r-package/dtatools/R/dibble-expressions.R",
+      "reviewed_variant": "ad976f7a6854be19db08549a3ef87373448fdfe9"
+    },
+    {
+      "git_blob": "6a2d2a926b48e0f2e70d370468537959f52b41f3",
+      "path": "r-package/dtatools/tests/testthat/test-dibble-expressions.R",
+      "reviewed_variant": "ad976f7a6854be19db08549a3ef87373448fdfe9"
+    },
+    {
+      "git_blob": "e541cdccfc84184d066befd8f6d3d0b42075b872",
+      "path": "r-package/dtatools/src/init.c",
+      "reviewed_variant": "725974aeab7c5c87a09dc6b33eaa0b5a85b14e4e"
+    },
+    {
+      "git_blob": "153d395e64b322efb2e42802bc4e034c118198da",
+      "path": "r-package/dtatools/tests/testthat/helper-generation-interrupt.R",
+      "reviewed_variant": "725974aeab7c5c87a09dc6b33eaa0b5a85b14e4e"
+    },
+    {
+      "git_blob": "7a21a2bf1ab6b0f3700667a63e4d6c593a805183",
+      "path": "r-package/dtatools/tests/testthat/test-mutate-data.R",
+      "reviewed_variant": "725974aeab7c5c87a09dc6b33eaa0b5a85b14e4e"
+    }
+  ]
+}

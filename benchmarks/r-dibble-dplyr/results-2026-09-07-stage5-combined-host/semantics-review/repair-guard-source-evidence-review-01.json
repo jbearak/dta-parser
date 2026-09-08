@@ -1,0 +1,104 @@
+{
+  "assessment": [
+    "Exactly one added guard. All remaining function statements, callers, package native code, exports and tests are byte-identical to the reviewed 57309 source.",
+    "For objects without data.table inheritance, the previous ordinary-table predicate cannot match its required data.table/data.frame class sequence. Both versions therefore return the same input object without marker removal, capacity allocation or column mutation. The guard omits the repeated predicates and class/set-difference work.",
+    "For objects with data.table inheritance, the existing version check, stray metadata marker removal and ordinary-table capacity repair execute unchanged. Subclass behavior and reader/metadata closing policies are preserved.",
+    "The exact exported package, consumed built archive, installed package products and full-gate preflight are bound to source 622ffc19 and package tree 17337851. All 106 namespace exports remain. The 233 installer export records describe files, not public exports.",
+    "The host full test results recalculate to 16624 passes, zero failures/errors/skips, and four established warnings."
+  ],
+  "base": "57309d40433a92d99849fefa155ae7b22b86b337",
+  "limits": [
+    "This is an isolated one-variable R source variant. Native interrupt patch 725974a is not integrated.",
+    "No benchmark, profile, R probe or new test execution was performed by this reviewer. This review checks retained host evidence and source semantics; timing benefit remains to be measured.",
+    "The host gate is not a new clean minimum-R, Windows, Rust or R CMD check qualification. The retained input scopes do not freeze the full OS dylib, SDK or Python runtime closures."
+  ],
+  "package_tree": "1733785140bd213d5bfb176db9258d6790595843",
+  "records": [
+    {
+      "commands": 7,
+      "input_bytes": 863236737,
+      "inputs": 11265,
+      "manifest": {
+        "bytes": 128797,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/repair-guard/candidate-01/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/repair-guard/candidate-01/output-manifest.json",
+        "sha256": "aba71f0eef5d7760305d3847e0a683af9ce2dabefe98467a943f527b355dc9ce"
+      },
+      "name": "candidate-01",
+      "product_bytes": 51601961,
+      "products": 314,
+      "receipt": {
+        "bytes": 533,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/repair-guard/candidate-01/completed-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/repair-guard/candidate-01/completed-receipt.json",
+        "sha256": "04b29e79d4bbb12b4375b5c48bdada59b527889bcbbf4646cedc975ba9661894"
+      }
+    },
+    {
+      "commands": 2,
+      "input_bytes": 2397571342,
+      "inputs": 58623,
+      "manifest": {
+        "bytes": 1577721,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/repair-guard/full-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/repair-guard/full-01/manifest.json",
+        "sha256": "226a4b50598d78d966d24031288ad46b44bcd5c6c02391a955dd13d0efc60916"
+      },
+      "name": "full-01",
+      "product_bytes": 243158109,
+      "products": 3032,
+      "receipt": {
+        "bytes": 504,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/repair-guard/full-01/receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/repair-guard/full-01/receipt.json",
+        "sha256": "85e923bd5b6a9e2666a75b2b8fb8de4f1fdb0b072d0c0e72312ee5b8c0f8715c"
+      }
+    }
+  ],
+  "reviewer_script": {
+    "bytes": 6519,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-source-evidence-review-01.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-source-evidence-review-01.py",
+    "sha256": "3050107170022ac115f3141d3217d2b6aad1dcc4de6207206f91de4b9c12893c"
+  },
+  "source": "622ffc194372d9882a78637077dff42f657b14a3",
+  "source_file": {
+    "bytes": 9703,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-repair-guard/r-package/dtatools/R/output-container.R",
+    "resolved": "/private/tmp/dta-direct-stage5-repair-guard/r-package/dtatools/R/output-container.R",
+    "sha256": "b84d0c3a9db5079c49ec0582b8010740c0ead96da0fe1397a840101d493bdefc"
+  },
+  "status": "source_install_host_full_evidence_clear",
+  "test_rows": 970,
+  "totals": {
+    "error": 0,
+    "failed": 0,
+    "passed": 16624,
+    "skipped": 0,
+    "warning": 4
+  },
+  "utc": "2026-09-07T19:46:13.316359+00:00",
+  "warnings": [
+    {
+      "file": "test-dibble.R",
+      "test": "gen and := accept factors as mutate does",
+      "warning": "1"
+    },
+    {
+      "file": "test-dibble.R",
+      "test": "a logical overwriting a Stata numeric keeps its storage",
+      "warning": "1"
+    },
+    {
+      "file": "test-dibble.R",
+      "test": "copying replacement isolates vectors and preserves grouping",
+      "warning": "2"
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "assessment": "All16 package commands passed on exact a2 sources and runner, including archive/vendor tests, interoperability, corpus framework, pinned roxygen, conformance, source build/archive, R CMD check and binary build. All completed products and declared inputs are unchanged. The built source archive was bound before its three consuming commands by the unchanged previously reviewed guard. Actual source archive code/test bytes match a2. Source/binary/check-installed/binary-installed NOTICE and NEWS match exact source bytes. The current Rcheck retains the same three warning and two note sections as package-final-02 after normalizing output/build paths, with no NEWS parser sub-note. Its retained testthat output has16750 passes, no failures/skips and four known warnings.",
+  "binary_archive": {
+    "bytes": 3707993,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/binary/dtatools_0.7.1.tgz",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/binary/dtatools_0.7.1.tgz",
+    "sha256": "d4479dba3be5bd9893e5fe8f49f3b2b2f35025e2bb99e381fdab001d0c311129"
+  },
+  "bound_inputs": 63104,
+  "command_exits": {
+    "archive": 0,
+    "archive-unit": 0,
+    "binary": 0,
+    "build": 0,
+    "check": 0,
+    "conformance": 0,
+    "corpus-framework": 0,
+    "haven": 0,
+    "haven-conformance": 0,
+    "labelled": 0,
+    "preflight": 0,
+    "roxygen": 0,
+    "rust-source-hash": 0,
+    "vendor": 0,
+    "vendor-rebuild-unit": 0,
+    "vendor-unit": 0
+  },
+  "consumed_source_archive": {
+    "bytes": 9579390,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools_0.7.1.tar.gz",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools_0.7.1.tar.gz",
+    "sha256": "f8a2aa4b122ac7963c32f700984b790e1bd90bf86d4dcfda2fae78c5ccc6f4cb"
+  },
+  "input_bytes": 2716161371,
+  "limits": [
+    "The warning categories remain recorded: macOS link deployment version, vendored GNU Makefiles and Rust abort entry point; notes cover vendored CITATION and generated flag_check.c newline. They are not relabeled as zero-warning checks.",
+    "This gate uses host R4.6.1 with --no-manual. It does not replace minimum-runtime or Windows checks, pending native allocation/readiness qualification, performance/memory/write-cost acceptance or external CI/review/merge.",
+    "All outputs retain a2 source and runner identities. The later ea031 progress-only correction has the same package tree.",
+    "No package command, test or benchmark was rerun. Archives were read without extraction and retained manifests, input files and current Rcheck output were independently audited."
+  ],
+  "manifest": {
+    "bytes": 5874420,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/manifest.json",
+    "sha256": "247bb6575bcfc6143b51553e4b7f3c6091377015c750bda6d67161baa07dba71"
+  },
+  "package_tree": "b08c77d91bdce67032f13aced90c29d068d6e95a",
+  "product_bytes": 1600381118,
+  "products": 11190,
+  "rcheck": {
+    "baseline_comparison": {
+      "bytes": 13462,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/dtatools.Rcheck/00check.log",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-final-02/dtatools.Rcheck/00check.log",
+      "sha256": "2e05581163e2b93f42c39fa3c7697e89c1dc7eeed9c2f4a194ac9cfe0f743b4e"
+    },
+    "log": {
+      "bytes": 13552,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools.Rcheck/00check.log",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools.Rcheck/00check.log",
+      "sha256": "b6ff6fc02d5e2635076c044a716e00d8bbbb099c8a42cda79d8b0435e22901b3"
+    },
+    "news_parser_subnote_absent": true,
+    "normalized_warning_note_sections_match": true,
+    "notes": 2,
+    "test_failures": 0,
+    "test_passes": 16750,
+    "test_skips": 0,
+    "test_warnings": 4,
+    "warnings": 3
+  },
+  "receipt": {
+    "bytes": 532,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/receipt.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/receipt.json",
+    "sha256": "a015a466e8de2d0314bf28b49eb29a5533b423e17de4839944aa3f43297a892d"
+  },
+  "reviewer_script": {
+    "bytes": 6884,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-package-evidence-review-01.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-package-evidence-review-01.py",
+    "sha256": "f0b0ba52be27c35b20871ba378db4adb0a3a8b4dd915f402e6cb6173728f7073"
+  },
+  "runner": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "status": "combined_exact_host_package_gate_evidence_clear",
+  "utc": "2026-09-07T20:23:08.751716+00:00"
+}

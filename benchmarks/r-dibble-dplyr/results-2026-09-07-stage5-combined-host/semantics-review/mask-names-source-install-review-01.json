@@ -1,0 +1,68 @@
+{
+  "assessment": [
+    "The actual production diff replaces one union call only. The additional21 test lines introduce a public remove/re-add/capture-expiry regression. No native, grouping, result assembly, reference marker or batching code changes.",
+    "state$names starts as an empty plain character vector. add() is called only from the input names(columns) loop and later names(pending) loop, each passing a scalar character name. Input column names are validated for missing, empty and duplicate names before initialization.",
+    "Given the maintained unique character history, the membership guard and append preserve union first-seen ordering and leave overwrites unchanged. The membership operator returns a scalar nonmissing logical for these internal names.",
+    "remove() still deletes only state$current. Every old name remains in state$names, and a re-add leaves one first-seen history entry. forget() therefore still installs the same one expired promise per historical name, including a name removed again before call exit.",
+    "Every add still creates and tracks a distinct generation before and after the history update. Existing captures keep their generation and fixed group; cleanup releases all reachable generation payloads through the unchanged weak-reference list.",
+    "The actual new public test reads old and re-added x generations during the call, removes x again, checks output names and values, then requires both late captures to error and the second read to retain its restarting-promise warning. A later source write leaves the returned after column unchanged.",
+    "The exact installer receipt, all products/inputs,233 exported Git files, consumed built source archive and installed provenance match ad976f7a and package tree bb894a45. Public namespace exports remain106."
+  ],
+  "base": "622ffc194372d9882a78637077dff42f657b14a3",
+  "limits": [
+    "This report clears source and the retained host installation. The separate full test gate is still pending review and no performance benefit is claimed.",
+    "This source stacks only the mask-name change over622 repair guard. The native interrupt patch725 remains separate.",
+    "No new test, R probe, profile or benchmark was executed by this reviewer. OS/SDK/full Python closure limits remain those of the retained installer."
+  ],
+  "package_tree": "bb894a45ef1a7b9a2dd11be94388c80121fae769",
+  "records": [
+    {
+      "commands": 7,
+      "input_bytes": 863237575,
+      "inputs": 11265,
+      "manifest": {
+        "bytes": 127537,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/mask-names/candidate-01/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/mask-names/candidate-01/output-manifest.json",
+        "sha256": "7d265ee80cf1c10a18a140f23690d3fdc3de080458b45ac8d71fe0b581aae96a"
+      },
+      "name": "candidate-01",
+      "product_bytes": 51600651,
+      "products": 314,
+      "receipt": {
+        "bytes": 529,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/mask-names/candidate-01/completed-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/mask-names/candidate-01/completed-receipt.json",
+        "sha256": "660c67a3bb9e9e3ed18beed9e0baca4878b548a136adf26c860f40b16a87eac3"
+      }
+    }
+  ],
+  "reviewer_script": {
+    "bytes": 6711,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-source-install-review-01.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-source-install-review-01.py",
+    "sha256": "265ec061b7ec146a44c51bb20f13698da8808d3ce1d6664d914ad23a1e50ff29"
+  },
+  "source": "ad976f7a6854be19db08549a3ef87373448fdfe9",
+  "source_files": [
+    {
+      "bytes": 20888,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-mask-names/r-package/dtatools/R/dibble-expressions.R",
+      "resolved": "/private/tmp/dta-direct-stage5-mask-names/r-package/dtatools/R/dibble-expressions.R",
+      "sha256": "737990459cdb6c43ed8d6064a7e5095ef394bd85e15a9f1c9e343f9e9f3da78f"
+    },
+    {
+      "bytes": 21914,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-mask-names/r-package/dtatools/tests/testthat/test-dibble-expressions.R",
+      "resolved": "/private/tmp/dta-direct-stage5-mask-names/r-package/dtatools/tests/testthat/test-dibble-expressions.R",
+      "sha256": "e08552a8e0b4322321ade5262a4faf85f886d6e1dfed93570c73f0d672bdd957"
+    }
+  ],
+  "status": "mask_names_source_install_evidence_clear",
+  "utc": "2026-09-07T19:57:33.847606+00:00"
+}

@@ -1,0 +1,489 @@
+{
+  "assessment": "All run/audit receipts, inventories, outputs and declared input identities match. Every seven-sample second series yields the recorded plain millisecond median, allocation and GC fields. Full expected ownership-state matrices are present and stable. Profile raw text exactly reproduces saved RDS and by-self/by-total CSV summaries; both modes completed2000 calls with full source snapshot equality and obsolete-mask checks. Repeat pairs use exactly identical common preparation/runtime records excluding their source-specific installed package trees.",
+  "coordinator": {
+    "bytes": 661,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/width-repeats-01/receipt.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/width-repeats-01/receipt.json",
+    "sha256": "a8060c320021f0279cb57e41cc32cdcea9fad9c3eef1a5bfc0ed30429c3188d2"
+  },
+  "limits": [
+    "This clears the evidence for diagnosis, not overall Stage5 performance. The64-column observations remain subject to the separately documented diagnosis flags; no successful optimization is claimed.",
+    "Raw Rprof sample counts multiplied by the requested1ms interval are nominal sampling summaries, not independent wall-clock phase timings. Stack ancestry and cumulative totals overlap; native children can be charged to R parent frames. GC samples remain included.",
+    "Temporary Rprofmem event files are not retained; R/native allocation summaries remain separate and overlapping. They cannot be added or read as retained memory/peak RSS.",
+    "The minimized12-row run changes only observations within the same64-column retain constructor; it narrows the reproduction without identifying a cause.",
+    "The profile uses unchanged operations with profiler/loop overhead and retained validation snapshots. Setup, checks and source snapshots are outside its sampled loop. No namespace tracing or body changes occurred in the reviewed driver.",
+    "All records still belong to baselinef622 or candidate57309. Future source changes or native integration need distinct package identities and qualification."
+  ],
+  "observed_64_column_public_dispatch_flags": [
+    {
+      "baseline_ms": 1.18494100752287,
+      "candidate_ms": 2.30784901941661,
+      "delta_ms": 1.1229080118937402,
+      "diagnose": true,
+      "operation": "retain",
+      "ratio": 1.9476488743023501,
+      "repeat": 1
+    },
+    {
+      "baseline_ms": 8.08716801111586,
+      "candidate_ms": 8.95866399514489,
+      "delta_ms": 0.8714959840290302,
+      "diagnose": false,
+      "operation": "dependent",
+      "ratio": 1.1077628142300437,
+      "repeat": 1
+    },
+    {
+      "baseline_ms": 1.18555600056425,
+      "candidate_ms": 2.26631600526161,
+      "delta_ms": 1.08076000469736,
+      "diagnose": true,
+      "operation": "retain",
+      "ratio": 1.9116060347912593,
+      "repeat": 2
+    },
+    {
+      "baseline_ms": 7.81332899350673,
+      "candidate_ms": 8.87436800985597,
+      "delta_ms": 1.0610390163492411,
+      "diagnose": true,
+      "operation": "dependent",
+      "ratio": 1.1357985843461882,
+      "repeat": 2
+    },
+    {
+      "baseline_ms": 1.20486701780465,
+      "candidate_ms": 2.26238000323065,
+      "delta_ms": 1.0575129854259997,
+      "diagnose": true,
+      "operation": "retain",
+      "ratio": 1.8777009991964595,
+      "repeat": 3
+    },
+    {
+      "baseline_ms": 7.9631020053057,
+      "candidate_ms": 9.00983200699557,
+      "delta_ms": 1.0467300016898697,
+      "diagnose": true,
+      "operation": "dependent",
+      "ratio": 1.1314475189433024,
+      "repeat": 3
+    }
+  ],
+  "raw_audits": [
+    {
+      "bytes": 804014,
+      "input_bindings": 2526,
+      "manifest": {
+        "bytes": 1274,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-01-audit/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-01-audit/manifest.json",
+        "sha256": "0e0d029a9be998a9e8243bda98d2493de9d243c0faee72bcadf6725c5abf1bde"
+      },
+      "name": "baseline-width-repeat-01-audit",
+      "products": 3,
+      "receipt": {
+        "bytes": 429,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-01-audit-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-01-audit-receipt.json",
+        "sha256": "a3019b2f3bfdf43ab629cfdce8a7eee63b046484d5627a1804d37ba9bc3e551a"
+      }
+    },
+    {
+      "bytes": 804059,
+      "input_bindings": 2526,
+      "manifest": {
+        "bytes": 1280,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-01-audit/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-01-audit/manifest.json",
+        "sha256": "8665584391da3f35d6b7b7186de0e6b94a3cf184b2cdf2f0b400de258e9ad84f"
+      },
+      "name": "candidate-width-repeat-01-audit",
+      "products": 3,
+      "receipt": {
+        "bytes": 431,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-01-audit-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-01-audit-receipt.json",
+        "sha256": "bc502c4abe0d154ea6e254bfef868d8feede251f7403647c1fd6c42183c4a9b7"
+      }
+    },
+    {
+      "bytes": 804014,
+      "input_bindings": 2526,
+      "manifest": {
+        "bytes": 1274,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-02-audit/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-02-audit/manifest.json",
+        "sha256": "fb51f8793a36aceb0c31e5f848b60ee585f0ad2ed8fe215f7ff8f69f2c8563e3"
+      },
+      "name": "baseline-width-repeat-02-audit",
+      "products": 3,
+      "receipt": {
+        "bytes": 429,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-02-audit-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-02-audit-receipt.json",
+        "sha256": "801a6ed7dd218a8078b63a89edb8a0ba272aab48846baf18fdac33dce30eceac"
+      }
+    },
+    {
+      "bytes": 804059,
+      "input_bindings": 2526,
+      "manifest": {
+        "bytes": 1280,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-02-audit/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-02-audit/manifest.json",
+        "sha256": "a9e0adab9a73395d6c564275408bc4b9661bd2fff81f50a4f37bd849a391fc74"
+      },
+      "name": "candidate-width-repeat-02-audit",
+      "products": 3,
+      "receipt": {
+        "bytes": 431,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-02-audit-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-02-audit-receipt.json",
+        "sha256": "a5c726400a9ec20dda62c636e0e622dc29525f5ec793846916ef807b3d84b60a"
+      }
+    },
+    {
+      "bytes": 804014,
+      "input_bindings": 2526,
+      "manifest": {
+        "bytes": 1274,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-03-audit/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-03-audit/manifest.json",
+        "sha256": "ded2386a1cb95795e1e931be7fbe2c18d8504f6a0bddefa6e2dc3b31583bdf2d"
+      },
+      "name": "baseline-width-repeat-03-audit",
+      "products": 3,
+      "receipt": {
+        "bytes": 429,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-03-audit-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-03-audit-receipt.json",
+        "sha256": "f774de37fbb3825ebe31718703bf3744d88abe2f11baad6db09ed5178ef81d38"
+      }
+    },
+    {
+      "bytes": 804059,
+      "input_bindings": 2526,
+      "manifest": {
+        "bytes": 1280,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-03-audit/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-03-audit/manifest.json",
+        "sha256": "3a889ab60ca2e7ba2b22c6e72060c5eea56f4a75b126c843e49ce72b9af3c493"
+      },
+      "name": "candidate-width-repeat-03-audit",
+      "products": 3,
+      "receipt": {
+        "bytes": 431,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-03-audit-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-03-audit-receipt.json",
+        "sha256": "052a6b282c1cd0170b05b9f3497cae06b08c415c882d269bd8127e4d5ae07f03"
+      }
+    },
+    {
+      "bytes": 799777,
+      "input_bindings": 2516,
+      "manifest": {
+        "bytes": 1274,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-wide-minimum-01-audit/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-wide-minimum-01-audit/manifest.json",
+        "sha256": "17133e5c467490aaf58fd28c0c425dddcd2434e989c61885b64f384dd515150c"
+      },
+      "name": "baseline-wide-minimum-01-audit",
+      "products": 3,
+      "receipt": {
+        "bytes": 429,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-wide-minimum-01-audit-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-wide-minimum-01-audit-receipt.json",
+        "sha256": "d557de9c70693c6d797783599b8bf22a33d4c80155e4147cc2929ecdb2f953df"
+      }
+    },
+    {
+      "bytes": 799802,
+      "input_bindings": 2516,
+      "manifest": {
+        "bytes": 1280,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-minimum-01-audit/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-minimum-01-audit/manifest.json",
+        "sha256": "448b071f27a9c4d1069137486525dcfc14aae87f9967469dd10fc701d26e4f43"
+      },
+      "name": "candidate-wide-minimum-01-audit",
+      "products": 3,
+      "receipt": {
+        "bytes": 431,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-minimum-01-audit-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-minimum-01-audit-receipt.json",
+        "sha256": "7c8f8314ee9d6f8ed59f4aa1560ae3e415af3f8c2636a23df9b337c28095aa5c"
+      }
+    }
+  ],
+  "raw_recalculation": {
+    "command": [
+      "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "--vanilla",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/width-profile-retained-records-01.R",
+      "/private/tmp/dta-direct-stage5-validation/root-expression-performance",
+      "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review"
+    ],
+    "exit_code": 0,
+    "products": [
+      {
+        "bytes": 4802,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/width-profile-retained-records-01.R",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/width-profile-retained-records-01.R",
+        "sha256": "39eb2dbc9f6682708261dc02b3d2a0479d44d79ac0d9abe10be397594ce34738"
+      },
+      {
+        "bytes": 211,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/width-profile-retained-records-01.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/width-profile-retained-records-01.log",
+        "sha256": "f39c94e8b5cffb42e37d35cc78e787d2d7d74c41f28d543935feff21f7227160"
+      },
+      {
+        "bytes": 48869,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/width-minimum-raw-recalculation-01.csv",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/width-minimum-raw-recalculation-01.csv",
+        "sha256": "847393cbbf2f111649d30b9d765b86cde552648fc45388b935518b01896f00d5"
+      },
+      {
+        "bytes": 168,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/profile-summary-recalculation-01.csv",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/profile-summary-recalculation-01.csv",
+        "sha256": "3f8fe3272e7d98be0ca26ffd73c6883031e6e6fb510500ed464865fc1af8a37f"
+      }
+    ]
+  },
+  "records": [
+    {
+      "bytes": 1282644,
+      "input_bindings": 3403,
+      "manifest": {
+        "bytes": 8331,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-01/manifest.json",
+        "sha256": "cfaca812e17332fe556012bcd0b9e13fa559d96d752b4d027400d19b4fa6b456"
+      },
+      "name": "baseline-width-repeat-01",
+      "products": 20,
+      "receipt": {
+        "bytes": 517,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-01-receipt.json",
+        "sha256": "54f3ab8f411b071fcbbe149dd7b27dc1b009abbbb82649ce96428fbb9f32fa8b"
+      }
+    },
+    {
+      "bytes": 1284441,
+      "input_bindings": 3404,
+      "manifest": {
+        "bytes": 8371,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-01/manifest.json",
+        "sha256": "ff5b1e42546e3a802f68ca16d56ba4b0041f7774816acd75e7396d205c1365ea"
+      },
+      "name": "candidate-width-repeat-01",
+      "products": 20,
+      "receipt": {
+        "bytes": 519,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-01-receipt.json",
+        "sha256": "b302e933ea5291e377d768dbbf7f1a641beaf3549521c4d2c960df28f60c7149"
+      }
+    },
+    {
+      "bytes": 1282640,
+      "input_bindings": 3403,
+      "manifest": {
+        "bytes": 8331,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-02/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-02/manifest.json",
+        "sha256": "5ec92fbd7bc6d15a209a61a163e22214c93bf1136f468d715c5ae01f229b5777"
+      },
+      "name": "baseline-width-repeat-02",
+      "products": 20,
+      "receipt": {
+        "bytes": 517,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-02-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-02-receipt.json",
+        "sha256": "0a43c83d3c2e9084dfe2a0e7c75964f40d3b701470110a6d70f0fa83947becd8"
+      }
+    },
+    {
+      "bytes": 1284445,
+      "input_bindings": 3404,
+      "manifest": {
+        "bytes": 8371,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-02/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-02/manifest.json",
+        "sha256": "43c689a8114a3cdb600d4e5efa5267ec5d5a61868113f2fb90b27941ce5ec21d"
+      },
+      "name": "candidate-width-repeat-02",
+      "products": 20,
+      "receipt": {
+        "bytes": 519,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-02-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-02-receipt.json",
+        "sha256": "c7034f0ed6218a39faa4bc3d7cd937beb50cd63ca6b287f8324e0d30b6b5e03d"
+      }
+    },
+    {
+      "bytes": 1282654,
+      "input_bindings": 3403,
+      "manifest": {
+        "bytes": 8331,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-03/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-03/manifest.json",
+        "sha256": "b6495ba10c556a69633f73bd665ed86f531cc4e2e28f03fae51a38428a4f8e5a"
+      },
+      "name": "baseline-width-repeat-03",
+      "products": 20,
+      "receipt": {
+        "bytes": 517,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-03-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-width-repeat-03-receipt.json",
+        "sha256": "97e512f96bbb172af355d02fdabb70a6f3098a9c98217e45c081a65cd90c14bb"
+      }
+    },
+    {
+      "bytes": 1284434,
+      "input_bindings": 3404,
+      "manifest": {
+        "bytes": 8371,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-03/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-03/manifest.json",
+        "sha256": "e9d01b45f35673c81809d8d52661f38f73546643785344b8ca28acec5a6a08a3"
+      },
+      "name": "candidate-width-repeat-03",
+      "products": 20,
+      "receipt": {
+        "bytes": 519,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-03-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-width-repeat-03-receipt.json",
+        "sha256": "ec32ae7933969a5fa017a4c6b86a485f9a985d20e455420a185b886ca47fbfbf"
+      }
+    },
+    {
+      "bytes": 1175668,
+      "input_bindings": 3403,
+      "manifest": {
+        "bytes": 4097,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-wide-minimum-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-wide-minimum-01/manifest.json",
+        "sha256": "1b505a858e4717f211922c081e9a11e980eef95c3b75936c2db53d98906deeeb"
+      },
+      "name": "baseline-wide-minimum-01",
+      "products": 10,
+      "receipt": {
+        "bytes": 517,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-wide-minimum-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-wide-minimum-01-receipt.json",
+        "sha256": "93e2a55fc1e0a1fd72e7356c059ae99702208a9d939fb61960cad954c8e8be2a"
+      }
+    },
+    {
+      "bytes": 1177466,
+      "input_bindings": 3404,
+      "manifest": {
+        "bytes": 4117,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-minimum-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-minimum-01/manifest.json",
+        "sha256": "f09ac2796b09a10d953dc2c0795bd1e36a84f16ac184d5b512e5c5966ba34f81"
+      },
+      "name": "candidate-wide-minimum-01",
+      "products": 10,
+      "receipt": {
+        "bytes": 519,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-minimum-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-minimum-01-receipt.json",
+        "sha256": "7ee6ce7293c9d495047161085c323744cc67c460a8c4a667a0379e314b3ed3eb"
+      }
+    },
+    {
+      "bytes": 2112186,
+      "input_bindings": 3404,
+      "manifest": {
+        "bytes": 8270,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-profile-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-profile-01/manifest.json",
+        "sha256": "fa82fe65f680beb624f554ee656919627b28a999c9243b300ce9ad5717087c01"
+      },
+      "name": "candidate-wide-profile-01",
+      "products": 20,
+      "receipt": {
+        "bytes": 519,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-profile-01-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-wide-profile-01-receipt.json",
+        "sha256": "c9b838b49c66f8bde1cce9a77080b0ad4d776f6b4d8b25daa549793f61855455"
+      }
+    }
+  ],
+  "scope": "Independent retained-artifact/raw-sample/summary/state audit only. No measured or profiled operation rerun.",
+  "status": "retained_repeat_minimum_profile_evidence_clear",
+  "totals": {
+    "minimum_runs": 2,
+    "minimum_samples": 28,
+    "minimum_series": 4,
+    "profile_calls_per_mode": 2000,
+    "profile_samples": [
+      {
+        "gc_samples": "13",
+        "interval_seconds": "0.001",
+        "mode": "safe_reference",
+        "samples": "395",
+        "samples_with_profile_loop": "395",
+        "sampling_time": "0.395"
+      },
+      {
+        "gc_samples": "208",
+        "interval_seconds": "0.001",
+        "mode": "direct",
+        "samples": "2809",
+        "samples_with_profile_loop": "2809",
+        "sampling_time": "2.809"
+      }
+    ],
+    "repeat_runs": 6,
+    "repeat_samples": 504,
+    "repeat_series": 72,
+    "source_state_rows": 9408
+  },
+  "utc": "2026-09-07T19:40:25.955544+00:00"
+}

@@ -1,0 +1,987 @@
+{
+  "schema": "stage5-host-completion-publication-v1",
+  "source_git": "ccb7182f02c65a845d8714dfb0e30c77a2d411fb",
+  "source_archive_path": "benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-combined-host",
+  "original_package_source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "original_package_tree": "b08c77d91bdce67032f13aced90c29d068d6e95a",
+  "publication_base": "4bfc55a210ea3031bcd1e943f932661be747ec5d",
+  "publication_base_package_tree": "f88005766aee9b9dd5827b33a3930feff6672008",
+  "first_publication_head": "a3a4f8479d7ba35ca03ff94bb0a9397809a07bd3",
+  "first_publication_metadata": [
+    {
+      "path": "PUBLICATION-INSTALL-FULL-RUST.md",
+      "bytes": 3630,
+      "mode": "0o644",
+      "sha256": "a7d4d08c2266e3dbdba1a3a8586e4900a8032b4b4013781c260162353fb182c9"
+    },
+    {
+      "path": "publication-install-full-rust.json",
+      "bytes": 27704,
+      "mode": "0o644",
+      "sha256": "6182ad20de7321c357936f636f21fd2e43c37327dd53371c6d5d8fbb0ed7799f"
+    }
+  ],
+  "original_archive_metadata": [
+    {
+      "path": "inclusion-manifest.json",
+      "bytes": 48606,
+      "mode": "0o644",
+      "sha256": "7576409531918d57dd1fb24960076c8aeb1f17011bfcbb0caca0e76eca3a5a90",
+      "git_mode": "100644",
+      "git_blob": "41ca8db01ee8441d0eec040812314bfc2f6fc4db"
+    },
+    {
+      "path": "inclusion-receipt.json",
+      "bytes": 192,
+      "mode": "0o644",
+      "sha256": "b8e6d8006e0368ae639f07d7649a152a72ba197a7a5eaf2ae119dc27092dc8af",
+      "git_mode": "100644",
+      "git_blob": "486e3f89f887717cfab904f423a2db0891267607"
+    }
+  ],
+  "prepared_selection": {
+    "path": "/private/tmp/dta-direct-stage5-validation/host-completion-selection-v1.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/host-completion-selection-v1.json",
+    "bytes": 27419,
+    "mode": "0o644",
+    "sha256": "c6acc7dd04788b5a900fb6f7bf47d92eceb70a0ded04d560707bc87198aa9349"
+  },
+  "counts": {
+    "copied_originals": 92,
+    "already_published_originals": 63,
+    "original_archive_files": 155,
+    "new_additive_files": 2,
+    "new_diff_paths": 94,
+    "existing_additive_files": 2,
+    "final_archive_paths": 159
+  },
+  "publication_note": {
+    "path": "PUBLICATION-COMPLETION.md",
+    "bytes": 3533,
+    "mode": "0o644",
+    "sha256": "73477b81e9a54f8b111e6c26e4d62804b1cebb33e8f52d422f7004cce3fa5b9c"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 4069,
+      "mode": "0o644",
+      "sha256": "439097fc671d1fdf4b45a763434ee2149e9501e80e3f0a63d7d47b64657ab42d",
+      "git_mode": "100644",
+      "git_blob": "e03b2c9546ff41a284acb889ab0828f5202b68ac",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/combined-host-README-v1.md",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "api-review/audit-combined-native-01.json",
+      "bytes": 725,
+      "mode": "0o644",
+      "sha256": "a5333705bf9662bc9f1777bf40549648514f54fc0532da45e88ce21ec23d029e",
+      "git_mode": "100644",
+      "git_blob": "a4254c12b098ecbd9b4b5cd5c792ca9d935af38d",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-native-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "api-review/audit-combined-native-01.py",
+      "bytes": 5651,
+      "mode": "0o644",
+      "sha256": "5e8e839d301fae48081bf4ca8d7352070037566452ad815f2cba3cbc48bee0cd",
+      "git_mode": "100644",
+      "git_blob": "478a0c60799daa2a7e5a734497f5f7d313affeb2",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-native-01.py",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "api-review/audit-combined-package-01.json",
+      "bytes": 2147,
+      "mode": "0o644",
+      "sha256": "8d37137509761b710529b539fc159e08ed02cf4a34418bc7ad9f8554e31440c3",
+      "git_mode": "100644",
+      "git_blob": "143ed006ca594bec477be1e9d9f8596db4a8d98a",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-package-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "api-review/audit-combined-package-01.py",
+      "bytes": 4787,
+      "mode": "0o644",
+      "sha256": "d6a5b2ca098301b2c17f7cb9273856b49e776ee87bd61bc29ffb0bc981b20479",
+      "git_mode": "100644",
+      "git_blob": "d311f3ae9fc829a34bd3d4f17e2417a437e20735",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/audit-combined-package-01.py",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "api-review/combined-a2d8b6a-source-review-01.md",
+      "bytes": 4393,
+      "mode": "0o644",
+      "sha256": "42a5e6d3d4767db1cd47bad5649b934acf25287d1d52db84c6ed885dd4de03a7",
+      "git_mode": "100644",
+      "git_blob": "edf22f194f6db3dedd472f756f09d1464f101ddc",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/combined-a2d8b6a-source-review-01.md",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "api-review/combined-ea031be-doc-addendum-01.md",
+      "bytes": 984,
+      "mode": "0o644",
+      "sha256": "818fa4a8bbd1014ec60be7ef557a88c7f85949f2c2e5f58bfd8e5e6c605eeaf5",
+      "git_mode": "100644",
+      "git_blob": "7f91c70317284be7ab1d992e08987338974b8b2f",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/combined-ea031be-doc-addendum-01.md",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "api-review/combined-native-review-01.md",
+      "bytes": 2792,
+      "mode": "0o644",
+      "sha256": "152ac8cd9aefe8f1079718ee7152106392b09a0c62db57cda2c314c28616a632",
+      "git_mode": "100644",
+      "git_blob": "13fda33abca32da9d6a8301b73023d903c2823d7",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/combined-native-review-01.md",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "api-review/combined-package-review-01.md",
+      "bytes": 2324,
+      "mode": "0o644",
+      "sha256": "3790458e9eea3f4ced83ed3dd521d8f898d4e5ed3f85ef27071c04b86593d1e3",
+      "git_mode": "100644",
+      "git_blob": "de207a487f0ed8add270e67d0fc28ed186dd835e",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/combined-package-review-01.md",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "archive-combined-host-v1.py",
+      "bytes": 5494,
+      "mode": "0o644",
+      "sha256": "28e9d0cf1bf0c78e88e90c83ce8f0d8cc89ffb85223797b8cb57799b5f118bda",
+      "git_mode": "100644",
+      "git_blob": "06ec0815ac9aeacd044d287c1339fd676dfbe2da",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/archive-combined-host-v1.py",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "inclusion-manifest.json",
+      "bytes": 48606,
+      "mode": "0o644",
+      "sha256": "7576409531918d57dd1fb24960076c8aeb1f17011bfcbb0caca0e76eca3a5a90",
+      "git_mode": "100644",
+      "git_blob": "41ca8db01ee8441d0eec040812314bfc2f6fc4db",
+      "original_source": null,
+      "original_identity_scope": "original archive inclusion metadata"
+    },
+    {
+      "path": "inclusion-receipt.json",
+      "bytes": 192,
+      "mode": "0o644",
+      "sha256": "b8e6d8006e0368ae639f07d7649a152a72ba197a7a5eaf2ae119dc27092dc8af",
+      "git_mode": "100644",
+      "git_blob": "486e3f89f887717cfab904f423a2db0891267607",
+      "original_source": null,
+      "original_identity_scope": "original archive inclusion metadata"
+    },
+    {
+      "path": "native-combined-01/atoms/owned-native-atoms-session.txt",
+      "bytes": 1135,
+      "mode": "0o644",
+      "sha256": "0203cefa6cc5dce1bdd3b816c0fca55865e5f2b0a0cbae68c78daab01abdd8c0",
+      "git_mode": "100644",
+      "git_blob": "c182662f1864f441269b3400442c7bf048ba235a",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/atoms/owned-native-atoms-session.txt",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/atoms/owned-native-atoms.csv",
+      "bytes": 1266,
+      "mode": "0o644",
+      "sha256": "d6ef2bdd65ba0e5c4821472853b548674719bcc1b45ce3ce9ebbe34643ecfc23",
+      "git_mode": "100644",
+      "git_blob": "249243c5f875e79a1532ccaee5b2d58dbb5f28c6",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/atoms/owned-native-atoms.csv",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/execution-result.json",
+      "bytes": 3907,
+      "mode": "0o644",
+      "sha256": "fffa2377c08beb72441065aaeedf91f1134ea0f3fc57423780f3628df18aeec7",
+      "git_mode": "100644",
+      "git_blob": "890967f58dc14e77ecb2b8275ba91c8b22fd5768",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/execution-result.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/inputs-before.json",
+      "bytes": 20433503,
+      "mode": "0o644",
+      "sha256": "b803f36d0e44be79b676225326d1bfdac911e540c40f1178a4d1e09f6951f176",
+      "git_mode": "100644",
+      "git_blob": "2ce28a5e2d7bb4bf4141e5e14f11838e18eb42fb",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/inputs-before.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/manifest.json",
+      "bytes": 1776843,
+      "mode": "0o644",
+      "sha256": "45752db69ac46a795c0513afa8e11245e01fefb0fb54e87a05ee5a7f55e0311e",
+      "git_mode": "100644",
+      "git_blob": "c357ab77de1f54267ba65c39a11e290f5467b0d9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/manifest.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/native-atoms-command.json",
+      "bytes": 890,
+      "mode": "0o644",
+      "sha256": "c04f56fd77cccea3ce91fc9c777e42d513d711e14d58bd7a7be5fbd8d8eaaf0f",
+      "git_mode": "100644",
+      "git_blob": "d2d36393a753d1cb0756a15ffac44e0471e767fe",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/native-atoms-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/native-atoms.log",
+      "bytes": 297,
+      "mode": "0o644",
+      "sha256": "4dc7294cda16cf77509148d3df1f9bb89287134e8a2e4434b1941b9da7575382",
+      "git_mode": "100644",
+      "git_blob": "8a2e6499c9d7542b43f256fa4fe70ecbe4164bd4",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/native-atoms.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/native-command.json",
+      "bytes": 791,
+      "mode": "0o644",
+      "sha256": "995ef85b880b3a5381da5c61f5f265e9b2fb098a5ced94992d6fe840417d3e9d",
+      "git_mode": "100644",
+      "git_blob": "330156d2135e099f63060cbca524c5a5ff0439ba",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/native-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/native.log",
+      "bytes": 26767,
+      "mode": "0o644",
+      "sha256": "b7b864f855948eff98f0d7e348c71ac433defef594f238ca35271a1c13b01705",
+      "git_mode": "100644",
+      "git_blob": "743ded42ecd7d39bbf2b98a6660709be0dea1330",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/native.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/native.md",
+      "bytes": 30129,
+      "mode": "0o644",
+      "sha256": "38d7128f54ed466e421dc23ac193f917e890ef77ac520f18e5c8e87b24dd2672",
+      "git_mode": "100644",
+      "git_blob": "b640178ae22ea6fff331d7c2958ff9f8aafbb889",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/native.md",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/preflight-command.json",
+      "bytes": 1019,
+      "mode": "0o644",
+      "sha256": "29b112322638098214b7262e764dfb6d17a5188c9966859427336c7678d82c84",
+      "git_mode": "100644",
+      "git_blob": "1e92c5ac7087067a2ef1d7a087abe2af757b18b0",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/preflight-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/preflight-identity.R",
+      "bytes": 5192,
+      "mode": "0o644",
+      "sha256": "d532c4c382eefeac42e55bb04937550ade5a370d6d8aa9e586cfe456892aeea8",
+      "git_mode": "100644",
+      "git_blob": "504b10c0c0f52cd40678e9d440063b97a78dfe7e",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/preflight-identity.R",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/preflight.log",
+      "bytes": 60,
+      "mode": "0o644",
+      "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27",
+      "git_mode": "100644",
+      "git_blob": "e3a41f9fff62e46fc31ba1b61233327b836f75d9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/preflight.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/receipt.json",
+      "bytes": 530,
+      "mode": "0o644",
+      "sha256": "dd931f0abc8781478bac62e71dc349124432fa4eceaebf7c7c70735261e76b35",
+      "git_mode": "100644",
+      "git_blob": "b5da02ee45842cdfd362dae469298abb2c9e2391",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/receipt.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/rename-command.json",
+      "bytes": 793,
+      "mode": "0o644",
+      "sha256": "3ff7f51151ee942b87c679e8f6de54e88aac9807c3ba1f502d0009d1db4c3892",
+      "git_mode": "100644",
+      "git_blob": "5c20ba4debb485c1d5329853fe0ab34fc71cd84f",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/rename-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "native-combined-01/rename.log",
+      "bytes": 174,
+      "mode": "0o644",
+      "sha256": "5e1c9b94a7cda3bde2ee5c70b36d93ab5110ad31efd3ff280923fe51b06a2046",
+      "git_mode": "100644",
+      "git_blob": "967fce3b999d202b8f0d2b93a4df480e83ea0b20",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/rename.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/archive-command.json",
+      "bytes": 771,
+      "mode": "0o644",
+      "sha256": "00d91c465d6fd4727f74be8a56afac9e74b81febfb52142a42fcc5d420c34eb1",
+      "git_mode": "100644",
+      "git_blob": "f725fdb22e0b8e4a85923a1c52a30d823fdec4b3",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/archive-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/archive-unit-command.json",
+      "bytes": 770,
+      "mode": "0o644",
+      "sha256": "d58745f797181ce731f97ef16202bd1c5a6a798f75ac360334ee07cd155e2b15",
+      "git_mode": "100644",
+      "git_blob": "dc235cc446a00296d3bbe0a44578950d87635fb3",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/archive-unit-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/archive-unit.log",
+      "bytes": 912,
+      "mode": "0o644",
+      "sha256": "3a86db2b9f808506e23c7c696fa5b5f6f3b8ba039c56226dbae54067854795c7",
+      "git_mode": "100644",
+      "git_blob": "af368a031482d68fb4e6a5e4eb4fe890bc77c58f",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/archive-unit.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/archive.log",
+      "bytes": 24,
+      "mode": "0o644",
+      "sha256": "4c3587b6438c2471618364e967342b11f88e0d0484fb6f8f64e2ce8a0b3b1351",
+      "git_mode": "100644",
+      "git_blob": "d89b0022e0e4397f1389f2ac6b54515f390f4e33",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/archive.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/binary-command.json",
+      "bytes": 893,
+      "mode": "0o644",
+      "sha256": "a07cce0019899abc8c03b976ab0a2bcdeb7e32e92892d2a0c75ed16543b9650b",
+      "git_mode": "100644",
+      "git_blob": "b1fb9baebdcb7522e90f1aa0f30e56735358ee58",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/binary-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/binary.log",
+      "bytes": 12652,
+      "mode": "0o644",
+      "sha256": "5777708fccb442956ec8b13d2e881ce31949712b588d1c1712e0ecf7ddb9753d",
+      "git_mode": "100644",
+      "git_blob": "9ddd9d5f7449577ff6023af0c4feb2c9b114daae",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/binary.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/build-command.json",
+      "bytes": 744,
+      "mode": "0o644",
+      "sha256": "bb8e869da8eda77bbed842383120c2ad3e1030841bb5315dc5cedc0fed65828d",
+      "git_mode": "100644",
+      "git_blob": "5745c09200dcdd1f46d84e71f66fe9f63199c880",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/build-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/build.log",
+      "bytes": 421,
+      "mode": "0o644",
+      "sha256": "9349f4fedcfded5bb5dd1f4ec0971344bd8160aa8910bc84e686e43cd0994463",
+      "git_mode": "100644",
+      "git_blob": "44d6aed72e3bbb8ae575afafbb8545229a7b4d49",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/build.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/built-source-before-checks.json",
+      "bytes": 350,
+      "mode": "0o644",
+      "sha256": "8c24e7a96b6908d5a46739672e223f32bdbc0b472e532c0dd8e8c96a9f106659",
+      "git_mode": "100644",
+      "git_blob": "16ff2c11885776b831ba7083f15598b706b0d207",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/built-source-before-checks.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/cargo-metadata-command.json",
+      "bytes": 524,
+      "mode": "0o644",
+      "sha256": "50ad8c1ae884bb524436b86d8fc9fdbda491d5d0b329e0f24ceef537d7c37acd",
+      "git_mode": "100644",
+      "git_blob": "28bb88534846cc28557ef6f946332c5095bff7c8",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/cargo-metadata-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/cargo-metadata.json",
+      "bytes": 412521,
+      "mode": "0o644",
+      "sha256": "7b7294b9b1188607787da7feec09165a852dc76bbf143bb1819b0503f651096e",
+      "git_mode": "100644",
+      "git_blob": "9c0a00dfef3f75bf64514190b161ad9ab319ae0b",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/cargo-metadata.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/cargo-metadata.log",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_mode": "100644",
+      "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/cargo-metadata.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/check-command.json",
+      "bytes": 761,
+      "mode": "0o644",
+      "sha256": "ed29d17b49b729961c003bee93ca0d82e8bbac3a827b8dd6d01c52ef1fc5389b",
+      "git_mode": "100644",
+      "git_blob": "a76a258185c234f3e27e5bd96b295958d62b2692",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/check-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/check.log",
+      "bytes": 14451,
+      "mode": "0o644",
+      "sha256": "8fc8ebfc0424e38bd316da87daf0fb42a1917475a4ff1429fa3c4fc90bddfaf0",
+      "git_mode": "100644",
+      "git_blob": "41e456bdeca89b4405aee42f51af8336c1851f07",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/check.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/conformance-command.json",
+      "bytes": 668,
+      "mode": "0o644",
+      "sha256": "50499da0ffdaaa2a3d1a874025aa7be18b51594a19c4450ddce577f7ea98141f",
+      "git_mode": "100644",
+      "git_blob": "40f9476a61c091e898d857f2f376d467c6c4c1bd",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/conformance-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/conformance.log",
+      "bytes": 25160,
+      "mode": "0o644",
+      "sha256": "9352c9be6fc21cadcc1233b74c1a71ba59f957bceba551fdd4f3fbbb10d6b0f7",
+      "git_mode": "100644",
+      "git_blob": "8ceca1f50d956ab16eacd0956f2ddbaab6933704",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/conformance.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/corpus-framework-command.json",
+      "bytes": 728,
+      "mode": "0o644",
+      "sha256": "5885a514ca1d7c71fd625ac58ead010a65b026e766c832f58566ec2e42a26ed6",
+      "git_mode": "100644",
+      "git_blob": "e3cf6d9eaffebd1860f9991ef3350016c603c806",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/corpus-framework-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/corpus-framework.log",
+      "bytes": 37,
+      "mode": "0o644",
+      "sha256": "a499c3b4bd2e3d8b7bc2046a17390505991ee20afbc91aac5d96864fde7c028b",
+      "git_mode": "100644",
+      "git_blob": "69d8b79477dff8e2deec12fcf375d8f5cfd9a581",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/corpus-framework.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/dtatools.Rcheck/00check.log",
+      "bytes": 13552,
+      "mode": "0o644",
+      "sha256": "b6ff6fc02d5e2635076c044a716e00d8bbbb099c8a42cda79d8b0435e22901b3",
+      "git_mode": "100644",
+      "git_blob": "212c68654d540cd6bd759c3c3c3a7464903aaf36",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools.Rcheck/00check.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/dtatools.Rcheck/00install.out",
+      "bytes": 23377,
+      "mode": "0o644",
+      "sha256": "53e93df3e215e55b891422f1870be82083565ecab940661232e7a2f9d79ed1a7",
+      "git_mode": "100644",
+      "git_blob": "01b4e1243bab519da56c801ef504dd047d99a504",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools.Rcheck/00install.out",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/dtatools.Rcheck/tests/testthat.Rout",
+      "bytes": 2127,
+      "mode": "0o644",
+      "sha256": "f7a0df5f441da540252ecff7e9d224f4778318ca68aab1a86a83381aaeb6f503",
+      "git_mode": "100644",
+      "git_blob": "8862424067ff30f86ac507303bf3d46c930f8093",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools.Rcheck/tests/testthat.Rout",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/execution-result.json",
+      "bytes": 13605,
+      "mode": "0o644",
+      "sha256": "1a8115abd775e76db1ef3d84206d92827d9c04efc88c1eefa0cf72c639a45697",
+      "git_mode": "100644",
+      "git_blob": "d208a1df041918964a02698067f07908cfc97b16",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/execution-result.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/haven-command.json",
+      "bytes": 682,
+      "mode": "0o644",
+      "sha256": "2410ef04195868437d591080a41dd50f58915b02e913411555b86821bba5a862",
+      "git_mode": "100644",
+      "git_blob": "2eaf598454be08cd02eebf222e88f956c0d6ca26",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/haven-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/haven-conformance-command.json",
+      "bytes": 717,
+      "mode": "0o644",
+      "sha256": "9c43c151dd655b78a4a27fb9681d3404400badebc0e714566901e4370ce28c7f",
+      "git_mode": "100644",
+      "git_blob": "8e86cb27ee90a3dae8217c09cdb87db3b8fbc483",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/haven-conformance-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/haven-conformance.log",
+      "bytes": 3083,
+      "mode": "0o644",
+      "sha256": "34fe99c59b88a98176d7e8ca6bb74a077e89c62d6a12eb5bb828c1ad6e2d2c78",
+      "git_mode": "100644",
+      "git_blob": "e3c236e609f9ae5a39e8c5f85b72a34ccceb14c1",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/haven-conformance.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/haven.log",
+      "bytes": 53,
+      "mode": "0o644",
+      "sha256": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264",
+      "git_mode": "100644",
+      "git_blob": "245dd1724ca73f809500fad702e0bc21ad05e3ad",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/haven.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/inputs-before.json",
+      "bytes": 22084902,
+      "mode": "0o644",
+      "sha256": "fa1b3b94639cef029be5a4990ad095268150eab0d95c482cae3a0c28bc2659c8",
+      "git_mode": "100644",
+      "git_blob": "918466021a8c3c25dda89d2e477c52248000af39",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/inputs-before.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/labelled-command.json",
+      "bytes": 687,
+      "mode": "0o644",
+      "sha256": "a9e16e3067962312624d6a877a7ac773bbad88da082fb1933886347181c84742",
+      "git_mode": "100644",
+      "git_blob": "ddd306e214757035ca607b5f3aa2e8cfd90d3837",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/labelled-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/labelled.log",
+      "bytes": 69,
+      "mode": "0o644",
+      "sha256": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81",
+      "git_mode": "100644",
+      "git_blob": "65ea9b63d8e3f8a39ca86f23a53b6f9c1eacc4ee",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/labelled.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/manifest.json",
+      "bytes": 5874420,
+      "mode": "0o644",
+      "sha256": "247bb6575bcfc6143b51553e4b7f3c6091377015c750bda6d67161baa07dba71",
+      "git_mode": "100644",
+      "git_blob": "d23bea98886184747106a526eb0c769b4b8d279d",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/manifest.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/preflight-command.json",
+      "bytes": 1024,
+      "mode": "0o644",
+      "sha256": "5e9cb9ad90290924c8e862b6fe4bcab66ea9873d65e46f9c2132752c3085c7fd",
+      "git_mode": "100644",
+      "git_blob": "ef132d72dbff0c6d82aac33f5304862665c4e4d0",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/preflight-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/preflight-identity.R",
+      "bytes": 5192,
+      "mode": "0o644",
+      "sha256": "d532c4c382eefeac42e55bb04937550ade5a370d6d8aa9e586cfe456892aeea8",
+      "git_mode": "100644",
+      "git_blob": "504b10c0c0f52cd40678e9d440063b97a78dfe7e",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/preflight-identity.R",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/preflight.log",
+      "bytes": 60,
+      "mode": "0o644",
+      "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27",
+      "git_mode": "100644",
+      "git_blob": "e3a41f9fff62e46fc31ba1b61233327b836f75d9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/preflight.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/receipt.json",
+      "bytes": 532,
+      "mode": "0o644",
+      "sha256": "a015a466e8de2d0314bf28b49eb29a5533b423e17de4839944aa3f43297a892d",
+      "git_mode": "100644",
+      "git_blob": "3ac99eacb78e0f6abe667b6922a24174bf8d2010",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/receipt.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/roxygen-command.json",
+      "bytes": 852,
+      "mode": "0o644",
+      "sha256": "22407db38cde58349aa58f2c78e4dcc54cc54caeecabb8c4b915f3924b7d0ef5",
+      "git_mode": "100644",
+      "git_blob": "b2f2132a0b59309e4c9dbaeccd4bce9af03202ec",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/roxygen-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/roxygen.log",
+      "bytes": 1359,
+      "mode": "0o644",
+      "sha256": "7cac09aa1e016f2ac2282b662f525208efced4b1d112fb55a344d82d9104bb23",
+      "git_mode": "100644",
+      "git_blob": "3283df2339cc0daefc4c75081bf89944036c3563",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/roxygen.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/rust-source-hash-command.json",
+      "bytes": 690,
+      "mode": "0o644",
+      "sha256": "3a44db7a677b0d696fd1125358330753cea91f8218182e15dc85a8a94d7d7e71",
+      "git_mode": "100644",
+      "git_blob": "3549ceaa85e1d066c88502c4da03f7dda3d9dfca",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/rust-source-hash-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/rust-source-hash.log",
+      "bytes": 34,
+      "mode": "0o644",
+      "sha256": "64412b90a734c68397b590ede544730f4b115e07f82cedc84ae791452eab888c",
+      "git_mode": "100644",
+      "git_blob": "3ffb072253568eb260d4a0df470c6595e2401ef8",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/rust-source-hash.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/vendor-command.json",
+      "bytes": 659,
+      "mode": "0o644",
+      "sha256": "55a764f8bc5c96d6a2351540891f1b053a94b59106fa22cf2164fe1d434054ea",
+      "git_mode": "100644",
+      "git_blob": "33f7321710d778dfe4fbb8f9c93ac4813fd543e9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/vendor-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/vendor-rebuild-unit-command.json",
+      "bytes": 784,
+      "mode": "0o644",
+      "sha256": "a196ac4cf45f251fd00da7587b48d99a558345011888a0bb10fa86ae210cddf5",
+      "git_mode": "100644",
+      "git_blob": "01c38526e30a070bdf521c6367be3985b84ee83d",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/vendor-rebuild-unit-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/vendor-rebuild-unit.log",
+      "bytes": 674,
+      "mode": "0o644",
+      "sha256": "a26bda261b56851b5ce9f8721adbfb7ef74490fbb47e7dc912cb533603bee47e",
+      "git_mode": "100644",
+      "git_blob": "2f0a4becc2381ca78e24a3792fa884cdfd4bfb51",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/vendor-rebuild-unit.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/vendor-unit-command.json",
+      "bytes": 765,
+      "mode": "0o644",
+      "sha256": "1aca69314fbda633cd3cb4f76b1ff21782c719c028bbce4871eb0d197b9c85dd",
+      "git_mode": "100644",
+      "git_blob": "df5c9bb6f0492645f08387a5f0d3701bbe1bbb17",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/vendor-unit-command.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/vendor-unit.log",
+      "bytes": 3313,
+      "mode": "0o644",
+      "sha256": "d602efada0bc2c7983ca95771e4a749bb462fbaf50c188f9c1b2f9fd374e10ba",
+      "git_mode": "100644",
+      "git_blob": "9f8801b5a6673cd1aa24e1ecfcb8f935b46179f9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/vendor-unit.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "package-combined-01/vendor.log",
+      "bytes": 21,
+      "mode": "0o644",
+      "sha256": "d2f91f77d5bdd8552331c0b457f2d0aab6c9eccb0a00d29a47f6c7294216720b",
+      "git_mode": "100644",
+      "git_blob": "a231a867b0c84ef3eaa884e460d843b582f589d9",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/vendor.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "selection.json",
+      "bytes": 47859,
+      "mode": "0o644",
+      "sha256": "104b81269ce574a7a096b1fd0db886f9625c0092bff58be6c5b7274584f54cce",
+      "git_mode": "100644",
+      "git_blob": "1cbc58c64ec3bf152068a504b87ec870c89826fb",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/combined-host-selection-v1.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-native-evidence-review-01.json",
+      "bytes": 5676,
+      "mode": "0o644",
+      "sha256": "a897fa87cf54305eb1d25dde6000a50bc63f47586cedba63b1dc5226c5cbc79f",
+      "git_mode": "100644",
+      "git_blob": "b3898e0b93bc64fe025eed6fd202d18109494100",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-evidence-review-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-native-evidence-review-01.log",
+      "bytes": 145,
+      "mode": "0o644",
+      "sha256": "f12faf72d0a850403af44396cb9ef926399de6e38795261df44c2673189a65b3",
+      "git_mode": "100644",
+      "git_blob": "5d7b71d08376be1e86462b4edd20bb6d0dfeef68",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-evidence-review-01.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-native-evidence-review-01.py",
+      "bytes": 9133,
+      "mode": "0o644",
+      "sha256": "9830bbfcf1e74238a7d26a286d0c6a207900d0d726764ff929bb53a8a7c442e3",
+      "git_mode": "100644",
+      "git_blob": "ed48cee8353361fcbad1e8b955603ff067216c72",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-evidence-review-01.py",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-native-record-reader-01.R",
+      "bytes": 1414,
+      "mode": "0o644",
+      "sha256": "33a6ca9c73e8c4df20da86c8e6a8ac90c239fd64e3a634e2e36ac6bee98d64d4",
+      "git_mode": "100644",
+      "git_blob": "cbcdddbef38b941a0b810bec257df68502d16bde",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-record-reader-01.R",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-native-record-reader-01.log",
+      "bytes": 113,
+      "mode": "0o644",
+      "sha256": "1cd18991185e112d202ddba76eaf9b82e3ab3b5c4c51faa4caf468745901116c",
+      "git_mode": "100644",
+      "git_blob": "5324eea72b6cf83becfbd8d2433ba3f2e7137b1c",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-record-reader-01.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-native-record-reader-02.R",
+      "bytes": 1462,
+      "mode": "0o644",
+      "sha256": "b3f171d0d5d66081701fdee903c8b58415d3d6ccd0ed77f47e1faceaef785d73",
+      "git_mode": "100644",
+      "git_blob": "020277417daa8cd4232bafd8e4f9ad5617992ce7",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-record-reader-02.R",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-native-record-reader-02.log",
+      "bytes": 238,
+      "mode": "0o644",
+      "sha256": "e2f9c25a4d4af3277e80dd6bc268277c639f2830bcfc480e4cf8148ee5b8498d",
+      "git_mode": "100644",
+      "git_blob": "b211aa2a0deb70826ed6b2c66ffb06c7c2feb3db",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-record-reader-02.log",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-package-evidence-review-01.json",
+      "bytes": 5289,
+      "mode": "0o644",
+      "sha256": "9d8dbc1089ebb7e9b408d7a3402ebf761ad63e345f28aaf8a04c8d3fa033a32e",
+      "git_mode": "100644",
+      "git_blob": "93fb4dcdd3b0b2b2b8c278866dc58c6bbf0c9dee",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-package-evidence-review-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-package-evidence-review-01.py",
+      "bytes": 6884,
+      "mode": "0o644",
+      "sha256": "f0b0ba52be27c35b20871ba378db4adb0a3a8b4dd915f402e6cb6173728f7073",
+      "git_mode": "100644",
+      "git_blob": "3db7614b2da8f69e3695d2ac496d4bb60fa6741c",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-package-evidence-review-01.py",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-source-review-ea031-01.json",
+      "bytes": 13373,
+      "mode": "0o644",
+      "sha256": "964c4dbc74dca46d589cc7a751e1b3abcd17092e7f5d0a815aca699f8cd231d9",
+      "git_mode": "100644",
+      "git_blob": "092d60201bfd9a5ff8052e9b34f706e2c179858c",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-source-review-ea031-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/combined-source-review-ea031-01.py",
+      "bytes": 8231,
+      "mode": "0o644",
+      "sha256": "66c26db3b6db7ee1fbbffb73d8466ebf5d5495360dfeebd6c0da5745c7d66ce7",
+      "git_mode": "100644",
+      "git_blob": "3849437fbb45e79cb71d0bc966e11583922f9baf",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-source-review-ea031-01.py",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/mask-names-full-evidence-review-01.json",
+      "bytes": 5545,
+      "mode": "0o644",
+      "sha256": "6a4fc3406c0d050df8fea5b824d4777ba9694d53257bcafb218918e5be1a0379",
+      "git_mode": "100644",
+      "git_blob": "049fad6ea390fa2da18277cfa4de0fab430734f8",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-full-evidence-review-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/mask-names-measurement-review-01.json",
+      "bytes": 8808,
+      "mode": "0o644",
+      "sha256": "a87c1b2b086f19a830f30ebeaf0d624561757e1f5ad7fc0f4ff130cc3bd40f57",
+      "git_mode": "100644",
+      "git_blob": "a2e1af419b042a60d5a94cfadb130b1a65173458",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-measurement-review-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/mask-names-source-install-review-01.json",
+      "bytes": 4666,
+      "mode": "0o644",
+      "sha256": "8dabffdca3edaafb17adbf541889304ac74cea7c00214a7b468d7ff4f8576c31",
+      "git_mode": "100644",
+      "git_blob": "d6a28a2f58aa395c28c40fcb6cb6f46b578f1f5c",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-source-install-review-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/native-generation-final-evidence-review-01.json",
+      "bytes": 7040,
+      "mode": "0o644",
+      "sha256": "d2832a9f279820e9df14c69c2e09e9326e6053011c87756825e32b01da2f086b",
+      "git_mode": "100644",
+      "git_blob": "2709d8fe6ba8c88b818e55e544014468b80d2220",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-generation-final-evidence-review-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/native-generation-fix-review-01.json",
+      "bytes": 7136,
+      "mode": "0o644",
+      "sha256": "750a7199d612b2adf7980caf2c2f7635b355412625ebae6874ef42c39b639078",
+      "git_mode": "100644",
+      "git_blob": "ec6bbd15ff91016db34309989ba0b6e4ec44a16c",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/native-generation-fix-review-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/repair-guard-measurement-review-01.json",
+      "bytes": 10919,
+      "mode": "0o644",
+      "sha256": "8ebf7b4dea2250ac4f17f6b6054e59903fc8fe2c215276766ef7ccdc059b2e44",
+      "git_mode": "100644",
+      "git_blob": "48ecf86416f759a9df5dcfa8476ef71350150d13",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-measurement-review-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/repair-guard-source-evidence-review-01.json",
+      "bytes": 5091,
+      "mode": "0o644",
+      "sha256": "e5e9f8671b9341ef6f940fef7b30e03a3e6302a106f6ce19d7116118e2f458f0",
+      "git_mode": "100644",
+      "git_blob": "46ff62ab138ba1ed90b7cbee2e8f2dba49f5c2ba",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/repair-guard-source-evidence-review-01.json",
+      "original_identity_scope": "indexed payload"
+    },
+    {
+      "path": "semantics-review/width-profile-evidence-review-01.json",
+      "bytes": 23493,
+      "mode": "0o644",
+      "sha256": "4215f3762c02c888444018107889c5e2a509b9c5c2aefb0aa3845e21769f6978",
+      "git_mode": "100644",
+      "git_blob": "7a7753f4696b325b3c5c17abdb672143b26abcd4",
+      "original_source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/width-profile-evidence-review-01.json",
+      "original_identity_scope": "indexed payload"
+    }
+  ],
+  "scope": "Current completion of the original155-file archive plus4 separate publication records. 92 originals retain bytes/Unix modes and reviewed Git executable modes. No historical execution, verifier, failure, optimization or launcher record is rewritten. This is not a portable replay or new R/Rust qualification."
+}

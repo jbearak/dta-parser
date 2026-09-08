@@ -1,0 +1,45 @@
+{
+  "status": "pass",
+  "source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "receipt_sha256": "a015a466e8de2d0314bf28b49eb29a5533b423e17de4839944aa3f43297a892d",
+  "manifest_sha256": "247bb6575bcfc6143b51553e4b7f3c6091377015c750bda6d67161baa07dba71",
+  "products": 11190,
+  "inputs": 63104,
+  "commands": 16,
+  "consumed_source": {
+    "bytes": 9579390,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools_0.7.1.tar.gz",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools_0.7.1.tar.gz",
+    "sha256": "f8a2aa4b122ac7963c32f700984b790e1bd90bf86d4dcfda2fae78c5ccc6f4cb"
+  },
+  "archives": [
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools_0.7.1.tar.gz",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/dtatools_0.7.1.tar.gz",
+      "bytes": 9579390,
+      "mode": "0o644",
+      "sha256": "f8a2aa4b122ac7963c32f700984b790e1bd90bf86d4dcfda2fae78c5ccc6f4cb",
+      "file_members": 209
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/binary/dtatools_0.7.1.tgz",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/binary/dtatools_0.7.1.tgz",
+      "bytes": 3707993,
+      "mode": "0o644",
+      "sha256": "d4479dba3be5bd9893e5fe8f49f3b2b2f35025e2bb99e381fdab001d0c311129",
+      "file_members": 57
+    }
+  ],
+  "Rcheck_warnings": [
+    "* checking whether package \u2018dtatools\u2019 can be installed ... WARNING",
+    "* checking for GNU extensions in Makefiles ... WARNING",
+    "* checking compiled code ... WARNING"
+  ],
+  "Rcheck_notes": [
+    "* checking package subdirectories ... NOTE",
+    "* checking line endings in C/C++/Fortran sources/headers ... NOTE"
+  ],
+  "public_exports": 106,
+  "limits": "R CMD check --no-manual on the recorded host, with three established warnings and two notes. External OS dylibs/full SDK/Python closure remain outside scope. No commands or tests were rerun for this audit."
+}

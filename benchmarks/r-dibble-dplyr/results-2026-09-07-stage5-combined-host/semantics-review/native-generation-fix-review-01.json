@@ -1,0 +1,144 @@
+{
+  "base": "f622f1ddba04b2bb7ac07415faccf2b417aab0e6",
+  "evidence": [
+    {
+      "bound_inputs": 11261,
+      "manifest": {
+        "bytes": 132207,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/candidate-01/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/candidate-01/output-manifest.json",
+        "sha256": "ab3fe2638566c3cb41325bc1d5ced07c5c8775ac158b8c2f62e9cc5672c8d30c"
+      },
+      "name": "candidate-01",
+      "product_bytes": 51466884,
+      "products": 310,
+      "receipt": {
+        "bytes": 549,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/candidate-01/completed-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/candidate-01/completed-receipt.json",
+        "sha256": "bec931bcc9e992fd7b2a6545707eb5d2012e6079b19522c11e2cee9403c7cd41"
+      }
+    },
+    {
+      "bound_inputs": 58163,
+      "manifest": {
+        "bytes": 1380205,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/focused-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/focused-01/manifest.json",
+        "sha256": "7838a6a0131b39901ec5748e34050f71b7c548cf3807dbb2ae0acda03f39ecce"
+      },
+      "name": "focused-01",
+      "product_bytes": 101595115,
+      "products": 2574,
+      "receipt": {
+        "bytes": 526,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/focused-01/receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/focused-01/receipt.json",
+        "sha256": "c6fa3c5b141378c4eea7c938c780f31b325bec64d75c34181d1f038a9a39a05b"
+      }
+    }
+  ],
+  "focused_tests": [
+    {
+      "context": "mutate-data",
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-mutate-data.R",
+      "nb": "67",
+      "passed": "67",
+      "real": "0.323",
+      "skipped": "FALSE",
+      "system": "0.023",
+      "test": "native generation interrupts leave reference state unchanged",
+      "user": "0.0469999999999997",
+      "warning": "0"
+    },
+    {
+      "context": "mutate-data",
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-mutate-data.R",
+      "nb": "67",
+      "passed": "67",
+      "real": "0.323999999999999",
+      "skipped": "FALSE",
+      "system": "0.025",
+      "test": "POSIX interrupts reach an active native generation checkpoint",
+      "user": "0.0599999999999996",
+      "warning": "0"
+    },
+    {
+      "context": "mutate-data",
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-mutate-data.R",
+      "nb": "6",
+      "passed": "6",
+      "real": "0.00999999999999979",
+      "skipped": "FALSE",
+      "system": "0.001",
+      "test": "generation interrupt controls disarm after validation errors",
+      "user": "0.00900000000000034",
+      "warning": "0"
+    }
+  ],
+  "focused_totals": {
+    "error": 0,
+    "failed": 0,
+    "known_warnings": 4,
+    "passed": 7558,
+    "skipped": 0
+  },
+  "limits": [
+    "The original macOS CI case and signal timing remain unproven. The induced 1-second sender delay reproduces false failure after completed generation, establishing a timing-test weakness, not the original CI root cause.",
+    "The new checkpoint qualifies cancellation at a private generation boundary. It does not inject at every internal loop iteration or every allocation site. The existing native loops and installation policy were not otherwise changed.",
+    "This report reviews the exact host installation and focused gate only. It is not a Windows or minimum-R execution result, a complete package gate, or qualification of the unchanged Stage 5 performance candidate.",
+    "No new R tests, signals or benchmarks were executed by this reviewer. Existing retained products and bound inputs were independently rehashed."
+  ],
+  "package_tree": "482738a44d0cb971784d192e328e004ef2571cb2",
+  "reviewed_inputs": [
+    {
+      "bytes": 337687,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-native-generation-interrupt-fix/r-package/dtatools/src/init.c",
+      "resolved": "/private/tmp/dta-native-generation-interrupt-fix/r-package/dtatools/src/init.c",
+      "sha256": "e654c9f73d07158fdf5ac1a20ce4c29bded2909df3172204d14d9ad7530afccf"
+    },
+    {
+      "bytes": 5105,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-native-generation-interrupt-fix/r-package/dtatools/tests/testthat/helper-generation-interrupt.R",
+      "resolved": "/private/tmp/dta-native-generation-interrupt-fix/r-package/dtatools/tests/testthat/helper-generation-interrupt.R",
+      "sha256": "3ecad46272d33198ac8342e0b69fd358342361c4cd9c91e600ce11d08cf60196"
+    },
+    {
+      "bytes": 112390,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-native-generation-interrupt-fix/r-package/dtatools/tests/testthat/test-mutate-data.R",
+      "resolved": "/private/tmp/dta-native-generation-interrupt-fix/r-package/dtatools/tests/testthat/test-mutate-data.R",
+      "sha256": "802824c6dfc173d536b4dece0d5d876ab7e5ae7f5723521063993e9dfd0d2588"
+    },
+    {
+      "bytes": 5769,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/diagnosis.md",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/native-generation-ci/diagnosis.md",
+      "sha256": "4f555232d2b5828d6e7adb1e5335d06217ec315a24d7ee87f27873ec2eb88ebe"
+    }
+  ],
+  "runner_overlay": "ed2db36735e678b15b5a77b4f8834749b23c6539",
+  "source": "725974aeab7c5c87a09dc6b33eaa0b5a85b14e4e",
+  "source_assessment": [
+    "One-shot native mode is copied and cleared before any native validation. Invalid setter values clear prior state. Zero mode adds no allocation or polling and leaves normal generation behavior intact.",
+    "Interrupt checks occur after private numeric compact backing, double vector or character vector preparation and before return/install. PROTECT roots remain live at the checkpoint and R interrupt unwind drops those roots; no table slot or reference marker has been installed.",
+    "Scoped helper clears injection on any R unwind before native entry. Retry deliberately occurs without rearming or clearing first, checking native one-shot consumption.",
+    "The seven cases preserve the five original compact numeric/character/dictionary branches and add explicit double first/existing paths. Checks include serialized table and alias equality, names, reference class/environment identity, dictionary source compactness/cache, successful retry values and alias names.",
+    "Mode 1 invokes the native R interrupt handler deterministically, including Windows. Separate POSIX mode waits in the private native checkpoint after flushing a readiness marker; the parent sends one SIGINT for each distinct ready case. CPU and outer wall deadlines fail rather than infer overlap from a fixed sleep."
+  ],
+  "status": "source_and_host_focused_evidence_clear",
+  "utc": "2026-09-07T19:04:24.484296+00:00"
+}

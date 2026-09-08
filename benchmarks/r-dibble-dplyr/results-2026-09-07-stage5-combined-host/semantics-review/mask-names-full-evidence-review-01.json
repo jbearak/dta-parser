@@ -1,0 +1,116 @@
+{
+  "assessment": "All3032 completed full-gate products and58623 declared input identities match, with exact ad976f7a source, runner, exported tests and installed library preflight. Full CSV totals reproduce16632 passes, zero failures/errors/skips and four established warnings. All prior622 test result rows and assertion counts match exactly; the sole additional row is the eight-pass public remove/re-add/generation-expiry test. Together with the completed source/install review, this clears the isolated mask-name variant for the next bounded measurement.",
+  "bound_input_bytes": 2397572191,
+  "bound_inputs": 58623,
+  "commands": [
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "benchmarks/r-dibble-dplyr/expression-preflight.R",
+        "/private/tmp/dta-direct-stage5-validation/mask-names/candidate-01/library",
+        "ad976f7a6854be19db08549a3ef87373448fdfe9",
+        "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/source",
+        "/private/tmp/dta-direct-stage5-validation/mask-names/full-01"
+      ],
+      "completed_utc": "2026-09-07T19:54:51.178500+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/source",
+      "exit_code": 0,
+      "label": "preflight",
+      "log": {
+        "bytes": 60,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/preflight.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/preflight.log",
+        "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27"
+      },
+      "started_utc": "2026-09-07T19:54:50.971186+00:00"
+    },
+    {
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "benchmarks/r-dibble-dplyr/expression-checks.R",
+        "/private/tmp/dta-direct-stage5-validation/mask-names/candidate-01/library",
+        "ad976f7a6854be19db08549a3ef87373448fdfe9",
+        "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/source",
+        "/private/tmp/dta-direct-stage5-validation/mask-names/full-01",
+        "all"
+      ],
+      "completed_utc": "2026-09-07T19:57:37.590889+00:00",
+      "cwd": "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/source",
+      "exit_code": 0,
+      "label": "tests",
+      "log": {
+        "bytes": 19984,
+        "mode": "0o644",
+        "path": "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/tests.log",
+        "resolved": "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/tests.log",
+        "sha256": "913576b44b6ea7b820ecf288e3330394ff08f71679ff674fdf8c2e324f7e2998"
+      },
+      "started_utc": "2026-09-07T19:54:56.874012+00:00"
+    }
+  ],
+  "limits": [
+    "This is host R4.6.1 full-test evidence, not a new minimum-R/Windows/R CMD check or native integration gate.",
+    "The repair guard is included from622; native interrupt patch725 remains separate. No timing benefit or full Stage5 performance acceptance is claimed.",
+    "No R, build, profile or benchmark operation was executed by this reviewer. Retained output/source/input identities and CSV results were read and rehashed.",
+    "OS dylibs, full SDK and Python runtime closures retain the documented binding limits."
+  ],
+  "manifest": {
+    "bytes": 1565593,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/manifest.json",
+    "sha256": "0b624f859a14a40a7dd9fd1f18766bb407a06af0ba18f3a102fc0f63a94cc862"
+  },
+  "new_test": {
+    "context": "dibble-expressions",
+    "error": "FALSE",
+    "failed": "0",
+    "file": "test-dibble-expressions.R",
+    "nb": "8",
+    "passed": "8",
+    "real": "0.0109999999999992",
+    "skipped": "FALSE",
+    "system": "0.001",
+    "test": "removed and re-added column generations retain values and expire",
+    "user": "0.00999999999999979",
+    "warning": "0"
+  },
+  "package_tree": "bb894a45ef1a7b9a2dd11be94388c80121fae769",
+  "prior_source_install_review": {
+    "bytes": 4666,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-source-install-review-01.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-source-install-review-01.json",
+    "sha256": "8dabffdca3edaafb17adbf541889304ac74cea7c00214a7b468d7ff4f8576c31"
+  },
+  "product_bytes": 243146656,
+  "products": 3032,
+  "receipt": {
+    "bytes": 500,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/receipt.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/mask-names/full-01/receipt.json",
+    "sha256": "aff1dc2ff4f3b8ac716c51d2ed43d25833b37f5a546997713985e4e9e27a93bd"
+  },
+  "reviewer_script": {
+    "bytes": 5441,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-full-evidence-review-01.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/mask-names-full-evidence-review-01.py",
+    "sha256": "1eaa7761f1d4601523dd7a34e7686710e838e68857d939610b5f4906544f8b33"
+  },
+  "source": "ad976f7a6854be19db08549a3ef87373448fdfe9",
+  "status": "mask_names_final_source_install_host_full_evidence_clear",
+  "totals": {
+    "error": 0,
+    "failed": 0,
+    "passed": 16632,
+    "skipped": 0,
+    "warning": 4
+  },
+  "unchanged_test_rows_match_622": true,
+  "utc": "2026-09-07T19:59:30.815907+00:00"
+}
