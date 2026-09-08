@@ -554,6 +554,8 @@ Haven vectors now follow that rule instead of recursing through the two recode
 interfaces. Character factor replacements retain factor attributes and level
 order. Numeric recoding keeps its separate Stata missing-value policy. See
 `?recode` for default, missing and metadata-wrapper behavior.
+Selected foreign S3 recode methods retain an optional public dplyr adapter;
+the standard character, factor and numeric paths use the owned kernels.
 
 `tab()` creates one-way and multidimensional frequency tables using Stata value labels. With `missing = TRUE`, it keeps `.`, `.a` through `.z`, and R `NaN` as separate categories when they occur:
 

@@ -48,10 +48,12 @@
 #' Metadata-vector notes and characteristics are restored by their transparent
 #' wrapper. The wrapper's numeric route retains the legacy numeric policy.
 #'
-#' Character and factor recoding is implemented by dtatools. Existing visible
-#' S3 `recode` methods and methods registered with an already loaded dplyr
-#' namespace keep their dispatch context. Numeric inputs to this public function
-#' continue to use the Stata-preserving policy above.
+#' Character and factor recoding is implemented by dtatools. When a foreign S3
+#' `recode` method is selected and dplyr is already loaded, an optional adapter
+#' uses its public generic to retain that method's dispatch environment and
+#' `NextMethod()` behavior. Standard recoding does not call that adapter.
+#' Numeric inputs to this public function continue to use the Stata-preserving
+#' policy above.
 #'
 #' When the dtatools namespace is loaded, `dplyr::recode()` dispatches here
 #' for bare numeric, `haven_labelled`, `Date`, and `POSIXct` vectors. This also
@@ -87,10 +89,10 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
     )
 }
 
-# Keep real S3 call context for existing external methods, including NextMethod().
-# The generic is private: the public numeric branch above retains its stronger
-# Stata policy. Only public S3 lookup and base dispatch APIs are used; dplyr's recode
-# implementation is never called and this does not load an optional namespace.
+# The private generic selects owned kernels and ordinary unsupported-type errors.
+# It does not load optional namespaces. Genuinely foreign methods use a separate
+# public-generic adapter so their real S3 environment and dynamic NextMethod
+# lookup remain intact. Public numeric inputs retain their stronger Stata policy.
 .recode_dispatch <- function(.x, ..., .default = NULL, .missing = NULL) {
     recode <- function(.x, ..., .default = NULL, .missing = NULL) {
         UseMethod("recode")
@@ -123,6 +125,11 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
             method <- utils::getS3method(
                 "recode", class, optional = TRUE, envir = lookup
             )
+            if (is.null(method)) {
+                method <- utils::getS3method(
+                    "recode", class, optional = TRUE, envir = namespace
+                )
+            }
             builtin <- NULL
             if (class %in% c("character", "factor")) {
                 builtin <- utils::getS3method(
@@ -132,7 +139,7 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
             is_builtin <- !is.null(builtin) && identical(method, builtin) &&
                 identical(environment(builtin), namespace)
             if (!is.null(method) && !is_builtin) {
-                methods[[class]] <- method
+                methods[[class]] <- .recode_foreign
             }
         }
     }
@@ -142,6 +149,13 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
         assign(paste0("recode.", class), methods[[class]], envir = environment())
     }
     recode(.x, ..., .default = .default, .missing = .missing)
+}
+
+# The only optional recode dependency: a selected third-party extension owns
+# this call, including any continuation or registry changes made by its method.
+# Calling from this stable namespace helper preserves the old lookup precedence.
+.recode_foreign <- function(.x, ..., .default = NULL, .missing = NULL) {
+    dplyr::recode(.x, ..., .default = .default, .missing = .missing)
 }
 
 # Adapted from dplyr 1.2.1 R/recode.R at

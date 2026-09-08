@@ -64,10 +64,12 @@ lengths are checked against the number of levels, including unused levels.
 Metadata-vector notes and characteristics are restored by their transparent
 wrapper. The wrapper's numeric route retains the legacy numeric policy.
 
-Character and factor recoding is implemented by dtatools. Existing visible
-S3 \code{recode} methods and methods registered with an already loaded dplyr
-namespace keep their dispatch context. Numeric inputs to this public function
-continue to use the Stata-preserving policy above.
+Character and factor recoding is implemented by dtatools. When a foreign S3
+\code{recode} method is selected and dplyr is already loaded, an optional adapter
+uses its public generic to retain that method's dispatch environment and
+\code{NextMethod()} behavior. Standard recoding does not call that adapter.
+Numeric inputs to this public function continue to use the Stata-preserving
+policy above.
 
 When the dtatools namespace is loaded, \code{dplyr::recode()} dispatches here
 for bare numeric, \code{haven_labelled}, \code{Date}, and \code{POSIXct}

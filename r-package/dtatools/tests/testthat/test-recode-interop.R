@@ -95,3 +95,28 @@ test_that("package-visible recode methods precede same-slot foreign registration
     x <- structure("a", class = c("haven_labelled", "vctrs_vctr", "character"))
     expect_identical(recode(x, a = "A"), "A")
 })
+
+test_that("foreign methods retain the real generic environment and dynamic continuation", {
+    skip_if_not_installed("dplyr")
+    ns <- asNamespace("dplyr")
+    table <- get(".__S3MethodsTable__.", ns)
+    classes <- c("dtatools_recode_dynamic_first", "dtatools_recode_dynamic_next")
+    keys <- paste0("recode.", classes)
+    old <- lapply(keys, function(key) get0(key, table, inherits = FALSE))
+    withr::defer({
+        for (i in seq_along(keys)) {
+            if (is.null(old[[i]])) rm(list = keys[[i]], envir = table)
+            else assign(keys[[i]], old[[i]], table)
+        }
+    })
+    first <- function(.x, ..., .default = NULL, .missing = NULL) {
+        registerS3method("recode", classes[[2L]], function(.x, ...) "updated", ns)
+        list(generic = .Generic, definition = .GenericDefEnv, next_value = NextMethod())
+    }
+    registerS3method("recode", classes[[1L]], first, ns)
+    registerS3method("recode", classes[[2L]], function(.x, ...) "old", ns)
+    out <- recode(structure("a", class = c(classes, "character")))
+    expect_identical(out$generic, "recode")
+    expect_identical(out$definition, ns)
+    expect_identical(out$next_value, "updated")
+})

@@ -218,8 +218,10 @@ Adapted from dplyr 1.2.1:
   Destination: owned character/factor kernels and helpers in R/recode.R.
   Changes: qualified public rlang/base calls replace dplyr helper access;
     replacement type errors use the package's typeof wording. The private
-    dispatcher uses public S3 lookup and base dispatch to preserve available external
-    methods and NextMethod context. Numeric Stata and legacy kernels remain
+    dispatcher uses public S3 lookup and base dispatch for owned core methods.
+    A separate optional adapter calls the public generic only for a selected
+    foreign method, preserving its dispatch environment and dynamic NextMethod
+    behavior. Numeric Stata and legacy kernels remain
     distinct. Character-backed Haven inputs use the owned character kernel,
     avoiding the former public-wrapper/generic recursion. Metadata wrappers
     retain their existing separate restoration policy. No dplyr generic or
