@@ -550,9 +550,10 @@ rather than a reduction in peak memory during construction.
 
 Character and factor recoding uses package-owned kernels. Character output does
 not restore source labels or Stata string-width declarations; character-backed
-Haven vectors now follow that rule instead of recursing through the two recode
-interfaces. Character factor replacements retain factor attributes and level
-order. Numeric recoding keeps its separate Stata missing-value policy. See
+Haven vectors now follow that rule without requiring Haven to be loaded or
+recursing through the two recode interfaces. Character factor replacements retain
+factor attributes and level order. Numeric recoding keeps its separate Stata
+missing-value policy. See
 `?recode` for default, missing and metadata-wrapper behavior.
 Selected foreign S3 recode methods retain an optional public dplyr adapter;
 the standard character, factor and numeric paths use the owned kernels.

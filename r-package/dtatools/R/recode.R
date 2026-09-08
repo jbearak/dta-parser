@@ -41,7 +41,8 @@
 #'
 #' Character recoding uses character values and does not restore source labels
 #' or Stata string-width declarations. Character-backed `haven_labelled` inputs
-#' follow this rule. Factor recoding changes levels in their existing order;
+#' follow this rule without requiring Haven to be loaded. Factor recoding changes
+#' levels in their existing order;
 #' character replacements retain factor attributes, while non-character
 #' replacements return the corresponding replacement vector. Factor replacement
 #' lengths are checked against the number of levels, including unused levels.
@@ -534,7 +535,7 @@ recode.dta_numeric <- function(
 recode.haven_labelled <- function(.x, ..., .default = NULL, .missing = NULL) {
     if (is.character(.x)) {
         return(.recode_character(
-            .x, ..., .default = .default, .missing = .missing
+            vctrs::vec_data(.x), ..., .default = .default, .missing = .missing
         ))
     }
     recode(.x, ..., .default = .default, .missing = .missing)

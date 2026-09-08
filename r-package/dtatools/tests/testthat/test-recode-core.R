@@ -129,6 +129,26 @@ test_that("character-backed Haven input terminates with ordinary character outpu
     expect_identical(dtatools:::recode.haven_labelled(x, a = "A"), c("A", "b", NA_character_))
 })
 
+test_that("other character subclasses retain their coercion before replacements", {
+    key <- "as.character.dtatools_recode_character"
+    old <- get0(key, .GlobalEnv, inherits = FALSE)
+    withr::defer({
+        if (is.null(old)) rm(list = key, envir = .GlobalEnv)
+        else assign(key, old, .GlobalEnv)
+    })
+    events <- character()
+    assign(key, function(x, ...) {
+        events <<- c(events, "coercion")
+        c("b", "a")
+    }, .GlobalEnv)
+    x <- structure(c("a", "b"), class = c("dtatools_recode_character", "character"))
+    alias <- x
+    out <- recode(x, a = { events <- c(events, "replacement"); "A" })
+    expect_identical(out, c("b", "A"))
+    expect_identical(events, c("coercion", "replacement"))
+    expect_identical(x, alias)
+})
+
 test_that("custom methods retain S3 context and inherited NextMethod", {
     method_names <- c("recode.dtatools_recode_first", "recode.dtatools_recode_second")
     old <- lapply(method_names, function(name) get0(name, .GlobalEnv, inherits = FALSE))

@@ -222,7 +222,8 @@ Adapted from dplyr 1.2.1:
     A separate optional adapter calls the public generic only for a selected
     foreign method, preserving its dispatch environment and dynamic NextMethod
     behavior. Numeric Stata and legacy kernels remain
-    distinct. Character-backed Haven inputs use the owned character kernel,
+    distinct. Character-backed Haven inputs extract their underlying character
+    data through public vctrs APIs and use the owned character kernel,
     avoiding the former public-wrapper/generic recursion. Metadata wrappers
     retain their existing separate restoration policy. No dplyr generic or
     recode_factor implementation is incorporated.
