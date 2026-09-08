@@ -13,3 +13,10 @@ sed \
   -e "s|@RUST_SYSTEM_LIBS@|$rust_system_libs|g" \
   -e "s|@RUST_NAMESPACE@|$rust_namespace|g" \
   src/Makevars.in > src/Makevars
+
+if [ "$(uname -s)" = Darwin ]; then
+  # R's macOS linker flags already enable dynamic lookup. Resolve R
+  # symbols from the host process instead of loading a second runtime
+  # when a framework-built binary is used with Homebrew R (or vice versa).
+  printf '\noverride LIBR =\n' >> src/Makevars
+fi
