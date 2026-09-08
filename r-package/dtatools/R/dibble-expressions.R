@@ -12,6 +12,8 @@
         .validate_group_metadata(data)
         groups <- attr(data, "groups", exact = TRUE)
         keys <- groups[setdiff(names(groups), ".rows")]
+        # .drop controls grouping restoration; it is not part of cur_group().
+        attr(keys, ".drop") <- NULL
         return(list(rows = groups$.rows, keys = keys, names = names(keys),
                     type = if (rowwise) "rowwise" else "grouped"))
     }

@@ -118,19 +118,22 @@ test_that("S7-C06 nested foreign writes cannot reach scalar constants or either 
             data.table::setattr(target$flag, "label", "result")
             first <- list(constants = primitives(), source = as.integer(source$flag),
                 grouped = as.integer(grouped$flag), result = as.integer(target$flag),
-                source_label = attr(grouped$flag, "label"))
+                source_label = attr(grouped$flag, "label"), result_label = attr(target$flag, "label"))
             other <- operation(grouped)
             data.table::set(grouped, i = 2L, j = "flag", value = TRUE)
             data.table::setattr(grouped$flag, "label", "changed source")
             list(before = before, first = first,
                 saved = as.integer(other$data[[2L]]$flag),
-                saved_label = attr(other$data[[2L]]$flag, "label"), after = primitives())
+                saved_label = attr(other$data[[2L]]$flag, "label"),
+                changed_source = as.integer(grouped$flag), changed_source_label = attr(grouped$flag, "label"),
+                after = primitives())
         }, args = list(.libPaths(), primitive_record, verb), libpath = .libPaths())
         expect_identical(readLines(primitive_record), rep(c("1", "0", "1", "0"), 2L))
         expect_identical(observed, list(before = c(1L, 0L, 1L, 0L),
             first = list(constants = c(1L, 0L, 1L, 0L), source = c(1L, 0L),
-                grouped = c(1L, 0L), result = 0L, source_label = "source"),
-            saved = 0L, saved_label = "source", after = c(1L, 0L, 1L, 0L)))
+                grouped = c(1L, 0L), result = 0L, source_label = "source", result_label = "result"),
+            saved = 0L, saved_label = "source", changed_source = c(1L, 1L),
+            changed_source_label = "changed source", after = c(1L, 0L, 1L, 0L)))
     }
 })
 
@@ -281,4 +284,55 @@ test_that("S7-C14 grouped chunks drop table metadata while whole-input nesting r
         tibble::tibble(x = sum(.x$x))
     })
     expect_true(all(vapply(seen, function(x) is.null(x$label), logical(1))))
+})
+
+test_that("S7-C15 plain and rowwise callback return policies preserve reference identity", {
+    for (rowwise in c(FALSE, TRUE)) for (form in c("null", "scalar", "list", "environment")) {
+        data <- dibble(id = 1:2, x = 3:4)
+        if (rowwise) data <- dplyr::rowwise(data, id)
+        token <- new.env(parent = emptyenv())
+        seen <- list()
+        answer <- tryCatch(dplyr::group_modify(data, function(.x, .y, extra) {
+            seen[[length(seen) + 1L]] <<- list(rows = nrow(.x), key_names = names(.y), extra = extra)
+            switch(form, null = NULL, scalar = 7L, list = list(answer = 7L), environment = token)
+        }, extra = "forwarded"), error = identity)
+        expect_identical(seen, list(list(rows = 2L, key_names = if (rowwise) "id" else character(), extra = "forwarded")))
+        switch(form, null = expect_null(answer), scalar = expect_identical(answer, 7L),
+            environment = expect_identical(answer, token),
+            list = {
+                expect_s3_class(answer, "error")
+                expect_match(conditionMessage(answer), "invalid reference generation row count", fixed = TRUE)
+            })
+    }
+})
+
+test_that("S7-C16 nesting preserves key policy, empty prototypes and unforced grouped dots", {
+    data <- dplyr::group_by(dibble(g = c("b", "a"), x = 1:2), g)
+    for (verb in list(dplyr::group_nest, dplyr::nest_by)) {
+        collision <- verb(data, .key = "g")
+        expect_identical(names(collision), "g")
+        expect_s3_class(collision$g, "vctrs_list_of")
+        expect_identical(lapply(collision$g, names), list("x", "x"))
+        expect_identical(names(verb(data, .key = NA_character_)), c("g", "NA"))
+        expect_error(verb(data, .key = ""))
+        expect_error(verb(data, .key = c("a", "b")))
+        for (keep in c(FALSE, TRUE)) {
+            empty <- dibble(g = character(), x = dta_double(numeric()))
+            attr(empty$x, "label") <- "prototype variable"
+            grouped <- dplyr::group_by(empty, g)
+            result <- if (identical(verb, dplyr::group_nest)) verb(grouped, keep = keep) else verb(grouped, .keep = keep)
+            prototype <- attr(result$data, "ptype", exact = TRUE)
+            expect_identical(nrow(result), 0L)
+            expect_s3_class(result$data, "vctrs_list_of")
+            expect_identical(dim(prototype), c(0L, if (keep) 2L else 1L))
+            expect_identical(names(prototype), if (keep) c("g", "x") else "x")
+            expect_identical(attr(prototype$x, "label", exact = TRUE), "prototype variable")
+            expect_identical(dta_storage_type(prototype$x), "double")
+        }
+    }
+    events <- new.env(parent = emptyenv()); events$forced <- FALSE
+    expect_warning(dplyr::group_nest(data, ignored = { events$forced <- TRUE; stop("forced ignored dot") }), "ignores")
+    expect_false(events$forced)
+    expect_error(dplyr::nest_by(data, ignored = { events$forced <- TRUE; stop("forced ignored dot") }), "re-group")
+    expect_false(events$forced)
 })

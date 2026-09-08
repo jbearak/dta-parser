@@ -2,6 +2,32 @@
 # assembly adapt dplyr 1.2.1 summarise.R, reframe.R, group-map.R, group-nest.R,
 # nest-by.R and src/summarise.cpp at 95740975. See installed NOTICE.
 # Unlike mutate, chunks keep their computed sizes until all dots have run.
+.dibble_summary_ptype <- function(chunks, name, groups, size) {
+    # Adapt common_handler/cnd_bullet_combine_details using the owned key plan.
+    # Formatting runs only after common typing fails, outside an active group.
+    detail <- function(value, argument) {
+        id <- suppressWarnings(as.integer(sub("^\\.\\.", "", argument)))
+        if (length(id) != 1L || is.na(id) || id < 1L || id > nrow(groups$keys))
+            return(NULL)
+        where <- if (!size || identical(groups$type, "ungrouped")) "" else
+            if (identical(groups$type, "rowwise")) paste0("row ", id) else {
+                key <- vctrs::vec_slice(groups$keys, id)
+                labels <- vapply(key, pillar::format_glimpse, character(1))
+                paste0("group ", id, ": `",
+                    paste0(names(labels), " = ", labels, collapse = ", "), "`")
+            }
+        paste0("Result of type <", vctrs::vec_ptype_full(value), "> for ", where, ".")
+    }
+    withCallingHandlers(vctrs::vec_ptype_common(!!!chunks), error = function(condition) {
+        details <- c(detail(condition$x, condition$x_arg),
+                     detail(condition$y, condition$y_arg))
+        if (!length(details)) details <- conditionMessage(condition)
+        rlang::abort(c(paste0("`", name, "` must return compatible vectors across groups."),
+            stats::setNames(details, rep.int("i", length(details)))),
+            class = "dplyr:::error_incompatible_combine", parent = NULL)
+    })
+}
+
 .dibble_summary_columns <- function(context, groups, size, dots, reframe) {
     caller <- if (reframe) "reframe()" else "summarise()"
     mask <- .new_dibble_expression_mask(context$columns, groups, size, caller)
@@ -55,7 +81,7 @@
                         x = "Can't combine NULL and non NULL results."))
                 }
                 mask$set_group(0L)
-                ptype <- vctrs::vec_ptype_common(!!!chunks)
+                ptype <- .dibble_summary_ptype(chunks, name, groups, size)
                 chunks <- vctrs::vec_cast_common(!!!chunks, .to = ptype)
                 result <- vctrs::vec_c(!!!chunks, .ptype = ptype)
                 install <- function(target, pieces, value) {
@@ -108,7 +134,7 @@
             list(columns = columns, sizes = sizes)
         }, error = function(condition) {
             .dibble_expression_condition(condition, original, original_name,
-                mask, caller, error_class = "dplyr:::summarise_error")
+                mask, caller, error_class = NULL)
         }), warning = function(condition) {
             id <- mask$current_id()
             type <- if (size) groups$type else "ungrouped"

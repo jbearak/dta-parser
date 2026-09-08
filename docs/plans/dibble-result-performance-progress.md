@@ -53,6 +53,28 @@ read-only scalar-address observations identify a lead, not a traced C cause.
 Stages 8–9, the twelve residual read costs, and final actual fertility renv
 validation remain required. Issue #172 stays open.
 
+The initial Stage 7 candidate exposed an unsupported cyclic nested graph to
+vector assembly, causing a C-stack overflow. That failed run remains retained.
+The shared capture boundary now rejects active ancestor cycles before assembly,
+while completed acyclic captures can be reused. Exact source `05c8f08b` passed
+the isolated nested-write/cycle checks, all 27 new test blocks with 186
+assertions, and the full host suite with 17,844 assertions and four established
+warnings. The selected R 4.6.0 lane passed 6,169 assertions, retaining four
+established warnings and five capability skips. These results qualify that
+source within their stated scopes, not the later working correction.
+
+The candidate retained all 126 edge observations. A safe predecessor comparison
+executed 93 common records and excluded the foreign-write families before their
+thunks. It confirmed existing zero-group size errors and arbitrary callback
+return limits, while identifying extra `.drop` metadata on current group keys
+and lost summary error ancestry/named-group details. The working correction
+repairs those two boundaries and adds explicit tagged-missing, empty-context,
+helper-lifetime, nesting-key/prototype and changed-target assertions. Fresh
+installed qualification remains required. The edge collector's caught errors
+and interrupts are observations, and its completion is not whole-suite
+acceptance. Current package, native, scaling, memory and external PR gates
+remain open.
+
 ## Historical Stage 6 implementation checkpoints
 
 

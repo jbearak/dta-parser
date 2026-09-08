@@ -173,3 +173,127 @@ test_that("S7-S13 bare replacement references promote only after dependent dots"
         expect_identical(result$seen, TRUE)
     }
 })
+
+test_that("S7-S14 current group keys omit drop policy across summary, mutation and filter masks", {
+    for (drop in c(FALSE, TRUE)) for (verb in c("summarise", "reframe", "mutate", "filter")) {
+        data <- dplyr::group_by(.s7_grouped(), g, .drop = drop)
+        seen <- list()
+        observe <- function() {
+            seen[[length(seen) + 1L]] <<- dplyr::cur_group()
+            1L
+        }
+        result <- switch(verb,
+            summarise = dplyr::summarise(data, value = observe(), .groups = "keep"),
+            reframe = dplyr::reframe(data, value = observe()),
+            mutate = dplyr::mutate(data, value = observe()),
+            filter = dplyr::filter(data, { observe(); TRUE }))
+        expect_identical(lapply(seen, function(key) as.character(key$g)), list("a", "b"))
+        expect_identical(lapply(seen, function(key) attr(key, ".drop", exact = TRUE)), list(NULL, NULL))
+        expect_identical(attr(attr(data, "groups"), ".drop"), drop)
+        if (verb != "reframe") expect_identical(attr(attr(result, "groups"), ".drop"), drop)
+    }
+})
+
+test_that("S7-S15 summary errors retain the trigger or named incompatible groups", {
+    for (verb in list(dplyr::summarise, dplyr::reframe)) {
+        trigger <- tryCatch(verb(.s7_grouped(), value =
+            rlang::abort("deliberate summary trigger", class = "stage7_trigger")), error = identity)
+        expect_identical(class(trigger), c("rlang_error", "error", "condition"))
+        expect_s3_class(trigger$parent, "stage7_trigger")
+        pair <- list(ordered("a"), ordered("b"))
+        incompatible <- tryCatch(verb(.s7_grouped(),
+            value = pair[[dplyr::cur_group_id()]]), error = identity)
+        expect_identical(class(incompatible), c("rlang_error", "error", "condition"))
+        expect_identical(class(incompatible$parent),
+            c("dplyr:::error_incompatible_combine", "rlang_error", "error", "condition"))
+        message <- conditionMessage(incompatible$parent)
+        expect_match(message, "`value` must return compatible vectors across groups.", fixed = TRUE)
+        expect_match(message, 'g = "a"', fixed = TRUE)
+        expect_match(message, 'g = "b"', fixed = TRUE)
+        expect_match(message, "Result of type <ordered", fixed = TRUE)
+        expect_false(grepl("..1", message, fixed = TRUE))
+        expect_error(dplyr::n(), "Must only be used")
+    }
+})
+
+test_that("S7-S16 tagged payloads survive common typing and dependent summaries", {
+    for (verb in list(dplyr::summarise, dplyr::reframe)) {
+        pair <- list(tagged_missing("a"), NA_real_)
+        result <- verb(.s7_grouped(), value = pair[[dplyr::cur_group_id()]], after = value)
+        expect_identical(missing_tag(result$value), c("a", NA_character_))
+        expect_identical(missing_tag(result$after), c("a", NA_character_))
+        expect_identical(is.na(result$value), c(TRUE, TRUE))
+    }
+})
+
+test_that("S7-S17 zero-group prototypes retain their observed contexts and size rules", {
+    empty <- dibble(g = factor(character(), levels = c("a", "b")), x = integer())
+    for (shape in c("zero_groups", "rowwise")) for (verb in list(dplyr::summarise, dplyr::reframe)) {
+        data <- if (shape == "rowwise") dplyr::rowwise(empty, g) else dplyr::group_by(empty, g)
+        for (value in list(integer(), 1L)) {
+            seen <- list()
+            result <- verb(data, value = {
+                seen[[length(seen) + 1L]] <<- list(n = dplyr::n(), id = dplyr::cur_group_id(),
+                    rows = dplyr::cur_group_rows(), key = dplyr::cur_group())
+                value
+            })
+            expect_length(seen, 1L)
+            expect_identical(seen[[1L]][c("n", "id", "rows")], list(n = 0L, id = 1L, rows = integer()))
+            expect_identical(dim(seen[[1L]]$key), c(0L, 1L))
+            expect_null(attr(seen[[1L]]$key, ".drop", exact = TRUE))
+            expect_identical(levels(seen[[1L]]$key$g), c("a", "b"))
+            expect_identical(dim(result), c(0L, 2L))
+            expect_identical(names(result), c("g", "value"))
+            expect_identical(dta_storage_type(result$value), "long")
+        }
+        # These final-assembly errors already occur on the typed predecessor.
+        expect_error(verb(data, value = 1:2), class = "vctrs_error_recycle_incompatible_size")
+        expect_error(verb(data, value = vctrs::new_data_frame(list(), n = 2L)),
+            class = "vctrs_error_recycle_incompatible_size")
+    }
+    retained <- dplyr::group_by(empty, g, .drop = FALSE)
+    keys <- list()
+    result <- dplyr::summarise(retained, value = {
+        keys[[length(keys) + 1L]] <<- dplyr::cur_group(); dplyr::n()
+    }, .groups = "drop")
+    expect_identical(lapply(keys, function(key) as.character(key$g)), list("a", "b"))
+    expect_identical(as.integer(result$value), c(0L, 0L))
+    expect_error(dplyr::summarise(retained, value = integer()), "size 1")
+    expect_identical(nrow(dplyr::reframe(retained, value = integer())), 0L)
+})
+
+test_that("S7-S18 nested calls expire inner columns but restore dynamic helpers", {
+    for (kind in c("success", "error", "interrupt")) {
+        events <- list(); saved <- list()
+        trigger <- switch(kind, success = function() 1L,
+            error = function() stop("inner deliberate error"),
+            interrupt = function() rlang::interrupt())
+        result <- dplyr::summarise(.s7_grouped(), value = {
+            before <- list(n = dplyr::n(), id = dplyr::cur_group_id(), rows = dplyr::cur_group_rows())
+            capture <- new.env(parent = emptyenv())
+            status <- tryCatch({
+                dplyr::summarise(dibble(z = 1:3), value = {
+                    capture$column <- function() z
+                    capture$helper <- function() dplyr::n()
+                    trigger()
+                }); "success"
+            }, error = function(cnd) "error", interrupt = function(cnd) "interrupt")
+            after <- list(n = dplyr::n(), id = dplyr::cur_group_id(), rows = dplyr::cur_group_rows())
+            # Invoke the expired promise once: repeated reads warn about restart.
+            column_error <- tryCatch(capture$column(), error = conditionMessage)
+            events[[length(events) + 1L]] <<- list(status = status, restored = identical(before, after),
+                helper = capture$helper(), column_error = column_error)
+            temporary <- sum(x)
+            saved[[length(saved) + 1L]] <<- list(temporary = function() temporary, helper = capture$helper)
+            1L
+        }, .groups = "drop")
+        expect_identical(as.integer(result$value), c(1L, 1L))
+        expect_identical(vapply(events, `[[`, character(1), "status"), rep(kind, 2L))
+        expect_true(all(vapply(events, `[[`, logical(1), "restored")))
+        expect_identical(vapply(events, `[[`, integer(1), "helper"), c(2L, 2L))
+        expect_true(all(vapply(events, function(event) grepl("Obsolete data mask", event$column_error), logical(1))))
+        expect_identical(vapply(saved, function(entry) as.double(entry$temporary()), double(1)), c(6, 4))
+        for (entry in saved) expect_error(entry$helper(), "Must only be used")
+        saved <- NULL
+    }
+})

@@ -116,6 +116,8 @@ Adapted from dplyr 1.2.1:
     R/reframe.R: reframe.data.frame
     src/summarise.cpp: deferred size-one checking and horizontal recycling
     R/data-mask.R: summary chunks, rowwise scalar-list binding and context reset
+    R/vctrs.R, R/conditions.R, R/context.R: common-type error classes and
+      named-group details, adapted to the owned group plan and public formatting
     R/pick.R: expand_pick integration contract
     R/group-map.R: as_group_map_function and group_modify methods
     R/group-split.R: group_split_impl and group prototypes
