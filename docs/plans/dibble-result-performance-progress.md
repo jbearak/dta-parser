@@ -2,8 +2,11 @@
 
 Starting main: `5ad44406f9b80db81789dcf7b7e1756c28502559`.
 Issue: https://github.com/jbearak/dta-parser/issues/172, still open.
-Contract: [implementation plan](dibble-result-performance.md), with the user’s
-authorized sequential PR, independent-review, CI and CodeRabbit process. The
+Contract: [implementation plan](dibble-result-performance.md), with the user's
+authorized sequential PR, independent-review and CI process. Implementation PRs
+require substantive CodeRabbit review. Under the user's September 8 update,
+evidence-only PRs use the dedicated evidence reviewer and do not require
+CodeRabbit. Its documentation-coverage warning is always nonblocking. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
@@ -18,8 +21,10 @@ tree remains `f88005766aee9b9dd5827b33a3930feff6672008`, identical to qualified
 `c8ca0a4`. The receipt is retained at
 `/private/tmp/dta-direct-stage4-validation/pr195-verified-normal-merge.json`.
 
-Stage 5 is active on `codex/direct-dibble-expressions` in
-`/private/tmp/dta-direct-stage5`, based on that verified merge. The implementation
+Stage 5 is active in [PR #205](https://github.com/jbearak/dta-parser/pull/205),
+on `codex/direct-dibble-expression-engine` in
+`/private/tmp/dta-direct-stage5-source-pr`. Its base is verified PR #207 merge
+`9d3de66b5f59da66dace7da704ad1d5d5df28ce0`. The implementation
 covers a shared expression evaluator, direct mutate/transmute and computed
 grouping, including rowwise/ungroup assembly. The standalone helper proof passes
 35 bounded cases on real dplyr 1.2.1 under R 4.6.1 and qualified clean R 4.6.0.
@@ -31,6 +36,37 @@ External latest-head review, CI and normal merge still gate Stage 5 completion.
 The twelve base-R read costs remain open for final assessment, and the three
 filter timing flags remain mandatory Stage 6 work. Stages 6 through 9 and the
 final actual downstream renv validation remain required; issue #172 stays open.
+
+At the September 8 review-correction checkpoint, source
+`f9b531f862cec2a77c6f043bb64be15d4b51b824`, package tree
+`0c8de843cc29760286322ede0804ad5622cf2def`, fixes three confirmed findings.
+The dplyr version guard now compares numeric components. The interrupt helper
+drains child stderr and retains its latest 100 lines for timeout diagnostics.
+Both Python qualification runners finalize failures during setup. New tests
+reproduce the original defects, and both independent reviewers cleared the
+actual corrections and retained evidence. Eight public grouping observations
+contradict the reported `.data` label defect; no grouping change was needed.
+The historical preparation count is independently verified as 27 unique inputs,
+and that review thread is resolved without rewriting executed scripts.
+
+Fresh f9 installation and full host tests pass 16,822 assertions with no
+failures, errors or skips and four established warnings. Fresh clean R 4.6.0
+installation and the two changed test files pass 1,303 assertions with no
+failures, errors or warnings and one existing memory-profiling capability skip.
+The new version and stderr regressions pass in both runs. Seven injected Python
+setup cases and the three existing integrity test methods pass in normal and
+optimized Python. The f9 package phase and latest-head external/CI gates are
+still pending at this checkpoint. These corrective runs do not replace or
+relabel the a2 performance, native and broader minimum-runtime records below.
+
+Evidence PRs #201 through #204, #206 and #207 have merged normally. The original
+source assembly and publication checkpoints below retain their historical
+revision labels. The active publication is PR #205; the old unpublished
+assembly descriptions are not its current status. Local correction records are
+under `/private/tmp/dta-direct-stage5-validation`, including
+`pr205-setup-finalization-01`, `pr205-package-observations-01`,
+`implementation/*-pr205-f9b531f-01` and
+`root-r460-integration/candidate-f9b531f-v1*`.
 
 The first Stage 5 exact source checkpoints are `27d700d` and `985e26b`.
 Both installed from Git archives through a bound, tracked installer; these are
