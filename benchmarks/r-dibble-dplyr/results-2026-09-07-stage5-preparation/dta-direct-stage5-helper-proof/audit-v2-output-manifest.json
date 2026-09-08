@@ -1,0 +1,27 @@
+{
+  "changed_inputs": [],
+  "code": 0,
+  "excluded_self": "/private/tmp/dta-direct-stage5-helper-proof/audit-v2-output-manifest.json",
+  "products": [
+    {
+      "bytes": 12436,
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/audit-v2-inputs-before.json",
+      "sha256": "225b2218ea7bf08cf62424c42d58bdbf294a9a65cf07e3d1ff6a3c54e85dae4a"
+    },
+    {
+      "bytes": 172,
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/audit-v2-launch.log",
+      "sha256": "505bb68ae9c61602557b6b6ce69cc0f489441354020e63a4478f0d633b43ea34"
+    },
+    {
+      "bytes": 5022,
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/audit-result-v2.json",
+      "sha256": "e43a7938fe49afd196ebf035d0fbfdaffda667e1818cf1856c31ea961981a6dc"
+    },
+    {
+      "bytes": 388,
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/existing-output-guard-v2.log",
+      "sha256": "7701e1ce327136533ebab51c6178e8c2b7ea7ab5c475e4386fff07cc96015a74"
+    }
+  ]
+}

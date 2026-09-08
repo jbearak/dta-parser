@@ -1,0 +1,10 @@
+{
+  "created_utc": "2026-09-07T14:51:17.101880+00:00",
+  "file_count": 66,
+  "final_audit_receipt_sha256": "c6f127ec9d3a86f7c80acaa626f664ff3b6f2c9ce2dfede4b542e9213f1dc00c",
+  "final_r_receipt_sha256": "bf0aaa716db4c4b860f11265378bd09c6dcad0f52849f5295fa0eb6b6c738cbe",
+  "index": "artifact-index.json",
+  "index_sha256": "bb907a08b4566579b6fad1ebad6f2bf8a588e2219ac162c06d2ef43306af1931",
+  "readme_sha256": "f8c0635764e73e5cfe086587191e26c78ec5c15e6dcac97ae5c4c8255e095203",
+  "total_bytes": 7356475
+}

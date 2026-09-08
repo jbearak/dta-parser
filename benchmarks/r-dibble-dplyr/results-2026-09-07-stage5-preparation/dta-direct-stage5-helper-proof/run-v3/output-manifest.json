@@ -1,0 +1,54 @@
+{
+  "excluded_self": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/output-manifest.json",
+  "products": [
+    {
+      "bytes": 793,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/dll-paths.txt",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/dll-paths.txt",
+      "sha256": "040c0ec5a22ef018006fc20109f88267b239601e8ccdc19bc28501ddf9d2a41c"
+    },
+    {
+      "bytes": 153,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/execution-result.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/execution-result.json",
+      "sha256": "176dfd7933be205a14f57c7ec510c5c0c14655ed7bc2fe5268d1b43201503e58"
+    },
+    {
+      "bytes": 3705,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/execution.log",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/execution.log",
+      "sha256": "a125403056f606a55b898125925c8019f96fa697a2b33335788c3ae707ae5d46"
+    },
+    {
+      "bytes": 1140163,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/inputs-before.json",
+      "sha256": "6312800dcf160b5aa26179bab68aead1ee8823e52254a15c09f6805bf169916b"
+    },
+    {
+      "bytes": 1335,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/namespaces.tsv",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/namespaces.tsv",
+      "sha256": "590218029782a89bcd0990065ff82210aa4ccc6ba20316e7519bd952646c142e"
+    },
+    {
+      "bytes": 12487,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/observations.rds",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/observations.rds",
+      "sha256": "7c394986dc0d5fd0fbeb997ba964b0a943cc22520cac76d238ccb3a1df8291a8"
+    },
+    {
+      "bytes": 67573,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/observations.txt",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-proof/run-v3/observations.txt",
+      "sha256": "6b645e8fedd74a0667216ee092f9c702582e36b2534fa4168acf029dbe6077ea"
+    }
+  ]
+}

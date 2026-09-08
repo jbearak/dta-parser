@@ -1,0 +1,18 @@
+{
+  "corrects": [
+    {
+      "path": "inclusion-manifest.json",
+      "sha256": "16c6a85bc7c83b119a80a1cd51f85f74ff4bda5e19c4d4964e6b105a16bf0ff1"
+    },
+    {
+      "path": "inclusion-receipt.json",
+      "sha256": "df46d88b02411236e1721d17f0dd53c3c012750466dcbb8f4fd470b244ddbfdc"
+    },
+    {
+      "path": "archive-preparation.py",
+      "sha256": "2fee5f6e3c735d8ef38ec3cd33cba6f7b99be4b370f441d118fbcd3cbc0f098e"
+    }
+  ],
+  "scope": "Historical bytes are preserved and checked against their original indexes. Modes in the inclusion manifest were observed at inclusion time. The minimum-study historical index did not contain modes, so equality with historical modes is not established. The original inclusion records and archived recipe remain unchanged.",
+  "experiments_rerun": false
+}

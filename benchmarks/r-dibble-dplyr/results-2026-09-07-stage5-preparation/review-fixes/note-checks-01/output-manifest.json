@@ -1,0 +1,34 @@
+{
+  "excluded_receipt": "completed-receipt.json",
+  "excluded_self": "output-manifest.json",
+  "files": [
+    {
+      "bytes": 763,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-01/corruption-tests.log",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-01/corruption-tests.log",
+      "sha256": "5255097847b12df7c01be17119e9c373779c7677040e5175f4b1bb7086c11bca"
+    },
+    {
+      "bytes": 194,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-01/current-note-check.log",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-01/current-note-check.log",
+      "sha256": "1c2c444b8e75223b1842c281ac8f42ae1927485cfddb4155be8face2042edfe3"
+    },
+    {
+      "bytes": 954,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-01/execution-result.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-01/execution-result.json",
+      "sha256": "df3b0faed42aaa5519357440fce78ea84f1b61c0e2438de6f04d505448484df8"
+    },
+    {
+      "bytes": 5266,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-01/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage5-helper-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-preparation/review-fixes/note-checks-01/inputs-before.json",
+      "sha256": "677901d9b77984487ff44590baa3207f7a097231ab6338bccadd16712d84ceb7"
+    }
+  ]
+}
