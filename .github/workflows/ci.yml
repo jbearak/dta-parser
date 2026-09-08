@@ -145,7 +145,7 @@ jobs:
           rustup default "$RUSTUP_TOOLCHAIN"
       - name: Install package and declared test dependencies
         shell: Rscript {0}
-        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "dplyr", "callr", "data.table", "httpuv", "arrow", "roxygen2"))
+        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "dplyr", "callr", "data.table", "httpuv", "arrow", "roxygen2", "stringi"))
       - name: Check generated documentation is up to date
         if: runner.os == 'Linux'
         shell: bash

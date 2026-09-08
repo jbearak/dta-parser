@@ -1,4 +1,4 @@
-"""Run exact-source Stage 5 checks with before/after input bindings.
+"""Run exact-source checks with before/after input bindings.
 
 Source exports, installed dependencies, original logs and failed attempts stay
 in the fresh output directory. Output indexes exclude themselves; a separate
@@ -66,6 +66,25 @@ def require_package_inventory(package, expected):
             repr(sorted(str(p) for p in current.symmetric_difference(expected))))
 
 
+def resolve_tool_paths(names, search_path):
+    selected = {}
+    for name in names:
+        found = shutil.which(name, path=search_path)
+        require(found is not None, 'Required tool not found: ' + name)
+        # Preserve the invocation basename: aliases may dispatch different roles.
+        selected[name] = Path(found).absolute()
+    return selected
+
+
+def selected_tool_command(command, bindings):
+    require(command and command[0] in bindings,
+            'Unbound top-level tool: ' + repr(command))
+    selected = bindings[command[0]]
+    changes = input_changes([selected])
+    require(not changes, 'Selected tool changed: ' + repr(changes))
+    return [selected['path'], *command[1:]], selected
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('phase', choices=['focused', 'full', 'package', 'native', 'rust'])
@@ -79,17 +98,12 @@ def main():
     repo, library, output = args.repo.resolve(), args.library.resolve(), args.output.resolve()
     require_fresh(output)
     driver = 'benchmarks/r-dibble-dplyr/run-expression-checks.py'
-    git = lambda *a: subprocess.check_output(['git', '-C', str(repo), *a])
-    require(Path(__file__).read_bytes() == git('show', args.runner_sha + ':' + driver),
-            'Driver differs from the exact runner commit')
-    require(git('rev-parse', args.source_sha + ':r-package/dtatools') ==
-            git('rev-parse', args.runner_sha + ':r-package/dtatools'),
-            'Runner package source differs from qualified installation')
     output.mkdir(parents=True)
     status = 'failed'
     before = []
     consumed = []
     records = []
+    source_records = []
     changed = []
     failure = None
     input_binding_complete = False
@@ -97,9 +111,44 @@ def main():
     package_root = source / 'r-package/dtatools'
     package_inventory = None
     try:
+        discovery_path = os.environ.get('PATH', os.defpath)
+        git_invocation = resolve_tool_paths(['git'], discovery_path)['git']
+        git_binding = identity(git_invocation)
+        before = [git_binding]
+        if git_invocation != git_invocation.resolve(strict=True):
+            before.append(identity(git_invocation.resolve(strict=True)))
+        source_tool_inputs = list(before)
+        write(output/'source-tool-selection.json', dict(discovery_path=discovery_path,
+            tools={'git': git_binding}, inputs=source_tool_inputs))
+        consumed.append(identity(output/'source-tool-selection.json'))
+
+        def git(*arguments):
+            requested = ['git', '-C', str(repo), *arguments]
+            command, selected = selected_tool_command(requested, {'git': git_binding})
+            require(not input_changes(source_tool_inputs), 'Source Git binding changed')
+            record = dict(requested_command=requested, command=command, selected_tool=selected,
+                          environment_path=os.environ.get('PATH'),
+                          started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
+            try:
+                result = subprocess.check_output(command)
+                record['exit_code'] = 0
+                return result
+            except BaseException as error:
+                record['exit_code'] = getattr(error, 'returncode', None)
+                record['error'] = dict(type=type(error).__name__, message=str(error))
+                raise
+            finally:
+                record['completed_utc'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                source_records.append(record)
+                require(not input_changes(source_tool_inputs), 'Source Git binding changed')
+
+        require(Path(__file__).read_bytes() == git('show', args.runner_sha + ':' + driver),
+                'Driver differs from the exact runner commit')
+        require(git('rev-parse', args.source_sha + ':r-package/dtatools') ==
+                git('rev-parse', args.runner_sha + ':r-package/dtatools'),
+                'Runner package source differs from qualified installation')
         archive = output / 'source.tar'
-        subprocess.run(['git', '-C', str(repo), 'archive', '--format=tar', '--output=' + str(archive),
-                        args.runner_sha], check=True)
+        git('archive', '--format=tar', '--output=' + str(archive), args.runner_sha)
         with tarfile.open(archive) as tar:
             for item in tar.getmembers():
                 require(not Path(item.name).is_absolute() and '..' not in Path(item.name).parts and
@@ -129,8 +178,12 @@ def main():
         for directory in [rroot, site, library / 'dtatools']:
             require(directory.is_dir(), 'Missing input tree: ' + str(directory))
             inputs.update(p for p in directory.rglob('*') if p.is_file())
-        tools = {name: Path(shutil.which(name)).resolve(strict=True) for name in
-                 ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'bun', 'R', 'Rscript', 'python3']}
+        tool_invocations = resolve_tool_paths(
+            ['cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'bun', 'R', 'Rscript', 'python3'],
+            discovery_path)
+        tool_invocations['git'] = git_invocation
+        tools = {name: path.resolve(strict=True) for name, path in tool_invocations.items()}
+        inputs.update(tool_invocations.values())
         inputs.update(tools.values())
         inputs.add(Path(sys.executable).resolve(strict=True))
         compiler = Path(subprocess.check_output(
@@ -158,7 +211,16 @@ def main():
                 inputs.add(config)
         if args.phase == 'native':
             inputs.update(repo/file for file in ['benchmarks/r-reference-mutation/owned-atoms.R', 'benchmarks/r-dibble-dplyr/helpers.R'])
-        before = [identity(p) for p in sorted(inputs)]
+        require(not input_changes(source_tool_inputs), 'Source Git binding changed')
+        source_tool_paths = {row['path'] for row in source_tool_inputs}
+        before = source_tool_inputs + [identity(p) for p in sorted(inputs)
+                                       if str(p) not in source_tool_paths]
+        bound_paths = {row['path']: row for row in before}
+        require(bound_paths[str(git_invocation)] == git_binding, 'Source Git binding changed')
+        tool_bindings = {name: bound_paths[str(path)] for name, path in tool_invocations.items()}
+        write(output / 'tool-selection.json', dict(discovery_path=discovery_path, tools=tool_bindings,
+            scope='Fixed top-level gate invocation paths and canonical identities. '
+                  'Nested shell/toolchain selection and complete runtime closure are not frozen.'))
         input_binding_complete = True
         package_inventory = {p for p in expected if p.is_relative_to(package_root)}
         write(output / 'inputs-before.json', dict(source_sha=args.source_sha,
@@ -178,10 +240,13 @@ def main():
             require_package_inventory(package_root, package_inventory)
         def run(label, command, cwd=source, env=None):
             guard()
-            record = dict(label=label, command=command, cwd=str(cwd),
+            selected_command, selected = selected_tool_command(command, tool_bindings)
+            child_environment = environment if env is None else env
+            record = dict(label=label, requested_command=list(command), command=selected_command,
+                          selected_tool=selected, environment_path=child_environment.get('PATH'), cwd=str(cwd),
                           started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
             with (output / (label + '.log')).open('x') as stream:
-                record['exit_code'] = subprocess.run(command, cwd=cwd, env=env or environment,
+                record['exit_code'] = subprocess.run(selected_command, cwd=cwd, env=child_environment,
                     stdout=stream, stderr=subprocess.STDOUT).returncode
             record['completed_utc'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             record['log'] = identity(output / (label + '.log'))
@@ -266,6 +331,7 @@ def main():
         failure = dict(type=type(error).__name__, message=str(error))
         raise
     finally:
+        write(output/'source-git-commands.json', source_records)
         changed = input_changes(before + consumed)
         if package_inventory is not None:
             try:

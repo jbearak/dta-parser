@@ -9,6 +9,7 @@
     if (!"dplyr" %in% loadedNamespaces()) {
         return(list(run = function(mask, action) action(),
             expand = function(quo, mask, name, index) list(describe(quo, name, index)),
+            expand_filter = function(quo, mask, index) quo,
             column = function(name) invisible(NULL), reset_column = function() invisible(NULL),
             warnings = function(records, call) {
                 first <- records[[1L]]
@@ -50,7 +51,12 @@
                  named = data$is_named, column = data$column)
         })
     }
-    list(run = run, expand = expand,
+    expand_filter <- function(quo, mask, index) {
+        attr(quo, "dplyr:::data") <- list(name = quo, is_named = FALSE, index = index)
+        quo <- get("expand_pick", namespace)(quo, mask)
+        get("expand_if_across", namespace)(quo)
+    }
+    list(run = run, expand = expand, expand_filter = expand_filter,
          warnings = function(records, call) {
              get("signal_warnings", namespace)(list(warnings = records), call)
          },

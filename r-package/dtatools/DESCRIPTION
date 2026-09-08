@@ -5,7 +5,7 @@ Authors@R: c(
     person("Jonathan", "Bearak", role = c("aut", "cre"),
         email = "jonathan@bearak.net"),
     person("dplyr authors", role = "cph",
-        comment = "Adapted selectors, grouping and expression context; see inst/NOTICE"),
+        comment = "Adapted selectors, grouping, expressions and row policies; see inst/NOTICE"),
     person("R Core Team", role = "cph",
         comment = "Adapted base subsetting policy; see inst/NOTICE"))
 Description: Reads Stata DTA files into tibbles or data tables with a Rust parser, multicore
@@ -22,6 +22,7 @@ Encoding: UTF-8
 Depends: R (>= 4.6.0)
 Imports:
     dplyr (>= 1.2.1),
+    lifecycle (>= 1.0.5),
     pillar,
     readr (>= 2.2.0),
     rlang (>= 1.0.0),
@@ -37,6 +38,7 @@ Suggests:
     data.table (>= 1.18.2.1),
     httpuv,
     pkgload,
+    stringi (>= 1.5.3),
     testthat (>= 3.1.7),
     withr
 Config/testthat/edition: 3

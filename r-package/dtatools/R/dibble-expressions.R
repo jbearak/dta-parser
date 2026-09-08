@@ -110,7 +110,7 @@
         get_current_group_id_mutable = function() state$id + 0L,
         current_key = function() if (!nrow(groups$keys)) groups$keys else
             vctrs::vec_slice(groups$keys, state$id),
-        current_rows = function() rows[[state$id]],
+        current_rows = function() if (state$id) rows[[state$id]] else integer(),
         current_vars = function() names(state$current),
         current_non_group_vars = function() setdiff(names(state$current), groups$names),
         get_current_data = function(groups = TRUE) {
@@ -132,10 +132,16 @@
         get_size = function() size,
         get_n_groups = function() nrow(groups$keys)
     )
-    evaluate <- function(quo, id) {
+    # One group frame can evaluate several expressions with shared temporary
+    # bindings. Mutate still requests a fresh frame for each expression.
+    with_group <- function(id, action) {
         state$id <- as.integer(id)
         state$mask <- make_mask()
-        rlang::eval_tidy(quo, state$mask)
+        mask <- state$mask
+        action(function(quo) rlang::eval_tidy(quo, mask))
+    }
+    evaluate <- function(quo, id) {
+        with_group(id, function(evaluate) evaluate(quo))
     }
     expire <- function(name) {
         force(name)
@@ -155,7 +161,7 @@
         state$mask <- NULL
         groups <<- rows <<- NULL
     }
-    list(helpers = helpers, evaluate = evaluate, add = add,
+    list(helpers = helpers, evaluate = evaluate, with_group = with_group, add = add,
          remove = function(name) { state$current[[name]] <- NULL },
          values = values, rows = rows, groups = groups,
          resolve = function(name) {
@@ -172,7 +178,8 @@
     if (nzchar(name)) paste0(name, " = ", label) else label
 }
 
-.dibble_expression_condition <- function(condition, quo, name, mask, caller, warning = FALSE) {
+.dibble_expression_condition <- function(condition, quo, name, mask, caller, warning = FALSE,
+                                         error_class = "dplyr:::mutate_error") {
     message <- c(i = paste0("In argument: `", .dibble_expression_label(quo, name), "`."))
     id <- mask$current_id()
     if (id && !identical(mask$groups$type, "ungrouped")) {
@@ -188,7 +195,7 @@
                     parent = condition, call = str2lang(caller))
     } else {
         rlang::abort(message, parent = condition, call = str2lang(caller),
-                     class = "dplyr:::mutate_error")
+                     class = error_class)
     }
 }
 

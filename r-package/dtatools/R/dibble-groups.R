@@ -128,18 +128,18 @@
 # Adapted from dplyr's arrange.R legacy order proxies; see NOTICE. Public
 # order proxies preserve Stata missing ranks while base order supplies locale
 # collation for this compatibility option. Data-frame proxies need dense ranks.
-.group_order_legacy <- function(data) {
+.group_order_legacy <- function(data, direction = "asc") {
     if (!length(data)) return(seq_len(nrow(data)))
-    proxies <- lapply(data, function(value) {
+    proxies <- Map(function(value, direction) {
         proxy <- vctrs::vec_proxy_order(value)
         if (is.data.frame(proxy)) {
             unique <- vctrs::vec_unique(proxy)
             return(vctrs::vec_match(proxy, vctrs::vec_slice(
-                unique, .group_order_legacy(unique))))
+                unique, .group_order_legacy(unique, direction))))
         }
         attributes(proxy) <- NULL
-        proxy
-    })
+        if (direction == "desc") -xtfrm(proxy) else proxy
+    }, data, rep(direction, length.out = length(data)))
     do.call(order, unname(proxies))
 }
 

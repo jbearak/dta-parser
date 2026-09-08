@@ -865,3 +865,9 @@ and across/pick expansion functions. See [NOTICE](inst/NOTICE) for exact source
 and license records. dplyr 1.2.1 is the supported minimum on R 4.6.0 or newer;
 [the compatibility study](https://github.com/jbearak/dta-parser/blob/main/docs/research/dplyr-r46-minimum.md)
 records the source-build evidence and limits of the older-binary investigation.
+
+The direct filter, arrange, distinct and slice family also adapts dplyr 1.2.1
+row policies and tests. Shared evaluation and row gathering preserve Stata
+columns and metadata. Ordering uses public vctrs ranks; explicit non-C locales use
+stringi, and lifecycle supplies the upstream deprecation notifications. The
+installed notice identifies the source functions, test adaptations and license.

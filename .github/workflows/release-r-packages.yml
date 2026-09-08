@@ -84,7 +84,7 @@ jobs:
         shell: Rscript {0}
         run: |
           install.packages(
-            c("dplyr", "readr", "rlang", "tibble", "tidyselect"),
+            c("dplyr", "readr", "rlang", "tibble", "tidyselect", "stringi"),
             repos = "https://cloud.r-project.org",
             Ncpus = 2L
           )
