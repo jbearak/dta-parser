@@ -49,8 +49,9 @@
     rowwise <- identical(groups$type, "rowwise")
     add <- function(name, value, chunks = NULL) {
         generation <- new.env(parent = emptyenv())
-        generation$value <- .metadata_copy(value)
-        generation$chunks <- chunks
+        generation$value <- .capture_dibble_nested(value)
+        generation$chunks <- if (is.null(chunks)) NULL else
+            lapply(chunks, .capture_dibble_nested)
         generation$used <- FALSE
         state$current[[name]] <- generation
         if (!name %in% state$names) state$names <- c(state$names, name)
@@ -75,7 +76,7 @@
                         if (!length(value)) {
                             ptype <- attr(value, "ptype", exact = TRUE)
                             if (is.null(ptype)) logical() else ptype
-                        } else .metadata_copy(value[[index]])
+                        } else .capture_dibble_nested(value[[index]])
                     } else .gather_dta_columns(list(value = value), index)[[1L]]
                 })
         }

@@ -10,7 +10,51 @@ CodeRabbit. Its documentation-coverage warning is always nonblocking. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stages 1 through 5 complete, Stage 6 active
+## Stages 1 through 6 complete, Stage 7 active
+
+Stage 6 [PR #209](https://github.com/jbearak/dta-parser/pull/209) merged normally
+on September 8, 2026 at 20:33:25 UTC as
+`4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c`, with reviewed head
+`53a1388dca2c7f924d8eef4a96574371c08f0394`. All required CI and substantive
+implementation CodeRabbit reviews passed; both independent reviews and the
+root assessment accepted the scoped qualification. Exact a146 source passed
+17,658 full-host assertions, 5,983 selected R 4.6.0 assertions, package,
+conformance, interoperability and native gates. Rust evidence was reused only
+for identical Rust inputs. Local package check retains three warnings and two
+notes; macOS and Windows CI retain their observed predecessor warning counts.
+
+The final original atomic comparison has only the twelve pre-existing base-R
+read flags reserved for final epic assessment. Fresh row grids have no direct
+public-operation flags against the predecessor or safe control under the joint
+>10% and >1 ms threshold. One safe-control slice_head comparison remains flagged;
+it does not enter the new public row planner. Arrange's public rank planning
+uses more R allocation for factor/ordered keys, and the one-million-row row-chain
+lifetime measurement records about 24 MB higher whole-child arrange peak RSS
+for those types. The full 24-child row-memory suite retains bounded final-output
+chains; it does not retain all intermediate results or measure isolated peaks
+at each checkpoint. The approved final PR body records these limits in detail.
+
+Concurrent [PR #210](https://github.com/jbearak/dta-parser/pull/210) became the
+merge's first parent `5556caedf777976fcd8976c5d8b36e183a5b86e5`. Its Pages,
+release and repository documentation changes are preserved. All 238 recursive
+package leaves were compared: 237 match qualified a146 by path, blob, type and
+mode; only the package README installation instructions differ. The merged
+package tree is `db679c332c54fcf027557f4be728d8f970bf2df7`, not the historical
+installed a146 tree `18263d4e3bc286cf801c82945be3e5b817d8e5dd`.
+
+Stage 7 starts at that verified merge on `codex/direct-dibble-summary-nesting`
+in `/private/tmp/dta-direct-stage7`, with fresh predecessor installation and
+validation under `/private/tmp/dta-direct-stage7-validation`. It owns direct
+summarise, reframe, group_modify, group_nest and nest_by, including summary
+chunk sizing and nested result isolation. An isolated foreign-write regression
+reproduces a pre-existing group_nest failure on both main235 and a146; its fix
+and complete nested-output qualification are mandatory Stage 7 work. The
+read-only scalar-address observations identify a lead, not a traced C cause.
+Stages 8–9, the twelve residual read costs, and final actual fertility renv
+validation remain required. Issue #172 stays open.
+
+## Historical Stage 6 implementation checkpoints
+
 
 Stage 5 [PR #205](https://github.com/jbearak/dta-parser/pull/205) merged normally
 at 2026-09-08 12:29:53 UTC as

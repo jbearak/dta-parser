@@ -63,6 +63,9 @@
 }
 
 .prepare_dibble_result_column <- function(column, isolate, row_count, caller, name) {
+    # Nested frames can be retained even when the outer list was freshly
+    # allocated. Capture their storage at the same publication boundary.
+    if (is.list(column)) return(.capture_dibble_nested(column))
     if (isolate && is.character(column) && !.is_altrep(column) &&
         is.null(dim(column)) && .valid_string_declaration(
             attr(column, "stata.string.storage", exact = TRUE))) {

@@ -10,6 +10,7 @@
         return(list(run = function(mask, action) action(),
             expand = function(quo, mask, name, index) list(describe(quo, name, index)),
             expand_filter = function(quo, mask, index) quo,
+            expand_summary = function(quo, mask, name, index) quo,
             column = function(name) invisible(NULL), reset_column = function() invisible(NULL),
             warnings = function(records, call) {
                 first <- records[[1L]]
@@ -56,7 +57,15 @@
         quo <- get("expand_pick", namespace)(quo, mask)
         get("expand_if_across", namespace)(quo)
     }
+    expand_summary <- function(quo, mask, name, index) {
+        attr(quo, "dplyr:::data") <- list(name = if (nzchar(name)) name else quo,
+            is_named = nzchar(name), index = index)
+        # Typed summaries historically keep across() within each group. Pick
+        # expansion still resolves its selectors against the current columns.
+        get("expand_pick", namespace)(quo, mask)
+    }
     list(run = run, expand = expand, expand_filter = expand_filter,
+         expand_summary = expand_summary,
          warnings = function(records, call) {
              get("signal_warnings", namespace)(list(warnings = records), call)
          },

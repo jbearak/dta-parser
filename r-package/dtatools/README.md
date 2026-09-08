@@ -871,3 +871,9 @@ row policies and tests. Shared evaluation and row gathering preserve Stata
 columns and metadata. Ordering uses public vctrs ranks; explicit non-C locales use
 stringi, and lifecycle supplies the upstream deprecation notifications. The
 installed notice identifies the source functions, test adaptations and license.
+
+Direct summary, reframe, callback and nesting methods also adapt dplyr 1.2.1
+chunk-sizing, grouping and callback policies. They use the shared expression
+mask, row gatherer and result finalizer; nested publication captures frame
+storage while retaining ordinary nested classes and intentional reference
+objects. The installed notice identifies the source functions and test policies.
