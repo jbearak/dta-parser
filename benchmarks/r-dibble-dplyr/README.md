@@ -393,7 +393,13 @@ that path and its resolved target, bytes, mode and hash, and records the discove
 PATH. Each command record retains the requested argv, actual argv and child PATH.
 This preserves basename-dependent executable roles and rejects changed bound
 tools; changing PATH cannot select a different top-level gate executable.
-Nested shell/toolchain selection, preparatory discovery and the complete Python,
+The check runner also binds Git before its first source-validation or export
+command. `source-tool-selection.json` retains that initial binding and discovery
+PATH; `source-git-commands.json` records those requested and actual commands.
+Each source Git call checks the binding before and after execution, and the
+later gate inventory reuses it. This addition does not change the install
+runner's earlier preparatory-discovery scope or any historical receipt.
+Nested shell/toolchain selection, other preparatory discovery and the complete Python,
 SDK and system-library closures remain outside this guarantee. Earlier executed
 records keep their original, narrower launcher provenance.
 

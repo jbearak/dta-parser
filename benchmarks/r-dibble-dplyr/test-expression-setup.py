@@ -28,6 +28,9 @@ class SetupFailureTests(unittest.TestCase):
         commands = []
 
         def git_output(command, **kwargs):
+            if 'archive' in command:
+                archive(command, **kwargs)
+                return b''
             commands.append(command)
             self.assertEqual(Path(command[0]).name, 'git')
             if 'show' in command:

@@ -1002,7 +1002,8 @@ an evaluated expression exports a column alias. Both reproductions and the
 required dependency repair are recorded in the [plan](dibble-result-performance.md).
 Neither finding is closed by the R-only stage 1 revision.
 
-Stage 2 is active as recorded above. Stages 3 through 9 remain pending: owned
+At this historical Stage 1 checkpoint, Stage 2 was active and stages 3 through 9
+were pending: owned
 doubles; owned strings/logicals/integers; expression engine; filter/order/distinct/
 slice families; summaries/callbacks; joins/binding/hooks; independent recoding
 and optional dplyr configuration. Reconcile the ownership prerequisite before

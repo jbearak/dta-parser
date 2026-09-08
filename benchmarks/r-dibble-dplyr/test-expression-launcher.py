@@ -54,14 +54,14 @@ class LauncherTests(unittest.TestCase):
         ns.update(before=before, consumed=[], tool_invocations=self.tools,
                   discovery_path=self.discovery_path,
                   source=self.root, output=self.output, package_root=self.package,
-                  package_inventory={self.package_file}, records=[],
+                  package_inventory={self.package_file}, records=[], source_records=[],
                   environment={'PATH': str(self.second)},
                   args=type('Args', (), {'source_sha': 'synthetic-source', 'runner_sha': 'synthetic-runner'})())
         # Use the actual binding serialization and nested gate functions, without
         # invoking the production main, Git export, R or package qualification.
         start = next(i for i, n in enumerate(BODY) if isinstance(n, ast.Assign) and
                      any(isinstance(t, ast.Name) and t.id == 'bound_paths' for t in n.targets))
-        execute_nodes(BODY[start:start + 3], ns)
+        execute_nodes([BODY[start], *BODY[start + 2:start + 4]], ns)
         execute_nodes([n for n in BODY if isinstance(n, ast.FunctionDef) and n.name in ('guard', 'run')], ns)
         wrapper = ast.parse("def finish(action):\n    status = 'failed'\n    changed = []\n    failure = None\n    input_binding_complete = True\n    try:\n        action()\n        status = 'complete'\n    except BaseException:\n        pass\n    finally:\n        pass\n")
         protected = next(n for n in wrapper.body[0].body if isinstance(n, ast.Try))
