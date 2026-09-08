@@ -186,7 +186,7 @@ test_that("S7-C09 callback data and fun arguments are forwarded without helper c
     }
 })
 
-test_that("S7-C10 nested publication validates dibble storage and keeps repeated graph nodes", {
+test_that("S7-C10 nested publication validates dibbles, reuses siblings and rejects cycles", {
     stale <- dibble(x = c("a", "b"))
     .Call(dtatools:::C_dtatools_set_data_column, stale, 1L,
         structure(c(NA_character_, "widened"), class = "dta_string", stata.string.storage = "str1"))
@@ -195,11 +195,29 @@ test_that("S7-C10 nested publication validates dibble storage and keeps repeated
     expect_identical(attr(result$nested[[1L]]$x, "stata.string.storage"), "str7")
     expect_true(dtatools:::.reference_state_valid(result$nested[[1L]]))
     expect_true(can_add_columns(result$nested[[1L]]))
-    cycle <- list(NULL)
-    .Call(dtatools:::C_dtatools_set_data_column, cycle, 1L, cycle)
-    captured <- dplyr::summarise(dibble(id = 1L), nested = list(cycle))$nested[[1L]]
-    expect_false(identical(rlang::obj_address(captured), rlang::obj_address(cycle)))
-    expect_identical(rlang::obj_address(captured[[1L]]), rlang::obj_address(captured))
+    shared <- list(value = 1L)
+    captured <- dtatools:::.capture_dibble_nested(list(list(shared), list(shared)))
+    expect_identical(rlang::obj_address(captured[[1L]][[1L]]),
+        rlang::obj_address(captured[[2L]][[1L]]))
+    expect_false(identical(rlang::obj_address(captured[[1L]][[1L]]), rlang::obj_address(shared)))
+    skip_if_not_installed("callr")
+    # The unguarded candidate and plain upstream summary overflowed the C stack.
+    # Keep this boundary isolated so a regression cannot end the entire suite.
+    observed <- callr::r(function(libraries) {
+        .libPaths(libraries); library(dtatools)
+        cycle <- list(NULL)
+        invisible(.Call(dtatools:::C_dtatools_set_data_column, cycle, 1L, cycle))
+        message <- tryCatch({
+            dplyr::summarise(dibble(id = 1L), nested = list(cycle))
+            NULL
+        }, error = function(e) conditionMessage(e))
+        list(message = message,
+            healthy = as.integer(dplyr::summarise(dibble(x = 1:2), value = sum(x))$value),
+            constants = as.integer(c(TRUE, FALSE)))
+    }, args = list(.libPaths()), libpath = .libPaths())
+    expect_match(observed$message, "Cyclic nested list or data frame")
+    expect_identical(observed$healthy, 3L)
+    expect_identical(observed$constants, c(1L, 0L))
 })
 
 test_that("S7-C11 callbacks observe a fixed source generation across groups", {
@@ -235,7 +253,7 @@ test_that("S7-C12 a zero-group prototype callback can produce padded key rows", 
 test_that("S7-C13 opaque pairlists and classed list slots retain representation", {
     pair <- pairlist(a = 1L, b = quote(x))
     classed <- structure(list(1L, 2L), class = "stage7_opaque_list", names = c("a", "b"))
-    withr::local_bindings(as.list.stage7_opaque_list = function(...) stop("must not dispatch"),
+    rlang::local_bindings(as.list.stage7_opaque_list = function(...) stop("must not dispatch"),
         .env = globalenv())
     array <- array(list(1L, NULL), c(1L, 2L))
     result <- dplyr::summarise(dibble(id = 1L), value = list(list(pair, classed, array)))

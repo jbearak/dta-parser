@@ -876,4 +876,5 @@ Direct summary, reframe, callback and nesting methods also adapt dplyr 1.2.1
 chunk-sizing, grouping and callback policies. They use the shared expression
 mask, row gatherer and result finalizer; nested publication captures frame
 storage while retaining ordinary nested classes and intentional reference
-objects. The installed notice identifies the source functions and test policies.
+objects. Cyclic nested lists and data frames produce an explicit error before
+vector assembly. The installed notice identifies the source functions and test policies.

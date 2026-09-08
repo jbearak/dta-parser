@@ -3,6 +3,7 @@
 # scalar vector returned by foreign subsetting. Environments and closures keep
 # their intentional reference identity. The call-local memo roots both sides;
 # it is discarded after publication and never becomes an ownership registry.
+# Cyclic payloads are rejected before public vector assembly traverses them.
 .capture_dibble_nested <- function(value) {
     completed <- new.env(hash = TRUE, parent = emptyenv())
     capture <- function(value) {
@@ -12,7 +13,11 @@
         # the physical-slot setters below operate only on ordinary list vectors.
         if (typeof(value) != "list") return(.metadata_copy(value))
         address <- rlang::obj_address(value)
-        if (exists(address, completed, inherits = FALSE)) return(completed[[address]]$result)
+        if (exists(address, completed, inherits = FALSE)) {
+            entry <- completed[[address]]
+            if (entry$active) rlang::abort("Cyclic nested list or data frame values are not supported.")
+            return(entry$result)
+        }
         frame <- is.data.frame(value)
         dibble <- frame && is_dibble(value)
         reference <- frame && inherits(value, "dtatools_ref_data")
@@ -26,16 +31,16 @@
             metadata$names <- names(columns)
             metadata$row.names <- .row_names_info(value, 0L)
         }
-        # Establish the final physical shell before recursing. This permits a
-        # self-referential list/table without recursion or references back to
-        # the source. All slots are replaced through the existing native setter.
+        # Establish the final physical shell before recursing. Active entries
+        # reject ancestor cycles; completed entries reuse captured siblings.
+        # All slots are replaced through the existing native setter.
         result <- .Call(C_dtatools_metadata_copy, columns)
         attributes(result) <- metadata
         if (dibble || (reference && !inherits(result, "data.table"))) {
             result <- .reserve_column_capacity(result)
         }
         if (frame && inherits(result, "data.table")) result <- data.table::setalloccol(result)
-        completed[[address]] <- list(source = value, result = result)
+        completed[[address]] <- list(source = value, result = result, active = TRUE)
         addresses <- vapply(columns, rlang::obj_address, character(1))
         for (index in seq_along(columns)) {
             prior <- match(addresses[[index]], addresses[seq_len(index - 1L)])
@@ -50,6 +55,7 @@
         if (dibble) .validate_group_metadata(result)
         if (dibble || reference) .mark_reference_data(result,
             .new_reference_state(result, dibble = dibble))
+        completed[[address]]$active <- FALSE
         result
     }
     capture(value)

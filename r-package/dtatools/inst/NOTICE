@@ -130,6 +130,8 @@ Adapted from dplyr 1.2.1:
     Shared R/dibble-nested-capture.R is package-specific storage capture for
     nested frame/list publication, preserving public classes and intentional
     reference-valued objects rather than assuming a shallow list is isolated.
+    A call-local active-node guard rejects cyclic nested list/frame payloads
+    before vector assembly; completed acyclic siblings can reuse their capture.
   Additional tests: test-dibble-summary.R and test-dibble-callbacks.R adapt
     test-summarise.R, test-reframe.R, test-across.R, test-pick.R,
     test-group-map.R, test-group-nest.R and test-nest-by.R policies, with typed
