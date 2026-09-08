@@ -1,0 +1,95 @@
+{
+  "recorded_utc": "2026-09-08T00:28:35.876914+00:00",
+  "scope": "Retrospective description of retained historical records for CodeRabbit comment3953333632. No R process or workload was run and no current PATH lookup was substituted for historical evidence. Original copied files are unchanged.",
+  "historical_test_command": [
+    "Rscript",
+    "--vanilla",
+    "benchmarks/r-dibble-dplyr/expression-checks.R",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-01/library",
+    "90375ec1871d159d2cb24a9ccd3e100f57931701",
+    "/private/tmp/dta-direct-stage5-validation/implementation/focused-final-01/source",
+    "/private/tmp/dta-direct-stage5-validation/implementation/focused-final-01",
+    "dibble|owned|reference|group|mutat|replac"
+  ],
+  "historical_test_started_utc": "2026-09-07T16:09:52.083683+00:00",
+  "historical_test_completed_utc": "2026-09-07T16:10:12.792371+00:00",
+  "resolved_test_executable": null,
+  "resolved_test_executable_status": "Not recorded unambiguously at process launch. The bare Rscript command and original PATH-to-tool mapping cannot be reconstructed from the retained records.",
+  "recorded_rscript_candidates": [
+    {
+      "input_index_zero_based": 10,
+      "bytes": 51528,
+      "mode": "0o555",
+      "path": "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "resolved": "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+    },
+    {
+      "input_index_zero_based": 32,
+      "bytes": 51528,
+      "mode": "0o755",
+      "path": "/opt/homebrew/Cellar/r/4.6.1/lib/R/bin/Rscript",
+      "resolved": "/opt/homebrew/Cellar/r/4.6.1/lib/R/bin/Rscript",
+      "sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+    }
+  ],
+  "preflight_reported_runtime": {
+    "version": "R version 4.6.1 (2026-06-24)",
+    "platform": "aarch64-apple-darwin25.4.0",
+    "source": "focused-final-01/preflight-identity.R",
+    "scope": "The preceding preflight process reported this runtime; this is not a separate executable-identity record from the test process."
+  },
+  "historical_runner": {
+    "source_commit": "90375ec1871d159d2cb24a9ccd3e100f57931701",
+    "path": "benchmarks/r-dibble-dplyr/run-expression-checks.py",
+    "sha256": "ecd1dd7853acc31de938e6a682071dc6c89d243004cb8691c694b75373b98bc1",
+    "source_url": "https://github.com/jbearak/dta-parser/blob/90375ec1871d159d2cb24a9ccd3e100f57931701/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+    "behavior": "The runner resolved Rscript with shutil.which and added the resulting file to its input set. The complete Homebrew R tree also supplied Rscript records. It did not retain the tool-name-to-path mapping or PATH value, and subprocess.run received the bare Rscript name.",
+    "limit": "A bound executable candidate and its hash do not establish which executable was selected at launch. Unchanged pre-enumerated input files do not prove PATH resolution or complete directory membership."
+  },
+  "disposition": "Retain this run as historical focused diagnostics with the executable-selection gap explicit. This record neither repairs that past gap nor promotes the run to current exact-runtime acceptance. Any future qualification needs its own prelaunch executable binding.",
+  "source_records": [
+    {
+      "path": "focused-final-01/tests-command.json",
+      "bytes": 1042,
+      "sha256": "61fa98de6604dd7852fab816d5222337d3dc0b440e07579280006655c0bba918",
+      "mode": "0o644"
+    },
+    {
+      "path": "focused-final-01/preflight-command.json",
+      "bytes": 1006,
+      "sha256": "ab22cbfbc3de475de2f75a1af1aa9d4ade54e5361b4c37d225274967079cca66",
+      "mode": "0o644"
+    },
+    {
+      "path": "focused-final-01/preflight-identity.R",
+      "bytes": 5180,
+      "sha256": "b91aee80159c979616c8c9b16f69815d1e90716759680b08d486d3e72dcfda7d",
+      "mode": "0o644"
+    },
+    {
+      "path": "focused-final-01/inputs-before.json",
+      "bytes": 20204763,
+      "sha256": "cb1775ca7fdc664d16c14c6ad75ac86678d63f0570f30d8fbb66e055a2eecc16",
+      "mode": "0o644"
+    },
+    {
+      "path": "focused-final-01/execution-result.json",
+      "bytes": 2308,
+      "sha256": "5a7acdadcf4d192849b572eccf7e65ab8bd195c1e25d49645946ee8e5d7720ba",
+      "mode": "0o644"
+    },
+    {
+      "path": "focused-final-01/manifest.json",
+      "bytes": 1548844,
+      "sha256": "2a214f89b306017b689de1434628b714219bba54e1e3e3df9607eb75b89739b9",
+      "mode": "0o644"
+    },
+    {
+      "path": "focused-final-01/receipt.json",
+      "bytes": 526,
+      "sha256": "6d5dd9f46750cff4ebc9339d8d1961f8fecce37a2b20bd00a1cdc4de978b667c",
+      "mode": "0o644"
+    }
+  ]
+}

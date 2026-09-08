@@ -1,0 +1,352 @@
+"file","context","test","nb","failed","skipped","error","warning","user","system","real","passed"
+"test-dibble-bracket.R","dibble-bracket","one := creates a missing column and overwrites an existing one",9,0,FALSE,FALSE,0,0.036,0.003,0.039,9
+"test-dibble-bracket.R","dibble-bracket","i selects rows as a logical, positions, or nothing",8,0,FALSE,FALSE,0,0.015,0.001,0.016,8
+"test-dibble-bracket.R","dibble-bracket","bracket assignments chain",4,0,FALSE,FALSE,0,0.006,0.001,0.00700000000000001,4
+"test-dibble-bracket.R","dibble-bracket","several assignments apply left to right",5,0,FALSE,FALSE,0,0.006,0.000999999999999997,0.00799999999999995,5
+"test-dibble-bracket.R","dibble-bracket","each assignment in j commits or fails on its own",10,0,FALSE,FALSE,0,0.013,0.001,0.015,10
+"test-dibble-bracket.R","dibble-bracket","rows are selected once before any assignment writes",4,0,FALSE,FALSE,0,0.006,0.000999999999999997,0.00700000000000001,4
+"test-dibble-bracket.R","dibble-bracket","the target name takes .(), !!, strings, and string vectors",16,0,FALSE,FALSE,0,0.031,0.001,0.033,16
+"test-dibble-bracket.R","dibble-bracket","by, bysort, and grouped dibbles follow Stata's order",17,0,FALSE,FALSE,0,0.058,0.004,0.062,17
+"test-dibble-bracket.R","dibble-bracket","by and bysort need a := in j",3,0,FALSE,FALSE,0,0.005,0,0.005,3
+"test-dibble-bracket.R","dibble-bracket","the shadow check fires in i and in values",5,0,FALSE,FALSE,0,0.00800000000000001,0.000999999999999994,0.00800000000000001,5
+"test-dibble-bracket.R","dibble-bracket","a compact target stays compact after a bracket replacement",10,0,FALSE,FALSE,0,0.00900000000000001,0.001,0.011,10
+"test-dibble-bracket.R","dibble-bracket","brackets without := subset the current contents into a dibble",13,0,FALSE,FALSE,0,0.022,0.003,0.0259999999999999,13
+"test-dibble-bracket.R","dibble-bracket","plain containers do not gain bracket assignment",9,0,FALSE,FALSE,0,0.01,0.00199999999999999,0.011,9
+"test-dibble-bracket.R","dibble-bracket","the next top-level print after a bracket assignment is skipped",3,0,FALSE,FALSE,0,0.011,0.001,0.013,3
+"test-dibble-bracket.R","dibble-bracket","the autoprint skip does not outlive its top-level statement",7,0,FALSE,FALSE,0,0.02,0.009,0.274,7
+"test-dibble-bracket.R","dibble-bracket","each prepared bracket assignment reaches aliases before the next expression",30,0,FALSE,FALSE,0,0.0339999999999999,0.006,0.04,30
+"test-dibble-bracket.R","dibble-bracket","bracket assignments keep the supplied object when bindings change",9,0,FALSE,FALSE,0,0.00900000000000001,0.002,0.011,9
+"test-dibble-class.R","dibble-class","dibble class is public identity independently of reference ownership",14,0,FALSE,FALSE,0,0.01,0.003,0.0129999999999999,14
+"test-dibble-class.R","dibble-class","reference support does not grant ordinary containers dibble identity",18,0,FALSE,FALSE,0,0.0680000000000001,0.00799999999999999,0.077,18
+"test-dibble-class.R","dibble-class","grouping and metadata classes follow dibble identity",66,0,FALSE,FALSE,0,0.108,0.017,0.125,66
+"test-dibble-class.R","dibble-class","legacy flags recognize type and assigned upgrade isolates aliases",62,0,FALSE,FALSE,0,0.069,0.011,0.0790000000000002,62
+"test-dibble-class.R","dibble-class","class snapshots and display dispatch preserve compact source columns",19,0,FALSE,FALSE,0,0.038,0.00499999999999999,0.0429999999999999,19
+"test-dibble-class.R","dibble-class","class-preserving replacement and structural helpers retain alias contracts",8,0,FALSE,FALSE,0,0.00800000000000001,0.001,0.0089999999999999,8
+"test-dibble-columns.R","dibble-columns","direct column selectors match typed tibble selections",199,0,FALSE,FALSE,0,0.176,0.04,0.217,199
+"test-dibble-columns.R","dibble-columns","selectors preserve dataset metadata",228,0,FALSE,FALSE,0,0.244,0.05,0.294,228
+"test-dibble-columns.R","dibble-columns","selectors retain established tibble row-name policies",287,0,FALSE,FALSE,0,0.283,0.072,0.384,287
+"test-dibble-columns.R","dibble-columns","direct selectors retain grouped and rowwise policies",271,0,FALSE,FALSE,0,0.326,0.068,0.393,271
+"test-dibble-columns.R","dibble-columns","shadowing every omitted grouping key clears the grouping attribute",12,0,FALSE,FALSE,0,0.0150000000000001,0.003,0.0169999999999999,12
+"test-dibble-columns.R","dibble-columns","selector expressions run once in their captured environment",6,0,FALSE,FALSE,0,0.0169999999999999,0.001,0.0179999999999998,6
+"test-dibble-columns.R","dibble-columns","column results isolate later writes in both directions and duplicated slots",40,0,FALSE,FALSE,0,0.0419999999999998,0.00999999999999995,0.052,40
+"test-dibble-columns.R","dibble-columns","borrowed and stale strings are checked on every column result",20,0,FALSE,FALSE,0,0.0229999999999997,0.006,0.0289999999999999,20
+"test-dibble-columns.R","dibble-columns","string validation counts current UTF-8 bytes",7,0,FALSE,FALSE,0,0.00800000000000001,0.003,0.012,7
+"test-dibble-columns.R","dibble-columns","isolated string results preserve encodings and complete metadata",68,0,FALSE,FALSE,0,0.0760000000000001,0.017,0.093,68
+"test-dibble-columns.R","dibble-columns","column results preserve metadata, compact columns and legacy recognition",9,0,FALSE,FALSE,0,0.0100000000000002,0.003,0.0139999999999998,9
+"test-dibble-columns.R","dibble-columns","selectors retain automatic row-name bookkeeping and rename policy",9,0,FALSE,FALSE,0,0.012,0.003,0.0150000000000001,9
+"test-dibble-expressions.R","dibble-expressions","the core evaluator accepts ordinary quosures without whole verbs",3,0,FALSE,FALSE,0,0.004,0.001,0.00499999999999989,3
+"test-dibble-expressions.R","dibble-expressions","qualified and aliased helpers see original group rows and keys",9,0,FALSE,FALSE,0,0.0150000000000001,0.003,0.0169999999999999,9
+"test-dibble-expressions.R","dibble-expressions","pick expansion and arbitrary fallback preserve selection rules",6,0,FALSE,FALSE,0,0.032,0.003,0.0340000000000003,6
+"test-dibble-expressions.R","dibble-expressions","across expansion counts and side effects follow real dplyr",15,0,FALSE,FALSE,0,0.0619999999999998,0.005,0.0659999999999998,15
+"test-dibble-expressions.R","dibble-expressions","across fallback supports dots unpacking and logical helpers",6,0,FALSE,FALSE,0,0.0640000000000001,0.003,0.0670000000000002,6
+"test-dibble-expressions.R","dibble-expressions","nested verbs and failures restore every helper context binding",23,0,FALSE,FALSE,0,0.0619999999999998,0.006,0.0670000000000002,23
+"test-dibble-expressions.R","dibble-expressions","captures retain earlier values while deferred column resolution expires",11,0,FALSE,FALSE,0,0.036,0.002,0.0369999999999999,11
+"test-dibble-expressions.R","dibble-expressions","mask snapshots survive explicit writes inside arbitrary helpers",4,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00699999999999967,4
+"test-dibble-expressions.R","dibble-expressions","foreign callback values are captured before the next group",2,0,FALSE,FALSE,0,0.00800000000000001,0.000999999999999945,0.00800000000000001,2
+"test-dibble-expressions.R","dibble-expressions","empty groups and empty rowwise list prototypes remain observable",15,0,FALSE,FALSE,0,0.0329999999999999,0.004,0.0369999999999999,15
+"test-dibble-expressions.R","dibble-expressions","placement keep and transmute retain their separate column order",9,0,FALSE,FALSE,0,0.0170000000000003,0.002,0.0190000000000001,9
+"test-dibble-expressions.R","dibble-expressions","computed grouping ignores old partitions and owns its metadata",10,0,FALSE,FALSE,0,0.0299999999999998,0.002,0.032,10
+"test-dibble-expressions.R","dibble-expressions","duplicate unpacked names and grouped warning aggregation retain their contracts",5,0,FALSE,FALSE,0,0.0990000000000002,0.001,0.1,5
+"test-dibble-expressions.R","dibble-expressions","persistent grouping keys cannot be removed by mutation",5,0,FALSE,FALSE,0,0.0219999999999998,0.002,0.0230000000000001,5
+"test-dibble-expressions.R","dibble-expressions","symbol results preserve attributes and rowwise frame columns remain frames",4,0,FALSE,FALSE,0,0.0110000000000001,0.001,0.0130000000000003,4
+"test-dibble-expressions.R","dibble-expressions","diagnostics identify the actual expression entry point",6,0,FALSE,FALSE,0,0.04,0.001,0.0419999999999998,6
+"test-dibble-expressions.R","dibble-expressions","within-call captures keep their original generation and group",12,0,FALSE,FALSE,0,0.0260000000000002,0.004,0.0299999999999998,12
+"test-dibble-expressions.R","dibble-expressions","expired capture masks release source payloads on success and failure",20,0,FALSE,FALSE,0,0.885,0.004,0.888,20
+"test-dibble-expressions.R","dibble-expressions","ungroup preserves raw row names on an already ungrouped dibble",3,0,FALSE,FALSE,0,0.004,0.001,0.00499999999999989,3
+"test-dibble-print.R","dibble-print","dibble printing names its container and declared storage",20,0,FALSE,FALSE,0,0.0270000000000001,0.003,0.0300000000000002,20
+"test-dibble-print.R","dibble-print","declared string labels cover constructed generated and imported columns",10,0,FALSE,FALSE,0,0.0179999999999998,0.002,0.0190000000000001,10
+"test-dibble-print.R","dibble-print","temporal labels show storage and meaning in dibbles and tibbles",13,0,FALSE,FALSE,0,0.0190000000000001,0.002,0.0220000000000002,13
+"test-dibble-print.R","dibble-print","metadata wrappers preserve string storage labels and cell formatting",11,0,FALSE,FALSE,0,0.0270000000000001,0.002,0.0289999999999999,11
+"test-dibble-print.R","dibble-print","metadata setters leave declared string types visible",96,0,FALSE,FALSE,0,0.428,0.014,0.441,96
+"test-dibble-print.R","dibble-print","display snapshots retain grouping and empty dimensions",11,0,FALSE,FALSE,0,0.0259999999999998,0.002,0.0270000000000001,11
+"test-dibble-print.R","dibble-print","narrow output and row slicing retain omitted string declarations",16,0,FALSE,FALSE,0,0.0330000000000004,0.003,0.0359999999999996,16
+"test-dibble-print.R","dibble-print","ordinary reference containers keep their usual display",6,0,FALSE,FALSE,0,0.0269999999999992,0.001,0.0279999999999996,6
+"test-dibble-print.R","dibble-print","printing preserves cells metadata aliases and compact backing",11,0,FALSE,FALSE,0,0.056,0.004,0.0599999999999996,11
+"test-dibble-rows.R","dibble-rows","bracket row plans preserve tibble call shapes and index policies",143,0,FALSE,FALSE,0,0.214,0.038,0.253,143
+"test-dibble-rows.R","dibble-rows","bracket subscript evaluation is once, ordered, and outside the data mask",5,0,FALSE,FALSE,0,0.00699999999999967,0.001,0.00800000000000001,5
+"test-dibble-rows.R","dibble-rows","plain reference containers retain base and tibble row rules",18,0,FALSE,FALSE,0,0.0229999999999997,0.005,0.0270000000000001,18
+"test-dibble-rows.R","dibble-rows","group metadata rebuild matches sorted factor expansion",30,0,FALSE,FALSE,0,0.0470000000000006,0.00900000000000001,0.056,30
+"test-dibble-rows.R","dibble-rows","group validation preserves empty keys and equality casting",46,0,FALSE,FALSE,0,0.0670000000000002,0.011,0.0780000000000003,46
+"test-dibble-rows.R","dibble-rows","group partitions reject repeated rows and retain rowwise order",4,0,FALSE,FALSE,0,0.00699999999999967,0.001,0.00699999999999967,4
+"test-dibble-rows.R","dibble-rows","row entry points retain their grouped and rowwise policies",144,0,FALSE,FALSE,0,0.497,0.0499999999999999,0.542999999999999,144
+"test-dibble-rows.R","dibble-rows","padding is typed before rebuilding grouped string keys",9,0,FALSE,FALSE,0,0.0140000000000002,0.002,0.0170000000000003,9
+"test-dibble-rows.R","dibble-rows","row results preserve metadata and symmetric later-write isolation",68,0,FALSE,FALSE,0,0.0789999999999997,0.019,0.0979999999999999,68
+"test-dibble-rows.R","dibble-rows","direct reconstruction isolates and validates unknown columns",6,0,FALSE,FALSE,0,0.0190000000000001,0.002,0.0209999999999999,6
+"test-dibble-rows.R","dibble-rows","bracket planning never executes language-valued indices",23,0,FALSE,FALSE,0,0.162,0.006,0.167,23
+"test-dibble-rows.R","dibble-rows","plain grouped reference frames retain row slicing support",8,0,FALSE,FALSE,0,0.0170000000000003,0.003,0.0200000000000005,8
+"test-dibble-rows.R","dibble-rows","drop and unused-argument validation follows each bracket container",34,0,FALSE,FALSE,0,0.103,0.00900000000000001,0.109999999999999,34
+"test-dibble-rows.R","dibble-rows","row gather and reconstruction isolate aliases and foreign columns",20,0,FALSE,FALSE,0,0.0190000000000001,0.005,0.024,20
+"test-dibble-rows.R","dibble-rows","serialized grouping works without loading the dplyr namespace",10,0,FALSE,FALSE,0,0.0289999999999999,0.014,0.543,10
+"test-dibble-rows.R","dibble-rows","the dplyr row hook keeps vctrs row-name repair",12,0,FALSE,FALSE,0,0.0190000000000001,0.00700000000000001,0.0249999999999995,12
+"test-dibble-rows.R","dibble-rows","group rebuild honors the legacy locale compatibility option",3,0,FALSE,FALSE,0,0.0279999999999996,0.001,0.0289999999999999,3
+"test-dibble-rows.R","dibble-rows","bracket planning does not introduce named-argument warnings",3,0,FALSE,FALSE,0,0.00500000000000078,0.001,0.00499999999999989,3
+"test-dibble-rows.R","dibble-rows","base reference gathers retain base observation metadata and drop shapes",9,0,FALSE,FALSE,0,0.0129999999999999,0.003,0.0149999999999997,9
+"test-dibble-rows.R","dibble-rows","reference row subsets preserve the metadata wrapper's policies",72,0,FALSE,FALSE,0,0.0890000000000004,0.019,0.109,72
+"test-dibble-rows.R","dibble-rows","metadata subscript forcing precedes container argument validation",15,0,FALSE,FALSE,0,0.032,0.003,0.0350000000000001,15
+"test-dibble-rows.R","dibble-rows","legacy factor expansion retains contiguous missing-value prefixes",2,0,FALSE,FALSE,0,0.0280000000000005,0.001,0.0289999999999999,2
+"test-dibble-rows.R","dibble-rows","row results retain automatic versus explicit row-name bookkeeping",20,0,FALSE,FALSE,0,0.0380000000000003,0.00800000000000001,0.0540000000000003,20
+"test-dibble-rows.R","dibble-rows","plain-reference reconstruction preserves raw payload row names",8,0,FALSE,FALSE,0,0.00800000000000001,0.001,0.00900000000000034,8
+"test-dibble-rows.R","dibble-rows","the row helper retains its shell's raw row-name policy",18,0,FALSE,FALSE,0,0.0249999999999995,0.00499999999999989,0.0299999999999994,18
+"test-dibble.R","dibble","dibble() builds a tibble that carries reference state",18,0,FALSE,FALSE,0,0.0190000000000001,0.005,0.024,18
+"test-dibble.R","dibble","is_dibble distinguishes dibbles from other reference frames",9,0,FALSE,FALSE,0,0.0110000000000001,0.002,0.0130000000000008,9
+"test-dibble.R","dibble","as_dibble converts frames, tibbles, and data tables",15,0,FALSE,FALSE,0,0.016,0.003,0.0200000000000005,15
+"test-dibble.R","dibble","as_dibble copies a data table without its runtime state",16,0,FALSE,FALSE,0,0.0180000000000007,0.005,0.0229999999999997,16
+"test-dibble.R","dibble","dibble construction keeps compact columns unmaterialized",17,0,FALSE,FALSE,0,0.0180000000000007,0.005,0.024,17
+"test-dibble.R","dibble","grouping keeps a dibble a dibble",21,0,FALSE,FALSE,0,0.0309999999999997,0.006,0.0369999999999999,21
+"test-dibble.R","dibble","readers, save_arrow, and dta_merge take the dibble container",31,0,FALSE,FALSE,0,0.0810000000000004,0.015,0.109,31
+"test-dibble.R","dibble","a file recording an unknown container still reads",5,0,FALSE,FALSE,0,0.119,0.039,0.258,5
+"test-dibble.R","dibble","unknown stored containers fall back to a tibble",5,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00600000000000023,5
+"test-dibble.R","dibble","dataset metadata setters keep a dibble's bracket dispatch",12,0,FALSE,FALSE,0,0.016,0.002,0.0179999999999998,12
+"test-dibble.R","dibble","slice_dta_rows accepts the default read container",7,0,FALSE,FALSE,0,0.0109999999999992,0.003,0.0140000000000002,7
+"test-dibble.R","dibble","dataset-scoped metadata setters return the same dibble",6,0,FALSE,FALSE,0,0.00999999999999979,0.002,0.0120000000000005,6
+"test-dibble.R","dibble","slicing a grouped dibble keeps dataset metadata",5,0,FALSE,FALSE,0,0.0110000000000001,0.003,0.0129999999999999,5
+"test-dibble.R","dibble","slice_dta_rows keeps a grouped dibble's grouping",7,0,FALSE,FALSE,0,0.0170000000000003,0.002,0.0190000000000001,7
+"test-dibble.R","dibble","gen() and a new := column take Stata's generate default",18,0,FALSE,FALSE,0,0.0279999999999996,0.004,0.0310000000000006,18
+"test-dibble.R","dibble","mutate and transmute type new columns by the container mapping",42,0,FALSE,FALSE,0,0.0609999999999999,0.011,0.0710000000000015,42
+"test-dibble.R","dibble","mutate keeps untouched compact columns compact",5,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00799999999999912,5
+"test-dibble.R","dibble","a dibble is closed under dataset operations",24,0,FALSE,FALSE,0,0.0449999999999999,0.00700000000000001,0.0530000000000008,24
+"test-dibble.R","dibble","replacement operators type their columns and keep the dibble",16,0,FALSE,FALSE,0,0.0190000000000001,0.00399999999999989,0.0239999999999991,16
+"test-dibble.R","dibble","logical columns stay logical in a dibble",7,0,FALSE,FALSE,0,0.0110000000000001,0.003,0.0139999999999993,7
+"test-dibble.R","dibble","Arrow strings enter a dibble compact with an inferred width",10,0,FALSE,FALSE,0,0.0300000000000002,0.004,0.0410000000000004,10
+"test-dibble.R","dibble","Stata numerics coerce to integer and logical and add to dates",6,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.0080000000000009,6
+"test-dibble.R","dibble","bracket assignment and partial replacement promote storage",26,0,FALSE,FALSE,0,0.0469999999999997,0.006,0.0540000000000003,26
+"test-dibble.R","dibble","gen and := accept factors as mutate does",11,0,FALSE,FALSE,1,0.016,0.003,0.0199999999999996,10
+"test-dibble.R","dibble","computed distinct and group_by type columns as mutate does",8,0,FALSE,FALSE,0,0.0129999999999999,0.003,0.016,8
+"test-dibble.R","dibble","a logical overwriting a Stata numeric keeps its storage",9,0,FALSE,FALSE,1,0.0220000000000002,0.002,0.0250000000000004,8
+"test-dibble.R","dibble","overwriting a typed column with an untypable one passes through",4,0,FALSE,FALSE,0,0.00499999999999989,0,0.004999999999999,4
+"test-dibble.R","dibble","reframe, group_modify, and nest_by return dibbles",12,0,FALSE,FALSE,0,0.0289999999999999,0.003,0.032,12
+"test-dibble.R","dibble","a := value with declared storage widens the column to it",21,0,FALSE,FALSE,0,0.0330000000000004,0.006,0.0389999999999997,21
+"test-dibble.R","dibble","grouped and rowwise row verbs return dibbles",15,0,FALSE,FALSE,0,0.0789999999999997,0.006,0.0839999999999996,15
+"test-dibble.R","dibble","difftime arithmetic with Stata numerics works",4,0,FALSE,FALSE,0,0.00399999999999956,0.001,0.00500000000000078,4
+"test-dibble.R","dibble","the first gen on a tibble leaves its columns alone",8,0,FALSE,FALSE,0,0.00999999999999979,0.003,0.0120000000000005,8
+"test-dibble.R","dibble","a stale string declaration is redone on entering a dibble",14,0,FALSE,FALSE,0,0.0249999999999995,0.005,0.0360000000000014,14
+"test-dibble.R","dibble","a derived dibble owns its columns",48,0,FALSE,FALSE,0,0.0600000000000005,0.012,0.0719999999999992,48
+"test-dibble.R","dibble","a dta_string column padded with NA is retyped on closure",13,0,FALSE,FALSE,0,0.0339999999999998,0.004,0.0379999999999985,13
+"test-dibble.R","dibble","subsetting keeps compact dictionary strings compact",30,0,FALSE,FALSE,0,0.0379999999999994,0.00900000000000001,0.0459999999999994,30
+"test-dibble.R","dibble","generated columns reach consumers that read the column list",21,0,FALSE,FALSE,0,0.0410000000000004,0.005,0.0470000000000006,21
+"test-dibble.R","dibble","column binding isolates every input, not only the first",29,0,FALSE,FALSE,0,0.0630000000000006,0.00800000000000001,0.0710000000000015,29
+"test-dibble.R","dibble","gen on a tibble evaluates against the tibble's own columns",18,0,FALSE,FALSE,0,0.0300000000000002,0.004,0.0359999999999996,18
+"test-dibble.R","dibble","data-masking verbs type each result as it enters the mask",12,0,FALSE,FALSE,0,0.0229999999999997,0.003,0.027000000000001,12
+"test-dibble.R","dibble","mask typing keeps dplyr's names, arguments, and messages",14,0,FALSE,FALSE,0,0.0339999999999998,0.003,0.0379999999999985,14
+"test-dibble.R","dibble","grouped gen() keeps a factor's attributes",3,0,FALSE,FALSE,0,0.00399999999999956,0.001,0.00600000000000023,3
+"test-dibble.R","dibble","ordinary replacement stays local while explicit metadata reaches callers",29,0,FALSE,FALSE,0,0.04,0.00800000000000001,0.048,29
+"test-dibble.R","dibble","copying replacement isolates vectors and preserves grouping",34,0,FALSE,FALSE,2,0.0960000000000001,0.01,0.104999999999999,32
+"test-dibble.R","dibble","serialized legacy dibbles retain typing and closure",12,0,FALSE,FALSE,0,0.016,0.003,0.0190000000000001,12
+"test-dibble.R","dibble","across results are typed before later mask expressions",10,0,FALSE,FALSE,0,0.0270000000000001,0.00299999999999989,0.0299999999999994,10
+"test-dibble.R","dibble","caller-backed symbols are typed on entry to the data mask",7,0,FALSE,FALSE,0,0.0129999999999999,0.001,0.0149999999999988,7
+"test-dibble.R","dibble","unnamed computations use their natural names in the mask",11,0,FALSE,FALSE,0,0.0189999999999992,0.003,0.0229999999999997,11
+"test-dibble.R","dibble","mask promotion sees prior clauses' storage and metadata",9,0,FALSE,FALSE,0,0.0110000000000001,0.003,0.0139999999999993,9
+"test-dibble.R","dibble","mask warning labels leave caller-binding messages unchanged",12,0,FALSE,FALSE,0,0.0409999999999995,0.001,0.043000000000001,12
+"test-egen-groups.R","egen-groups","group IDs sort mixed keys and tags select first eligible rows",7,0,FALSE,FALSE,0,0.0110000000000001,0.002,0.0120000000000005,7
+"test-egen-groups.R","egen-groups","group keys preserve every missing identity and signed zero",4,0,FALSE,FALSE,0,0.00400000000000045,0.001,0.004999999999999,4
+"test-egen-groups.R","egen-groups","group keys compare mixed encodings by their UTF-8 text",4,0,FALSE,FALSE,0,0.00399999999999956,0.001,0.00600000000000023,4
+"test-egen-groups.R","egen-groups","cached group text remains rooted through GC without materializing sources",4,0,FALSE,FALSE,0,0.104,0.003,0.106999999999999,4
+"test-egen-groups.R","egen-groups","group inputs and options are checked without changing sources",23,0,FALSE,FALSE,0,0.0329999999999995,0.002,0.0350000000000001,23
+"test-egen-groups.R","egen-groups","autotype uses Stata integer storage thresholds",7,0,FALSE,FALSE,0,0.0170000000000003,0.001,0.0189999999999984,7
+"test-egen-groups.R","egen-groups","group labels own mappings and truncate Unicode components",8,0,FALSE,FALSE,0,0.0839999999999996,0.004,0.088000000000001,8
+"test-egen-groups.R","egen-groups","group metadata survives DTA and Arrow round trips",14,0,FALSE,FALSE,0,0.0129999999999999,0.005,0.0239999999999991,14
+"test-egen-groups.R","egen-groups","group keys use encoded temporal values",5,0,FALSE,FALSE,0,0.00800000000000001,0.001,0.00999999999999979,5
+"test-egen-groups.R","egen-groups","computed NaN group labels use the normalized system missing",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999956,1
+"test-mutate-data.R","mutate-data","reference mutation exports one coherent API",9,0,FALSE,FALSE,0,0.00700000000000056,0.002,0.00900000000000034,9
+"test-mutate-data.R","mutate-data","matrix columns use data-frame row sizes",6,0,FALSE,FALSE,0,0.00500000000000078,0.001,0.00699999999999967,6
+"test-mutate-data.R","mutate-data","targets are bare names and support tidy injection",10,0,FALSE,FALSE,0,0.00800000000000001,0.002,0.00999999999999979,10
+"test-mutate-data.R","mutate-data","data masks, formulas, and alias calls use the right environments",9,0,FALSE,FALSE,0,0.0110000000000001,0.002,0.0119999999999987,9
+"test-mutate-data.R","mutate-data","values and selection see the unchanged dataset",8,0,FALSE,FALSE,0,0.00699999999999967,0.00099999999999989,0.00899999999999856,8
+"test-mutate-data.R","mutate-data","where has documented logical and position semantics",34,0,FALSE,FALSE,0,0.0389999999999997,0.004,0.0440000000000005,34
+"test-mutate-data.R","mutate-data","full-dataset values are gathered by selected row",7,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00699999999999967,7
+"test-mutate-data.R","mutate-data","metadata-bearing numerics remain valid row positions",2,0,FALSE,FALSE,0,0.00200000000000067,0.00099999999999989,0.00200000000000067,2
+"test-mutate-data.R","mutate-data","compact selected positions use one native patch plan",4,0,FALSE,FALSE,0,0.00299999999999923,0,0.00300000000000011,4
+"test-mutate-data.R","mutate-data","excluded full-dataset values do not affect validation",8,0,FALSE,FALSE,0,0.0110000000000001,0.00099999999999989,0.0120000000000005,8
+"test-mutate-data.R","mutate-data","native mutation writers reject untrusted row plans",7,0,FALSE,FALSE,0,0.00900000000000034,0.00100000000000011,0.00999999999999979,7
+"test-mutate-data.R","mutate-data","validation errors leave an unmarked dataset unchanged",24,0,FALSE,FALSE,0,0.024,0.004,0.0280000000000005,24
+"test-mutate-data.R","mutate-data","gen rejects unsupported classed numeric results atomically",8,0,FALSE,FALSE,0,0.00999999999999979,0.00099999999999989,0.0120000000000005,8
+"test-mutate-data.R","mutate-data","evaluation interrupts leave the dataset unchanged",4,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00300000000000011,4
+"test-mutate-data.R","mutate-data","native write interrupts roll back values and compact state",64,0,FALSE,FALSE,0,0.0529999999999999,0.026,0.407,64
+"test-mutate-data.R","mutate-data","native generation interrupts leave reference state unchanged",22,0,FALSE,FALSE,0,0.0289999999999999,0.016,2.777,22
+"test-mutate-data.R","mutate-data","generic ALTREP detachment interrupts before installation",5,0,FALSE,FALSE,0,0.0149999999999997,0.01,0.398,5
+"test-mutate-data.R","mutate-data","compact replacement patches every storage without materializing",36,0,FALSE,FALSE,0,0.0290000000000008,0.0110000000000001,0.0400000000000009,36
+"test-mutate-data.R","mutate-data","compact validation is strict and atomic",14,0,FALSE,FALSE,0,0.0199999999999996,0.00499999999999989,0.0250000000000004,14
+"test-mutate-data.R","mutate-data","compact replacement updates the missing-value cache",12,0,FALSE,FALSE,0,0.0129999999999999,0.004,0.0379999999999985,12
+"test-mutate-data.R","mutate-data","DTA-loaded compact and temporal columns use native patching",8,0,FALSE,FALSE,0,0.0140000000000011,0.00300000000000011,0.0170000000000012,8
+"test-mutate-data.R","mutate-data","legacy compact columns reject scalar extended missing values",2,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00500000000000078,2
+"test-mutate-data.R","mutate-data","ordinary, materialized, temporal, and character columns mutate",10,0,FALSE,FALSE,0,0.011000000000001,0.002,0.0129999999999999,10
+"test-mutate-data.R","mutate-data","base numeric ALTREP columns remain internally consistent",16,0,FALSE,FALSE,0,0.0169999999999995,0.004,0.0199999999999996,16
+"test-mutate-data.R","mutate-data","gen appends one variable with Stata missing and storage rules",53,0,FALSE,FALSE,0,0.0579999999999998,0.01,0.0679999999999996,53
+"test-mutate-data.R","mutate-data","gen preserves metadata on otherwise supported numeric classes",8,0,FALSE,FALSE,0,0.00900000000000034,0.00099999999999989,0.0109999999999992,8
+"test-mutate-data.R","mutate-data","gen handles zero rows and evaluates before insertion",4,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00699999999999967,4
+"test-mutate-data.R","mutate-data","repeated gen appends ordered reference-state bindings",4,0,FALSE,FALSE,0,0.048,0.002,0.0500000000000007,4
+"test-mutate-data.R","mutate-data","copy_data isolates every mutable column backing",24,0,FALSE,FALSE,0,0.0259999999999998,0.00300000000000011,0.0280000000000005,24
+"test-mutate-data.R","mutate-data","subsets, metadata proxies, and serialized data stay isolated",7,0,FALSE,FALSE,0,0.00699999999999967,0.00100000000000011,0.0080000000000009,7
+"test-mutate-data.R","mutate-data","detached metadata payloads do not retain former proxy owners",2,0,FALSE,FALSE,0,0.0660000000000007,0.00299999999999989,0.0679999999999996,2
+"test-mutate-data.R","mutate-data","downstream metadata proxies revoke exclusive patch ownership",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999956,3
+"test-mutate-data.R","mutate-data","metadata copies remain isolated from later source patches",36,0,FALSE,FALSE,0,0.0399999999999991,0.00900000000000012,0.0960000000000001,36
+"test-mutate-data.R","mutate-data","writable access detaches shared materialized payloads",4,0,FALSE,FALSE,0,0.00500000000000078,0.002,0.011000000000001,4
+"test-mutate-data.R","mutate-data","is_missing masks preserve dictionary-string caches and aliases",12,0,FALSE,FALSE,0,0.0129999999999999,0.00299999999999989,0.020999999999999,12
+"test-mutate-data.R","mutate-data","materialized metadata-proxy copies remain independent",4,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.00999999999999979,4
+"test-mutate-data.R","mutate-data","materialized metadata proxies release former sources",4,0,FALSE,FALSE,0,0.0689999999999991,0.00100000000000011,0.0749999999999993,4
+"test-mutate-data.R","mutate-data","copy_data keeps Arrow dictionary strings independent and compact",2,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00900000000000034,2
+"test-mutate-data.R","mutate-data","generated variables participate in package writes",7,0,FALSE,FALSE,0,0.00799999999999912,0.002,0.0140000000000011,7
+"test-mutate-data.R","mutate-data","reference data preserves base and tibble access semantics",34,0,FALSE,FALSE,0,0.0340000000000007,0.00499999999999989,0.0399999999999991,34
+"test-mutate-data.R","mutate-data","explicit replacement isolates separate tables sharing target vectors",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,3
+"test-mutate-data.R","mutate-data","rowwise inputs fail before reference mutation",5,0,FALSE,FALSE,0,0.0080000000000009,0.00099999999999989,0.00900000000000034,5
+"test-mutate-data.R","mutate-data",".n and .N describe the whole dataset without groups",6,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00699999999999967,6
+"test-mutate-data.R","mutate-data","by evaluates where and values within each group",8,0,FALSE,FALSE,0,0.00799999999999912,0.00100000000000011,0.00900000000000034,8
+"test-mutate-data.R","mutate-data","by accepts every column-name spelling",11,0,FALSE,FALSE,0,0.016,0.00100000000000011,0.0170000000000012,11
+"test-mutate-data.R","mutate-data","groups follow Stata's by order, not data.table's",4,0,FALSE,FALSE,0,0.0120000000000005,0.00100000000000011,0.0129999999999999,4
+"test-mutate-data.R","mutate-data","per-group value sizes must be 1, the selection, or .N",7,0,FALSE,FALSE,0,0.011000000000001,0.00099999999999989,0.0120000000000005,7
+"test-mutate-data.R","mutate-data","missing values in a by column form their own groups",4,0,FALSE,FALSE,0,0.00699999999999967,0.00100000000000011,0.00700000000000145,4
+"test-mutate-data.R","mutate-data","bysort sorts by reference and then groups",13,0,FALSE,FALSE,0,0.0139999999999993,0.00299999999999989,0.0169999999999995,13
+"test-mutate-data.R","mutate-data","by and bysort are exclusive and reject a grouped input",5,0,FALSE,FALSE,0,0.00900000000000034,0,0.00900000000000034,5
+"test-mutate-data.R","mutate-data","a grouped tibble supplies the assignment groups",10,0,FALSE,FALSE,0,0.0120000000000005,0.002,0.0129999999999999,10
+"test-mutate-data.R","mutate-data","compact targets stay compact under by",13,0,FALSE,FALSE,0,0.016,0.00300000000000011,0.0170000000000012,13
+"test-mutate-data.R","mutate-data","data.table containers support by and bysort",9,0,FALSE,FALSE,0,0.00900000000000034,0.00099999999999989,0.0109999999999992,9
+"test-mutate-data.R","mutate-data","the shadow check still fires inside grouped expressions",6,0,FALSE,FALSE,0,0.00699999999999967,0.00100000000000011,0.0080000000000009,6
+"test-mutate-data.R","mutate-data","grouped gen keeps value attributes and string storage",3,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00399999999999956,3
+"test-mutate-data.R","mutate-data","ordinary assignments and metadata helpers materialize current state",11,0,FALSE,FALSE,0,0.00900000000000034,0.002,0.00999999999999979,11
+"test-mutate-data.R","mutate-data","sparse compact replacement and generation keep existing payloads",6,0,FALSE,FALSE,0,0.0190000000000001,0.00099999999999989,0.0199999999999996,6
+"test-mutate-data.R","mutate-data","plain-expression evaluation matches tidy-eval semantics",10,0,FALSE,FALSE,0,0.0129999999999999,0.00099999999999989,0.0139999999999993,10
+"test-mutate-data.R","mutate-data","plain expressions evaluate against reference-state columns",3,0,FALSE,FALSE,0,0.00399999999999956,0,0.00400000000000134,3
+"test-mutate-data.R","mutate-data","materialized compact replacements retain Stata semantics",28,0,FALSE,FALSE,0,0.0200000000000014,0.006,0.0259999999999998,28
+"test-mutate-data.R","mutate-data","materialized compact replacement keeps fallback errors atomic",8,0,FALSE,FALSE,0,0.0109999999999992,0.00099999999999989,0.0120000000000005,8
+"test-mutate-data.R","mutate-data","fused comparison replacement matches the general path",20,0,FALSE,FALSE,0,0.0180000000000007,0.004,0.020999999999999,20
+"test-mutate-data.R","mutate-data","fused comparison replacement handles full-row values",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,3
+"test-mutate-data.R","mutate-data","fused comparison replacement handles empty and full matches",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999956,3
+"test-mutate-data.R","mutate-data","fused replacement preserves recycling errors and shared data",5,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00699999999999967,5
+"test-mutate-data.R","mutate-data","threaded fused replacement matches the general path",2,0,FALSE,FALSE,0,0.0279999999999987,0.002,0.0279999999999987,2
+"test-mutate-data.R","mutate-data","fused comparison evaluates scalar operands once",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00400000000000134,3
+"test-mutate-data.R","mutate-data","fused row-value errors roll back before the fallback error",4,0,FALSE,FALSE,0,0.00600000000000023,0,0.00600000000000023,4
+"test-mutate-data.R","mutate-data","targets and values arrive as one tagged pair",20,0,FALSE,FALSE,0,0.0179999999999989,0.00299999999999989,0.0210000000000008,20
+"test-mutate-data.R","mutate-data","tagged pairs reach reference, data.table, and compact targets",10,0,FALSE,FALSE,0,0.011000000000001,0.002,0.0120000000000005,10
+"test-mutate-data.R","mutate-data","mutation dots must be one target pair and at most one where",15,0,FALSE,FALSE,0,0.0229999999999997,0,0.0240000000000009,15
+"test-mutate-data.R","mutate-data","a symbol bound as both column and object is an error",29,0,FALSE,FALSE,0,0.036999999999999,0.00499999999999989,0.0419999999999998,29
+"test-mutate-data.R","mutate-data","replacing a grouping column rebuilds the dplyr groups",8,0,FALSE,FALSE,0,0.0129999999999999,0.002,0.0149999999999988,8
+"test-mutate-data.R","mutate-data","an aliased grouping column is regrouped after replacement",3,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00699999999999967,3
+"test-mutate-data.R","mutate-data","row counters mask a column named .n or .N",5,0,FALSE,FALSE,0,0.00699999999999967,0.002,0.0080000000000009,5
+"test-mutate-data.R","mutate-data","`repl()` widens typed columns and reports the storage change",21,0,FALSE,FALSE,0,0.0289999999999999,0.004,0.0329999999999995,21
+"test-mutate-data.R","mutate-data","float replacement preserves precision unless promotion is disabled",6,0,FALSE,FALSE,0,0.00699999999999967,0.00099999999999989,0.00799999999999912,6
+"test-mutate-data.R","mutate-data","byte replacement preserves the R double or rejects it unchanged",7,0,FALSE,FALSE,0,0.0080000000000009,0.002,0.00900000000000034,7
+"test-mutate-data.R","mutate-data","`repl()` reports nothing when the storage does not change",2,0,FALSE,FALSE,0,0.00200000000000067,0,0.00199999999999889,2
+"test-mutate-data.R","mutate-data","`repl()` widens a string target to the smallest fitting width",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999956,2
+"test-mutate-data.R","mutate-data","`repl()` promotes nothing when no rows are selected",3,0,FALSE,FALSE,0,0.00200000000000067,0.00099999999999989,0.00399999999999956,3
+"test-mutate-data.R","mutate-data","`repl()` promotes the whole column when some rows are selected",3,0,FALSE,FALSE,0,0.00399999999999956,0.00100000000000011,0.00500000000000078,3
+"test-mutate-data.R","mutate-data","`promote = FALSE` keeps the target at its declared storage",5,0,FALSE,FALSE,0,0.00999999999999979,0.00099999999999989,0.00999999999999979,5
+"test-mutate-data.R","mutate-data","`repl()` promotion keeps variable metadata",2,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00300000000000011,2
+"test-mutate-data.R","mutate-data","`:=` promotes silently, unlike `repl()`",2,0,FALSE,FALSE,0,0.00199999999999889,0.00099999999999989,0.00300000000000011,2
+"test-mutate-data.R","mutate-data","promotion never narrows the integers a column can hold",6,0,FALSE,FALSE,0,0.00699999999999967,0.00100000000000011,0.0080000000000009,6
+"test-mutate-data.R","mutate-data","unselected replacement groups do not contribute value types",9,0,FALSE,FALSE,0,0.00899999999999856,0.00100000000000011,0.0109999999999992,9
+"test-mutate-data.R","mutate-data","strict grouped zero-selection replacement is a no-op",24,0,FALSE,FALSE,0,0.0210000000000008,0.00500000000000012,0.0259999999999998,24
+"test-mutation-containers.R","mutation-containers","explicit helper boundaries reject subclasses before evaluating updates",281,0,FALSE,FALSE,0,0.301,0.0489999999999999,0.35,281
+"test-mutation-containers.R","mutation-containers","explicit conversion removes custom container classes in isolation",32,0,FALSE,FALSE,0,0.0240000000000009,0.00500000000000012,0.0300000000000011,32
+"test-mutation-containers.R","mutation-containers","supported containers preserve existing column classes and true aliases",44,0,FALSE,FALSE,0,0.0380000000000003,0.0089999999999999,0.0469999999999988,44
+"test-mutation-containers.R","mutation-containers","grouped and rowwise metadata writes preserve grouping",64,0,FALSE,FALSE,0,0.119,0.00900000000000012,0.128,64
+"test-mutation-containers.R","mutation-containers","malformed frames and grouping fail before metadata evaluation",12,0,FALSE,FALSE,0,0.0139999999999993,0.002,0.0150000000000006,12
+"test-mutation-containers.R","mutation-containers","dropping the last column keeps each container's public empty shape",30,0,FALSE,FALSE,0,0.027000000000001,0.00500000000000012,0.032,30
+"test-mutation-containers.R","mutation-containers","a stray reference marker on data.table requires explicit conversion",7,0,FALSE,FALSE,0,0.00900000000000034,0.00099999999999989,0.0100000000000016,7
+"test-mutation-containers.R","mutation-containers","ordinary dibble brackets keep omitted-column forms",22,0,FALSE,FALSE,0,0.0329999999999995,0.00500000000000012,0.0380000000000003,22
+"test-mutation-containers.R","mutation-containers","duplicate grouped keys cannot split a logical group",7,0,FALSE,FALSE,0,0.0100000000000016,0.00099999999999989,0.011000000000001,7
+"test-mutation-containers.R","mutation-containers","grouping validation ignores label wrappers on keys and identifiers",7,0,FALSE,FALSE,0,0.0109999999999992,0.002,0.0120000000000005,7
+"test-mutation-containers.R","mutation-containers","group row positions follow physical order before using dot-n",4,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.00600000000000023,4
+"test-mutation-containers.R","mutation-containers","rowwise grouping frames reject ambiguous or inconsistent columns",12,0,FALSE,FALSE,0,0.0150000000000006,0.002,0.0169999999999995,12
+"test-mutation-containers.R","mutation-containers","non-dibble reference markers do not enable bracket assignment",100,0,FALSE,FALSE,0,0.103999999999999,0.018,0.122,100
+"test-owned-atoms.R","owned-atoms","validated discrete batches retain vctrs and base gather behavior",20,0,FALSE,FALSE,0,0.016,0.004,0.0199999999999996,20
+"test-owned-atoms.R","owned-atoms","discrete gather declines whole callback or metadata fallback batches",9,0,FALSE,FALSE,0,0.00599999999999845,0.002,0.00699999999999967,9
+"test-owned-atoms.R","owned-atoms","mixed gather fallbacks retain cross-column callback order",8,0,FALSE,FALSE,0,0.00799999999999912,0.002,0.00999999999999979,8
+"test-owned-atoms.R","owned-atoms","owned record reads follow each replacement allocation through GC",36,0,FALSE,FALSE,0,1.122,0.01,1.133,36
+"test-owned-atoms.R","owned-atoms","factor integer exports use an isolated ordinary deep copy",21,0,FALSE,FALSE,0,0.0129999999999999,0.004,0.0169999999999995,21
+"test-owned-atoms.R","owned-atoms","public logical subsets are fresh ordinary values and batch results stay owned",30,0,FALSE,FALSE,0,0.0190000000000001,0.006,0.0250000000000021,30
+"test-owned-atoms.R","owned-atoms","ordinary atom handles share flat backing with independent attributes",103,0,FALSE,FALSE,0,0.0760000000000005,0.0199999999999998,0.0960000000000001,103
+"test-owned-atoms.R","owned-atoms","unchanged owned string selectors reuse validation facts",4,0,FALSE,FALSE,0,0.121,0.00100000000000011,0.123000000000001,4
+"test-owned-atoms.R","owned-atoms","string facts distinguish subset bounds from exact maxima",8,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.00799999999999912,8
+"test-owned-atoms.R","owned-atoms","missingness-only string validation is included in scan counters",5,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.004999999999999,5
+"test-owned-atoms.R","owned-atoms","foreign index callbacks cannot propagate facts from a changed source",4,0,FALSE,FALSE,0,0.00399999999999956,0.00100000000000011,0.00500000000000256,4
+"test-owned-atoms.R","owned-atoms","writable pointers isolate all atom types and remain unsafe to share",24,0,FALSE,FALSE,0,0.0180000000000007,0.004,0.0210000000000008,24
+"test-owned-atoms.R","owned-atoms","Set_elt and retained writable strings invalidate missingness and width facts",9,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.0069999999999979,9
+"test-owned-atoms.R","owned-atoms","foreign data.table atoms are captured at constructors and callback ingress",60,0,FALSE,FALSE,0,0.0549999999999997,0.012,0.0679999999999978,60
+"test-owned-atoms.R","owned-atoms","owned atom serialization restores values without live ownership records",80,0,FALSE,FALSE,0,0.0649999999999995,0.014,0.0800000000000018,80
+"test-owned-atoms.R","owned-atoms","ordinary base copies and explicit atom writes preserve both alias contracts",21,0,FALSE,FALSE,0,0.0190000000000001,0.004,0.0229999999999997,21
+"test-owned-atoms.R","owned-atoms","owned atomic native patches stage fully and keep prior state on interruption",18,0,FALSE,FALSE,0,0.00999999999999979,0.00300000000000011,0.0129999999999981,18
+"test-owned-atoms.R","owned-atoms","generation and atomic staging root detached integer row payload",8,0,FALSE,FALSE,0,0.263,0.002,0.265000000000001,8
+"test-owned-atoms.R","owned-atoms","legacy vector patches root detached integer row payloads",19,0,FALSE,FALSE,0,0.261999999999999,0.00499999999999989,0.276999999999997,19
+"test-owned-atoms.R","owned-atoms","legacy foreign rows finish callbacks before numeric readers are retained",20,0,FALSE,FALSE,0,0.138999999999999,0.004,0.143000000000001,20
+"test-owned-atoms.R","owned-atoms","legacy journaling and writes use captured operands without later callbacks",6,0,FALSE,FALSE,0,0.00400000000000134,0.00100000000000011,0.00600000000000023,6
+"test-owned-atoms.R","owned-atoms","legacy dictionary targets validate state after declared-width callbacks",4,0,FALSE,FALSE,0,0.0689999999999991,0.00100000000000011,0.0760000000000005,4
+"test-owned-atoms.R","owned-atoms","legacy compact targets reject materialization during operand callbacks",10,0,FALSE,FALSE,0,0.134,0.002,0.136000000000003,10
+"test-owned-atoms.R","owned-atoms","generation rejects live rows moved out of bounds by value callbacks",3,0,FALSE,FALSE,0,0.00500000000000078,0.00099999999999989,0.004999999999999,3
+"test-owned-atoms.R","owned-atoms","factor ownership preserves existing replacement restrictions and levels",18,0,FALSE,FALSE,0,0.0169999999999995,0.00300000000000011,0.0200000000000031,18
+"test-owned-atoms.R","owned-atoms","public atom exports and source mutations remain symmetrically isolated",131,0,FALSE,FALSE,0,0.109,0.0249999999999999,0.134,131
+"test-owned-atoms.R","owned-atoms","dictionary read pins survive callback materialization in subsets and atom patches",11,0,FALSE,FALSE,0,0.264000000000001,0.004,0.276,11
+"test-owned-atoms.R","owned-atoms","DTA and Arrow writer pointers survive later metadata callbacks",22,0,FALSE,FALSE,0,0.604000000000001,0.01,0.646000000000001,22
+"test-owned-atoms.R","owned-atoms","DTA planning retains already UTF-8 owned strings without a payload copy",8,0,FALSE,FALSE,0,0.004999999999999,0.002,0.0069999999999979,8
+"test-owned-atoms.R","owned-atoms","writer specifications isolate initially private strings from public callback writes",8,0,FALSE,FALSE,0,0.122000000000002,0.002,0.131,8
+"test-owned-atoms.R","owned-atoms","Arrow readers adopt fresh logical and factor allocations",12,0,FALSE,FALSE,0,0.00999999999999979,0.00299999999999989,0.0259999999999998,12
+"test-owned-atoms.R","owned-atoms","fresh unnamed string construction keeps its first write private",36,0,FALSE,FALSE,0,0.196999999999999,0.0069999999999999,0.204000000000001,36
+"test-owned-atoms.R","owned-atoms","constructing from an owned string preserves real aliases in both directions",6,0,FALSE,FALSE,0,0.00400000000000134,0.002,0.00600000000000023,6
+"test-owned-atoms.R","owned-atoms","internal string construction captures before forcing metadata promises",6,0,FALSE,FALSE,0,0.118,0.002,0.119999999999997,6
+"test-owned-atoms.R","owned-atoms","named string construction preserves replacement dispatch and escaped aliases",5,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00500000000000256,5
+"test-owned-atoms.R","owned-atoms","owned width scans preserve encoded bytes and missingness",12,0,FALSE,FALSE,0,0.0080000000000009,0.002,0.0109999999999992,12
+"test-owned-atoms.R","owned-atoms","large string constructors and restoration retain owned facts",51,0,FALSE,FALSE,0,0.0329999999999995,0.01,0.041999999999998,51
+"test-owned-atoms.R","owned-atoms","owned string metadata leaves names replacement dispatch to R",6,0,FALSE,FALSE,0,0.00400000000000134,0.00099999999999989,0.00500000000000256,6
+"test-owned-atoms.R","owned-atoms","string metadata declines compact storage without changing its source",9,0,FALSE,FALSE,0,0.00699999999999967,0.00300000000000011,0.0130000000000017,9
+"test-owned-atoms.R","owned-atoms","large string construction captures borrowed values before removing metadata",30,0,FALSE,FALSE,0,0.256,0.00800000000000001,0.263999999999999,30
+"test-owned-atoms.R","owned-atoms","string construction validates values captured after declaration callbacks",8,0,FALSE,FALSE,0,0.179,0.002,0.181000000000001,8
+"test-owned-atoms.R","owned-atoms","Arrow UTF-8 readiness reads current owned strings and retains conversion fallbacks",7,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00700000000000145,7
+"test-owned-atoms.R","owned-atoms","Arrow UTF-8 preflight retains its original fallback when base conversion is traced",4,0,FALSE,FALSE,0,0.0670000000000002,0.002,0.0680000000000014,4
+"test-owned-atoms.R","owned-atoms","table atom exports retain isolation under each explicit write API",36,0,FALSE,FALSE,0,0.0310000000000006,0.00700000000000012,0.0380000000000003,36
+"test-owned-columns.R","owned-columns","bounded generation shape checks retain wide and encoded fallbacks",15,0,FALSE,FALSE,0,0.0250000000000004,0.00299999999999989,0.027000000000001,15
+"test-owned-columns.R","owned-columns","generation shape checks decline foreign length callbacks",2,0,FALSE,FALSE,0,0.00199999999999889,0.00100000000000011,0.00200000000000244,2
+"test-owned-columns.R","owned-columns","generation shape validation never invokes foreign class callbacks",4,0,FALSE,FALSE,0,0.00400000000000134,0,0.004999999999999,4
+"test-owned-columns.R","owned-columns","attributed env members retain ordinary evaluation without eligibility callbacks",5,0,FALSE,FALSE,0,0.00399999999999956,0.00100000000000011,0.00600000000000023,5
+"test-owned-columns.R","owned-columns","journaled append restores shape and metadata after errors and interrupts",432,0,FALSE,FALSE,0,0.283,0.069,0.352,432
+"test-owned-columns.R","owned-columns","classed column names retain R validation dispatch",4,0,FALSE,FALSE,0,0.00399999999999956,0.00100000000000011,0.00500000000000256,4
+"test-owned-columns.R","owned-columns","private append reuses names without a collection or prior names read",192,0,FALSE,FALSE,0,0.133000000000001,0.0339999999999998,0.167999999999999,192
+"test-owned-columns.R","owned-columns","generation preserves saved names, attributes and shallow table copies",21,0,FALSE,FALSE,0,0.0169999999999995,0.004,0.0210000000000008,21
+"test-owned-columns.R","owned-columns","generation protects shallow table names before any public names read",9,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00899999999999679,9
+"test-owned-columns.R","owned-columns","generation checks physical rows again after argument capture",3,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,3
+"test-owned-columns.R","owned-columns","captured mutation masks preserve unread columns and lexical lookup",210,0,FALSE,FALSE,0,0.241,0.034,0.274999999999999,210
+"test-owned-columns.R","owned-columns","direct reads retain shadow checks and dynamic env subscripts",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999778,2
+"test-owned-columns.R","owned-columns","plain table staging guards aliases introduced by row callbacks",9,0,FALSE,FALSE,0,0.185,0.00299999999999989,0.187000000000001,9
+"test-owned-columns.R","owned-columns","ordinary private string writes retain sparse allocation and snapshot isolation",5,0,FALSE,FALSE,0,0.00500000000000078,0.00100000000000011,0.00600000000000023,5
+"test-owned-columns.R","owned-columns","promotion checks revalidate rows changed by a value callback",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,2
+"test-owned-columns.R","owned-columns","generic table transactions reject callback target replacement",2,0,FALSE,FALSE,0,0.0599999999999987,0,0.0609999999999999,2
+"test-owned-columns.R","owned-columns","native promotion fits preserve ranges, precision and selected values",114,0,FALSE,FALSE,0,0.072000000000001,0.0210000000000001,0.093,114
+"test-owned-columns.R","owned-columns","grouped proxy callbacks retain isolated Date inputs",4,0,FALSE,FALSE,0,0.00399999999999956,0.00099999999999989,0.00500000000000256,4
+"test-owned-columns.R","owned-columns","owned subsetting roots the payload across foreign index callbacks",3,0,FALSE,FALSE,0,0.121,0.00100000000000011,0.122,3
+"test-owned-columns.R","owned-columns","compact subsetting retains storage across index materialization callbacks",24,0,FALSE,FALSE,0,0.504999999999999,0.0069999999999999,0.512,24
+"test-owned-columns.R","owned-columns","native readers cannot export aliases after the effective write guard",20,0,FALSE,FALSE,0,0.0149999999999988,0.00300000000000011,0.0189999999999984,20
+"test-owned-columns.R","owned-columns","failed fused writes retain sharing introduced by an operand callback",41,0,FALSE,FALSE,0,0.0289999999999999,0.006,0.0360000000000014,41
+"test-owned-columns.R","owned-columns","direct owned writes retain callback forks after an interrupt",9,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00700000000000145,9
+"test-owned-columns.R","owned-columns","materialized partial writes roll back completed writes and original state",11,0,FALSE,FALSE,0,0.00599999999999845,0.002,0.00799999999999912,11
+"test-owned-columns.R","owned-columns","plain doubles capture once and preserve private sparse backing afterwards",22,0,FALSE,FALSE,0,0.0139999999999993,0.004,0.0180000000000007,22
+"test-owned-columns.R","owned-columns","materialized full replacement copies new values without reading old payloads",20,0,FALSE,FALSE,0,0.0150000000000006,0.004,0.0190000000000019,20
+"test-owned-columns.R","owned-columns","native-generated private numeric writes stage new bytes without copying old values",50,0,FALSE,FALSE,0,0.0330000000000013,0.00800000000000001,0.0410000000000004,50
+"test-owned-columns.R","owned-columns","full numeric replacement protects borrowed aliases without copying their old payload",20,0,FALSE,FALSE,0,0.0159999999999982,0.00300000000000011,0.0189999999999984,20
+"test-owned-columns.R","owned-columns","validation never exposes an internal read handle to R methods",6,0,FALSE,FALSE,0,0.004999999999999,0.00099999999999989,0.00600000000000023,6
+"test-owned-columns.R","owned-columns","custom classes on owned handles use conservative shape validation",6,0,FALSE,FALSE,0,0.00500000000000256,0.00099999999999989,0.00600000000000023,6
+"test-owned-columns.R","owned-columns","comparison callbacks cannot retain a view changed by the patch",2,0,FALSE,FALSE,0,0.00199999999999889,0,0.00300000000000011,2
+"test-owned-columns.R","owned-columns","native comparison decline isolates handles before R fallback errors",6,0,FALSE,FALSE,0,0.004999999999999,0.00100000000000011,0.00600000000000023,6
+"test-owned-columns.R","owned-columns","ordinary doubles are captured once and column results fork backing",7,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00700000000000145,7
+"test-owned-columns.R","owned-columns","ordinary dictionary cast prototypes do not decode target values",5,0,FALSE,FALSE,0,0.00400000000000134,0.00099999999999989,0.0109999999999992,5
+"test-owned-columns.R","owned-columns","plain integer and logical cast prototypes need no target payload",4,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,4
+"test-owned-columns.R","owned-columns","foreign integer prototypes and full replacements skip old payload reads",17,0,FALSE,FALSE,0,0.0739999999999981,0.004,0.0770000000000017,17
+"test-owned-columns.R","owned-columns","capture preserves identical owned columns within one physical table",8,0,FALSE,FALSE,0,0.00600000000000023,0.00099999999999989,0.00700000000000145,8
+"test-owned-columns.R","owned-columns","public writable and retained pointers cannot change another fork",6,0,FALSE,FALSE,0,0.0640000000000001,0.00099999999999989,0.0640000000000001,6
+"test-owned-columns.R","owned-columns","public column exports isolate later ordinary and explicit writes",28,0,FALSE,FALSE,0,0.027000000000001,0.00500000000000012,0.032,28
+"test-owned-columns.R","owned-columns","foreign double ingress and data table exports preserve both write directions",42,0,FALSE,FALSE,0,0.0339999999999989,0.006,0.0389999999999979,42
+"test-owned-columns.R","owned-columns","read pointers and ordinary aggregates retain safe backing forks",8,0,FALSE,FALSE,0,0.00600000000000023,0.002,0.00700000000000145,8
+"test-owned-columns.R","owned-columns","owned doubles preserve metadata and ordinary serialized values",8,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.00700000000000145,8
+"test-owned-reads.R","owned-reads","owned integer and logical exports preserve base values and argument evaluation",28,0,FALSE,FALSE,0,0.0820000000000007,0.004,0.0869999999999997,28
+"test-owned-reads.R","owned-reads","integer warnings can rewrite and collect the original source safely",4,0,FALSE,FALSE,0,0.0609999999999999,0.00100000000000011,0.0630000000000024,4
+"test-owned-reads.R","owned-reads","owned public read helpers retain traced base callbacks",3,0,FALSE,FALSE,0,0.00399999999999778,0.00099999999999989,0.004999999999999,3
+"test-owned-reads.R","owned-reads","owned coercions and range snapshots stay separate from writable pointers",14,0,FALSE,FALSE,0,0.0100000000000016,0.002,0.0120000000000005,14
+"test-owned-reads.R","owned-reads","owned range keeps ordinary summary behavior across missing and empty inputs",42,0,FALSE,FALSE,0,0.032,0.0069999999999999,0.0390000000000015,42
+"test-owned-reads.R","owned-reads","owned constructor validation agrees with ordinary detailed validation",18,0,FALSE,FALSE,0,0.0129999999999981,0.004,0.0159999999999982,18
+"test-owned-reads.R","owned-reads","owned missing masks keep names dimensions classes and foreign callbacks",6,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000134,6
+"test-reference-copy.R","reference-copy","replacement isolates unchanged columns and caller bindings",35,0,FALSE,FALSE,0,0.0310000000000024,0.006,0.0370000000000026,35
+"test-reference-copy.R","reference-copy","explicit helpers isolate distinct tables while preserving table and slot aliases",20,0,FALSE,FALSE,0,0.0150000000000006,0.004,0.0189999999999984,20
+"test-reference-copy.R","reference-copy","base copies read physical columns and never rewrite source bookkeeping",24,0,FALSE,FALSE,0,0.0180000000000007,0.004,0.0210000000000008,24
+"test-reference-copy.R","reference-copy","assigned repair isolates serialized copies and restores growth aliases",22,0,FALSE,FALSE,0,0.0169999999999995,0.00499999999999989,0.0210000000000008,22
+"test-reference-copy.R","reference-copy","legacy generated columns can be explicitly replaced after preparation",4,0,FALSE,FALSE,0,0.00400000000000134,0,0.004999999999999,4
+"test-reference-copy.R","reference-copy","preparation and ordinary metadata replacement preserve within-table aliases",29,0,FALSE,FALSE,0,0.0240000000000009,0.00499999999999989,0.0289999999999999,29
+"test-reference-copy.R","reference-copy","all changed same-vector data.table columns invalidate lookup state",10,0,FALSE,FALSE,0,0.0100000000000016,0.00100000000000011,0.0109999999999992,10
+"test-reference-copy.R","reference-copy","promotion replaces its named column without promoting other slots",6,0,FALSE,FALSE,0,0.004999999999999,0.002,0.00700000000000145,6
+"test-reference-copy.R","reference-copy","ordinary duplication of compact metadata wrappers keeps both sides compact",9,0,FALSE,FALSE,0,0.0069999999999979,0.002,0.014999999999997,9

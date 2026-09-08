@@ -1,0 +1,16 @@
+tests 1
+Traceback (most recent call last):
+  File "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/run-expression-checks.py", line 217, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/run-expression-checks.py", line 141, in main
+    run('tests', ['Rscript', '--vanilla', 'benchmarks/r-dibble-dplyr/expression-checks.R',
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        str(library), args.source_sha, str(source), str(output), pattern])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/run-expression-checks.py", line 135, in run
+    require(record['exit_code'] == 0, 'Check failed: ' + label)
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/run-expression-checks.py", line 21, in require
+    raise RuntimeError(message)
+RuntimeError: Check failed: tests

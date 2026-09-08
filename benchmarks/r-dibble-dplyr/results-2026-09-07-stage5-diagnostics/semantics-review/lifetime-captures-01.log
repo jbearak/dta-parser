@@ -1,0 +1,23 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+closure fail=FALSE retained=FALSE obsolete=TRUE
+closure fail=TRUE retained=FALSE obsolete=TRUE
+pronoun fail=FALSE retained=FALSE obsolete=TRUE
+pronoun fail=TRUE retained=FALSE obsolete=TRUE
+quosure fail=FALSE retained=FALSE obsolete=TRUE
+quosure fail=TRUE retained=FALSE obsolete=TRUE
+promise fail=FALSE retained=FALSE obsolete=TRUE
+promise fail=TRUE retained=FALSE obsolete=TRUE

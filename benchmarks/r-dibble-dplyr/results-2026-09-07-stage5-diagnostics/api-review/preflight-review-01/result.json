@@ -1,0 +1,42 @@
+{
+  "scope": "Bounded functional test of current reviewed preflight helper, using a known exact installed 985e26b artifact. Runtime/dependency closure not newly frozen, and this is not a final candidate qualification.",
+  "results": [
+    {
+      "case": "valid",
+      "command": [
+        "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/expression-preflight.R",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library",
+        "985e26b42590da400466a40ea6a41e7032e96cf4",
+        "/private/tmp/dta-direct-stage5",
+        "/private/tmp/dta-direct-stage5-validation/implementation/api-review/preflight-review-01/valid"
+      ],
+      "exit_code": 0,
+      "log": {
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/preflight-review-01/valid/execution.log",
+        "bytes": 60,
+        "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27"
+      }
+    },
+    {
+      "case": "wrong-source",
+      "command": [
+        "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-direct-stage5/benchmarks/r-dibble-dplyr/expression-preflight.R",
+        "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library",
+        "403ff08",
+        "/private/tmp/dta-direct-stage5",
+        "/private/tmp/dta-direct-stage5-validation/implementation/api-review/preflight-review-01/wrong-source"
+      ],
+      "exit_code": 1,
+      "log": {
+        "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/preflight-review-01/wrong-source/execution.log",
+        "bytes": 84,
+        "sha256": "e9fea767653405423fe02ed84fd2ed75ca72dc3fa09975612b0ad26c5aa566e1"
+      }
+    }
+  ],
+  "bound_inputs_unchanged": true
+}

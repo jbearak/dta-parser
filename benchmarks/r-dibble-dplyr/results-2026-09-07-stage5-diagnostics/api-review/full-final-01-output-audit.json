@@ -1,0 +1,16 @@
+{
+  "source_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+  "runner_sha": "4427a9b1b7a16df53dc9193b986b78b129c9b787",
+  "status": "complete",
+  "all_output_product_identities_match": 2855,
+  "manifest_sha256": "c5ac82b34ee81d20c144bf7f695dd1f94a56681d972395071e375fcf5ba2d1f9",
+  "receipt_sha256": "71c15a8f4440a056c74ddb2d7e7ea8728932f08835a9ac78cea4e47daf2f0153",
+  "counts": {
+    "passed": 16624,
+    "failed": 0,
+    "error": 0,
+    "skipped": 0,
+    "warning": 4
+  },
+  "scope": "Independent complete frozen-output audit plus read of counts and command/results. The runner reports all execution-time bound inputs unchanged. This audit does not claim every live input still matches after subsequent authorised source edits."
+}

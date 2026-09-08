@@ -1,0 +1,29 @@
+{
+  "scope": "Independent preparatory inventory audit. Final repository inclusion still requires an exact destination inventory comparison and review of its wrapper labels. Historical mode and host-runtime limits in original READMEs remain unchanged.",
+  "reports": [
+    {
+      "directory": "/private/tmp/dta-direct-stage5-helper-proof",
+      "indexed_records": 66,
+      "indexed_bytes": 7356475,
+      "index_sha256": "bb907a08b4566579b6fad1ebad6f2bf8a588e2219ac162c06d2ef43306af1931",
+      "sizes_hashes_current_modes_match": true
+    },
+    {
+      "directory": "/private/tmp/dta-direct-stage5-helper-proof-r460",
+      "indexed_records": 19,
+      "indexed_bytes": 1312404,
+      "index_sha256": "cb479c9fd9118b9fd90cc47e81a2f56469c079ecbcb6a7c08ba7370ff50d7593",
+      "sizes_hashes_current_modes_match": true
+    },
+    {
+      "directory": "/private/tmp/dta-direct-stage5-minimum-archive-preparation/preview",
+      "total_files": 181,
+      "total_bytes": 4657534,
+      "checksum_sha256": "d1afb744bdca3f77a2e249a55b3a0c8cc9ba31319a7879f879740937e7646162",
+      "selected_original_records": 156,
+      "omitted_original_records": 33,
+      "all_checksum_entries_match": true,
+      "scope": "Selected text inventory only; no runtime rerun, installed-tree qualification or replay-completeness claim."
+    }
+  ]
+}

@@ -1,0 +1,307 @@
+[
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/run-installed-api-985e26b.py",
+    "bytes": 2607,
+    "sha256": "563feb9f747f206712e480fb2a24152daacb20d65e4fa5904172625668debd6e"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/installed-api-985e26b.R",
+    "bytes": 2072,
+    "sha256": "b8c768b0a16b7ad3e11719cf27ca2ebde1072c509b4bff6ee5bd79fa4bc18479"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/export/benchmarks/r-dibble-dplyr/helpers.R",
+    "bytes": 4098,
+    "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/completed-receipt.json",
+    "bytes": 547,
+    "sha256": "f1ab9d54ee0243231c612fd47dd110cce78c95664c59258dd82145f3d17d933b"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/DESCRIPTION",
+    "bytes": 2033,
+    "sha256": "e72d916444648b8007f55b61c4ec551b251bd3ab25f66267279c8808106bb3c7"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/INDEX",
+    "bytes": 2725,
+    "sha256": "40d3ed83999e2fbd0bc9d65b8346dbc0998df32be1a1d77b5771268dd348768d"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/Meta/Rd.rds",
+    "bytes": 1919,
+    "sha256": "918e609494e3a2f44892257808aca457c42ca0b07d4612f0dc9936f855e5d788"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/Meta/benchmark-provenance.rds",
+    "bytes": 1866,
+    "sha256": "1251e4cc8b6c014c4906216bf3015cc446fdb01f6fc0c5e56d642bafd923aa5b"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/Meta/features.rds",
+    "bytes": 123,
+    "sha256": "b4f074bc0f45cfe56d976c0d67a1453067f4b34693828ed02d674a6641b3e332"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/Meta/hsearch.rds",
+    "bytes": 1826,
+    "sha256": "c503dcdb0da4bd4bd15c292cf3ace0cb5806c0279da0ce9fb9ff05469e61adb4"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/Meta/links.rds",
+    "bytes": 1037,
+    "sha256": "aa6d02be5c3c9613b12f20459947425de253eb8ece8d7922d635488860545da7"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/Meta/nsInfo.rds",
+    "bytes": 2076,
+    "sha256": "e67ef17b34618db6a2727ccace16429b3e11263e68c55ecaaa443815169d2db0"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/Meta/package.rds",
+    "bytes": 1611,
+    "sha256": "4c9cf59e4b26c1d0b5b6aa7ebb5c6052cd2f0980e36022c7809896e2f687ab6e"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/NAMESPACE",
+    "bytes": 10965,
+    "sha256": "94a412e9883a444d27ea621362f8df4dc513b0fa7a3cb7eb4ae6bb0933fc1ff3"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/NEWS.md",
+    "bytes": 666,
+    "sha256": "9ad3700aff7742c7913d1e9a8baf3ca1823376e658461036c28ba583fd7c35a5"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/NOTICE",
+    "bytes": 30822,
+    "sha256": "2b7092d0e91ef0012dc4496edfcef267781ef8a4c9165c2bfee72691408cda98"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/R/dtatools",
+    "bytes": 1058,
+    "sha256": "570ca456b280cdeb201ef5ebdf22dc8f80092e2c0c68e33c7f73340e420f3759"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/R/dtatools.rdb",
+    "bytes": 895764,
+    "sha256": "fa328ab13cb091bccfd3fd1b031e9ad494533090f018f8e6b3961da79ccf4a76"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/R/dtatools.rdx",
+    "bytes": 12625,
+    "sha256": "f1d0e70afbf61ba2a50cab7ceb4d4b877154dc3246a161417d80a7e2a8c40702"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/README.md",
+    "bytes": 46128,
+    "sha256": "f0b69794960fe38220995365e73f29d6d0ed9c0517f6495cbbe2ccf80f8ad5b1"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/all_types.dta",
+    "bytes": 6213,
+    "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/all_types_v115.dta",
+    "bytes": 1729,
+    "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/all_types_v117.dta",
+    "bytes": 2668,
+    "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/all_types_v118.dta",
+    "bytes": 6213,
+    "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/auto_v115.dta",
+    "bytes": 6107,
+    "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/auto_v117.dta",
+    "bytes": 6616,
+    "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/auto_v118.dta",
+    "bytes": 12765,
+    "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/egen_labels_stata18.csv",
+    "bytes": 181,
+    "sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/egen_number_labels_stata18.csv",
+    "bytes": 2109,
+    "sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/egen_number_labels_stata18.dta",
+    "bytes": 5283,
+    "sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/egen_precision_stata18.csv",
+    "bytes": 2445,
+    "sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/egen_stata18.csv",
+    "bytes": 782,
+    "sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/egen_unicode_names_stata18.dta",
+    "bytes": 10273,
+    "sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/empty.dta",
+    "bytes": 2475,
+    "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/empty_v115.dta",
+    "bytes": 713,
+    "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/empty_v118.dta",
+    "bytes": 2475,
+    "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/missing_values.dta",
+    "bytes": 4325,
+    "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/missing_values_v115.dta",
+    "bytes": 1681,
+    "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/missing_values_v118.dta",
+    "bytes": 4325,
+    "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/strl_test.dta",
+    "bytes": 2804,
+    "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/strl_test_v118.dta",
+    "bytes": 2804,
+    "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/synthetic_v105.dta",
+    "bytes": 543,
+    "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/synthetic_v108.dta",
+    "bytes": 886,
+    "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/synthetic_v110.dta",
+    "bytes": 1286,
+    "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/synthetic_v111.dta",
+    "bytes": 1352,
+    "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/value_labels.dta",
+    "bytes": 3162,
+    "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/value_labels_v115.dta",
+    "bytes": 1054,
+    "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/value_labels_v117.dta",
+    "bytes": 1549,
+    "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/value_labels_v118.dta",
+    "bytes": 3162,
+    "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/wide.dta",
+    "bytes": 86955,
+    "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/wide_v115.dta",
+    "bytes": 33596,
+    "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/extdata/wide_v118.dta",
+    "bytes": 86955,
+    "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/help/AnIndex",
+    "bytes": 2862,
+    "sha256": "bf6dc5d4e2df4dc95032c794015ed10007ba254521b6d07c585e90bff200f2fa"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/help/aliases.rds",
+    "bytes": 873,
+    "sha256": "e915d37d1575964d6cee1953d2847c4aa836cc6c7039eebd55dea7c1003525a2"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/help/dtatools.rdb",
+    "bytes": 200856,
+    "sha256": "718e53e0c20308f92c9190eef093c6a7eeb79d56f090d047334d272cb0bd79d1"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/help/dtatools.rdx",
+    "bytes": 1040,
+    "sha256": "d4e7e40d6cb9a98366c1e3c1d5d289bcc5ebade33b02da9c0f0e5e6083927c3d"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/help/paths.rds",
+    "bytes": 580,
+    "sha256": "2c79c7cb967bbdc917e37d9fc0e9aa00b941f73b7181a0bdefd02a359a22623e"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/html/00Index.html",
+    "bytes": 17354,
+    "sha256": "8a19b3734093b45fb28a446e3d24a86780ee4064b10340c7671c19fb766478c5"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/html/R.css",
+    "bytes": 2133,
+    "sha256": "3d290675266eebeba6efff07db879d699843c80bf428f9e71000e2fc6078f5db"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/libs/dtatools.so",
+    "bytes": 8665848,
+    "sha256": "10b4232c491d8a7e9c3429cdf8c72f3a01233e68df76b8cfa6e346e3d21d1828"
+  },
+  {
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/raven/nse.toml",
+    "bytes": 2782,
+    "sha256": "678f2a1649caeb00e0444616f47c68422df395929e5b003d18e7d3533a40875f"
+  }
+]

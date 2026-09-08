@@ -1,0 +1,20 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+    "CMD",
+    "build",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-01/export/r-package/dtatools"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-01/build",
+  "finished_utc": "2026-09-07T16:08:37.937318+00:00",
+  "label": "build",
+  "log": {
+    "bytes": 420,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-01/build.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-final-01/build.log",
+    "sha256": "4f89ecf7e30bbb596cabe8cd469d30343bb3a6d9e58f1f99af97376a44550dd9"
+  },
+  "returncode": 0,
+  "started_utc": "2026-09-07T16:08:36.989192+00:00"
+}

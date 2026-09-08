@@ -1,0 +1,18 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:dtatools’:
+
+    recode, replace_values
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+PASS installed API, namespace-only load, corrected selectors/row names/callers, within-call captures, zero-column input, and sequential Stata typing
+Package /private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools
+DLL /private/tmp/dta-direct-stage5-validation/implementation/candidate-985e26b/library/dtatools/libs/dtatools.so
