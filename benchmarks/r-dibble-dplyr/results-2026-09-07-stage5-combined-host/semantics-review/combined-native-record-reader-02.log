@@ -1,0 +1,3 @@
+      stopifnot_calls assertion_expressions  readiness_call_sites 
+                   38                   174                    17 
+PASS retained provenance files and static source counts; no native code or workload sourced or executed

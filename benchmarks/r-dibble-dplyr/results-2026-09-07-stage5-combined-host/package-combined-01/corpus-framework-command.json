@@ -1,0 +1,19 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "benchmarks/r-corpus-performance/test-framework.R"
+  ],
+  "completed_utc": "2026-09-07T20:11:32.890200+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/source",
+  "exit_code": 0,
+  "label": "corpus-framework",
+  "log": {
+    "bytes": 37,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/corpus-framework.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/package-combined-01/corpus-framework.log",
+    "sha256": "a499c3b4bd2e3d8b7bc2046a17390505991ee20afbc91aac5d96864fde7c028b"
+  },
+  "started_utc": "2026-09-07T20:11:32.771863+00:00"
+}

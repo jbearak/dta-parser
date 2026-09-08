@@ -1,0 +1,100 @@
+{
+  "assessment": "All four commands completed successfully on exact combined a2 installed package and source-bound drivers. Every declared input and completed output was independently rehashed; exact output scope and source archive Git blob identities match. Native source assertions and capacity/private readiness checks remain unchanged from Stage4. The 18 atom allocation/isolation cases and thresholded rename budgets pass. Installed package file MD5 provenance, DLL and host runtime were independently read and checked. The atom command ran from ea031 worktree; its two script bytes equal a2 and both worktree inputs are bound before and after execution, so its separately recorded runner_revision is accurate.",
+  "commands": {
+    "native": 0,
+    "native-atoms": 0,
+    "preflight": 0,
+    "rename": 0
+  },
+  "input_bytes": 2669702940,
+  "inputs": 58842,
+  "limits": [
+    "Reference driver assertion objects, alias snapshots and temporary Rprofmem event files are not retained; successful unchanged source-bound execution supports those checks, not independent replay of their object values. Numeric logs and Markdown match exactly; no timing comparison or overall performance acceptance is made.",
+    "Full static AST counts include helper function bodies and timed-loop readiness sites, and are not dynamic assertion execution counts. Earlier 159/15 shorthand is not reused.",
+    "Reference allocation records use Rprofmem threshold 1000; rename threshold 10000; atom profiling is unthresholded. Native counters overlap by their defined categories and are not total RSS or total process allocations.",
+    "Host R4.6.1/macOS aarch64 only. Visible R/site/library/tool files are bound, while external OS dylibs, SDK and full Python closure are excluded per original scope. Native generation interrupt handshake is separately covered by combined full tests; this native allocation gate is not a new SIGINT run.",
+    "First reviewer AST reader failed on missing formal arguments before any evidence change; second reader handles missing syntax nodes. Both sources/logs retained. No tests, native calls, profiling or benchmark workloads were rerun."
+  ],
+  "manifest": {
+    "bytes": 1776843,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/manifest.json",
+    "sha256": "45752db69ac46a795c0513afa8e11245e01fefb0fb54e87a05ee5a7f55e0311e"
+  },
+  "native_atoms": {
+    "cases": 18,
+    "first_shared_target_copy": "4 bytes per row; R allocation exactly payload+48",
+    "full_replacement": "new backing, no old payload copy; R allocation payload+48",
+    "kinds": [
+      "integer",
+      "factor",
+      "ordered"
+    ],
+    "rows": [
+      100000,
+      1000000
+    ],
+    "subsequent_private": "same backing and zero target copy/R allocation"
+  },
+  "native_metric_fields": 410,
+  "native_static_ast_counts": {
+    "assertion_expressions_including_function_bodies": 174,
+    "capacity_readiness_call_sites_including_loop_bodies": 17,
+    "stopifnot_call_sites": 38
+  },
+  "package_tree": "b08c77d91bdce67032f13aced90c29d068d6e95a",
+  "product_bytes": 515354594,
+  "products": 3252,
+  "reader": [
+    {
+      "bytes": 1462,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-record-reader-02.R",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-record-reader-02.R",
+      "sha256": "b3f171d0d5d66081701fdee903c8b58415d3d6ccd0ed77f47e1faceaef785d73"
+    },
+    {
+      "bytes": 238,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-record-reader-02.log",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-record-reader-02.log",
+      "sha256": "e2f9c25a4d4af3277e80dd6bc268277c639f2830bcfc480e4cf8148ee5b8498d"
+    }
+  ],
+  "receipt": {
+    "bytes": 530,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/receipt.json",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/receipt.json",
+    "sha256": "dd931f0abc8781478bac62e71dc349124432fa4eceaebf7c7c70735261e76b35"
+  },
+  "rename": {
+    "dibble_largest": 40056,
+    "dibble_recorded_total": 80112,
+    "each_dibble_budget_strictly_below": 800000,
+    "rows": 100000,
+    "threshold_bytes": 10000,
+    "typed_largest": 0,
+    "typed_recorded_total": 0
+  },
+  "reviewer_script": {
+    "bytes": 9133,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-evidence-review-01.py",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-native-evidence-review-01.py",
+    "sha256": "9830bbfcf1e74238a7d26a286d0c6a207900d0d726764ff929bb53a8a7c442e3"
+  },
+  "runner": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "source": "a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9",
+  "source_archive": {
+    "bytes": 248821760,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/source.tar",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/source.tar",
+    "sha256": "b680e5b9ee3d38943c98f6568d2db68feeddb6c20e4b53eedbaa9b81998e6806"
+  },
+  "source_archive_files": 3237,
+  "status": "combined_exact_native_evidence_clear",
+  "utc": "2026-09-07T20:48:08.679379+00:00"
+}

@@ -1,0 +1,20 @@
+{
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "benchmarks/r-dibble-dplyr/check-rename-allocation.R",
+    "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library"
+  ],
+  "completed_utc": "2026-09-07T20:30:41.383517+00:00",
+  "cwd": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/source",
+  "exit_code": 0,
+  "label": "rename",
+  "log": {
+    "bytes": 174,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/rename.log",
+    "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/native-combined-01/rename.log",
+    "sha256": "5e1c9b94a7cda3bde2ee5c70b36d93ab5110ad31efd3ff280923fe51b06a2046"
+  },
+  "started_utc": "2026-09-07T20:30:41.155441+00:00"
+}

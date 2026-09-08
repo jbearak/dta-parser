@@ -1,0 +1,11 @@
+# Combined package evidence review
+
+Clear for the completed `package-combined-01` gate on exact source/runner `a2d8b6a5a00d75cf20c962d3f28cf959ed4192b9`. All 11,190 products, exact output inventory and 63,104 current bound input identities pass the independent `audit-combined-package-01.py/.json` audit. All sixteen commands completed with status zero and no changed input. This clears the recorded host package scope; native and final performance acceptance remain separate.
+
+Receipt SHA-256 is `a015a466e8de2d0314bf28b49eb29a5533b423e17de4839944aa3f43297a892d`; manifest is `247bb6575bcfc6143b51553e4b7f3c6091377015c750bda6d67161baa07dba71`. The 9,579,390-byte source tar, SHA-256 `f8a2aa4b122ac7963c32f700984b790e1bd90bf86d4dcfda2fae78c5ccc6f4cb`, matches its pre-consumption record. The reviewed runner binds that generated tar before the archive, R check and binary commands and guards it through finalization; each retained command consumes that exact path.
+
+The source archive contains 209 files; the binary contains 57 files and is 3,707,993 bytes, SHA-256 `d4479dba3be5bd9893e5fe8f49f3b2b2f35025e2bb99e381fdab001d0c311129`. Authored R files, init.c and the integrated test/helper files match the exported source. NOTICE and NAMESPACE match exactly in the source archive, binary archive, check installation and binary installation. The namespace retains its 106 export declarations. Pinned roxygen completes while preserving the three existing manually maintained files it reports as skipped.
+
+`R CMD check --no-manual` completes with three established warning categories: native dependency objects targeting a newer macOS version, GNU extensions in vendored Makefiles and Rust's compiled `_abort` entry. The two notes remain a vendored CITATION file and a generated flag-check C file without a terminal newline. No NEWS parser sub-note remains. The retained test output reports 16,750 passes, no failures/skips and four established test warnings. Archive/vendor unit checks, vendor integrity, Rust source-hash checks, interoperability, conformance, source build and binary build all pass.
+
+The warning-bearing check result is not a zero-warning claim. External OS dylibs, the entire SDK and Python closure remain outside the input contract. No package command, test, build or benchmark was rerun by this reviewer.

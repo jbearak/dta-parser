@@ -1,0 +1,7 @@
+Native atom case: integer 100000 rows
+Native atom case: factor 100000 rows
+Native atom case: ordered 100000 rows
+Native atom case: integer 1000000 rows
+Native atom case: factor 1000000 rows
+Native atom case: ordered 1000000 rows
+Passed all 18 native integer/factor allocation and isolation cases.
