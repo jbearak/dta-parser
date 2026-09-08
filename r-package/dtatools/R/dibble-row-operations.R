@@ -299,8 +299,11 @@
     if (!length(dots)) {
         keys <- names(columns)
     } else {
+        # Caller-backed symbols are computed inputs too; only actual columns
+        # can bypass evaluation and its sequential Stata typing boundary.
         pure <- !any(nzchar(rlang::names2(dots))) && all(vapply(dots,
-            function(quo) rlang::quo_is_symbol(quo), logical(1)))
+            function(quo) rlang::quo_is_symbol(quo) &&
+                rlang::as_name(quo) %in% names(columns), logical(1)))
         if (pure) keys <- vapply(dots, .mask_expression_label, character(1)) else {
             evaluated <- .dibble_evaluate_columns(columns,
                 .dibble_ungrouped_expressions(nrow(data)), nrow(data), dots, "distinct()")

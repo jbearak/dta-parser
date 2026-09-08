@@ -101,6 +101,27 @@ test_that("S6-D04 computed grouping keys rebuild before subsequent group operati
     expect_identical(as.character(data$g), c("a", "b"))
 })
 
+test_that("S6-D05 caller symbols are typed while data columns retain precedence", {
+    data <- dibble(x = 1:2)
+    caller <- new.env(parent = environment())
+    caller$data <- data
+    caller$calls <- 0L
+    makeActiveBinding("strings", function() {
+        caller$calls <- caller$calls + 1L
+        c(NA_character_, "")
+    }, caller)
+    out <- evalq(dplyr::distinct(data, strings), caller)
+    expect_identical(caller$calls, 1L)
+    expect_identical(names(out), "strings")
+    expect_identical(as.character(out$strings), "")
+    expect_identical(dta_storage_type(out$strings), "str1")
+    makeActiveBinding("x", function() stop("caller x must stay unforced"), caller)
+    out <- evalq(dplyr::distinct(data, x), caller)
+    expect_identical(as.integer(out$x), 1:2)
+    expect_identical(names(data), "x")
+    expect_identical(as.integer(data$x), 1:2)
+})
+
 test_that("S6-O07 arrange expands pick before each independent key", {
     data <- dibble(id = 1:2, x = 2:1)
     events <- list()
