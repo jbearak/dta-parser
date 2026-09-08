@@ -328,6 +328,19 @@ SPSS formats.
 
 ## Installation
 
+Install from the [dtatools R package repository](https://jbearak.github.io/dta-parser/):
+
+```r
+install.packages("dtatools", repos = c(
+  dtatools = "https://jbearak.github.io/dta-parser",
+  CRAN = "https://cloud.r-project.org"
+))
+```
+
+Requires R 4.6 or later. Windows x86_64 and Apple Silicon macOS 14 or later
+have R 4.6 binaries. Other systems install from source and need Rust.
+See [repository details](../../docs/r-package-repository.md) for setup and updates.
+
 Published GitHub Releases contain compiled packages for Windows x86_64, Linux x86_64, and macOS ARM64. Open the [latest release](https://github.com/jbearak/dta-parser/releases/latest), choose the asset matching the R version, operating system, and architecture, and copy its URL:
 
 ```r
