@@ -1,0 +1,18 @@
+{
+  "status": "superseded",
+  "scope": "Performance comparisons only; the original process receipt and artifacts remain unchanged.",
+  "historical_run": "baseline-f622-measure-01",
+  "performance_acceptance": false,
+  "reason": "The historical reporter multiplied an already numeric millisecond median by 1000. Its aggregate warnings were not individually retained. Its measurements must not be compared with corrected measure-v4 output.",
+  "original_disposition": {
+    "path": "../historical-expressions/root-expression-performance/baseline-f622-measure-01-disposition.json",
+    "bytes": 938,
+    "sha256": "54c5e2d672023a2c6262d4bd7c6a1fc4a4da3e450fc89e68865c069e2e3a2b38"
+  },
+  "corrected_source": "../current-expressions/root-expression-performance/measure-v4.R",
+  "replacement_run": "baseline-f622-measure-02",
+  "replacement_receipt_sha256": "998d368fde0b9cc29d3da78771b72717b52a753cad5fc2ecf69048ed3b210232",
+  "replacement_record_location": "current-expressions/records.tar.gz; see current-expressions/selection.json",
+  "historical_rewrite": false,
+  "new_benchmark_run": false
+}

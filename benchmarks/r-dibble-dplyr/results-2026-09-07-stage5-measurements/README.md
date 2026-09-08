@@ -29,3 +29,6 @@ reviewers inspected selected contents. This does not claim that an external
 review service reads compressed data or that omitted runtime/build trees can
 be reconstructed. Each directory describes its original warnings, failed
 attempts, input-binding limits and scope. No package source changes here.
+
+[Current review clarifications](review-fixes/README.md) preserve the historical
+failures, explain audit-mode limits and add selected-record checks.

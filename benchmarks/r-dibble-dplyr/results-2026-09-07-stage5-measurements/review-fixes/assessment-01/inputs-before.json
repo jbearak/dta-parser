@@ -1,0 +1,166 @@
+{
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/check-current-records.py",
+    "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/assessment-01"
+  ],
+  "environment": {
+    "PATH": "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.local/bin:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/usr/local/texlive/2026/bin/universal-darwin",
+    "PYTHONOPTIMIZE": null,
+    "PYTHONPATH": null
+  },
+  "executable": {
+    "bytes": 34640,
+    "mode": "0o755",
+    "path": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+  },
+  "flags": {
+    "debug": true,
+    "optimize": 0
+  },
+  "inputs": [
+    {
+      "bytes": 33568,
+      "mode": "0o755",
+      "path": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+      "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+      "sha256": "e89d60f8ccee9db684801330198797723db2ac378cd53e5cfe523128feb76599"
+    },
+    {
+      "bytes": 34640,
+      "mode": "0o755",
+      "path": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+    },
+    {
+      "bytes": 12985,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-expressions/implementation/semantics-review/combined-measurement-comparison-review-02.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-expressions/implementation/semantics-review/combined-measurement-comparison-review-02.json",
+      "sha256": "fab4be8ea165d2c5548f20aa4a5d71bbc50feb19b11a757aadf380ceceee6d00"
+    },
+    {
+      "bytes": 5525649,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-expressions/records.tar.gz",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-expressions/records.tar.gz",
+      "sha256": "1be56e77b1e947f5eb11e6334090174adb59959864e534e8291a14f569750e3a"
+    },
+    {
+      "bytes": 177750,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-expressions/selection.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-expressions/selection.json",
+      "sha256": "f948582e6560a9f4b0807a0607089395eabdc35200783f01f6ee735d7588c7de"
+    },
+    {
+      "bytes": 3162270,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-minimum/records.tar.gz",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-minimum/records.tar.gz",
+      "sha256": "c6bcd37b30e2331689c8932ab64bc6eeacd76c5076f4e12731f3d9217daf75d2"
+    },
+    {
+      "bytes": 10327,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-minimum/root-r460-integration/check-candidate-v4.py",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-minimum/root-r460-integration/check-candidate-v4.py",
+      "sha256": "d7970103fb5194809ae6ca5b2ac7d2a82e4a445d1a176ba864a2f442cd2efcf0"
+    },
+    {
+      "bytes": 83469,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-minimum/selection.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-minimum/selection.json",
+      "sha256": "d33232cc3ec1963171254f7ed59214555408825adc1a92a10803de036943f2f8"
+    },
+    {
+      "bytes": 5935,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-owned/implementation/semantics-review/owned-combined-integrity-review-01.py",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-owned/implementation/semantics-review/owned-combined-integrity-review-01.py",
+      "sha256": "22648751325a4a9f7ec2ec1f135b8261c84908238220f5846366901b8ea3228f"
+    },
+    {
+      "bytes": 3035428,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-owned/records.tar.gz",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-owned/records.tar.gz",
+      "sha256": "8c7ba8fb38eac6412e77d742d3010cbb0265bbb1a61bd4e910d8f1da425fec06"
+    },
+    {
+      "bytes": 131682,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-owned/selection.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/current-owned/selection.json",
+      "sha256": "2e6b587dc5940e066548d8566526e8f989c3c43e913954f859f401a7d183a6c3"
+    },
+    {
+      "bytes": 938,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/historical-expressions/root-expression-performance/baseline-f622-measure-01-disposition.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/historical-expressions/root-expression-performance/baseline-f622-measure-01-disposition.json",
+      "sha256": "54c5e2d672023a2c6262d4bd7c6a1fc4a4da3e450fc89e68865c069e2e3a2b38"
+    },
+    {
+      "bytes": 4865,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/read-diagnosis/implementation/semantics-review/atomic-read-repeat-preparation-review-01.py",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/read-diagnosis/implementation/semantics-review/atomic-read-repeat-preparation-review-01.py",
+      "sha256": "6bd0fa8ba83fffc84ed1433143bb88a94aa14a6724a83cb543d5c07fabe7d2f9"
+    },
+    {
+      "bytes": 96262224,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/read-diagnosis/records.tar.gz",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/read-diagnosis/records.tar.gz",
+      "sha256": "bf1f43383276853814e5b42ecde299c5a2081b7e6a4f999f967fd6aa47e4e01a"
+    },
+    {
+      "bytes": 494835,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/read-diagnosis/selection.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/read-diagnosis/selection.json",
+      "sha256": "561a4104ad363afc3be2c4715bce825f4240d84d7ec2d6089b551363e36a1d68"
+    },
+    {
+      "bytes": 3674,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/README.md",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/README.md",
+      "sha256": "56e7f95fd5d12b03e88f62451176682182fe95f63eef6ecf6510a3a9c40909f5"
+    },
+    {
+      "bytes": 14395,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/check-current-records.py",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/check-current-records.py",
+      "sha256": "c12606e36107e5e761e04a595df546083204e701e85c2a6add8713249880a12f"
+    },
+    {
+      "bytes": 6226,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/original-inputs/root-driver-review-03.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/original-inputs/root-driver-review-03.json",
+      "sha256": "7f97a226d0bb8d75c82a214414274c9e7c3ca9a61bcd59222452e003b91493a2"
+    },
+    {
+      "bytes": 1094,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/superseded-measurement.json",
+      "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/superseded-measurement.json",
+      "sha256": "7691ee51557383959bda824feb038040b894c987a499812e7d73cfa224adb9d1"
+    },
+    {
+      "bytes": 6226,
+      "mode": "0o644",
+      "path": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/root-driver-review-03.json",
+      "resolved": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/root-driver-review-03.json",
+      "sha256": "7f97a226d0bb8d75c82a214414274c9e7c3ca9a61bcd59222452e003b91493a2"
+    }
+  ],
+  "scope": "Current selected-record consistency and limited facts, not historical execution-mode or runtime requalification."
+}

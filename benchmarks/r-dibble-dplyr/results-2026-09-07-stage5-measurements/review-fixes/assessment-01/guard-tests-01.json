@@ -1,0 +1,15 @@
+{
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/check-current-records.py",
+    "--self-test"
+  ],
+  "environment": {
+    "PATH": "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.local/bin:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/usr/local/texlive/2026/bin/universal-darwin",
+    "PYTHONOPTIMIZE": null,
+    "PYTHONPATH": null
+  },
+  "returncode": 0,
+  "stderr": "",
+  "stdout": "{\"status\": \"complete\", \"positive_cases\": 2, \"rejected_cases\": 6, \"argv\": [\"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python\", \"/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/check-current-records.py\", \"--self-test\"], \"optimize\": 0, \"debug\": true, \"PYTHONOPTIMIZE\": null}\n"
+}

@@ -1,0 +1,240 @@
+{
+  "all_handles_shared": true,
+  "historical_asserts": [
+    {
+      "assert_statements": 20,
+      "family": "current-owned",
+      "filename": "owned-combined-integrity-review-01.py",
+      "historical_optimization_flags": "not retained; unknown"
+    },
+    {
+      "assert_statements": 2,
+      "family": "read-diagnosis",
+      "filename": "atomic-read-repeat-preparation-review-01.py",
+      "historical_optimization_flags": "not retained; unknown"
+    }
+  ],
+  "namespace_facts": [
+    {
+      "dtatools_rows": 1,
+      "member": "root-expression-performance/baseline-ec10-read-control-v3-01/namespaces.tsv",
+      "package_path": "/private/tmp/dta-direct-stage4-validation/baseline-library/dtatools",
+      "total_namespaces": 25,
+      "unique_namespace_names": 25
+    },
+    {
+      "dtatools_rows": 1,
+      "member": "root-expression-performance/candidate-a2d8b6a-read-control-v3-01/namespaces.tsv",
+      "package_path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library/dtatools",
+      "total_namespaces": 25,
+      "unique_namespace_names": 25
+    },
+    {
+      "dtatools_rows": 1,
+      "member": "root-expression-performance/baseline-ec10-read-control-v3-02/namespaces.tsv",
+      "package_path": "/private/tmp/dta-direct-stage4-validation/baseline-library/dtatools",
+      "total_namespaces": 25,
+      "unique_namespace_names": 25
+    },
+    {
+      "dtatools_rows": 1,
+      "member": "root-expression-performance/candidate-a2d8b6a-read-control-v3-02/namespaces.tsv",
+      "package_path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library/dtatools",
+      "total_namespaces": 25,
+      "unique_namespace_names": 25
+    },
+    {
+      "dtatools_rows": 1,
+      "member": "root-expression-performance/baseline-ec10-read-control-v3-03/namespaces.tsv",
+      "package_path": "/private/tmp/dta-direct-stage4-validation/baseline-library/dtatools",
+      "total_namespaces": 25,
+      "unique_namespace_names": 25
+    },
+    {
+      "dtatools_rows": 1,
+      "member": "root-expression-performance/candidate-a2d8b6a-read-control-v3-03/namespaces.tsv",
+      "package_path": "/private/tmp/dta-direct-stage5-validation/implementation/candidate-combined-01/library/dtatools",
+      "total_namespaces": 25,
+      "unique_namespace_names": 25
+    }
+  ],
+  "native_source_review_present_in_original_bundle": true,
+  "original_review_copy": {
+    "bytes": 6226,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/original-inputs/root-driver-review-03.json",
+    "resolved": "/private/tmp/dta-direct-stage5-measurements-pr/benchmarks/r-dibble-dplyr/results-2026-09-07-stage5-measurements/review-fixes/original-inputs/root-driver-review-03.json",
+    "sha256": "7f97a226d0bb8d75c82a214414274c9e7c3ca9a61bcd59222452e003b91493a2"
+  },
+  "private_backing_counts": [
+    {
+      "count": 588,
+      "kind": "declared_character",
+      "value": "FALSE"
+    },
+    {
+      "count": 735,
+      "kind": "factor",
+      "value": "FALSE"
+    },
+    {
+      "count": 147,
+      "kind": "factor",
+      "value": "TRUE"
+    },
+    {
+      "count": 1320,
+      "kind": "logical",
+      "value": "FALSE"
+    },
+    {
+      "count": 735,
+      "kind": "ordered",
+      "value": "FALSE"
+    },
+    {
+      "count": 147,
+      "kind": "ordered",
+      "value": "TRUE"
+    }
+  ],
+  "scope": "Current read-only checks of selected records; no historical script, R workload, profiler or benchmark rerun.",
+  "selected_originals": [
+    {
+      "bytes": 12985,
+      "family": "current-expressions",
+      "mode": "0o644",
+      "path": "implementation/semantics-review/combined-measurement-comparison-review-02.json",
+      "presentation": "plain",
+      "sha256": "fab4be8ea165d2c5548f20aa4a5d71bbc50feb19b11a757aadf380ceceee6d00",
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-comparison-review-02.json"
+    },
+    {
+      "bytes": 781,
+      "family": "current-expressions",
+      "mode": "0o644",
+      "path": "implementation/semantics-review/combined-measurement-comparison-review-01.log",
+      "presentation": "bundle",
+      "sha256": "447d673282fa880988e156b6d502743393e7e4e3de356595a4989ef7e1d07d1a",
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/combined-measurement-comparison-review-01.log"
+    },
+    {
+      "bytes": 4865,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "implementation/semantics-review/atomic-read-repeat-preparation-review-01.py",
+      "presentation": "plain",
+      "sha256": "6bd0fa8ba83fffc84ed1433143bb88a94aa14a6724a83cb543d5c07fabe7d2f9",
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/atomic-read-repeat-preparation-review-01.py"
+    },
+    {
+      "bytes": 2692,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "implementation/api-review/native-read-control-source-review-01.json",
+      "presentation": "bundle",
+      "sha256": "1259df9bc1354ff20ebc298cc86ab3f2353a582cc076b14d52804d6b54502a32",
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/api-review/native-read-control-source-review-01.json"
+    },
+    {
+      "bytes": 52172,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "implementation/semantics-review/atomic-read-v2-evidence-review-01.json",
+      "presentation": "bundle",
+      "sha256": "02f395cf1c9a8c67b9d9693ce9edc259c7c016d5c747bed38ea135700019449c",
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/atomic-read-v2-evidence-review-01.json"
+    },
+    {
+      "bytes": 55,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "implementation/semantics-review/atomic-read-v2-record-reader-01.log",
+      "presentation": "bundle",
+      "sha256": "f916373a7e7abfa66de632be0f104baa0a52508eca9055acb7db77d9b2831b80",
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/atomic-read-v2-record-reader-01.log"
+    },
+    {
+      "bytes": 479351,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "implementation/semantics-review/atomic-read-v2-states-02.csv",
+      "presentation": "bundle",
+      "sha256": "30660dedd7ae614a433c81ac3492ce076bdcca23c2d723ba31b52e1ef5d61155",
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/atomic-read-v2-states-02.csv"
+    },
+    {
+      "bytes": 1375,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "root-expression-performance/baseline-ec10-read-control-v3-01/namespaces.tsv",
+      "presentation": "bundle",
+      "sha256": "ef3bdbaabb631787eb6f48acd3052192347a682c45a4d438b8fa2d5e3f038d89",
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-ec10-read-control-v3-01/namespaces.tsv"
+    },
+    {
+      "bytes": 1375,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "root-expression-performance/baseline-ec10-read-control-v3-02/namespaces.tsv",
+      "presentation": "bundle",
+      "sha256": "ef3bdbaabb631787eb6f48acd3052192347a682c45a4d438b8fa2d5e3f038d89",
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-ec10-read-control-v3-02/namespaces.tsv"
+    },
+    {
+      "bytes": 1375,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "root-expression-performance/baseline-ec10-read-control-v3-03/namespaces.tsv",
+      "presentation": "bundle",
+      "sha256": "ef3bdbaabb631787eb6f48acd3052192347a682c45a4d438b8fa2d5e3f038d89",
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/baseline-ec10-read-control-v3-03/namespaces.tsv"
+    },
+    {
+      "bytes": 1403,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "root-expression-performance/candidate-a2d8b6a-read-control-v3-01/namespaces.tsv",
+      "presentation": "bundle",
+      "sha256": "0551b3a0097d82eec79b469ec3c50441363e88bcef93a652729b07f3f6fd706e",
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-read-control-v3-01/namespaces.tsv"
+    },
+    {
+      "bytes": 1403,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "root-expression-performance/candidate-a2d8b6a-read-control-v3-02/namespaces.tsv",
+      "presentation": "bundle",
+      "sha256": "0551b3a0097d82eec79b469ec3c50441363e88bcef93a652729b07f3f6fd706e",
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-read-control-v3-02/namespaces.tsv"
+    },
+    {
+      "bytes": 1403,
+      "family": "read-diagnosis",
+      "mode": "0o644",
+      "path": "root-expression-performance/candidate-a2d8b6a-read-control-v3-03/namespaces.tsv",
+      "presentation": "bundle",
+      "sha256": "0551b3a0097d82eec79b469ec3c50441363e88bcef93a652729b07f3f6fd706e",
+      "source": "/private/tmp/dta-direct-stage5-validation/root-expression-performance/candidate-a2d8b6a-read-control-v3-03/namespaces.tsv"
+    },
+    {
+      "bytes": 10327,
+      "family": "current-minimum",
+      "mode": "0o644",
+      "path": "root-r460-integration/check-candidate-v4.py",
+      "presentation": "plain",
+      "sha256": "d7970103fb5194809ae6ca5b2ac7d2a82e4a445d1a176ba864a2f442cd2efcf0",
+      "source": "/private/tmp/dta-direct-stage5-validation/root-r460-integration/check-candidate-v4.py"
+    },
+    {
+      "bytes": 5935,
+      "family": "current-owned",
+      "mode": "0o644",
+      "path": "implementation/semantics-review/owned-combined-integrity-review-01.py",
+      "presentation": "plain",
+      "sha256": "22648751325a4a9f7ec2ec1f135b8261c84908238220f5846366901b8ea3228f",
+      "source": "/private/tmp/dta-direct-stage5-validation/implementation/semantics-review/owned-combined-integrity-review-01.py"
+    }
+  ],
+  "state_rows": 3672
+}
