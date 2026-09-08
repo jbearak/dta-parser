@@ -42,8 +42,8 @@ Adapted from dplyr 1.2.1:
     dtatools kernel. Missing strings are normalized before groups are rebuilt;
     arbitrary dataset metadata survives grouped reconstruction. The grouped
     row hook preserves its separate existing-group remapping policy. The
-    legacy locale option uses base ordering of public vctrs proxies; its
-    dplyr-owned lifecycle deprecation notification is not incorporated.
+    legacy locale option uses base ordering of public vctrs proxies. Stage 6
+    additionally adapts its lifecycle deprecation policy for arrange().
   Additional tests: tests/testthat/test-dibble-rows.R adapts group expansion,
     rowwise identifier and reconstruction cases from test-group-by.R,
     test-grouped-df.R, test-generics.R and test-rowwise.R, with package-specific
@@ -75,6 +75,36 @@ Adapted from dplyr 1.2.1:
     empty-group, capture and expansion cases from test-mutate.R, test-across.R,
     test-pick.R, test-group-by.R and test-rowwise.R and the standalone Stage 5
     helper proof, adding Stata sequencing and symmetric write-isolation checks.
+  Additional Stage 6 sources:
+    R/filter.R: filter.data.frame, check_filter, filter_rows, filter_expand
+      and filter_eval policies
+    R/across.R: expand_if_across integration contract
+    src/filter.cpp: TRUE-only conjunction, predicate size/type validation and
+      inversion after all predicates have been evaluated
+    R/arrange.R: arrange.data.frame, arrange_rows, legacy proxy ordering,
+      locale validation and collation
+    R/locale.R: legacy-option validation and notification
+    R/distinct.R: distinct.data.frame and distinct_prepare
+    R/slice.R: slice.data.frame, slice_rows, slice_eval, slice_combine,
+      get_slice_size, slice_rank_idx and head/tail/min/max/sample policies
+  Destinations: R/dibble-row-operations.R, shared evaluator/context/group
+    interfaces and row-operation methods in R/mutate-data.R.
+  Changes: shared group-local evaluation plans row locations, then the existing
+    package row gatherer restores typed columns, metadata and ownership.
+    Arrange uses public vctrs ranks to obtain stable row permutations instead
+    of private vctrs ordering. Distinct uses the shared sequential typing
+    evaluator. Filter helper expansion is confined to the optional adapter;
+    no installed namespace functions are patched. The filter C++ reduction is
+    expressed in R. Public lifecycle and optional stringi APIs provide the
+    adapted deprecation and explicit-locale policies.
+  Additional tests: tests/testthat/test-dibble-row-filter.R,
+    test-dibble-row-order.R, test-dibble-row-slice.R and
+    test-dibble-row-lifetime.R adapt test-filter.R, test-arrange.R,
+    test-distinct.R and test-slice.R. They use typed dibbles, stable row IDs,
+    explicit Stata metadata and symmetric mutation checks. The retained
+    Stage 6 caller witnesses additionally informed group-frame and empty-group
+    cases. Preparation drafts and their failed expectations are not package
+    qualification; the integrated tests are checked on the installed source.
   The inspected files contain no separate file-level copyright or license.
 
 Adapted from R 4.6.1, released 2026-06-24 (SVN revision 90187):

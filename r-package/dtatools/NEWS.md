@@ -1,5 +1,9 @@
 # dtatools 0.7.1.9000
 
+* Dibble filter, filter_out, arrange, distinct and slice helpers now plan rows
+  through the shared expression and gathering modules. Filter and slice keep
+  temporary bindings across expressions within each group; computed distinct
+  keys retain sequential Stata typing. Explicit non-C arrange locales use stringi.
 * Dibble mutate, transmute and grouping now use the package-owned expression
   and grouping modules, retaining sequential Stata typing and later-write
   isolation. The dplyr minimum is 1.2.1 on the supported R 4.6.0 floor.

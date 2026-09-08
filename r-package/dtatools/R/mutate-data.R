@@ -2776,7 +2776,9 @@ cbind.dtatools_ref_data <- function(..., deparse.level = 1) {
 }
 
 #' @export
-arrange.dtatools_ref_data <- function(.data, ..., .by_group = FALSE) {
+arrange.dtatools_ref_data <- function(.data, ..., .by_group = FALSE, .locale = NULL) {
+    if (is_dibble(.data)) return(.dibble_arrange(
+        .data, rlang::enquos(...), .by_group, .locale))
     .closed_reference_verb(.data, sys.call(), dplyr::arrange, parent.frame())
 }
 
@@ -2784,12 +2786,70 @@ arrange.dtatools_ref_data <- function(.data, ..., .by_group = FALSE) {
 filter.dtatools_ref_data <- function(
     .data, ..., .by = NULL, .preserve = FALSE
 ) {
+    if (is_dibble(.data)) return(.dibble_filter(.data,
+        rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by), .preserve))
     .closed_reference_verb(.data, sys.call(), dplyr::filter, parent.frame())
 }
 
 #' @export
+filter_out.dtatools_ref_data <- function(.data, ..., .by = NULL, .preserve = FALSE) {
+    if (is_dibble(.data)) return(.dibble_filter(.data,
+        rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by), .preserve,
+        invert = TRUE))
+    .closed_reference_verb(.data, sys.call(), dplyr::filter_out, parent.frame())
+}
+
+#' @export
 slice.dtatools_ref_data <- function(.data, ..., .by = NULL, .preserve = FALSE) {
+    if (is_dibble(.data)) return(.dibble_slice(
+        .data, rlang::enquos(...), rlang::enquo(.by), .preserve))
     .closed_reference_verb(.data, sys.call(), dplyr::slice, parent.frame())
+}
+
+#' @export
+slice_head.dtatools_ref_data <- function(.data, ..., n, prop, by = NULL) {
+    if (!is_dibble(.data)) return(.closed_reference_verb(
+        .data, sys.call(), dplyr::slice_head, parent.frame()))
+    rlang::check_dots_empty()
+    .dibble_slice_helper(.data, rlang::enquo(by), .dibble_slice_size(n, prop), "head")
+}
+
+#' @export
+slice_tail.dtatools_ref_data <- function(.data, ..., n, prop, by = NULL) {
+    if (!is_dibble(.data)) return(.closed_reference_verb(
+        .data, sys.call(), dplyr::slice_tail, parent.frame()))
+    rlang::check_dots_empty()
+    .dibble_slice_helper(.data, rlang::enquo(by), .dibble_slice_size(n, prop), "tail")
+}
+
+#' @export
+slice_min.dtatools_ref_data <- function(.data, order_by, ..., n, prop, by = NULL,
+                                       with_ties = TRUE, na_rm = FALSE) {
+    if (!is_dibble(.data)) return(.closed_reference_verb(
+        .data, sys.call(), dplyr::slice_min, parent.frame()))
+    rlang::check_dots_empty()
+    .dibble_slice_helper(.data, rlang::enquo(by), .dibble_slice_size(n, prop), "min",
+        order_by = rlang::enquo(order_by), with_ties = with_ties, na_rm = na_rm)
+}
+
+#' @export
+slice_max.dtatools_ref_data <- function(.data, order_by, ..., n, prop, by = NULL,
+                                       with_ties = TRUE, na_rm = FALSE) {
+    if (!is_dibble(.data)) return(.closed_reference_verb(
+        .data, sys.call(), dplyr::slice_max, parent.frame()))
+    rlang::check_dots_empty()
+    .dibble_slice_helper(.data, rlang::enquo(by), .dibble_slice_size(n, prop), "max",
+        order_by = rlang::enquo(order_by), with_ties = with_ties, na_rm = na_rm)
+}
+
+#' @export
+slice_sample.dtatools_ref_data <- function(.data, ..., n, prop, by = NULL,
+                                          weight_by = NULL, replace = FALSE) {
+    if (!is_dibble(.data)) return(.closed_reference_verb(
+        .data, sys.call(), dplyr::slice_sample, parent.frame()))
+    rlang::check_dots_empty()
+    .dibble_slice_helper(.data, rlang::enquo(by), .dibble_slice_size(n, prop, replace),
+        "sample", weight_by = rlang::enquo(weight_by), replace = replace)
 }
 
 #' @export
@@ -3602,6 +3662,8 @@ summarise.dtatools_ref_data <- function(
 
 #' @export
 distinct.dtatools_ref_data <- function(.data, ..., .keep_all = FALSE) {
+    if (is_dibble(.data)) return(.dibble_distinct(.data,
+        rlang::enquos(..., .ignore_empty = "all"), .keep_all))
     # `distinct(d, y = x * 2)` computes as `mutate()` does; the computed
     # key is typed before rows are compared.
     .typed_mask_verb(

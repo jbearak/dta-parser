@@ -1,4 +1,4 @@
-"""Run exact-source Stage 5 checks with before/after input bindings.
+"""Run exact-source checks with before/after input bindings.
 
 Source exports, installed dependencies, original logs and failed attempts stay
 in the fresh output directory. Output indexes exclude themselves; a separate
@@ -66,6 +66,25 @@ def require_package_inventory(package, expected):
             repr(sorted(str(p) for p in current.symmetric_difference(expected))))
 
 
+def resolve_tool_paths(names, search_path):
+    selected = {}
+    for name in names:
+        found = shutil.which(name, path=search_path)
+        require(found is not None, 'Required tool not found: ' + name)
+        # Preserve the invocation basename: aliases may dispatch different roles.
+        selected[name] = Path(found).absolute()
+    return selected
+
+
+def selected_tool_command(command, bindings):
+    require(command and command[0] in bindings,
+            'Unbound top-level tool: ' + repr(command))
+    selected = bindings[command[0]]
+    changes = input_changes([selected])
+    require(not changes, 'Selected tool changed: ' + repr(changes))
+    return [selected['path'], *command[1:]], selected
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('phase', choices=['focused', 'full', 'package', 'native', 'rust'])
@@ -129,8 +148,12 @@ def main():
         for directory in [rroot, site, library / 'dtatools']:
             require(directory.is_dir(), 'Missing input tree: ' + str(directory))
             inputs.update(p for p in directory.rglob('*') if p.is_file())
-        tools = {name: Path(shutil.which(name)).resolve(strict=True) for name in
-                 ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'bun', 'R', 'Rscript', 'python3']}
+        discovery_path = os.environ.get('PATH', os.defpath)
+        tool_invocations = resolve_tool_paths(
+            ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'bun', 'R', 'Rscript', 'python3'],
+            discovery_path)
+        tools = {name: path.resolve(strict=True) for name, path in tool_invocations.items()}
+        inputs.update(tool_invocations.values())
         inputs.update(tools.values())
         inputs.add(Path(sys.executable).resolve(strict=True))
         compiler = Path(subprocess.check_output(
@@ -159,6 +182,11 @@ def main():
         if args.phase == 'native':
             inputs.update(repo/file for file in ['benchmarks/r-reference-mutation/owned-atoms.R', 'benchmarks/r-dibble-dplyr/helpers.R'])
         before = [identity(p) for p in sorted(inputs)]
+        bound_paths = {row['path']: row for row in before}
+        tool_bindings = {name: bound_paths[str(path)] for name, path in tool_invocations.items()}
+        write(output / 'tool-selection.json', dict(discovery_path=discovery_path, tools=tool_bindings,
+            scope='Fixed top-level gate invocation paths and canonical identities. '
+                  'Nested shell/toolchain selection and complete runtime closure are not frozen.'))
         input_binding_complete = True
         package_inventory = {p for p in expected if p.is_relative_to(package_root)}
         write(output / 'inputs-before.json', dict(source_sha=args.source_sha,
@@ -178,10 +206,13 @@ def main():
             require_package_inventory(package_root, package_inventory)
         def run(label, command, cwd=source, env=None):
             guard()
-            record = dict(label=label, command=command, cwd=str(cwd),
+            selected_command, selected = selected_tool_command(command, tool_bindings)
+            child_environment = environment if env is None else env
+            record = dict(label=label, requested_command=list(command), command=selected_command,
+                          selected_tool=selected, environment_path=child_environment.get('PATH'), cwd=str(cwd),
                           started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
             with (output / (label + '.log')).open('x') as stream:
-                record['exit_code'] = subprocess.run(command, cwd=cwd, env=env or environment,
+                record['exit_code'] = subprocess.run(selected_command, cwd=cwd, env=child_environment,
                     stdout=stream, stderr=subprocess.STDOUT).returncode
             record['completed_utc'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             record['log'] = identity(output / (label + '.log'))

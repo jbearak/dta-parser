@@ -378,3 +378,26 @@ and vector-heap checks remain active. Candidates must also retain less than
 1 MB of combined tracked R heap with source and result alive and leave less than
 1 MB above the reference-free checkpoint after both are dropped. The supplement
 reports no operation timing and does not replace the original qualification.
+
+## Exact-source expression and row checks
+
+`install-expression-source.py` builds a committed package into a fresh retained
+library. `run-expression-checks.py` runs the focused, full, package, native or
+Rust phase against that installation, with explicit package and runner commits.
+Each phase preserves its logs, source export, input identities and failure or
+completion receipt. Do not reuse an output directory or edit its bound sources.
+
+Starting with Stage 6, top-level gate commands use the absolute invocation paths
+selected before execution. `tool-selection.json` maps each requested name to
+that path and its resolved target, bytes, mode and hash, and records the discovery
+PATH. Each command record retains the requested argv, actual argv and child PATH.
+This preserves basename-dependent executable roles and rejects changed bound
+tools; changing PATH cannot select a different top-level gate executable.
+Nested shell/toolchain selection, preparatory discovery and the complete Python,
+SDK and system-library closures remain outside this guarantee. Earlier executed
+records keep their original, narrower launcher provenance.
+
+`test-expression-launcher.py` exercises the current gate and protected finalizer
+with synthetic subprocesses. `test-expression-setup.py` separately exercises
+setup failures through both complete CLI paths. These tests do not run R or
+qualify a package; actual phases must still pass on the final committed source.

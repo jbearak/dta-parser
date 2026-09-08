@@ -10,7 +10,35 @@ CodeRabbit. Its documentation-coverage warning is always nonblocking. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stages 1 through 4 complete, Stage 5 active
+## Stages 1 through 5 complete, Stage 6 active
+
+Stage 5 [PR #205](https://github.com/jbearak/dta-parser/pull/205) merged normally
+at 2026-09-08 12:29:53 UTC as
+`b2751d2dbf195557021cc5c5aa2d87a20cae69a7`. Root verified both parents, the full
+tree against reviewed head `f3b8b984c6a9ea5a0f062eee70e392bb567e5042`, all 16
+successful checks and completed substantive CodeRabbit review with no remaining
+actionable findings. The package tree is
+`0c8de843cc29760286322ede0804ad5622cf2def`, identical to qualified f9. Its exact
+host install, full tests and package gates passed; R check retains three warnings
+and two notes, and its test suite reports 16,822 passes and four established
+warnings. The separate Haven conformance run retains one loopback capability
+skip. The correction-specific clean R 4.6.0 run reports 1,303 passes and one
+memory-profiling capability skip. Earlier a2 performance/native evidence keeps
+its original source identity.
+
+Stage 6 is active on `codex/direct-dibble-row-operations` in
+`/private/tmp/dta-direct-stage6`, based on that verified merge. It owns direct
+filter/filter_out, arrange, distinct, slice and all five slice helpers, reusing
+the shared evaluator and batch gatherer. The predecessor test draft has 28
+blocks; its first run exposed five draft expectation/instrumentation failures,
+which remain preserved. The corrected draft passes 730 assertions on exact f9
+with no failures, errors, unhandled warnings or skips. These are baseline
+expectations, not Stage 6 candidate acceptance. The three whole-filter timing
+flags remain mandatory Stage 6 work; twelve base-R read costs remain visible for
+final assessment. Stages 7–9 and final actual downstream renv validation remain
+required, and issue #172 stays open.
+
+The following Stage 5 paragraphs retain their historical checkpoint status.
 
 Stage 4 [PR #195](https://github.com/jbearak/dta-parser/pull/195) merged normally
 at 2026-09-07 15:23:12 UTC as
