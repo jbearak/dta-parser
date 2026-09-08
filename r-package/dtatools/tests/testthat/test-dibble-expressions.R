@@ -10,6 +10,25 @@ expression_context_snapshot <- function() {
     })
 }
 
+test_that("the helper adapter compares numeric version components", {
+    loadNamespace("dplyr")
+    adapter_for_version <- function(version) {
+        force(version)
+        adapter <- dtatools:::.dibble_dplyr_context
+        # Copy the closure's environment; never change a namespace binding.
+        environment(adapter) <- list2env(list(
+            getNamespaceVersion = function(...) c(version = version)
+        ), parent = environment(adapter))
+        adapter
+    }
+    expect_error(adapter_for_version("1.2.0")(), "requires dplyr 1.2.1")
+    # These exercise the guard against the installed helper bindings, not
+    # compatibility with an uninstalled future dplyr implementation.
+    for (version in c("1.2.1", "1.2.1.9000", "1.10.0", "2.0.0")) {
+        expect_type(adapter_for_version(version)(), "list")
+    }
+})
+
 test_that("the core evaluator accepts ordinary quosures without whole verbs", {
     data <- dibble(id = 1:2)
     groups <- dtatools:::.dibble_expression_groups(data)

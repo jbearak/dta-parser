@@ -628,6 +628,23 @@ test_that("POSIX interrupts reach an active native generation checkpoint", {
     expect_generation_interrupt_cases(result)
 })
 
+test_that("POSIX generation checkpoints tolerate a full child stderr pipe", {
+    skip_on_os("windows")
+    skip_if_not_installed("callr")
+    package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
+    noisy_loader <- local({
+        load <- load_dtatools_for_subprocess
+        function(package_path) {
+            load(package_path)
+            cat(rep(paste0("induced-stderr:", strrep("x", 1010L)), 2048L),
+                sep = "\n", file = stderr())
+            flush(stderr())
+        }
+    })
+    result <- run_posix_generation_interrupt_cases(package_path, noisy_loader)
+    expect_generation_interrupt_cases(result)
+})
+
 test_that("generation interrupt controls disarm after validation errors", {
     withr::defer(.Call(C_dtatools_inject_generation_interrupt, 0L))
     data <- reserve_columns(data.frame(x = 1:2))

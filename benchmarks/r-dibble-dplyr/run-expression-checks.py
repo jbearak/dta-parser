@@ -86,105 +86,110 @@ def main():
             git('rev-parse', args.runner_sha + ':r-package/dtatools'),
             'Runner package source differs from qualified installation')
     output.mkdir(parents=True)
-    source = output / 'source'
-    archive = output / 'source.tar'
-    subprocess.run(['git', '-C', str(repo), 'archive', '--format=tar', '--output=' + str(archive),
-                    args.runner_sha], check=True)
-    with tarfile.open(archive) as tar:
-        for item in tar.getmembers():
-            require(not Path(item.name).is_absolute() and '..' not in Path(item.name).parts and
-                    (item.isfile() or item.isdir()), 'Unexpected archive member: ' + item.name)
-        tar.extractall(source, filter='data')
-    entries = git('ls-tree', '-r', '-z', args.runner_sha).split(b'\0')
-    expected = set()
-    for entry in entries:
-        if not entry:
-            continue
-        metadata, raw = entry.split(b'\t', 1)
-        mode, kind, blob = metadata.decode().split()
-        path = source / os.fsdecode(raw)
-        expected.add(path)
-        content = path.read_bytes()
-        observed = hashlib.sha1(b'blob ' + str(len(content)).encode() + b'\0' + content).hexdigest()
-        require(kind == 'blob' and observed == blob and
-                bool(path.stat().st_mode & 0o111) == (mode == '100755'),
-                'Source export differs from Git: ' + str(path))
-    require({p for p in source.rglob('*') if p.is_file()} == expected, 'Source inventory differs from Git')
-    # All installed site packages are bound so optional tests cannot introduce
-    # an unrecorded transitive dependency. System dylibs/SDK and the complete
-    # Python process closure are not frozen by this check runner.
-    rroot = Path('/opt/homebrew/Cellar/r/4.6.1')
-    site = Path('/opt/homebrew/lib/R/4.6/site-library')
-    inputs = {Path(__file__).resolve(), archive, *expected}
-    for directory in [rroot, site, library / 'dtatools']:
-        require(directory.is_dir(), 'Missing input tree: ' + str(directory))
-        inputs.update(p for p in directory.rglob('*') if p.is_file())
-    tools = {name: Path(shutil.which(name)).resolve(strict=True) for name in
-             ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'bun', 'R', 'Rscript', 'python3']}
-    inputs.update(tools.values())
-    inputs.add(Path(sys.executable).resolve(strict=True))
-    compiler = Path(subprocess.check_output(
-        [str(tools['xcrun']), '--find', 'clang'], text=True).strip()).resolve(strict=True)
-    inputs.add(compiler)
-    rust_root = tools['rustc'].parent.parent
-    inputs.update(p for p in rust_root.rglob('*') if p.is_file())
-    if args.phase in ('package', 'rust'):
-        # Cargo's locked dependency resolution is preparation, before any
-        # qualifying build. Bind the resolved registry/path source bytes too.
-        command = [str(tools['cargo']), 'metadata', '--locked', '--offline', '--format-version=1']
-        with (output/'cargo-metadata.json').open('x') as stream, (output/'cargo-metadata.log').open('x') as log:
-            result = subprocess.run(command, cwd=source, stdout=stream, stderr=log)
-        write(output/'cargo-metadata-command.json', dict(command=command, cwd=str(source),
-            exit_code=result.returncode, cargo=identity(tools['cargo'])))
-        require(result.returncode == 0, 'Cargo dependency preparation failed; retained metadata log')
-        metadata = json.loads((output/'cargo-metadata.json').read_text())
-        for package in metadata['packages']:
-            directory = Path(package['manifest_path']).parent
-            if not directory.is_relative_to(source):
-                inputs.update(p for p in directory.rglob('*') if p.is_file())
-        inputs.add(output/'cargo-metadata.json')
-    for config in [Path('/Users/jmb/.R/Makevars'), Path('/Users/jmb/.cargo/config'), Path('/Users/jmb/.cargo/config.toml')]:
-        if config.is_file():
-            inputs.add(config)
-    if args.phase == 'native':
-        inputs.update(repo/file for file in ['benchmarks/r-reference-mutation/owned-atoms.R', 'benchmarks/r-dibble-dplyr/helpers.R'])
-    before = [identity(p) for p in sorted(inputs)]
-    package_root = source/'r-package/dtatools'
-    package_inventory = {p for p in expected if p.is_relative_to(package_root)}
-    write(output / 'inputs-before.json', dict(source_sha=args.source_sha,
-        runner_sha=args.runner_sha, phase=args.phase, inputs=before,
-        scope='Exact Git sources plus complete visible R/site/candidate library files. '
-              'Build phases also bind Cargo-resolved dependency source files. '
-              'R/Rust/tool executables are bound; external OS dylibs, full SDK and Python closure are not frozen.'))
-    environment = dict(os.environ)
-    environment.update(R_LIBS=str(library), R_LIBS_SITE=str(site),
-        R_LIBS_USER=str(output / 'nonexistent-user-library'),
-        R_PROFILE_USER='/dev/null', R_ENVIRON_USER='/dev/null', CARGO_NET_OFFLINE='true')
-    for variable in ['R_HOME', 'R_ARCH', 'DYLD_INSERT_LIBRARIES', 'DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH']:
-        environment.pop(variable, None)
-    records = []
-    consumed = []
-    def guard():
-        changes = input_changes(before + consumed)
-        require(not changes, 'Bound inputs changed: ' + repr(changes))
-        require_package_inventory(package_root, package_inventory)
-    def run(label, command, cwd=source, env=None):
-        guard()
-        record = dict(label=label, command=command, cwd=str(cwd),
-                      started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
-        with (output / (label + '.log')).open('x') as stream:
-            record['exit_code'] = subprocess.run(command, cwd=cwd, env=env or environment,
-                stdout=stream, stderr=subprocess.STDOUT).returncode
-        record['completed_utc'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        record['log'] = identity(output / (label + '.log'))
-        records.append(record)
-        write(output / (label + '-command.json'), record)
-        guard()
-        print(label, record['exit_code'], flush=True)
-        require(record['exit_code'] == 0, 'Check failed: ' + label)
     status = 'failed'
+    before = []
+    consumed = []
+    records = []
     changed = []
+    failure = None
+    input_binding_complete = False
+    source = output / 'source'
+    package_root = source / 'r-package/dtatools'
+    package_inventory = None
     try:
+        archive = output / 'source.tar'
+        subprocess.run(['git', '-C', str(repo), 'archive', '--format=tar', '--output=' + str(archive),
+                        args.runner_sha], check=True)
+        with tarfile.open(archive) as tar:
+            for item in tar.getmembers():
+                require(not Path(item.name).is_absolute() and '..' not in Path(item.name).parts and
+                        (item.isfile() or item.isdir()), 'Unexpected archive member: ' + item.name)
+            tar.extractall(source, filter='data')
+        entries = git('ls-tree', '-r', '-z', args.runner_sha).split(b'\0')
+        expected = set()
+        for entry in entries:
+            if not entry:
+                continue
+            metadata, raw = entry.split(b'\t', 1)
+            mode, kind, blob = metadata.decode().split()
+            path = source / os.fsdecode(raw)
+            expected.add(path)
+            content = path.read_bytes()
+            observed = hashlib.sha1(b'blob ' + str(len(content)).encode() + b'\0' + content).hexdigest()
+            require(kind == 'blob' and observed == blob and
+                    bool(path.stat().st_mode & 0o111) == (mode == '100755'),
+                    'Source export differs from Git: ' + str(path))
+        require({p for p in source.rglob('*') if p.is_file()} == expected, 'Source inventory differs from Git')
+        # All installed site packages are bound so optional tests cannot introduce
+        # an unrecorded transitive dependency. System dylibs/SDK and the complete
+        # Python process closure are not frozen by this check runner.
+        rroot = Path('/opt/homebrew/Cellar/r/4.6.1')
+        site = Path('/opt/homebrew/lib/R/4.6/site-library')
+        inputs = {Path(__file__).resolve(), archive, *expected}
+        for directory in [rroot, site, library / 'dtatools']:
+            require(directory.is_dir(), 'Missing input tree: ' + str(directory))
+            inputs.update(p for p in directory.rglob('*') if p.is_file())
+        tools = {name: Path(shutil.which(name)).resolve(strict=True) for name in
+                 ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'bun', 'R', 'Rscript', 'python3']}
+        inputs.update(tools.values())
+        inputs.add(Path(sys.executable).resolve(strict=True))
+        compiler = Path(subprocess.check_output(
+            [str(tools['xcrun']), '--find', 'clang'], text=True).strip()).resolve(strict=True)
+        inputs.add(compiler)
+        rust_root = tools['rustc'].parent.parent
+        inputs.update(p for p in rust_root.rglob('*') if p.is_file())
+        if args.phase in ('package', 'rust'):
+            # Cargo's locked dependency resolution is preparation, before any
+            # qualifying build. Bind the resolved registry/path source bytes too.
+            command = [str(tools['cargo']), 'metadata', '--locked', '--offline', '--format-version=1']
+            with (output/'cargo-metadata.json').open('x') as stream, (output/'cargo-metadata.log').open('x') as log:
+                result = subprocess.run(command, cwd=source, stdout=stream, stderr=log)
+            write(output/'cargo-metadata-command.json', dict(command=command, cwd=str(source),
+                exit_code=result.returncode, cargo=identity(tools['cargo'])))
+            require(result.returncode == 0, 'Cargo dependency preparation failed; retained metadata log')
+            metadata = json.loads((output/'cargo-metadata.json').read_text())
+            for package in metadata['packages']:
+                directory = Path(package['manifest_path']).parent
+                if not directory.is_relative_to(source):
+                    inputs.update(p for p in directory.rglob('*') if p.is_file())
+            inputs.add(output/'cargo-metadata.json')
+        for config in [Path('/Users/jmb/.R/Makevars'), Path('/Users/jmb/.cargo/config'), Path('/Users/jmb/.cargo/config.toml')]:
+            if config.is_file():
+                inputs.add(config)
+        if args.phase == 'native':
+            inputs.update(repo/file for file in ['benchmarks/r-reference-mutation/owned-atoms.R', 'benchmarks/r-dibble-dplyr/helpers.R'])
+        before = [identity(p) for p in sorted(inputs)]
+        input_binding_complete = True
+        package_inventory = {p for p in expected if p.is_relative_to(package_root)}
+        write(output / 'inputs-before.json', dict(source_sha=args.source_sha,
+            runner_sha=args.runner_sha, phase=args.phase, inputs=before,
+            scope='Exact Git sources plus complete visible R/site/candidate library files. '
+                  'Build phases also bind Cargo-resolved dependency source files. '
+                  'R/Rust/tool executables are bound; external OS dylibs, full SDK and Python closure are not frozen.'))
+        environment = dict(os.environ)
+        environment.update(R_LIBS=str(library), R_LIBS_SITE=str(site),
+            R_LIBS_USER=str(output / 'nonexistent-user-library'),
+            R_PROFILE_USER='/dev/null', R_ENVIRON_USER='/dev/null', CARGO_NET_OFFLINE='true')
+        for variable in ['R_HOME', 'R_ARCH', 'DYLD_INSERT_LIBRARIES', 'DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH']:
+            environment.pop(variable, None)
+        def guard():
+            changes = input_changes(before + consumed)
+            require(not changes, 'Bound inputs changed: ' + repr(changes))
+            require_package_inventory(package_root, package_inventory)
+        def run(label, command, cwd=source, env=None):
+            guard()
+            record = dict(label=label, command=command, cwd=str(cwd),
+                          started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
+            with (output / (label + '.log')).open('x') as stream:
+                record['exit_code'] = subprocess.run(command, cwd=cwd, env=env or environment,
+                    stdout=stream, stderr=subprocess.STDOUT).returncode
+            record['completed_utc'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            record['log'] = identity(output / (label + '.log'))
+            records.append(record)
+            write(output / (label + '-command.json'), record)
+            guard()
+            print(label, record['exit_code'], flush=True)
+            require(record['exit_code'] == 0, 'Check failed: ' + label)
         run('preflight', ['Rscript', '--vanilla', 'benchmarks/r-dibble-dplyr/expression-preflight.R',
             str(library), args.source_sha, str(source), str(output)])
         if args.phase in ('focused', 'full'):
@@ -256,15 +261,22 @@ def main():
                 ('package', ['cargo', 'package', '-p', 'dta-tools', '--locked', '--allow-dirty'])]:
                 run(label, command, env=dict(environment, RUSTDOCFLAGS='-D warnings'))
         status = 'complete'
+    except BaseException as error:
+        status = 'failed'
+        failure = dict(type=type(error).__name__, message=str(error))
+        raise
     finally:
         changed = input_changes(before + consumed)
-        try:
-            require_package_inventory(package_root, package_inventory)
-        except RuntimeError as error:
-            changed.append(dict(package_inventory_error=str(error)))
+        if package_inventory is not None:
+            try:
+                require_package_inventory(package_root, package_inventory)
+            except RuntimeError as error:
+                changed.append(dict(package_inventory_error=str(error)))
         if changed:
             status = 'failed'
-        write(output/'execution-result.json', dict(status=status, records=records, changed_inputs=changed))
+        write(output/'execution-result.json', dict(status=status, records=records, changed_inputs=changed,
+            error=failure, input_binding_complete=input_binding_complete,
+            package_inventory_available=package_inventory is not None))
         # Deliberately list before opening either of these two destinations.
         products = [identity(p) for p in sorted(output.rglob('*')) if p.is_file()
                     and p not in (output/'manifest.json', output/'receipt.json')]

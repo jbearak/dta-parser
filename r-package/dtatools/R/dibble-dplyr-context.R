@@ -19,7 +19,7 @@
             }))
     }
     namespace <- asNamespace("dplyr")
-    if (getNamespaceVersion(namespace) < "1.2.1") {
+    if (package_version(getNamespaceVersion(namespace)) < "1.2.1") {
         rlang::abort("Dibble helper integration requires dplyr 1.2.1 or newer.")
     }
     context <- get("context_env", namespace)

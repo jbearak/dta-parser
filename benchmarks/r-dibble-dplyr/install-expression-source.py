@@ -85,134 +85,139 @@ def main():
     if ROOT.exists() or ROOT.is_symlink():
         raise RuntimeError('Fresh output required before any work')
     ROOT.mkdir(parents=True)
-    reserved = ['source.tar', 'export', 'build', 'library', 'runtime-temp', 'inputs-before.json',
-                'execution-result.json', 'output-manifest.json', 'completed-receipt.json']
-    if any((ROOT / name).exists() or (ROOT / name).is_symlink() for name in reserved):
-        raise RuntimeError('Fresh candidate output required before source export or build')
-    actual_revision = git('rev-parse', '--verify', REVISION + '^{commit}').decode().strip()
-    actual_tree = git('rev-parse', REVISION + ':r-package/dtatools').decode().strip()
-    if actual_revision != REVISION or actual_tree != TREE:
-        raise RuntimeError('Unexpected candidate or package identity')
-    runner_relative = 'benchmarks/r-dibble-dplyr/install-expression-source.py'
-    if Path(__file__).read_bytes() != git('show', REVISION + ':' + runner_relative):
-        raise RuntimeError('Installer is not the exact committed candidate runner')
-    archive_command = ['/opt/homebrew/bin/git', '-C', str(GIT_ROOT), 'archive', '--format=tar',
-                       '--output=' + str(ROOT / 'source.tar'), REVISION, *EXPORTED]
-    subprocess.run(archive_command, check=True)
-    export = ROOT / 'export'
-    export.mkdir()
-    with tarfile.open(ROOT / 'source.tar', 'r:') as archive:
-        for item in archive.getmembers():
-            if Path(item.name).is_absolute() or '..' in Path(item.name).parts or not (item.isdir() or item.isfile()):
-                raise RuntimeError(f'Unsafe source archive member: {item.name}')
-        archive.extractall(export, filter='data')
-    entries = git('ls-tree', '-r', '-z', REVISION, '--', *EXPORTED).split(b'\0')
-    export_rows = []
-    for entry in entries:
-        if not entry:
-            continue
-        meta, raw_path = entry.split(b'\t', 1)
-        mode, kind, blob = meta.decode().split()
-        relative = os.fsdecode(raw_path)
-        path = export / relative
-        content = path.read_bytes()
-        actual_blob = hashlib.sha1(b'blob ' + str(len(content)).encode() + b'\0' + content).hexdigest()
-        if kind != 'blob' or actual_blob != blob:
-            raise RuntimeError(f'Exported source does not match Git: {relative}')
-        if (path.stat().st_mode & 0o111 != 0) != (mode == '100755'):
-            raise RuntimeError(f'Exported executable mode mismatch: {relative}')
-        export_rows.append({'path': relative, 'git_blob': blob, 'git_mode': mode, **record(path)})
-    actual_paths = {str(path.relative_to(export)) for path in export.rglob('*') if path.is_file()}
-    expected_paths = {os.fsdecode(entry.split(b'\t', 1)[1]) for entry in entries if entry}
-    if actual_paths != expected_paths:
-        raise RuntimeError('Export inventory does not match exact Git tree')
-    package_source = export / 'r-package/dtatools'
-    dependency_rows = []
-    seen = set()
-    pending = [dcf(package_source / 'DESCRIPTION')]
-    package_dirs = []
-    while pending:
-        fields = pending.pop()
-        for field in ('Depends', 'Imports', 'LinkingTo'):
-            for name in re.sub(r'\([^)]*\)', '', fields.get(field, '')).split(','):
-                name = name.strip()
-                if not name or name == 'R' or name in seen:
-                    continue
-                seen.add(name)
-                candidates = [SITE / name, R_HOME_PATH / 'library' / name]
-                directory = next((path for path in candidates if (path / 'DESCRIPTION').is_file()), None)
-                if directory is None:
-                    raise RuntimeError(f'Missing required dependency {name}; no installation attempted')
-                description = dcf(directory / 'DESCRIPTION')
-                dependency_rows.append({'package': name, 'version': description.get('Version'), 'path': str(directory)})
-                package_dirs.append(directory)
-                pending.append(description)
-    tool_names = ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'python3']
-    tools = {name: Path(shutil.which(name)).resolve(strict=True) for name in tool_names}
-    compiler = Path(subprocess.check_output(['/usr/bin/xcrun', '--find', 'clang'], text=True).strip())
-    sdk = Path(subprocess.check_output(['/usr/bin/xcrun', '--show-sdk-path'], text=True).strip()).resolve(strict=True)
-    inputs = {Path(__file__).resolve(), export / 'benchmarks/r-dibble-dplyr/expression-install-finish.R', ROOT / 'source.tar', compiler}
-    inputs.update(tools.values())
-    inputs.add(Path(sys.executable).resolve(strict=True))
-    inputs.update(path for path in export.rglob('*') if path.is_file())
-    # Retain complete installed R, Rust, and selected R dependency file identities.
-    rust_install = tools['rustc'].parent.parent
-    for directory in [R_INSTALL, rust_install, *package_dirs]:
-        inputs.update(path for path in directory.rglob('*') if path.is_file())
-    config_candidates = [Path('/Users/jmb/.R/Makevars'), Path('/Users/jmb/.cargo/config'),
-                         Path('/Users/jmb/.cargo/config.toml'), sdk / 'SDKSettings.json', sdk / 'SDKSettings.plist']
-    for path in config_candidates:
-        if path.is_file():
-            inputs.add(path)
-    absent_configs = [str(path) for path in config_candidates if not path.exists()]
-    for name in ['build', 'library', 'runtime-temp']:
-        (ROOT / name).mkdir()
-    before = [record(path) for path in sorted(inputs)]
-    environment = dict(os.environ)
-    overrides = {'R_LIBS': str(SITE), 'R_LIBS_SITE': str(SITE),
-                 'R_LIBS_USER': str(ROOT / 'nonexistent-user-library'),
-                 'R_MAKEVARS_USER': '/Users/jmb/.R/Makevars',
-                 'R_ENVIRON_USER': '/dev/null', 'R_PROFILE_USER': '/dev/null',
-                 'TMPDIR': str(ROOT / 'runtime-temp'), 'CARGO_NET_OFFLINE': 'true'}
-    for name in ['R_HOME', 'R_ARCH', 'RUSTFLAGS', 'RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER',
-                 'DYLD_INSERT_LIBRARIES', 'DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH']:
-        environment.pop(name, None)
-    environment.update(overrides)
-    write(ROOT / 'inputs-before.json', {'created_utc': stamp(), 'revision': REVISION,
-          'package_tree': TREE, 'archive_command': archive_command,
-          'source_archive': record(ROOT / 'source.tar'), 'export_inventory': export_rows,
-          'dependencies': sorted(dependency_rows, key=lambda item: item['package']),
-          'tools': {name: str(path) for name, path in tools.items()}, 'sdk_path': str(sdk),
-          'inputs': before, 'environment_overrides': overrides, 'absent_configuration_paths': absent_configs,
-          'scope': 'Exact Git export and committed installer/helpers; installed R/Rust and required R dependency trees. '
-                   'Full SDK/system dynamic-library and Python runtime closures are not frozen.'})
-    commands = []
-    consumed = []
-    def guard():
-        changes = input_changes(before + consumed)
-        if changes:
-            raise RuntimeError('Bound inputs changed: ' + repr(changes))
-        current = {str(path.relative_to(export)) for path in export.rglob('*')
-                   if path.is_file() or path.is_symlink()}
-        if current != expected_paths:
-            raise RuntimeError('Export inventory changed: ' + repr(sorted(current.symmetric_difference(expected_paths))))
-    def run(label, command, cwd):
-        guard()
-        log = ROOT / (label + '.log')
-        item = {'label': label, 'command': command, 'cwd': str(cwd), 'started_utc': stamp()}
-        with log.open('x') as stream:
-            item['returncode'] = subprocess.run(command, cwd=cwd, env=environment, stdout=stream,
-                                                stderr=subprocess.STDOUT, check=False).returncode
-        item['finished_utc'] = stamp()
-        item['log'] = record(log)
-        commands.append(item)
-        write(ROOT / (label + '-command.json'), item)
-        guard()
-        if item['returncode'] != 0:
-            raise RuntimeError(f'{label} failed; retained at {log}')
     status = 'failed'
+    before = []
+    consumed = []
+    commands = []
     changed = []
+    failure = None
+    input_binding_complete = False
+    export = ROOT / 'export'
+    expected_paths = None
     try:
+        reserved = ['source.tar', 'export', 'build', 'library', 'runtime-temp', 'inputs-before.json',
+                    'execution-result.json', 'output-manifest.json', 'completed-receipt.json']
+        if any((ROOT / name).exists() or (ROOT / name).is_symlink() for name in reserved):
+            raise RuntimeError('Fresh candidate output required before source export or build')
+        actual_revision = git('rev-parse', '--verify', REVISION + '^{commit}').decode().strip()
+        actual_tree = git('rev-parse', REVISION + ':r-package/dtatools').decode().strip()
+        if actual_revision != REVISION or actual_tree != TREE:
+            raise RuntimeError('Unexpected candidate or package identity')
+        runner_relative = 'benchmarks/r-dibble-dplyr/install-expression-source.py'
+        if Path(__file__).read_bytes() != git('show', REVISION + ':' + runner_relative):
+            raise RuntimeError('Installer is not the exact committed candidate runner')
+        archive_command = ['/opt/homebrew/bin/git', '-C', str(GIT_ROOT), 'archive', '--format=tar',
+                           '--output=' + str(ROOT / 'source.tar'), REVISION, *EXPORTED]
+        subprocess.run(archive_command, check=True)
+        export.mkdir()
+        with tarfile.open(ROOT / 'source.tar', 'r:') as archive:
+            for item in archive.getmembers():
+                if Path(item.name).is_absolute() or '..' in Path(item.name).parts or not (item.isdir() or item.isfile()):
+                    raise RuntimeError(f'Unsafe source archive member: {item.name}')
+            archive.extractall(export, filter='data')
+        entries = git('ls-tree', '-r', '-z', REVISION, '--', *EXPORTED).split(b'\0')
+        export_rows = []
+        for entry in entries:
+            if not entry:
+                continue
+            meta, raw_path = entry.split(b'\t', 1)
+            mode, kind, blob = meta.decode().split()
+            relative = os.fsdecode(raw_path)
+            path = export / relative
+            content = path.read_bytes()
+            actual_blob = hashlib.sha1(b'blob ' + str(len(content)).encode() + b'\0' + content).hexdigest()
+            if kind != 'blob' or actual_blob != blob:
+                raise RuntimeError(f'Exported source does not match Git: {relative}')
+            if (path.stat().st_mode & 0o111 != 0) != (mode == '100755'):
+                raise RuntimeError(f'Exported executable mode mismatch: {relative}')
+            export_rows.append({'path': relative, 'git_blob': blob, 'git_mode': mode, **record(path)})
+        actual_paths = {str(path.relative_to(export)) for path in export.rglob('*') if path.is_file()}
+        expected_paths = {os.fsdecode(entry.split(b'\t', 1)[1]) for entry in entries if entry}
+        if actual_paths != expected_paths:
+            raise RuntimeError('Export inventory does not match exact Git tree')
+        package_source = export / 'r-package/dtatools'
+        dependency_rows = []
+        seen = set()
+        pending = [dcf(package_source / 'DESCRIPTION')]
+        package_dirs = []
+        while pending:
+            fields = pending.pop()
+            for field in ('Depends', 'Imports', 'LinkingTo'):
+                for name in re.sub(r'\([^)]*\)', '', fields.get(field, '')).split(','):
+                    name = name.strip()
+                    if not name or name == 'R' or name in seen:
+                        continue
+                    seen.add(name)
+                    candidates = [SITE / name, R_HOME_PATH / 'library' / name]
+                    directory = next((path for path in candidates if (path / 'DESCRIPTION').is_file()), None)
+                    if directory is None:
+                        raise RuntimeError(f'Missing required dependency {name}; no installation attempted')
+                    description = dcf(directory / 'DESCRIPTION')
+                    dependency_rows.append({'package': name, 'version': description.get('Version'), 'path': str(directory)})
+                    package_dirs.append(directory)
+                    pending.append(description)
+        tool_names = ['git', 'cargo', 'rustc', 'clang', 'cc', 'make', 'tar', 'sh', 'sed', 'uname', 'ar', 'ranlib', 'ld', 'xcrun', 'python3']
+        tools = {name: Path(shutil.which(name)).resolve(strict=True) for name in tool_names}
+        compiler = Path(subprocess.check_output(['/usr/bin/xcrun', '--find', 'clang'], text=True).strip())
+        sdk = Path(subprocess.check_output(['/usr/bin/xcrun', '--show-sdk-path'], text=True).strip()).resolve(strict=True)
+        inputs = {Path(__file__).resolve(), export / 'benchmarks/r-dibble-dplyr/expression-install-finish.R', ROOT / 'source.tar', compiler}
+        inputs.update(tools.values())
+        inputs.add(Path(sys.executable).resolve(strict=True))
+        inputs.update(path for path in export.rglob('*') if path.is_file())
+        # Retain complete installed R, Rust, and selected R dependency file identities.
+        rust_install = tools['rustc'].parent.parent
+        for directory in [R_INSTALL, rust_install, *package_dirs]:
+            inputs.update(path for path in directory.rglob('*') if path.is_file())
+        config_candidates = [Path('/Users/jmb/.R/Makevars'), Path('/Users/jmb/.cargo/config'),
+                             Path('/Users/jmb/.cargo/config.toml'), sdk / 'SDKSettings.json', sdk / 'SDKSettings.plist']
+        for path in config_candidates:
+            if path.is_file():
+                inputs.add(path)
+        absent_configs = [str(path) for path in config_candidates if not path.exists()]
+        for name in ['build', 'library', 'runtime-temp']:
+            (ROOT / name).mkdir()
+        before = [record(path) for path in sorted(inputs)]
+        input_binding_complete = True
+        environment = dict(os.environ)
+        overrides = {'R_LIBS': str(SITE), 'R_LIBS_SITE': str(SITE),
+                     'R_LIBS_USER': str(ROOT / 'nonexistent-user-library'),
+                     'R_MAKEVARS_USER': '/Users/jmb/.R/Makevars',
+                     'R_ENVIRON_USER': '/dev/null', 'R_PROFILE_USER': '/dev/null',
+                     'TMPDIR': str(ROOT / 'runtime-temp'), 'CARGO_NET_OFFLINE': 'true'}
+        for name in ['R_HOME', 'R_ARCH', 'RUSTFLAGS', 'RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER',
+                     'DYLD_INSERT_LIBRARIES', 'DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH']:
+            environment.pop(name, None)
+        environment.update(overrides)
+        write(ROOT / 'inputs-before.json', {'created_utc': stamp(), 'revision': REVISION,
+              'package_tree': TREE, 'archive_command': archive_command,
+              'source_archive': record(ROOT / 'source.tar'), 'export_inventory': export_rows,
+              'dependencies': sorted(dependency_rows, key=lambda item: item['package']),
+              'tools': {name: str(path) for name, path in tools.items()}, 'sdk_path': str(sdk),
+              'inputs': before, 'environment_overrides': overrides, 'absent_configuration_paths': absent_configs,
+              'scope': 'Exact Git export and committed installer/helpers; installed R/Rust and required R dependency trees. '
+                       'Full SDK/system dynamic-library and Python runtime closures are not frozen.'})
+        def guard():
+            changes = input_changes(before + consumed)
+            if changes:
+                raise RuntimeError('Bound inputs changed: ' + repr(changes))
+            current = {str(path.relative_to(export)) for path in export.rglob('*')
+                       if path.is_file() or path.is_symlink()}
+            if current != expected_paths:
+                raise RuntimeError('Export inventory changed: ' + repr(sorted(current.symmetric_difference(expected_paths))))
+        def run(label, command, cwd):
+            guard()
+            log = ROOT / (label + '.log')
+            item = {'label': label, 'command': command, 'cwd': str(cwd), 'started_utc': stamp()}
+            with log.open('x') as stream:
+                item['returncode'] = subprocess.run(command, cwd=cwd, env=environment, stdout=stream,
+                                                    stderr=subprocess.STDOUT, check=False).returncode
+            item['finished_utc'] = stamp()
+            item['log'] = record(log)
+            commands.append(item)
+            write(ROOT / (label + '-command.json'), item)
+            guard()
+            if item['returncode'] != 0:
+                raise RuntimeError(f'{label} failed; retained at {log}')
         run('r-version', [str(R_INSTALL / 'bin/R'), '--version'], ROOT)
         run('rustc-version', [str(tools['rustc']), '-vV'], ROOT)
         run('cargo-version', [str(tools['cargo']), '-vV'], ROOT)
@@ -235,13 +240,20 @@ def main():
                 if item['name'] != 'dtatools' and str((Path(item['path']) / 'DESCRIPTION').resolve(strict=True)) not in library_inputs:
                     raise RuntimeError(f'Unbound loaded dependency: {item}')
         status = 'complete'
+    except BaseException as error:
+        status = 'failed'
+        failure = {'type': type(error).__name__, 'message': str(error)}
+        raise
     finally:
         changed = input_changes(before + consumed)
-        generated = [str(path.relative_to(export)) for path in export.rglob('*')
-                     if path.is_file() and str(path.relative_to(export)) not in expected_paths]
+        generated = [] if expected_paths is None else [
+            str(path.relative_to(export)) for path in export.rglob('*')
+            if path.is_file() and str(path.relative_to(export)) not in expected_paths]
         if changed or generated:
             status = 'failed'
         write(ROOT / 'execution-result.json', {'status': status, 'commands': commands,
+              'error': failure, 'input_binding_complete': input_binding_complete,
+              'export_inventory_available': expected_paths is not None,
               'changed_bound_inputs': changed, 'generated_export_files': generated})
         installed = ROOT / 'library/dtatools'
         write(ROOT / 'installed-files.json', {'files': [record(path) for path in sorted(installed.rglob('*')) if path.is_file()]})

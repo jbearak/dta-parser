@@ -79,10 +79,12 @@ run_posix_generation_interrupt_cases <- function(package_path, load_package) {
         libpath = .libPaths(), stdout = "|", stderr = "|", supervise = TRUE)
     on.exit(process$kill(), add = TRUE)
     sent <- character()
+    error_lines <- character()
     current <- NULL
     started <- Sys.time()
     while (process$is_alive()) {
         process$poll_io(100)
+        error_lines <- tail(c(error_lines, process$read_error_lines()), 100L)
         lines <- process$read_output_lines()
         for (line in lines) {
             if (startsWith(line, "[dtatools-test-generation-case] ")) {
@@ -95,7 +97,9 @@ run_posix_generation_interrupt_cases <- function(package_path, load_package) {
             }
         }
         if (as.numeric(difftime(Sys.time(), started, units = "secs")) > 30) {
-            stop("Timed out waiting for native generation checkpoints: ", paste(sent, collapse = ", "))
+            stop("Timed out waiting for native generation checkpoints: ",
+                paste(sent, collapse = ", "), "\nRecent child stderr:\n",
+                paste(error_lines, collapse = "\n"))
         }
     }
     result <- process$get_result()
