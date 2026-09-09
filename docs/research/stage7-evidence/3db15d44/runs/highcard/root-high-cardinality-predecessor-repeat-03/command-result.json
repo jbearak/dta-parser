@@ -1,0 +1,53 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "--vanilla",
+    "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/entry-v2.R",
+    "/private/tmp/dta-direct-stage7-validation/implementation/predecessor-4d07d656-01/library",
+    "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results",
+    "4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c",
+    "7",
+    "2048,8192"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source",
+  "PATH": "/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.local/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/opt/homebrew/sbin:/opt/homebrew/bin:/usr/local/texlive/2026/bin/universal-darwin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path",
+  "selected_rscript": {
+    "path": "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "resolved": "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "bytes": 51528,
+    "mode": "0o555",
+    "sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+  },
+  "python": {
+    "path": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "bytes": 34640,
+    "mode": "0o755",
+    "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+  },
+  "python_invocation": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "-I",
+    "-B",
+    "/private/tmp/dta-direct-stage7-performance-preparation-01/run-stage7-v2.py",
+    "/Users/jmb/repos/dta-parser",
+    "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+    "/private/tmp/dta-direct-stage7-validation/implementation/predecessor-4d07d656-01",
+    "4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c",
+    "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03",
+    "--iterations",
+    "7",
+    "--rows",
+    "2048,8192",
+    "--receipt-sha256",
+    "ffae05bbd9337fca47054c29753776399704b844fa4b195952867fcc698cd3b0",
+    "--script",
+    "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/nesting-v2.R",
+    "--routes",
+    "public,predecessor_safe_reference"
+  ],
+  "started_utc": "2026-09-09T04:25:27.601005+00:00",
+  "returncode": 0,
+  "error": null,
+  "completed_utc": "2026-09-09T04:25:57.674949+00:00"
+}

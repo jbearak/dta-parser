@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+    "--version"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01",
+  "finished_utc": "2026-09-09T02:40:39.661081+00:00",
+  "label": "r-version",
+  "log": {
+    "bytes": 381,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01/r-version.log",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01/r-version.log",
+    "sha256": "d5edd22a6841d31ea0be9e6fef9a2b7cbcb8f1bfa6c650a827dfe9138712e752"
+  },
+  "returncode": 0,
+  "started_utc": "2026-09-09T02:40:39.650748+00:00"
+}

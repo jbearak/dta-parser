@@ -1,0 +1,17 @@
+{
+  "status": "complete",
+  "result": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-performance-3db15d44-v2-01/result.json",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/root-performance-3db15d44-v2-01/result.json",
+    "bytes": 483,
+    "mode": "0o644",
+    "sha256": "73d2d516a2a56a2ee750bc01c65d87dab39816d26f3e16ab900849f2f4514491"
+  },
+  "products": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-performance-3db15d44-v2-01/products.json",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/root-performance-3db15d44-v2-01/products.json",
+    "bytes": 116876,
+    "mode": "0o644",
+    "sha256": "59adc101f50568c8218d7821dff74a5c18642339e7a045ee8468cec78f183ce9"
+  }
+}

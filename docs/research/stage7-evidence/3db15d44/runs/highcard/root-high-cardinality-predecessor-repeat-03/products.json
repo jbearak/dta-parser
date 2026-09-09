@@ -1,0 +1,554 @@
+{
+  "products": [
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/accepted-input-identities.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/accepted-input-identities.json",
+      "bytes": 33508,
+      "mode": "0o644",
+      "sha256": "4bfd1ef476ccb01687582485cc0a1256924c998165d325a46a020dc066e0e437"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/command-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/command-before.json",
+      "bytes": 2932,
+      "mode": "0o644",
+      "sha256": "27e12ec82569008bb51b54917dd7804d1114ca3eaa5d955f69b2aa93f63ffe10"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/command-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/command-result.json",
+      "bytes": 2984,
+      "mode": "0o644",
+      "sha256": "ea51e34adcab6870cbd0453d8ed3f20c6dcaf13fd44bb8cf7ddca80ea5c14cf0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/dlls.tsv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/dlls.tsv",
+      "bytes": 1153,
+      "mode": "0o644",
+      "sha256": "8681199aff81d63248fcd8f54d39b2b20773fdb65c430597465b86424ce60e29"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-00-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-00-before.json",
+      "bytes": 1464,
+      "mode": "0o644",
+      "sha256": "b4c590ca08ce1daa3fdca6e618ebbb929e5694d5cd14eb211e28f6c05fb24ff0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-00-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-00-result.json",
+      "bytes": 1611,
+      "mode": "0o644",
+      "sha256": "d3e4a997b64f26150f2f3ab6f665a1e8177fddfce7f120dc35e662e594791612"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-00.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-00.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-00.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-00.stdout",
+      "bytes": 41,
+      "mode": "0o644",
+      "sha256": "61c5b5b6c3f654f1d17b4502ee40da272255b8d75b5051c99335e570fde89d47"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-01-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-01-before.json",
+      "bytes": 1488,
+      "mode": "0o644",
+      "sha256": "6bb3a99997a8665e25651cb5334389ab2fe99ac8a52cecc76ef55d716cae6055"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-01-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-01-result.json",
+      "bytes": 1637,
+      "mode": "0o644",
+      "sha256": "3add8fb03c33e17a8cdc81784a7875cbb7091fefee5b4d5dce132ba6afb69b14"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-01.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-01.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-01.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-01.stdout",
+      "bytes": 4098,
+      "mode": "0o644",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-02-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-02-before.json",
+      "bytes": 1514,
+      "mode": "0o644",
+      "sha256": "e304fe67681a4c0c6945faeea05364bcb50519219bd9202bd4acd6e5863e0d01"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-02-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-02-result.json",
+      "bytes": 1663,
+      "mode": "0o644",
+      "sha256": "840b11a8de5d5de2c455165e8f4ea35ab0af45467d148b67721b60cd799a8c97"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-02.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-02.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-02.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-02.stdout",
+      "bytes": 6118,
+      "mode": "0o644",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-03-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-03-before.json",
+      "bytes": 1514,
+      "mode": "0o644",
+      "sha256": "83984ff911d022ec68ab6e69885bc158ed8ece9f4661c49229f7f2ec6567c778"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-03-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-03-result.json",
+      "bytes": 1663,
+      "mode": "0o644",
+      "sha256": "b9e7d71b63309f3baeb55bea5788649c67cb011ec2ebfc72139a6c010044c7a0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-03.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-03.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-03.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-03.stdout",
+      "bytes": 8386,
+      "mode": "0o644",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-04-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-04-before.json",
+      "bytes": 1498,
+      "mode": "0o644",
+      "sha256": "440ad6fef2830387f86eac45cf29dd8587a2d4612b775d15a8c96fd8d0d56a04"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-04-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-04-result.json",
+      "bytes": 1648,
+      "mode": "0o644",
+      "sha256": "0d74f86be91fd47dc781df2ed92013ff77e50b7b8dcdc721259214a7e7e902b7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-04.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-04.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-04.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-04.stdout",
+      "bytes": 12810,
+      "mode": "0o644",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-05-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-05-before.json",
+      "bytes": 1512,
+      "mode": "0o644",
+      "sha256": "92950b2a2f687bac95fdd331a62874b593e633ee8c786145908ba2f1ff36b21c"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-05-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-05-result.json",
+      "bytes": 1661,
+      "mode": "0o644",
+      "sha256": "6aef7d9dede218e9b2a1b0a3ed7247f427310489346e703cac7d3386e8e3cd1b"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-05.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-05.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-05.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-05.stdout",
+      "bytes": 2620,
+      "mode": "0o644",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-selection.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/git-selection.json",
+      "bytes": 1301,
+      "mode": "0o644",
+      "sha256": "654862a874ef7f90908299ae477e6ebf2a71f4981d19fc8486bdc9df6f19f67f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/inputs-after.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/inputs-after.json",
+      "bytes": 15157117,
+      "mode": "0o644",
+      "sha256": "6150161033d1e43642ff5f383b3de40688bbce6355332f0837f6638c725d10c0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/inputs-before.json",
+      "bytes": 15157117,
+      "mode": "0o644",
+      "sha256": "6150161033d1e43642ff5f383b3de40688bbce6355332f0837f6638c725d10c0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/installation-comparison.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/installation-comparison.json",
+      "bytes": 1288,
+      "mode": "0o644",
+      "sha256": "a072344ada5d27763ee750cec7fb5531781a1ee8882ad6c5d058416c29691703"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/namespaces.tsv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/namespaces.tsv",
+      "bytes": 1458,
+      "mode": "0o644",
+      "sha256": "0c4a6ff3f474c0a2a79e668624f5ebda8f10d3431757aff2d1bca4fdad21cd10"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/result.json",
+      "bytes": 485,
+      "mode": "0o644",
+      "sha256": "0f5a95729674a978cae72d26231b7893f99787245a43d05cc4bff97ff0545336"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-predecessor_safe_reference-Rprofmem.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-predecessor_safe_reference-Rprofmem.log",
+      "bytes": 922663,
+      "mode": "0o644",
+      "sha256": "f70939c4f4a6875f992ff412c3c62aaa2c81c65ef4f706c339d8382f0425d9f7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-predecessor_safe_reference-schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-predecessor_safe_reference-schemas.R",
+      "bytes": 3021,
+      "mode": "0o644",
+      "sha256": "21a8f1850e7823d9e7ce84ea52ee200c817abae6180e032a62c960f118f87544"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-predecessor_safe_reference-times.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-predecessor_safe_reference-times.csv",
+      "bytes": 233,
+      "mode": "0o644",
+      "sha256": "08b22a9adc42f3448c436477a9829f4a8d580e8dc7806009274b6692c781e869"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-public-Rprofmem.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-public-Rprofmem.log",
+      "bytes": 3613,
+      "mode": "0o644",
+      "sha256": "1eacc722504f868499c20c579d9ce0797cc96d182fa3afa72c184df6f4830209"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-public-schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-public-schemas.R",
+      "bytes": 3021,
+      "mode": "0o644",
+      "sha256": "21a8f1850e7823d9e7ce84ea52ee200c817abae6180e032a62c960f118f87544"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-public-times.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-group_nest-public-times.csv",
+      "bytes": 237,
+      "mode": "0o644",
+      "sha256": "1ed422ee9843976828afccc1053f94ae6cbc41a64ecb19505ba5a4c56734c584"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-predecessor_safe_reference-Rprofmem.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-predecessor_safe_reference-Rprofmem.log",
+      "bytes": 985931,
+      "mode": "0o644",
+      "sha256": "72b5b397bf538dd7ec123bace1c0fcbc4be865e70aaed62b6607e8e15d4fdc22"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-predecessor_safe_reference-schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-predecessor_safe_reference-schemas.R",
+      "bytes": 3836,
+      "mode": "0o644",
+      "sha256": "93944fa4238b96a715c237023bdde4401d5d4574903c77ebba75f49c196683d6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-predecessor_safe_reference-times.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-predecessor_safe_reference-times.csv",
+      "bytes": 235,
+      "mode": "0o644",
+      "sha256": "aac677cbd642c97e88b3687f43e9544c56d21ed853413a7e9dbb58c21b5dc46f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-public-Rprofmem.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-public-Rprofmem.log",
+      "bytes": 284859,
+      "mode": "0o644",
+      "sha256": "ce473f06836bfce6a10d8179cc74c294579546377942bd40b0c3f2e238c49bdb"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-public-schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-public-schemas.R",
+      "bytes": 3836,
+      "mode": "0o644",
+      "sha256": "93944fa4238b96a715c237023bdde4401d5d4574903c77ebba75f49c196683d6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-public-times.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/1024-nest_by-public-times.csv",
+      "bytes": 237,
+      "mode": "0o644",
+      "sha256": "b1416d66666fd9d1e82211abf370b6d942e7412b31032bbb8a41803dc8ae75fe"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-predecessor_safe_reference-Rprofmem.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-predecessor_safe_reference-Rprofmem.log",
+      "bytes": 4274401,
+      "mode": "0o644",
+      "sha256": "9c87fedc3d6283734c75761555e093b45f8754b27fa1bab25ab1fa270d0d7067"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-predecessor_safe_reference-schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-predecessor_safe_reference-schemas.R",
+      "bytes": 3021,
+      "mode": "0o644",
+      "sha256": "21a8f1850e7823d9e7ce84ea52ee200c817abae6180e032a62c960f118f87544"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-predecessor_safe_reference-times.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-predecessor_safe_reference-times.csv",
+      "bytes": 238,
+      "mode": "0o644",
+      "sha256": "2301d8b7abb59c61a3db78f227596f4b9bea1cd4e0c697ecacbdb8868d488d08"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-public-Rprofmem.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-public-Rprofmem.log",
+      "bytes": 119909,
+      "mode": "0o644",
+      "sha256": "63c7e1fd01b0ba1a394928a3777b7c4c1140a0c3d83f19a847f2e8676ea19918"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-public-schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-public-schemas.R",
+      "bytes": 3021,
+      "mode": "0o644",
+      "sha256": "21a8f1850e7823d9e7ce84ea52ee200c817abae6180e032a62c960f118f87544"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-public-times.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-group_nest-public-times.csv",
+      "bytes": 235,
+      "mode": "0o644",
+      "sha256": "4c378f64708b5fe17ea1e462d51d533e718d097e0c823a24f27e05646fc0cd9e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-predecessor_safe_reference-Rprofmem.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-predecessor_safe_reference-Rprofmem.log",
+      "bytes": 3454145,
+      "mode": "0o644",
+      "sha256": "394fd9cd7f8d85ce1d2a32a0fab5f905c17b82c312c109a5a2ca3552e3a802fd"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-predecessor_safe_reference-schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-predecessor_safe_reference-schemas.R",
+      "bytes": 3836,
+      "mode": "0o644",
+      "sha256": "93944fa4238b96a715c237023bdde4401d5d4574903c77ebba75f49c196683d6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-predecessor_safe_reference-times.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-predecessor_safe_reference-times.csv",
+      "bytes": 238,
+      "mode": "0o644",
+      "sha256": "70c0af06ae0179f09b3b3e51b5084cf9046ba591c848b354fdcb9d95968f41a0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-public-Rprofmem.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-public-Rprofmem.log",
+      "bytes": 157642,
+      "mode": "0o644",
+      "sha256": "a5496f46058d1382ef35073425f4687f48dd32f829692825c3f3e07bd553ad81"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-public-schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-public-schemas.R",
+      "bytes": 3836,
+      "mode": "0o644",
+      "sha256": "93944fa4238b96a715c237023bdde4401d5d4574903c77ebba75f49c196683d6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-public-times.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/4096-nest_by-public-times.csv",
+      "bytes": 229,
+      "mode": "0o644",
+      "sha256": "e261d33721471a2a7096b31b8cd6eae41db63243f8f2cba55a92cf90e7f1ffc1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/complete.txt",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/complete.txt",
+      "bytes": 9,
+      "mode": "0o644",
+      "sha256": "37a40f08d8548dba289b9b0bb35bcf63b359f6d37ee86044ebc6b6da080b9ec1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/operations.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/operations.csv",
+      "bytes": 843,
+      "mode": "0o644",
+      "sha256": "f8ec2c35288c8f731f97c20d072adfca2e1a15b91a6cdeacd8cfd42178f245f7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/session.txt",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/results/session.txt",
+      "bytes": 1959,
+      "mode": "0o644",
+      "sha256": "4a67b5b3f3d0791337ffea83acf78ce8a2ddb7210f9f53f8df9b17ef2ff958ee"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/runner.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/runner.log",
+      "bytes": 2656,
+      "mode": "0o644",
+      "sha256": "e69bc01443b6bc6d2e08d954ab2ddcadb42c11e92fe630eb22f1f87dece9aea5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/runtime-coverage.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/runtime-coverage.json",
+      "bytes": 206,
+      "mode": "0o644",
+      "sha256": "666ed31d60ed7d8071ffc407926f8b8db8d37056828a1998f76cb089d91cfeeb"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/runtime.txt",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/runtime.txt",
+      "bytes": 909,
+      "mode": "0o644",
+      "sha256": "4994e8784eea3ff03668f9a3ae45a1c62ff464402ffc365e1ba60f2b37635279"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/README-v2.md",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/README-v2.md",
+      "bytes": 6087,
+      "mode": "0o644",
+      "sha256": "0d9669268003076949da2ffb7255a6d44d6681a31ab12fb5c269d742333d0036"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/benchmarks/r-dibble-dplyr/helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/benchmarks/r-dibble-dplyr/helpers.R",
+      "bytes": 4098,
+      "mode": "0o644",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "bytes": 8386,
+      "mode": "0o644",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "bytes": 2620,
+      "mode": "0o644",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "bytes": 12810,
+      "mode": "0o644",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "bytes": 6118,
+      "mode": "0o644",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/entry-v2.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/entry-v2.R",
+      "bytes": 1522,
+      "mode": "0o644",
+      "sha256": "b9a2490b5b1ae491983e80cc67520acfc37b4fbe9ccabe54c85881627d98d0d0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/run-stage7-v2.py",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/run-stage7-v2.py",
+      "bytes": 16911,
+      "mode": "0o644",
+      "sha256": "662bc8b6783820748499b26b5cbc78b5d293a819196a33ae1a33eaf2f112f5e6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/selected-workload.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/selected-workload.R",
+      "bytes": 7001,
+      "mode": "0o644",
+      "sha256": "6dc65c585647b3abbe97540b19d5d92e5cf39c2b366a4ac3ec71872d22212d98"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/stage7-support/reference-v1.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/stage7-support/reference-v1.R",
+      "bytes": 3309,
+      "mode": "0o644",
+      "sha256": "da2aa1a4fbf15314470b27bf5e1f9e96fd228c6025719b0ae091b4260658a3c5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/stage7-support/schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/stage7-support/schemas.R",
+      "bytes": 106759,
+      "mode": "0o644",
+      "sha256": "d44ee08e5c981fd9490bfbd4354dabc766eece6d6dbd7192cf608cfb8efebe33"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/stage7-support/validation-v2.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/stage7-support/validation-v2.R",
+      "bytes": 6702,
+      "mode": "0o644",
+      "sha256": "2fadab4910b40743ddfb40e65c9d01c347572215daf7928d1b04b60a32090d76"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/stage7-support/workloads-v1.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source/stage7-support/workloads-v1.R",
+      "bytes": 3355,
+      "mode": "0o644",
+      "sha256": "2de69c883dc81ad1bfc2fed4c322c5978ed31c3c67ddcc5640a0648bce38e6b1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source-exports.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/source-exports.json",
+      "bytes": 10252,
+      "mode": "0o644",
+      "sha256": "f3d185380cd32c86e3c60b6506d9addd2f935d336c78868632e8db8f322d85fb"
+    }
+  ],
+  "excluded": [
+    "products.json",
+    "receipt.json"
+  ]
+}

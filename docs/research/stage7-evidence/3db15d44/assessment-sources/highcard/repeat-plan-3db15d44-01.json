@@ -1,0 +1,47 @@
+{
+  "created_utc": "2026-09-09T04:15:21.351124+00:00",
+  "status": "planned_before_repeat_execution",
+  "candidate": "3db15d44f2b557f5282fb7a30fd59c7980a4484c",
+  "predecessor": "4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c",
+  "pairs": 3,
+  "serial_run_order": [
+    [
+      "candidate",
+      "predecessor"
+    ],
+    [
+      "predecessor",
+      "candidate"
+    ],
+    [
+      "candidate",
+      "predecessor"
+    ]
+  ],
+  "candidate_routes": [
+    "public"
+  ],
+  "predecessor_routes": [
+    "public",
+    "predecessor_safe_reference"
+  ],
+  "groups": [
+    1024,
+    4096
+  ],
+  "rows_per_group": 2,
+  "payload_columns": 1,
+  "workloads": [
+    "group_nest",
+    "nest_by"
+  ],
+  "samples_per_series": 7,
+  "driver": "nesting-v2.R",
+  "driver_sha256": "6dc65c585647b3abbe97540b19d5d92e5cf39c2b366a4ac3ec71872d22212d98",
+  "wrapper": "/private/tmp/dta-direct-stage7-performance-preparation-01/run-stage7-v2.py",
+  "wrapper_sha256": "662bc8b6783820748499b26b5cbc78b5d293a819196a33ae1a33eaf2f112f5e6",
+  "assessor": "assess-v3.py",
+  "assessor_sha256": "3dbefe88831f75f01b297655427cef4c0739e29b872f13550191444c00db2fd0",
+  "trigger": "All four current high-cardinality shapes exceed +10% and +1ms versus historical weaker public predecessor, while all fixed-safe comparisons improve. Repeat after ordinary54 if source unchanged.",
+  "interpretation": "Adjacent independent process pairs, alternating run order; compare series medians, not paired individual samples or significance testing. GC-inclusive samples. Exact schemas, raw times and complete Rprofmem sums checked by unchanged arithmetic. No timing result or safety-causal decomposition inferred from plan."
+}

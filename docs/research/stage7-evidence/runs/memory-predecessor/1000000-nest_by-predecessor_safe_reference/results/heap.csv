@@ -1,0 +1,8 @@
+"checkpoint","n_cells_used","v_cells_used","vector_heap_bytes","gc_used_megabytes_rounded"
+"prefixture",722913,1244978,9959824,48.2
+"0_source_only",725400,8760825,70086600,105.7
+"5",734103,15425204,123401632,157
+"50",734188,15425517,123404136,157
+"after_validation",734264,15425727,123405816,157
+"source_released",734042,7915460,63323680,99.7
+"result_released",725220,1250850,10006800,48.4

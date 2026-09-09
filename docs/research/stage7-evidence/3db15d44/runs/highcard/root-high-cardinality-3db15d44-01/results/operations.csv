@@ -1,0 +1,5 @@
+"rows","groups","payload_columns","workload","route","median_ms","iterations","gc_count","warm_r_allocated_bytes","warm_r_largest_allocation_bytes","values_groups_source"
+2048,1024,1,"group_nest","public",68.3123549970333,7,26,679976,40064,TRUE
+2048,1024,1,"nest_by","public",69.9849499796983,7,29,810040,40064,TRUE
+8192,4096,1,"group_nest","public",290.883601992391,7,128,2467976,131120,TRUE
+8192,4096,1,"nest_by","public",326.574757986236,7,91,2982040,131120,TRUE

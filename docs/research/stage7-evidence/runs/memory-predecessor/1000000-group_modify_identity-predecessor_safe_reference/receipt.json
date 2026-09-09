@@ -1,0 +1,17 @@
+{
+  "status": "complete",
+  "result": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/result.json",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/result.json",
+    "bytes": 501,
+    "mode": "0o644",
+    "sha256": "49f0ab81e7e7c3edf052f81499333f6f832591a8f7274776544b44a900a3697e"
+  },
+  "products": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/products.json",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/products.json",
+    "bytes": 27550,
+    "mode": "0o644",
+    "sha256": "bba3e9752de793c57081efc76d7a38fd4f01c226f4f18c4155e41b5e5f86b509"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "status": "complete",
+  "result": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/result.json",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/result.json",
+    "bytes": 483,
+    "mode": "0o644",
+    "sha256": "73d2d516a2a56a2ee750bc01c65d87dab39816d26f3e16ab900849f2f4514491"
+  },
+  "products": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/products.json",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/products.json",
+    "bytes": 26170,
+    "mode": "0o644",
+    "sha256": "807fecb5b54e83e358c0d6b644a99e95f796e060495c41f919f4332b135e4cad"
+  }
+}

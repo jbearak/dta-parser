@@ -1,0 +1,1746 @@
+{
+  "assessor": {
+    "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/assess-v3.py",
+    "bytes": 8455,
+    "sha256": "3dbefe88831f75f01b297655427cef4c0739e29b872f13550191444c00db2fd0"
+  },
+  "runs": [
+    {
+      "source": "4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c",
+      "directory": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02",
+      "receipt": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/receipt.json",
+        "bytes": 773,
+        "sha256": "7cc34ea92b19a700d525573814371d4f4951c610ba29b3ac42a086fceac14b3e"
+      },
+      "manifest": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/products.json",
+        "bytes": 32220,
+        "sha256": "1663df51bb0c00f8a46bfeebd5ac74e970f841349f776125b7af2534d7e6aad4"
+      },
+      "consumed": [
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/result.json",
+          "bytes": 485,
+          "sha256": "0f5a95729674a978cae72d26231b7893f99787245a43d05cc4bff97ff0545336"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/command-result.json",
+          "bytes": 2984,
+          "sha256": "51f7bbb0f1bc5d6ae2c810d890ed39113591d3ef61022aaa5ac7550d7fbd74e4"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/source/selected-workload.R",
+          "bytes": 7001,
+          "sha256": "6dc65c585647b3abbe97540b19d5d92e5cf39c2b366a4ac3ec71872d22212d98"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/complete.txt",
+          "bytes": 9,
+          "sha256": "37a40f08d8548dba289b9b0bb35bcf63b359f6d37ee86044ebc6b6da080b9ec1"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/operations.csv",
+          "bytes": 843,
+          "sha256": "437c1dadf8f3cff3da5a9e92025bfd572607ec3fd88a8ff2e4fdf0fa172733dc"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-group_nest-public-times.csv",
+          "bytes": 238,
+          "sha256": "fcc77b485525bbb84284f91e26e997dc40d80da24c81b9fa7fbab3eb999c100c"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-group_nest-public-Rprofmem.log",
+          "bytes": 3613,
+          "sha256": "1eacc722504f868499c20c579d9ce0797cc96d182fa3afa72c184df6f4830209"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-group_nest-public-schemas.R",
+          "bytes": 3021,
+          "sha256": "21a8f1850e7823d9e7ce84ea52ee200c817abae6180e032a62c960f118f87544"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-group_nest-predecessor_safe_reference-times.csv",
+          "bytes": 234,
+          "sha256": "845df1d5f0abc74e6a71081352192febc961416a9684acf570f5529ff94a4114"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-group_nest-predecessor_safe_reference-Rprofmem.log",
+          "bytes": 922663,
+          "sha256": "f70939c4f4a6875f992ff412c3c62aaa2c81c65ef4f706c339d8382f0425d9f7"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-group_nest-predecessor_safe_reference-schemas.R",
+          "bytes": 3021,
+          "sha256": "21a8f1850e7823d9e7ce84ea52ee200c817abae6180e032a62c960f118f87544"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-nest_by-public-times.csv",
+          "bytes": 238,
+          "sha256": "68b9ecbb790ef9017750409cd0894a73586bba5381fe92350daeb0c572a1639a"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-nest_by-public-Rprofmem.log",
+          "bytes": 288525,
+          "sha256": "fa8d2ec65acca17c800dd3d66181bc43826a73f9bde962090c6057a9b9fb0bb0"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-nest_by-public-schemas.R",
+          "bytes": 3836,
+          "sha256": "93944fa4238b96a715c237023bdde4401d5d4574903c77ebba75f49c196683d6"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-nest_by-predecessor_safe_reference-times.csv",
+          "bytes": 237,
+          "sha256": "a1076cd716b6a7042766a54b5c616ae5dc344e4e1ab293c94070c50ee3fc9e6d"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-nest_by-predecessor_safe_reference-Rprofmem.log",
+          "bytes": 984385,
+          "sha256": "8ea703aee2c51744a3242fa3ef2a4601e42b4e03b72219a3f9be19327cd07bc4"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/1024-nest_by-predecessor_safe_reference-schemas.R",
+          "bytes": 3836,
+          "sha256": "93944fa4238b96a715c237023bdde4401d5d4574903c77ebba75f49c196683d6"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-group_nest-public-times.csv",
+          "bytes": 235,
+          "sha256": "08a205e658c7c7987b57d2fb57e802c7f21160b21fc8d3eca3035e972a9d40b4"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-group_nest-public-Rprofmem.log",
+          "bytes": 123390,
+          "sha256": "331434d47894d8d25ace375bf8bdafba028c0e0b77f3ba603648bccba1195b4d"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-group_nest-public-schemas.R",
+          "bytes": 3021,
+          "sha256": "21a8f1850e7823d9e7ce84ea52ee200c817abae6180e032a62c960f118f87544"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-group_nest-predecessor_safe_reference-times.csv",
+          "bytes": 238,
+          "sha256": "fa5e9370336897dff3cd332c5cf8f739b15110688169b9fc6e0d02968bdd99d8"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-group_nest-predecessor_safe_reference-Rprofmem.log",
+          "bytes": 4264187,
+          "sha256": "d4d20720f0999ccd629b675a0208e669187889866634196df09a127a765750bd"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-group_nest-predecessor_safe_reference-schemas.R",
+          "bytes": 3021,
+          "sha256": "21a8f1850e7823d9e7ce84ea52ee200c817abae6180e032a62c960f118f87544"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-nest_by-public-times.csv",
+          "bytes": 230,
+          "sha256": "417e776c59b713ad95bd302a223fb7fc7213086c31a8d4091b221322a75cb431"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-nest_by-public-Rprofmem.log",
+          "bytes": 153922,
+          "sha256": "2954b2f2dd8f668978b61884f39389b261b95526e98fed8a16fe3022f80c6fe3"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-nest_by-public-schemas.R",
+          "bytes": 3836,
+          "sha256": "93944fa4238b96a715c237023bdde4401d5d4574903c77ebba75f49c196683d6"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-nest_by-predecessor_safe_reference-times.csv",
+          "bytes": 237,
+          "sha256": "8365f51c98b8b53e49e2b5bf7b9b419266f6faa19e8eb36789fe20f0ad76d937"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-nest_by-predecessor_safe_reference-Rprofmem.log",
+          "bytes": 3455635,
+          "sha256": "3206111cfe8d11df8fe91beaad6e5a712b7a8c8bd98fc75c1565de832ac8993b"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/results/4096-nest_by-predecessor_safe_reference-schemas.R",
+          "bytes": 3836,
+          "sha256": "93944fa4238b96a715c237023bdde4401d5d4574903c77ebba75f49c196683d6"
+        }
+      ],
+      "series": [
+        {
+          "summary": {
+            "rows": "2048",
+            "groups": "1024",
+            "payload_columns": "1",
+            "workload": "group_nest",
+            "route": "public",
+            "median_ms": "35.7709420204628",
+            "iterations": "7",
+            "gc_count": "17",
+            "warm_r_allocated_bytes": "90560",
+            "warm_r_largest_allocation_bytes": "40064",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.0354765210067853",
+              "level0": "2",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.0362409660010599",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.0353512250003405",
+              "level0": "2",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.0354053859773558",
+              "level0": "2",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.0364891799981706",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.0357709420204628",
+              "level0": "2",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.0366241519805044",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            }
+          ],
+          "profile_events": 11,
+          "largest_stack_buckets": [
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\"lapply\" \"map\" \"dplyr_chop\" \"group_split_impl\" \"group_split.grouped_df\" \"group_split\" \".Call\" \"eval\" \"<Anonymous>\" \"mutate_col\" \"withCallingHandlers\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 8240,
+              "events": 1
+            },
+            {
+              "stack": "\"lapply\" \"assign_func_envs\" \"<Anonymous>\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 296,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \"new_environment\" \"initialize\" \"<Anonymous>\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \"env\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \"env\" \"new_error_context\" \"local_error_context\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \"env\" \"new_error_context\" \"poke_error_context\" \"withCallingHandlers\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            }
+          ]
+        },
+        {
+          "summary": {
+            "rows": "2048",
+            "groups": "1024",
+            "payload_columns": "1",
+            "workload": "group_nest",
+            "route": "predecessor_safe_reference",
+            "median_ms": "184.001768036978",
+            "iterations": "7",
+            "gc_count": "81",
+            "warm_r_allocated_bytes": "82500600",
+            "warm_r_largest_allocation_bytes": "40064",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.210143737029284",
+              "level0": "8",
+              "level1": "1",
+              "level2": "2"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.184328374016332",
+              "level0": "10",
+              "level1": "1",
+              "level2": "1"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.183843795006396",
+              "level0": "8",
+              "level1": "2",
+              "level2": "1"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.184001768036978",
+              "level0": "10",
+              "level1": "1",
+              "level2": "1"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.183941867027897",
+              "level0": "10",
+              "level1": "1",
+              "level2": "1"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.183978234010283",
+              "level0": "9",
+              "level1": "1",
+              "level2": "1"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.184003777016187",
+              "level0": "9",
+              "level1": "2",
+              "level2": "1"
+            }
+          ],
+          "profile_events": 3087,
+          "largest_stack_buckets": [
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \"<Anonymous>\" \"FUN\" \"lapply\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 82034688,
+              "events": 2048
+            },
+            {
+              "stack": "\"new.env\" \".new_reference_state\" \"isTRUE\" \".reference_classes\" \".mark_reference_data\" \".new_validated_dibble\" \"<Anonymous>\" \"FUN\" \"lapply\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 286720,
+              "events": 1024
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \"<Anonymous>\" \"capture\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80112,
+              "events": 2
+            },
+            {
+              "stack": "\"lapply\" \"map\" \"dplyr_chop\" \"group_split_impl\" \"group_split.grouped_df\" \"group_split\" \".Call\" \"eval\" \"<Anonymous>\" \"mutate_col\" \"withCallingHandlers\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 8240,
+              "events": 1
+            },
+            {
+              "stack": "\"lapply\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 8240,
+              "events": 1
+            },
+            {
+              "stack": "\"lapply\" \"assign_func_envs\" \"<Anonymous>\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 296,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            }
+          ]
+        },
+        {
+          "summary": {
+            "rows": "2048",
+            "groups": "1024",
+            "payload_columns": "1",
+            "workload": "nest_by",
+            "route": "public",
+            "median_ms": "40.6495729985181",
+            "iterations": "7",
+            "gc_count": "22",
+            "warm_r_allocated_bytes": "377792",
+            "warm_r_largest_allocation_bytes": "40064",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.0402936110040173",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.0400214119872544",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.0405699510010891",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.0406495729985181",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.0407610929978546",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.0409045519772917",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.0452819579804782",
+              "level0": "3",
+              "level1": "1",
+              "level2": "0"
+            }
+          ],
+          "profile_events": 87,
+          "largest_stack_buckets": [
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 37296,
+              "events": 9
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 37296,
+              "events": 9
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 22344,
+              "events": 7
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 22344,
+              "events": 7
+            },
+            {
+              "stack": "\".gather_dta_columns\" \".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 16592,
+              "events": 4
+            },
+            {
+              "stack": "\".gather_dta_columns\" \".validate_group_metadata\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 16592,
+              "events": 4
+            },
+            {
+              "stack": "\"which\" \".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 12440,
+              "events": 3
+            }
+          ]
+        },
+        {
+          "summary": {
+            "rows": "2048",
+            "groups": "1024",
+            "payload_columns": "1",
+            "workload": "nest_by",
+            "route": "predecessor_safe_reference",
+            "median_ms": "190.041477995692",
+            "iterations": "7",
+            "gc_count": "89",
+            "warm_r_allocated_bytes": "82787832",
+            "warm_r_largest_allocation_bytes": "40064",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.213555674999952",
+              "level0": "10",
+              "level1": "1",
+              "level2": "2"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.190041477995692",
+              "level0": "9",
+              "level1": "2",
+              "level2": "1"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.189752673992189",
+              "level0": "11",
+              "level1": "1",
+              "level2": "1"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.191319038014626",
+              "level0": "10",
+              "level1": "2",
+              "level2": "1"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.188251992018195",
+              "level0": "11",
+              "level1": "0",
+              "level2": "1"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.190441146027297",
+              "level0": "10",
+              "level1": "2",
+              "level2": "1"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.190011261001928",
+              "level0": "11",
+              "level1": "1",
+              "level2": "1"
+            }
+          ],
+          "profile_events": 3163,
+          "largest_stack_buckets": [
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \"<Anonymous>\" \"FUN\" \"lapply\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 82034688,
+              "events": 2048
+            },
+            {
+              "stack": "\"new.env\" \".new_reference_state\" \"isTRUE\" \".reference_classes\" \".mark_reference_data\" \".new_validated_dibble\" \"<Anonymous>\" \"FUN\" \"lapply\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 286720,
+              "events": 1024
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \"<Anonymous>\" \"capture\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80112,
+              "events": 2
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 37296,
+              "events": 9
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 37296,
+              "events": 9
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 22344,
+              "events": 7
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 22344,
+              "events": 7
+            }
+          ]
+        },
+        {
+          "summary": {
+            "rows": "8192",
+            "groups": "4096",
+            "payload_columns": "1",
+            "workload": "group_nest",
+            "route": "public",
+            "median_ms": "151.907747029327",
+            "iterations": "7",
+            "gc_count": "85",
+            "warm_r_allocated_bytes": "115136",
+            "warm_r_largest_allocation_bytes": "40064",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.151663305034162",
+              "level0": "10",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.151907747029327",
+              "level0": "13",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.15326115701464",
+              "level0": "16",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.161199331021635",
+              "level0": "16",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.192170649010222",
+              "level0": "11",
+              "level1": "1",
+              "level2": "1"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.145582144032232",
+              "level0": "7",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.146866674040211",
+              "level0": "7",
+              "level1": "0",
+              "level2": "0"
+            }
+          ],
+          "profile_events": 11,
+          "largest_stack_buckets": [
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\"lapply\" \"map\" \"dplyr_chop\" \"group_split_impl\" \"group_split.grouped_df\" \"group_split\" \".Call\" \"eval\" \"<Anonymous>\" \"mutate_col\" \"withCallingHandlers\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 32816,
+              "events": 1
+            },
+            {
+              "stack": "\"lapply\" \"assign_func_envs\" \"<Anonymous>\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 296,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \"new_environment\" \"initialize\" \"<Anonymous>\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \"env\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \"env\" \"new_error_context\" \"local_error_context\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \"env\" \"new_error_context\" \"poke_error_context\" \"withCallingHandlers\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \".relabel_mask_conditions\" \".typed_mask_verb\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            }
+          ]
+        },
+        {
+          "summary": {
+            "rows": "8192",
+            "groups": "4096",
+            "payload_columns": "1",
+            "workload": "group_nest",
+            "route": "predecessor_safe_reference",
+            "median_ms": "719.724578026216",
+            "iterations": "7",
+            "gc_count": "241",
+            "warm_r_allocated_bytes": "329513976",
+            "warm_r_largest_allocation_bytes": "40064",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.800683711044258",
+              "level0": "28",
+              "level1": "4",
+              "level2": "3"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.741844939009752",
+              "level0": "30",
+              "level1": "2",
+              "level2": "2"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.719724578026216",
+              "level0": "31",
+              "level1": "3",
+              "level2": "1"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.714141772012226",
+              "level0": "32",
+              "level1": "1",
+              "level2": "1"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.714151325024432",
+              "level0": "31",
+              "level1": "2",
+              "level2": "1"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.715098056040006",
+              "level0": "32",
+              "level1": "2",
+              "level2": "1"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.741805702040438",
+              "level0": "30",
+              "level1": "2",
+              "level2": "2"
+            }
+          ],
+          "profile_events": 12303,
+          "largest_stack_buckets": [
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \"<Anonymous>\" \"FUN\" \"lapply\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 328138752,
+              "events": 8192
+            },
+            {
+              "stack": "\"new.env\" \".new_reference_state\" \"isTRUE\" \".reference_classes\" \".mark_reference_data\" \".new_validated_dibble\" \"<Anonymous>\" \"FUN\" \"lapply\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 1146880,
+              "events": 4096
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \"<Anonymous>\" \"capture\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80112,
+              "events": 2
+            },
+            {
+              "stack": "\"lapply\" \"map\" \"dplyr_chop\" \"group_split_impl\" \"group_split.grouped_df\" \"group_split\" \".Call\" \"eval\" \"<Anonymous>\" \"mutate_col\" \"withCallingHandlers\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 32816,
+              "events": 1
+            },
+            {
+              "stack": "\"lapply\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 32816,
+              "events": 1
+            },
+            {
+              "stack": "\"lapply\" \"assign_func_envs\" \"<Anonymous>\" \"mutate_cols\" \"mutate.data.frame\" \"mutate\" \"group_nest_impl\" \"group_nest.grouped_df\" \"group_nest\" \"eval\" \"eval\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 296,
+              "events": 1
+            },
+            {
+              "stack": "\"new.env\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 280,
+              "events": 1
+            }
+          ]
+        },
+        {
+          "summary": {
+            "rows": "8192",
+            "groups": "4096",
+            "payload_columns": "1",
+            "workload": "nest_by",
+            "route": "public",
+            "median_ms": "167.867776035564",
+            "iterations": "7",
+            "gc_count": "59",
+            "warm_r_allocated_bytes": "1244096",
+            "warm_r_largest_allocation_bytes": "40064",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.156576909008436",
+              "level0": "7",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.167867776035564",
+              "level0": "7",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.16912787000183",
+              "level0": "9",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.204381556017324",
+              "level0": "7",
+              "level1": "0",
+              "level2": "1"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.161200151022058",
+              "level0": "9",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.164596673013875",
+              "level0": "9",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.179666756012011",
+              "level0": "8",
+              "level1": "1",
+              "level2": "0"
+            }
+          ],
+          "profile_events": 87,
+          "largest_stack_buckets": [
+            {
+              "stack": "\".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 147888,
+              "events": 9
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 147888,
+              "events": 9
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 86856,
+              "events": 7
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 86856,
+              "events": 7
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\".gather_dta_columns\" \".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 65744,
+              "events": 4
+            },
+            {
+              "stack": "\".gather_dta_columns\" \".validate_group_metadata\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 65744,
+              "events": 4
+            },
+            {
+              "stack": "\"which\" \".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \".close_dibble\" \".typed_mask_verb\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 49304,
+              "events": 3
+            }
+          ]
+        },
+        {
+          "summary": {
+            "rows": "8192",
+            "groups": "4096",
+            "payload_columns": "1",
+            "workload": "nest_by",
+            "route": "predecessor_safe_reference",
+            "median_ms": "738.695236999774",
+            "iterations": "7",
+            "gc_count": "262",
+            "warm_r_allocated_bytes": "330642936",
+            "warm_r_largest_allocation_bytes": "40064",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.806049299018923",
+              "level0": "31",
+              "level1": "2",
+              "level2": "3"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.73771673097508",
+              "level0": "34",
+              "level1": "3",
+              "level2": "1"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.738695236999774",
+              "level0": "35",
+              "level1": "2",
+              "level2": "1"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.737547236989485",
+              "level0": "34",
+              "level1": "2",
+              "level2": "1"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.772302485973341",
+              "level0": "34",
+              "level1": "2",
+              "level2": "2"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.734350918006385",
+              "level0": "33",
+              "level1": "3",
+              "level2": "1"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.778256013989449",
+              "level0": "34",
+              "level1": "2",
+              "level2": "2"
+            }
+          ],
+          "profile_events": 12379,
+          "largest_stack_buckets": [
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \"<Anonymous>\" \"FUN\" \"lapply\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 328138752,
+              "events": 8192
+            },
+            {
+              "stack": "\"new.env\" \".new_reference_state\" \"isTRUE\" \".reference_classes\" \".mark_reference_data\" \".new_validated_dibble\" \"<Anonymous>\" \"FUN\" \"lapply\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 1146880,
+              "events": 4096
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 147888,
+              "events": 9
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 147888,
+              "events": 9
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".as_mutation_data\" \".prepare_dibble_frame\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 86856,
+              "events": 7
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 86856,
+              "events": 7
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \"<Anonymous>\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \"<Anonymous>\" \"capture\" \"stage7_reference_nested_frames\" \"stage7_safe_reference\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80112,
+              "events": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "3db15d44f2b557f5282fb7a30fd59c7980a4484c",
+      "directory": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02",
+      "receipt": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/receipt.json",
+        "bytes": 761,
+        "sha256": "4d111953d4e27da05ccc2596edb8e78f385fb81142e46b8216cf9b76417cab64"
+      },
+      "manifest": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/products.json",
+        "bytes": 26170,
+        "sha256": "807fecb5b54e83e358c0d6b644a99e95f796e060495c41f919f4332b135e4cad"
+      },
+      "consumed": [
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/result.json",
+          "bytes": 483,
+          "sha256": "73d2d516a2a56a2ee750bc01c65d87dab39816d26f3e16ab900849f2f4514491"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/command-result.json",
+          "bytes": 2941,
+          "sha256": "d147749043208afb19ceee98be484bbe767ec0faf03901ac352e5132d4735810"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/source/selected-workload.R",
+          "bytes": 7001,
+          "sha256": "6dc65c585647b3abbe97540b19d5d92e5cf39c2b366a4ac3ec71872d22212d98"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/complete.txt",
+          "bytes": 9,
+          "sha256": "37a40f08d8548dba289b9b0bb35bcf63b359f6d37ee86044ebc6b6da080b9ec1"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/operations.csv",
+          "bytes": 466,
+          "sha256": "20c5976bfbaa707c8356f920423ed651a639c94a6475c7c9f8dc099492c23a2b"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/1024-group_nest-public-times.csv",
+          "bytes": 237,
+          "sha256": "1016f47157e1fbb8e5d04610c621d0f5436a8a84c6e0d1fdbcda57e3202a6434"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/1024-group_nest-public-Rprofmem.log",
+          "bytes": 298716,
+          "sha256": "8b5ec3dd06707f9c4fe78fe4fca93ab3d1c60e08f1c8b2bcefeeb11015b4c773"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/1024-group_nest-public-schemas.R",
+          "bytes": 3021,
+          "sha256": "21a8f1850e7823d9e7ce84ea52ee200c817abae6180e032a62c960f118f87544"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/1024-nest_by-public-times.csv",
+          "bytes": 238,
+          "sha256": "d7cbf1c8eba0bc1ceb713afd1804e593e34365e0499581ef4525af2769cb7813"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/1024-nest_by-public-Rprofmem.log",
+          "bytes": 433286,
+          "sha256": "30b13845743d71fa7e582055f0e4998df1a63a2bc7f6b9cd18a3a501a5b4fe71"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/1024-nest_by-public-schemas.R",
+          "bytes": 3836,
+          "sha256": "93944fa4238b96a715c237023bdde4401d5d4574903c77ebba75f49c196683d6"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/4096-group_nest-public-times.csv",
+          "bytes": 237,
+          "sha256": "af8c9b8e434219b64fe6ab17fd7f119b6093a214509da341fa92aa99048b025c"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/4096-group_nest-public-Rprofmem.log",
+          "bytes": 1157181,
+          "sha256": "d4035db28d2e3a362822e92d6ee8918e57106558c9862ffeb270db79bbf35844"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/4096-group_nest-public-schemas.R",
+          "bytes": 3021,
+          "sha256": "21a8f1850e7823d9e7ce84ea52ee200c817abae6180e032a62c960f118f87544"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/4096-nest_by-public-times.csv",
+          "bytes": 235,
+          "sha256": "b160219cc4071d945f2ca972421fbbe13cd80d71ba85874eaaacdd8655d95ed8"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/4096-nest_by-public-Rprofmem.log",
+          "bytes": 1202145,
+          "sha256": "69f1bb7d277333724d9fc45507c46bd775ece7609b0983b7f3058a4248084da4"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/results/4096-nest_by-public-schemas.R",
+          "bytes": 3836,
+          "sha256": "93944fa4238b96a715c237023bdde4401d5d4574903c77ebba75f49c196683d6"
+        }
+      ],
+      "series": [
+        {
+          "summary": {
+            "rows": "2048",
+            "groups": "1024",
+            "payload_columns": "1",
+            "workload": "group_nest",
+            "route": "public",
+            "median_ms": "68.0394589726347",
+            "iterations": "7",
+            "gc_count": "26",
+            "warm_r_allocated_bytes": "679976",
+            "warm_r_largest_allocation_bytes": "40064",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.0707822359981947",
+              "level0": "4",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.0672923160018399",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.065547970996704",
+              "level0": "4",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.0663774420099799",
+              "level0": "4",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.0752391820133198",
+              "level0": "3",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.0680394589726347",
+              "level0": "3",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.0709880150097888",
+              "level0": "4",
+              "level1": "0",
+              "level2": "0"
+            }
+          ],
+          "profile_events": 1078,
+          "largest_stack_buckets": [
+            {
+              "stack": "\"new.env\" \"capture\" \"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 287000,
+              "events": 1025
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\"<Anonymous>\" \"capture\" \"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 65664,
+              "events": 8
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 64488,
+              "events": 10
+            },
+            {
+              "stack": "\"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 37104,
+              "events": 5
+            },
+            {
+              "stack": "\".gather_dta_columns\" \".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 24784,
+              "events": 4
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 16528,
+              "events": 3
+            },
+            {
+              "stack": "\"which\" \".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 12440,
+              "events": 3
+            }
+          ]
+        },
+        {
+          "summary": {
+            "rows": "2048",
+            "groups": "1024",
+            "payload_columns": "1",
+            "workload": "nest_by",
+            "route": "public",
+            "median_ms": "72.4971019953955",
+            "iterations": "7",
+            "gc_count": "29",
+            "warm_r_allocated_bytes": "810040",
+            "warm_r_largest_allocation_bytes": "40064",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.0680187540128827",
+              "level0": "4",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.0681554070033599",
+              "level0": "4",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.0729518739972264",
+              "level0": "2",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.0709111809846945",
+              "level0": "4",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.0727253899967764",
+              "level0": "5",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.0724971019953955",
+              "level0": "4",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.0746549320174381",
+              "level0": "5",
+              "level1": "0",
+              "level2": "0"
+            }
+          ],
+          "profile_events": 1110,
+          "largest_stack_buckets": [
+            {
+              "stack": "\"new.env\" \"capture\" \"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 287000,
+              "events": 1025
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\"<Anonymous>\" \"capture\" \"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 65664,
+              "events": 8
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 64488,
+              "events": 10
+            },
+            {
+              "stack": "\"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 37104,
+              "events": 5
+            },
+            {
+              "stack": "\".gather_dta_columns\" \".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 24784,
+              "events": 4
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 22344,
+              "events": 7
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 20720,
+              "events": 5
+            }
+          ]
+        },
+        {
+          "summary": {
+            "rows": "8192",
+            "groups": "4096",
+            "payload_columns": "1",
+            "workload": "group_nest",
+            "route": "public",
+            "median_ms": "288.267720025033",
+            "iterations": "7",
+            "gc_count": "128",
+            "warm_r_allocated_bytes": "2467976",
+            "warm_r_largest_allocation_bytes": "131120",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.284279240033356",
+              "level0": "17",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.307816971035209",
+              "level0": "20",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.310827355016954",
+              "level0": "19",
+              "level1": "0",
+              "level2": "1"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.288267720025033",
+              "level0": "21",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.357747919042595",
+              "level0": "22",
+              "level1": "2",
+              "level2": "1"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.271209260012256",
+              "level0": "9",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.287285606027581",
+              "level0": "12",
+              "level1": "0",
+              "level2": "0"
+            }
+          ],
+          "profile_events": 4152,
+          "largest_stack_buckets": [
+            {
+              "stack": "\"new.env\" \"capture\" \"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 1147160,
+              "events": 4097
+            },
+            {
+              "stack": "\"<Anonymous>\" \"capture\" \"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 262368,
+              "events": 10
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 254952,
+              "events": 10
+            },
+            {
+              "stack": "\"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 147696,
+              "events": 5
+            },
+            {
+              "stack": "\".gather_dta_columns\" \".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 98512,
+              "events": 4
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 65680,
+              "events": 3
+            },
+            {
+              "stack": "\"which\" \".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"group_nest.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 49304,
+              "events": 3
+            }
+          ]
+        },
+        {
+          "summary": {
+            "rows": "8192",
+            "groups": "4096",
+            "payload_columns": "1",
+            "workload": "nest_by",
+            "route": "public",
+            "median_ms": "327.330306026852",
+            "iterations": "7",
+            "gc_count": "91",
+            "warm_r_allocated_bytes": "2982040",
+            "warm_r_largest_allocation_bytes": "131120",
+            "values_groups_source": "TRUE"
+          },
+          "raw_times": [
+            {
+              "iteration": "1",
+              "seconds": "0.285617890040157",
+              "level0": "9",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "2",
+              "seconds": "0.2834708840237",
+              "level0": "11",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "3",
+              "seconds": "0.313565909018507",
+              "level0": "11",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "4",
+              "seconds": "0.327330306026852",
+              "level0": "14",
+              "level1": "0",
+              "level2": "0"
+            },
+            {
+              "iteration": "5",
+              "seconds": "0.362164480029605",
+              "level0": "12",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "6",
+              "seconds": "0.385960757004796",
+              "level0": "14",
+              "level1": "1",
+              "level2": "0"
+            },
+            {
+              "iteration": "7",
+              "seconds": "0.441690048028249",
+              "level0": "15",
+              "level1": "0",
+              "level2": "1"
+            }
+          ],
+          "profile_events": 4184,
+          "largest_stack_buckets": [
+            {
+              "stack": "\"new.env\" \"capture\" \"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 1147160,
+              "events": 4097
+            },
+            {
+              "stack": "\"<Anonymous>\" \"capture\" \"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 262368,
+              "events": 10
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 254952,
+              "events": 10
+            },
+            {
+              "stack": "\"capture\" \".capture_dibble_nested\" \".prepare_dibble_result_column\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 147696,
+              "events": 5
+            },
+            {
+              "stack": "\".gather_dta_columns\" \".validate_group_metadata\" \".dibble_expression_groups\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 98512,
+              "events": 4
+            },
+            {
+              "stack": "\"<Anonymous>\" \".validate_group_metadata\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 86856,
+              "events": 7
+            },
+            {
+              "stack": "\".validate_group_metadata\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 82160,
+              "events": 5
+            },
+            {
+              "stack": "\".reserve_column_capacity\" \".new_validated_dibble\" \".finish_dibble_result\" \".dibble_nest\" \"nest_by.dtatools_ref_data\" \"<Anonymous>\" \"invoke\" \"tryCatchList\" \"tryCatch\" \"eval\" \"eval\" \"withVisible\" \"source\" \"tryCatchList\" \"tryCatch\" ",
+              "bytes": 80128,
+              "events": 2
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "groups": 1024,
+      "workload": "group_nest",
+      "reference_route": "public",
+      "before_ms": 35.7709420204628,
+      "after_ms": 68.0394589726347,
+      "delta_ms": 32.26851695217191,
+      "median_ratio": 1.902087424304137,
+      "investigation_flag": true,
+      "before_R_bytes": 90560,
+      "after_R_bytes": 679976,
+      "schemas_identical": true
+    },
+    {
+      "groups": 1024,
+      "workload": "group_nest",
+      "reference_route": "predecessor_safe_reference",
+      "before_ms": 184.001768036978,
+      "after_ms": 68.0394589726347,
+      "delta_ms": -115.9623090643433,
+      "median_ratio": 0.3697761151890732,
+      "investigation_flag": false,
+      "before_R_bytes": 82500600,
+      "after_R_bytes": 679976,
+      "schemas_identical": true
+    },
+    {
+      "groups": 1024,
+      "workload": "nest_by",
+      "reference_route": "public",
+      "before_ms": 40.6495729985181,
+      "after_ms": 72.4971019953955,
+      "delta_ms": 31.847528996877394,
+      "median_ratio": 1.7834652776804916,
+      "investigation_flag": true,
+      "before_R_bytes": 377792,
+      "after_R_bytes": 810040,
+      "schemas_identical": true
+    },
+    {
+      "groups": 1024,
+      "workload": "nest_by",
+      "reference_route": "predecessor_safe_reference",
+      "before_ms": 190.041477995692,
+      "after_ms": 72.4971019953955,
+      "delta_ms": -117.5443760002965,
+      "median_ratio": 0.38148041553875367,
+      "investigation_flag": false,
+      "before_R_bytes": 82787832,
+      "after_R_bytes": 810040,
+      "schemas_identical": true
+    },
+    {
+      "groups": 4096,
+      "workload": "group_nest",
+      "reference_route": "public",
+      "before_ms": 151.907747029327,
+      "after_ms": 288.267720025033,
+      "delta_ms": 136.359972995706,
+      "median_ratio": 1.8976498938489332,
+      "investigation_flag": true,
+      "before_R_bytes": 115136,
+      "after_R_bytes": 2467976,
+      "schemas_identical": true
+    },
+    {
+      "groups": 4096,
+      "workload": "group_nest",
+      "reference_route": "predecessor_safe_reference",
+      "before_ms": 719.724578026216,
+      "after_ms": 288.267720025033,
+      "delta_ms": -431.45685800118304,
+      "median_ratio": 0.4005250464220395,
+      "investigation_flag": false,
+      "before_R_bytes": 329513976,
+      "after_R_bytes": 2467976,
+      "schemas_identical": true
+    },
+    {
+      "groups": 4096,
+      "workload": "nest_by",
+      "reference_route": "public",
+      "before_ms": 167.867776035564,
+      "after_ms": 327.330306026852,
+      "delta_ms": 159.462529991288,
+      "median_ratio": 1.9499293655829735,
+      "investigation_flag": true,
+      "before_R_bytes": 1244096,
+      "after_R_bytes": 2982040,
+      "schemas_identical": true
+    },
+    {
+      "groups": 4096,
+      "workload": "nest_by",
+      "reference_route": "predecessor_safe_reference",
+      "before_ms": 738.695236999774,
+      "after_ms": 327.330306026852,
+      "delta_ms": -411.364930972922,
+      "median_ratio": 0.44311955679626525,
+      "investigation_flag": false,
+      "before_R_bytes": 330642936,
+      "after_R_bytes": 2982040,
+      "schemas_identical": true
+    }
+  ],
+  "scaling": [
+    {
+      "source": "4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c",
+      "workload": "group_nest",
+      "route": "predecessor_safe_reference",
+      "groups_ratio": 4,
+      "rows_ratio": 4,
+      "median_ratio": 3.9115090344217576,
+      "R_allocation_ratio": 3.994079752147257
+    },
+    {
+      "source": "4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c",
+      "workload": "group_nest",
+      "route": "public",
+      "groups_ratio": 4,
+      "rows_ratio": 4,
+      "median_ratio": 4.246680083024597,
+      "R_allocation_ratio": 1.2713780918727915
+    },
+    {
+      "source": "4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c",
+      "workload": "nest_by",
+      "route": "predecessor_safe_reference",
+      "groups_ratio": 4,
+      "rows_ratio": 4,
+      "median_ratio": 3.887021111341385,
+      "R_allocation_ratio": 3.993859097554336
+    },
+    {
+      "source": "4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c",
+      "workload": "nest_by",
+      "route": "public",
+      "groups_ratio": 4,
+      "rows_ratio": 4,
+      "median_ratio": 4.129631965425164,
+      "R_allocation_ratio": 3.2930713196679653
+    },
+    {
+      "source": "3db15d44f2b557f5282fb7a30fd59c7980a4484c",
+      "workload": "group_nest",
+      "route": "public",
+      "groups_ratio": 4,
+      "rows_ratio": 4,
+      "median_ratio": 4.236772666592977,
+      "R_allocation_ratio": 3.629504570749556
+    },
+    {
+      "source": "3db15d44f2b557f5282fb7a30fd59c7980a4484c",
+      "workload": "nest_by",
+      "route": "public",
+      "groups_ratio": 4,
+      "rows_ratio": 4,
+      "median_ratio": 4.515081251767025,
+      "R_allocation_ratio": 3.6813490691817687
+    }
+  ],
+  "scope": "All12 series/84 raw samples/12 complete allocation profiles and8 cross-source schema pairs checked. Receipt identities supplied before assessor execution and checked; selected manifest links verified. Receipts were observed after benchmark completion. Independent R value/group checks recorded, not replayed. Public predecessor is a weaker foreign-write control. No RSS, native allocation, retained heap, runtime closure or asymptotic proof. Profile stacks identify observed call stacks, not exclusive source-line or CPU causes."
+}
