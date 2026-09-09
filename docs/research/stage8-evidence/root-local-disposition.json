@@ -1,0 +1,145 @@
+{
+  "status": "Local Stage8 acceptance recorded; publication and remote review/CI/normal merge pending",
+  "utc": "2026-09-09T11:23:13.291342+00:00",
+  "candidate_source": "cf317730d3110568c72862719424e01c2876141b",
+  "candidate_package_tree": "774e0c6d648b3e45ce5c5d17ade72c901179639f",
+  "predecessor": "af0bed0b9c200f82d37891902266d200a1819196",
+  "functional": {
+    "host_focused": {
+      "blocks": 165,
+      "passes": 3612,
+      "failures": 0,
+      "errors": 0,
+      "warnings": 0,
+      "skips": 0
+    },
+    "host_full": {
+      "blocks": 1079,
+      "passes": 18890,
+      "failures": 0,
+      "errors": 0,
+      "warnings": 4,
+      "skips": 0
+    },
+    "minimum": {
+      "R": "4.6.0",
+      "blocks": 360,
+      "passes": 7197,
+      "failures": 0,
+      "errors": 0,
+      "warnings": 4,
+      "skips": 7
+    },
+    "installed_oracles": {
+      "statuses": 391,
+      "returned_graphs": 346,
+      "exact_key_payloads": 2748,
+      "caught_message_or_call_differences": 6
+    },
+    "installed_500_call_writes": {
+      "cases": 24,
+      "independently_decoded_graphs": 48
+    }
+  },
+  "package": {
+    "outer_commands": 16,
+    "exit_codes": "all zero",
+    "R_check_warnings": 3,
+    "R_check_notes": 2,
+    "known_diagnostics": "28 SDK linker warnings and 22 nested nm errors/status1 preserved; no complete successful symbol-scan claim. Existing Haven loopback capability skip and unavailable repository indices retained.",
+    "rust_reuse": "Corrected actual workspace core-crate selection119 equal leaves; original45-leaf omission preserved. No full fresh Rust rerun attributed to the separate11 conformance tests."
+  },
+  "native": {
+    "commands": 4,
+    "atom_cases": 18,
+    "rename_profile_threshold": 10000,
+    "rename_largest_profiled_bytes": 40056,
+    "rename_total_profiled_bytes": 80112,
+    "existing_payload_copy_detected": false
+  },
+  "performance": {
+    "full_pairs": 120,
+    "candidate_series": 60,
+    "predecessor_series": 120,
+    "positive_elapsed_differences": 33,
+    "joint_public_flags": 0,
+    "joint_reference_flags": 4,
+    "public_warmed_R_allocation_increases": 52,
+    "restricted_repeat_pairs": 3,
+    "restricted_reference_flags_per_pair": 4,
+    "restricted_public_flags_per_pair": 0,
+    "rss_outlier_recurred": false,
+    "rss_repeat_candidate_increases_percent": [
+      2.276,
+      1.832
+    ],
+    "decision": "Accept selected Stage8 results with accurately reported reference costs, all signed allocation/elapsed differences and finite memory limits. No universal reduction or irreducibility claim."
+  },
+  "source_reuse": "8ffa smoke and500-call heap retain original executed identities. Recursive8ffa\u2192cf317 Git delta changes H01 test lifetimes only, not executable production/helper/native inputs. Separate installs are not declared byte-identical.",
+  "root_read_scope": "Root original raw performance/memory/minimum assessments and full current semantic result/prose reports. API selected statuses/limits and actual repeat command summaries are complementary; no claim root read every huge source/runtime array.",
+  "selected_reports": [
+    {
+      "path": "/private/tmp/dta-direct-stage8-performance-preparation-01/stage8-performance-disposition-draft-03.md",
+      "sha256": "05dcd0bb10c9b232afc19397460b90c94ba3dd57d08394d00b2ce1fb3f719027",
+      "bytes": 10846
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-performance-preparation-01/root-artifact-selection-01.json",
+      "sha256": "1b351cdf6a4184966105964ce094ac2df071f30bf6f250ca67bfebba4f97d16f",
+      "bytes": 2205288
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-performance-preparation-01/root-artifact-selection-addendum-01.json",
+      "sha256": "7ab72fe7690d3e29ddd10653d961d70b315e9840940ed11057a8586e5ace50df",
+      "bytes": 885
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/semantics-review/bind-cols-repeats-01/REVIEW.md",
+      "sha256": "cd6fe01dfc143f0dc22d95c268f00ed415339178431717bfb82831f3429750b3",
+      "bytes": 7701
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/semantics-review/native-full-cf317730-01/REVIEW.md",
+      "sha256": "59f50d456d256d9f4d15267e435b38d9ada6119f58e34e20ee1d62a06abf8ec9",
+      "bytes": 4910
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/semantics-review/package-cf317730-01/REVIEW.md",
+      "sha256": "1da893970ebe10ea2ef9266998adccdeb676ac6c82a9697bebe4c5b554cf330e",
+      "bytes": 5654
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/semantics-review/installed-oracles-cf317730-01/REVIEW.md",
+      "sha256": "0a6456e1014558b1f84dbe5072aba68a03ba966218c092e4304c676dd1228098",
+      "bytes": 4518
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/semantics-review/publication-drafts-01.md",
+      "sha256": "5e17bac46100f762149e8bef463941b01b079e77f4fd18d280174e35c9af5449",
+      "bytes": 6933
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/api-review/repeat-execution-selected-chain-01.json",
+      "sha256": "15514fd11c2357bfa2745e377c7ecbcd55debd13adb628fa88f6231f45870263",
+      "bytes": 67163
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/api-review/cf317-package-linkage-selected-chain-01.json",
+      "sha256": "d12e3187340c629bf5ea8f55dc0097150a0b87a234f1836733bec76b0b5424b9",
+      "bytes": 54258
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/api-review/cf317-rust-reuse-selected-review-02.json",
+      "sha256": "7fcaef197c4371c800a7f0c28a7f6d0a3666a50843fc3515f48acbee98c31f72",
+      "bytes": 32190
+    }
+  ],
+  "remaining": [
+    "Final evidence-copy and prose review, evidence PR plus CI and normal merge.",
+    "Implementation PR plus CI and actual substantive CodeRabbit review, then verified normal merge. Documentation coverage is nonblocking.",
+    "Stage9 optional dplyr and independent recode, complete absence/presence/load-order matrix and normal merge.",
+    "Fresh final merged-main validation, all performance obligations including12 base-R reads and4 historical many-small-group costs.",
+    "Actual fertility renv final-source installation/test/restoration, preserve user work.",
+    "#172 acceptance and authorized closure after full matrix."
+  ]
+}
