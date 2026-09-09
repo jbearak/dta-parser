@@ -1,0 +1,112 @@
+{
+  "at_utc": "2026-09-09T19:56:48.518686+00:00",
+  "executed_source": "f1592a21c682e5825e684857337eac3ad1ed0db9",
+  "final_source": "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+  "native_receipt": "/private/tmp/dta-direct-stage9-validation/native-f1592a21-01/receipt.json",
+  "native_receipt_sha256": "1cbe97a21680290f80b9d52ad86b6ee3591d3617b18a36b1c9e538be368fe1d3",
+  "native_manifest_sha256": "51b6ecd2bcfe9a96d4e4108c6851a850ee6a8ec4445a83865d4f84bdf3853aaa",
+  "equal_git_inputs": [
+    {
+      "path": "r-package/dtatools/src",
+      "executed_git": "c9867cbe44a617716676ea3ad295bd5be6a73a44",
+      "final_git": "c9867cbe44a617716676ea3ad295bd5be6a73a44",
+      "equal": true
+    },
+    {
+      "path": "Cargo.toml",
+      "executed_git": "2f471362ad5be7ba2ff21218cc18cd5a41bd0365",
+      "final_git": "2f471362ad5be7ba2ff21218cc18cd5a41bd0365",
+      "equal": true
+    },
+    {
+      "path": "Cargo.lock",
+      "executed_git": "a532923b2959817b8375fbeeea84178730bba59b",
+      "final_git": "a532923b2959817b8375fbeeea84178730bba59b",
+      "equal": true
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "executed_git": "d1ad785747eb8330d0e6226ee0d781d82336aca0",
+      "final_git": "d1ad785747eb8330d0e6226ee0d781d82336aca0",
+      "equal": true
+    },
+    {
+      "path": "benchmarks/r-reference-mutation",
+      "executed_git": "794d54bbbd8313b6b3d61c089cbbb85be566fcba",
+      "final_git": "794d54bbbd8313b6b3d61c089cbbb85be566fcba",
+      "equal": true
+    },
+    {
+      "path": "benchmarks/r-dibble-dplyr",
+      "executed_git": "74284f1f625442364d9ed12d46f775bfeb5a2e7d",
+      "final_git": "74284f1f625442364d9ed12d46f775bfeb5a2e7d",
+      "equal": true
+    }
+  ],
+  "all_changed_R_files": [
+    {
+      "path": "r-package/dtatools/R/datasig.R",
+      "old_sha256": "a6c744a1aa8af49db7e61685d12627695603344702d1d96d5c425592ae214c05",
+      "new_sha256": "e39e8504ef5744c4920cd4cefb3930c30fd024e6fe3092ea278f618d8f61721c",
+      "scope": "Exact roxygen-comment-only read_dta self-link substitution",
+      "substitutions": 3
+    },
+    {
+      "path": "r-package/dtatools/R/dibble.R",
+      "old_sha256": "0309467548f48d65095de81a7db79a044fc33b7788aeffcdfbad528204f74240",
+      "new_sha256": "b833cab650f2c250284eebc558cef4d30f4f35894b262db50f3f0412133efa43",
+      "scope": "Exact roxygen-comment-only read_dta self-link substitution",
+      "substitutions": 1
+    },
+    {
+      "path": "r-package/dtatools/R/dplyr-registration.R",
+      "old_sha256": "97ea4d11de37c484e5bc2ddb07f08ce29d95f271d45b3ba38074b8a1eb835450",
+      "new_sha256": "ea860d28da27e1b551191cbb2e40522f24ae70d3c70c314a84a48c53316f2ccb",
+      "scope": "Adds unsupported_warned state and changes only dplyr <1.2.1 branch to warn once/return. Existing supported-1.2.1 registration route unchanged; separately exercised in fresh present and native gates."
+    },
+    {
+      "path": "r-package/dtatools/R/dta-append.R",
+      "old_sha256": "9d67e506fbc2a97bcfc5c6e9c0473d21ca5f8ddfddad997ae0df4cd37ac47258",
+      "new_sha256": "cf7adfae8fa680fd989bfd9645c7cabec045bcfc5331ab62be02f8c86e05afc7",
+      "scope": "Exact roxygen-comment-only read_dta self-link substitution",
+      "substitutions": 1
+    },
+    {
+      "path": "r-package/dtatools/R/dta-merge.R",
+      "old_sha256": "92ae846a02b54e1e7ee26ebbd389d57c8d31eef19502f0c9af9be5a0a738c42f",
+      "new_sha256": "5534870a658c96ce5e9799b9ca39053c5d266b37a2159baabffdfe8d2b556a64",
+      "scope": "Exact roxygen-comment-only read_dta self-link substitution",
+      "substitutions": 1
+    },
+    {
+      "path": "r-package/dtatools/R/factor-from-labels.R",
+      "old_sha256": "fbe65574deb7cacba644c3c7ee68208dd0aafa34e2968b97d10b46a7fe1c19fe",
+      "new_sha256": "371af43f3273b437f50cf348ed57d92b17cff7a871904a9315edcfdf2a2838e4",
+      "scope": "Exact roxygen-comment-only read_dta self-link substitution",
+      "substitutions": 1
+    },
+    {
+      "path": "r-package/dtatools/R/read-arrow.R",
+      "old_sha256": "4a107e2e08402fecbbb54c38666812661e1a2e81d5275e62530487f67074866b",
+      "new_sha256": "9cd6da8cae05ec6fef85cb1755f5798150ae4e38ebddfbeed2f7ac3501475d88",
+      "scope": "Exact roxygen-comment-only read_dta self-link substitution",
+      "substitutions": 1
+    },
+    {
+      "path": "r-package/dtatools/R/recode.R",
+      "old_sha256": "6f5a4892bdeefaa4d7c77c8d9f8100259d9031442bf48ee39dc7b30880fda40d",
+      "new_sha256": "7e432633f35de9d713e90a9e2b5bc2c2f57170f9759731d559fbfa2c7ab74791",
+      "scope": "Exact roxygen-comment-only read_dta self-link substitution",
+      "substitutions": 1
+    },
+    {
+      "path": "r-package/dtatools/R/tab.R",
+      "old_sha256": "7245dd7deeae02aaef9219f4c54c50c7a5191248fefe3e139cf83cc4f2490c80",
+      "new_sha256": "6c2b4e7ea7fe43818032ed639525eae21f5711562af77851ac4de8bf859a449d",
+      "scope": "Exact roxygen-comment-only read_dta self-link substitution",
+      "substitutions": 2
+    }
+  ],
+  "scope": "Retain actual f159 native allocation/rename observations on unchanged native implementation and benchmark helpers, with the supported dplyr route unchanged. Not a rerun at bacce or complete package-input equality. New registration policy and native observation writer are separately qualified. Latest-head hosted full Rust checks are separate fresh executions. Original source/tool/runtime and measurement limits remain attached to the earlier records.",
+  "preparation_failure": "First metadata reader assumed a nonexistent root src path and stopped at git rev-parse before writing this record; actual workspace Rust member is r-package/dtatools/src/dta-tools."
+}

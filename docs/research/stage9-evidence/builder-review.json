@@ -1,0 +1,280 @@
+{
+  "at_utc": "2026-09-09T19:48:36.819Z",
+  "disposition": "source_clear_for_archive_builder_adaptation_unrun_real_selection",
+  "sources": [
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/build-evidence-v1.py",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/build-evidence-v1.py",
+      "bytes": 5251,
+      "mode": "0o644",
+      "sha256": "a51f68b46ed563411731af94d3da3f505922fe042eed1aefefafcfb261cfec25"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/builder-reuse-01.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/builder-reuse-01.json",
+      "bytes": 785,
+      "mode": "0o644",
+      "sha256": "c91791ad7d838a9c0664248c3443a98744973d03962b9ed76001c0a32c76bdc4"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/builder-source.patch",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/builder-source.patch",
+      "bytes": 7411,
+      "mode": "0o644",
+      "sha256": "458cf549460117c5c78a7ea245ae2df8169fc002b87ef0f8cd73ab33601e01e7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/test-evidence-guard-v1.py",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/test-evidence-guard-v1.py",
+      "bytes": 4145,
+      "mode": "0o644",
+      "sha256": "bb41954ce622d9e9d16db9a8c4365b810737f912e360222e87b127e17753ec13"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/guard-normal-01.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/guard-normal-01.json",
+      "bytes": 1373,
+      "mode": "0o644",
+      "sha256": "709b56eab4aff832f599c8dab10c428ecccea39b53dffd11ec8b80ce0d22f603"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/guard-optimized-01.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/guard-optimized-01.json",
+      "bytes": 1379,
+      "mode": "0o644",
+      "sha256": "17613e7e0b2bc995fed8fcb190333b3e128a54d69397d087298b943953ed88dc"
+    }
+  ],
+  "prior_builder": {
+    "path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py",
+    "sha256": "821440e4a518a68811ca1d648fb95509e0010e76d9133d60db335a8b859d9c60"
+  },
+  "independent_ast_check": {
+    "source": {
+      "path": "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-ast-check-01.py",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-ast-check-01.py",
+      "bytes": 1233,
+      "mode": "0o644",
+      "sha256": "a8b0fecf6866c8d707dddd45485614236b20b2524f3ab314204c572e5b2a2b0d"
+    },
+    "argv": [
+      "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "-I",
+      "-B",
+      "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-ast-check-01.py"
+    ],
+    "execution": {
+      "chunk_id": "931ac3",
+      "wall_time_seconds": 0.000008875,
+      "exit_code": 0,
+      "original_token_count": 261,
+      "output": "{\"paths\": [{\"path\": \"/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py\", \"bytes\": 11270, \"sha256\": \"821440e4a518a68811ca1d648fb95509e0010e76d9133d60db335a8b859d9c60\"}, {\"path\": \"/private/tmp/dta-direct-stage9-validation/publication-preparation-01/build-evidence-v1.py\", \"bytes\": 5251, \"sha256\": \"a51f68b46ed563411731af94d3da3f505922fe042eed1aefefafcfb261cfec25\"}, {\"path\": \"/private/tmp/dta-direct-stage8-validation/publication-preparation/test-evidence-guard-v2.py\", \"bytes\": 4147, \"sha256\": \"97b22ac1918c2c67db2825abc5c88fa3e28ce0de9ac8ae26cb552bd44d7ebeb9\"}, {\"path\": \"/private/tmp/dta-direct-stage9-validation/publication-preparation-01/test-evidence-guard-v1.py\", \"bytes\": 4145, \"sha256\": \"bb41954ce622d9e9d16db9a8c4365b810737f912e360222e87b127e17753ec13\"}], \"checks\": {\"require\": true, \"sha\": true, \"fact\": true, \"member\": true, \"validate\": true, \"build_payload\": true, \"build\": true, \"selected_inputs_unchanged\": true}, \"scope\": \"AST-only parse/comparison. No import or archive/test execution.\"}\n"
+    },
+    "assessment": {
+      "paths": [
+        {
+          "path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py",
+          "bytes": 11270,
+          "sha256": "821440e4a518a68811ca1d648fb95509e0010e76d9133d60db335a8b859d9c60"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/build-evidence-v1.py",
+          "bytes": 5251,
+          "sha256": "a51f68b46ed563411731af94d3da3f505922fe042eed1aefefafcfb261cfec25"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/test-evidence-guard-v2.py",
+          "bytes": 4147,
+          "sha256": "97b22ac1918c2c67db2825abc5c88fa3e28ce0de9ac8ae26cb552bd44d7ebeb9"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/test-evidence-guard-v1.py",
+          "bytes": 4145,
+          "sha256": "bb41954ce622d9e9d16db9a8c4365b810737f912e360222e87b127e17753ec13"
+        }
+      ],
+      "checks": {
+        "require": true,
+        "sha": true,
+        "fact": true,
+        "member": true,
+        "validate": true,
+        "build_payload": true,
+        "build": true,
+        "selected_inputs_unchanged": true
+      },
+      "scope": "AST-only parse/comparison. No import or archive/test execution."
+    }
+  },
+  "checks": {
+    "seven_core_functions_identical": true,
+    "test_mechanical_only": true,
+    "normal_12_pass": true,
+    "optimized_12_pass": true
+  },
+  "actual_guard_results": {
+    "normal": {
+      "argv": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "-I",
+        "-B",
+        "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/test-evidence-guard-v1.py"
+      ],
+      "optimize": 0,
+      "cases": [
+        {
+          "name": "valid complete identity",
+          "rejected": false,
+          "error": null
+        },
+        {
+          "name": "duplicate path and member",
+          "rejected": true,
+          "error": "Duplicate selected path/member"
+        },
+        {
+          "name": "missing digest",
+          "rejected": true,
+          "error": "Incomplete identity"
+        },
+        {
+          "name": "malformed digest",
+          "rejected": true,
+          "error": "Invalid digest"
+        },
+        {
+          "name": "wrong member",
+          "rejected": true,
+          "error": "Incorrect archive member"
+        },
+        {
+          "name": "escaping source",
+          "rejected": true,
+          "error": "Invalid selected source path"
+        },
+        {
+          "name": "boolean bytes",
+          "rejected": true,
+          "error": "Invalid byte count"
+        },
+        {
+          "name": "empty selection",
+          "rejected": true,
+          "error": "Empty selection"
+        },
+        {
+          "name": "symlink input rejected",
+          "rejected": true,
+          "error": "Selected input is not a regular file: /private/tmp/stage9-evidence-guard-f1bljdw7/link"
+        },
+        {
+          "name": "archive round trip",
+          "rejected": false,
+          "error": null
+        },
+        {
+          "name": "changed source fails and preserves attempt",
+          "rejected": true,
+          "error": "Selected input changed before copy: /private/tmp/stage9-evidence-build-_ei7um39/script.R"
+        },
+        {
+          "name": "selection change during build rejected",
+          "rejected": true,
+          "error": "Selection changed during archive build"
+        }
+      ],
+      "status": "pass"
+    },
+    "optimized": {
+      "argv": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3",
+        "-I",
+        "-B",
+        "-O",
+        "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/test-evidence-guard-v1.py"
+      ],
+      "optimize": 1,
+      "cases": [
+        {
+          "name": "valid complete identity",
+          "rejected": false,
+          "error": null
+        },
+        {
+          "name": "duplicate path and member",
+          "rejected": true,
+          "error": "Duplicate selected path/member"
+        },
+        {
+          "name": "missing digest",
+          "rejected": true,
+          "error": "Incomplete identity"
+        },
+        {
+          "name": "malformed digest",
+          "rejected": true,
+          "error": "Invalid digest"
+        },
+        {
+          "name": "wrong member",
+          "rejected": true,
+          "error": "Incorrect archive member"
+        },
+        {
+          "name": "escaping source",
+          "rejected": true,
+          "error": "Invalid selected source path"
+        },
+        {
+          "name": "boolean bytes",
+          "rejected": true,
+          "error": "Invalid byte count"
+        },
+        {
+          "name": "empty selection",
+          "rejected": true,
+          "error": "Empty selection"
+        },
+        {
+          "name": "symlink input rejected",
+          "rejected": true,
+          "error": "Selected input is not a regular file: /private/tmp/stage9-evidence-guard-2ll2ri4b/link"
+        },
+        {
+          "name": "archive round trip",
+          "rejected": false,
+          "error": null
+        },
+        {
+          "name": "changed source fails and preserves attempt",
+          "rejected": true,
+          "error": "Selected input changed before copy: /private/tmp/stage9-evidence-build-mplu73fc/script.R"
+        },
+        {
+          "name": "selection change during build rejected",
+          "rejected": true,
+          "error": "Selection changed during archive build"
+        }
+      ],
+      "status": "pass"
+    }
+  },
+  "source_findings": [
+    "Only Stage9 path constants/title, removal of obsolete Stage8 selection logic and build-only CLI differ. Seven core ASTs remain identical.",
+    "Regular-file checks reject leaf symlinks; selected paths map to exact records/ members. Duplicate members, malformed identities and traversal are rejected without assert.",
+    "Payload reads match approved per-file size/digest and before/after facts; archive membership/order/type/size/mode/digest is verified, and exact consumed selection bytes are copied.",
+    "Existing output/attempt paths reject reuse. Failures preserve the partial archive and write a failed attempt record under the inherited recorder.",
+    "Guard controls cover valid schema, duplicate/missing/malformed/wrong/traversal/boolean/empty/symlink rejection, executable-mode and empty-byte roundtrip, changed-source partial retention, and changed-selection rejection. Normal/optimized outcomes match after only temporary-path normalization."
+  ],
+  "remaining": [
+    "Final combined selection is not yet supplied. Its exact origin-reviewed members and SHA need source/launch review before build.",
+    "A SHA-pinned outer launcher must bind builder, selected Python and final selection and preserve actual exit plus terminal observations. Builder itself takes no caller-approved SHA argument.",
+    "Actual final archive generation, full membership/bytes verification and final layout copies remain separate gates."
+  ],
+  "limits": [
+    "No reviewer archive/test workload execution: reviewer invoked only an AST parser/comparator, not import or build.",
+    "The 12 producer guard cases create small disposable test archives; they are not a real evidence bundle or publication.",
+    "Inherited failure-record terminal I/O can itself fail and mask an earlier exception; preserve outer process output/error independently as previously scoped.",
+    "No R, package source change, dependency inventory sweep or publication."
+  ]
+}

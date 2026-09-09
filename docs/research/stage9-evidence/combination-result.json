@@ -1,0 +1,141 @@
+{
+  "status": "complete",
+  "argv": [
+    "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+    "-I",
+    "-B",
+    "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combine-reviewed-maps-v1.py",
+    "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combination-config-01.json",
+    "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combined-selection-final.json"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01",
+  "selected_before": [
+    {
+      "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "resolved": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "bytes": 33816,
+      "mode": "0o755",
+      "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/launch-publication-step-v1.py",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/launch-publication-step-v1.py",
+      "bytes": 2896,
+      "mode": "0o644",
+      "sha256": "a47582437b52bb391ccfb3de9d70898155c3ffc89c1fe1c808f60daf7d54cc99"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combine-reviewed-maps-v1.py",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combine-reviewed-maps-v1.py",
+      "bytes": 3822,
+      "mode": "0o644",
+      "sha256": "b3f17a32cb179fefe32751caeaf69a5a2faf4653df803c07bf4c33b42716e58c"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combination-config-01.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combination-config-01.json",
+      "bytes": 20720,
+      "mode": "0o644",
+      "sha256": "a59094a1babcf15dac1bf65fa3bcd0c54db185f956c35edcbaf8f63535cf589f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-01.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-01.json",
+      "bytes": 1673002,
+      "mode": "0o644",
+      "sha256": "fa998569f6195e60a83532aec6d66acf5d17332020ff77750b90eb6bd3febd87"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-addendum-01.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-addendum-01.json",
+      "bytes": 29088,
+      "mode": "0o644",
+      "sha256": "a8bd02e958cc2d83a65c67d813e1f75ce847ad1d0ce5a739ad16f73208ef7060"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-addendum-02.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-addendum-02.json",
+      "bytes": 363022,
+      "mode": "0o644",
+      "sha256": "75fb0b4c3990b2741a804fdd216b3cd5a4b70d468ae6e303578c7b68668e3636"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-artifact-selection-03.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-artifact-selection-03.json",
+      "bytes": 15457764,
+      "mode": "0o644",
+      "sha256": "c26d52181f9f0e4e030c90bd27337ecc7049f0a4176002ea65f78323dbe3a7e9"
+    }
+  ],
+  "config": {
+    "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combination-launch-config-01.json",
+    "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combination-launch-config-01.json",
+    "bytes": 3616,
+    "mode": "0o644",
+    "sha256": "0e3356e5be524de7362dabb695c04fd913669b3156910477b54ea2d739ba7d4b"
+  },
+  "started_utc": "2026-09-09T20:23:44.037154+00:00",
+  "selected_after": [
+    {
+      "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "resolved": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "bytes": 33816,
+      "mode": "0o755",
+      "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/launch-publication-step-v1.py",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/launch-publication-step-v1.py",
+      "bytes": 2896,
+      "mode": "0o644",
+      "sha256": "a47582437b52bb391ccfb3de9d70898155c3ffc89c1fe1c808f60daf7d54cc99"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combine-reviewed-maps-v1.py",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combine-reviewed-maps-v1.py",
+      "bytes": 3822,
+      "mode": "0o644",
+      "sha256": "b3f17a32cb179fefe32751caeaf69a5a2faf4653df803c07bf4c33b42716e58c"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combination-config-01.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/combination-config-01.json",
+      "bytes": 20720,
+      "mode": "0o644",
+      "sha256": "a59094a1babcf15dac1bf65fa3bcd0c54db185f956c35edcbaf8f63535cf589f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-01.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-01.json",
+      "bytes": 1673002,
+      "mode": "0o644",
+      "sha256": "fa998569f6195e60a83532aec6d66acf5d17332020ff77750b90eb6bd3febd87"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-addendum-01.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-addendum-01.json",
+      "bytes": 29088,
+      "mode": "0o644",
+      "sha256": "a8bd02e958cc2d83a65c67d813e1f75ce847ad1d0ce5a739ad16f73208ef7060"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-addendum-02.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/root-publication-preparation-01/root-artifact-selection-addendum-02.json",
+      "bytes": 363022,
+      "mode": "0o644",
+      "sha256": "75fb0b4c3990b2741a804fdd216b3cd5a4b70d468ae6e303578c7b68668e3636"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-artifact-selection-03.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-artifact-selection-03.json",
+      "bytes": 15457764,
+      "mode": "0o644",
+      "sha256": "c26d52181f9f0e4e030c90bd27337ecc7049f0a4176002ea65f78323dbe3a7e9"
+    }
+  ],
+  "returncode": 0,
+  "error": null,
+  "changed": [],
+  "identity_error": null,
+  "completed_utc": "2026-09-09T20:23:45.222523+00:00"
+}
