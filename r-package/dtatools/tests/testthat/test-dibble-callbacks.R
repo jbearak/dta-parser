@@ -367,3 +367,71 @@ test_that('S7-C17 repeated nesting does not retain per-call address history', {
     # The budget allows fixed dispatch/measurement overhead after warming.
     expect_lt(unname(observed$delta[['Ncells']]), 1000)
 })
+
+
+test_that("S7-C18 nesting allocation scales with the number of groups", {
+    skip_if_not(capabilities("profmem"))
+    output <- tempfile("nesting-scaling-")
+    dir.create(output)
+    on.exit(unlink(output, recursive = TRUE), add = TRUE)
+    allocated <- numeric(2L)
+    numeric_equal <- function(value, expected) {
+        typeof(value) %in% c("integer", "double") &&
+            identical(as.double(value), as.double(expected))
+    }
+    for (index in seq_along(allocated)) {
+        groups <- c(1024L, 4096L)[[index]]
+        input <- dibble(g = rep(seq_len(groups), each = 2L), x = seq_len(2L * groups))
+        attr(input, "label") <- "High-cardinality nesting fixture"
+        input <- dplyr::group_by(input, g)
+        result <- dplyr::group_nest(input, keep = FALSE)
+        expect_identical(nrow(result), groups)
+        rm(result)
+        invisible(gc())
+        path <- file.path(output, paste0(groups, "-Rprofmem.log"))
+        Rprofmem(path)
+        result <- tryCatch(dplyr::group_nest(input, keep = FALSE),
+            finally = Rprofmem(NULL))
+        expect_identical(nrow(result), groups)
+        expect_true(numeric_equal(input$g, rep(seq_len(groups), each = 2L)))
+        expect_true(numeric_equal(input$x, seq_len(2L * groups)))
+        expect_true(numeric_equal(result$g, seq_len(groups)))
+        expect_true(all(vapply(seq_len(groups), function(i) {
+            numeric_equal(result$data[[i]]$x, seq.int(2L * i - 1L, 2L * i))
+        }, logical(1))))
+        lines <- readLines(path, warn = FALSE)
+        records <- grepl("^[0-9]+ :", lines)
+        expect_true(all(records | grepl("^new page:", lines)))
+        allocated[[index]] <- sum(as.numeric(sub(" .*", "", lines[records])))
+        rm(result, input)
+        invisible(gc())
+    }
+    # Four times as many two-row groups must not restore the former ~15-fold
+    # allocation growth. This is a cumulative R-allocation gate, not a timer.
+    expect_gt(allocated[[1L]], 0)
+    expect_lte(allocated[[2L]], 6 * allocated[[1L]])
+})
+
+test_that("S7-C19 nested capture preserves physical sibling identities after GC", {
+    capture <- get(".capture_dibble_nested", asNamespace("dtatools"))
+    atomic <- structure(c(1, 2), label = "shared atomic")
+    other <- structure(c(1, 2), label = "shared atomic")
+    owned <- .subset2(dibble(x = c(TRUE, FALSE)), 1L)
+    shared <- list(atomic, owned)
+    input <- list(atomic, atomic, other, owned, owned, shared, list(shared))
+    result <- capture(input)
+    same <- function(i, j) identical(rlang::obj_address(result[[i]]),
+        rlang::obj_address(result[[j]]))
+    expect_true(same(1L, 2L))
+    expect_false(same(1L, 3L))
+    expect_true(same(4L, 5L))
+    expect_identical(rlang::obj_address(result[[6L]]),
+        rlang::obj_address(result[[7L]][[1L]]))
+    expect_false(identical(rlang::obj_address(result[[6L]]), rlang::obj_address(shared)))
+    rm(input, atomic, other, owned, shared)
+    invisible(gc())
+    expect_identical(result[[1L]], structure(c(1, 2), label = "shared atomic"))
+    expect_identical(as.logical(result[[4L]]), c(TRUE, FALSE))
+    expect_identical(result[[6L]][[1L]], result[[1L]])
+    expect_identical(as.logical(result[[7L]][[1L]][[2L]]), c(TRUE, FALSE))
+})

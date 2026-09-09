@@ -145,8 +145,9 @@ Adapted from dplyr 1.2.1:
     reference-valued objects rather than assuming a shallow list is isolated.
     A call-local active-node guard rejects cyclic nested list/frame payloads
     before vector assembly; completed acyclic siblings can reuse their capture.
-    Its memo stores addresses as character values and keeps source/result roots
-    in fixed-field entries, avoiding per-address environment binding names.
+    Its memo uses the public utils address-hash API with actual object keys and
+    fixed-field source/result entries, avoiding per-address environment binding
+    names. Each sibling list computes its first-identity index once.
   Additional tests: test-dibble-summary.R and test-dibble-callbacks.R adapt
     test-summarise.R, test-reframe.R, test-across.R, test-pick.R,
     test-group-map.R, test-group-nest.R and test-nest-by.R policies, with typed
