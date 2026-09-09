@@ -14,14 +14,8 @@
         }
         metadata$names <- names(columns)
     }
-    lineage <- NULL
-    if (identical(operation, "columns")) {
-        addresses <- vapply(columns, rlang::obj_address, character(1))
-        lineage <- new.env(hash = TRUE, parent = emptyenv())
-        for (address in addresses) lineage[[address]] <- TRUE
-    }
     list(columns = columns, metadata = metadata, caller = caller,
-         operation = operation, lineage = lineage)
+         operation = operation)
 }
 
 .finish_dibble_result <- function(context, result, sources = NULL, grouping = NULL) {
@@ -37,23 +31,19 @@
     columns <- .data_columns(result)
     addresses <- vapply(columns, rlang::obj_address, character(1))
     shared <- if (!is.null(sources)) addresses %in% source_addresses else NULL
-    repeated <- anyDuplicated(addresses) > 0L
-    completed <- if (repeated) new.env(hash = TRUE, parent = emptyenv()) else NULL
+    first <- match(addresses, addresses)
     row_count <- nrow(result)
     column_names <- names(columns)
     for (index in seq_along(columns)) {
         address <- addresses[[index]]
-        if (repeated && exists(address, envir = completed, inherits = FALSE)) {
-            prepared <- completed[[address]]
+        if (first[[index]] < index) {
+            prepared <- .subset2(result, first[[index]])
         } else {
             # Source membership records lineage only. Borrowed or externally
             # writable columns still need isolation before validation.
-            isolate <- is.null(sources) || shared[[index]] ||
-                (identical(context$operation, "columns") &&
-                 exists(address, context$lineage, inherits = FALSE))
+            isolate <- is.null(sources) || shared[[index]]
             prepared <- .prepare_dibble_result_column(
                 columns[[index]], isolate, row_count, context$caller, column_names[[index]])
-            if (repeated) completed[[address]] <- prepared
         }
         .Call(C_dtatools_set_data_column, result, as.integer(index), prepared)
     }

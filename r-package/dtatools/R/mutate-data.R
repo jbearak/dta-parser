@@ -2695,17 +2695,6 @@ dplyr_row_slice.dtatools_ref_data <- function(data, i, ..., preserve = FALSE) {
 
 }
 
-# Likewise for column modification on a grouped dibble, which
-# `rows_update()` and `rows_patch()` use: changed columns are typed as
-# `mutate()` types them.
-#' @export
-dplyr_col_modify.dtatools_ref_data <- function(data, cols) {
-    .typed_reference_replacement(
-        data, dplyr::dplyr_col_modify(.reference_snapshot(data), cols),
-        "`dplyr_col_modify()`"
-    )
-}
-
 #' @export
 select.dtatools_ref_data <- function(.data, ...) {
     if (!is_dibble(.data)) {
@@ -2755,24 +2744,6 @@ transform.dtatools_ref_data <- function(`_data`, ...) {
     .typed_reference_verb(
         `_data`, sys.call(), base::transform, parent.frame(), "`transform()`"
     )
-}
-
-#' @export
-rbind.dtatools_ref_data <- function(..., deparse.level = 1) {
-    inputs <- list(...)
-    values <- lapply(inputs, .reference_snapshot)
-    .close_dibble(inputs[[1L]], do.call(
-        base::rbind, c(values, list(deparse.level = deparse.level))
-    ))
-}
-
-#' @export
-cbind.dtatools_ref_data <- function(..., deparse.level = 1) {
-    inputs <- list(...)
-    values <- lapply(inputs, .reference_snapshot)
-    .close_dibble(inputs[[1L]], do.call(
-        base::cbind, c(values, list(deparse.level = deparse.level))
-    ))
 }
 
 #' @export
@@ -3055,7 +3026,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 .type_dibble_columns <- function(data, caller = "as_dibble()") {
     row_count <- nrow(data)
     column_names <- names(data)
-    captured_columns <- new.env(parent = emptyenv())
+    captured_columns <- utils::hashtab(type = "address")
     for (index in seq_along(column_names)) {
         column <- .subset2(data, index)
         typed <- .typed_column_named(
@@ -3068,11 +3039,10 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         # policy. Capturing identical values only changes their private handle;
         # dispatching [[<- here would trim preserved empty grouping keys.
         normalized <- .subset2(data, index)
-        address <- rlang::obj_address(normalized)
-        captured <- captured_columns[[address]]
+        captured <- utils::gethash(captured_columns, normalized, nomatch = NULL)
         if (is.null(captured)) {
             captured <- .Call(C_dtatools_capture_column, normalized)
-            captured_columns[[address]] <- captured
+            utils::sethash(captured_columns, normalized, captured)
         }
         .Call(C_dtatools_set_data_column, data, as.integer(index), captured)
     }
@@ -3400,15 +3370,18 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         }))
     }
     result <- .metadata_copy(result)
-    detached <- new.env(parent = emptyenv())
+    detached <- utils::hashtab(type = "address")
+    absent_capture <- new.env(parent = emptyenv())
     for (index in seq_len(length(result))) {
         column <- .subset2(result, index)
         address <- rlang::obj_address(column)
         if (isolate_all || address %in% source_addresses) {
-            if (!exists(address, envir = detached, inherits = FALSE)) {
-                detached[[address]] <- .metadata_copy(column)
+            captured <- utils::gethash(detached, column, nomatch = absent_capture)
+            if (identical(captured, absent_capture)) {
+                captured <- .metadata_copy(column)
+                utils::sethash(detached, column, captured)
             }
-            .Call(C_dtatools_set_data_column, result, as.integer(index), detached[[address]])
+            .Call(C_dtatools_set_data_column, result, as.integer(index), captured)
         }
     }
     result

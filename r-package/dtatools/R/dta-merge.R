@@ -2,9 +2,12 @@
 #'
 #' `dta_merge()` follows Stata's `merge` command. It matches key columns
 #' under Stata missing-code identity: system missing `.` matches only `.`,
-#' and each extended missing `.a` through `.z` matches only itself. Base
-#' [merge()] and dplyr joins instead place all 27 codes in one R missing
-#' bucket. Keys containing R `NaN` are rejected because `NaN` has no Stata
+#' and each extended missing `.a` through `.z` matches only itself.
+#' For bare double keys, dplyr equality joins with `na_matches = "na"`
+#' match the Stata missing codes together. Homogeneous dtatools numeric keys
+#' distinguish these codes through their typed equality proxies. `dta_merge()`
+#' applies Stata missing-code identity to both bare and typed numeric keys.
+#' Keys containing R `NaN` are rejected because `NaN` has no Stata
 #' missing identity; use `NA_real_` or [tagged_missing()].
 #' Character keys containing `NA_character_` are also rejected because Stata
 #' has only the empty string for a missing string; use `""` instead.

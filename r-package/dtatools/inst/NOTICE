@@ -152,6 +152,64 @@ Adapted from dplyr 1.2.1:
     test-summarise.R, test-reframe.R, test-across.R, test-pick.R,
     test-group-map.R, test-group-nest.R and test-nest-by.R policies, with typed
     predecessor oracles and package-specific isolation/metadata regressions.
+  Additional Stage 8 join sources:
+    R/join-cols.R: join_cols, join key/name/suffix checks, add_suffixes,
+      common key casting and incompatible-type attribution
+    R/conditions.R: err_vars formatting of problematic names/positions
+    R/join-rows.R: join_rows, match missing/unmatched/relationship policies,
+      direct-caller warning eligibility and match-condition translation
+    R/join-by.R: as_join_by character/list/specification normalization,
+      natural key selection
+    R/join.R: seven public method argument policies, empty-key cross-join
+      compatibility, join_mutate,
+      join_filter and nest_join.data.frame assembly/coalescing policies
+    R/join-cross.R: cross_join.data.frame naming and replication policy
+  Destinations: R/dibble-join-plan.R, R/dibble-join-matches.R and
+    R/dibble-joins.R, registered through the dtatools_ref_data methods.
+  Changes: package-owned key/name planning, public vctrs match locations,
+    batched column gathering and shared owned result finalization replace
+    whole-table join dispatch for dibbles. Ordinary reference frames retain
+    their existing next-method route. Stata-specific dta_merge policies remain
+    separate. Error wording uses base formatting, preserving match-condition
+    classes and side/row attribution. Public as_tibble conversion, auto_copy and reconstruction
+    remain extension boundaries for non-dibble inputs and nested templates.
+  Tests: the initial Stage 8 equality/inequality, mixed-container, missing-code,
+    condition and nested/grouped observation fixtures are newly authored after
+    studying test-join.R, test-join-cols.R, test-join-rows.R and test-join-cross.R.
+    Installed regressions in tests/testthat/test-dibble-joins.R retain explicit
+    row-map and missing-payload assertions, public extension/forcing contracts,
+    ordinary-reference dispatch and isolated nested-write checks.
+  Additional Stage 8 binding and reconstruction sources:
+    R/rows.R: rows_insert/append/update/patch/upsert/delete.data.frame,
+      rows_check_by, rows_check_x_contains_y, key checks, rows_check_unique,
+      conflict/unmatched filtering and rows_bind policies
+    R/generics.R: dplyr_col_modify.data.frame/grouped_df/rowwise_df
+    R/grouped-df.R: grouped_df, compute_groups, dplyr_regroup condition
+    R/rowwise.R: rowwise_df and new_rowwise_df identifier policies
+  Destinations: R/dibble-rows-mutate.R, R/dibble-column-modify.R and the
+    opt-in regroup signal in the shared R/dibble-groups.R builder.
+  Changes: package-owned rows orchestration resolves key and payload casts
+    separately, applies conflict/unmatched/missing rules, assigns matched
+    values and uses public table extension points. Public vec_rbind and
+    dplyr_reconstruct retain append-tail prototype/restore behavior; public
+    coalesce retains vector missing-value semantics for rows_patch. They are
+    dependencies, not incorporated implementations. Column modification owns
+    standard recycling/list assembly and group reconstruction while retaining
+    separate public custom modification and reconstruction dispatch. Existing
+    Stata typing and shared publication capture every result. These modules
+    do not delegate an entire rows verb on the dibble path.
+  Tests: tests/testthat/test-dibble-bindings.R adds concrete rows, storage,
+    grouped reconstruction, base-binding and foreign-write regressions after
+    studying the pinned rows/generics policies and retained predecessor results.
+  Package-specific Stage 8 finalizer changes remove unused column-context
+    lineage bindings for the current sources=NULL callers, reuse an already
+    prepared repeated slot, and key constructor/reserve caches by the actual
+    normalized or current physical object. Public utils address hashes replace
+    per-address environment names. Atomic nested capture performs its existing
+    metadata copy before any list memo is allocated. No additional R or utils
+    implementation is incorporated by these changes.
+    tests/testthat/test-dibble-result-history.R adds package-specific finite
+    retained-heap budgets and atomic-copy/opaque-identity assertions.
   The inspected files contain no separate file-level copyright or license.
 
 Adapted from R 4.6.1, released 2026-06-24 (SVN revision 90187):
@@ -168,6 +226,23 @@ Adapted from R 4.6.1, released 2026-06-24 (SVN revision 90187):
     batches. Package-owned reference and Stata metadata restoration apply.
   Tests: package-specific cases in tests/testthat/test-dibble-rows.R compare
     these rules against the public base method. No base R tests were copied.
+  Additional Stage 8 functions from the same dataframe.R revision:
+    data.frame, rbind.data.frame and cbind.data.frame.
+  Destinations: R/dibble-base-bind-construction.R (.dibble_base_data_frame,
+    .dibble_base_rbind), and R/dibble-base-bind.R (.dibble_base_cbind and
+    the reference-frame base binding methods), modified 2026-09-09.
+  Changes: the complete standard data.frame and rbind.data.frame construction
+    bodies have private names; cbind.data.frame selects that private frame
+    constructor. Public per-input as.data.frame remains an extension boundary.
+    Wrappers preserve eager argument collection, reference snapshots and typed
+    result publication. Explicitly selected foreign S3 binding methods retain
+    public generic dispatch. No base R tests were copied.
+  The first-applicable-method policy in src/main/bind.c was studied for the
+    R-level selection helper. That file credits Copyright (C) 1995, 1996
+    Robert Gentleman and Ross Ihaka; (C) 1997-2025 The R Core Team; and
+    (C) 2002-2020 The R Foundation, under GPL-2-or-later. No C body from that
+    file is incorporated; its argument/class dispatch behavior informs the
+    public getS3method lookup and selected fallback boundary.
 
 Additional R 4.6.1 source study for Stage 3, with no implementation or tests
 copied or adapted from these files:
