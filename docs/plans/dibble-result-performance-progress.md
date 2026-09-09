@@ -10,7 +10,7 @@ CodeRabbit. Its documentation-coverage warning is always nonblocking. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stages 1 through 8 complete, Stage 9 active
+## Stages 1 through 9 implemented; final acceptance active
 
 Stage 6 [PR #209](https://github.com/jbearak/dta-parser/pull/209) merged normally
 on September 8, 2026 at 20:33:25 UTC as
@@ -204,60 +204,86 @@ README documents typed rows_patch behavior and the explicit-name workaround.
 
 ### Current Stage 9 qualification
 
-Stage 9 starts at that verified merge in an isolated worktree. It replays all
-three reviewed recode commits, keeps all 106 exports and makes dplyr optional.
-Native tests are separated from optional comparisons without discarding native
-assertions. A finite registry of 133 grouped/rowwise fixtures is produced in a
-separate dplyr-present process; consumers create fresh ownership where needed.
-The native runner checks every visible dependency library, namespace paths,
-selected DLL identity, each helper/family boundary and declared child/fork counts.
+Stage 9 implementation PR [#217](https://github.com/jbearak/dta-parser/pull/217)
+merged normally as `e3843a13dd867b05d8a98457cf2edc12f6331eeb` from verified Stage 8 implementation merge
+`7a7aa79228dd00e263f9d425406ea1b884df05dc`, retaining evidence merge
+`994b538d08731929e1ee1a57a54676f307650e43`. It replays all three reviewed recode
+commits, preserves all 106 exports and makes dplyr optional. Native tests remain
+mandatory while optional comparisons are explicitly guarded. The separate
+present process produced 133 finite grouped/rowwise fixtures. The runner checks
+visible dependency libraries, namespace origins, selected DLLs, helper/family
+boundaries and declared child/fork completion.
 
-Candidate `016e6aefb5b18fae5918963d7b6cbcde88ddbca4`, package tree
-`fc782ca64a8906c77e8ebde7383404877f3dc042`, passed a fresh host installation,
-842 assertions in the 83-block native regression, and the full 1,155-block
-native suite: 14,965 assertions, no failures/errors, three expected warnings and
-201 declared optional skips. All 954 native blocks executed. A separate isolated
-source build passed with before/after library guards; its archive has the same
-member paths/types/modes/sizes and bytes except the generated DESCRIPTION
-`Packaged` timestamp. These results retain their actual source and archive IDs.
+Fresh candidate `d9506fb48ddc6f2362b83e737f7343ed9c251d6a` passed the complete
+1,157-block present suite: 20,209 assertions, six known warnings and no failed
+expectations, errors or skips. All four native source cells completed ten
+families and 1,157 blocks. Host R 4.6.1 passed 14,989 assertions with 201 optional
+skips; minimum R 4.6.0 passed 14,890 with 219 optional/capability skips. Each has
+three known warnings and no failures/errors. Current and floor dependency
+outcomes match within each endpoint. Every cell completed all 27 installed help
+examples, eleven declared children and two actual interruption forks. Fourteen
+external-Arrow and four profiling skips account for the local minimum's 99
+fewer assertions; native Arrow remains exercised. The final native manifest
+contains 956 native blocks and 201 optional comparisons.
 
-The full present run completed with 20,183 passing assertions and two failures in
-the new caller-local test. Source review and paired outcomes support later
-registered regrouping during typing of its raw replacement. Actual old/current
-public controls matched for both raw and
-typed replacements, with 13 assertions passing on each. The test correction uses
-a typed replacement to isolate caller dispatch and keeps all six assertions.
-Commit `f1592a21c682e5825e684857337eac3ad1ed0db9`, package tree
-`84a6ec94b13766f26442dd8e9dd56281aef20cc2`, contains that test correction,
-symmetric Windows helper path normalization, the manifest's two updated source
-hashes and the isolated build/CI wiring. Production R/native/Rust sources are
-unchanged. The fresh `f1592a21` installation and corrected 83-block native regression
-pass: 842 assertions, three expected warnings and 30 optional skips. The corrected
-full present run is active. Full native refinement, minimum/floor/package checks,
-guarded native examples and hosted CI remain pending.
+The declared direct floors are rlang 1.2.0, vctrs 0.7.3, tibble 3.3.1, pillar
+1.9.0 and tidyselect 1.2.0. Actual unmodified source builds and package runs
+qualify these floors on R 4.6.0 and 4.6.1. Supported optional integration requires
+dplyr 1.2.1. An unsupported version warns once and leaves its methods
+unregistered; the private version stand-in test does not claim a real older
+dplyr lifecycle on R 4.6. Hosted present lanes cover the declared dplyr floor,
+current dplyr and both R endpoints.
 
 The first full native attempt exposed real grouped restoration/replacement and
-print-header gaps. Copied controls then found three observable group/row-name
-representation differences. The final repair matches all 18 cross-lane semantic
-cases under a named-attribute-map comparison; that scope does not require the
-same ordering of attribute-pairlist entries. Raw rowwise keys are captured before
-data promotion, with final validation and source isolation preserved. All failed
-runs and earlier incomplete scopes remain retained locally.
+print-header gaps. Copied controls found three observable representation
+differences; the final repair matches all eighteen paired cases within the
+recorded named-attribute-map comparison. The rowwise bracket path captures raw
+keys before data promotion, with final validation and later-write isolation.
+Caller-local grouping methods are honored, including subsequent legitimate
+column typing. The original present caller test's two failures, the corrected
+typed replacement fixture, earlier metadata setup failures, address-observer
+capability failure and all recorder controls remain retained with their original
+execution identities.
 
-Declared direct floors are rlang 1.2.0, vctrs 0.7.3, tibble 3.3.1, pillar 1.9.0
-and tidyselect 1.2.0. Exact unmodified floor sources build on R 4.6.0 and 4.6.1;
-this dependency result does not yet qualify dtatools on those lanes. The native
-manifest contains 954 native blocks and 201 optional comparisons, with only
-predetermined capability overrides. CI and release source/binary gates are
-implemented but have not yet run on the remote candidate.
+Final implementation head `bacce7560aba783b6991f1be6a0dde4d23e5d9e7`, package
+tree `c94bd6a240e1e0026da4ecc1807ad643cb1c7c0f`, adds the Windows observation
+writer correction after eleven roxygen-comment corrections. It preserves the
+qualified package functions, kernels and test bodies. Eighteen exact-record
+controls pass on both local R versions, retaining the old default fractional
+precision. All seventeen final CI jobs pass, including six native cells, three
+present cells and all three platform package checks. Earlier CI failures retain
+their distinct setup/header/checkout/test-directory/documentation/serialization
+causes. The actual latest-head CodeRabbit review has zero actionable findings;
+all ten earlier inline threads are resolved. Its eleven selected paths include
+two explicit similar-change skips. Documentation coverage remains nonblocking.
 
-Issue #172 remains open until integrated acceptance. After Stage 9, the requested
-#213 bracket feature is a separate implementation, followed by #216 reader
-research without an automatic production commitment. Final integrated performance
-and actual fertility renv validation/restoration must use the resulting final
-source. The twelve earlier base-R read regressions and four Stage 7 many-small-group
-latency limits remain explicit. Evidence publication must exclude other
-repositories' code and data.
+The final bacce package gate passed all sixteen commands. Its tests report
+20,209 passes, six known warnings and no failures/skips. R CMD check retains
+three warnings and two notes: SDK/object mismatch, vendored GNU Makefile
+extensions, Rust abort symbol, chrono citation filename and generated zstd final
+newline. The nested nm scan retains 22 LLVM diagnostics and status 1; install
+success is not an exhaustive successful symbol audit. Separate Haven conformance
+retains its loopback-server skip. Conformance executed 22 TypeScript fixtures
+with 32,085 cell comparisons and eleven actual Rust cases. All 38 Rd files and
+NAMESPACE retain their pre-gate bytes. The exact final binary also passed all 1,157 blocks and 14,989 assertions with
+three known warnings, 201 optional skips and no failures/errors; all 27 examples
+passed. The normal implementation merge preserves the entire reviewed head tree.
+The evidence archive and final gate records accompany this progress update in
+[Stage 9 evidence](../research/stage9-evidence/README.md).
+
+Earlier f159 native allocation/rename observations retain their actual executed
+source and measurement limits. Six native/Cargo/benchmark Git inputs are
+unchanged through bacce; every changed R file is separately enumerated. This is
+not a new timing run or complete-package byte-equality claim. The twelve earlier
+base-R read regressions and four Stage 7 many-small-group latency limits remain
+explicit in final performance acceptance.
+
+Issue #172 remains open until integrated acceptance. The requested sequence is
+Stage 9 implementation and evidence merges, then the separate #213 bracket
+feature, then #216 reader research without an automatic production commitment.
+Final integrated performance and actual fertility renv validation/restoration
+must use the resulting final source. Evidence excludes other repositories'
+code/data, dependency payloads and live mutable status pointers.
 
 ### Earlier Stage 7 checkpoints
 

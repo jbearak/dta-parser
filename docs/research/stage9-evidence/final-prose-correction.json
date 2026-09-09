@@ -1,0 +1,27 @@
+{
+  "scope": "Root-requested wording-only final correction; old files retained. README changes This draft to This bundle. New immutable merged snapshot replaces stale future-tense binary clause; actual completed outcome fields unchanged.",
+  "before": [
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/README-final.md",
+      "sha256": "17e4d81410fc395e3c8718ef5ceabc55c1af1e599dc9529f039ffcb0acb2b5bd",
+      "bytes": 11007
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/merged-state-02.json",
+      "sha256": "55edfb22b26405022e13edb9c0c3ec9ec6ee76acc6af0427ad3ee72060743830",
+      "bytes": 24423
+    }
+  ],
+  "after": [
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/README-final-02.md",
+      "sha256": "283782fd9fb603b7b1e8d33eb76f7da6d697a50e3caf64555e4042f82a359f2f",
+      "bytes": 11008
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/merged-state-03.json",
+      "sha256": "c6da4aa47fe21fc9dd28134e3f2b4bf0f8cad0b7d4cb4559a49611ecb0cf0ee0",
+      "bytes": 24452
+    }
+  ]
+}

@@ -1,0 +1,1633 @@
+{
+  "scope": "Bounded origin delta from previously cleared parent selection02; not archive, transport, final-prose or publication qualification.",
+  "disposition": "origin-clear for exact parent map03",
+  "previous": {
+    "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-artifact-selection-02.json",
+    "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-artifact-selection-02.json",
+    "bytes": 9667113,
+    "mode": "0o644",
+    "sha256": "899c3da38a3a1017efddec041a63d2e3dc42f27212964fb0736f0841af433f67"
+  },
+  "current": {
+    "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-artifact-selection-03.json",
+    "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-artifact-selection-03.json",
+    "bytes": 15457764,
+    "mode": "0o644",
+    "sha256": "c26d52181f9f0e4e030c90bd27337ecc7049f0a4176002ea65f78323dbe3a7e9"
+  },
+  "delta": {
+    "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-origin-delta-03.json",
+    "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-origin-delta-03.json",
+    "bytes": 32886,
+    "mode": "0o644",
+    "sha256": "ac9b16389ab2e0d1f2396326c071836a698e105fbbf98e2dd52b5fe00b4634c5"
+  },
+  "collection": {
+    "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-collection-03.json",
+    "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-collection-03.json",
+    "bytes": 1944,
+    "mode": "0o644",
+    "sha256": "fe6e852f7584c6dbc86b467b97218dc29ce730c1bdd372e414b65d65f379f42b"
+  },
+  "plan": {
+    "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-origin-plan-04.json",
+    "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-origin-plan-04.json",
+    "bytes": 5205,
+    "mode": "0o644",
+    "sha256": "614eddaaaf661ca8dfe90b2ccd560151b9082b5ec75eff97fad81179cb5cef79"
+  },
+  "collector": {
+    "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/collect-parent-evidence-v3.py",
+    "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/collect-parent-evidence-v3.py",
+    "bytes": 3426,
+    "mode": "0o644",
+    "sha256": "c8ce2ce17783415e8c54d9eb0806bf0e41e3521b6d9984cbe9aebcd64dad1943"
+  },
+  "counts": {
+    "files": 1967,
+    "bytes": 543915051,
+    "added": 76,
+    "removed": 1,
+    "changed_retained": 0
+  },
+  "removed": [
+    {
+      "path": "/private/tmp/dta-direct-stage9-validation/CURRENT.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/CURRENT.json",
+      "bytes": 24855,
+      "mode": "0o644",
+      "sha256": "d2aef84a305d6858e53f61732fabe00625562f6be0bf2f5dba5d1db0ab89fb4e",
+      "relative": "CURRENT.json"
+    }
+  ],
+  "addition_checks": [
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-ast-check-01.py",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-ast-check-01.py",
+        "bytes": 1233,
+        "mode": "0o644",
+        "sha256": "a8b0fecf6866c8d707dddd45485614236b20b2524f3ab314204c572e5b2a2b0d",
+        "relative": "api-review/archive-builder-ast-check-01.py"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-ast-check-01.py",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-ast-check-01.py",
+        "bytes": 1233,
+        "mode": "0o644",
+        "sha256": "a8b0fecf6866c8d707dddd45485614236b20b2524f3ab314204c572e5b2a2b0d"
+      },
+      "identity_equal": true,
+      "classification": "Task-authored selected reader/launcher source"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-source-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-source-01.json",
+        "bytes": 12007,
+        "mode": "0o644",
+        "sha256": "d5c09417d28158c2e5a1b469e438352ca84ee601e352059bb28dbb0e2599f560",
+        "relative": "api-review/archive-builder-source-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-source-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/archive-builder-source-01.json",
+        "bytes": 12007,
+        "mode": "0o644",
+        "sha256": "d5c09417d28158c2e5a1b469e438352ca84ee601e352059bb28dbb0e2599f560"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/package-bacce-selected-archives-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/package-bacce-selected-archives-01.json",
+        "bytes": 13609,
+        "mode": "0o644",
+        "sha256": "e552cf7f928aa766c64f39b23222940a3238003a584e468026e081fe0bfb0fc4",
+        "relative": "api-review/package-bacce-selected-archives-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/package-bacce-selected-archives-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/package-bacce-selected-archives-01.json",
+        "bytes": 13609,
+        "mode": "0o644",
+        "sha256": "e552cf7f928aa766c64f39b23222940a3238003a584e468026e081fe0bfb0fc4"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/package-bacce-selected-chain-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/package-bacce-selected-chain-01.json",
+        "bytes": 134959,
+        "mode": "0o644",
+        "sha256": "a5f4d4d4d015a61e4f7fa19f6b7d3a234c979a4cad536195e2bd0f2e0a68d15a",
+        "relative": "api-review/package-bacce-selected-chain-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/package-bacce-selected-chain-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/package-bacce-selected-chain-01.json",
+        "bytes": 134959,
+        "mode": "0o644",
+        "sha256": "a5f4d4d4d015a61e4f7fa19f6b7d3a234c979a4cad536195e2bd0f2e0a68d15a"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-01.json",
+        "bytes": 35413,
+        "mode": "0o644",
+        "sha256": "906b437443e1ddf40877b1f5cb42e9857b71d89b308459330e64220947e07cb4",
+        "relative": "api-review/parent-evidence-origin-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-01.json",
+        "bytes": 35413,
+        "mode": "0o644",
+        "sha256": "906b437443e1ddf40877b1f5cb42e9857b71d89b308459330e64220947e07cb4"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-02.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-02.json",
+        "bytes": 53506,
+        "mode": "0o644",
+        "sha256": "9142b53a5b1629bdfe65c24488eaee0984a836c1878d6a00784420369eb7c11b",
+        "relative": "api-review/parent-evidence-origin-02.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-02.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-02.json",
+        "bytes": 53506,
+        "mode": "0o644",
+        "sha256": "9142b53a5b1629bdfe65c24488eaee0984a836c1878d6a00784420369eb7c11b"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-R-members-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-R-members-01.json",
+        "bytes": 262941,
+        "mode": "0o644",
+        "sha256": "9ec15f962b2009cd27a09f69acdd828b070a0c9c0a5d27c1026c031a272d7349",
+        "relative": "api-review/parent-evidence-origin-R-members-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-R-members-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/parent-evidence-origin-R-members-01.json",
+        "bytes": 262941,
+        "mode": "0o644",
+        "sha256": "9ec15f962b2009cd27a09f69acdd828b070a0c9c0a5d27c1026c031a272d7349"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/publication-combiner-source-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/publication-combiner-source-01.json",
+        "bytes": 3644,
+        "mode": "0o644",
+        "sha256": "cc873d8c5902519d4b3234b5fab7dbb16bdebb314888d0b6fba14c3ebf4937a0",
+        "relative": "api-review/publication-combiner-source-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/publication-combiner-source-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/publication-combiner-source-01.json",
+        "bytes": 3644,
+        "mode": "0o644",
+        "sha256": "cc873d8c5902519d4b3234b5fab7dbb16bdebb314888d0b6fba14c3ebf4937a0"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/read-package-bacce-selected-archives-01.py",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/read-package-bacce-selected-archives-01.py",
+        "bytes": 2603,
+        "mode": "0o644",
+        "sha256": "502602521d7c7892d8116321683f9ce8e61d68e7302d2354f0717fb206a607a2",
+        "relative": "api-review/read-package-bacce-selected-archives-01.py"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/api-review/read-package-bacce-selected-archives-01.py",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/read-package-bacce-selected-archives-01.py",
+        "bytes": 2603,
+        "mode": "0o644",
+        "sha256": "502602521d7c7892d8116321683f9ce8e61d68e7302d2354f0717fb206a607a2"
+      },
+      "identity_equal": true,
+      "classification": "Task-authored selected reader/launcher source"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/build-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/build-command.json",
+        "bytes": 731,
+        "mode": "0o644",
+        "sha256": "7f30d9b01936726d9fdf38c420bfa41ae0fa1e18acd3063407203181e4593612",
+        "relative": "candidate-bacce756-01/build-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/build-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/build-command.json",
+        "bytes": 731,
+        "mode": "0o644",
+        "sha256": "7f30d9b01936726d9fdf38c420bfa41ae0fa1e18acd3063407203181e4593612"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/built-source-before-install.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/built-source-before-install.json",
+        "bytes": 336,
+        "mode": "0o644",
+        "sha256": "e4e2c520aaf3b3ef07e17c9736dc449a2c9cbbfa80dd8509bc170cf2fae96274",
+        "relative": "candidate-bacce756-01/built-source-before-install.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/built-source-before-install.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/built-source-before-install.json",
+        "bytes": 336,
+        "mode": "0o644",
+        "sha256": "e4e2c520aaf3b3ef07e17c9736dc449a2c9cbbfa80dd8509bc170cf2fae96274"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/cargo-version-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/cargo-version-command.json",
+        "bytes": 647,
+        "mode": "0o644",
+        "sha256": "572cadcf36d3e8c6f7bbb664a3017d03898eb74d69ed0048a2a8f5a83195894b",
+        "relative": "candidate-bacce756-01/cargo-version-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/cargo-version-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/cargo-version-command.json",
+        "bytes": 647,
+        "mode": "0o644",
+        "sha256": "572cadcf36d3e8c6f7bbb664a3017d03898eb74d69ed0048a2a8f5a83195894b"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/clang-version-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/clang-version-command.json",
+        "bytes": 660,
+        "mode": "0o644",
+        "sha256": "3346fa98a9299496d692ec99062c32984d95cd5137ea2844e2bb5dd833088a45",
+        "relative": "candidate-bacce756-01/clang-version-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/clang-version-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/clang-version-command.json",
+        "bytes": 660,
+        "mode": "0o644",
+        "sha256": "3346fa98a9299496d692ec99062c32984d95cd5137ea2844e2bb5dd833088a45"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/completed-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/completed-receipt.json",
+        "bytes": 525,
+        "mode": "0o644",
+        "sha256": "69198717c2a793425346d3f6bee1ef7297c7919d03f19cc27f944bb4a40ae36f",
+        "relative": "candidate-bacce756-01/completed-receipt.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/completed-receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/completed-receipt.json",
+        "bytes": 525,
+        "mode": "0o644",
+        "sha256": "69198717c2a793425346d3f6bee1ef7297c7919d03f19cc27f944bb4a40ae36f"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/execution-result.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/execution-result.json",
+        "bytes": 6077,
+        "mode": "0o644",
+        "sha256": "68236012aaf47e584a51aa4ac671def1ce4fa81682e2c61ff56b129f13cd2411",
+        "relative": "candidate-bacce756-01/execution-result.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/execution-result.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/execution-result.json",
+        "bytes": 6077,
+        "mode": "0o644",
+        "sha256": "68236012aaf47e584a51aa4ac671def1ce4fa81682e2c61ff56b129f13cd2411"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/finish-install-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/finish-install-command.json",
+        "bytes": 1174,
+        "mode": "0o644",
+        "sha256": "17971ced99b8c1a3e26c22f906661ca4a3c0184ba48bf24e1aed8009772107fa",
+        "relative": "candidate-bacce756-01/finish-install-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/finish-install-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/finish-install-command.json",
+        "bytes": 1174,
+        "mode": "0o644",
+        "sha256": "17971ced99b8c1a3e26c22f906661ca4a3c0184ba48bf24e1aed8009772107fa"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/inputs-before.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/inputs-before.json",
+        "bytes": 4213852,
+        "mode": "0o644",
+        "sha256": "8e3d1ca42250e637c7ec6bb8cfcf8f0f18d0a641e31260f84863809c05082cb1",
+        "relative": "candidate-bacce756-01/inputs-before.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/inputs-before.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/inputs-before.json",
+        "bytes": 4213852,
+        "mode": "0o644",
+        "sha256": "8e3d1ca42250e637c7ec6bb8cfcf8f0f18d0a641e31260f84863809c05082cb1"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/install-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/install-command.json",
+        "bytes": 832,
+        "mode": "0o644",
+        "sha256": "f4e2b71a4fe4606b3c570c6af028df2b704a6b7dd61e30854d589e58a6d557d5",
+        "relative": "candidate-bacce756-01/install-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/install-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/install-command.json",
+        "bytes": 832,
+        "mode": "0o644",
+        "sha256": "f4e2b71a4fe4606b3c570c6af028df2b704a6b7dd61e30854d589e58a6d557d5"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+        "bytes": 21863,
+        "mode": "0o644",
+        "sha256": "152a231f21e6f0417d3deeb77a2a537e212c0ca9eff514589318b6684bb36564",
+        "relative": "candidate-bacce756-01/installed-files.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+        "bytes": 21863,
+        "mode": "0o644",
+        "sha256": "152a231f21e6f0417d3deeb77a2a537e212c0ca9eff514589318b6684bb36564"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-identity.R",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-identity.R",
+        "bytes": 32103,
+        "mode": "0o644",
+        "sha256": "85e5f74e1efa47446348a601ae36ce1c29b1af2665ed16ced5b0187bd7b7ec36",
+        "relative": "candidate-bacce756-01/installed-identity.R"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-identity.R",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-identity.R",
+        "bytes": 32103,
+        "mode": "0o644",
+        "sha256": "85e5f74e1efa47446348a601ae36ce1c29b1af2665ed16ced5b0187bd7b7ec36"
+      },
+      "identity_equal": true,
+      "classification": "Serialized runtime/package metadata; no closure/source body"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/loaded-dlls.txt",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/loaded-dlls.txt",
+        "bytes": 897,
+        "mode": "0o644",
+        "sha256": "8edc0b3c4fe36fd20dd2209ecb1d53a250acb49180baa2fb2b57caa14b2b2cab",
+        "relative": "candidate-bacce756-01/loaded-dlls.txt"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/loaded-dlls.txt",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/loaded-dlls.txt",
+        "bytes": 897,
+        "mode": "0o644",
+        "sha256": "8edc0b3c4fe36fd20dd2209ecb1d53a250acb49180baa2fb2b57caa14b2b2cab"
+      },
+      "identity_equal": true,
+      "classification": "Runtime path observations"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/loaded-namespaces.tsv",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/loaded-namespaces.tsv",
+        "bytes": 1084,
+        "mode": "0o644",
+        "sha256": "a27a719247bf55f544d4c54a1dedb6c53b5ebf2d823e2edb016e8a90bba48df0",
+        "relative": "candidate-bacce756-01/loaded-namespaces.tsv"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/loaded-namespaces.tsv",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/loaded-namespaces.tsv",
+        "bytes": 1084,
+        "mode": "0o644",
+        "sha256": "a27a719247bf55f544d4c54a1dedb6c53b5ebf2d823e2edb016e8a90bba48df0"
+      },
+      "identity_equal": true,
+      "classification": "Runtime path observations"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/output-manifest.json",
+        "bytes": 141455,
+        "mode": "0o644",
+        "sha256": "465bba437cc9918ec07c8d3dc638a1d8e25cea9abb3ed36b908a106e31ea21bd",
+        "relative": "candidate-bacce756-01/output-manifest.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/output-manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/output-manifest.json",
+        "bytes": 141455,
+        "mode": "0o644",
+        "sha256": "465bba437cc9918ec07c8d3dc638a1d8e25cea9abb3ed36b908a106e31ea21bd"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/r-version-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/r-version-command.json",
+        "bytes": 633,
+        "mode": "0o644",
+        "sha256": "92a4d966e2044425f66b9bce0dc11a2663c984f8a338e0800fd0421d0405e7c1",
+        "relative": "candidate-bacce756-01/r-version-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/r-version-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/r-version-command.json",
+        "bytes": 633,
+        "mode": "0o644",
+        "sha256": "92a4d966e2044425f66b9bce0dc11a2663c984f8a338e0800fd0421d0405e7c1"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/rustc-version-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/rustc-version-command.json",
+        "bytes": 647,
+        "mode": "0o644",
+        "sha256": "4273ebaff1b984076c02102a81dbcdbb4708bc07df2893f44ee92feb0dbd4500",
+        "relative": "candidate-bacce756-01/rustc-version-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/rustc-version-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/rustc-version-command.json",
+        "bytes": 647,
+        "mode": "0o644",
+        "sha256": "4273ebaff1b984076c02102a81dbcdbb4708bc07df2893f44ee92feb0dbd4500"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/launch-package-v1.py",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/launch-package-v1.py",
+        "bytes": 3364,
+        "mode": "0o644",
+        "sha256": "65d533fc325a68e3a256224df5ea3695fb0f70f48039658f6569b223b68d4c70",
+        "relative": "final-package-preparation-02/launch-package-v1.py"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/launch-package-v1.py",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/launch-package-v1.py",
+        "bytes": 3364,
+        "mode": "0o644",
+        "sha256": "65d533fc325a68e3a256224df5ea3695fb0f70f48039658f6569b223b68d4c70"
+      },
+      "identity_equal": true,
+      "classification": "Task-authored selected reader/launcher source"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/launcher.patch",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/launcher.patch",
+        "bytes": 2911,
+        "mode": "0o644",
+        "sha256": "c6061f0a1f3abbbded834edbfc80519dd927fc7f3375343dee85f97ff6907bd2",
+        "relative": "final-package-preparation-02/launcher.patch"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/launcher.patch",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/launcher.patch",
+        "bytes": 2911,
+        "mode": "0o644",
+        "sha256": "c6061f0a1f3abbbded834edbfc80519dd927fc7f3375343dee85f97ff6907bd2"
+      },
+      "identity_equal": true,
+      "classification": "Task-owned package launcher mechanical delta"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/native-source-reuse-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/native-source-reuse-01.json",
+        "bytes": 5587,
+        "mode": "0o644",
+        "sha256": "a2f6e40adead3a244c7d4d06fc30f9a43238c21f0bf14c5b650a1035dca34cb6",
+        "relative": "final-package-preparation-02/native-source-reuse-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/native-source-reuse-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/native-source-reuse-01.json",
+        "bytes": 5587,
+        "mode": "0o644",
+        "sha256": "a2f6e40adead3a244c7d4d06fc30f9a43238c21f0bf14c5b650a1035dca34cb6"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/parent-package-disposition-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/parent-package-disposition-01.json",
+        "bytes": 2014,
+        "mode": "0o644",
+        "sha256": "1630d41b7a444af664fa62e82bfb4b2639950fff30aa99c09b1e9ddaa5e43e8c",
+        "relative": "final-package-preparation-02/parent-package-disposition-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/parent-package-disposition-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/parent-package-disposition-01.json",
+        "bytes": 2014,
+        "mode": "0o644",
+        "sha256": "1630d41b7a444af664fa62e82bfb4b2639950fff30aa99c09b1e9ddaa5e43e8c"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/preparation.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/preparation.json",
+        "bytes": 1897,
+        "mode": "0o644",
+        "sha256": "2034be44333a4be48d760b56d57b2805c318f85acf781a0ca0764d16bfed0bde",
+        "relative": "final-package-preparation-02/preparation.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/preparation.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/preparation.json",
+        "bytes": 1897,
+        "mode": "0o644",
+        "sha256": "2034be44333a4be48d760b56d57b2805c318f85acf781a0ca0764d16bfed0bde"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/root-launch-review-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/root-launch-review-01.json",
+        "bytes": 1497,
+        "mode": "0o644",
+        "sha256": "7ed192dacaabe91bafaefbf7a964f5c644d74d9a0b6202c36140fcaceab14c7e",
+        "relative": "final-package-preparation-02/root-launch-review-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/root-launch-review-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/root-launch-review-01.json",
+        "bytes": 1497,
+        "mode": "0o644",
+        "sha256": "7ed192dacaabe91bafaefbf7a964f5c644d74d9a0b6202c36140fcaceab14c7e"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/script-scope.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/script-scope.json",
+        "bytes": 969,
+        "mode": "0o644",
+        "sha256": "6f12bfac8e1e545e9fce6bfc23a5baf28960b3491a7556fe9c34d2c913b8f5c5",
+        "relative": "final-package-preparation-02/script-scope.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/script-scope.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/script-scope.json",
+        "bytes": 969,
+        "mode": "0o644",
+        "sha256": "6f12bfac8e1e545e9fce6bfc23a5baf28960b3491a7556fe9c34d2c913b8f5c5"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/selected.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/selected.json",
+        "bytes": 4989,
+        "mode": "0o644",
+        "sha256": "9a0d73fcc702b8a7d20460f1737551c7b13ead87266071581bf725d8a97c2b7c",
+        "relative": "final-package-preparation-02/selected.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/selected.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/selected.json",
+        "bytes": 4989,
+        "mode": "0o644",
+        "sha256": "9a0d73fcc702b8a7d20460f1737551c7b13ead87266071581bf725d8a97c2b7c"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/native-binary-bacce-launch-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/native-binary-bacce-launch-01.json",
+        "bytes": 12193,
+        "mode": "0o644",
+        "sha256": "997614a766f4ef40d16f176b188a998e5c34502be17a38f02496cacd824666d0",
+        "relative": "native-binary-bacce-launch-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/native-binary-bacce-launch-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/native-binary-bacce-launch-01.json",
+        "bytes": 12193,
+        "mode": "0o644",
+        "sha256": "997614a766f4ef40d16f176b188a998e5c34502be17a38f02496cacd824666d0"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/native-binary-bacce-launch-result-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/native-binary-bacce-launch-result-01.json",
+        "bytes": 747,
+        "mode": "0o644",
+        "sha256": "e5d5524b4b2657b469d466971d86e8987141045a6b53fa4101fc8feb3e8080fa",
+        "relative": "native-binary-bacce-launch-result-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/native-binary-bacce-launch-result-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/native-binary-bacce-launch-result-01.json",
+        "bytes": 747,
+        "mode": "0o644",
+        "sha256": "e5d5524b4b2657b469d466971d86e8987141045a6b53fa4101fc8feb3e8080fa"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive-command.json",
+        "bytes": 1829,
+        "mode": "0o644",
+        "sha256": "aae9b2b9be04ef18380ceead265739a2f477f37f54aaddb7d9d5a5568335b4dc",
+        "relative": "package-bacce756-01/archive-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive-command.json",
+        "bytes": 1829,
+        "mode": "0o644",
+        "sha256": "aae9b2b9be04ef18380ceead265739a2f477f37f54aaddb7d9d5a5568335b4dc"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive-unit-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive-unit-command.json",
+        "bytes": 1905,
+        "mode": "0o644",
+        "sha256": "5ae875aa264d5e99808b806af6458fbe6066c5127de3b18d5945507d0ed36a3d",
+        "relative": "package-bacce756-01/archive-unit-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive-unit-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive-unit-command.json",
+        "bytes": 1905,
+        "mode": "0o644",
+        "sha256": "5ae875aa264d5e99808b806af6458fbe6066c5127de3b18d5945507d0ed36a3d"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary-command.json",
+        "bytes": 2093,
+        "mode": "0o644",
+        "sha256": "b61cc41a98e6456128b493e68fff3496dc32283792f9c7eac5ff43df4f47167f",
+        "relative": "package-bacce756-01/binary-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary-command.json",
+        "bytes": 2093,
+        "mode": "0o644",
+        "sha256": "b61cc41a98e6456128b493e68fff3496dc32283792f9c7eac5ff43df4f47167f"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/build-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/build-command.json",
+        "bytes": 1837,
+        "mode": "0o644",
+        "sha256": "2520038d16a88656e1822c6bb6bdfc303311eb4165681d21241d9b493ff594b8",
+        "relative": "package-bacce756-01/build-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/build-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/build-command.json",
+        "bytes": 1837,
+        "mode": "0o644",
+        "sha256": "2520038d16a88656e1822c6bb6bdfc303311eb4165681d21241d9b493ff594b8"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/built-source-before-checks.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/built-source-before-checks.json",
+        "bytes": 320,
+        "mode": "0o644",
+        "sha256": "9874db52aaaeff4eb426ad5cdaccd0ee6260fa13177b107d21ed6d1cf8ba0e1c",
+        "relative": "package-bacce756-01/built-source-before-checks.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/built-source-before-checks.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/built-source-before-checks.json",
+        "bytes": 320,
+        "mode": "0o644",
+        "sha256": "9874db52aaaeff4eb426ad5cdaccd0ee6260fa13177b107d21ed6d1cf8ba0e1c"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/cargo-metadata-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/cargo-metadata-command.json",
+        "bytes": 509,
+        "mode": "0o644",
+        "sha256": "265469398fa606fb3e4e014b6e6ce16a7e1ab98c7f7116a6075bb97d7d9c3381",
+        "relative": "package-bacce756-01/cargo-metadata-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/cargo-metadata-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/cargo-metadata-command.json",
+        "bytes": 509,
+        "mode": "0o644",
+        "sha256": "265469398fa606fb3e4e014b6e6ce16a7e1ab98c7f7116a6075bb97d7d9c3381"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/cargo-metadata.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/cargo-metadata.json",
+        "bytes": 412191,
+        "mode": "0o644",
+        "sha256": "01a94755702caffa6b4acd69d1a5ddade2ad7cb62699936132381b7138a3edae",
+        "relative": "package-bacce756-01/cargo-metadata.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/cargo-metadata.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/cargo-metadata.json",
+        "bytes": 412191,
+        "mode": "0o644",
+        "sha256": "01a94755702caffa6b4acd69d1a5ddade2ad7cb62699936132381b7138a3edae"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/check-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/check-command.json",
+        "bytes": 1869,
+        "mode": "0o644",
+        "sha256": "45916811ec6c2ded7ca6ff44db5ac178a7b1c857e9476d7a3cf4fcc2c3eec035",
+        "relative": "package-bacce756-01/check-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/check-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/check-command.json",
+        "bytes": 1869,
+        "mode": "0o644",
+        "sha256": "45916811ec6c2ded7ca6ff44db5ac178a7b1c857e9476d7a3cf4fcc2c3eec035"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/conformance-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/conformance-command.json",
+        "bytes": 1638,
+        "mode": "0o644",
+        "sha256": "4e9ec38341d8e88ddf5df656385dc2e690a3a61a658ff3e1c563e3e643b567af",
+        "relative": "package-bacce756-01/conformance-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/conformance-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/conformance-command.json",
+        "bytes": 1638,
+        "mode": "0o644",
+        "sha256": "4e9ec38341d8e88ddf5df656385dc2e690a3a61a658ff3e1c563e3e643b567af"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/corpus-framework-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/corpus-framework-command.json",
+        "bytes": 1809,
+        "mode": "0o644",
+        "sha256": "d67d9527555ba8723ea44adf1e66a38714e301972ffe304008e1e846ec0e5bab",
+        "relative": "package-bacce756-01/corpus-framework-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/corpus-framework-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/corpus-framework-command.json",
+        "bytes": 1809,
+        "mode": "0o644",
+        "sha256": "d67d9527555ba8723ea44adf1e66a38714e301972ffe304008e1e846ec0e5bab"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/execution-result.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/execution-result.json",
+        "bytes": 32214,
+        "mode": "0o644",
+        "sha256": "eca8b0f5699d774a5f9e9872bb0d07fd024ae969207dbfb80d27cea8f5a675f3",
+        "relative": "package-bacce756-01/execution-result.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/execution-result.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/execution-result.json",
+        "bytes": 32214,
+        "mode": "0o644",
+        "sha256": "eca8b0f5699d774a5f9e9872bb0d07fd024ae969207dbfb80d27cea8f5a675f3"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven-command.json",
+        "bytes": 1750,
+        "mode": "0o644",
+        "sha256": "4c9b254b5873978978fdd1006ff460400c5fdc358af0199a1a6cb8ca96b3505d",
+        "relative": "package-bacce756-01/haven-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven-command.json",
+        "bytes": 1750,
+        "mode": "0o644",
+        "sha256": "4c9b254b5873978978fdd1006ff460400c5fdc358af0199a1a6cb8ca96b3505d"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven-conformance-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven-conformance-command.json",
+        "bytes": 1782,
+        "mode": "0o644",
+        "sha256": "5ccbfe4dda49e414816a2dee8affce35c5789ee8f02072b58fbaceb3aa59909c",
+        "relative": "package-bacce756-01/haven-conformance-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven-conformance-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven-conformance-command.json",
+        "bytes": 1782,
+        "mode": "0o644",
+        "sha256": "5ccbfe4dda49e414816a2dee8affce35c5789ee8f02072b58fbaceb3aa59909c"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/inputs-before.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/inputs-before.json",
+        "bytes": 22879747,
+        "mode": "0o644",
+        "sha256": "c2644c54be891f3d66c544e3038bbe384791a84386954779b5c4edfbf3f8a7eb",
+        "relative": "package-bacce756-01/inputs-before.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/inputs-before.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/inputs-before.json",
+        "bytes": 22879747,
+        "mode": "0o644",
+        "sha256": "c2644c54be891f3d66c544e3038bbe384791a84386954779b5c4edfbf3f8a7eb"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/labelled-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/labelled-command.json",
+        "bytes": 1751,
+        "mode": "0o644",
+        "sha256": "3c6761ec92038119279291e054db8a64117d5da3749979c2f134ad4e81ebd923",
+        "relative": "package-bacce756-01/labelled-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/labelled-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/labelled-command.json",
+        "bytes": 1751,
+        "mode": "0o644",
+        "sha256": "3c6761ec92038119279291e054db8a64117d5da3749979c2f134ad4e81ebd923"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/manifest.json",
+        "bytes": 6454096,
+        "mode": "0o644",
+        "sha256": "628658b323a91e70f8c7d5328b1648d6ad06db159252469e7917107b8721a9e7",
+        "relative": "package-bacce756-01/manifest.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/manifest.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/manifest.json",
+        "bytes": 6454096,
+        "mode": "0o644",
+        "sha256": "628658b323a91e70f8c7d5328b1648d6ad06db159252469e7917107b8721a9e7"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-command.json",
+        "bytes": 2332,
+        "mode": "0o644",
+        "sha256": "b0dd848cf7f7d22a3598fdb40625097dadc5c8d16e3917aa9907f39daada2270",
+        "relative": "package-bacce756-01/preflight-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-command.json",
+        "bytes": 2332,
+        "mode": "0o644",
+        "sha256": "b0dd848cf7f7d22a3598fdb40625097dadc5c8d16e3917aa9907f39daada2270"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-identity.R",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-identity.R",
+        "bytes": 5132,
+        "mode": "0o644",
+        "sha256": "56eed77e0e3fc0ebe81fa79e4abf34a108139c8b9251b574f3ff8bb8e11bdf16",
+        "relative": "package-bacce756-01/preflight-identity.R"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-identity.R",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-identity.R",
+        "bytes": 5132,
+        "mode": "0o644",
+        "sha256": "56eed77e0e3fc0ebe81fa79e4abf34a108139c8b9251b574f3ff8bb8e11bdf16"
+      },
+      "identity_equal": true,
+      "classification": "Serialized runtime/package metadata; no closure/source body"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/receipt.json",
+        "bytes": 502,
+        "mode": "0o644",
+        "sha256": "b74213ae7594895b8d4a4531efdf27bc472c04ccf46fd06d66129e745cb6bb35",
+        "relative": "package-bacce756-01/receipt.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/receipt.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/receipt.json",
+        "bytes": 502,
+        "mode": "0o644",
+        "sha256": "b74213ae7594895b8d4a4531efdf27bc472c04ccf46fd06d66129e745cb6bb35"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/roxygen-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/roxygen-command.json",
+        "bytes": 2062,
+        "mode": "0o644",
+        "sha256": "6985b56dff5e2e1fc5886bbab6a990bddff7916dd72689f13a78640bea67fedc",
+        "relative": "package-bacce756-01/roxygen-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/roxygen-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/roxygen-command.json",
+        "bytes": 2062,
+        "mode": "0o644",
+        "sha256": "6985b56dff5e2e1fc5886bbab6a990bddff7916dd72689f13a78640bea67fedc"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/rust-source-hash-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/rust-source-hash-command.json",
+        "bytes": 1670,
+        "mode": "0o644",
+        "sha256": "5ce840d08682a58f8167fd0d29c48f98afd64b4faae67c4493d69088efdce9f6",
+        "relative": "package-bacce756-01/rust-source-hash-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/rust-source-hash-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/rust-source-hash-command.json",
+        "bytes": 1670,
+        "mode": "0o644",
+        "sha256": "5ce840d08682a58f8167fd0d29c48f98afd64b4faae67c4493d69088efdce9f6"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-git-commands.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-git-commands.json",
+        "bytes": 7867,
+        "mode": "0o644",
+        "sha256": "167bff53de1c0533b2c16ec528e884ef3d96db7558ff6a5d2c4a69a1ed9d9d4a",
+        "relative": "package-bacce756-01/source-git-commands.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-git-commands.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-git-commands.json",
+        "bytes": 7867,
+        "mode": "0o644",
+        "sha256": "167bff53de1c0533b2c16ec528e884ef3d96db7558ff6a5d2c4a69a1ed9d9d4a"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-tool-selection.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-tool-selection.json",
+        "bytes": 1532,
+        "mode": "0o644",
+        "sha256": "124672ee16419a188954717391988e7dab7f9291dd37154fdaecbf4098adcd90",
+        "relative": "package-bacce756-01/source-tool-selection.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-tool-selection.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-tool-selection.json",
+        "bytes": 1532,
+        "mode": "0o644",
+        "sha256": "124672ee16419a188954717391988e7dab7f9291dd37154fdaecbf4098adcd90"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/tool-selection.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/tool-selection.json",
+        "bytes": 5033,
+        "mode": "0o644",
+        "sha256": "e2a3411c26e0e7ac5afcfe0528ed8ad7ab17469ef88df2ce6b8c329d8fa402e0",
+        "relative": "package-bacce756-01/tool-selection.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/tool-selection.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/tool-selection.json",
+        "bytes": 5033,
+        "mode": "0o644",
+        "sha256": "e2a3411c26e0e7ac5afcfe0528ed8ad7ab17469ef88df2ce6b8c329d8fa402e0"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-command.json",
+        "bytes": 1638,
+        "mode": "0o644",
+        "sha256": "05f8a4ae19cd76be448a24545830aad7289bdb2308909f0a4464ce39fd8835cd",
+        "relative": "package-bacce756-01/vendor-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-command.json",
+        "bytes": 1638,
+        "mode": "0o644",
+        "sha256": "05f8a4ae19cd76be448a24545830aad7289bdb2308909f0a4464ce39fd8835cd"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-rebuild-unit-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-rebuild-unit-command.json",
+        "bytes": 1912,
+        "mode": "0o644",
+        "sha256": "a4cda1e5cfa44545943dd18bbe5326675728bb11624bb6138a860c45128c5192",
+        "relative": "package-bacce756-01/vendor-rebuild-unit-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-rebuild-unit-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-rebuild-unit-command.json",
+        "bytes": 1912,
+        "mode": "0o644",
+        "sha256": "a4cda1e5cfa44545943dd18bbe5326675728bb11624bb6138a860c45128c5192"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-unit-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-unit-command.json",
+        "bytes": 1897,
+        "mode": "0o644",
+        "sha256": "a6ce5d4ff54291d78c9b0eb0ead67f6e7b858e9cac38c063df15cc89cddeb3e5",
+        "relative": "package-bacce756-01/vendor-unit-command.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-unit-command.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-unit-command.json",
+        "bytes": 1897,
+        "mode": "0o644",
+        "sha256": "a6ce5d4ff54291d78c9b0eb0ead67f6e7b858e9cac38c063df15cc89cddeb3e5"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-launch-result-04.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-launch-result-04.json",
+        "bytes": 649,
+        "mode": "0o644",
+        "sha256": "e03f8b20e2e4cc28f6ad87cc1933f7571f0faaecbca94f84efdf57a6d941d4ae",
+        "relative": "package-launch-result-04.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/package-launch-result-04.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/package-launch-result-04.json",
+        "bytes": 649,
+        "mode": "0o644",
+        "sha256": "e03f8b20e2e4cc28f6ad87cc1933f7571f0faaecbca94f84efdf57a6d941d4ae"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/body-10-posted.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/body-10-posted.json",
+        "bytes": 279,
+        "mode": "0o644",
+        "sha256": "d8c8d411faddb5526469464d95659deb86d604b806ba9d9ebbd1ea26c78c0a88",
+        "relative": "pr-preparation-01/body-10-posted.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/body-10-posted.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/body-10-posted.json",
+        "bytes": 279,
+        "mode": "0o644",
+        "sha256": "d8c8d411faddb5526469464d95659deb86d604b806ba9d9ebbd1ea26c78c0a88"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/body-11-draft.md",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/body-11-draft.md",
+        "bytes": 3703,
+        "mode": "0o644",
+        "sha256": "cb011c7e5aa67574e47477f8e8730e8048d8a787e6058fb6e68efa52bb7f9b55",
+        "relative": "pr-preparation-01/body-11-draft.md"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/body-11-draft.md",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/body-11-draft.md",
+        "bytes": 3703,
+        "mode": "0o644",
+        "sha256": "cb011c7e5aa67574e47477f8e8730e8048d8a787e6058fb6e68efa52bb7f9b55"
+      },
+      "identity_equal": true,
+      "classification": "Task review/publication prose"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/ci-final-jobs-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/ci-final-jobs-01.json",
+        "bytes": 45157,
+        "mode": "0o644",
+        "sha256": "1ad8d6b7a5ceafee45a2adb47f21d50387bedaaad14396ea1d2d4a7c39764a0c",
+        "relative": "pr-preparation-01/review-bacce-01/ci-final-jobs-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/ci-final-jobs-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/ci-final-jobs-01.json",
+        "bytes": 45157,
+        "mode": "0o644",
+        "sha256": "1ad8d6b7a5ceafee45a2adb47f21d50387bedaaad14396ea1d2d4a7c39764a0c"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/latest-review-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/latest-review-01.json",
+        "bytes": 9730,
+        "mode": "0o644",
+        "sha256": "b77922cb04c31b6bceba1004dfec76175bd5e368dd4324ccdc0ef932e12bea2e",
+        "relative": "pr-preparation-01/review-bacce-01/latest-review-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/latest-review-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/latest-review-01.json",
+        "bytes": 9730,
+        "mode": "0o644",
+        "sha256": "b77922cb04c31b6bceba1004dfec76175bd5e368dd4324ccdc0ef932e12bea2e"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/thread-ci-snapshot-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/thread-ci-snapshot-01.json",
+        "bytes": 5250,
+        "mode": "0o644",
+        "sha256": "1f4e6b7ec96c392b0608acbcd7547932bbd2d0ceb725999a73dd9899af3133f3",
+        "relative": "pr-preparation-01/review-bacce-01/thread-ci-snapshot-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/thread-ci-snapshot-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/pr-preparation-01/review-bacce-01/thread-ci-snapshot-01.json",
+        "bytes": 5250,
+        "mode": "0o644",
+        "sha256": "1f4e6b7ec96c392b0608acbcd7547932bbd2d0ceb725999a73dd9899af3133f3"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/README.md",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/README.md",
+        "bytes": 251,
+        "mode": "0o644",
+        "sha256": "1137883ae52ded6a7911d8ac5d7f1da0eb4cb3a66e3e617b802e2fa2be10c40e",
+        "relative": "publication-preparation-01/final-status-snapshot/README.md"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/README.md",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/README.md",
+        "bytes": 251,
+        "mode": "0o644",
+        "sha256": "1137883ae52ded6a7911d8ac5d7f1da0eb4cb3a66e3e617b802e2fa2be10c40e"
+      },
+      "identity_equal": true,
+      "classification": "Task review/publication prose"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/premerge-state-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/premerge-state-01.json",
+        "bytes": 24104,
+        "mode": "0o644",
+        "sha256": "f762fedd215fdddea74d81d5b5bd8d684f1a17277e208290390fc033653cfcf3",
+        "relative": "publication-preparation-01/final-status-snapshot/premerge-state-01.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/premerge-state-01.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/premerge-state-01.json",
+        "bytes": 24104,
+        "mode": "0o644",
+        "sha256": "f762fedd215fdddea74d81d5b5bd8d684f1a17277e208290390fc033653cfcf3"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/NATIVE-REUSE-ADDENDUM-02.md",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/NATIVE-REUSE-ADDENDUM-02.md",
+        "bytes": 2294,
+        "mode": "0o644",
+        "sha256": "c9465092ee9198662a63214c8e50829284f62a4625e563e49ad6fd39c7c7ecaa",
+        "relative": "semantics-review/package-bacce-01/NATIVE-REUSE-ADDENDUM-02.md"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/NATIVE-REUSE-ADDENDUM-02.md",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/NATIVE-REUSE-ADDENDUM-02.md",
+        "bytes": 2294,
+        "mode": "0o644",
+        "sha256": "c9465092ee9198662a63214c8e50829284f62a4625e563e49ad6fd39c7c7ecaa"
+      },
+      "identity_equal": true,
+      "classification": "Task review/publication prose"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/REVIEW.md",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/REVIEW.md",
+        "bytes": 4972,
+        "mode": "0o644",
+        "sha256": "379eb05ab5768f97184b3d7ed214b01d3029aed90dcff9220b51dd0724a22598",
+        "relative": "semantics-review/package-bacce-01/REVIEW.md"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/REVIEW.md",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/REVIEW.md",
+        "bytes": 4972,
+        "mode": "0o644",
+        "sha256": "379eb05ab5768f97184b3d7ed214b01d3029aed90dcff9220b51dd0724a22598"
+      },
+      "identity_equal": true,
+      "classification": "Task review/publication prose"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/assess-v1.py",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/assess-v1.py",
+        "bytes": 5975,
+        "mode": "0o644",
+        "sha256": "431694991867656d2a37255aaacf1e351d957b163cddf674d99e4692c744c460",
+        "relative": "semantics-review/package-bacce-01/assess-v1.py"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/assess-v1.py",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/assess-v1.py",
+        "bytes": 5975,
+        "mode": "0o644",
+        "sha256": "431694991867656d2a37255aaacf1e351d957b163cddf674d99e4692c744c460"
+      },
+      "identity_equal": true,
+      "classification": "Task-authored selected reader/launcher source"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/assessment-v1.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/assessment-v1.json",
+        "bytes": 16617,
+        "mode": "0o644",
+        "sha256": "3b3e4a4ae7738916d25b4bf19866bf8c35494e771c0ba4df63b9970df97f0cca",
+        "relative": "semantics-review/package-bacce-01/assessment-v1.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/assessment-v1.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/package-bacce-01/assessment-v1.json",
+        "bytes": 16617,
+        "mode": "0o644",
+        "sha256": "3b3e4a4ae7738916d25b4bf19866bf8c35494e771c0ba4df63b9970df97f0cca"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/publication-readme-draft-01/REVIEW.md",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/publication-readme-draft-01/REVIEW.md",
+        "bytes": 2215,
+        "mode": "0o644",
+        "sha256": "a27c0d8d70d023a40258a2b8e00e4e756d11a65ec43e936f12ad23f34e85fef4",
+        "relative": "semantics-review/publication-readme-draft-01/REVIEW.md"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/publication-readme-draft-01/REVIEW.md",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/publication-readme-draft-01/REVIEW.md",
+        "bytes": 2215,
+        "mode": "0o644",
+        "sha256": "a27c0d8d70d023a40258a2b8e00e4e756d11a65ec43e936f12ad23f34e85fef4"
+      },
+      "identity_equal": true,
+      "classification": "Task review/publication prose"
+    },
+    {
+      "selected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/publication-readme-draft-01/binding.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/publication-readme-draft-01/binding.json",
+        "bytes": 523,
+        "mode": "0o644",
+        "sha256": "714a84323aecc1623a8181a4261a9483f935be0e41a3f13163c6f022c67c2b64",
+        "relative": "semantics-review/publication-readme-draft-01/binding.json"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/semantics-review/publication-readme-draft-01/binding.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/semantics-review/publication-readme-draft-01/binding.json",
+        "bytes": 523,
+        "mode": "0o644",
+        "sha256": "714a84323aecc1623a8181a4261a9483f935be0e41a3f13163c6f022c67c2b64"
+      },
+      "identity_equal": true,
+      "classification": "Task execution, identity, review, dependency metadata or selected archive DESCRIPTION record"
+    }
+  ],
+  "exclusion_checks": {
+    "no_live_current": true,
+    "no_excluded25": true,
+    "all_payloads_under_task_root": true,
+    "no_forbidden_selected_parts": true,
+    "no_private_or_binary_payloads": true,
+    "notices_retained": true
+  },
+  "collection_inputs": [
+    {
+      "expected": {
+        "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+        "bytes": 33816,
+        "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+      },
+      "actual": {
+        "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+        "resolved": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+        "bytes": 33816,
+        "mode": "0o755",
+        "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+      },
+      "ok": true
+    },
+    {
+      "expected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/collect-parent-evidence-v3.py",
+        "bytes": 3426,
+        "sha256": "c8ce2ce17783415e8c54d9eb0806bf0e41e3521b6d9984cbe9aebcd64dad1943"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/collect-parent-evidence-v3.py",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/collect-parent-evidence-v3.py",
+        "bytes": 3426,
+        "mode": "0o644",
+        "sha256": "c8ce2ce17783415e8c54d9eb0806bf0e41e3521b6d9984cbe9aebcd64dad1943"
+      },
+      "ok": true
+    },
+    {
+      "expected": {
+        "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-origin-plan-04.json",
+        "bytes": 5205,
+        "sha256": "614eddaaaf661ca8dfe90b2ccd560151b9082b5ec75eff97fad81179cb5cef79"
+      },
+      "actual": {
+        "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-origin-plan-04.json",
+        "resolved": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-origin-plan-04.json",
+        "bytes": 5205,
+        "mode": "0o644",
+        "sha256": "614eddaaaf661ca8dfe90b2ccd560151b9082b5ec75eff97fad81179cb5cef79"
+      },
+      "ok": true
+    }
+  ],
+  "collection_result": {
+    "argv": [
+      "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "-I",
+      "-B",
+      "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/collect-parent-evidence-v3.py",
+      "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-origin-plan-04.json",
+      "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/parent-artifact-selection-03.json"
+    ],
+    "returncode": 0,
+    "inputs_unchanged": true,
+    "stdout": "{\"selected_files\": 1967, \"selected_bytes\": 543915051, \"missing_prefixes\": [\"package-c4e80137-01\"]}\n",
+    "stderr": ""
+  },
+  "content_checks": {
+    "json_files_parsed": 62,
+    "python_files_read": 4,
+    "R_metadata_records": 2,
+    "patch_files_read": 1,
+    "prose_files_read": 5,
+    "path_record_files_read": 2,
+    "long_serialized_fields": [
+      {
+        "file": "api-review/archive-builder-source-01.json",
+        "field": "$.independent_ast_check.execution.output",
+        "bytes": 1042,
+        "sample": "{\"paths\": [{\"path\": \"/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py\", \"bytes\": 11270, \"sha256\": \"821440e4a518a68811ca1"
+      },
+      {
+        "file": "api-review/package-bacce-selected-archives-01.json",
+        "field": "$.archives.1.selected.0.text",
+        "bytes": 2183,
+        "sample": "Package: dtatools\nTitle: Fast Reader and Writer for Stata DTA Files\nVersion: 0.8.0\nAuthors@R: c(\n    person(\"Jonathan\", \"Bearak\", role = c(\"aut\", \"cre\"),\n      "
+      },
+      {
+        "file": "api-review/package-bacce-selected-archives-01.json",
+        "field": "$.archives.0.selected.1.archive_text",
+        "bytes": 2109,
+        "sample": "Package: dtatools\nTitle: Fast Reader and Writer for Stata DTA Files\nVersion: 0.8.0\nAuthors@R: c(\n    person(\"Jonathan\", \"Bearak\", role = c(\"aut\", \"cre\"),\n      "
+      },
+      {
+        "file": "api-review/package-bacce-selected-archives-01.json",
+        "field": "$.archives.0.selected.1.source_text",
+        "bytes": 1862,
+        "sample": "Package: dtatools\nTitle: Fast Reader and Writer for Stata DTA Files\nVersion: 0.8.0\nAuthors@R: c(\n    person(\"Jonathan\", \"Bearak\", role = c(\"aut\", \"cre\"),\n      "
+      },
+      {
+        "file": "pr-preparation-01/review-bacce-01/latest-review-01.json",
+        "field": "$.record.body",
+        "bytes": 8301,
+        "sample": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- review_stack_entry_start -->\n\n<a href=\"https://app.coderabbit.ai/change-stack/jbeara"
+      }
+    ],
+    "large_inventory_scope": "Input/output manifests contain paths/types/bytes/digests/tool/configuration observations; cargo metadata has dependency graph/package descriptions/features and paths, not package source bodies. Referenced external files were not selected by being named in an inventory.",
+    "foreign_source_found": [],
+    "raw_dependency_payloads_selected": false
+  },
+  "snapshot": {
+    "path": "/private/tmp/dta-direct-stage9-validation/publication-preparation-01/final-status-snapshot/premerge-state-01.json",
+    "sha256": "f762fedd215fdddea74d81d5b5bd8d684f1a17277e208290390fc033653cfcf3",
+    "interpretation": "Immutable premerge history. Earlier active/pending fields remain historical. The explicit historical-sections note directs current state to final_candidate; its binary producer is complete pending detailed assessment, with normal merge/publication still future. Not final acceptance."
+  },
+  "limits": [
+    "No broad rehash of the 1,891 retained identities; equality is established between the reviewed map02 and map03 records. All 76 additions were read and rehashed.",
+    "A review comment is retained as actual task review output, not treated as authoritative final gate disposition.",
+    "Original raw foreign source payloads remain local; the previously reviewed 25 metadata derivatives and governing notices remain selected.",
+    "Missing package-c4e80137-01 is the intentionally unexecuted superseded preparation, not omitted completed package evidence.",
+    "Root final binary/hosted addendum, merged status, final configuration, combined map and actual archive transport require their own review. No publication was performed."
+  ]
+}

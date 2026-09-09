@@ -1,0 +1,389 @@
+{
+  "at_utc": "2026-09-09T18:53:18.104781+00:00",
+  "source": "d9506fb48ddc6f2362b83e737f7343ed9c251d6a",
+  "package_tree": "373eb0da731104f1581c8e0693c08d129d45610a",
+  "archive_sha256": "cfd1d11875bc1459fb25364d506d21a1b996a3b49d92d836f8e3bf8569e8656b",
+  "runs": [
+    {
+      "lane": "host_current",
+      "path": "/private/tmp/dta-direct-stage9-validation/native-source-host-current-d9506fb4-01",
+      "coordinator_sha256": "f0b8d264c3fa23b714d1427c56d04112227ac53c75fc0b358a46f6f5ef97184e",
+      "native_sha256": "cddc0f3938c0b305664311cd546e2021a864df635fedecb9082524bc88a4a760",
+      "examples_sha256": "5f74fb48ef73f9df179509bce8346e2c26dc56e591cc0106fb0e6b3de45f1e5a",
+      "outer_sha256": "4362a4d6423e23de0747ea4dcbcd6578f0ddcf1c48048b3127e9192885caffe0",
+      "totals": {
+        "blocks": 1157,
+        "passed": 14989,
+        "failed": 0,
+        "errors": 0,
+        "warnings": 3,
+        "skips": 201
+      },
+      "new_blocks": [
+        {
+          "file": "test-dplyr-optional.R",
+          "test": "unsupported dplyr registration warns once without touching methods",
+          "passed": 8,
+          "failed": 0,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "native owned string copies and renaming reuse validation facts",
+          "passed": 16,
+          "failed": 0,
+          "error": false,
+          "skipped": false
+        }
+      ],
+      "families": [
+        {
+          "name": "dibble",
+          "blocks": 121,
+          "sha256": "0fa17c1d5f91326cfaead7bea29b799016c56df8e24efaa314076e2e8d8f48e9"
+        },
+        {
+          "name": "grouped",
+          "blocks": 68,
+          "sha256": "e086d543841a40e865ae44ce4c6a5daa8b93661560786c7627b1f1cf70f886d9"
+        },
+        {
+          "name": "io",
+          "blocks": 126,
+          "sha256": "2377b737aab15130699188b81d6dd7d7eea53d534ed82bfac12e988b7bf86bf6"
+        },
+        {
+          "name": "joins_bindings",
+          "blocks": 126,
+          "sha256": "d87515225e81fec2b9ec68ce56b4a488ae8b86e3a482f1972ad7047dc177911f"
+        },
+        {
+          "name": "metadata",
+          "blocks": 145,
+          "sha256": "9bfc8010b2eed95af8e935201a381bfac6b62e979b5924801f9d44d71cb7b76d"
+        },
+        {
+          "name": "mutation",
+          "blocks": 185,
+          "sha256": "39ed55296b7108cb8bae79392e545595f8af2655e2578cf242147b42fca5860d"
+        },
+        {
+          "name": "ownership",
+          "blocks": 115,
+          "sha256": "e711d5154e4a531bc23bc2eaa92b524d1169e5978c1a5501bfc961a267466f5d"
+        },
+        {
+          "name": "rows",
+          "blocks": 88,
+          "sha256": "9adbabac31b6ece3cc84e00054dc3e32b91d23bc837a350e57ce12f028f47a41"
+        },
+        {
+          "name": "storage",
+          "blocks": 107,
+          "sha256": "b2f9e43513626daccb48a80bedd852dabc2471e60d46f5ae52fc018f7e946fad"
+        },
+        {
+          "name": "summaries",
+          "blocks": 76,
+          "sha256": "905e458a4ffb8f66f22fd52ea0164e008dedbfadfb1cdb1c0abdd00007893f1e"
+        }
+      ],
+      "input_counts": {
+        "outer": 26,
+        "coordinator": 28,
+        "native": 362
+      },
+      "unchanged_trees": 6,
+      "examples_complete": true,
+      "steps": 6
+    },
+    {
+      "lane": "minimum_current",
+      "path": "/private/tmp/dta-direct-stage9-validation/native-source-minimum-current-d9506fb4-01",
+      "coordinator_sha256": "05606226e800d52ee79ba5c21871b58ab3390d900175f19234a496899a40697e",
+      "native_sha256": "2fcaafc02bfca0b6940a3ab2a649ad0ad8d97641fc47d4a9493bb8af986f4d40",
+      "examples_sha256": "5f74fb48ef73f9df179509bce8346e2c26dc56e591cc0106fb0e6b3de45f1e5a",
+      "outer_sha256": "052c68080ad09a4e55538f4ab16e195b01107eeec55455a0a6308dc3a40a577a",
+      "totals": {
+        "blocks": 1157,
+        "passed": 14890,
+        "failed": 0,
+        "errors": 0,
+        "warnings": 3,
+        "skips": 219
+      },
+      "new_blocks": [
+        {
+          "file": "test-dplyr-optional.R",
+          "test": "unsupported dplyr registration warns once without touching methods",
+          "passed": 8,
+          "failed": 0,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "native owned string copies and renaming reuse validation facts",
+          "passed": 16,
+          "failed": 0,
+          "error": false,
+          "skipped": false
+        }
+      ],
+      "families": [
+        {
+          "name": "dibble",
+          "blocks": 121,
+          "sha256": "030f29748b9e940d5fc1591f1f44107ea1fedfa7920a02721efeeb07298cbd7f"
+        },
+        {
+          "name": "grouped",
+          "blocks": 68,
+          "sha256": "5f6fafa144e5c69c5935316be2d1eb9bc36968774e78849e957de24a8dbb39b9"
+        },
+        {
+          "name": "io",
+          "blocks": 126,
+          "sha256": "68eb1270d433d8c3a0879899eb6022cbf3857ca02b85c9f4b8128cfc6bc33ab5"
+        },
+        {
+          "name": "joins_bindings",
+          "blocks": 126,
+          "sha256": "a4f705909259cb43f5e1ad6e8ed0fc02e5b1b87e7fbc92276db56a9c9c7ef646"
+        },
+        {
+          "name": "metadata",
+          "blocks": 145,
+          "sha256": "3c98f3b61eda8c31341c4ccbcafa9e6d8d02225138b647b58e76e4091a33f1eb"
+        },
+        {
+          "name": "mutation",
+          "blocks": 185,
+          "sha256": "314af1bc30d9e124157d43eec6df6fc9cfcfe1141516e19e77518c4dd74edc6a"
+        },
+        {
+          "name": "ownership",
+          "blocks": 115,
+          "sha256": "7742413de9a0edacd63a93b01e7feeb95bdfd685a95f3061375ac2d91816df2f"
+        },
+        {
+          "name": "rows",
+          "blocks": 88,
+          "sha256": "d5e5279d0be93b3308eaf7422f55eee16732367388f8118b46e05d1af98023c5"
+        },
+        {
+          "name": "storage",
+          "blocks": 107,
+          "sha256": "2b82a47ccd5ac6694a197c04d6290ca8146b817bc7128ee4dbca138de61e2caa"
+        },
+        {
+          "name": "summaries",
+          "blocks": 76,
+          "sha256": "f51d7edb4120bb4d94355d5eb5253b8dc6a20c235624c514cacc340678e286ce"
+        }
+      ],
+      "input_counts": {
+        "outer": 26,
+        "coordinator": 28,
+        "native": 362
+      },
+      "unchanged_trees": 6,
+      "examples_complete": true,
+      "steps": 6
+    },
+    {
+      "lane": "host_floors",
+      "path": "/private/tmp/dta-direct-stage9-validation/native-source-host-floors-d9506fb4-01",
+      "coordinator_sha256": "c37aff5dde71bf674d78e3e8f4f784d5488974155cc42996a11f822f6f6d8c4d",
+      "native_sha256": "a7e6d91e306cddb35a100001d0ed63b97234d4d30b9c91b940cffdb81d6cbde6",
+      "examples_sha256": "5f74fb48ef73f9df179509bce8346e2c26dc56e591cc0106fb0e6b3de45f1e5a",
+      "outer_sha256": "5d126a88fa18b76d3996302477fc3a2aef73f340c5460fab39621bfbe7e8e0ae",
+      "totals": {
+        "blocks": 1157,
+        "passed": 14989,
+        "failed": 0,
+        "errors": 0,
+        "warnings": 3,
+        "skips": 201
+      },
+      "new_blocks": [
+        {
+          "file": "test-dplyr-optional.R",
+          "test": "unsupported dplyr registration warns once without touching methods",
+          "passed": 8,
+          "failed": 0,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "native owned string copies and renaming reuse validation facts",
+          "passed": 16,
+          "failed": 0,
+          "error": false,
+          "skipped": false
+        }
+      ],
+      "families": [
+        {
+          "name": "dibble",
+          "blocks": 121,
+          "sha256": "56ff59bef4b2d5c84f0103ef836803f0d0767fb15db58d986b5de7f6040f88bd"
+        },
+        {
+          "name": "grouped",
+          "blocks": 68,
+          "sha256": "e826589da33c943736a8a15812bcc10b0ee3cb9f7ca9143602330131870132d0"
+        },
+        {
+          "name": "io",
+          "blocks": 126,
+          "sha256": "97a4cd41ec8d5382fcf179c212ebcc47604ae4ad7d6bb3c09af58fa94b0ce698"
+        },
+        {
+          "name": "joins_bindings",
+          "blocks": 126,
+          "sha256": "da3c7f1056dc3837971298a663ba41e88a9ac1c941ef8cb0a921bb52bf3377ff"
+        },
+        {
+          "name": "metadata",
+          "blocks": 145,
+          "sha256": "eb05052aaa5343b5ca3f2423ebfa76e0d4eebe5748377df51e7e80fb0103ef13"
+        },
+        {
+          "name": "mutation",
+          "blocks": 185,
+          "sha256": "aaa3b06ee45eb96ad5f7ab400750adf4c6dd3904cc55aea0618624214594fc09"
+        },
+        {
+          "name": "ownership",
+          "blocks": 115,
+          "sha256": "1a043f193074bdaf0f316d7fbe56420bb61cc89748b52d9d48a180c449b1ec94"
+        },
+        {
+          "name": "rows",
+          "blocks": 88,
+          "sha256": "4bcc8856aa726a13da744614d91d3b4c378715af334232e6297980ecc209d873"
+        },
+        {
+          "name": "storage",
+          "blocks": 107,
+          "sha256": "356cf3d1f7b0dd0f235702c45723c4cc02250fd6df2c68143867108720babb2b"
+        },
+        {
+          "name": "summaries",
+          "blocks": 76,
+          "sha256": "0c202bf8ac5df8b39cd15f0f0aa8e7bc778836520f70792ae9f158079879341a"
+        }
+      ],
+      "input_counts": {
+        "outer": 26,
+        "coordinator": 28,
+        "native": 362
+      },
+      "unchanged_trees": 6,
+      "examples_complete": true,
+      "steps": 6
+    },
+    {
+      "lane": "minimum_floors",
+      "path": "/private/tmp/dta-direct-stage9-validation/native-source-minimum-floors-d9506fb4-01",
+      "coordinator_sha256": "5d1edb56800940cf3be3640aeb92094cdfcae7bee1ae1070c1d62930b0d4e500",
+      "native_sha256": "324a7e48cef065c99df991480495a5c17a4f013592a0afa13ab9090324c62d98",
+      "examples_sha256": "5f74fb48ef73f9df179509bce8346e2c26dc56e591cc0106fb0e6b3de45f1e5a",
+      "outer_sha256": "7f574fc066cc4bc49eda010a072070dd38ba04f841abe2c26e7a95dfeddadd23",
+      "totals": {
+        "blocks": 1157,
+        "passed": 14890,
+        "failed": 0,
+        "errors": 0,
+        "warnings": 3,
+        "skips": 219
+      },
+      "new_blocks": [
+        {
+          "file": "test-dplyr-optional.R",
+          "test": "unsupported dplyr registration warns once without touching methods",
+          "passed": 8,
+          "failed": 0,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "native owned string copies and renaming reuse validation facts",
+          "passed": 16,
+          "failed": 0,
+          "error": false,
+          "skipped": false
+        }
+      ],
+      "families": [
+        {
+          "name": "dibble",
+          "blocks": 121,
+          "sha256": "e0db1b593929518402b4b5a61d3d4545f21130d641405b32f07cfa0ab8b5cb69"
+        },
+        {
+          "name": "grouped",
+          "blocks": 68,
+          "sha256": "e008d5c4918552f20ffbe6dc56337bb5d4124bf7d4ed97635bc1441db97fcb3d"
+        },
+        {
+          "name": "io",
+          "blocks": 126,
+          "sha256": "6b0f06f141252560e130e947466f2795a65a7b522a692546b11bbaa4f97dc811"
+        },
+        {
+          "name": "joins_bindings",
+          "blocks": 126,
+          "sha256": "7f3a0eff7a2683199dd31bdd9660b9a50a1829c2118c9bdc2dffcdfd72710d23"
+        },
+        {
+          "name": "metadata",
+          "blocks": 145,
+          "sha256": "ad96bdbcafbdeae50df651a0803f3764dc717ffb763896664bcbc33eda6e0a39"
+        },
+        {
+          "name": "mutation",
+          "blocks": 185,
+          "sha256": "a9aa39d83ede042830b1935c6cd61b48a7a69a3a31dbd9926524f2e99dd1fcaa"
+        },
+        {
+          "name": "ownership",
+          "blocks": 115,
+          "sha256": "cd7df2301672542e72015cb4a1ba4791e12a0829df1f082b11c451a068a6cd57"
+        },
+        {
+          "name": "rows",
+          "blocks": 88,
+          "sha256": "a753a7be1f36f31467334335ea9dfc8cea5691fa993133814157e02e1c9b2201"
+        },
+        {
+          "name": "storage",
+          "blocks": 107,
+          "sha256": "878ce8c7aa3d543ed1a77a76600abce1c5d3668d46be544641f33d59d43f2c70"
+        },
+        {
+          "name": "summaries",
+          "blocks": 76,
+          "sha256": "3b0128de7f82daf631ab45f625dd5e7124cf5685842dfa6af051901fcb5f1580"
+        }
+      ],
+      "input_counts": {
+        "outer": 26,
+        "coordinator": 28,
+        "native": 362
+      },
+      "unchanged_trees": 6,
+      "examples_complete": true,
+      "steps": 6
+    }
+  ],
+  "current_floor_ordered_outcome_parity": {
+    "host": true,
+    "minimum": true
+  },
+  "scope": "All four actual native cells complete on the one exact d950 isolated archive. Read all family CSV rows, compare before/after inputs and six tree pairs per cell, verify all step/log identities and new assertion outcomes. Ordered outcome counts match current versus floor dependencies within each R runtime. Capability skip and child/fork interpretation remain separately reviewed; no performance comparison or Windows qualification claim."
+}

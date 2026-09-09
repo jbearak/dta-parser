@@ -1,0 +1,127 @@
+{
+  "source_commit": "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+  "package_tree": "c94bd6a240e1e0026da4ecc1807ad643cb1c7c0f",
+  "source_sha256": "ffa31797b1297d2d6e8db4bd0962b72208346eee3b5aaa70c3599e3529ecf8e1",
+  "binary_sha256": "83c1583d6e5f99ee4ab78dc968a65105d3c792652dc965e4d4d0eec18d4cc26c",
+  "installed_dll_sha256": "16b9d847613679bb03628235c8292de6f63b92d0f43d587dd0f3fce71d92da19",
+  "checks": [
+    {
+      "check": "Thirty selected endpoints match launch and live bytes",
+      "passed": true
+    },
+    {
+      "check": "coordinator before/after inputs equal",
+      "passed": true
+    },
+    {
+      "check": "coordinator recorded input bytes still match",
+      "passed": true
+    },
+    {
+      "check": "coordinator complete without error",
+      "passed": true
+    },
+    {
+      "check": "native before/after inputs equal",
+      "passed": true
+    },
+    {
+      "check": "native recorded input bytes still match",
+      "passed": true
+    },
+    {
+      "check": "native complete without error",
+      "passed": true
+    },
+    {
+      "check": "tests-dependencies-inventory-before.json exact before/after",
+      "passed": true
+    },
+    {
+      "check": "core-dependencies-inventory-before.json exact before/after",
+      "passed": true
+    },
+    {
+      "check": "empty-dependencies-inventory-before.json exact before/after",
+      "passed": true
+    },
+    {
+      "check": "installed-package-inventory-before.json exact before/after",
+      "passed": true
+    },
+    {
+      "check": "example-code-inventory-before.json exact before/after",
+      "passed": true
+    },
+    {
+      "check": "source-inventory-before.json exact before/after",
+      "passed": true
+    },
+    {
+      "check": "All 57 installed records match live bytes",
+      "passed": true
+    },
+    {
+      "check": "Installed membership exactly 57 files",
+      "passed": true
+    },
+    {
+      "check": "Exact final binary identity",
+      "passed": true
+    },
+    {
+      "check": "Exact final source identity",
+      "passed": true
+    },
+    {
+      "check": "Binary archive to installed libs/dtatools.so",
+      "passed": true
+    },
+    {
+      "check": "Binary archive to installed NOTICE",
+      "passed": true
+    },
+    {
+      "check": "Binary archive to installed R/dtatools.rdb",
+      "passed": true
+    },
+    {
+      "check": "Binary archive to installed R/dtatools.rdx",
+      "passed": true
+    },
+    {
+      "check": "Source archive to committed tools/library-guard.R",
+      "passed": true
+    },
+    {
+      "check": "Source archive to committed tools/native-children.R",
+      "passed": true
+    },
+    {
+      "check": "Source archive to committed tools/native-test-manifest.json",
+      "passed": true
+    },
+    {
+      "check": "Source archive to committed inst/NOTICE",
+      "passed": true
+    }
+  ],
+  "totals": {
+    "blocks": 1157,
+    "passed": 14989,
+    "failed": 0,
+    "warning": 3,
+    "skipped": 201,
+    "error": 0
+  },
+  "input_counts": {
+    "outer": 30,
+    "coordinator": 29,
+    "native": 293
+  },
+  "scope": [
+    "Actual final bacce binary installation and functional native qualification on host-current lane.",
+    "No source rebuild or fresh timing/allocation comparison in this qualification.",
+    "All 10 CSVs read; detailed accounting/child/fork semantic review is recorded separately."
+  ]
+}
