@@ -1,0 +1,565 @@
+{
+  "source_commit": "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+  "run_id": 34395064533,
+  "artifact_id": 10122187097,
+  "artifact_sha256": "d2fd207d2b1670c062e441c1103d7ed050a207d1a3358dadf426742c4575e56c",
+  "artifact_bytes": 7489831,
+  "artifact_members": 812,
+  "totals": {
+    "blocks": 1157,
+    "passed": 14836,
+    "failed": 0,
+    "warning": 3,
+    "skipped": 210,
+    "error": 0
+  },
+  "families": [
+    {
+      "family": "dibble",
+      "blocks": 121,
+      "passed": 1046,
+      "failed": 0,
+      "warning": 3,
+      "skipped": 46,
+      "error": 0
+    },
+    {
+      "family": "grouped",
+      "blocks": 68,
+      "passed": 103,
+      "failed": 0,
+      "warning": 0,
+      "skipped": 59,
+      "error": 0
+    },
+    {
+      "family": "io",
+      "blocks": 126,
+      "passed": 3135,
+      "failed": 0,
+      "warning": 0,
+      "skipped": 9,
+      "error": 0
+    },
+    {
+      "family": "joins_bindings",
+      "blocks": 126,
+      "passed": 902,
+      "failed": 0,
+      "warning": 0,
+      "skipped": 17,
+      "error": 0
+    },
+    {
+      "family": "metadata",
+      "blocks": 145,
+      "passed": 1507,
+      "failed": 0,
+      "warning": 0,
+      "skipped": 1,
+      "error": 0
+    },
+    {
+      "family": "mutation",
+      "blocks": 185,
+      "passed": 3395,
+      "failed": 0,
+      "warning": 0,
+      "skipped": 8,
+      "error": 0
+    },
+    {
+      "family": "ownership",
+      "blocks": 115,
+      "passed": 2488,
+      "failed": 0,
+      "warning": 0,
+      "skipped": 10,
+      "error": 0
+    },
+    {
+      "family": "rows",
+      "blocks": 88,
+      "passed": 797,
+      "failed": 0,
+      "warning": 0,
+      "skipped": 46,
+      "error": 0
+    },
+    {
+      "family": "storage",
+      "blocks": 107,
+      "passed": 872,
+      "failed": 0,
+      "warning": 0,
+      "skipped": 12,
+      "error": 0
+    },
+    {
+      "family": "summaries",
+      "blocks": 76,
+      "passed": 591,
+      "failed": 0,
+      "warning": 0,
+      "skipped": 2,
+      "error": 0
+    }
+  ],
+  "selected_records": [
+    {
+      "member": "native-build/evidence/result.json",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-build/evidence/result.json",
+      "bytes": 16891,
+      "sha256": "a0ba2ab176357d3552cffddd152f222e6e90bcb01499b7a7cf708995a052e000"
+    },
+    {
+      "member": "native-check/evidence/dependency-probe.json",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/dependency-probe.json",
+      "bytes": 29765,
+      "sha256": "68ed54732eacabe72d868f5302714a61acf252d91fa7542214df4fa8ee13dd72"
+    },
+    {
+      "member": "native-check/evidence/examples/result.json",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/examples/result.json",
+      "bytes": 12742,
+      "sha256": "4612be6800cb60c5a478f77875b31748c59169fee07e4b1734911efa6355f65e"
+    },
+    {
+      "member": "native-check/evidence/installed-probe.json",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/installed-probe.json",
+      "bytes": 32231,
+      "sha256": "6a9889bedc1b5fe362eb4fd8183311bee394a2d1e31e1977e2450ae7cd2de966"
+    },
+    {
+      "member": "native-check/evidence/native-config.json",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native-config.json",
+      "bytes": 68666,
+      "sha256": "2aa9c4e53caccdc3e10a44fc82e7a9800dc88335b5c6a7a53b13ec01f98f0ba7"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/block-accounting.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/block-accounting.R",
+      "bytes": 472602,
+      "sha256": "4b4fa059e0024de1c851461488cd2afe5ebbdcb41745f28725758adcc03dba01"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/children-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/children-summary.R",
+      "bytes": 1022,
+      "sha256": "0d24164c51dc9bc6cd39d189388380dc7ccec09f7098b862ad1f15cadada98f0"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/children/0001-bracket-autoprint/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/children/0001-bracket-autoprint/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/children/0001-bracket-autoprint/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/children/0001-bracket-autoprint/status.R",
+      "bytes": 99,
+      "sha256": "b198ec5603782dc6ef004ea27f538a77757e82e3651c8e0f11586f30114d74a2"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/children/0002-history/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/children/0002-history/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/children/0002-history/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/children/0002-history/status.R",
+      "bytes": 99,
+      "sha256": "b198ec5603782dc6ef004ea27f538a77757e82e3651c8e0f11586f30114d74a2"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/children/0003-history/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/children/0003-history/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/children/0003-history/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/children/0003-history/status.R",
+      "bytes": 99,
+      "sha256": "b198ec5603782dc6ef004ea27f538a77757e82e3651c8e0f11586f30114d74a2"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/children/0004-native-namespace/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/children/0004-native-namespace/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/children/0004-native-namespace/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/children/0004-native-namespace/status.R",
+      "bytes": 99,
+      "sha256": "b198ec5603782dc6ef004ea27f538a77757e82e3651c8e0f11586f30114d74a2"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/status.R",
+      "bytes": 117,
+      "sha256": "e6e493267ee22b4df286f39f281f76c770c064e27f8e9a30fe855e51a8d100f8"
+    },
+    {
+      "member": "native-check/evidence/native/families/dibble/observations/test-results.csv",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/dibble/observations/test-results.csv",
+      "bytes": 18232,
+      "sha256": "60aea248e354c293492b5e4b4ead0aba3cb9ef364ca4228ca3c2b9c6703545d7"
+    },
+    {
+      "member": "native-check/evidence/native/families/grouped/observations/block-accounting.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/grouped/observations/block-accounting.R",
+      "bytes": 105694,
+      "sha256": "5b5f31975c1050a9c8350ba725fc5a298d9f398bec44734e19864d47d84148b7"
+    },
+    {
+      "member": "native-check/evidence/native/families/grouped/observations/children-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/grouped/observations/children-summary.R",
+      "bytes": 8,
+      "sha256": "f2dc5c5141cd7e4663a319ca1c9ebd22eef7b81f126356bb89c95dc3c46af39a"
+    },
+    {
+      "member": "native-check/evidence/native/families/grouped/observations/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/grouped/observations/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/grouped/observations/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/grouped/observations/status.R",
+      "bytes": 117,
+      "sha256": "e6e493267ee22b4df286f39f281f76c770c064e27f8e9a30fe855e51a8d100f8"
+    },
+    {
+      "member": "native-check/evidence/native/families/grouped/observations/test-results.csv",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/grouped/observations/test-results.csv",
+      "bytes": 11014,
+      "sha256": "8329a7cac2254ed693738fd66957ea6112bed0d6f82851bef527a5925d5ad1c6"
+    },
+    {
+      "member": "native-check/evidence/native/families/io/observations/block-accounting.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/io/observations/block-accounting.R",
+      "bytes": 1230857,
+      "sha256": "6cdc76bab1400c3442fe54ca3d0663dbc429810b24c77de0f2bd9f6b7ea49b75"
+    },
+    {
+      "member": "native-check/evidence/native/families/io/observations/children-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/io/observations/children-summary.R",
+      "bytes": 8,
+      "sha256": "f2dc5c5141cd7e4663a319ca1c9ebd22eef7b81f126356bb89c95dc3c46af39a"
+    },
+    {
+      "member": "native-check/evidence/native/families/io/observations/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/io/observations/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/io/observations/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/io/observations/status.R",
+      "bytes": 117,
+      "sha256": "e6e493267ee22b4df286f39f281f76c770c064e27f8e9a30fe855e51a8d100f8"
+    },
+    {
+      "member": "native-check/evidence/native/families/io/observations/test-results.csv",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/io/observations/test-results.csv",
+      "bytes": 18159,
+      "sha256": "abe3039a06125992b51a84a2eb746592a794d5643273673bc685a3b2fee498f1"
+    },
+    {
+      "member": "native-check/evidence/native/families/joins_bindings/observations/block-accounting.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/joins_bindings/observations/block-accounting.R",
+      "bytes": 403818,
+      "sha256": "bc79d79ff6dba125e52d8ee31358d4e85bbef966eaca480adac8099ae1e207e3"
+    },
+    {
+      "member": "native-check/evidence/native/families/joins_bindings/observations/children-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/joins_bindings/observations/children-summary.R",
+      "bytes": 8,
+      "sha256": "f2dc5c5141cd7e4663a319ca1c9ebd22eef7b81f126356bb89c95dc3c46af39a"
+    },
+    {
+      "member": "native-check/evidence/native/families/joins_bindings/observations/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/joins_bindings/observations/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/joins_bindings/observations/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/joins_bindings/observations/status.R",
+      "bytes": 117,
+      "sha256": "e6e493267ee22b4df286f39f281f76c770c064e27f8e9a30fe855e51a8d100f8"
+    },
+    {
+      "member": "native-check/evidence/native/families/joins_bindings/observations/test-results.csv",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/joins_bindings/observations/test-results.csv",
+      "bytes": 20045,
+      "sha256": "f3f83f1c498b325129b77be20c63683c7bcde72e7804dab48e9691fa757e6f98"
+    },
+    {
+      "member": "native-check/evidence/native/families/metadata/observations/block-accounting.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/metadata/observations/block-accounting.R",
+      "bytes": 630638,
+      "sha256": "3e6424ce7e81ed10e5ebffd5e50971e5034c1ba0dc4a561c0a7492f91a47ee51"
+    },
+    {
+      "member": "native-check/evidence/native/families/metadata/observations/children-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/metadata/observations/children-summary.R",
+      "bytes": 8,
+      "sha256": "f2dc5c5141cd7e4663a319ca1c9ebd22eef7b81f126356bb89c95dc3c46af39a"
+    },
+    {
+      "member": "native-check/evidence/native/families/metadata/observations/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/metadata/observations/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/metadata/observations/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/metadata/observations/status.R",
+      "bytes": 117,
+      "sha256": "e6e493267ee22b4df286f39f281f76c770c064e27f8e9a30fe855e51a8d100f8"
+    },
+    {
+      "member": "native-check/evidence/native/families/metadata/observations/test-results.csv",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/metadata/observations/test-results.csv",
+      "bytes": 24523,
+      "sha256": "9a51db10b9eff1a0eecbf3a1f0057c0167a1b1cb1935f613de0f0176f3f4b4c6"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/block-accounting.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/block-accounting.R",
+      "bytes": 1356385,
+      "sha256": "a5461f5c15e25a84cfa4f6a6c6657567bf5b622c741cb5380291c866df1f5043"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/children-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/children-summary.R",
+      "bytes": 811,
+      "sha256": "bd752ac3d8270c6e56151dcf9ca1c739e53f86e657cd72f8cf93c78ed150f4f4"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/children/0001-write-interrupt/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/children/0001-write-interrupt/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/children/0001-write-interrupt/parent-result.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/children/0001-write-interrupt/parent-result.R",
+      "bytes": 602,
+      "sha256": "89e8c2b3eb29763872b730cb78ae68b54feaf0a0565dead3c47ddf561048d91c"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/children/0001-write-interrupt/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/children/0001-write-interrupt/status.R",
+      "bytes": 99,
+      "sha256": "b198ec5603782dc6ef004ea27f538a77757e82e3651c8e0f11586f30114d74a2"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/children/0002-generation-interrupt/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/children/0002-generation-interrupt/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/children/0002-generation-interrupt/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/children/0002-generation-interrupt/status.R",
+      "bytes": 99,
+      "sha256": "b198ec5603782dc6ef004ea27f538a77757e82e3651c8e0f11586f30114d74a2"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/children/0003-data-table-version/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/children/0003-data-table-version/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/children/0003-data-table-version/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/children/0003-data-table-version/status.R",
+      "bytes": 99,
+      "sha256": "b198ec5603782dc6ef004ea27f538a77757e82e3651c8e0f11586f30114d74a2"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/status.R",
+      "bytes": 117,
+      "sha256": "e6e493267ee22b4df286f39f281f76c770c064e27f8e9a30fe855e51a8d100f8"
+    },
+    {
+      "member": "native-check/evidence/native/families/mutation/observations/test-results.csv",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/mutation/observations/test-results.csv",
+      "bytes": 30956,
+      "sha256": "6b74cc167a135be844f656c829c62f4530b9424c5830ec089dc987972d646893"
+    },
+    {
+      "member": "native-check/evidence/native/families/ownership/observations/block-accounting.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/ownership/observations/block-accounting.R",
+      "bytes": 989277,
+      "sha256": "7e8c903b43d830097c9facdb0b6d32851b8fa7806c216d9a5d4f6ed7d2a4a73a"
+    },
+    {
+      "member": "native-check/evidence/native/families/ownership/observations/children-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/ownership/observations/children-summary.R",
+      "bytes": 8,
+      "sha256": "f2dc5c5141cd7e4663a319ca1c9ebd22eef7b81f126356bb89c95dc3c46af39a"
+    },
+    {
+      "member": "native-check/evidence/native/families/ownership/observations/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/ownership/observations/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/ownership/observations/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/ownership/observations/status.R",
+      "bytes": 117,
+      "sha256": "e6e493267ee22b4df286f39f281f76c770c064e27f8e9a30fe855e51a8d100f8"
+    },
+    {
+      "member": "native-check/evidence/native/families/ownership/observations/test-results.csv",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/ownership/observations/test-results.csv",
+      "bytes": 20278,
+      "sha256": "3a18741cb355a9a8e51c50e5ef0da3de47b3a0cdc6215ac70cc40663636f528b"
+    },
+    {
+      "member": "native-check/evidence/native/families/rows/observations/block-accounting.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/rows/observations/block-accounting.R",
+      "bytes": 365370,
+      "sha256": "f562ee07462cb272639bb3dab01fb5b62513c5a92526c1c515eabf62e30b16f9"
+    },
+    {
+      "member": "native-check/evidence/native/families/rows/observations/children-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/rows/observations/children-summary.R",
+      "bytes": 267,
+      "sha256": "06efc6a91511f22dc82ad97057cb1ba37c0c349c3dec442c98c74208e84baf4e"
+    },
+    {
+      "member": "native-check/evidence/native/families/rows/observations/children/0001-serialized-groups/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/rows/observations/children/0001-serialized-groups/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/rows/observations/children/0001-serialized-groups/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/rows/observations/children/0001-serialized-groups/status.R",
+      "bytes": 99,
+      "sha256": "b198ec5603782dc6ef004ea27f538a77757e82e3651c8e0f11586f30114d74a2"
+    },
+    {
+      "member": "native-check/evidence/native/families/rows/observations/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/rows/observations/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/rows/observations/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/rows/observations/status.R",
+      "bytes": 117,
+      "sha256": "e6e493267ee22b4df286f39f281f76c770c064e27f8e9a30fe855e51a8d100f8"
+    },
+    {
+      "member": "native-check/evidence/native/families/rows/observations/test-results.csv",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/rows/observations/test-results.csv",
+      "bytes": 13998,
+      "sha256": "897b9c172418adcf6b277b4727e9a1000bceb784196f9b36afd275c7e27340dd"
+    },
+    {
+      "member": "native-check/evidence/native/families/storage/observations/block-accounting.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/storage/observations/block-accounting.R",
+      "bytes": 381745,
+      "sha256": "5ed0b8ef960c1f054238579767b6a52a3a03377fe424c52b740e696451f58840"
+    },
+    {
+      "member": "native-check/evidence/native/families/storage/observations/children-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/storage/observations/children-summary.R",
+      "bytes": 8,
+      "sha256": "f2dc5c5141cd7e4663a319ca1c9ebd22eef7b81f126356bb89c95dc3c46af39a"
+    },
+    {
+      "member": "native-check/evidence/native/families/storage/observations/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/storage/observations/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/storage/observations/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/storage/observations/status.R",
+      "bytes": 117,
+      "sha256": "e6e493267ee22b4df286f39f281f76c770c064e27f8e9a30fe855e51a8d100f8"
+    },
+    {
+      "member": "native-check/evidence/native/families/storage/observations/test-results.csv",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/storage/observations/test-results.csv",
+      "bytes": 17626,
+      "sha256": "86cb6ea6622738a7a7fd23995d706140d226817a0b68be6aa0152ee3141219cb"
+    },
+    {
+      "member": "native-check/evidence/native/families/summaries/observations/block-accounting.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/summaries/observations/block-accounting.R",
+      "bytes": 256443,
+      "sha256": "15214f76f36ece47dd78f1a23da286800d8665e9dc22d32dd88f8f17dd4f5c64"
+    },
+    {
+      "member": "native-check/evidence/native/families/summaries/observations/children-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/summaries/observations/children-summary.R",
+      "bytes": 8,
+      "sha256": "f2dc5c5141cd7e4663a319ca1c9ebd22eef7b81f126356bb89c95dc3c46af39a"
+    },
+    {
+      "member": "native-check/evidence/native/families/summaries/observations/forks-summary.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/summaries/observations/forks-summary.R",
+      "bytes": 137,
+      "sha256": "d883db799991ef0e1f12bfb86e2db0b988f6a76ba3fc38d24c61cb29d10fe051"
+    },
+    {
+      "member": "native-check/evidence/native/families/summaries/observations/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/summaries/observations/status.R",
+      "bytes": 117,
+      "sha256": "e6e493267ee22b4df286f39f281f76c770c064e27f8e9a30fe855e51a8d100f8"
+    },
+    {
+      "member": "native-check/evidence/native/families/summaries/observations/test-results.csv",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/families/summaries/observations/test-results.csv",
+      "bytes": 12387,
+      "sha256": "b1b0ce4a714b8f9653d7a8815222ad22f3fd5d861ca8a31372cb8e58e068347d"
+    },
+    {
+      "member": "native-check/evidence/native/result.json",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/result.json",
+      "bytes": 289658,
+      "sha256": "67f416948164e60777fde69fcfd391dce7dc97f509c1dd0ad1d061287da48a7c"
+    },
+    {
+      "member": "native-check/evidence/native/status.R",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/native/status.R",
+      "bytes": 99,
+      "sha256": "b198ec5603782dc6ef004ea27f538a77757e82e3651c8e0f11586f30114d74a2"
+    },
+    {
+      "member": "native-check/evidence/result.json",
+      "path": "/private/tmp/dta-direct-stage9-validation/ci-bacce-native-artifact-observations-01/records/native-check/evidence/result.json",
+      "bytes": 24351,
+      "sha256": "b52d86d556cffa1ca2254092f29df0ce08d3a1dcfdca29c814cc7d7c751d0e8d"
+    }
+  ],
+  "scope": [
+    "Actual completed Windows source native lane; metadata and per-block results only are copied for origin review.",
+    "Raw ZIP remains private. No binary/source/dependency payload is selected.",
+    "Child and fork status files are supporting metadata; not a new independent full nested-child audit."
+  ]
+}

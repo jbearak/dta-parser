@@ -1,0 +1,2947 @@
+{
+  "scope": "Bounded final bacce selected package chain, reusing the reviewed legacy package runner and inherited installer scope. Source/archive members and accepted installation checked; no repeated broad live runtime/source inventory.",
+  "disposition": "clear within stated scope",
+  "source": "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+  "package_tree": "c94bd6a240e1e0026da4ecc1807ad643cb1c7c0f",
+  "receipt": {
+    "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/receipt.json",
+    "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/receipt.json",
+    "bytes": 502,
+    "mode": "0o644",
+    "sha256": "b74213ae7594895b8d4a4531efdf27bc472c04ccf46fd06d66129e745cb6bb35"
+  },
+  "manifest": {
+    "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/manifest.json",
+    "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/manifest.json",
+    "bytes": 6454096,
+    "mode": "0o644",
+    "sha256": "628658b323a91e70f8c7d5328b1648d6ad06db159252469e7917107b8721a9e7"
+  },
+  "checks": [
+    {
+      "check": "preflight command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "archive-unit command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "vendor-unit command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "vendor-rebuild-unit command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "vendor command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "rust-source-hash command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "haven command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "labelled command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "haven-conformance command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "corpus-framework command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "roxygen command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "conformance command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "build command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "archive command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "check command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "binary command/record/log/tool",
+      "ok": true
+    },
+    {
+      "check": "Selected product execution-result.json",
+      "ok": true
+    },
+    {
+      "check": "Selected product built-source-before-checks.json",
+      "ok": true
+    },
+    {
+      "check": "Selected product source-git-commands.json",
+      "ok": true
+    },
+    {
+      "check": "Selected product preflight-identity.R",
+      "ok": true
+    },
+    {
+      "check": "Selected product inputs-before.json",
+      "ok": true
+    },
+    {
+      "check": "Selected product dtatools_0.8.0.tar.gz",
+      "ok": true
+    },
+    {
+      "check": "Selected product binary/dtatools_0.8.0.tgz",
+      "ok": true
+    },
+    {
+      "check": "Selected product binary/library/dtatools/NOTICE",
+      "ok": true
+    },
+    {
+      "check": "Selected product binary/library/dtatools/libs/dtatools.so",
+      "ok": true
+    },
+    {
+      "check": "Selected product dtatools.Rcheck/00check.log",
+      "ok": true
+    },
+    {
+      "check": "Selected product dtatools.Rcheck/00install.out",
+      "ok": true
+    },
+    {
+      "check": "Selected product dtatools.Rcheck/tests/testthat.Rout",
+      "ok": true
+    },
+    {
+      "check": "Selected source before/product benchmarks/r-dibble-dplyr/run-expression-checks.py",
+      "ok": true
+    },
+    {
+      "check": "Selected source before/product benchmarks/r-dibble-dplyr/expression-preflight.R",
+      "ok": true
+    },
+    {
+      "check": "Selected source before/product scripts/check_r_package_archive.py",
+      "ok": true
+    },
+    {
+      "check": "Selected source before/product scripts/test_check_r_package_archive.py",
+      "ok": true
+    },
+    {
+      "check": "Selected source before/product r-package/dtatools/inst/NOTICE",
+      "ok": true
+    },
+    {
+      "check": "Selected source before/product r-package/dtatools/NAMESPACE",
+      "ok": true
+    },
+    {
+      "check": "Selected source before/product r-package/dtatools/tools/library-guard.R",
+      "ok": true
+    },
+    {
+      "check": "Selected archive payloads bind accepted export and producer source",
+      "ok": true
+    },
+    {
+      "check": "Source archive selected equality except explicit DESCRIPTION metadata/folding",
+      "ok": true
+    },
+    {
+      "check": "Selected binary archive and installed payload equality",
+      "ok": true
+    },
+    {
+      "check": "Accepted installer seven commands and selected logs",
+      "ok": true
+    },
+    {
+      "check": "Accepted installer 57 actual members",
+      "ok": true
+    },
+    {
+      "check": "Accepted installer selected product binding",
+      "ok": true
+    },
+    {
+      "check": "Package outer terminal success and unchanged selection",
+      "ok": true
+    },
+    {
+      "check": "Producer completion and unchanged bound inputs",
+      "ok": true
+    }
+  ],
+  "outer": {
+    "launch": {
+      "path": "/private/tmp/dta-direct-stage9-validation/package-launch-04.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/package-launch-04.json",
+      "bytes": 7369,
+      "mode": "0o644",
+      "sha256": "21189eb53c5382b8573a21fb6a605e013e0428cb2a0b867632303efc066f17fc"
+    },
+    "result": {
+      "path": "/private/tmp/dta-direct-stage9-validation/package-launch-result-04.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/package-launch-result-04.json",
+      "bytes": 649,
+      "mode": "0o644",
+      "sha256": "e03f8b20e2e4cc28f6ad87cc1933f7571f0faaecbca94f84efdf57a6d941d4ae"
+    },
+    "argv": [
+      "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "-I",
+      "-B",
+      "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+      "package",
+      "/private/tmp/dta-direct-stage9",
+      "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+      "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+      "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library",
+      "/private/tmp/dta-direct-stage9-validation/package-bacce756-01"
+    ],
+    "cwd": "/private/tmp/dta-direct-stage9",
+    "launcher": {
+      "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/launch-package-v1.py",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/launch-package-v1.py",
+      "bytes": 3364,
+      "mode": "0o644",
+      "sha256": "65d533fc325a68e3a256224df5ea3695fb0f70f48039658f6569b223b68d4c70"
+    },
+    "selection": {
+      "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/selected.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/selected.json",
+      "bytes": 4989,
+      "mode": "0o644",
+      "sha256": "9a0d73fcc702b8a7d20460f1737551c7b13ead87266071581bf725d8a97c2b7c"
+    },
+    "started_utc": "2026-09-09T19:32:31.214952+00:00",
+    "terminal": {
+      "attempted_argv": [
+        "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+        "-I",
+        "-B",
+        "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+        "package",
+        "/private/tmp/dta-direct-stage9",
+        "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+        "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+        "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library",
+        "/private/tmp/dta-direct-stage9-validation/package-bacce756-01"
+      ],
+      "returncode": 0,
+      "error": null,
+      "changed_selected_endpoints": [],
+      "final_identity_error": null,
+      "finished_utc": "2026-09-09T19:42:49.563443+00:00"
+    },
+    "selected_endpoint_checks": [
+      {
+        "expected": {
+          "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+          "resolved": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+          "bytes": 33816,
+          "mode": "0o755",
+          "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+        },
+        "actual": {
+          "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+          "resolved": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+          "bytes": 33816,
+          "mode": "0o755",
+          "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+        }
+      },
+      {
+        "expected": {
+          "path": "/opt/homebrew/bin/git",
+          "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+          "bytes": 3699840,
+          "mode": "0o555",
+          "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+        },
+        "actual": {
+          "path": "/opt/homebrew/bin/git",
+          "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+          "bytes": 3699840,
+          "mode": "0o555",
+          "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+        }
+      },
+      {
+        "expected": {
+          "path": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+          "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+          "bytes": 34640,
+          "mode": "0o755",
+          "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+        },
+        "actual": {
+          "path": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+          "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+          "bytes": 34640,
+          "mode": "0o755",
+          "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage8-validation/package-cf317730-01/receipt.json",
+          "resolved": "/private/tmp/dta-direct-stage8-validation/package-cf317730-01/receipt.json",
+          "bytes": 502,
+          "mode": "0o644",
+          "sha256": "0e3f36fa429df26e62e4e6f02a3629d19d9cc609123b2ed373f4389c050f039b"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage8-validation/package-cf317730-01/receipt.json",
+          "resolved": "/private/tmp/dta-direct-stage8-validation/package-cf317730-01/receipt.json",
+          "bytes": 502,
+          "mode": "0o644",
+          "sha256": "0e3f36fa429df26e62e4e6f02a3629d19d9cc609123b2ed373f4389c050f039b"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/completed-receipt.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/completed-receipt.json",
+          "bytes": 525,
+          "mode": "0o644",
+          "sha256": "69198717c2a793425346d3f6bee1ef7297c7919d03f19cc27f944bb4a40ae36f"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/completed-receipt.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/completed-receipt.json",
+          "bytes": 525,
+          "mode": "0o644",
+          "sha256": "69198717c2a793425346d3f6bee1ef7297c7919d03f19cc27f944bb4a40ae36f"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+          "bytes": 21863,
+          "mode": "0o644",
+          "sha256": "152a231f21e6f0417d3deeb77a2a537e212c0ca9eff514589318b6684bb36564"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+          "bytes": 21863,
+          "mode": "0o644",
+          "sha256": "152a231f21e6f0417d3deeb77a2a537e212c0ca9eff514589318b6684bb36564"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/output-manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/output-manifest.json",
+          "bytes": 141455,
+          "mode": "0o644",
+          "sha256": "465bba437cc9918ec07c8d3dc638a1d8e25cea9abb3ed36b908a106e31ea21bd"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/output-manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/output-manifest.json",
+          "bytes": 141455,
+          "mode": "0o644",
+          "sha256": "465bba437cc9918ec07c8d3dc638a1d8e25cea9abb3ed36b908a106e31ea21bd"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9-validation/windows-record-quoting-preparation-01/commit.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/windows-record-quoting-preparation-01/commit.json",
+          "bytes": 637,
+          "mode": "0o644",
+          "sha256": "e78f1deca3bee4a7c903363e373aa3e8f5f2fa89b33a7328533b009ac2d74a00"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/windows-record-quoting-preparation-01/commit.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/windows-record-quoting-preparation-01/commit.json",
+          "bytes": 637,
+          "mode": "0o644",
+          "sha256": "e78f1deca3bee4a7c903363e373aa3e8f5f2fa89b33a7328533b009ac2d74a00"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/script-scope.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/script-scope.json",
+          "bytes": 969,
+          "mode": "0o644",
+          "sha256": "6f12bfac8e1e545e9fce6bfc23a5baf28960b3491a7556fe9c34d2c913b8f5c5"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/script-scope.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/final-package-preparation-02/script-scope.json",
+          "bytes": 969,
+          "mode": "0o644",
+          "sha256": "6f12bfac8e1e545e9fce6bfc23a5baf28960b3491a7556fe9c34d2c913b8f5c5"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+          "resolved": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+          "bytes": 2503,
+          "mode": "0o644",
+          "sha256": "488edf49c605423af9e86f319e054e26007f384cb043890b70c723d363f05edc"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+          "resolved": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+          "bytes": 2503,
+          "mode": "0o644",
+          "sha256": "488edf49c605423af9e86f319e054e26007f384cb043890b70c723d363f05edc"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/helpers.R",
+          "resolved": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/helpers.R",
+          "bytes": 4098,
+          "mode": "0o644",
+          "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/helpers.R",
+          "resolved": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/helpers.R",
+          "bytes": 4098,
+          "mode": "0o644",
+          "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/install-expression-source.py",
+          "resolved": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/install-expression-source.py",
+          "bytes": 15324,
+          "mode": "0o644",
+          "sha256": "04ea798127e778c8451033f318495e1d433c4fd77128edaa26a090c7716e3828"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/install-expression-source.py",
+          "resolved": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/install-expression-source.py",
+          "bytes": 15324,
+          "mode": "0o644",
+          "sha256": "04ea798127e778c8451033f318495e1d433c4fd77128edaa26a090c7716e3828"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+          "resolved": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+          "bytes": 20464,
+          "mode": "0o644",
+          "sha256": "eb37cc11ddbe663972dabb956c85d051d5f4050a52d293b1f97d84be60510349"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+          "resolved": "/private/tmp/dta-direct-stage9/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+          "bytes": 20464,
+          "mode": "0o644",
+          "sha256": "eb37cc11ddbe663972dabb956c85d051d5f4050a52d293b1f97d84be60510349"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9/scripts/archive_safety.py",
+          "resolved": "/private/tmp/dta-direct-stage9/scripts/archive_safety.py",
+          "bytes": 1583,
+          "mode": "0o644",
+          "sha256": "e15429106e61cd70e43c3dccad4c59d339faa6af746fc11447e4b15b60eff373"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9/scripts/archive_safety.py",
+          "resolved": "/private/tmp/dta-direct-stage9/scripts/archive_safety.py",
+          "bytes": 1583,
+          "mode": "0o644",
+          "sha256": "e15429106e61cd70e43c3dccad4c59d339faa6af746fc11447e4b15b60eff373"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9/scripts/check_r_package_archive.py",
+          "resolved": "/private/tmp/dta-direct-stage9/scripts/check_r_package_archive.py",
+          "bytes": 4113,
+          "mode": "0o644",
+          "sha256": "e0aa87f9a05db3b46edb2192fa96dba9158840d1aaa67e24f23a0ed2dafcea5b"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9/scripts/check_r_package_archive.py",
+          "resolved": "/private/tmp/dta-direct-stage9/scripts/check_r_package_archive.py",
+          "bytes": 4113,
+          "mode": "0o644",
+          "sha256": "e0aa87f9a05db3b46edb2192fa96dba9158840d1aaa67e24f23a0ed2dafcea5b"
+        }
+      },
+      {
+        "expected": {
+          "path": "/private/tmp/dta-direct-stage9/scripts/test_check_r_package_archive.py",
+          "resolved": "/private/tmp/dta-direct-stage9/scripts/test_check_r_package_archive.py",
+          "bytes": 4831,
+          "mode": "0o644",
+          "sha256": "9e1821f8a70b2fcdaa4e19dc041b0d00f8dea175400582a7d36726d26c395a9c"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9/scripts/test_check_r_package_archive.py",
+          "resolved": "/private/tmp/dta-direct-stage9/scripts/test_check_r_package_archive.py",
+          "bytes": 4831,
+          "mode": "0o644",
+          "sha256": "9e1821f8a70b2fcdaa4e19dc041b0d00f8dea175400582a7d36726d26c395a9c"
+        }
+      }
+    ],
+    "scope": "16 selected outer endpoints rechecked; mechanical c4→bacce source/package/output/selection substitutions retain reviewed guard behavior."
+  },
+  "producer": {
+    "status": "complete",
+    "input_binding_complete": true,
+    "package_inventory_available": true,
+    "changed_inputs": [],
+    "bound_input_count": 64801,
+    "source_git": [
+      {
+        "command": [
+          "/opt/homebrew/bin/git",
+          "-C",
+          "/private/tmp/dta-direct-stage9",
+          "show",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7:benchmarks/r-dibble-dplyr/run-expression-checks.py"
+        ],
+        "completed_utc": "2026-09-09T19:32:31.256242+00:00",
+        "exit_code": 0,
+        "requested_command": [
+          "git",
+          "-C",
+          "/private/tmp/dta-direct-stage9",
+          "show",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7:benchmarks/r-dibble-dplyr/run-expression-checks.py"
+        ],
+        "selected_tool": {
+          "bytes": 3699840,
+          "mode": "0o555",
+          "path": "/opt/homebrew/bin/git",
+          "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+          "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+        },
+        "started_utc": "2026-09-09T19:32:31.250721+00:00"
+      },
+      {
+        "command": [
+          "/opt/homebrew/bin/git",
+          "-C",
+          "/private/tmp/dta-direct-stage9",
+          "rev-parse",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7:r-package/dtatools"
+        ],
+        "completed_utc": "2026-09-09T19:32:31.267378+00:00",
+        "exit_code": 0,
+        "requested_command": [
+          "git",
+          "-C",
+          "/private/tmp/dta-direct-stage9",
+          "rev-parse",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7:r-package/dtatools"
+        ],
+        "selected_tool": {
+          "bytes": 3699840,
+          "mode": "0o555",
+          "path": "/opt/homebrew/bin/git",
+          "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+          "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+        },
+        "started_utc": "2026-09-09T19:32:31.262745+00:00"
+      },
+      {
+        "command": [
+          "/opt/homebrew/bin/git",
+          "-C",
+          "/private/tmp/dta-direct-stage9",
+          "rev-parse",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7:r-package/dtatools"
+        ],
+        "completed_utc": "2026-09-09T19:32:31.278395+00:00",
+        "exit_code": 0,
+        "requested_command": [
+          "git",
+          "-C",
+          "/private/tmp/dta-direct-stage9",
+          "rev-parse",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7:r-package/dtatools"
+        ],
+        "selected_tool": {
+          "bytes": 3699840,
+          "mode": "0o555",
+          "path": "/opt/homebrew/bin/git",
+          "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+          "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+        },
+        "started_utc": "2026-09-09T19:32:31.273895+00:00"
+      },
+      {
+        "command": [
+          "/opt/homebrew/bin/git",
+          "-C",
+          "/private/tmp/dta-direct-stage9",
+          "archive",
+          "--format=tar",
+          "--output=/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source.tar",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7"
+        ],
+        "completed_utc": "2026-09-09T19:32:31.722886+00:00",
+        "exit_code": 0,
+        "requested_command": [
+          "git",
+          "-C",
+          "/private/tmp/dta-direct-stage9",
+          "archive",
+          "--format=tar",
+          "--output=/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source.tar",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7"
+        ],
+        "selected_tool": {
+          "bytes": 3699840,
+          "mode": "0o555",
+          "path": "/opt/homebrew/bin/git",
+          "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+          "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+        },
+        "started_utc": "2026-09-09T19:32:31.284890+00:00"
+      },
+      {
+        "command": [
+          "/opt/homebrew/bin/git",
+          "-C",
+          "/private/tmp/dta-direct-stage9",
+          "ls-tree",
+          "-r",
+          "-z",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7"
+        ],
+        "completed_utc": "2026-09-09T19:32:32.387492+00:00",
+        "exit_code": 0,
+        "requested_command": [
+          "git",
+          "-C",
+          "/private/tmp/dta-direct-stage9",
+          "ls-tree",
+          "-r",
+          "-z",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7"
+        ],
+        "selected_tool": {
+          "bytes": 3699840,
+          "mode": "0o555",
+          "path": "/opt/homebrew/bin/git",
+          "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+          "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+        },
+        "started_utc": "2026-09-09T19:32:32.379250+00:00"
+      }
+    ],
+    "actual_commands": [
+      {
+        "label": "preflight",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/opt/homebrew/bin/Rscript",
+          "--vanilla",
+          "benchmarks/r-dibble-dplyr/expression-preflight.R",
+          "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+          "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source",
+          "/private/tmp/dta-direct-stage9-validation/package-bacce756-01"
+        ],
+        "log": {
+          "bytes": 60,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight.log",
+          "sha256": "245fd7b916dad6ffb1267ffcb58339e337c06600865bfe8d8f6467063cb9ec27"
+        }
+      },
+      {
+        "label": "archive-unit",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/Users/jmb/.pyenv/shims/python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "scripts",
+          "-p",
+          "test_check_r_package_archive.py",
+          "-v"
+        ],
+        "log": {
+          "bytes": 912,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive-unit.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive-unit.log",
+          "sha256": "83e5a6a713a501604e78ec9914cd04994bfc754db6ed0748442ac0ad21c6b26f"
+        }
+      },
+      {
+        "label": "vendor-unit",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/Users/jmb/.pyenv/shims/python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "scripts",
+          "-p",
+          "test_check_r_cargo_vendor.py",
+          "-v"
+        ],
+        "log": {
+          "bytes": 3313,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-unit.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-unit.log",
+          "sha256": "8f9cb0a0501d957da84a9e1c8fff160e455485cc99b491ae36980dc1d1878ce0"
+        }
+      },
+      {
+        "label": "vendor-rebuild-unit",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/Users/jmb/.pyenv/shims/python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "scripts",
+          "-p",
+          "test_rebuild_r_vendor.py",
+          "-v"
+        ],
+        "log": {
+          "bytes": 674,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-rebuild-unit.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor-rebuild-unit.log",
+          "sha256": "a26bda261b56851b5ce9f8721adbfb7ef74490fbb47e7dc912cb533603bee47e"
+        }
+      },
+      {
+        "label": "vendor",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/bin/sh",
+          "scripts/check-r-cargo-vendor.sh"
+        ],
+        "log": {
+          "bytes": 21,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/vendor.log",
+          "sha256": "d2f91f77d5bdd8552331c0b457f2d0aab6c9eccb0a00d29a47f6c7294216720b"
+        }
+      },
+      {
+        "label": "rust-source-hash",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/bin/sh",
+          "scripts/test-rust-source-hash.sh"
+        ],
+        "log": {
+          "bytes": 34,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/rust-source-hash.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/rust-source-hash.log",
+          "sha256": "64412b90a734c68397b590ede544730f4b115e07f82cedc84ae791452eab888c"
+        }
+      },
+      {
+        "label": "haven",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/opt/homebrew/bin/Rscript",
+          "--vanilla",
+          "scripts/test-haven-helper-interop.R"
+        ],
+        "log": {
+          "bytes": 53,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven.log",
+          "sha256": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264"
+        }
+      },
+      {
+        "label": "labelled",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/opt/homebrew/bin/Rscript",
+          "--vanilla",
+          "scripts/test-labelled-interop.R"
+        ],
+        "log": {
+          "bytes": 69,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/labelled.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/labelled.log",
+          "sha256": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81"
+        }
+      },
+      {
+        "label": "haven-conformance",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/opt/homebrew/bin/Rscript",
+          "--vanilla",
+          "scripts/test-haven-conformance.R"
+        ],
+        "log": {
+          "bytes": 3083,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven-conformance.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/haven-conformance.log",
+          "sha256": "34fe99c59b88a98176d7e8ca6bb74a077e89c62d6a12eb5bb828c1ad6e2d2c78"
+        }
+      },
+      {
+        "label": "corpus-framework",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/opt/homebrew/bin/Rscript",
+          "--vanilla",
+          "benchmarks/r-corpus-performance/test-framework.R"
+        ],
+        "log": {
+          "bytes": 37,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/corpus-framework.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/corpus-framework.log",
+          "sha256": "a499c3b4bd2e3d8b7bc2046a17390505991ee20afbc91aac5d96864fde7c028b"
+        }
+      },
+      {
+        "label": "roxygen",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/opt/homebrew/bin/Rscript",
+          "--vanilla",
+          "-e",
+          "stopifnot(as.character(packageVersion(\"roxygen2\")) == read.dcf(\"DESCRIPTION\", \"Config/roxygen2/version\")[[1L]]); roxygen2::roxygenise(\".\", load_code=\"source\")"
+        ],
+        "log": {
+          "bytes": 928,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/roxygen.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/roxygen.log",
+          "sha256": "14730c326145a81a62dec2f8d9ddcccc2e3d8bc8edc81e560d8add4dcae065bb"
+        }
+      },
+      {
+        "label": "conformance",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/bin/sh",
+          "scripts/conformance.sh"
+        ],
+        "log": {
+          "bytes": 25102,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/conformance.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/conformance.log",
+          "sha256": "002fcf70bbfb1801aa2365810d5cca5958e40b01d7fa171a19dc13acd94a4f2d"
+        }
+      },
+      {
+        "label": "build",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/opt/homebrew/bin/R",
+          "CMD",
+          "build",
+          "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools"
+        ],
+        "log": {
+          "bytes": 406,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/build.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/build.log",
+          "sha256": "eb92fd35584149ad9ebe9e46e79e95b2c1b224eb70c27171a1f1f726b392ac02"
+        }
+      },
+      {
+        "label": "archive",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/bin/sh",
+          "scripts/check-r-package-archive.sh",
+          "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools_0.8.0.tar.gz"
+        ],
+        "log": {
+          "bytes": 24,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/archive.log",
+          "sha256": "4c3587b6438c2471618364e967342b11f88e0d0484fb6f8f64e2ce8a0b3b1351"
+        }
+      },
+      {
+        "label": "check",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/opt/homebrew/bin/R",
+          "CMD",
+          "check",
+          "--no-manual",
+          "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools_0.8.0.tar.gz"
+        ],
+        "log": {
+          "bytes": 14003,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/check.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/check.log",
+          "sha256": "315632d2cf688fdaab3dcc1bf432edf9453deac5f59c9f47ec6397008bee595b"
+        }
+      },
+      {
+        "label": "binary",
+        "record_equal": true,
+        "command_record_bound": true,
+        "log_bound": true,
+        "selected_tool_current": true,
+        "exit_code": 0,
+        "command": [
+          "/opt/homebrew/bin/R",
+          "CMD",
+          "INSTALL",
+          "--build",
+          "--clean",
+          "--library=/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/library",
+          "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools_0.8.0.tar.gz"
+        ],
+        "log": {
+          "bytes": 12562,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary.log",
+          "sha256": "f2fe04a2107a8fb9ed173a6c5b596a9da74945e9cba651263cce708b37b2eef4"
+        }
+      }
+    ],
+    "selected_products": [
+      {
+        "relative": "execution-result.json",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/execution-result.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/execution-result.json",
+          "bytes": 32214,
+          "mode": "0o644",
+          "sha256": "eca8b0f5699d774a5f9e9872bb0d07fd024ae969207dbfb80d27cea8f5a675f3"
+        },
+        "product": {
+          "bytes": 32214,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/execution-result.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/execution-result.json",
+          "sha256": "eca8b0f5699d774a5f9e9872bb0d07fd024ae969207dbfb80d27cea8f5a675f3"
+        },
+        "ok": true
+      },
+      {
+        "relative": "built-source-before-checks.json",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/built-source-before-checks.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/built-source-before-checks.json",
+          "bytes": 320,
+          "mode": "0o644",
+          "sha256": "9874db52aaaeff4eb426ad5cdaccd0ee6260fa13177b107d21ed6d1cf8ba0e1c"
+        },
+        "product": {
+          "bytes": 320,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/built-source-before-checks.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/built-source-before-checks.json",
+          "sha256": "9874db52aaaeff4eb426ad5cdaccd0ee6260fa13177b107d21ed6d1cf8ba0e1c"
+        },
+        "ok": true
+      },
+      {
+        "relative": "source-git-commands.json",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-git-commands.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-git-commands.json",
+          "bytes": 7867,
+          "mode": "0o644",
+          "sha256": "167bff53de1c0533b2c16ec528e884ef3d96db7558ff6a5d2c4a69a1ed9d9d4a"
+        },
+        "product": {
+          "bytes": 7867,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-git-commands.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source-git-commands.json",
+          "sha256": "167bff53de1c0533b2c16ec528e884ef3d96db7558ff6a5d2c4a69a1ed9d9d4a"
+        },
+        "ok": true
+      },
+      {
+        "relative": "preflight-identity.R",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-identity.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-identity.R",
+          "bytes": 5132,
+          "mode": "0o644",
+          "sha256": "56eed77e0e3fc0ebe81fa79e4abf34a108139c8b9251b574f3ff8bb8e11bdf16"
+        },
+        "product": {
+          "bytes": 5132,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-identity.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/preflight-identity.R",
+          "sha256": "56eed77e0e3fc0ebe81fa79e4abf34a108139c8b9251b574f3ff8bb8e11bdf16"
+        },
+        "ok": true
+      },
+      {
+        "relative": "inputs-before.json",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/inputs-before.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/inputs-before.json",
+          "bytes": 22879747,
+          "mode": "0o644",
+          "sha256": "c2644c54be891f3d66c544e3038bbe384791a84386954779b5c4edfbf3f8a7eb"
+        },
+        "product": {
+          "bytes": 22879747,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/inputs-before.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/inputs-before.json",
+          "sha256": "c2644c54be891f3d66c544e3038bbe384791a84386954779b5c4edfbf3f8a7eb"
+        },
+        "ok": true
+      },
+      {
+        "relative": "dtatools_0.8.0.tar.gz",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools_0.8.0.tar.gz",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools_0.8.0.tar.gz",
+          "bytes": 9748223,
+          "mode": "0o644",
+          "sha256": "ffa31797b1297d2d6e8db4bd0962b72208346eee3b5aaa70c3599e3529ecf8e1"
+        },
+        "product": {
+          "bytes": 9748223,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools_0.8.0.tar.gz",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools_0.8.0.tar.gz",
+          "sha256": "ffa31797b1297d2d6e8db4bd0962b72208346eee3b5aaa70c3599e3529ecf8e1"
+        },
+        "ok": true
+      },
+      {
+        "relative": "binary/dtatools_0.8.0.tgz",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/dtatools_0.8.0.tgz",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/dtatools_0.8.0.tgz",
+          "bytes": 3898460,
+          "mode": "0o644",
+          "sha256": "83c1583d6e5f99ee4ab78dc968a65105d3c792652dc965e4d4d0eec18d4cc26c"
+        },
+        "product": {
+          "bytes": 3898460,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/dtatools_0.8.0.tgz",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/dtatools_0.8.0.tgz",
+          "sha256": "83c1583d6e5f99ee4ab78dc968a65105d3c792652dc965e4d4d0eec18d4cc26c"
+        },
+        "ok": true
+      },
+      {
+        "relative": "binary/library/dtatools/NOTICE",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/library/dtatools/NOTICE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/library/dtatools/NOTICE",
+          "bytes": 46665,
+          "mode": "0o644",
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "product": {
+          "bytes": 46665,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/library/dtatools/NOTICE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/library/dtatools/NOTICE",
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "ok": true
+      },
+      {
+        "relative": "binary/library/dtatools/libs/dtatools.so",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/library/dtatools/libs/dtatools.so",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/library/dtatools/libs/dtatools.so",
+          "bytes": 8666744,
+          "mode": "0o755",
+          "sha256": "16b9d847613679bb03628235c8292de6f63b92d0f43d587dd0f3fce71d92da19"
+        },
+        "product": {
+          "bytes": 8666744,
+          "mode": "0o755",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/library/dtatools/libs/dtatools.so",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/library/dtatools/libs/dtatools.so",
+          "sha256": "16b9d847613679bb03628235c8292de6f63b92d0f43d587dd0f3fce71d92da19"
+        },
+        "ok": true
+      },
+      {
+        "relative": "dtatools.Rcheck/00check.log",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/00check.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/00check.log",
+          "bytes": 13119,
+          "mode": "0o644",
+          "sha256": "3714c59bd96afd653c81262356b5b42b9be007c6e1a7760563dec57b31536a2a"
+        },
+        "product": {
+          "bytes": 13119,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/00check.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/00check.log",
+          "sha256": "3714c59bd96afd653c81262356b5b42b9be007c6e1a7760563dec57b31536a2a"
+        },
+        "ok": true
+      },
+      {
+        "relative": "dtatools.Rcheck/00install.out",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/00install.out",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/00install.out",
+          "bytes": 22477,
+          "mode": "0o644",
+          "sha256": "4eecc18fd46efe8168f572667dc42e70a5fbc43dd2c50b76eac67052fa8b9a8f"
+        },
+        "product": {
+          "bytes": 22477,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/00install.out",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/00install.out",
+          "sha256": "4eecc18fd46efe8168f572667dc42e70a5fbc43dd2c50b76eac67052fa8b9a8f"
+        },
+        "ok": true
+      },
+      {
+        "relative": "dtatools.Rcheck/tests/testthat.Rout",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/tests/testthat.Rout",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/tests/testthat.Rout",
+          "bytes": 1612,
+          "mode": "0o644",
+          "sha256": "8dc728fa214b4de1cf418b3d60cdc976a9d9771c7850542bd1868ad612c7c018"
+        },
+        "product": {
+          "bytes": 1612,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/tests/testthat.Rout",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools.Rcheck/tests/testthat.Rout",
+          "sha256": "8dc728fa214b4de1cf418b3d60cdc976a9d9771c7850542bd1868ad612c7c018"
+        },
+        "ok": true
+      }
+    ],
+    "selected_source": [
+      {
+        "relative": "benchmarks/r-dibble-dplyr/run-expression-checks.py",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+          "bytes": 20464,
+          "mode": "0o644",
+          "sha256": "eb37cc11ddbe663972dabb956c85d051d5f4050a52d293b1f97d84be60510349"
+        },
+        "before": {
+          "bytes": 20464,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+          "sha256": "eb37cc11ddbe663972dabb956c85d051d5f4050a52d293b1f97d84be60510349"
+        },
+        "product": {
+          "bytes": 20464,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/run-expression-checks.py",
+          "sha256": "eb37cc11ddbe663972dabb956c85d051d5f4050a52d293b1f97d84be60510349"
+        },
+        "ok": true
+      },
+      {
+        "relative": "benchmarks/r-dibble-dplyr/expression-preflight.R",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/expression-preflight.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/expression-preflight.R",
+          "bytes": 1256,
+          "mode": "0o644",
+          "sha256": "f3ff120e780ed72c4adc17e1b2355dcf7da27b52d78008015c250aa2defa7dc7"
+        },
+        "before": {
+          "bytes": 1256,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/expression-preflight.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/expression-preflight.R",
+          "sha256": "f3ff120e780ed72c4adc17e1b2355dcf7da27b52d78008015c250aa2defa7dc7"
+        },
+        "product": {
+          "bytes": 1256,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/expression-preflight.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/benchmarks/r-dibble-dplyr/expression-preflight.R",
+          "sha256": "f3ff120e780ed72c4adc17e1b2355dcf7da27b52d78008015c250aa2defa7dc7"
+        },
+        "ok": true
+      },
+      {
+        "relative": "scripts/check_r_package_archive.py",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/check_r_package_archive.py",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/check_r_package_archive.py",
+          "bytes": 4113,
+          "mode": "0o644",
+          "sha256": "e0aa87f9a05db3b46edb2192fa96dba9158840d1aaa67e24f23a0ed2dafcea5b"
+        },
+        "before": {
+          "bytes": 4113,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/check_r_package_archive.py",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/check_r_package_archive.py",
+          "sha256": "e0aa87f9a05db3b46edb2192fa96dba9158840d1aaa67e24f23a0ed2dafcea5b"
+        },
+        "product": {
+          "bytes": 4113,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/check_r_package_archive.py",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/check_r_package_archive.py",
+          "sha256": "e0aa87f9a05db3b46edb2192fa96dba9158840d1aaa67e24f23a0ed2dafcea5b"
+        },
+        "ok": true
+      },
+      {
+        "relative": "scripts/test_check_r_package_archive.py",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/test_check_r_package_archive.py",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/test_check_r_package_archive.py",
+          "bytes": 4831,
+          "mode": "0o644",
+          "sha256": "9e1821f8a70b2fcdaa4e19dc041b0d00f8dea175400582a7d36726d26c395a9c"
+        },
+        "before": {
+          "bytes": 4831,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/test_check_r_package_archive.py",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/test_check_r_package_archive.py",
+          "sha256": "9e1821f8a70b2fcdaa4e19dc041b0d00f8dea175400582a7d36726d26c395a9c"
+        },
+        "product": {
+          "bytes": 4831,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/test_check_r_package_archive.py",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/scripts/test_check_r_package_archive.py",
+          "sha256": "9e1821f8a70b2fcdaa4e19dc041b0d00f8dea175400582a7d36726d26c395a9c"
+        },
+        "ok": true
+      },
+      {
+        "relative": "r-package/dtatools/inst/NOTICE",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/inst/NOTICE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/inst/NOTICE",
+          "bytes": 46665,
+          "mode": "0o644",
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "before": {
+          "bytes": 46665,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/inst/NOTICE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/inst/NOTICE",
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "product": {
+          "bytes": 46665,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/inst/NOTICE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/inst/NOTICE",
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "ok": true
+      },
+      {
+        "relative": "r-package/dtatools/NAMESPACE",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/NAMESPACE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/NAMESPACE",
+          "bytes": 9871,
+          "mode": "0o644",
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "before": {
+          "bytes": 9871,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/NAMESPACE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/NAMESPACE",
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "product": {
+          "bytes": 9871,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/NAMESPACE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/NAMESPACE",
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "ok": true
+      },
+      {
+        "relative": "r-package/dtatools/tools/library-guard.R",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/library-guard.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/library-guard.R",
+          "bytes": 8842,
+          "mode": "0o644",
+          "sha256": "373fc96aad3dbd11fad264cd6b1d98c9465028390c5227a82319b656182096f1"
+        },
+        "before": {
+          "bytes": 8842,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/library-guard.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/library-guard.R",
+          "sha256": "373fc96aad3dbd11fad264cd6b1d98c9465028390c5227a82319b656182096f1"
+        },
+        "product": {
+          "bytes": 8842,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/library-guard.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/library-guard.R",
+          "sha256": "373fc96aad3dbd11fad264cd6b1d98c9465028390c5227a82319b656182096f1"
+        },
+        "ok": true
+      }
+    ]
+  },
+  "accepted_installation": {
+    "receipt": {
+      "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/completed-receipt.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/completed-receipt.json",
+      "bytes": 525,
+      "mode": "0o644",
+      "sha256": "69198717c2a793425346d3f6bee1ef7297c7919d03f19cc27f944bb4a40ae36f"
+    },
+    "manifest": {
+      "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/output-manifest.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/output-manifest.json",
+      "bytes": 141455,
+      "mode": "0o644",
+      "sha256": "465bba437cc9918ec07c8d3dc638a1d8e25cea9abb3ed36b908a106e31ea21bd"
+    },
+    "index": {
+      "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+      "bytes": 21863,
+      "mode": "0o644",
+      "sha256": "152a231f21e6f0417d3deeb77a2a537e212c0ca9eff514589318b6684bb36564"
+    },
+    "status": "complete",
+    "changed_bound_inputs": [],
+    "input_binding_complete": true,
+    "selected_products": [
+      {
+        "relative": "installed-files.json",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+          "bytes": 21863,
+          "mode": "0o644",
+          "sha256": "152a231f21e6f0417d3deeb77a2a537e212c0ca9eff514589318b6684bb36564"
+        },
+        "product": {
+          "bytes": 21863,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-files.json",
+          "sha256": "152a231f21e6f0417d3deeb77a2a537e212c0ca9eff514589318b6684bb36564"
+        },
+        "ok": true
+      },
+      {
+        "relative": "execution-result.json",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/execution-result.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/execution-result.json",
+          "bytes": 6077,
+          "mode": "0o644",
+          "sha256": "68236012aaf47e584a51aa4ac671def1ce4fa81682e2c61ff56b129f13cd2411"
+        },
+        "product": {
+          "bytes": 6077,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/execution-result.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/execution-result.json",
+          "sha256": "68236012aaf47e584a51aa4ac671def1ce4fa81682e2c61ff56b129f13cd2411"
+        },
+        "ok": true
+      },
+      {
+        "relative": "installed-identity.R",
+        "identity": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-identity.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-identity.R",
+          "bytes": 32103,
+          "mode": "0o644",
+          "sha256": "85e5f74e1efa47446348a601ae36ce1c29b1af2665ed16ced5b0187bd7b7ec36"
+        },
+        "product": {
+          "bytes": 32103,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-identity.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/installed-identity.R",
+          "sha256": "85e5f74e1efa47446348a601ae36ce1c29b1af2665ed16ced5b0187bd7b7ec36"
+        },
+        "ok": true
+      }
+    ],
+    "commands": [
+      {
+        "label": "r-version",
+        "command": [
+          "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+          "--version"
+        ],
+        "returncode": 0,
+        "record_matches": true,
+        "log": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/r-version.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/r-version.log",
+          "bytes": 381,
+          "mode": "0o644",
+          "sha256": "d5edd22a6841d31ea0be9e6fef9a2b7cbcb8f1bfa6c650a827dfe9138712e752"
+        },
+        "log_matches": true,
+        "log_product_matches": true
+      },
+      {
+        "label": "rustc-version",
+        "command": [
+          "/opt/homebrew/Cellar/rust/1.98.0/bin/rustc",
+          "-vV"
+        ],
+        "returncode": 0,
+        "record_matches": true,
+        "log": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/rustc-version.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/rustc-version.log",
+          "bytes": 203,
+          "mode": "0o644",
+          "sha256": "75d92da7b8174054e6c19a9a80df6ccb5077af573190ddcc9cbfbe9f5c600c50"
+        },
+        "log_matches": true,
+        "log_product_matches": true
+      },
+      {
+        "label": "cargo-version",
+        "command": [
+          "/opt/homebrew/Cellar/rust/1.98.0/bin/cargo",
+          "-vV"
+        ],
+        "returncode": 0,
+        "record_matches": true,
+        "log": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/cargo-version.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/cargo-version.log",
+          "bytes": 314,
+          "mode": "0o644",
+          "sha256": "30a8ffbf5019e716b5592ff2a57ead71e42015b7b082bb9a8e76aae1d85b34df"
+        },
+        "log_matches": true,
+        "log_product_matches": true
+      },
+      {
+        "label": "clang-version",
+        "command": [
+          "/Library/Developer/CommandLineTools/usr/bin/clang",
+          "--version"
+        ],
+        "returncode": 0,
+        "record_matches": true,
+        "log": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/clang-version.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/clang-version.log",
+          "bytes": 159,
+          "mode": "0o644",
+          "sha256": "55f7662ee66d47566d9f08f35a12158ac9588e4852f788eed57fa3bf625c9a5d"
+        },
+        "log_matches": true,
+        "log_product_matches": true
+      },
+      {
+        "label": "build",
+        "command": [
+          "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+          "CMD",
+          "build",
+          "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools"
+        ],
+        "returncode": 0,
+        "record_matches": true,
+        "log": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/build.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/build.log",
+          "bytes": 408,
+          "mode": "0o644",
+          "sha256": "ebe4ae7acc2d2b233bb4f4aeb9db74c06cea0d7c549b1083534c95e710edffcc"
+        },
+        "log_matches": true,
+        "log_product_matches": true
+      },
+      {
+        "label": "install",
+        "command": [
+          "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+          "CMD",
+          "INSTALL",
+          "--library=/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library",
+          "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/build/dtatools_0.8.0.tar.gz"
+        ],
+        "returncode": 0,
+        "record_matches": true,
+        "log": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/install.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/install.log",
+          "bytes": 13056,
+          "mode": "0o644",
+          "sha256": "19aebf0642946f2bd4ad610bf4b5455fc8b3763364695284eedf3c8a7c63e9da"
+        },
+        "log_matches": true,
+        "log_product_matches": true
+      },
+      {
+        "label": "finish-install",
+        "command": [
+          "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+          "--vanilla",
+          "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/benchmarks/r-dibble-dplyr/expression-install-finish.R",
+          "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library",
+          "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+          "c94bd6a240e1e0026da4ecc1807ad643cb1c7c0f",
+          "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/build/dtatools_0.8.0.tar.gz",
+          "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/benchmarks/r-dibble-dplyr/helpers.R"
+        ],
+        "returncode": 0,
+        "record_matches": true,
+        "log": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/finish-install.log",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/finish-install.log",
+          "bytes": 268,
+          "mode": "0o644",
+          "sha256": "90384e79815ca94de7fc0c0e8e2e956b0cae9f71716ebd2d8331f23dfec37010"
+        },
+        "log_matches": true,
+        "log_product_matches": true
+      }
+    ],
+    "members": [
+      {
+        "expected": {
+          "bytes": 2183,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/DESCRIPTION",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/DESCRIPTION",
+          "sha256": "ae08126958abe4e56513ba93602f936b1f6cc3dbf05c716f9e2278474e7ecbae"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/DESCRIPTION",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/DESCRIPTION",
+          "bytes": 2183,
+          "mode": "0o644",
+          "sha256": "ae08126958abe4e56513ba93602f936b1f6cc3dbf05c716f9e2278474e7ecbae"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2725,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/INDEX",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/INDEX",
+          "sha256": "40d3ed83999e2fbd0bc9d65b8346dbc0998df32be1a1d77b5771268dd348768d"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/INDEX",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/INDEX",
+          "bytes": 2725,
+          "mode": "0o644",
+          "sha256": "40d3ed83999e2fbd0bc9d65b8346dbc0998df32be1a1d77b5771268dd348768d"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1919,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/Rd.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/Rd.rds",
+          "sha256": "918e609494e3a2f44892257808aca457c42ca0b07d4612f0dc9936f855e5d788"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/Rd.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/Rd.rds",
+          "bytes": 1919,
+          "mode": "0o644",
+          "sha256": "918e609494e3a2f44892257808aca457c42ca0b07d4612f0dc9936f855e5d788"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1863,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/benchmark-provenance.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/benchmark-provenance.rds",
+          "sha256": "3989ec691f309809ebd89b6c9e869321c5e06b8ae56d177fbecf0e27827750e7"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/benchmark-provenance.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/benchmark-provenance.rds",
+          "bytes": 1863,
+          "mode": "0o644",
+          "sha256": "3989ec691f309809ebd89b6c9e869321c5e06b8ae56d177fbecf0e27827750e7"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 123,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/features.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/features.rds",
+          "sha256": "b4f074bc0f45cfe56d976c0d67a1453067f4b34693828ed02d674a6641b3e332"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/features.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/features.rds",
+          "bytes": 123,
+          "mode": "0o644",
+          "sha256": "b4f074bc0f45cfe56d976c0d67a1453067f4b34693828ed02d674a6641b3e332"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1826,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/hsearch.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/hsearch.rds",
+          "sha256": "c503dcdb0da4bd4bd15c292cf3ace0cb5806c0279da0ce9fb9ff05469e61adb4"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/hsearch.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/hsearch.rds",
+          "bytes": 1826,
+          "mode": "0o644",
+          "sha256": "c503dcdb0da4bd4bd15c292cf3ace0cb5806c0279da0ce9fb9ff05469e61adb4"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1037,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/links.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/links.rds",
+          "sha256": "aa6d02be5c3c9613b12f20459947425de253eb8ece8d7922d635488860545da7"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/links.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/links.rds",
+          "bytes": 1037,
+          "mode": "0o644",
+          "sha256": "aa6d02be5c3c9613b12f20459947425de253eb8ece8d7922d635488860545da7"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1916,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/nsInfo.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/nsInfo.rds",
+          "sha256": "98a4771d242cc5219bb0bc8aef870c9c53a2d51d83bb315e9020b0a4a65a30a2"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/nsInfo.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/nsInfo.rds",
+          "bytes": 1916,
+          "mode": "0o644",
+          "sha256": "98a4771d242cc5219bb0bc8aef870c9c53a2d51d83bb315e9020b0a4a65a30a2"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1775,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/package.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/package.rds",
+          "sha256": "4587368d103a67b04a58db5261c6cec9a553310579d0fceb7bdc611572a81723"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/package.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/Meta/package.rds",
+          "bytes": 1775,
+          "mode": "0o644",
+          "sha256": "4587368d103a67b04a58db5261c6cec9a553310579d0fceb7bdc611572a81723"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 9871,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NAMESPACE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NAMESPACE",
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NAMESPACE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NAMESPACE",
+          "bytes": 9871,
+          "mode": "0o644",
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1823,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NEWS.md",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NEWS.md",
+          "sha256": "b6c99e4e326fc094a1a0bfd5710a97dd42bfee8f56f0493d5ba0c504a073b511"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NEWS.md",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NEWS.md",
+          "bytes": 1823,
+          "mode": "0o644",
+          "sha256": "b6c99e4e326fc094a1a0bfd5710a97dd42bfee8f56f0493d5ba0c504a073b511"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 46665,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NOTICE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NOTICE",
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NOTICE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/NOTICE",
+          "bytes": 46665,
+          "mode": "0o644",
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1058,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools",
+          "sha256": "570ca456b280cdeb201ef5ebdf22dc8f80092e2c0c68e33c7f73340e420f3759"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools",
+          "bytes": 1058,
+          "mode": "0o644",
+          "sha256": "570ca456b280cdeb201ef5ebdf22dc8f80092e2c0c68e33c7f73340e420f3759"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1074448,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools.rdb",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools.rdb",
+          "sha256": "18b22cf44cb311c8645ce1cc88aebdc681277fe1fe8c3b1977b4e3d848ac5ccc"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools.rdb",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools.rdb",
+          "bytes": 1074448,
+          "mode": "0o644",
+          "sha256": "18b22cf44cb311c8645ce1cc88aebdc681277fe1fe8c3b1977b4e3d848ac5ccc"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 13926,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools.rdx",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools.rdx",
+          "sha256": "da0c3e4c67633999d9a8ae52bc110831efa661d09449d2a26443bda1462297c0"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools.rdx",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/R/dtatools.rdx",
+          "bytes": 13926,
+          "mode": "0o644",
+          "sha256": "da0c3e4c67633999d9a8ae52bc110831efa661d09449d2a26443bda1462297c0"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 50501,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/README.md",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/README.md",
+          "sha256": "91fc0bc8ae03f32adcab8a3ed8e3d2fdb8a76bcd7ebfc9cdd79c96a85b2b3fbc"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/README.md",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/README.md",
+          "bytes": 50501,
+          "mode": "0o644",
+          "sha256": "91fc0bc8ae03f32adcab8a3ed8e3d2fdb8a76bcd7ebfc9cdd79c96a85b2b3fbc"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 6213,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types.dta",
+          "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types.dta",
+          "bytes": 6213,
+          "mode": "0o644",
+          "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1729,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v115.dta",
+          "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v115.dta",
+          "bytes": 1729,
+          "mode": "0o644",
+          "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2668,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v117.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v117.dta",
+          "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v117.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v117.dta",
+          "bytes": 2668,
+          "mode": "0o644",
+          "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 6213,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v118.dta",
+          "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/all_types_v118.dta",
+          "bytes": 6213,
+          "mode": "0o644",
+          "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 6107,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v115.dta",
+          "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v115.dta",
+          "bytes": 6107,
+          "mode": "0o644",
+          "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 6616,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v117.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v117.dta",
+          "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v117.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v117.dta",
+          "bytes": 6616,
+          "mode": "0o644",
+          "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 12765,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v118.dta",
+          "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/auto_v118.dta",
+          "bytes": 12765,
+          "mode": "0o644",
+          "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 181,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_labels_stata18.csv",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_labels_stata18.csv",
+          "sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_labels_stata18.csv",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_labels_stata18.csv",
+          "bytes": 181,
+          "mode": "0o644",
+          "sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2109,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_number_labels_stata18.csv",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_number_labels_stata18.csv",
+          "sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_number_labels_stata18.csv",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_number_labels_stata18.csv",
+          "bytes": 2109,
+          "mode": "0o644",
+          "sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 5283,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_number_labels_stata18.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_number_labels_stata18.dta",
+          "sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_number_labels_stata18.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_number_labels_stata18.dta",
+          "bytes": 5283,
+          "mode": "0o644",
+          "sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2445,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_precision_stata18.csv",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_precision_stata18.csv",
+          "sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_precision_stata18.csv",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_precision_stata18.csv",
+          "bytes": 2445,
+          "mode": "0o644",
+          "sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 782,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_stata18.csv",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_stata18.csv",
+          "sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_stata18.csv",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_stata18.csv",
+          "bytes": 782,
+          "mode": "0o644",
+          "sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 10273,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_unicode_names_stata18.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_unicode_names_stata18.dta",
+          "sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_unicode_names_stata18.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/egen_unicode_names_stata18.dta",
+          "bytes": 10273,
+          "mode": "0o644",
+          "sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2475,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty.dta",
+          "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty.dta",
+          "bytes": 2475,
+          "mode": "0o644",
+          "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 713,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty_v115.dta",
+          "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty_v115.dta",
+          "bytes": 713,
+          "mode": "0o644",
+          "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2475,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty_v118.dta",
+          "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/empty_v118.dta",
+          "bytes": 2475,
+          "mode": "0o644",
+          "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 4325,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values.dta",
+          "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values.dta",
+          "bytes": 4325,
+          "mode": "0o644",
+          "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1681,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values_v115.dta",
+          "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values_v115.dta",
+          "bytes": 1681,
+          "mode": "0o644",
+          "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 4325,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values_v118.dta",
+          "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/missing_values_v118.dta",
+          "bytes": 4325,
+          "mode": "0o644",
+          "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2804,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/strl_test.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/strl_test.dta",
+          "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/strl_test.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/strl_test.dta",
+          "bytes": 2804,
+          "mode": "0o644",
+          "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2804,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/strl_test_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/strl_test_v118.dta",
+          "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/strl_test_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/strl_test_v118.dta",
+          "bytes": 2804,
+          "mode": "0o644",
+          "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 543,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v105.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v105.dta",
+          "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v105.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v105.dta",
+          "bytes": 543,
+          "mode": "0o644",
+          "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 886,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v108.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v108.dta",
+          "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v108.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v108.dta",
+          "bytes": 886,
+          "mode": "0o644",
+          "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1286,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v110.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v110.dta",
+          "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v110.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v110.dta",
+          "bytes": 1286,
+          "mode": "0o644",
+          "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1352,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v111.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v111.dta",
+          "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v111.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/synthetic_v111.dta",
+          "bytes": 1352,
+          "mode": "0o644",
+          "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 3162,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels.dta",
+          "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels.dta",
+          "bytes": 3162,
+          "mode": "0o644",
+          "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1054,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v115.dta",
+          "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v115.dta",
+          "bytes": 1054,
+          "mode": "0o644",
+          "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1549,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v117.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v117.dta",
+          "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v117.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v117.dta",
+          "bytes": 1549,
+          "mode": "0o644",
+          "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 3162,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v118.dta",
+          "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/value_labels_v118.dta",
+          "bytes": 3162,
+          "mode": "0o644",
+          "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 86955,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide.dta",
+          "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide.dta",
+          "bytes": 86955,
+          "mode": "0o644",
+          "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 33596,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide_v115.dta",
+          "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide_v115.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide_v115.dta",
+          "bytes": 33596,
+          "mode": "0o644",
+          "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 86955,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide_v118.dta",
+          "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide_v118.dta",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/extdata/wide_v118.dta",
+          "bytes": 86955,
+          "mode": "0o644",
+          "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2862,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/AnIndex",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/AnIndex",
+          "sha256": "bf6dc5d4e2df4dc95032c794015ed10007ba254521b6d07c585e90bff200f2fa"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/AnIndex",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/AnIndex",
+          "bytes": 2862,
+          "mode": "0o644",
+          "sha256": "bf6dc5d4e2df4dc95032c794015ed10007ba254521b6d07c585e90bff200f2fa"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 873,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/aliases.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/aliases.rds",
+          "sha256": "e915d37d1575964d6cee1953d2847c4aa836cc6c7039eebd55dea7c1003525a2"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/aliases.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/aliases.rds",
+          "bytes": 873,
+          "mode": "0o644",
+          "sha256": "e915d37d1575964d6cee1953d2847c4aa836cc6c7039eebd55dea7c1003525a2"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 201066,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/dtatools.rdb",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/dtatools.rdb",
+          "sha256": "631ab89f9966159d99dbaa26bfd55367d91019ee1c743d3d51a503be9ad9527e"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/dtatools.rdb",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/dtatools.rdb",
+          "bytes": 201066,
+          "mode": "0o644",
+          "sha256": "631ab89f9966159d99dbaa26bfd55367d91019ee1c743d3d51a503be9ad9527e"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 1046,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/dtatools.rdx",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/dtatools.rdx",
+          "sha256": "72a24a4e0a6e72f5338d40581f901f1a223e179d1579bac87d818f6e6d907637"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/dtatools.rdx",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/dtatools.rdx",
+          "bytes": 1046,
+          "mode": "0o644",
+          "sha256": "72a24a4e0a6e72f5338d40581f901f1a223e179d1579bac87d818f6e6d907637"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 572,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/paths.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/paths.rds",
+          "sha256": "ff40b8f2d3705bdd16a7a42870c972d269655aece21c8bf7705ed4b731406451"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/paths.rds",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/help/paths.rds",
+          "bytes": 572,
+          "mode": "0o644",
+          "sha256": "ff40b8f2d3705bdd16a7a42870c972d269655aece21c8bf7705ed4b731406451"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 17354,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/html/00Index.html",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/html/00Index.html",
+          "sha256": "abaf019badae3e88684bce43233e6e9d9b7798aaafdd429c9f9cba3230b33f5d"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/html/00Index.html",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/html/00Index.html",
+          "bytes": 17354,
+          "mode": "0o644",
+          "sha256": "abaf019badae3e88684bce43233e6e9d9b7798aaafdd429c9f9cba3230b33f5d"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2133,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/html/R.css",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/html/R.css",
+          "sha256": "3d290675266eebeba6efff07db879d699843c80bf428f9e71000e2fc6078f5db"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/html/R.css",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/html/R.css",
+          "bytes": 2133,
+          "mode": "0o644",
+          "sha256": "3d290675266eebeba6efff07db879d699843c80bf428f9e71000e2fc6078f5db"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 8663992,
+          "mode": "0o755",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/libs/dtatools.so",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/libs/dtatools.so",
+          "sha256": "843c57f058bd5fddc73d8553e2a74054f35eb574844d991b2aaacfc6a0159b6e"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/libs/dtatools.so",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/libs/dtatools.so",
+          "bytes": 8663992,
+          "mode": "0o755",
+          "sha256": "843c57f058bd5fddc73d8553e2a74054f35eb574844d991b2aaacfc6a0159b6e"
+        },
+        "ok": true
+      },
+      {
+        "expected": {
+          "bytes": 2782,
+          "mode": "0o644",
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/raven/nse.toml",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/raven/nse.toml",
+          "sha256": "678f2a1649caeb00e0444616f47c68422df395929e5b003d18e7d3533a40875f"
+        },
+        "actual": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/raven/nse.toml",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/raven/nse.toml",
+          "bytes": 2782,
+          "mode": "0o644",
+          "sha256": "678f2a1649caeb00e0444616f47c68422df395929e5b003d18e7d3533a40875f"
+        },
+        "ok": true
+      }
+    ],
+    "exports": 106,
+    "runtime": "R 4.6.1 (2026-06-24), aarch64-apple-darwin25.4.0",
+    "library_scope": "Accepted candidate library plus host site/base libraries; this is a present package gate.",
+    "selected_namespace": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools",
+    "selected_dll": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/library/dtatools/libs/dtatools.so"
+  },
+  "archives": {
+    "reader": {
+      "path": "/private/tmp/dta-direct-stage9-validation/api-review/read-package-bacce-selected-archives-01.py",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/read-package-bacce-selected-archives-01.py",
+      "bytes": 2603,
+      "mode": "0o644",
+      "sha256": "502602521d7c7892d8116321683f9ce8e61d68e7302d2354f0717fb206a607a2"
+    },
+    "reader_argv": [
+      "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "-I",
+      "-B",
+      "/private/tmp/dta-direct-stage9-validation/api-review/read-package-bacce-selected-archives-01.py"
+    ],
+    "reader_exit": 0,
+    "reader_tool_chunk": "797952",
+    "result": {
+      "path": "/private/tmp/dta-direct-stage9-validation/api-review/package-bacce-selected-archives-01.json",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/api-review/package-bacce-selected-archives-01.json",
+      "bytes": 13609,
+      "mode": "0o644",
+      "sha256": "e552cf7f928aa766c64f39b23222940a3238003a584e468026e081fe0bfb0fc4"
+    },
+    "source": {
+      "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools_0.8.0.tar.gz",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/dtatools_0.8.0.tar.gz",
+      "bytes": 9748223,
+      "mode": "0o644",
+      "sha256": "ffa31797b1297d2d6e8db4bd0962b72208346eee3b5aaa70c3599e3529ecf8e1"
+    },
+    "binary": {
+      "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/dtatools_0.8.0.tgz",
+      "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/binary/dtatools_0.8.0.tgz",
+      "bytes": 3898460,
+      "mode": "0o644",
+      "sha256": "83c1583d6e5f99ee4ab78dc968a65105d3c792652dc965e4d4d0eec18d4cc26c"
+    },
+    "source_members": 259,
+    "binary_members": 64,
+    "source_selected": 11,
+    "binary_selected": 4,
+    "source_bindings": [
+      {
+        "relative": "src/dta-tools/LICENSE",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/src/dta-tools/LICENSE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/src/dta-tools/LICENSE",
+          "bytes": 35149,
+          "mode": "0o644",
+          "sha256": "3fb86ad2fc6f9ee1bada36000b8a6905b492caab81e3601c2592a3d6504d803a"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/src/dta-tools/LICENSE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/src/dta-tools/LICENSE",
+          "bytes": 35149,
+          "mode": "0o644",
+          "sha256": "3fb86ad2fc6f9ee1bada36000b8a6905b492caab81e3601c2592a3d6504d803a"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      },
+      {
+        "relative": "DESCRIPTION",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/DESCRIPTION",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/DESCRIPTION",
+          "bytes": 1862,
+          "mode": "0o644",
+          "sha256": "cf656530096af67ea416d89e65e39a9303c94d48db16f677b922a7a6b5be7bc4"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/DESCRIPTION",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/DESCRIPTION",
+          "bytes": 1862,
+          "mode": "0o644",
+          "sha256": "cf656530096af67ea416d89e65e39a9303c94d48db16f677b922a7a6b5be7bc4"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      },
+      {
+        "relative": "NAMESPACE",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/NAMESPACE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/NAMESPACE",
+          "bytes": 9871,
+          "mode": "0o644",
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/NAMESPACE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/NAMESPACE",
+          "bytes": 9871,
+          "mode": "0o644",
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      },
+      {
+        "relative": "inst/NOTICE",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/inst/NOTICE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/inst/NOTICE",
+          "bytes": 46665,
+          "mode": "0o644",
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/inst/NOTICE",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/inst/NOTICE",
+          "bytes": 46665,
+          "mode": "0o644",
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      },
+      {
+        "relative": "R/dplyr-registration.R",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/R/dplyr-registration.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/R/dplyr-registration.R",
+          "bytes": 7620,
+          "mode": "0o644",
+          "sha256": "ea860d28da27e1b551191cbb2e40522f24ae70d3c70c314a84a48c53316f2ccb"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/R/dplyr-registration.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/R/dplyr-registration.R",
+          "bytes": 7620,
+          "mode": "0o644",
+          "sha256": "ea860d28da27e1b551191cbb2e40522f24ae70d3c70c314a84a48c53316f2ccb"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      },
+      {
+        "relative": "R/dibble-groups.R",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/R/dibble-groups.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/R/dibble-groups.R",
+          "bytes": 15427,
+          "mode": "0o644",
+          "sha256": "e37a7c951eb0a16966a6169ae12523025611281d02d3beca46acde853417a8d6"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/R/dibble-groups.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/R/dibble-groups.R",
+          "bytes": 15427,
+          "mode": "0o644",
+          "sha256": "e37a7c951eb0a16966a6169ae12523025611281d02d3beca46acde853417a8d6"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      },
+      {
+        "relative": "tests/testthat/test-arrow.R",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tests/testthat/test-arrow.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tests/testthat/test-arrow.R",
+          "bytes": 49258,
+          "mode": "0o644",
+          "sha256": "aa4ea4d8e1ca3498d610cc2367460c423cc53c55e8fa8a740894c2cbe3c784fd"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/tests/testthat/test-arrow.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/tests/testthat/test-arrow.R",
+          "bytes": 49258,
+          "mode": "0o644",
+          "sha256": "aa4ea4d8e1ca3498d610cc2367460c423cc53c55e8fa8a740894c2cbe3c784fd"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      },
+      {
+        "relative": "tests/testthat/test-value-label-table-names.R",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tests/testthat/test-value-label-table-names.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tests/testthat/test-value-label-table-names.R",
+          "bytes": 16121,
+          "mode": "0o644",
+          "sha256": "376317cadbcb9b5814972df99ac115e6327b480e5c8ce5c58ad1beb683f98842"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/tests/testthat/test-value-label-table-names.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/tests/testthat/test-value-label-table-names.R",
+          "bytes": 16121,
+          "mode": "0o644",
+          "sha256": "376317cadbcb9b5814972df99ac115e6327b480e5c8ce5c58ad1beb683f98842"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      },
+      {
+        "relative": "tools/native-children.R",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/native-children.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/native-children.R",
+          "bytes": 23687,
+          "mode": "0o644",
+          "sha256": "52dfe2e988a64ca7ad1ecd7c8f40fcac0f6b6655a2fe15922a39d2f216a1989c"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/tools/native-children.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/tools/native-children.R",
+          "bytes": 23687,
+          "mode": "0o644",
+          "sha256": "52dfe2e988a64ca7ad1ecd7c8f40fcac0f6b6655a2fe15922a39d2f216a1989c"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      },
+      {
+        "relative": "tools/native-test-manifest.json",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/native-test-manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/native-test-manifest.json",
+          "bytes": 351997,
+          "mode": "0o644",
+          "sha256": "56fc0a5019000c046cdeb9b4d982b676d66bc94d88e41823f41e2d33e618e428"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/tools/native-test-manifest.json",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/tools/native-test-manifest.json",
+          "bytes": 351997,
+          "mode": "0o644",
+          "sha256": "56fc0a5019000c046cdeb9b4d982b676d66bc94d88e41823f41e2d33e618e428"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      },
+      {
+        "relative": "tools/library-guard.R",
+        "source": {
+          "path": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/library-guard.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/package-bacce756-01/source/r-package/dtatools/tools/library-guard.R",
+          "bytes": 8842,
+          "mode": "0o644",
+          "sha256": "373fc96aad3dbd11fad264cd6b1d98c9465028390c5227a82319b656182096f1"
+        },
+        "accepted": {
+          "path": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/tools/library-guard.R",
+          "resolved": "/private/tmp/dta-direct-stage9-validation/candidate-bacce756-01/export/r-package/dtatools/tools/library-guard.R",
+          "bytes": 8842,
+          "mode": "0o644",
+          "sha256": "373fc96aad3dbd11fad264cd6b1d98c9465028390c5227a82319b656182096f1"
+        },
+        "source_bound": true,
+        "accepted_bound": true,
+        "bytes_equal": true
+      }
+    ],
+    "description": {
+      "source_unchanged": true,
+      "source_added": [
+        {
+          "key": "Packaged",
+          "value": "2026-09-09 19:38:12 UTC; jmb"
+        },
+        {
+          "key": "Author",
+          "value": "Jonathan Bearak [aut, cre], dplyr authors [cph] (Adapted selectors, grouping, expressions and row policies; see inst/NOTICE), R Core Team [cph] (Adapted base subsetting policy; see inst/NOTICE)"
+        },
+        {
+          "key": "Maintainer",
+          "value": "Jonathan Bearak <jonathan@bearak.net>"
+        }
+      ],
+      "binary_unchanged": true,
+      "binary_added": [
+        {
+          "key": "Built",
+          "value": "R 4.6.1; aarch64-apple-darwin25.4.0; 2026-09-09 19:42:21 UTC; unix"
+        }
+      ]
+    },
+    "notice_sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa",
+    "license_sha256": "3fb86ad2fc6f9ee1bada36000b8a6905b492caab81e3601c2592a3d6504d803a",
+    "final_library_guard_sha256": "373fc96aad3dbd11fad264cd6b1d98c9465028390c5227a82319b656182096f1",
+    "binary_dll_sha256": "16b9d847613679bb03628235c8292de6f63b92d0f43d587dd0f3fce71d92da19",
+    "rcheck_dll_sha256": "d18e19c95af01d95f4253ee8e2bb7b9c9422da666b1b416c101fa825bedb539d"
+  },
+  "diagnostics": {
+    "top_commands": 16,
+    "all_exit_zero": true,
+    "r_check": "3 WARNINGs, 2 NOTEs",
+    "testthat": {
+      "pass": 20209,
+      "warn": 6,
+      "fail": 0,
+      "skip": 0
+    },
+    "warning_scope": [
+      "SDK 26.5 objects linked for macOS 26.0",
+      "Vendored GNU Make extensions",
+      "Rust-linked _abort symbol"
+    ],
+    "note_scope": [
+      "Vendored chrono CITATION file",
+      "Generated zstd flag_check.c without final newline"
+    ],
+    "nested_nm": {
+      "error_lines": 22,
+      "reason": "Unknown attribute kind (105), LLVM22.1.8 producer versus Apple LLVM reader",
+      "actual_nested_status": 1,
+      "install_terminal": "DONE (dtatools)",
+      "scope": "Not counted as a zero-exit subprocess merely because enclosing labeled check command exits zero."
+    },
+    "conformance_skip": "One loopback server control skipped because this environment does not permit starting a loopback HTTP server.",
+    "dependency_index_warnings": "CRAN/Bioconductor index URLs unavailable in check console; dependency check nevertheless reported OK.",
+    "other_checks": [
+      "Archive mutation controls 6 pass",
+      "Vendor controls 22 pass",
+      "Vendor rebuild controls 4 pass",
+      "TypeScript 22 immutable fixtures and 32085 decoded cells pass",
+      "10 deterministic native cases and one oracle case pass",
+      "haven/labelled interoperability pass",
+      "Examples and package tests OK"
+    ],
+    "roxygen": "8.1.0; handwritten NAMESPACE/read_dta.Rd/recode.Rd skipped by generator as retained."
+  },
+  "reader_corrections": [
+    "DCF comparison trims the initial continuation whitespace after joining fields; raw source/archive DESCRIPTION texts remain in selected-archive result. No source/archive DESCRIPTION byte-equality claim."
+  ],
+  "limits": [
+    "The 64,801 producer input comparison and exported full source manifest are reused as recorded; only selected endpoints were rehashed here.",
+    "No repeated source.tar or full runtime/OS inventory; no continuous environment or complete temporary-child image claim.",
+    "The actual Python command can select a pyenv shim; command records and selected-tool identity are retained distinctly from the outer pinned Python executable.",
+    "This present package gate does not substitute for root physical native build/install/floor/example/binary gates or hosted Windows/macOS/Linux executions.",
+    "Source helper presence qualifies archive membership; execution of the corrected native writer is established by its separate controls/native gates.",
+    "Archive payloads were read locally, not published or copied into evidence by this review."
+  ]
+}

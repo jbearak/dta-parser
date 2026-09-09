@@ -1,0 +1,18 @@
+{
+  "at_utc": "2026-09-09T20:15:06.373195+00:00",
+  "pr": 217,
+  "merge": "e3843a13dd867b05d8a98457cf2edc12f6331eeb",
+  "parents": [
+    "7a7aa79228dd00e263f9d425406ea1b884df05dc",
+    "bacce7560aba783b6991f1be6a0dde4d23e5d9e7"
+  ],
+  "head": "bacce7560aba783b6991f1be6a0dde4d23e5d9e7",
+  "merge_tree": "92bd7cb925d21c7df56765115e76062252cd3a92",
+  "head_tree": "92bd7cb925d21c7df56765115e76062252cd3a92",
+  "package_tree": "c94bd6a240e1e0026da4ecc1807ad643cb1c7c0f",
+  "stage8_evidence_preserved": true,
+  "normal_parents_exact": true,
+  "entire_tree_equals_reviewed_head": true,
+  "implementation_worktree_clean": true,
+  "fetch": "Default fetch could not write shared .git/FETCH_HEAD under sandbox; same normal fetch with approved escalation succeeded. No alternative transport."
+}

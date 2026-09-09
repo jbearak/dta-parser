@@ -1,0 +1,15 @@
+{
+  "disposition": "clear for exact reviewed archive",
+  "archive_sha256": "d8c0155ca9075c9be48114184c36e58ccb98d514b4bebc0d2a4edc90b0ffbc04",
+  "archive_bytes": 103728507,
+  "selection_sha256": "d1a8c1356b52f82775df4ac548af5e542022e86bb3111d022b1e20420857ae47",
+  "members": 5265,
+  "uncompressed_bytes": 711975358,
+  "independent_checks": [
+    "Reconstructed exact selection union from four pinned origin-reviewed maps, 51 explicit records, configuration and combiner source; all identity rows and member mappings agree.",
+    "Read actual combination and build outer results: complete, return code zero, no errors or changed inputs, and equal before/after endpoint records.",
+    "Read compressed archive without extraction; all 5265 ordered members match selected names, regular-file types, modes, sizes and SHA256 digests.",
+    "Transported selection bytes equal the reviewed combined selection."
+  ],
+  "scope": "Independent evidence transport verification. Prior explicit origin reviews establish selected content provenance. No original workload, package test or dependency-image replay was performed. No additional scientific qualification is inferred from copying records."
+}
