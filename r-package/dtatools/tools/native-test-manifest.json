@@ -5912,7 +5912,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-bracket.R",
-          "sha256": "1a608d1603791dacb6294039b11e10f5f3d742cee19a45b32cb9d73f5c1fb675"
+          "sha256": "b0b6272f3849f17ccb5640b1c34671c5b361792ade23a039810307215594360a"
         },
         {
           "path": "tests/testthat/test-dibble-columns.R",
@@ -6021,7 +6021,7 @@
           "test": "brackets without := subset the current contents into a dibble",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 13,
+          "min_pass": 15,
           "warnings": 0
         },
         {
@@ -7068,7 +7068,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble-rows.R",
-          "sha256": "7176c876ac63bf4506f7f04766f7ea31d46672c79b133391b0db98d6df305c4e"
+          "sha256": "c5fb34e389cb1a61474093e24e57ae6dca9bff4957c339516640d481353af34f"
         },
         {
           "path": "tests/testthat/test-dibble-row-filter.R",
@@ -7092,6 +7092,70 @@
         }
       ],
       "blocks": [
+        {
+          "file": "test-dibble-rows.R",
+          "test": "read brackets combine column predicates and ordered selections",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-rows.R",
+          "test": "read predicates distinguish columns, caller values, and lone indices",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-rows.R",
+          "test": "dot selections contain column names rather than computations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-rows.R",
+          "test": "read syntax retains metadata wrapper forcing and notes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-rows.R",
+          "test": "read predicates preserve missing empty and drop policies",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-rows.R",
+          "test": "grouped read predicates evaluate over the complete table",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-rows.R",
+          "test": "read predicate results preserve metadata and later write isolation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-rows.R",
+          "test": "escaped read masks protect unread owned compact and overlay columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 150,
+          "warnings": 0
+        },
         {
           "file": "test-dibble-row-filter.R",
           "test": "S6-F01 filter_out complements the completed TRUE-only conjunction",
@@ -7516,7 +7580,7 @@
         },
         {
           "file": "test-dibble-rows.R",
-          "test": "bracket subscript evaluation is once, ordered, and outside the data mask",
+          "test": "bracket subscript calls are evaluated once in their established order",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 5,
@@ -7635,7 +7699,7 @@
           "test": "bracket planning never executes language-valued indices",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 23,
+          "min_pass": 29,
           "warnings": 0
         },
         {

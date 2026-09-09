@@ -12,10 +12,11 @@
 
 \item{i}{Row selection, as \code{where} in \code{\link[=replace_values]{replace_values()}}: missing or
 \code{NULL} for every row, a logical expression, or row positions.
-Without \verb{:=} in \code{j}, ordinary tibble row indexing.}
+Without \verb{:=} in \code{j}, a whole-table column expression or a caller-supplied
+index, following tibble's row rules; explicit \code{NULL} selects no rows.}
 
 \item{j}{One or more \verb{:=} assignments, or, without \verb{:=}, ordinary
-tibble column indexing.}
+tibble column indexing or \code{.()} with unnamed column names or strings.}
 
 \item{...}{Passed to tibble's \code{[} when \code{j} is not an assignment.
 Not allowed otherwise.}
@@ -88,9 +89,27 @@ groups, several assignments run column by column across all groups, so
 \code{.n} and \code{.N} are the same in every assignment of one call. \code{by} or
 \code{bysort} without a \verb{:=} in \code{j} is an error.
 
-Without \verb{:=} the brackets are ordinary tibble subsetting of the current
-contents: \code{data[1, ]}, \code{data[, "x"]}, \code{data["x"]}, and \code{data[i, cols]}
-return a new dibble holding the selection, following copy-on-modify.
+Without \verb{:=}, brackets return a new dibble holding the selection. Later
+writes to the source or result leave the other dataset unchanged.
+In two-dimensional reads, compound row expressions such as \code{data[x == y, ]}
+resolve columns first, then caller objects. Use \code{.env$x} to request a caller
+object when a column is also named \code{x}. Expressions run once over the whole
+table, including grouped and rowwise dibbles. A lone symbol remains a
+programmatic index: \code{data[rows, ]} reads \code{rows} from the caller. Parentheses
+make \code{(rows)} a compound expression, so a column named \code{rows} wins there;
+\code{.env$rows} always requests the caller index. The resulting value follows
+tibble's index rules; returned language is not evaluated again.
+Missing \code{i} selects all rows, explicit \code{NULL} selects none, and logical \code{NA}
+produces a padded missing row. Typed strings in padded rows are empty.
+
+\code{data[, .(x, y)]} selects columns in the stated order, and combines with row
+expressions as \code{data[x == y, .(x, y)]}. Read \code{.()} accepts unnamed bare column
+names or literal strings only. It does not compute or rename columns, and
+\code{.()} selects zero columns. For dynamic names, use \code{data[, cols]} with a
+character or numeric index. Ordinary indexing such as \code{data[1, ]},
+\code{data[, "x"]}, and one-dimensional \code{data["x"]} remains available. These read
+forms need neither dplyr nor data.table. Assignment retains its separate
+lookup rules and the dynamic target spelling \code{.(name) := value}.
 }
 \examples{
 survey <- dibble(id = 1:4, income = c(10, 20, 30, 40))
@@ -102,6 +121,11 @@ survey[, c("a", "b") := list(id * 2, id * 3)]
 name <- "flag"
 survey[id > 2, .(name) := TRUE]
 survey[1, ]
+survey[income > 20, .(id, income)]
+cutoff <- 20
+survey[income > .env$cutoff, .("income", id)]
+cols <- c("income", "id")
+survey[, cols]
 }
 \seealso{
 \link{dibble}, \code{\link[=replace_values]{replace_values()}}

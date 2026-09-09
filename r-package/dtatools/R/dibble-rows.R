@@ -76,6 +76,37 @@
 # Bracket planning uses the container's public index rules on one integer row
 # column. Column selection is shallow. Only the resulting locations reach the
 # shared gatherer, avoiding one integer planning vector per dataset column.
+.dibble_read_rows <- function(expression, snapshot, environment) {
+    # A lone symbol remains a caller-supplied index. Calls get a whole-table
+    # mask, with columns first and the caller available through `.env`.
+    if (!is.call(expression)) return(eval(expression, environment))
+    # The expression can retain its environment before reading any column.
+    # Freeze every exposed handle, including columns in a legacy overlay.
+    columns <- .exposed_mutation_columns(.data_columns(snapshot))
+    .eval_in_mutation_data(expression, columns, environment, shadow = FALSE)
+}
+
+.dibble_read_columns <- function(expression, environment) {
+    if (!is.call(expression) || !identical(expression[[1L]], quote(.))) {
+        return(eval(expression, environment))
+    }
+    arguments <- as.list(expression)[-1L]
+    if (any(nzchar(names(arguments)))) {
+        stop("Read `.()` accepts only unnamed column names or strings", call. = FALSE)
+    }
+    vapply(seq_along(arguments), function(index) {
+        if (identical(arguments[[index]], quote(expr = ))) {
+            stop("Read `.()` accepts only unnamed column names or strings", call. = FALSE)
+        }
+        argument <- arguments[[index]]
+        if (is.symbol(argument) &&
+            !identical(argument, quote(...))) return(as.character(argument))
+        if (is.character(argument) && length(argument) == 1L &&
+            !is.na(argument) && nzchar(argument)) return(argument)
+        stop("Read `.()` accepts only unnamed column names or strings", call. = FALSE)
+    }, character(1), USE.NAMES = FALSE)
+}
+
 .reference_bracket <- function(data, call, environment, one_dimension) {
     .as_mutation_data(data, allow_grouped = TRUE)
     snapshot <- .reference_snapshot(data)
@@ -90,6 +121,7 @@
         call[[2L]] <- snapshot
         return(.close_dibble(data, eval(call, environment)))
     }
+    read_syntax <- is_dibble(data) && !one_dimension && inherits(snapshot, "tbl_df")
     metadata_selected <- NULL
     if (inherits(snapshot, "dtatools_dta_metadata")) {
         # The metadata wrapper selects indices before NextMethod matches the
@@ -99,7 +131,9 @@
         metadata_selected <- stats::setNames(seq_along(snapshot), names(snapshot))
         subscript <- if (one_dimension) "i" else "j"
         if (subscript %in% names(metadata_call)) {
-            value <- eval(metadata_call[[subscript]], environment)
+            value <- if (read_syntax) {
+                .dibble_read_columns(metadata_call[[subscript]], environment)
+            } else eval(metadata_call[[subscript]], environment)
             metadata_selected <- metadata_selected[value]
             where <- if (subscript %in% names(call)) match(subscript, names(call)) else
                 if (one_dimension) 3L else 4L
@@ -137,8 +171,14 @@
     if (!inherits(snapshot, "tbl_df")) {
         return(.reference_base_rows(snapshot, matched, call, environment, metadata_selected))
     }
-    i <- if (supplied_i) eval(matched$i, environment) else NULL
-    j <- if (supplied_j) eval(matched$j, environment) else NULL
+    i <- if (supplied_i) {
+        if (read_syntax) .dibble_read_rows(matched$i, snapshot, environment) else
+            eval(matched$i, environment)
+    } else NULL
+    j <- if (supplied_j) {
+        if (read_syntax) .dibble_read_columns(matched$j, environment) else
+            eval(matched$j, environment)
+    } else NULL
     # Evaluate extra arguments just as the underlying method does. Tibble
     # accepts unused dots; base data frames report their own unused arguments.
     column_call <- as.call(list(quote(`[`), snapshot, rlang::missing_arg(),
