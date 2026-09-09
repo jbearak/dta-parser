@@ -3654,6 +3654,9 @@ group_by.dtatools_ref_data <- function(
 summarise.dtatools_ref_data <- function(
     .data, ..., .by = NULL, .groups = NULL
 ) {
+    if (is_dibble(.data)) return(.dibble_summary(.data,
+        rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by), .groups,
+        caller_env = parent.frame()))
     .typed_mask_verb(
         .data, "summarise", rlang::enquos(..., .ignore_empty = "all"),
         list(.by = rlang::enquo(.by), .groups = .groups), "`summarise()`"
@@ -3674,6 +3677,8 @@ distinct.dtatools_ref_data <- function(.data, ..., .keep_all = FALSE) {
 
 #' @export
 reframe.dtatools_ref_data <- function(.data, ..., .by = NULL) {
+    if (is_dibble(.data)) return(.dibble_summary(.data,
+        rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by), reframe = TRUE))
     .typed_mask_verb(
         .data, "reframe", rlang::enquos(..., .ignore_empty = "all"),
         list(.by = rlang::enquo(.by)), "`reframe()`"
@@ -3682,6 +3687,7 @@ reframe.dtatools_ref_data <- function(.data, ..., .by = NULL) {
 
 #' @export
 group_modify.dtatools_ref_data <- function(.data, .f, ..., .keep = FALSE) {
+    if (is_dibble(.data)) return(.dibble_group_modify(.data, .f, ..., .keep = .keep))
     .typed_reference_verb(
         .data, sys.call(), dplyr::group_modify, parent.frame(),
         "`group_modify()`"
@@ -3691,6 +3697,9 @@ group_modify.dtatools_ref_data <- function(.data, .f, ..., .keep = FALSE) {
 #' @export
 nest_by.dtatools_ref_data <- function(.data, ..., .key = "data",
                                       .keep = FALSE) {
+    if (is_dibble(.data)) return(.dibble_nest(.data,
+        rlang::enquos(..., .ignore_empty = "all"), .key, .keep,
+        rowwise = TRUE, dots_supplied = !missing(...)))
     .typed_mask_verb(
         .data, "nest_by", rlang::enquos(..., .ignore_empty = "all"),
         list(.key = .key, .keep = .keep), "`nest_by()`"
@@ -3700,6 +3709,8 @@ nest_by.dtatools_ref_data <- function(.data, ..., .key = "data",
 #' @export
 group_nest.dtatools_ref_data <- function(.tbl, ..., .key = "data",
                                          keep = FALSE) {
+    if (is_dibble(.tbl)) return(.dibble_nest(.tbl,
+        rlang::enquos(..., .ignore_empty = "all"), .key, keep))
     .typed_mask_verb(
         .tbl, "group_nest", rlang::enquos(..., .ignore_empty = "all"),
         list(.key = .key, keep = keep), "`group_nest()`"

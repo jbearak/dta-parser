@@ -37,6 +37,12 @@ Adapted from dplyr 1.2.1:
     dplyr internals. Validation additionally requires a complete partition and
     matching keys before expressions run. Partition counts are linear, and
     compatible equality proxies are expanded after casting observed keys.
+    Stage 7 reduces temporary allocations for ordinary integer partitions and
+    uses public character match codes for classless ordinary or known-owned
+    character keys. Custom classes, foreign storage and inputs with a non-NULL
+    stata.storage attribute retain the general path and per-key error order.
+    These are package-specific validation changes; nested capture and
+    mutable-metadata checks remain.
     These use public vctrs APIs; no additional upstream source is incorporated.
     Native gathering uses the existing
     dtatools kernel. Missing strings are normalized before groups are rebuilt;
@@ -48,6 +54,8 @@ Adapted from dplyr 1.2.1:
     rowwise identifier and reconstruction cases from test-group-by.R,
     test-grouped-df.R, test-generics.R and test-rowwise.R, with package-specific
     storage, metadata, indexing and later-write isolation assertions.
+    test-dibble-group-validation.R adds package-specific character equality,
+    source state, foreign-length fallback and allocation regressions.
   Additional Stage 5 sources:
     R/context.R: context_env, public context helpers and restoration contract
     R/conditions.R: warning record fields and signal_warnings integration
@@ -110,6 +118,40 @@ Adapted from dplyr 1.2.1:
     Stage 6 caller witnesses additionally informed group-frame and empty-group
     cases. Preparation drafts and their failed expectations are not package
     qualification; the integrated tests are checked on the installed source.
+  Additional Stage 7 sources:
+    R/summarise.R: summarise_cols, summarise_eval_one, summarise_build,
+      summarise.data.frame/grouped_df/rowwise_df and grouping messages
+    R/reframe.R: reframe.data.frame
+    src/summarise.cpp: deferred size-one checking and horizontal recycling
+    R/data-mask.R: summary chunks, rowwise scalar-list binding and context reset
+    R/vctrs.R, R/conditions.R, R/context.R: common-type error classes and
+      named-group details, adapted to the owned group plan and public formatting
+    R/pick.R: expand_pick integration contract
+    R/group-map.R: as_group_map_function and group_modify methods
+    R/group-split.R: group_split_impl and group prototypes
+    R/group-nest.R and R/nest-by.R: grouping, nesting and key policies
+  Destinations: R/dibble-summaries.R, R/dibble-callbacks.R, the optional
+    context adapter and five methods in R/mutate-data.R.
+  Changes: explicit per-group chunks retain immediate Stata typing before
+    common casting and dependent dots; summary sizes are checked after all
+    dots, while reframe recycles horizontally. The first assembled result is
+    reused only when all recorded chunk sizes match the final group sizes;
+    otherwise the existing recycling and assembly path remains.
+    Typed across callbacks retain
+    the observed predecessor group-major order. Public vctrs assembly and
+    package gathering/finalization replace whole-verb dplyr delegation.
+    Shared R/dibble-nested-capture.R is package-specific storage capture for
+    nested frame/list publication, preserving public classes and intentional
+    reference-valued objects rather than assuming a shallow list is isolated.
+    A call-local active-node guard rejects cyclic nested list/frame payloads
+    before vector assembly; completed acyclic siblings can reuse their capture.
+    Its memo uses the public utils address-hash API with actual object keys and
+    fixed-field source/result entries, avoiding per-address environment binding
+    names. Each sibling list computes its first-identity index once.
+  Additional tests: test-dibble-summary.R and test-dibble-callbacks.R adapt
+    test-summarise.R, test-reframe.R, test-across.R, test-pick.R,
+    test-group-map.R, test-group-nest.R and test-nest-by.R policies, with typed
+    predecessor oracles and package-specific isolation/metadata regressions.
   The inspected files contain no separate file-level copyright or license.
 
 Adapted from R 4.6.1, released 2026-06-24 (SVN revision 90187):

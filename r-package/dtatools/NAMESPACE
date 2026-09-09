@@ -333,6 +333,7 @@ importFrom(vctrs,vec_ptype2)
 importFrom(vctrs,vec_restore)
 importFrom(stats,median)
 importFrom(stats,quantile)
+importFrom(rlang,":=")
 if (getRversion() >= "4.3.0") S3method(chooseOpsMethod,dta_numeric)
 
 export(reserve_columns)

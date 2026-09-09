@@ -10,7 +10,250 @@ CodeRabbit. Its documentation-coverage warning is always nonblocking. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stages 1 through 5 complete, Stage 6 active
+## Stages 1 through 6 complete, Stage 7 active
+
+Stage 6 [PR #209](https://github.com/jbearak/dta-parser/pull/209) merged normally
+on September 8, 2026 at 20:33:25 UTC as
+`4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c`, with reviewed head
+`53a1388dca2c7f924d8eef4a96574371c08f0394`. All required CI and substantive
+implementation CodeRabbit reviews passed; both independent reviews and the
+root assessment accepted the scoped qualification. Exact a146 source passed
+17,658 full-host assertions, 5,983 selected R 4.6.0 assertions, package,
+conformance, interoperability and native gates. Rust evidence was reused only
+for identical Rust inputs. Local package check retains three warnings and two
+notes; macOS and Windows CI retain their observed predecessor warning counts.
+
+The final original atomic comparison has only the twelve base-R read regressions
+from earlier stages reserved for final epic assessment. Fresh row grids have no direct
+public-operation flags against the predecessor or safe control under the joint
+>10% and >1 ms threshold. One safe-control slice_head comparison remains flagged;
+it does not enter the new public row planner. Arrange's public rank planning
+uses more R allocation for factor/ordered keys, and the one-million-row row-chain
+lifetime measurement records about 24 MB higher whole-child arrange peak RSS
+for those types. The full 24-child row-memory suite retains bounded final-output
+chains; it does not retain all intermediate results or measure isolated peaks
+at each checkpoint. The approved final PR body records these limits in detail.
+
+Concurrent [PR #210](https://github.com/jbearak/dta-parser/pull/210) became the
+merge's first parent `5556caedf777976fcd8976c5d8b36e183a5b86e5`. Its Pages,
+release and repository documentation changes are preserved. All 238 recursive
+package leaves were compared: 237 match qualified a146 by path, blob, type and
+mode; only the package README installation instructions differ. The merged
+package tree is `db679c332c54fcf027557f4be728d8f970bf2df7`, not the historical
+installed a146 tree `18263d4e3bc286cf801c82945be3e5b817d8e5dd`.
+
+Stage 7 starts at that verified merge on `codex/direct-dibble-summary-nesting`
+in `/private/tmp/dta-direct-stage7`, with fresh predecessor installation and
+validation under `/private/tmp/dta-direct-stage7-validation`. It owns direct
+summarise, reframe, group_modify, group_nest and nest_by, including summary
+chunk sizing and nested result isolation. An isolated foreign-write regression
+reproduces a pre-existing group_nest failure on both main235 and a146; its fix
+and complete nested-output qualification are mandatory Stage 7 work. The
+read-only scalar-address observations identify a lead, not a traced C cause.
+Stages 8–9, the twelve residual read costs, and final actual fertility renv
+validation remain required. Issue #172 stays open.
+
+### Current Stage 7 qualification
+
+Exact source `3db15d44f2b557f5282fb7a30fd59c7980a4484c`, package tree
+`fd8642daf27875e5cece5822e1ac9cd5615ff3c6`, completes the five direct verbs and
+shared nested capture. The final memo uses actual object keys in the public utils
+address hash and computes sibling first identities once. It preserves active-cycle
+rejection, completed-child reuse and fixed-field roots while correcting the
+observed high-cardinality allocation growth. The API is experimental; host R
+4.6.1 and minimum R 4.6.0 controls exercise its required behavior.
+
+The fresh host focused run passes 2,896 assertions in 144 blocks without
+failures, errors, warnings or skips. The full suite passes 18,174 assertions in
+1,058 blocks with four known warnings and no failures, errors or skips. R 4.6.0
+passes 6,481 assertions in 339 blocks with four known warnings and seven capability
+skips. The three Stage 7 test files contribute 44 blocks and 516 host passes,
+or 498 minimum passes with two profiling skips. The fresh-child retention test
+runs on both runtimes; the new allocation-ratio test requires profmem.
+
+All 16 package commands complete, including conformance, interoperability,
+source/archive checks, R CMD check and binary packaging. Packaged tests pass
+18,174 assertions with four warnings. The check retains three warnings and two
+notes; the earlier undefined `:=`/`head` note is removed. Nested Apple nm inspection
+still reports 22 LLVM attribute errors and status one, so outer success is not
+complete nested-tool success. SDK/vendor diagnostics, repository-access warnings
+and the separate Haven loopback capability skip remain. Host, binary and minimum
+DLL direct-linkage checks pass.
+
+Native allocation/isolation and repeated-generation results retain their a048
+source identity and are reused only for equal selected native/workload/runner
+inputs. Full Rust qualification retains source7b/runner7272 and equal selected
+Rust inputs. Neither reuse covers the changed R capture module or claims a new
+runtime execution. Fresh R functional, performance, retention and isolated-write
+gates qualify that change. Nine semantic edge products match a048 byte-for-byte,
+including recorded errors and interrupts; 126-record completion is not blanket
+acceptance of every outcome.
+
+The ordinary 54-shape grid has no joint greater-than-10% and greater-than-1 ms
+flags in 108 comparisons. Twelve positive timing deltas, 32 R-allocation increases
+and nonuniform RSS remain. At 1,024 and 4,096 groups with two integer rows per
+group, four public latency flags persist in all three fresh paired repeats.
+Candidate medians are 31.3–165.9 ms, about 77–100%, above predecessor public and
+about 55–63% below the fixed safe reference. Those read-only integer cases pass
+value/schema checks. The complete gap is not attributed to mandatory safety work
+or declared unavoidable. The root disposition reports this remaining latency
+limitation under the handoff's resolve-or-report rule.
+
+Fourfold group growth now allocates 3.63 times as much for group_nest and 3.68
+for nest_by, rather than approximately fifteenfold on a048. This finite check
+is not an asymptotic bound. All six 50-call memory cases grow by 2,504 vector bytes
+and 85 Ncells between calls 5 and 50. The installed 500-call follow-up grows by
+131 Ncells and 3,120 vector bytes between calls 5 and 500, with nonzero released
+residuals and recorder limits retained. All twelve repeated-write cases preserve
+source/early/latest values and logical constants while checking each intended
+change. The [durable performance note and complete table](../research/stage7-direct-summary-nesting-performance.md)
+record the measurements and selected evidence, including omitted local artifacts.
+
+The selected evidence [PR #211](https://github.com/jbearak/dta-parser/pull/211)
+merged normally on September 9, 2026 at 07:00:33 UTC as
+`91892d8822c75761f38a976b2cc05022cc306f2f`, after all 15 checks passed. Its
+1,104 research-only files preserve the reviewed head `8c159021`. This separates
+the evidence from substantive CodeRabbit review of the implementation.
+Documentation-only integration preserves qualified package3db and the executed
+helper inputs. Implementation CI,
+substantive CodeRabbit review and normal merge remain required. Stages 8–9, the
+twelve base-R read regressions introduced earlier and actual fertility renv
+validation remain open; issue #172 stays open.
+
+### Earlier Stage 7 checkpoints
+
+The initial Stage 7 candidate exposed an unsupported cyclic nested graph to
+vector assembly, causing a C-stack overflow. That failed run remains retained.
+The shared capture boundary now rejects active ancestor cycles before assembly,
+while completed acyclic captures can be reused. Exact source `05c8f08b` passed
+the isolated nested-write/cycle checks, all 27 new test blocks with 186
+assertions, and the full host suite with 17,844 assertions and four established
+warnings. The selected R 4.6.0 lane passed 6,169 assertions, retaining four
+established warnings and five capability skips. These results qualify that
+source within their stated scopes, not the later working correction.
+
+The candidate retained all 126 edge observations. A safe predecessor comparison
+executed 93 common records and excluded the foreign-write families before their
+thunks. It confirmed existing zero-group size errors and arbitrary callback
+return limits, while identifying extra `.drop` metadata on current group keys
+and lost summary error ancestry/named-group details. Source `408ea41d` repairs
+those boundaries and adds explicit tagged-missing, empty-context, helper-lifetime,
+nesting-key/prototype and changed-target assertions. Its fresh host installation
+passed all 34 new blocks with 400 assertions and the full suite with 18,058
+assertions and four established warnings. The selected R 4.6.0 lane passed
+6,383 assertions, with four established warnings and five capability skips.
+The 126-record collector retained its expected caught errors and interrupts;
+its completion is not 126 passing tests. The isolated repeated-output witnesses
+also passed their declared source/first/latest write checks.
+
+The first full 408 timing grid has 33 investigation flags across 108 comparisons,
+each exceeding both a 10% median increase and 1 ms: eight one-column summaries,
+seventeen reframe cases and eight nesting comparisons. These are single-grid
+observations, not a repeatability claim. Allocation profiles identify about
+48 MB of group-validation allocation in the one-million-row character-key
+cases. Nesting's one-group median also reflects different GC frequencies;
+it is not a pure CPU-cost estimate. That candidate is not performance accepted.
+
+A bounded copied-function control halves the 100,000-row validator allocation
+from 4,801,312 to 2,402,288 bytes, with matching tested error/value behavior and
+unchanged recorded source state. Its first run retained a test-instrumentation
+error; the corrected run passed all 241 expectations. The proposed package
+regression fails on 408 only at the allocation budget. The current R-only
+correction reduces partition temporaries and compares eligible character keys
+through public match codes. It preserves custom/foreign fallbacks, validation
+order and nested capture. Fresh installed qualification and whole-operation
+measurements remain required; this allocation control does not resolve the
+timing flags. Package, native, final-candidate memory and external PR gates
+remain open. The twelve earlier-stage read regressions, Stages 8–9 and final
+actual fertility validation remain required.
+
+Source `1ae15066` passed the new allocation budget, but its 137-block focused
+run retained 2,798 passes and one failure: the mixed-encoding owned source's
+private sharing flag changed. A five-block diagnostic on that exact installation
+passed 530 preservation assertions. Public matching of Latin-1 payload or
+metadata leaves a conservative tracked fork; source values, encodings,
+attributes, backing and exposure remain unchanged. Key-only conversion already
+changes sharing in the original validator's duplicate-key check. The regression
+now checks backing and semantic preservation without requiring that private flag
+to stay FALSE, and adds two-way foreign writes and the preserved bytes-metadata
+error boundary. Production matching and native ownership code are unchanged.
+
+That choice retains a measured later-write cost. For 100,000 strings, an owned
+setter after conversion required 800,048 R allocation bytes, including 800,000
+native capture bytes, versus zero in the original-validator setter control.
+These measurements overlap and must not be added. Four-element captures record
+32 native bytes despite no retained Rprofmem events. All 18 separate captured-
+handle foreign-write cases protect the other handle in both directions. All 40
+bytes-attribute controls retain the same old/new translation error; they are
+preserved error outcomes, not supported bytes conversion. Earlier failures and
+measurements remain retained, and fresh focused qualification and the complete
+operation grid are still required before performance acceptance.
+
+Source `eabfdd0c` passed 139 focused blocks with 2,849 assertions and no
+failures, errors, warnings or skips. Its complete operation grid removes all
+summary and nesting timing flags, leaving twelve reframe flags across six
+shapes against both predecessor routes. The joint threshold remains a median
+increase above both 10% and 1 ms. At one million rows, eight payload columns and
+128 groups, reframe takes 92.04 ms versus 78.26 ms for predecessor public and
+79.84 ms for the fixed safe route, while R allocation falls to 76.25 MB from
+162.28 MB. Nesting retains an allocation tradeoff, about 80.38 MB versus
+62.53 MB for the fixed safe route, despite improved elapsed time.
+
+A copied whole-call control supports reusing a reframe column already assembled
+at its final per-group sizes. It reduces the 100,000-row, eight-payload,
+128-group R allocation from 7,849,608 to 6,450,248 bytes. Native capture falls
+from 1,598,464 to 799,232 bytes; those measurements overlap. Skipping only
+no-op recycling does not remove the duplicated assembly. All fourteen successful
+semantic shapes match the predecessor, while the two intended errors retain
+existing owned formatting. The unchanged-size custom vector's callback sequence
+matches the predecessor after reuse. The resized branch still records one extra
+restore call compared with the predecessor; universal callback parity is not
+claimed. The three copied routes preserve their tracked source state, while
+both public controls returned NULL owned-info and provide no tracked-backing
+proof through that assertion.
+
+The reframe correction caches sizes only during the existing delayed validation
+pass and compares every group's final size, preserving actual resizing, zero
+groups, mask installation and final capture. Its regression checks a constant
+total row count with changed per-group sizes, nested writes in both directions,
+and callbacks against the same runtime's ordinary grouped-tibble reference.
+The corrected red run on eab has sixteen passes and the expected callback
+failure, with no errors or warnings. Its initial draft also retained an unrelated
+custom-vector inspection error. No elapsed benefit is inferred from the copied
+allocation control. The size cache also affects summarise, so the complete
+installed-source grid below covers both verbs.
+
+Source `96b9c3c7` passed 141 focused blocks with 2,866 assertions and the full
+suite with 18,144 assertions, no failures, errors or skips and four known full
+suite warnings. Its 54-series operation grid produced no joint timing flags
+against either predecessor route, across 108 comparisons. The package check
+completed with three warnings and three notes, including a new undefined `:=`
+and `head` note. The current source imports the existing rlang operator and
+qualifies `utils::head`; a fresh package check must verify that correction.
+
+The six 50-call memory cases on `96b9c3c7` revealed retained small-object growth.
+A separate 500-call diagnostic at 256 rows and 128 groups showed that extra
+full garbage collections did not remove it. Changing the nested capture memo
+from address-named environment bindings to character address values and rooted,
+fixed-field entries reduced the copied control's 5-to-500-call growth from
+37,271 to 131 Ncells and from 201,200 to 3,120 vector-heap bytes. Both routes
+retain source and latest result only. Recorder overhead and residual objects
+remain; these are separate heap measures, not RSS or cumulative allocation.
+
+The fixed-entry control passes 150 semantic assertions, including cyclic-input
+rejection followed by healthy capture, shared siblings and both foreign-write
+directions. A preceding list-entry control failed on cyclic input, and its
+acyclic memory result remains separate. The new public regression runs in a
+fresh child and checks retained Ncells after five warmups and 100 nesting calls.
+On installed `96b9c3c7`, it preserves source/output values but fails the
+1,000-Ncell budget with 36,169 additional Ncells. The proposed repair keeps
+addresses as values and mutates only fixed `source`, `result` and `active`
+fields. Other address-keyed result environments are unchanged. Fresh installed
+functional, package, native, timing and memory qualification remains required;
+the earlier source's results do not qualify this repair.
+
+## Historical Stage 6 implementation checkpoints
+
 
 Stage 5 [PR #205](https://github.com/jbearak/dta-parser/pull/205) merged normally
 at 2026-09-08 12:29:53 UTC as

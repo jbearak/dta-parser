@@ -11,6 +11,26 @@
         !identical(attr(attr(data, "groups", exact = TRUE), ".drop"), FALSE)
 }
 
+# Classless character keys can match public equality codes without expanding
+# the full key column. Custom classes and foreign readers retain the general path.
+.group_character_membership <- function(value, key, rows, used) {
+    eligible <- function(x) typeof(x) == "character" && !is.object(x) &&
+        !isS4(x) && is.null(dim(x)) && is.null(attr(x, "stata.storage", exact = TRUE)) &&
+        (!.Call(C_dtatools_is_altrep, x) ||
+            !is.null(.Call(C_dtatools_owned_info, x)))
+    if (!eligible(value) || !eligible(key)) return(NULL)
+    key <- .gather_dta_columns(list(key = key), used)[[1L]]
+    # Public matching handles encodings and NA. Per-column key values may be
+    # repeated in distinct multi-key groups, so compare their first-match IDs.
+    actual <- vctrs::vec_match(value, key, na_equal = TRUE)
+    expected <- vctrs::vec_match(key, key, na_equal = TRUE)
+    for (index in seq_along(used)) {
+        observed <- actual[rows[[used[[index]]]]]
+        if (anyNA(observed) || !all(observed == expected[[index]])) return(FALSE)
+    }
+    TRUE
+}
+
 .validate_group_metadata <- function(data, columns = .data_columns(data),
                                      names = base::names(columns), row_count = nrow(data)) {
     if (inherits(data, "grouped_df") || inherits(data, "rowwise_df")) {
@@ -35,11 +55,21 @@
         }
         group_names <- setdiff(names(groups), ".rows")
         rows <- unlist(groups$.rows, use.names = FALSE)
-        if (anyNA(rows) || any(rows < 1L | rows > row_count) ||
+        # Ordinary unclassed integer rows cannot dispatch comparison methods.
+        # Preserve the original expression for every other flattened value.
+        ordinary_rows <- is.integer(rows) && !is.object(rows) && !isS4(rows) &&
+            is.null(dim(rows)) && !.Call(C_dtatools_is_altrep, rows)
+        outside <- function() if (ordinary_rows) {
+            length(rows) != 0L && (min(rows) < 1L || max(rows) > row_count)
+        } else any(rows < 1L | rows > row_count)
+        incomplete <- function() if (ordinary_rows) {
+            row_count != 0L && min(tabulate(rows, nbins = row_count)) != 1L
+        } else any(tabulate(as.integer(rows), nbins = row_count) != 1L)
+        if (anyNA(rows) || outside() ||
             !all(group_names %in% names) ||
             any(vapply(groups$.rows, is.unsorted, logical(1), strictly = TRUE)) ||
             length(rows) != row_count ||
-            any(tabulate(as.integer(rows), nbins = row_count) != 1L) ||
+            incomplete() ||
             (inherits(data, "rowwise_df") &&
              (!all(lengths(groups$.rows) == 1L) ||
               !identical(as.integer(rows), seq_len(row_count))))) {
@@ -57,9 +87,18 @@
         # the wrong observations after ordinary edits to grouping metadata.
         sizes <- lengths(groups$.rows)
         used <- which(sizes > 0L)
-        expected_rows <- rep.int(seq_along(used), sizes[used])
+        expected_rows <- NULL
         group_keys <- .data_columns(groups)
         for (name in group_names) {
+            membership <- .group_character_membership(columns[[name]],
+                group_keys[[name]], groups$.rows, used)
+            if (!is.null(membership)) {
+                if (!membership) stop("`data` has grouping keys that do not match its rows; assign `data <- dplyr::ungroup(data)` and group again",
+                    call. = FALSE)
+                next
+            }
+            if (is.null(expected_rows)) expected_rows <-
+                rep.int(seq_along(used), sizes[used])
             actual <- .gather_dta_columns(columns[name], as.integer(rows))[[1L]]
             key <- .gather_dta_columns(group_keys[name], used)[[1L]]
             # Cast compatible keys before taking equality proxies. Cast each
