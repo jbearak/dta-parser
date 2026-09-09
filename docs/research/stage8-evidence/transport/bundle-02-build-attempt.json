@@ -1,0 +1,19 @@
+{
+  "status": "complete",
+  "source": {
+    "path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py",
+    "resolved": "/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py",
+    "bytes": 11270,
+    "mode": "0o644",
+    "sha256": "821440e4a518a68811ca1d648fb95509e0010e76d9133d60db335a8b859d9c60"
+  },
+  "selection_path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/evidence-selection-02.json",
+  "output": "/private/tmp/dta-direct-stage8-validation/publication-preparation/bundle-02",
+  "started_utc": "2026-09-09T11:26:15.951936+00:00",
+  "completed_utc": "2026-09-09T11:26:18.112820+00:00",
+  "retained_output_names": [
+    "records.tar.gz",
+    "selection.json",
+    "transport-result.json"
+  ]
+}

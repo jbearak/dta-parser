@@ -1,0 +1,21 @@
+{
+  "status": "publication prose precision only",
+  "base_selection": {
+    "path": "/private/tmp/dta-direct-stage8-performance-preparation-01/root-artifact-selection-01.json",
+    "sha256": "1b351cdf6a4184966105964ce094ac2df071f30bf6f250ca67bfebba4f97d16f"
+  },
+  "files": [
+    {
+      "path": "/private/tmp/dta-direct-stage8-performance-preparation-01/stage8-performance-disposition-draft-03.md",
+      "resolved": "/private/tmp/dta-direct-stage8-performance-preparation-01/stage8-performance-disposition-draft-03.md",
+      "bytes": 10846,
+      "sha256": "05dcd0bb10c9b232afc19397460b90c94ba3dd57d08394d00b2ce1fb3f719027",
+      "mode": "0o644"
+    }
+  ],
+  "changes": [
+    "Describe reduction of large predecessor growth while retaining finite residuals.",
+    "Describe selected native state observations without using full."
+  ],
+  "measurement_or_production_change": false
+}

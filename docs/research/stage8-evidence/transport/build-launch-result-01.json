@@ -1,0 +1,74 @@
+{
+  "status": "complete",
+  "argv": [
+    "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+    "-I",
+    "-B",
+    "/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py",
+    "build"
+  ],
+  "selected_before": [
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py",
+      "resolved": "/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py",
+      "bytes": 11270,
+      "mode": "0o644",
+      "sha256": "821440e4a518a68811ca1d648fb95509e0010e76d9133d60db335a8b859d9c60"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/evidence-selection-02.json",
+      "resolved": "/private/tmp/dta-direct-stage8-validation/publication-preparation/evidence-selection-02.json",
+      "bytes": 3465998,
+      "mode": "0o644",
+      "sha256": "609f49d585ff4ea87d6c92c0c1823bf20b26298fe1d561244429e71144a30674"
+    },
+    {
+      "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "resolved": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "bytes": 33816,
+      "mode": "0o755",
+      "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/build-evidence-launch-v1.py",
+      "resolved": "/private/tmp/dta-direct-stage8-validation/publication-preparation/build-evidence-launch-v1.py",
+      "bytes": 1868,
+      "mode": "0o644",
+      "sha256": "cb072d102f654d6e475dadb2e41470a98bff45963d425fd94ac681cc2f19afaa"
+    }
+  ],
+  "started_utc": "2026-09-09T11:26:15.926448+00:00",
+  "exit_code": 0,
+  "selected_after": [
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py",
+      "resolved": "/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py",
+      "bytes": 11270,
+      "mode": "0o644",
+      "sha256": "821440e4a518a68811ca1d648fb95509e0010e76d9133d60db335a8b859d9c60"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/evidence-selection-02.json",
+      "resolved": "/private/tmp/dta-direct-stage8-validation/publication-preparation/evidence-selection-02.json",
+      "bytes": 3465998,
+      "mode": "0o644",
+      "sha256": "609f49d585ff4ea87d6c92c0c1823bf20b26298fe1d561244429e71144a30674"
+    },
+    {
+      "path": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "resolved": "/Users/jmb/.pyenv/versions/3.14.7/bin/python3.14",
+      "bytes": 33816,
+      "mode": "0o755",
+      "sha256": "8e8f1b256a299fe22e6cfe0dad6801ae8f0c62c7cfef844fbc2db92c03cfe32d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage8-validation/publication-preparation/build-evidence-launch-v1.py",
+      "resolved": "/private/tmp/dta-direct-stage8-validation/publication-preparation/build-evidence-launch-v1.py",
+      "bytes": 1868,
+      "mode": "0o644",
+      "sha256": "cb072d102f654d6e475dadb2e41470a98bff45963d425fd94ac681cc2f19afaa"
+    }
+  ],
+  "changed": [],
+  "completed_utc": "2026-09-09T11:26:18.119303+00:00"
+}

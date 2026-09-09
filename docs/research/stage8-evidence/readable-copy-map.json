@@ -1,0 +1,71 @@
+{
+  "scope": "Exact copied selected tables and original root records; the main note is an attributed editorial derivative of root draft03.",
+  "files": [
+    {
+      "source": "/private/tmp/dta-direct-stage8-performance-preparation-01/comparison-cf317730-01/comparisons.csv",
+      "destination": "docs/research/stage8-evidence/tables/comparisons.csv",
+      "bytes": 65642,
+      "sha256": "4df84cc549d16ba2b7c1ccc9827c9e56f0cbbd90db7f1ab5b5abf0ad396e5741"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-performance-preparation-01/comparison-cf317730-01/result.json",
+      "destination": "docs/research/stage8-evidence/tables/comparison-result.json",
+      "bytes": 18529,
+      "sha256": "81c2e8a332dfbca7e924ac6058e52ad04caf4868bce1effadf4400cbe2d7e094"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-performance-preparation-01/bind-cols-repeat-comparison-01/comparisons.csv",
+      "destination": "docs/research/stage8-evidence/tables/bind-cols-repeat-01.csv",
+      "bytes": 6001,
+      "sha256": "408837f0dd2c29b24a68c4d8e2fca2237a27cd81ae6f3c484e82a1bc2e0eb9e6"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-performance-preparation-01/bind-cols-repeat-comparison-01/result.json",
+      "destination": "docs/research/stage8-evidence/tables/bind-cols-repeat-01-result.json",
+      "bytes": 18697,
+      "sha256": "d9cc063d4bc4263c1e01a42d55feeb30a1761cc2c6e6842a4a8e1ead295d4175"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-performance-preparation-01/bind-cols-repeat-comparison-02/comparisons.csv",
+      "destination": "docs/research/stage8-evidence/tables/bind-cols-repeat-02.csv",
+      "bytes": 6005,
+      "sha256": "85e3b2165e4dfe3f9441ccbc0eaa3bbf0d4d725a56a829b4f9be0d297857aa27"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-performance-preparation-01/bind-cols-repeat-comparison-02/result.json",
+      "destination": "docs/research/stage8-evidence/tables/bind-cols-repeat-02-result.json",
+      "bytes": 18698,
+      "sha256": "5bbb1b6e48d4eb898f41b47f3420ab9cac1f92fdb291377c200dcd819ea62a46"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-performance-preparation-01/bind-cols-repeat-comparison-03/comparisons.csv",
+      "destination": "docs/research/stage8-evidence/tables/bind-cols-repeat-03.csv",
+      "bytes": 5999,
+      "sha256": "54ce73432644925712e1b525a44fc92f28296800bb2cabe3e22656e669b46e1c"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-performance-preparation-01/bind-cols-repeat-comparison-03/result.json",
+      "destination": "docs/research/stage8-evidence/tables/bind-cols-repeat-03-result.json",
+      "bytes": 18696,
+      "sha256": "8c9877d6a5b1495ebf9fc126b6fae1f2f47ffc062c1ba2a5bff08106d99997c5"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-performance-preparation-01/root-artifact-selection-addendum-01.json",
+      "destination": "docs/research/stage8-evidence/root-selection-addendum.json",
+      "bytes": 885,
+      "sha256": "7ab72fe7690d3e29ddd10653d961d70b315e9840940ed11057a8586e5ace50df"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-performance-preparation-01/stage8-performance-disposition-draft-03.md",
+      "destination": "docs/research/stage8-evidence/source-notes/root-performance-draft-03.md",
+      "bytes": 10846,
+      "sha256": "05dcd0bb10c9b232afc19397460b90c94ba3dd57d08394d00b2ce1fb3f719027"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/root-stage8-local-disposition-01.json",
+      "destination": "docs/research/stage8-evidence/root-local-disposition.json",
+      "bytes": 6287,
+      "sha256": "42292f2eedcfde0076fce96d85c0437c153bcdb113cafc0c090dca52aef966bf"
+    }
+  ]
+}

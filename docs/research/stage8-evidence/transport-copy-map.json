@@ -1,0 +1,77 @@
+{
+  "scope": "Exact copies of completed archive/selection and transport records; original absolute identities are retained.",
+  "files": [
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/bundle-02/records.tar.gz",
+      "destination": "docs/research/stage8-evidence/records.tar.gz",
+      "bytes": 12482228,
+      "sha256": "fe7b1f03e0b036bb3ac5013214158f07485cf5841206f28572939c9215c8211e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/bundle-02/selection.json",
+      "destination": "docs/research/stage8-evidence/selection.json",
+      "bytes": 3465998,
+      "sha256": "609f49d585ff4ea87d6c92c0c1823bf20b26298fe1d561244429e71144a30674"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/bundle-02/transport-result.json",
+      "destination": "docs/research/stage8-evidence/transport-result.json",
+      "bytes": 936,
+      "sha256": "9fed034507e345961eebaf24dad58668e58391e3b539b4d0b42b89cb997622cf"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/build-launch-01.json",
+      "destination": "docs/research/stage8-evidence/transport/build-launch-01.json",
+      "bytes": 1674,
+      "sha256": "e174cd1dea039a4c4e98f258ce3fda566c1c6b6749b099823a7359a1a0429dc7"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/build-launch-result-01.json",
+      "destination": "docs/research/stage8-evidence/transport/build-launch-result-01.json",
+      "bytes": 3158,
+      "sha256": "f3e82038afd4ef14c22b045801e3e79b2c83a94c4fc43abb7d3eade156ef445d"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/build-launch-01.log",
+      "destination": "docs/research/stage8-evidence/transport/build-launch-01.log",
+      "bytes": 874,
+      "sha256": "2885f5b9686a91187ffbf57ae8261c0564d20e934179c87a0b57137137cf09af"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/bundle-02-build-attempt.json",
+      "destination": "docs/research/stage8-evidence/transport/bundle-02-build-attempt.json",
+      "bytes": 801,
+      "sha256": "1ecf4261fd798a8ed69e81301dc22eebe71e2ea0c50074e08a2e877337f2967e"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/build-evidence-launch-v1.py",
+      "destination": "docs/research/stage8-evidence/transport/build-evidence-launch-v1.py",
+      "bytes": 1868,
+      "sha256": "cb072d102f654d6e475dadb2e41470a98bff45963d425fd94ac681cc2f19afaa"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/prepare-evidence-v2.py",
+      "destination": "docs/research/stage8-evidence/transport/prepare-evidence-v2.py",
+      "bytes": 11270,
+      "sha256": "821440e4a518a68811ca1d648fb95509e0010e76d9133d60db335a8b859d9c60"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/test-evidence-guard-v2.py",
+      "destination": "docs/research/stage8-evidence/transport/test-evidence-guard-v2.py",
+      "bytes": 4147,
+      "sha256": "97b22ac1918c2c67db2825abc5c88fa3e28ce0de9ac8ae26cb552bd44d7ebeb9"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/guard-normal-02.json",
+      "destination": "docs/research/stage8-evidence/transport/guard-normal-02.json",
+      "bytes": 1373,
+      "sha256": "9605bb7402a5ed4774ab56ec02ade3af999993754b9cc397a610649541ce5d05"
+    },
+    {
+      "source": "/private/tmp/dta-direct-stage8-validation/publication-preparation/guard-optimized-02.json",
+      "destination": "docs/research/stage8-evidence/transport/guard-optimized-02.json",
+      "bytes": 1379,
+      "sha256": "d94f126a0730b7e108e39024af19352056fec3abff62d090599b746d73473f2c"
+    }
+  ]
+}
