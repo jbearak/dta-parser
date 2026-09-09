@@ -120,6 +120,42 @@ preserved error outcomes, not supported bytes conversion. Earlier failures and
 measurements remain retained, and fresh focused qualification and the complete
 operation grid are still required before performance acceptance.
 
+Source `eabfdd0c` passed 139 focused blocks with 2,849 assertions and no
+failures, errors, warnings or skips. Its complete operation grid removes all
+summary and nesting timing flags, leaving twelve reframe flags across six
+shapes against both predecessor routes. The joint threshold remains a median
+increase above both 10% and 1 ms. At one million rows, eight payload columns and
+128 groups, reframe takes 92.04 ms versus 78.26 ms for predecessor public and
+79.84 ms for the fixed safe route, while R allocation falls to 76.25 MB from
+162.28 MB. Nesting retains an allocation tradeoff, about 80.38 MB versus
+62.53 MB for the fixed safe route, despite improved elapsed time.
+
+A copied whole-call control supports reusing a reframe column already assembled
+at its final per-group sizes. It reduces the 100,000-row, eight-payload,
+128-group R allocation from 7,849,608 to 6,450,248 bytes. Native capture falls
+from 1,598,464 to 799,232 bytes; those measurements overlap. Skipping only
+no-op recycling does not remove the duplicated assembly. All fourteen successful
+semantic shapes match the predecessor, while the two intended errors retain
+existing owned formatting. The unchanged-size custom vector's callback sequence
+matches the predecessor after reuse. The resized branch still records one extra
+restore call compared with the predecessor; universal callback parity is not
+claimed. The three copied routes preserve their tracked source state, while
+both public controls returned NULL owned-info and provide no tracked-backing
+proof through that assertion.
+
+The current correction caches sizes only during the existing delayed validation
+pass and compares every group's final size, preserving actual resizing, zero
+groups, mask installation and final capture. Its regression checks a constant
+total row count with changed per-group sizes, nested writes in both directions,
+and callbacks against the same runtime's ordinary grouped-tibble reference.
+The corrected red run on eab has sixteen passes and the expected callback
+failure, with no errors or warnings. Its initial draft also retained an unrelated
+custom-vector inspection error. Fresh installed focused checks and the unchanged
+full operation grid must qualify this correction; no elapsed benefit is inferred
+from the copied allocation control. The size cache also affects summarise and
+remains covered by that grid. Final full, minimum, package, native, retained/peak
+memory, implementation review and CI gates are still required.
+
 ## Historical Stage 6 implementation checkpoints
 
 

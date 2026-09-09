@@ -134,7 +134,10 @@ Adapted from dplyr 1.2.1:
     context adapter and five methods in R/mutate-data.R.
   Changes: explicit per-group chunks retain immediate Stata typing before
     common casting and dependent dots; summary sizes are checked after all
-    dots, while reframe recycles horizontally. Typed across callbacks retain
+    dots, while reframe recycles horizontally. The first assembled result is
+    reused only when all recorded chunk sizes match the final group sizes;
+    otherwise the existing recycling and assembly path remains.
+    Typed across callbacks retain
     the observed predecessor group-major order. Public vctrs assembly and
     package gathering/finalization replace whole-verb dplyr delegation.
     Shared R/dibble-nested-capture.R is package-specific storage capture for

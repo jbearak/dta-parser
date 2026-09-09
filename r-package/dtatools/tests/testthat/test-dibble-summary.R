@@ -297,3 +297,57 @@ test_that("S7-S18 nested calls expire inner columns but restore dynamic helpers"
         saved <- NULL
     }
 })
+
+test_that("S7-S19 reframe reuse follows final group sizes and isolates nested captures", {
+    result <- dplyr::reframe(.s7_grouped(), a = dplyr::cur_group_id(),
+        b = if (dplyr::cur_group_id() == 1L) integer() else c(20L, 21L))
+    # Equal total sizes cannot establish equality of every group's final size.
+    expect_identical(as.integer(result$a), c(2L, 2L))
+    expect_identical(as.integer(result$b), c(20L, 21L))
+    expect_identical(as.character(result$g), c("b", "b"))
+    skip_if_not_installed("data.table")
+    foreign <- data.table::data.table(value = 1:2)
+    source <- dplyr::rowwise(dibble(id = 1L, nested = list(foreign)))
+    captured <- NULL
+    result <- dplyr::reframe(source, old = list(nested), changed = {
+        captured <<- nested
+        data.table::set(nested, i = 1L, j = "value", value = 9L)
+        list(nested)
+    })
+    expect_identical(foreign$value, 1:2)
+    expect_identical(source$nested[[1L]]$value, 1:2)
+    expect_identical(result$old[[1L]]$value, 1:2)
+    expect_identical(result$changed[[1L]]$value, c(9L, 2L))
+    data.table::set(captured, i = 2L, j = "value", value = 8L)
+    expect_identical(captured$value, c(9L, 8L))
+    expect_identical(result$changed[[1L]]$value, c(9L, 2L))
+    data.table::set(result$old[[1L]], i = 1L, j = "value", value = 7L)
+    expect_identical(result$old[[1L]]$value, c(7L, 2L))
+    expect_identical(source$nested[[1L]]$value, 1:2)
+    expect_identical(result$changed[[1L]]$value, c(9L, 2L))
+})
+
+test_that("S7-S20 unchanged reframe chunks avoid extra restoration callbacks", {
+    events <- character()
+    mark <- function(event) events <<- c(events, event)
+    make <- function(x) vctrs::new_vctr(x, class = "stage7_reframe_restore")
+    registerS3method("vec_ptype2", "stage7_reframe_restore.stage7_reframe_restore",
+        function(x, y, ...) { mark("ptype2"); make(double()) }, envir = asNamespace("vctrs"))
+    registerS3method("vec_cast", "stage7_reframe_restore.stage7_reframe_restore",
+        function(x, to, ...) { mark("cast"); x }, envir = asNamespace("vctrs"))
+    registerS3method("vec_restore", "stage7_reframe_restore",
+        function(x, to, ...) { mark("restore"); make(x) }, envir = asNamespace("vctrs"))
+    result <- dplyr::reframe(.s7_grouped(), value = make(c(1, 2)))
+    # Capture before value inspection can itself invoke restoration methods.
+    observed <- events
+    reference_data <- dplyr::group_by(tibble::tibble(
+        g = c("b", "a", "b", "a"), x = c(1, 2, 3, 4), y = c(10, 20, 30, 40)), g)
+    events <- character()
+    reference <- dplyr::reframe(reference_data, value = make(c(1, 2)))
+    expected <- events
+    expect_identical(observed, expected)
+    expect_identical(as.character(result$g), c("a", "a", "b", "b"))
+    expect_s3_class(result$value, "stage7_reframe_restore")
+    expect_identical(vctrs::vec_data(result$value), c(1, 2, 1, 2))
+    expect_identical(vctrs::vec_data(result$value), vctrs::vec_data(reference$value))
+})

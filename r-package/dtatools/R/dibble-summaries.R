@@ -103,11 +103,15 @@
             }
             count <- nrow(groups$keys)
             sizes <- rep.int(1L, count)
-            for (record in records) {
+            chunk_sizes <- vector("list", length(records))
+            for (record_index in seq_along(records)) {
+                record <- records[[record_index]]
+                chunk_sizes[[record_index]] <- numeric(count)
                 original <- record$quo
                 original_name <- record$original_name
                 for (id in seq_len(count)) {
                     actual <- vctrs::vec_size(record$chunks[[id]])
+                    chunk_sizes[[record_index]][[id]] <- actual
                     mask$set_group(id)
                     if (!reframe && actual != 1L) {
                         rlang::abort(c(paste0("`", record$name,
@@ -123,9 +127,10 @@
                 }
             }
             columns <- list()
-            for (record in records) {
+            for (record_index in seq_along(records)) {
+                record <- records[[record_index]]
                 value <- record$result
-                if (reframe && count) {
+                if (reframe && count && any(chunk_sizes[[record_index]] != sizes)) {
                     chunks <- Map(vctrs::vec_recycle, record$chunks, sizes)
                     value <- vctrs::vec_c(!!!chunks, .ptype = vctrs::vec_ptype(value))
                 }
