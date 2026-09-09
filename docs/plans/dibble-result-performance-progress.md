@@ -127,40 +127,77 @@ Stages 8–9, the twelve base-R read regressions introduced earlier, the four
 Stage 7 many-small-group public latency limits and actual fertility renv
 validation remain open; issue #172 stays open.
 
-### Current Stage 8 work
+### Current Stage 8 qualification
 
 Stage 8 starts from verified merge `af0bed0b9c200f82d37891902266d200a1819196`
-on `codex/direct-dibble-joins-bindings` in an isolated worktree. Its fresh
-predecessor installation retains that exact source and package identity.
-Working source owns join key/name/match planning and batched result assembly,
-base frame/binding construction, six rows methods and column-modification
-assembly. Public matching/casting, custom table conversion/reconstruction and
-non-dispatching dplyr bind orchestrators remain explicit compatibility boundaries.
-No installed Stage 8 candidate has yet been qualified.
+on `codex/direct-dibble-joins-bindings` in an isolated worktree. Current tested
+source `cf317730d3110568c72862719424e01c2876141b` has package tree
+`774e0c6d648b3e45ce5c5d17ade72c901179639f`. It owns join key/name/match planning,
+batched result assembly, base frame/binding construction, six rows methods and
+column-modification assembly. Public matching/casting, custom table conversion
+and reconstruction remain explicit compatibility boundaries. The dplyr
+bind_rows/bind_cols orchestrators remain dplyr-owned because they do not dispatch.
 
-Copied join controls pass 1,931 assertions across ten blocks, including the
-250-case predecessor comparison, custom conversions and the corrected default
-many-to-many caller policy. Copied binding controls pass 1,518 assertions across
-11 blocks after correcting the public argument name and a test assertion API.
-Grouped comparison aligns only the top frame's named attributes; every value
-and ordered class, column and group structure remains checked, and raw attribute
-order is retained. Initial failed runs remain recorded. These local-closure
-controls do not qualify installed dispatch, arbitrary forcing or later writes.
-The additive base construction/dispatch control passes 687 assertions, including
-17 recorder checks. Twenty-one durable regression blocks are source-reviewed
-and await the first installed candidate gate.
+The shared finalizer removes unused column-lineage entries and resolves repeated
+output slots once. Constructor and reserve caches use actual object keys. Atomic
+nested capture preserves metadata-copy and opaque-reference behavior while
+deferring its list memo. NOTICE records exact adapted upstream revisions,
+functions, destinations and licenses. The dta_merge documentation distinguishes
+bare tagged doubles from homogeneous typed missing keys.
 
-The shared-finalizer control passes 1,523 assertions, with 163 complete saved
-records and 118 independently checked semantic comparisons. Separate finite
-500-call controls support removing unused column lineage together with the
-repeated-slot address cache, and replacing constructor/reserve address-name
-bindings with actual-object hashes. Atomic nested capture retains metadata-copy
-and opaque-reference behavior while deferring its list memo. The combined
-changes are in working source; fresh installed history, foreign-write and
-integration checks remain required. Measurements and diagnostic receipts for
-this in-progress stage are retained locally, not yet published as repository
-evidence. Full host/minimum/package, whole-operation performance/RSS, source
-attribution, actual implementation CodeRabbit/CI and normal merge gates remain.
+The fresh host focused run passes 3,612 assertions in 165 blocks with no failures,
+errors, warnings or skips. The full suite passes 18,890 assertions in 1,079 blocks
+with four known warnings and no failures, errors or skips. Fresh R 4.6.0 passes
+7,197 assertions in 360 blocks with four known warnings and seven capability skips.
+All 21 new regression blocks pass. The only change after first candidate `8ffa5ac5`
+is H01's retained-output lifetime setup. Its original budgets and 100 measured
+calls are unchanged; failed host/minimum runs and the paired alignment diagnostic
+remain preserved.
+
+All 391 installed join/binding statuses and all 346 returned semantic graphs
+match the predecessor, including 2,748 tagged-key payloads. Five error
+descriptions and one internal call display differ; condition classes and the
+supported error policies match. Twenty-four fresh 500-call later-write children
+pass independent comparison of all 48 prepared/completed graphs, including
+intended duplicate-slot coupling and every protected retained role.
+
+The eight installed 500-call histories retain their executed `8ffa5ac5` identity.
+All production and helper Git inputs match cf317, whose change is test-only.
+Every history adds 15 Ncells and 192 vector bytes from call 50 to 500. Predecessor
+increments were 10,980–59,610 Ncells and 58,672–318,032 bytes. Recorder effects and
+nonzero released residuals remain included. These finite observations do not
+establish zero retention or an asymptotic bound.
+
+The 60-shape whole-call grid has no joint greater-than-10% and greater-than-1 ms
+flags against predecessor public methods. Four bind_cols comparisons against the
+fixed reference remain flagged in three paired repeats, by 1.149–1.281 ms. The
+report retains all 33 positive elapsed deltas among 120 comparisons against both predecessor
+routes, 52 public warmed R-allocation
+increases and nonuniform whole-child RSS. The 100k wide-binding RSS outlier did
+not recur in two repeats; their smaller positive peaks and the original observation
+both remain recorded. Selected allocation stacks support intermediate prototype
+and restore publication as an allocation mechanism, without assigning all elapsed
+cost to it or declaring it unavoidable.
+
+Fresh native checks pass all four commands and 18 atom allocation/isolation cases.
+Rename records a largest 40,056-byte event and 80,112 total bytes with a 10,000-byte
+profiling threshold. Earlier Rust qualification is reused only for equal selected
+Rust/runner inputs and retains its original execution identity. Host/minimum static
+linkage and runtime observations have their stated selected-image scopes.
+
+All 16 package commands complete, including conformance, interoperability,
+archive/NOTICE checks and binary packaging. R CMD check retains three warnings
+and two notes. The existing nested nm inspection failure and Haven loopback skip
+remain explicit. Fresh host, minimum and binary DLL linkage observations pass.
+The corrected Rust reuse scope includes the actual workspace crate and embedded
+fixtures; its 119 selected leaves match the original qualified source. The earlier
+45-leaf comparison omitted that crate and is insufficient by itself.
+
+Durable evidence publication, actual implementation CodeRabbit/CI and normal
+merge remain pending. Stage 9 optional
+dependencies and physical absence/present/load-order checks, issue #172, the twelve
+earlier base-R read regressions, four Stage 7 many-small-group public latency
+limits and actual fertility renv validation/restoration remain open.
 
 ### Earlier Stage 7 checkpoints
 
