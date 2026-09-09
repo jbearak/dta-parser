@@ -33,8 +33,10 @@ test_that("H01 selector construction and reserve do not retain address history",
             heap <- function() { invisible(gc(full = TRUE)); gc(full = TRUE)[, "used"] }
             source <- as_dibble(fresh())
             latest <- source
-            for (i in seq_len(25L)) latest <- operation(latest)
+            for (i in seq_len(24L)) latest <- operation(latest)
             first <- latest
+            # Retain distinct earlier and latest outputs at both checkpoints.
+            latest <- operation(latest)
             before <- heap()
             for (i in seq_len(100L)) latest <- operation(latest)
             after <- heap()
