@@ -374,7 +374,7 @@ test_that("reorder_dta_rows validates its container", {
     )
     expect_error(
         reorder_dta_rows(
-            dplyr::group_by(tibble::tibble(x = 1:3), x), 1:3
+            .group_fixture("x123")$data, 1:3
         ),
         "ungrouped.*assign `data <- dplyr::ungroup"
     )

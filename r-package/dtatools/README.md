@@ -925,3 +925,9 @@ Direct rows methods and column modification adapt pinned dplyr policies while
 retaining public vector casting, matching and reconstruction extensions.
 Package-specific result caches use actual object keys or prepared result slots;
 atomic nested capture retains metadata-copy and opaque-reference behavior.
+
+Grouped display and replacement fallbacks adapt dplyr 1.2.1 policies. Grouped
+and rowwise vector restoration also adapts the conditional compatibility
+methods in vctrs 0.7.3. These fallbacks support grouped objects when dplyr is
+absent while retaining supplied grouping methods. Source details and both MIT
+notices are preserved in [NOTICE](inst/NOTICE).

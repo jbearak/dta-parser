@@ -246,6 +246,7 @@ test_that("vctrs preserves metadata on supported plain vector types", {
 })
 
 test_that("dplyr recode treats metadata vector markers as transparent", {
+    skip_if_not_installed("dplyr", "1.2.1")
     numeric <- set_dta_note(c(1, 2), 4L, "numeric note")
     numeric <- set_dta_characteristic(numeric, "source", "numeric")
     character <- set_dta_note(c("a", "b"), 5L, "character note")
@@ -676,9 +677,9 @@ test_that("failed dibble metadata edits leave all bindings unchanged", {
 })
 
 test_that("dibble metadata edits preserve other scopes and grouping", {
-    data <- dplyr::group_by(dibble(x = 1:2, flag = c(TRUE, FALSE)), flag)
+    data <- as_dibble(.group_fixture("flag_tf_typed")$data)
     alias <- data
-    groups <- dplyr::group_data(data)
+    groups <- attr(data, "groups", exact = TRUE)
     set_dta_note(data, 1L, "dataset")
     set_dta_note(data, 2L, "variable", "flag")
     set_dta_characteristic(data, "source", "survey")
@@ -689,8 +690,8 @@ test_that("dibble metadata edits preserve other scopes and grouping", {
     expect_s3_class(alias, "dtatools_dta_metadata")
     expect_identical(dta_notes(alias, "flag"), c(`2` = "variable"))
     expect_identical(dta_characteristics(alias, "flag"), c(role = "group"))
-    expect_identical(dplyr::group_vars(alias), "flag")
-    expect_identical(dplyr::group_data(alias), groups)
+    expect_identical(setdiff(names(attr(alias, "groups", exact = TRUE)), ".rows"), "flag")
+    expect_identical(attr(alias, "groups", exact = TRUE), groups)
     drop_dta_notes(data, variable = "flag")
     expect_s3_class(alias, "dtatools_dta_metadata")
     drop_dta_characteristics(data, variable = "flag")

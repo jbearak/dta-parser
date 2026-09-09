@@ -115,9 +115,11 @@
 #' survey
 #'
 #' frame <- as_dibble(data.frame(x = 1:2))
-#' grouped <- dplyr::group_by(frame, x)
-#' is_dibble(grouped)
-#' dplyr::group_vars(grouped)
+#' if (requireNamespace("dplyr", quietly = TRUE)) {
+#'   grouped <- dplyr::group_by(frame, x)
+#'   is_dibble(grouped)
+#'   dplyr::group_vars(grouped)
+#' }
 #' @seealso [dibble-bracket] for `survey[i, y := value]`, the assignment
 #'   shape only a dibble supports; [dta-storage-defaults] for the Stata
 #'   storage a dibble gives its columns.

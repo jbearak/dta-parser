@@ -254,7 +254,6 @@ test_that("codebooks accept DTA and Arrow paths", {
     expect_s3_class(dta_labelbook, "dtatools_labelbook")
     expect_identical(dta_codebook$variables$variable, "foreign")
 
-    skip_if_not_installed("arrow")
     arrow <- tempfile(fileext = ".arrow")
     on.exit(unlink(arrow), add = TRUE)
     save_arrow(read_dta(dta), arrow)

@@ -26,6 +26,17 @@ REQUIRED_FILES = {
     "dtatools/src/Makevars.rust",
     "dtatools/tools/configure-rust.sh",
     "dtatools/tools/rust-source-hash.R",
+    "dtatools/tools/run-native.R",
+    "dtatools/tools/library-guard.R",
+    "dtatools/tools/native-children.R",
+    "dtatools/tools/native-test-manifest.json",
+    "dtatools/tests/testthat/helper-fixtures.R",
+    "dtatools/tests/testthat/helper-generation-interrupt.R",
+    "dtatools/tests/testthat/helper-group-fixtures.R",
+    "dtatools/tests/testthat/helper-native-children.R",
+    "dtatools/tests/testthat/helper-stage6-row.R",
+    "dtatools/tests/testthat/fixtures/dplyr-groups.rds",
+    "dtatools/tests/testthat/fixtures/README.md",
 }
 EXCLUDED_PATH = re.compile(
     r"/target(?:/|$)"

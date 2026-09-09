@@ -1,6 +1,6 @@
 test_that("native namespace loading and recoding leave dplyr unloaded", {
     skip_if_not_installed("callr")
-    observed <- callr::r(function(libraries, expected_path) {
+    observed <- .dtatools_child_r("native-namespace", function(libraries, expected_path) {
         .libPaths(libraries)
         stopifnot(!isNamespaceLoaded("dplyr"))
         ns <- loadNamespace("dtatools")

@@ -1,5 +1,10 @@
-native_generation_interrupt_cases <- function(package_path, load_package, mode) {
+native_generation_interrupt_cases <- function(package_path, load_package, mode, noisy = FALSE) {
     load_package(package_path)
+    if (noisy) {
+        cat(rep(paste0("induced-stderr:", strrep("x", 1010L)), 2048L),
+            sep = "\n", file = stderr())
+        flush(stderr())
+    }
     inject <- get("C_dtatools_inject_generation_interrupt", asNamespace("dtatools"))
     run_case <- function(name, values, existing = FALSE, dictionary = FALSE) {
         on.exit(.Call(inject, 0L), add = TRUE)
@@ -73,19 +78,29 @@ expect_generation_interrupt_cases <- function(result) {
     }
 }
 
-run_posix_generation_interrupt_cases <- function(package_path, load_package) {
-    process <- callr::r_bg(native_generation_interrupt_cases,
-        args = list(package_path = package_path, load_package = load_package, mode = 2L),
+run_posix_generation_interrupt_cases <- function(package_path, load_package, noisy = FALSE) {
+    handle <- .dtatools_child_r_bg(if (noisy) "generation-signal-noisy" else "generation-signal",
+        native_generation_interrupt_cases,
+        args = list(package_path = package_path, load_package = load_package, mode = 2L, noisy = noisy),
         libpath = .libPaths(), stdout = "|", stderr = "|", supervise = TRUE)
+    process <- .dtatools_child_process(handle)
     on.exit(process$kill(), add = TRUE)
     sent <- character()
+    output_lines <- character()
+    all_error_lines <- character()
+    on.exit(.dtatools_child_observe(handle, list(sent = sent,
+        stdout_lines = output_lines, stderr_lines = all_error_lines,
+        scope = "Actual line-oriented pipe reads and sent checkpoints; not raw byte streams")), add = TRUE)
     error_lines <- character()
     current <- NULL
     started <- Sys.time()
     while (process$is_alive()) {
         process$poll_io(100)
-        error_lines <- tail(c(error_lines, process$read_error_lines()), 100L)
+        errors <- process$read_error_lines()
+        all_error_lines <- c(all_error_lines, errors)
+        error_lines <- tail(c(error_lines, errors), 100L)
         lines <- process$read_output_lines()
+        output_lines <- c(output_lines, lines)
         for (line in lines) {
             if (startsWith(line, "[dtatools-test-generation-case] ")) {
                 current <- substring(line, nchar("[dtatools-test-generation-case] ") + 1L)
@@ -102,7 +117,9 @@ run_posix_generation_interrupt_cases <- function(package_path, load_package) {
                 paste(error_lines, collapse = "\n"))
         }
     }
-    result <- process$get_result()
+    output_lines <- c(output_lines, process$read_output_lines())
+    all_error_lines <- c(all_error_lines, process$read_error_lines())
+    result <- .dtatools_child_finish(handle)
     stopifnot(identical(sent, names(result)))
     result
 }

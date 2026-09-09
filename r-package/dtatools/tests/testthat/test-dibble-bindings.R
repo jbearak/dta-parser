@@ -3,6 +3,7 @@
 # the public contract. No diagnostic recorder or copied implementation is used.
 
 test_that("B01 rows verbs preserve ordering and explicit key policies", {
+    skip_if_not_installed("dplyr", "1.2.1")
     x <- dibble(k = 1:3, value = c(10, NA_real_, 30))
     cases <- list(
         insert = list(y = dibble(k = 4:5, value = c(40, 50)),
@@ -51,6 +52,7 @@ test_that("B01 rows verbs preserve ordering and explicit key policies", {
 })
 
 test_that("B02 rows match common keys without widening destination storage", {
+    skip_if_not_installed("dplyr", "1.2.1")
     x <- dibble(k = dta_byte(1:2), value = dta_byte(c(10, 20)))
     expect_error(dplyr::rows_append(x, dibble(k = 3L, value = 200)), "dta_int")
     expect_error(dplyr::rows_update(x, dibble(k = 2L, value = 200), by = "k"), "dta_int")
@@ -70,6 +72,7 @@ test_that("B02 rows match common keys without widening destination storage", {
 })
 
 test_that("B03 column modification preserves grouping and typed replacements", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (shape in c("grouped", "rowwise")) {
         x <- dibble(k = factor(c("a", "a", "b"), levels = c("a", "b", "c")),
             value = c(10, 20, 30))
@@ -114,6 +117,7 @@ test_that("B03 column modification preserves grouping and typed replacements", {
 })
 
 test_that("B04 rows honor public RHS brackets before assignment", {
+    skip_if_not_installed("dplyr", "1.2.1")
     method_name <- "[.dtatools_binding_rhs_probe"
     if (exists(method_name, .GlobalEnv, inherits = FALSE)) stop("Test method already exists")
     events <- character()
@@ -153,6 +157,7 @@ test_that("B04 rows honor public RHS brackets before assignment", {
 })
 
 test_that("B05 inherited column modification reaches custom reconstruction", {
+    skip_if_not_installed("dplyr", "1.2.1")
     method_name <- "dplyr_reconstruct.dtatools_binding_reconstruct_probe"
     if (exists(method_name, .GlobalEnv, inherits = FALSE)) stop("Test method already exists")
     events <- character()
@@ -264,14 +269,14 @@ test_that("B07 base binding selects the first applicable method", {
     }
 })
 
-test_that("B08 binding rows and column results isolate later payload and label writes", {
+expect_binding_write_isolation <- function(verbs) {
     skip_if_not_installed("data.table")
     snapshot <- function(column) {
         out <- numeric(length(column))
         for (i in seq_along(column)) out[[i]] <- as.double(column[[i]])
         out
     }
-    for (verb in c("insert", "append", "update", "patch", "upsert", "delete", "rbind", "cbind", "col_modify")) {
+    for (verb in verbs) {
         x <- dibble(k = 1:2, value = c(10, 20))
         y <- if (verb == "cbind") dibble(other = c(30, 40)) else
             dibble(k = if (verb %in% c("insert", "append", "rbind")) 3:4 else 1:2, value = c(30, 40))
@@ -330,4 +335,13 @@ test_that("B08 binding rows and column results isolate later payload and label w
             expect_identical(attr(x$value, "label"), "changed left")
         }
     }
+}
+
+test_that("B08 base binding results isolate later payload and label writes", {
+    expect_binding_write_isolation(c("rbind", "cbind"))
+})
+
+test_that("B12 dplyr row and column results isolate later payload and label writes", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    expect_binding_write_isolation(c("insert", "append", "update", "patch", "upsert", "delete", "col_modify"))
 })

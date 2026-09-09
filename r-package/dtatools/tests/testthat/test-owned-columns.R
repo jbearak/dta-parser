@@ -687,21 +687,32 @@ test_that("native comparison decline isolates handles before R fallback errors",
     expect_identical(as.double(data$x), c(7, 8))
 })
 
-test_that("ordinary doubles are captured once and column results fork backing", {
+.check_optional_split_owned_columns_690 <- function(include_dplyr) {
     source <- c(1, 2, NA_real_, tagged_missing("a"))
     column <- dta_double(source)
     expect_type(column, "double")
     expect_s3_class(column, "dta_numeric")
     expect_false(is.null(owned_info(column)))
     data <- dibble(x = column, y = dta_double(c(3, 4, 5, 6)))
-    result <- dplyr::rename(data, renamed = x)
-    expect_false(identical(rlang::obj_address(data$x), rlang::obj_address(result$renamed)))
-    expect_identical(owned_info(data$x)$backing, owned_info(result$renamed)$backing)
-    for (i in 1:5) result <- dplyr::relocate(result, y)
-    expect_identical(owned_info(result$renamed)$depth, 1L)
-    expect_identical(as.double(result$renamed), source)
+    if (include_dplyr) {
+        result <- dplyr::rename(data, renamed = x)
+        expect_false(identical(rlang::obj_address(data$x), rlang::obj_address(result$renamed)))
+        expect_identical(owned_info(data$x)$backing, owned_info(result$renamed)$backing)
+        for (i in 1:5) result <- dplyr::relocate(result, y)
+        expect_identical(owned_info(result$renamed)$depth, 1L)
+        expect_identical(as.double(result$renamed), source)
+
+    }
+}
+
+test_that("ordinary doubles are captured once and column results fork backing", {
+    .check_optional_split_owned_columns_690(FALSE)
 })
 
+test_that("ordinary double result backing through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_owned_columns_690(TRUE)
+})
 test_that("ordinary dictionary cast prototypes do not decode target values", {
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path))
@@ -826,7 +837,7 @@ test_that("public column exports isolate later ordinary and explicit writes", {
     }
 })
 
-test_that("foreign double ingress and data table exports preserve both write directions", {
+.check_optional_split_owned_columns_829 <- function(include_dplyr) {
     skip_if_not_installed("data.table")
     ingress <- list(
         constructor = function(source) dibble(x = source$x),
@@ -837,6 +848,7 @@ test_that("foreign double ingress and data table exports preserve both write dir
         callback = function(source) dplyr::group_modify(dibble(anchor = 1:3),
                                                        function(.x, .y) source)
     )
+    if (!include_dplyr) ingress <- ingress[c("constructor", "conversion", "cbind")]
     for (create in ingress) {
         source <- data.table::data.table(x = unserialize(serialize(dta_double(c(1, 2, 3)), NULL)))
         expect_null(owned_info(source$x))
@@ -853,8 +865,16 @@ test_that("foreign double ingress and data table exports preserve both write dir
         replace_values(data, x, 6, where = 2L)
         expect_identical(as.double(output$x), c(8, 2, 7))
     }
+}
+
+test_that("foreign double ingress and data table exports preserve both write directions", {
+    .check_optional_split_owned_columns_829(FALSE)
 })
 
+test_that("foreign double ingress through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_owned_columns_829(TRUE)
+})
 test_that("read pointers and ordinary aggregates retain safe backing forks", {
     value <- dta_double(c(1, 2, 3))
     pointer <- .Call(C_dtatools_owned_pointer, value, FALSE)

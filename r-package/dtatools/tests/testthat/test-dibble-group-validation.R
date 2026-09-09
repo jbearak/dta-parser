@@ -1,10 +1,16 @@
-.group_validation_frame <- function(value, key, rows, owned = FALSE) {
+.group_validation_frame <- function(value, key, rows, owned = FALSE, id,
+                                    plain_spec = NULL) {
+    if (is.null(plain_spec)) {
+        plain_spec <- .group_fixture_spec(
+            tibble::new_tibble(list(g = value), nrow = NROW(value)))
+    }
     if (owned) {
         value <- .Call(dtatools:::C_dtatools_capture_column, value)
         key <- .Call(dtatools:::C_dtatools_capture_column, key)
     }
-    dplyr::new_grouped_df(tibble::new_tibble(list(g = value), nrow = NROW(value)),
-        tibble::new_tibble(list(g = key, .rows = rows), nrow = NROW(key)))
+    .group_fixture_attach(id,
+        tibble::new_tibble(list(g = value), nrow = NROW(value)), plain_spec,
+        groups = tibble::new_tibble(list(g = key, .rows = rows), nrow = NROW(key)))
 }
 
 .group_validation_snapshot <- function(x) list(
@@ -22,7 +28,8 @@ test_that("character group validation preserves equality and owned backing", {
         key <- structure(c("unused", utf8, "longer", NA_character_),
             stata.string.storage = "str1")
         data <- .group_validation_frame(value, key,
-            vctrs::list_of(integer(), c(1L, 3L), 2L, 4L), owned)
+            vctrs::list_of(integer(), c(1L, 3L), 2L, 4L), owned,
+            id = "character_encoding")
         before <- .Call(dtatools:::C_dtatools_owned_info, data$g)
         expect_silent(dtatools:::.validate_group_metadata(data))
         # Public matching may create a temporary encoding-normalization fork.
@@ -35,26 +42,34 @@ test_that("character group validation preserves equality and owned backing", {
         expect_identical(attributes(data$g), attributes(value))
     }
     # Individual keys may repeat while complete group tuples are unique.
-    data <- dplyr::group_by(tibble::tibble(g = c("a", "a", "b", "a"),
-        h = c(1, 2, 1, 1)), g, h)
+    data <- .group_fixture("multi_aaba")$data
     expect_silent(dtatools:::.validate_group_metadata(data))
     attr(data, "groups")$g[1L] <- "wrong"
     expect_error(dtatools:::.validate_group_metadata(data), "keys that do not match")
     expect_silent(dtatools:::.validate_group_metadata(.group_validation_frame(
-        character(), character(), vctrs::list_of(.ptype = integer()))))
+        character(), character(), vctrs::list_of(.ptype = integer()),
+        id = "character_empty")))
 })
 
 test_that("group validation retains declaration errors and foreign length fallback", {
     for (side in c("value", "key")) for (storage in list(1L, c("byte", "int"))) {
         value <- c("b", "a", "b"); key <- c("b", "a")
-        if (side == "value") attr(value, "stata.storage") <- storage else
-            attr(key, "stata.storage") <- storage
-        data <- .group_validation_frame(value, key, vctrs::list_of(c(1L, 3L), 2L))
+        data <- .group_validation_frame(value, key, vctrs::list_of(c(1L, 3L), 2L),
+            id = "character_bab")
+        # Apply the intentional corruption without a grouped replacement method.
+        data_class <- class(data)
+        class(data) <- NULL
+        if (side == "value") attr(data$g, "stata.storage") <- storage else
+            attr(attr(data, "groups")$g, "stata.storage") <- storage
+        class(data) <- data_class
         expect_error(dtatools:::.validate_group_metadata(data), "values must be")
     }
     effects <- new.env(parent = emptyenv()); effects$count <- 0L
+    plain_spec <- .group_fixture_spec(tibble::new_tibble(
+        list(g = c("b", "a", "b")), nrow = 3L))
     value <- .Call(dtatools:::C_dtatools_callback_length, c("b", "a", "b"), function() NULL)
-    data <- .group_validation_frame(value, c("b", "a"), vctrs::list_of(c(1L, 3L), 2L))
+    data <- .group_validation_frame(value, c("b", "a"), vctrs::list_of(c(1L, 3L), 2L),
+        id = "character_bab", plain_spec = plain_spec)
     .Call(dtatools:::C_dtatools_arm_callback_character, value, function() {
         effects$count <- effects$count + 1L
         gc(FALSE)
@@ -66,9 +81,7 @@ test_that("group validation retains declaration errors and foreign length fallba
 
 test_that("ordinary character group validation avoids full key expansion allocations", {
     skip_if_not(capabilities("profmem"))
-    data <- dplyr::group_by(dibble(
-        g = rep(sprintf("g%03d", 1:16), length.out = 100000L),
-        x = rep(TRUE, 100000L)), g)
+    data <- as_dibble(.group_fixture("ascii_100k_16_typed")$data)
     dtatools:::.validate_group_metadata(data)
     before <- .Call(dtatools:::C_dtatools_owned_info, data$g)
     profile <- tempfile()
@@ -95,7 +108,8 @@ test_that("encoding normalization preserves later foreign-write isolation", {
         } else attr(value, case) <- if (case == "names") rep(latin1, 4L) else latin1
         attr(value, "stata.string.storage") <- "str8"
         expected <- .group_validation_snapshot(value)
-        data <- .group_validation_frame(value, key, vctrs::list_of(c(1L, 3L), 2L, 4L), TRUE)
+        data <- .group_validation_frame(value, key, vctrs::list_of(c(1L, 3L), 2L, 4L), TRUE,
+            id = paste0("character_isolation_", case))
         before <- .Call(dtatools:::C_dtatools_owned_info, data$g)
         expect_silent(dtatools:::.validate_group_metadata(data))
         after <- .Call(dtatools:::C_dtatools_owned_info, data$g)
@@ -123,7 +137,14 @@ test_that("bytes-encoded group attributes retain their existing error boundary",
         if (side == "value") value <- target else key <- target
         expected_value <- .group_validation_snapshot(value)
         expected_key <- .group_validation_snapshot(key)
-        data <- .group_validation_frame(value, key, vctrs::list_of(c(1L, 3L), 2L), TRUE)
+        data <- .group_validation_frame(c("a", "b", "a"), c("a", "b"),
+            vctrs::list_of(c(1L, 3L), 2L), TRUE, id = "character_aba")
+        # Apply the intentional corruption without a grouped replacement method.
+        data_class <- class(data)
+        class(data) <- NULL
+        if (side == "value") attr(data$g, attribute) <- attr(target, attribute) else
+            attr(attr(data, "groups")$g, attribute) <- attr(target, attribute)
+        class(data) <- data_class
         expect_error(dtatools:::.validate_group_metadata(data),
             'translating strings with "bytes" encoding is not allowed', class = "simpleError")
         expect_identical(.group_validation_snapshot(data$g), expected_value)

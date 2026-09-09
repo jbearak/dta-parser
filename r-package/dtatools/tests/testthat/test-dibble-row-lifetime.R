@@ -1,6 +1,7 @@
 # Stage 6 row-operation regression coverage; adapted sources are in inst/NOTICE.
 
 test_that("S6-L06 row conditions preserve warning timing and error families", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:2)
     flag <- new.env(parent = emptyenv())
     flag$value <- FALSE
@@ -47,6 +48,7 @@ test_that("S6-L06 row conditions preserve warning timing and error families", {
         weight_by = c(1, 0, 0, 0)))
 
 test_that("S6-L01 every row verb preserves metadata and symmetric later-write isolation", {
+    skip_if_not_installed("dplyr", "1.2.1")
     withr::local_seed(5)
     for (operation in .s6_row_operations()) for (roundtrip in c(FALSE, TRUE)) {
         source <- dibble(id = 1:4, x = dta_double(c(4, 1, 3, 2)),
@@ -84,6 +86,7 @@ test_that("S6-L01 every row verb preserves metadata and symmetric later-write is
 })
 
 test_that("S6-L02 forced captures survive while late column resolution expires", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (verb in c("filter", "filter_out", "slice", "arrange", "distinct")) {
         data <- dibble(id = 1:4, x = dta_double(c(4, 1, 3, 2)))
         captured <- NULL; closure <- NULL; pronoun <- NULL; quo <- NULL
@@ -136,6 +139,7 @@ test_that("S6-L02 forced captures survive while late column resolution expires",
 })
 
 test_that("S6-L03 nested row verbs restore outer context after success and error", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(id = 1:4, g = c("b", "a", "b", "a")), g)
     seen <- list()
     out <- dplyr::filter(data, {
@@ -156,6 +160,7 @@ test_that("S6-L03 nested row verbs restore outer context after success and error
 })
 
 test_that("S6-L04 plain reference-marked frame fallback preserves its container policy", {
+    skip_if_not_installed("dplyr", "1.2.1")
     withr::local_seed(7)
     for (tibble in c(FALSE, TRUE)) for (operation in .s6_row_operations()) {
         source <- data.frame(id = 1:4, x = c(4, 1, 3, 2))
@@ -175,6 +180,7 @@ test_that("S6-L04 plain reference-marked frame fallback preserves its container 
 })
 
 test_that("S6-L05 foreign data.table input cannot mutate a gathered dibble result", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("data.table", minimum_version = "1.18.2.1")
     for (operation in list(function(d) dplyr::filter(d, x > 1),
                           function(d) dplyr::arrange(d, x),

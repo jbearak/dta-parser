@@ -2,6 +2,7 @@
 # Adapted policy cases: dplyr 95740975 R/slice.R and test-slice.R.
 
 test_that("S6-S01 slice validates dots before combining signs and dropping indices", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:4)
     expect_identical(.s6_ids(dplyr::slice(data)), integer())
     expect_identical(.s6_ids(dplyr::slice(data, c(4, 2, 2, 0, NA, 99))), c(4L, 2L, 2L))
@@ -24,6 +25,7 @@ test_that("S6-S01 slice validates dots before combining signs and dropping indic
 })
 
 test_that("S6-S02 slice preserves empty group keys only when policy requires it", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(id = 1:3, g = c("a", "b", "b")), g)
     out <- dplyr::slice(data, 2L, .preserve = TRUE)
     expect_identical(.s6_ids(out), 3L)
@@ -43,6 +45,7 @@ test_that("S6-S02 slice preserves empty group keys only when policy requires it"
 })
 
 test_that("S6-S03 head and tail apply group-sized signed n and prop arithmetic", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(id = 1:6, g = c(1, 2, 2, 3, 3, 3)), g)
     expect_identical(.s6_ids(dplyr::slice_head(data)), c(1L, 2L, 4L))
     expect_identical(.s6_ids(dplyr::slice_tail(data)), c(1L, 3L, 6L))
@@ -60,6 +63,7 @@ test_that("S6-S03 head and tail apply group-sized signed n and prop arithmetic",
 })
 
 test_that("S6-S04 helper controls are caller constants with by spelling", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:4, g = c("b", "a", "b", "a"), n = c(4, 3, 2, 1))
     n <- 1L
     for (verb in list(dplyr::slice_head, dplyr::slice_tail, dplyr::slice_sample)) {
@@ -85,6 +89,7 @@ test_that("S6-S04 helper controls are caller constants with by spelling", {
 })
 
 test_that("S6-S05 min and max retain rank order, ties and exact key size", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:4, x = c(2, 3, 1, 2), with_ties = 1:4, na_rm = 1:4)
     expect_identical(.s6_ids(dplyr::slice_min(data, x, n = 2)), c(3L, 1L, 4L))
     expect_identical(.s6_ids(dplyr::slice_max(data, x, n = 2)), c(2L, 1L, 4L))
@@ -108,6 +113,7 @@ test_that("S6-S05 min and max retain rank order, ties and exact key size", {
 })
 
 test_that("S6-S06 sample validates weights before zero selection without drawing RNG", {
+    skip_if_not_installed("dplyr", "1.2.1")
     withr::local_seed(913)
     data <- dibble(id = 1:3, wt = c(1, 0, 0), replace = 1:3)
     before <- .Random.seed
@@ -130,6 +136,7 @@ test_that("S6-S06 sample validates weights before zero selection without drawing
 })
 
 test_that("S6-S07 seeded sampling matches the ordinary typed-frame oracle and RNG state", {
+    skip_if_not_installed("dplyr", "1.2.1")
     # This is an integration oracle, not a hard-coded cross-R sample sequence.
     for (grouped in c(FALSE, TRUE)) for (replace in c(FALSE, TRUE)) {
         data <- dibble(id = 1:6, g = c("b", "a", "b", "a", "b", "a"),

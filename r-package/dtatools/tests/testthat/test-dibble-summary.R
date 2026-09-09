@@ -4,6 +4,7 @@
     dibble(g = c("b", "a", "b", "a"), x = c(1, 2, 3, 4), y = c(10, 20, 30, 40)), g)
 
 test_that("S7-S01 summary expressions run in dot then group order with dependent typing", {
+    skip_if_not_installed("dplyr", "1.2.1")
     seen <- character()
     mark <- function(dot) { seen <<- c(seen, paste0(dot, dplyr::cur_group_id())); invisible(NULL) }
     result <- dplyr::summarise(.s7_grouped(),
@@ -20,6 +21,7 @@ test_that("S7-S01 summary expressions run in dot then group order with dependent
 })
 
 test_that("S7-S02 across siblings finish before any sibling enters the summary mask", {
+    skip_if_not_installed("dplyr", "1.2.1")
     seen <- character()
     result <- dplyr::summarise(.s7_grouped(),
         dplyr::across(c(x, y), ~ {
@@ -33,6 +35,7 @@ test_that("S7-S02 across siblings finish before any sibling enters the summary m
 })
 
 test_that("S7-S03 summary size validation waits for later dots and retains repeated chunks", {
+    skip_if_not_installed("dplyr", "1.2.1")
     seen <- integer()
     expect_error(dplyr::summarise(.s7_grouped(), bad = 1:2,
         later = { seen <<- c(seen, dplyr::cur_group_id()); 1L }, .groups = "drop"))
@@ -46,6 +49,7 @@ test_that("S7-S03 summary size validation waits for later dots and retains repea
 })
 
 test_that("S7-S04 all NULL skips installation and does not erase earlier summaries", {
+    skip_if_not_installed("dplyr", "1.2.1")
     result <- dplyr::summarise(.s7_grouped(), x = 1L, x = NULL,
         after = x, fresh = NULL, .groups = "drop")
     expect_identical(names(result), c("g", "x", "after"))
@@ -56,6 +60,7 @@ test_that("S7-S04 all NULL skips installation and does not erase earlier summari
 })
 
 test_that("S7-S05 packed and unpacked zero-column frames have distinct size rules", {
+    skip_if_not_installed("dplyr", "1.2.1")
     empty_two <- function() vctrs::new_data_frame(list(), n = 2L)
     summary <- dplyr::summarise(.s7_grouped(), empty_two(), .groups = "drop")
     expect_identical(dim(summary), c(2L, 1L))
@@ -69,6 +74,7 @@ test_that("S7-S05 packed and unpacked zero-column frames have distinct size rule
 })
 
 test_that("S7-S06 reframe defers horizontal recycling until all dots finish", {
+    skip_if_not_installed("dplyr", "1.2.1")
     result <- dplyr::reframe(.s7_grouped(), a = 7L, b = 1:2, observed = length(a))
     expect_identical(as.integer(result$a), rep(7L, 4L))
     expect_identical(as.integer(result$b), rep(1:2, 2L))
@@ -80,6 +86,7 @@ test_that("S7-S06 reframe defers horizontal recycling until all dots finish", {
 })
 
 test_that("S7-S07 summary helper context retains original group rows after shortening", {
+    skip_if_not_installed("dplyr", "1.2.1")
     seen <- list()
     helper <- function() list(n = dplyr::n(), id = dplyr::cur_group_id(),
         rows = dplyr::cur_group_rows(), key = as.character(dplyr::cur_group()$g))
@@ -92,6 +99,7 @@ test_that("S7-S07 summary helper context retains original group rows after short
 })
 
 test_that("S7-S08 reframe unboxes rowwise lists and always returns ungrouped output", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::rowwise(dibble(id = 1:2, x = list(1:2, 3L)), id)
     result <- dplyr::reframe(data, x)
     expect_identical(as.integer(result$id), c(1L, 1L, 2L))
@@ -102,6 +110,7 @@ test_that("S7-S08 reframe unboxes rowwise lists and always returns ungrouped out
 })
 
 test_that("S7-S09 summary grouping policies distinguish plain grouped and rowwise input", {
+    skip_if_not_installed("dplyr", "1.2.1")
     plain <- dibble(g = c("b", "a", "b"), h = c(2L, 1L, 2L), x = 1:3)
     by <- dplyr::summarise(plain, n = dplyr::n(), .by = g)
     expect_identical(as.character(by$g), c("b", "a"))
@@ -121,6 +130,7 @@ test_that("S7-S09 summary grouping policies distinguish plain grouped and rowwis
 })
 
 test_that("S7-S10 summary drops arbitrary table attributes and keeps column metadata", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = dta_double(c(1, 2)))
     attr(data, "label") <- "source dataset"
     attr(data$x, "label") <- "source variable"
@@ -133,6 +143,7 @@ test_that("S7-S10 summary drops arbitrary table attributes and keeps column meta
 })
 
 test_that("S7-S11 nested mask bindings isolate expression writes from source and earlier results", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("data.table")
     foreign <- data.table::data.table(flag = c(TRUE, FALSE))
     source <- dplyr::rowwise(dibble(id = 1L, nested = list(foreign)))
@@ -150,6 +161,7 @@ test_that("S7-S11 nested mask bindings isolate expression writes from source and
 })
 
 test_that("S7-S12 summaries retain fresh masks and reset helper context after errors", {
+    skip_if_not_installed("dplyr", "1.2.1")
     saved <- NULL
     result <- dplyr::summarise(.s7_grouped(),
         first = { local <- 7L; saved <<- function() x; sum(x) },
@@ -162,6 +174,7 @@ test_that("S7-S12 summaries retain fresh masks and reset helper context after er
 })
 
 test_that("S7-S13 bare replacement references promote only after dependent dots", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (verb in list(dplyr::summarise, dplyr::reframe)) {
         data <- dibble(x = dta_int(2), flag = TRUE)
         result <- verb(data, x = flag, seen = is.logical(x))
@@ -175,6 +188,7 @@ test_that("S7-S13 bare replacement references promote only after dependent dots"
 })
 
 test_that("S7-S14 current group keys omit drop policy across summary, mutation and filter masks", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (drop in c(FALSE, TRUE)) for (verb in c("summarise", "reframe", "mutate", "filter")) {
         data <- dplyr::group_by(.s7_grouped(), g, .drop = drop)
         seen <- list()
@@ -195,6 +209,7 @@ test_that("S7-S14 current group keys omit drop policy across summary, mutation a
 })
 
 test_that("S7-S15 summary errors retain the trigger or named incompatible groups", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (verb in list(dplyr::summarise, dplyr::reframe)) {
         trigger <- tryCatch(verb(.s7_grouped(), value =
             rlang::abort("deliberate summary trigger", class = "stage7_trigger")), error = identity)
@@ -217,6 +232,7 @@ test_that("S7-S15 summary errors retain the trigger or named incompatible groups
 })
 
 test_that("S7-S16 tagged payloads survive common typing and dependent summaries", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (verb in list(dplyr::summarise, dplyr::reframe)) {
         pair <- list(tagged_missing("a"), NA_real_)
         result <- verb(.s7_grouped(), value = pair[[dplyr::cur_group_id()]], after = value)
@@ -227,6 +243,7 @@ test_that("S7-S16 tagged payloads survive common typing and dependent summaries"
 })
 
 test_that("S7-S17 zero-group prototypes retain their observed contexts and size rules", {
+    skip_if_not_installed("dplyr", "1.2.1")
     empty <- dibble(g = factor(character(), levels = c("a", "b")), x = integer())
     for (shape in c("zero_groups", "rowwise")) for (verb in list(dplyr::summarise, dplyr::reframe)) {
         data <- if (shape == "rowwise") dplyr::rowwise(empty, g) else dplyr::group_by(empty, g)
@@ -263,6 +280,7 @@ test_that("S7-S17 zero-group prototypes retain their observed contexts and size 
 })
 
 test_that("S7-S18 nested calls expire inner columns but restore dynamic helpers", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (kind in c("success", "error", "interrupt")) {
         events <- list(); saved <- list()
         trigger <- switch(kind, success = function() 1L,
@@ -299,6 +317,7 @@ test_that("S7-S18 nested calls expire inner columns but restore dynamic helpers"
 })
 
 test_that("S7-S19 reframe reuse follows final group sizes and isolates nested captures", {
+    skip_if_not_installed("dplyr", "1.2.1")
     result <- dplyr::reframe(.s7_grouped(), a = dplyr::cur_group_id(),
         b = if (dplyr::cur_group_id() == 1L) integer() else c(20L, 21L))
     # Equal total sizes cannot establish equality of every group's final size.
@@ -328,6 +347,7 @@ test_that("S7-S19 reframe reuse follows final group sizes and isolates nested ca
 })
 
 test_that("S7-S20 unchanged reframe chunks avoid extra restoration callbacks", {
+    skip_if_not_installed("dplyr", "1.2.1")
     events <- character()
     mark <- function(event) events <<- c(events, event)
     make <- function(x) vctrs::new_vctr(x, class = "stage7_reframe_restore")

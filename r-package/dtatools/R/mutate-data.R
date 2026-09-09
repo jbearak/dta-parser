@@ -2565,10 +2565,10 @@ print.dtatools_ref_data <- function(x, ...) {
     } else {
         eval(call, parent.frame())
     }
-    .install_replacement(x, result, value, "`[<-`")
+    .install_replacement(x, result, value, "`[<-`", envir = parent.frame())
 }
 
-.install_replacement <- function(x, result, value, caller) {
+.install_replacement <- function(x, result, value, caller, envir = parent.frame()) {
     if (!is_dibble(x) || !is.data.frame(result)) return(result)
     if (nrow(result) != nrow(x)) {
         stop(sprintf("%s cannot change a dibble's row count", caller), call. = FALSE)
@@ -2576,6 +2576,52 @@ print.dtatools_ref_data <- function(x, ...) {
     names <- names(result)
     if (is.null(names) || anyNA(names) || any(names == "") || anyDuplicated(names)) {
         stop(sprintf("%s needs unique, non-missing column names", caller), call. = FALSE)
+    }
+    generic <- switch(caller, "`$<-`" = "[[<-", "`[[<-`" = "[[<-",
+                      "`[<-`" = "[<-", "`names<-`" = "names<-",
+                      "`dimnames<-`" = "names<-", NULL)
+    grouping <- if (!is.null(generic)) .native_group_method_missing(
+        x, generic, envir = envir)
+    if (!is.null(grouping) && identical(caller, "`dimnames<-`") &&
+        is.null(.native_group_method_missing(x, "dimnames<-", envir = envir))) {
+        grouping <- NULL
+    }
+    # dplyr does not supply a rowwise [[<- method.
+    if (identical(grouping, "rowwise_df") && identical(generic, "[[<-")) {
+        grouping <- NULL
+    }
+    if (!is.null(grouping)) {
+        .as_mutation_data(x, allow_grouped = TRUE)
+        template <- .reference_snapshot(x)
+        rowwise_groups <- if (identical(grouping, "rowwise_df") &&
+                              identical(generic, "[<-")) {
+            # The rowwise replacement method groups before dibble retyping.
+            # Its raw key representation remains observable after promotion.
+            .capture_dibble_nested(.build_group_metadata(.data_columns(result),
+                intersect(names(result), .group_vars(template)), nrow(result),
+                rowwise = TRUE))
+        }
+        result <- .ungrouped_result_frame(.data_columns(result), attributes(result),
+                                          .row_names_info(result, 0L))
+        typed <- .retype_changed_columns(result, .data_columns(x), caller)
+        context <- .begin_dibble_result(x, caller, "unknown")
+        restore <- if (identical(generic, "names<-")) {
+            groups <- attr(template, "groups", exact = TRUE)
+            keys <- setdiff(names(groups), ".rows")
+            names(groups) <- c(names[match(keys, names(x))], ".rows")
+            function(value) {
+                attr(value, "row.names") <- .set_row_names(nrow(value))
+                attr(value, "groups") <- groups
+                class(value) <- .reference_base_classes(class(template))
+                value
+            }
+        } else if (!is.null(rowwise_groups)) function(value) {
+            attr(value, "row.names") <- .set_row_names(nrow(value))
+            attr(value, "groups") <- rowwise_groups
+            class(value) <- .reference_base_classes(class(template))
+            value
+        } else function(value) .restore_group_metadata(value, template)
+        return(.finish_dibble_result(context, typed, grouping = restore))
     }
     typed <- .retype_changed_columns(result, .data_columns(x), caller)
     .close_dibble(x, typed, caller)
@@ -2663,7 +2709,35 @@ vec_proxy.dtatools_ref_data <- function(x, ...) {
 #' @export
 #' @export
 vec_restore.dtatools_ref_data <- function(x, to, ...) {
-    .close_dibble(to, vctrs::vec_restore(x, .reference_snapshot(to), ...))
+    grouping <- if (is_dibble(to)) .native_group_method_missing(
+        to, "vec_restore", envir = environment(), registry = asNamespace("vctrs"))
+    if (is.null(grouping)) {
+        return(.close_dibble(to, vctrs::vec_restore(x, .reference_snapshot(to), ...)))
+    }
+    .as_mutation_data(to, allow_grouped = TRUE)
+    template <- .reference_snapshot(to)
+    plain <- .ungrouped_result_frame(.data_columns(template), attributes(template),
+                                     .row_names_info(template, 0L))
+    result <- vctrs::vec_restore(x, plain, ...)
+    result <- .ungrouped_result_frame(.data_columns(result), attributes(result),
+                                      .row_names_info(result, 0L))
+    if (identical(grouping, "rowwise_df")) {
+        # vec_restore.rowwise_df restores rowwise rows without identifiers.
+        attr(template, "groups") <- attr(template, "groups", exact = TRUE)[".rows"]
+    }
+    context <- .begin_dibble_result(to, "as_dibble()", "unknown")
+    .finish_dibble_result(context, result,
+        grouping = function(value) {
+            value <- .restore_group_metadata(value, template)
+            if (identical(grouping, "grouped_df")) {
+                groups <- attr(value, "groups", exact = TRUE)
+                if (!is.null(groups) && !nrow(groups)) {
+                    attr(groups, "row.names") <- integer()
+                    attr(value, "groups") <- groups
+                }
+            }
+            value
+        })
 }
 
 #' @export

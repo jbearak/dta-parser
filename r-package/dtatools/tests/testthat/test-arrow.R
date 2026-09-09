@@ -241,22 +241,27 @@ test_that("native Arrow write cancellation remains an interrupt", {
     data <- data.frame(x = runif(1e7))
     path <- arrow_tempfile()
     parent <- Sys.getpid()
+    loadNamespace("parallel")
+    request <- if (is.null(getOption("dtatools.native.context"))) NULL else
+        native_fork_request("arrow-write-signal")
     signal <- parallel::mcparallel({
-        Sys.sleep(0.05)
-        tools::pskill(parent, tools::SIGINT)
+        if (is.null(request)) {
+            Sys.sleep(0.05)
+            tools::pskill(parent, tools::SIGINT)
+        } else native_fork_signal(request, 0.05, tools::SIGINT)
     }, silent = TRUE)
+    collected <- NULL
     condition <- tryCatch(
         {
             save_arrow(data, path, compression = "zstd", threads = 1L)
-            parallel::mccollect(signal)
+            collected <- parallel::mccollect(signal)
             NULL
         },
         condition = identity
     )
-    tryCatch(
-        suppressWarnings(parallel::mccollect(signal)),
-        condition = function(...) NULL
-    )
+    if (is.null(collected)) collected <- tryCatch(
+        suppressWarnings(parallel::mccollect(signal)), condition = identity)
+    if (!is.null(request)) native_fork_finish(request, collected, signal$pid)
 
     expect_s3_class(condition, "interrupt")
     expect_false(file.exists(path))

@@ -166,8 +166,8 @@ saving applies after construction and across columns held in memory.
 }
 
 \section{Labels and missing-code helpers}{
-Reading DTA files and working with their labels does not require haven or
-labelled. Use \code{var_label()}, \code{val_labels()}, \code{dataset_label()},
+Reading DTA files and working with their labels does not require dplyr,
+haven, or labelled. Use \code{var_label()}, \code{val_labels()}, \code{dataset_label()},
 \code{set_var_label()}, \code{set_var_labels()}, and \code{set_val_labels()} to
 inspect or change package-owned Stata metadata without materializing compact
 numeric columns or dropping unrelated attributes. For example:

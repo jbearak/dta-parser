@@ -46,6 +46,10 @@ jobs:
           r-version: release
           use-public-rspm: true
 
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+
       - name: Verify R architecture
         shell: bash
         env:
@@ -80,11 +84,13 @@ jobs:
             exit 1
           fi
 
-      - name: Install R dependencies
+      - name: Install runtime and present test dependencies
         shell: Rscript {0}
         run: |
           install.packages(
-            c("dplyr", "readr", "rlang", "tibble", "tidyselect", "stringi"),
+            c("dplyr", "readr", "rlang", "tibble", "tidyselect", "stringi",
+              "testthat", "callr", "data.table", "httpuv", "arrow", "jsonlite",
+              "purrr", "haven", "labelled"),
             repos = "https://cloud.r-project.org",
             Ncpus = 2L
           )
@@ -113,7 +119,7 @@ jobs:
 
           (
             cd "$binary_dir"
-            R CMD INSTALL --build --clean --library="$library_dir" "$source_archive"
+            R CMD INSTALL --build --clean --install-tests --library="$library_dir" "$source_archive"
           )
 
           case "$ASSET_PLATFORM" in
@@ -162,6 +168,45 @@ jobs:
             readLines(file.path(unpacked, "dtatools", "NOTICE"), warn = FALSE),
             expected
           ))
+
+      - name: Run complete present suite before release
+        shell: Rscript {0}
+        run: |
+          .libPaths(c(file.path(getwd(), "release-build", "library"), .libPaths()))
+          expected <- normalizePath(file.path("release-build", "library", "dtatools"))
+          actual <- normalizePath(getNamespaceInfo(loadNamespace("dtatools"), "path"))
+          stopifnot(identical(actual, expected))
+          testthat::test_check("dtatools")
+
+      - name: Provision physical native release libraries
+        shell: bash
+        run: >-
+          Rscript --vanilla scripts/provision-r-native-libraries.R
+          r-package/dtatools release-native-libraries current release with-arrow
+
+      - name: Qualify source and fresh binary installations without optional packages
+        shell: bash
+        env:
+          BINARY_ASSET: ${{ steps.package.outputs.asset }}
+        run: |
+          version=$(sed -n 's/^Version: //p' r-package/dtatools/DESCRIPTION)
+          source_archive="release-build/source/dtatools_${version}.tar.gz"
+          python scripts/check-r-native.py "$source_archive" \
+            release-native-libraries/evidence/lane-plan.json release release-native-source
+          python scripts/check-r-native.py "$source_archive" \
+            release-native-libraries/evidence/lane-plan.json release release-native-binary \
+            --binary-archive "$BINARY_ASSET"
+
+      - name: Retain release native qualification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-release-${{ matrix.platform }}
+          path: |
+            release-native-libraries/evidence
+            release-native-source/evidence
+            release-native-binary/evidence
+          if-no-files-found: warn
 
       - name: Stage binary for release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -170,21 +170,23 @@ test_that("public logical subsets are fresh ordinary values and batch results st
     }
 })
 
-test_that("ordinary atom handles share flat backing with independent attributes", {
+.check_optional_split_owned_atoms_173 <- function(include_dplyr) {
     for (value in owned_atom_fixtures()) {
         data <- dibble(x = value, keep = dta_double(1:4))
         source <- owned_atom_info(data$x)
         expect_false(source$exposed)
-        renamed <- dplyr::rename(data, y = x)
-        selected <- dplyr::select(data, second = x, first = x)
-        relocated <- dplyr::relocate(data, keep)
-        for (result in list(renamed$y, selected$first, selected$second, relocated$x)) {
-            expect_identical(result, data$x)
-            expect_identical(owned_atom_info(result)$backing, source$backing)
-            expect_identical(owned_atom_info(result)$depth, 1L)
-            expect_false(owned_atom_info(result)$exposed)
+        if (include_dplyr) {
+            renamed <- dplyr::rename(data, y = x)
+            selected <- dplyr::select(data, second = x, first = x)
+            relocated <- dplyr::relocate(data, keep)
+            for (result in list(renamed$y, selected$first, selected$second, relocated$x)) {
+                expect_identical(result, data$x)
+                expect_identical(owned_atom_info(result)$backing, source$backing)
+                expect_identical(owned_atom_info(result)$depth, 1L)
+                expect_false(owned_atom_info(result)$exposed)
+            }
+            attr(renamed$y, "label") <- "changed"
         }
-        attr(renamed$y, "label") <- "changed"
         expect_null(attr(data$x, "label", exact = TRUE))
         expect_identical(attributes(data$x), attributes(value))
         expect_identical(typeof(data$x), typeof(value))
@@ -194,9 +196,18 @@ test_that("ordinary atom handles share flat backing with independent attributes"
     expect_identical(typeof(sibling), "integer")
     expect_identical(owned_atom_info(integers)$backing, owned_atom_info(sibling)$backing)
     expect_identical(as.integer(sibling), c(1L, NA_integer_, 3L))
+}
+
+test_that("ordinary atom handles share flat backing with independent attributes", {
+    .check_optional_split_owned_atoms_173(FALSE)
 })
 
+test_that("ordinary atom backing through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_owned_atoms_173(TRUE)
+})
 test_that("unchanged owned string selectors reuse validation facts", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (value in owned_atom_fixtures()[c("string", "declared")]) {
         data <- dibble(x = value, other = value)
         owned_atom_scan_stats(TRUE)
@@ -294,7 +305,7 @@ test_that("Set_elt and retained writable strings invalidate missingness and widt
     expect_true(.Call(C_dtatools_owned_string_fits, later, 5))
 })
 
-test_that("foreign data.table atoms are captured at constructors and callback ingress", {
+.check_optional_split_owned_atoms_297 <- function(include_dplyr) {
     skip_if_not_installed("data.table")
     for (value in owned_atom_fixtures()) {
         foreign <- data.table::data.table(x = value)
@@ -304,22 +315,38 @@ test_that("foreign data.table atoms are captured at constructors and callback in
         original <- .deep_copy_value(foreign$x)
         direct <- as_dibble(foreign)
         source <- dibble(anchor = dta_double(1:4))
-        transformed <- dplyr::mutate(source, x = foreign$x)
-        callback <- dplyr::group_modify(source, function(.x, .y) tibble::tibble(x = foreign$x))
-        bound <- dplyr::bind_cols(source, tibble::tibble(x = foreign$x))
+        if (include_dplyr) {
+            transformed <- dplyr::mutate(source, x = foreign$x)
+            callback <- dplyr::group_modify(source, function(.x, .y) tibble::tibble(x = foreign$x))
+            bound <- dplyr::bind_cols(source, tibble::tibble(x = foreign$x))
+        }
         base_bound <- cbind(source, data.frame(x = foreign$x))
         data.table::set(foreign, i = 1L, j = "x", value = foreign$x[2L])
-        for (result in list(direct, transformed, callback, bound, base_bound)) {
+        results <- if (include_dplyr) list(direct, transformed, callback, bound, base_bound) else
+            list(direct, base_bound)
+        for (result in results) {
             expect_identical(result$x, original)
             expect_false(is.null(owned_atom_info(result$x)))
         }
     }
+}
+
+test_that("foreign data.table atoms are captured at constructors and callback ingress", {
+    .check_optional_split_owned_atoms_297(FALSE)
 })
 
-test_that("owned atom serialization restores values without live ownership records", {
+test_that("foreign atom ingress through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_owned_atoms_297(TRUE)
+})
+.check_optional_split_owned_atoms_319 <- function(include_dplyr) {
     for (value in owned_atom_fixtures()) for (version in c(2L, 3L)) {
         source <- dibble(x = value)
-        result <- dplyr::rename(source, y = x)
+        result <- if (include_dplyr) dplyr::rename(source, y = x) else {
+            copied <- copy_data(source)
+            names(copied) <- "y"
+            copied
+        }
         restored <- unserialize(serialize(list(source, result), NULL, version = version))
         expect_identical(restored[[1L]]$x, value)
         expect_identical(restored[[2L]]$y, value)
@@ -327,20 +354,33 @@ test_that("owned atom serialization restores values without live ownership recor
         expect_null(owned_atom_info(restored[[2L]]$y))
         # as_dibble(existing_dibble) deliberately remains identity; an ordinary
         # operation recaptures restored plain payload while making its result.
-        recaptured <- dplyr::rename(restored[[1L]], x = x)
+        recaptured <- if (include_dplyr) dplyr::rename(restored[[1L]], x = x) else
+            reserve_columns(restored[[1L]])
         expect_false(is.null(owned_atom_info(recaptured$x)))
         recaptured$x[1L] <- recaptured$x[2L]
         expect_identical(restored[[1L]]$x, value)
         expect_identical(restored[[2L]]$y, value)
         expect_identical(source$x, value)
     }
+}
+
+test_that("owned atom serialization restores values without live ownership records", {
+    .check_optional_split_owned_atoms_319(FALSE)
 })
 
-test_that("ordinary base copies and explicit atom writes preserve both alias contracts", {
+test_that("serialized atom recapture through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_owned_atoms_319(TRUE)
+})
+.check_optional_split_owned_atoms_339 <- function(include_dplyr) {
     for (value in owned_atom_fixtures()[c("string", "declared", "logical")]) {
         data <- reserve_columns(dibble(x = value, y = value), n = 2L)
         alias <- data
-        isolated <- dplyr::rename(data, z = x)
+        isolated <- if (include_dplyr) dplyr::rename(data, z = x) else {
+            copied_result <- copy_data(data)
+            names(copied_result)[1L] <- "z"
+            copied_result
+        }
         standalone <- data$x
         copied <- data
         attr(copied, "copy") <- TRUE
@@ -357,8 +397,16 @@ test_that("ordinary base copies and explicit atom writes preserve both alias con
         expect_identical(alias$x, data$x)
         expect_identical(data$x[3L], value[3L])
     }
+}
+
+test_that("ordinary base copies and explicit atom writes preserve both alias contracts", {
+    .check_optional_split_owned_atoms_339(FALSE)
 })
 
+test_that("ordinary and explicit atom aliases through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_owned_atoms_339(TRUE)
+})
 test_that("owned atomic native patches stage fully and keep prior state on interruption", {
     withr::defer(.inject_reference_write_interrupt(FALSE))
     for (value in list(c("a", "b", "c"), c(TRUE, FALSE, NA), c(1L, 2L, 3L))) {
@@ -539,10 +587,14 @@ test_that("generation rejects live rows moved out of bounds by value callbacks",
     }
 })
 
-test_that("factor ownership preserves existing replacement restrictions and levels", {
+.check_optional_split_owned_atoms_542 <- function(include_dplyr) {
     for (value in owned_atom_fixtures()[c("factor", "ordered")]) {
         source <- reserve_columns(dibble(x = value), n = 1L)
-        result <- dplyr::rename(source, y = x)
+        result <- if (include_dplyr) dplyr::rename(source, y = x) else {
+            copied <- copy_data(source)
+            names(copied) <- "y"
+            copied
+        }
         expect_error(replace_values(source, x, value[1L], where = 2L), "unsupported replacement type")
         source$x[2L] <- source$x[1L]
         expect_identical(result$y, value)
@@ -559,9 +611,17 @@ test_that("factor ownership preserves existing replacement restrictions and leve
         expect_identical(is.ordered(native), is.ordered(value))
         expect_identical(sibling, value)
     }
+}
+
+test_that("factor ownership preserves existing replacement restrictions and levels", {
+    .check_optional_split_owned_atoms_542(FALSE)
 })
 
-test_that("public atom exports and source mutations remain symmetrically isolated", {
+test_that("factor replacement and levels through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_owned_atoms_542(TRUE)
+})
+.check_optional_split_owned_atoms_564 <- function(include_dplyr) {
     exports <- list(as.vector, unclass, function(x) data.frame(x = x)$x,
                     function(x) tibble::tibble(x = x)$x)
     if (requireNamespace("data.table", quietly = TRUE)) {
@@ -573,31 +633,39 @@ test_that("public atom exports and source mutations remain symmetrically isolate
         out <- export(source$x)
         expected <- .deep_copy_value(out)
         # Keep each returned alias alive through the next selector and write.
-        selected <- dplyr::rename(source, y = x)
+        if (include_dplyr) selected <- dplyr::rename(source, y = x)
         expect_identical(owned_atom_info(source$x)$backing, before)
         if (typeof(value) %in% c("character", "logical")) {
             replace_values(source, x, source$x[2L], where = 1L)
         } else source$x[1L] <- source$x[2L]
         source_after <- .deep_copy_value(source$x)
         expect_identical(out, expected)
-        expect_identical(selected$y, value)
+        if (include_dplyr) expect_identical(selected$y, value)
         out[2L] <- out[1L]
         expect_identical(source$x, source_after)
-        expect_identical(selected$y, value)
+        if (include_dplyr) expect_identical(selected$y, value)
     }
     for (value in owned_atom_fixtures()[c("string", "declared")]) {
         source <- dibble(x = value)
         before <- owned_atom_info(source$x)$backing
         out <- as.character(source$x)
-        selected <- dplyr::rename(source, y = x)
+        if (include_dplyr) selected <- dplyr::rename(source, y = x)
         expect_identical(owned_atom_info(source$x)$backing, before)
         replace_values(source, x, "r", where = 1L)
         expect_identical(out, as.character(value))
         out[2L] <- "export"
-        expect_identical(selected$y, value)
+        if (include_dplyr) expect_identical(selected$y, value)
     }
+}
+
+test_that("public atom exports and source mutations remain symmetrically isolated", {
+    .check_optional_split_owned_atoms_564(FALSE)
 })
 
+test_that("public atom export isolation through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_owned_atoms_564(TRUE)
+})
 test_that("dictionary read pins survive callback materialization in subsets and atom patches", {
     path <- tempfile(fileext = ".arrow")
     withr::defer(unlink(path))
@@ -981,7 +1049,7 @@ test_that("Arrow UTF-8 preflight retains its original fallback when base convers
 })
 
 
-test_that("table atom exports retain isolation under each explicit write API", {
+.check_optional_split_owned_atoms_984 <- function(include_dplyr) {
     exports <- list(data.frame = function(x) data.frame(x = x),
                     tibble = function(x) tibble::tibble(x = x))
     if (requireNamespace("data.table", quietly = TRUE)) {
@@ -990,15 +1058,24 @@ test_that("table atom exports retain isolation under each explicit write API", {
     for (value in owned_atom_fixtures()[c("string", "declared", "logical")]) for (kind in names(exports)) {
         source <- dibble(x = value)
         exported <- exports[[kind]](source$x)
-        selected <- dplyr::rename(source, y = x)
+        if (include_dplyr) selected <- dplyr::rename(source, y = x)
         replace_values(source, x, source$x[2L], where = 1L)
         source_after <- .deep_copy_value(source$x)
         expect_identical(exported$x, value)
-        expect_identical(selected$y, value)
+        if (include_dplyr) expect_identical(selected$y, value)
         replacement <- if (is.character(value)) "r" else TRUE
         if (kind == "data.table") data.table::set(exported, i = 2L, j = "x", value = replacement) else
             replace_values(exported, x, replacement, where = 2L)
         expect_identical(source$x, source_after)
-        expect_identical(selected$y, value)
+        if (include_dplyr) expect_identical(selected$y, value)
     }
+}
+
+test_that("table atom exports retain isolation under each explicit write API", {
+    .check_optional_split_owned_atoms_984(FALSE)
+})
+
+test_that("table atom export isolation through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_owned_atoms_984(TRUE)
 })

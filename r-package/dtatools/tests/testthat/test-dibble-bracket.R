@@ -162,10 +162,10 @@ test_that("by, bysort, and grouped dibbles follow Stata's order", {
     expect_identical(as.double(data$x), c(2, 4, 1, 3))
     expect_identical(as.double(data$first), c(2, NA, 1, NA))
 
-    grouped <- dplyr::group_by(dibble(id = c(1, 2, 1), x = 1:3), id)
+    grouped <- as_dibble(.group_fixture("id_121_typed")$data)
     grouped[, total := sum(x)]
     expect_true(is_dibble(grouped))
-    expect_identical(dplyr::group_vars(grouped), "id")
+    expect_identical(setdiff(names(attr(grouped, "groups", exact = TRUE)), ".rows"), "id")
     expect_identical(as.double(grouped$total), c(4, 2, 4))
     expect_error(grouped[, y := 1, by = id], "already grouped")
     expect_error(grouped[, y := 1, bysort = id], "already grouped")
@@ -299,7 +299,7 @@ test_that("the autoprint skip does not outlive its top-level statement", {
     # callr passes the parent's library paths to the child on every
     # platform, where a hand-built `R_LIBS` would need the OS separator.
     # Only the child's standard output carries printed tables.
-    output <- callr::rscript(
+    output <- .dtatools_child_rscript("bracket-autoprint",
         script, libpath = .libPaths(), show = FALSE, fail_on_status = TRUE
     )$stdout
     output <- strsplit(output, "\r?\n")[[1L]]

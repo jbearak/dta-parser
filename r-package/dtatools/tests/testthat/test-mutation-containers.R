@@ -109,21 +109,23 @@ test_that("supported containers preserve existing column classes and true aliase
 test_that("grouped and rowwise metadata writes preserve grouping", {
     for (make in list(tibble::tibble, dibble)) for (rowwise in c(FALSE, TRUE)) {
         d <- make(g = c(1L, 1L, 2L), x = 1:3)
-        d <- if (rowwise) dplyr::rowwise(d, g) else dplyr::group_by(d, g)
+        id <- paste0("g_112_i", if (is_dibble(d)) "_typed" else "", if (rowwise) "_rowwise" else "")
+        prepared <- .group_fixture(id)$data
+        d <- if (is_dibble(d)) as_dibble(prepared) else prepared
         d <- reserve_columns(d, 3)
         alias <- d
-        groups <- dplyr::group_data(d)
+        groups <- attr(d, "groups", exact = TRUE)
         set_var_format(d, .("x"), "%9.0g")
         set_var_label(d, x, "Value")
         set_val_labels(d, x = c(First = 1))
         set_dta_note(d, 1L, "Note", variable = "x")
         set_dta_characteristic(d, "source", "survey", variable = "x")
-        expect_identical(dplyr::group_data(alias), groups)
+        expect_identical(attr(alias, "groups", exact = TRUE), groups)
         expect_identical(var_label(alias$x), "Value")
         expect_identical(dta_note(alias, 1L, "x"), "Note")
         expect_identical(dta_characteristic(alias, "source", "x"), "survey")
         copied <- copy_data(d)
-        expect_identical(dplyr::group_data(copied), groups)
+        expect_identical(attr(copied, "groups", exact = TRUE), groups)
         for (operation in list(function() keep_vars(d, x), function() drop_vars(d, x),
             function() order_vars(d, x), function() rename_vars(d, y = x),
             function() reorder_dta_rows(d, 3:1))) {
@@ -139,13 +141,13 @@ test_that("grouped and rowwise metadata writes preserve grouping", {
             repl(d, g = 1L)
             expect_equal(as.integer(alias$size), c(2L, 2L, 1L))
             expect_equal(as.numeric(alias$average), c(1.5, 1.5, 3))
-            expect_identical(length(dplyr::group_rows(alias)), 1L)
+            expect_identical(length(attr(alias, "groups", exact = TRUE)$.rows), 1L)
         }
         class(copied) <- c("custom_group", class(copied))
         converted <- as_dibble(copied)
         expect_false(inherits(converted, "custom_group"))
-        expect_identical(dplyr::group_rows(converted), groups$.rows)
-        expect_equal(as.integer(dplyr::group_keys(converted)$g), as.integer(groups$g))
+        expect_identical(attr(converted, "groups", exact = TRUE)$.rows, groups$.rows)
+        expect_equal(as.integer(attr(converted, "groups", exact = TRUE)$g), as.integer(groups$g))
     }
 })
 
@@ -154,10 +156,10 @@ test_that("malformed frames and grouping fail before metadata evaluation", {
         structure(list(x = 1:3), class = "data.frame", row.names = 1:2),
         structure(list(x = 1:3, x = 1:3), class = "data.frame", row.names = 1:3)
     )
-    grouped <- dplyr::group_by(tibble::tibble(g = c(1, 1, 2), x = 1:3), g)
+    grouped <- .group_fixture("g_112")$data
     attr(grouped, "groups")$.rows[[1L]] <- c(1L, 3L)
     malformed[[3L]] <- grouped
-    partitioned <- dplyr::group_by(tibble::tibble(g = c(1, 1, 2), x = 1:3), g)
+    partitioned <- .group_fixture("g_112")$data
     attr(partitioned, "groups")$.rows <- list(c(1L, 3L), 2L)
     malformed[[4L]] <- partitioned
     for (d in malformed) {
@@ -212,7 +214,7 @@ test_that("a stray reference marker on data.table requires explicit conversion",
 test_that("ordinary dibble brackets keep omitted-column forms", {
     for (grouped in c(FALSE, TRUE)) {
         d <- dibble(g = c(1L, 1L, 2L), x = 1:3)
-        if (grouped) d <- dplyr::group_by(d, g)
+        if (grouped) d <- as_dibble(.group_fixture("g_112_i_typed")$data)
         for (result in list(d[], d[, ], d[, , drop = FALSE])) {
             expect_true(is_dibble(result))
             expect_equal(as.integer(result$x), 1:3)
@@ -220,14 +222,14 @@ test_that("ordinary dibble brackets keep omitted-column forms", {
         for (result in list(d[1:2, ], d[1:2, , drop = FALSE])) {
             expect_true(is_dibble(result))
             expect_equal(as.integer(result$x), 1:2)
-            if (grouped) expect_equal(as.integer(dplyr::group_keys(result)$g), 1L)
+            if (grouped) expect_equal(as.integer(attr(result, "groups", exact = TRUE)$g), 1L)
         }
     }
 })
 
 
 test_that("duplicate grouped keys cannot split a logical group", {
-    d <- dplyr::group_by(tibble::tibble(g = c(1L, 1L, 2L), x = 1:3), g)
+    d <- .group_fixture("g_112_i")$data
     attr(d, "groups") <- tibble::new_tibble(list(g = c(1L, 1L, 2L),
         .rows = vctrs::list_of(1L, 2L, 3L)), nrow = 3L)
     alias <- d
@@ -240,7 +242,8 @@ test_that("duplicate grouped keys cannot split a logical group", {
     )) expect_error(operation(), "duplicated grouping keys")
     expect_identical(effects, 0L)
     expect_identical(serialize(alias, NULL), before)
-    d <- reserve_columns(dplyr::group_by(dplyr::ungroup(d), g), 2)
+    attr(d, "groups") <- .group_fixture("g_112_i")$groups
+    d <- reserve_columns(d, 2)
     gen(d, size = .N)
     egen(d, total = dta_total(x))
     expect_equal(as.integer(d$size), c(2L, 2L, 1L))
@@ -251,15 +254,15 @@ test_that("duplicate grouped keys cannot split a logical group", {
 test_that("grouping validation ignores label wrappers on keys and identifiers", {
     for (rowwise in c(FALSE, TRUE)) {
         d <- tibble::tibble(g = c(1L, 1L, 2L), x = 1:3)
-        d <- if (rowwise) dplyr::rowwise(d, g) else dplyr::group_by(d, g)
+        d <- .group_fixture(if (rowwise) "g_112_i_rowwise" else "g_112_i")$data
         d <- reserve_columns(d, 1)
         alias <- d
-        groups <- dplyr::group_data(d)
+        groups <- attr(d, "groups", exact = TRUE)
         set_val_labels(d, g = c(One = 1L, Two = 2L))
         set_var_format(d, g, "%9.0g")
         set_dta_note(d, 1L, "Identifier", variable = "g")
         set_dta_characteristic(d, "source", "survey", variable = "g")
-        expect_identical(dplyr::group_data(alias), groups)
+        expect_identical(attr(alias, "groups", exact = TRUE), groups)
         expect_identical(attr(alias$g, "format.stata"), "%9.0g")
         expect_identical(val_labels(alias$g), c(One = 1L, Two = 2L))
         if (!rowwise) {
@@ -270,7 +273,7 @@ test_that("grouping validation ignores label wrappers on keys and identifiers", 
 })
 
 test_that("group row positions follow physical order before using dot-n", {
-    d <- dplyr::group_by(tibble::tibble(g = c(1L, 1L, 2L), x = 1:3), g)
+    d <- .group_fixture("g_112_i")$data
     attr(d, "groups")$.rows[[1L]] <- c(2L, 1L)
     before <- serialize(d, NULL)
     effects <- 0L
@@ -289,7 +292,7 @@ test_that("rowwise grouping frames reject ambiguous or inconsistent columns", {
         function(groups) { attr(groups, "names") <- c("", ".rows"); groups },
         function(groups) { attr(groups, "row.names") <- .set_row_names(2L); groups }
     )) {
-        d <- dplyr::rowwise(tibble::tibble(g = c(1L, 1L, 2L), x = 1:3), g)
+        d <- .group_fixture("g_112_i_rowwise")$data
         attr(d, "groups") <- damage(attr(d, "groups"))
         alias <- d
         before <- serialize(d, NULL)
@@ -305,7 +308,7 @@ test_that("rowwise grouping frames reject ambiguous or inconsistent columns", {
 test_that("non-dibble reference markers do not enable bracket assignment", {
     for (make in list(data.frame, tibble::tibble)) for (grouped in c(FALSE, TRUE)) {
         data <- make(g = c(1L, 1L, 2L), x = 1:3)
-        if (grouped) data <- dplyr::group_by(data, g)
+        if (grouped) data <- .group_fixture("g_112_i")$data
         data <- reserve_columns(data, 3L)
         gen(data, generated = 1L)
         expect_s3_class(data, "dtatools_ref_data")

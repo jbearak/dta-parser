@@ -18,12 +18,21 @@
     result
 }
 
-# Use pillar's summary hook so grouped and rowwise summaries still supply
-# their own dimensions and grouping lines.
+# Keep pillar's dimensions and any registered grouping summary. Without dplyr,
+# supply its grouping labels from the stored metadata. See NOTICE.
 #' @exportS3Method pillar::tbl_sum
 tbl_sum.dibble <- function(x, ...) {
     result <- NextMethod()
     names(result)[[1L]] <- "A dibble"
+    if (inherits(x, "grouped_df") && !"Groups" %in% names(result)) {
+        groups <- attr(x, "groups", exact = TRUE)
+        count <- length(.subset2(groups, ".rows"))
+        separator <- if (identical(getOption("OutDec"), ",")) "." else ","
+        result <- c(result, Groups = paste0(paste(.group_vars(x), collapse = ", "),
+            " [", formatC(count, big.mark = separator), "]"))
+    } else if (inherits(x, "rowwise_df") && !"Rowwise" %in% names(result)) {
+        result <- c(result, Rowwise = paste(.group_vars(x), collapse = ", "))
+    }
     result
 }
 
