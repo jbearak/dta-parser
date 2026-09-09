@@ -9,6 +9,16 @@
 
 schema = 1
 
+# `[` on a dibble is data-masking, as data.table's is: `d[age > 30, ...]`
+# and `d[, new := old + 1]` read column names, not variables. `:=` alone
+# already marks a call as NSE; this table covers the row selector and any
+# dibble Raven can trace to one of these constructors, and lets a bare
+# `dibble(...)` count while dtatools is in play. Converters are the
+# by-reference functions whose first argument is a dibble from then on.
+[subset]
+constructors = ["dibble", "as_dibble", "read_dta", "read_arrow", "copy_data"]
+converters = ["reserve_columns"]
+
 # gen(survey, adjusted = income + 5) and gen(survey, adjusted, income + 5):
 # the target and its values arrive in `...`, optionally followed by `where`,
 # and every dot is quoted and evaluated against the data mask, as is a named
@@ -47,12 +57,123 @@ formals = ["data", "..."]
 captured = []
 captured_dots = true
 
+# egen(survey, total_income = dta_total(income), where = eligible,
+# by = household): like gen(), the target and its calculation arrive in
+# `...` and are evaluated against the data mask, as is a named `where`;
+# `by` and `bysort` are quoted column names. `rows`, `type`, `before` and
+# `after` are literal controls.
+[[function]]
+name = "egen"
+formals = ["data", "...", "where", "by", "bysort", "rows", "type", "before", "after"]
+captured = ["where", "by", "bysort"]
+captured_dots = true
+
+# The dta_* calculations are only ever written inside an egen() or dibble
+# `:=` call, where their `x` is a column expression. Declaring `x` (or the
+# dots) captured keeps Raven from resolving it as a variable at the call
+# site. `missing` and the dta_group_id() controls are literal.
+[[function]]
+name = "dta_mean"
+formals = ["x"]
+captured = ["x"]
+
+[[function]]
+name = "dta_min"
+formals = ["x", "missing"]
+captured = ["x"]
+
+[[function]]
+name = "dta_max"
+formals = ["x", "missing"]
+captured = ["x"]
+
+[[function]]
+name = "dta_total"
+formals = ["x", "missing"]
+captured = ["x"]
+
+[[function]]
+name = "dta_row_max"
+formals = ["..."]
+captured = []
+captured_dots = true
+
+[[function]]
+name = "dta_row_total"
+formals = ["...", "missing"]
+captured = []
+captured_dots = true
+
+[[function]]
+name = "dta_group_id"
+formals = ["...", "missing", "autotype", "label", "label_name", "truncate"]
+captured = []
+captured_dots = true
+
+[[function]]
+name = "dta_group_tag"
+formals = ["...", "missing"]
+captured = []
+captured_dots = true
+
 # set_var_label(survey, age, "Age"): `variable` is quoted and resolved as one
 # column name. `data` and `label` are evaluated normally.
 [[function]]
 name = "set_var_label"
 formals = ["data", "variable", "label"]
 captured = ["variable"]
+
+# set_var_format(survey, age, "%8.0g") and set_var_formats(survey,
+# age = "%8.0g"): `variable` and the tagged dots are quoted column names.
+# set_var_labels() and set_val_labels() take the same shape, so
+# set_val_labels(survey, age = c(Young = 1)) names a column, not a variable.
+[[function]]
+name = "set_var_format"
+formals = ["data", "variable", "format"]
+captured = ["variable"]
+
+[[function]]
+name = "set_var_formats"
+formals = [".data", "...", ".formats"]
+captured = []
+captured_dots = true
+
+[[function]]
+name = "set_var_labels"
+formals = [".data", "...", ".labels"]
+captured = []
+captured_dots = true
+
+[[function]]
+name = "set_val_labels"
+formals = [".data", "...", ".labels"]
+captured = []
+captured_dots = true
+
+# var_label(survey, age) and val_labels(survey, age): `variable` is quoted.
+[[function]]
+name = "var_label"
+formals = ["x", "variable"]
+captured = ["variable"]
+
+[[function]]
+name = "val_labels"
+formals = ["x", "variable"]
+captured = ["variable"]
+
+# order_vars(survey, id, age) and rename_vars(survey, age_years = age): the
+# dots are column selections and renames, like keep_vars() and drop_vars().
+[[function]]
+name = "order_vars"
+formals = ["data", "..."]
+captured = []
+captured_dots = true
+
+[[function]]
+name = "rename_vars"
+formals = ["data", "...", ".names"]
+captured = []
+captured_dots = true
 
 # tab(mtcars, cyl, gear): `x` and the dots are quoted column expressions. The
 # explicit `data` argument, and the literal controls after the dots, are not.
