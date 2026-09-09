@@ -36,7 +36,7 @@
 #' rows.
 #'
 #' @param file A path, URL, raw vector, or binary connection holding an Arrow
-#'   IPC file. Unlike [read_dta()], no extension is appended to extensionless
+#'   IPC file. Unlike [`read_dta()`][dtatools::read_dta], no extension is appended to extensionless
 #'   paths.
 #' @param col_select One or more tidyselect expressions. Predicates see each
 #'   column's R type as recorded in the file: logical, integer, double,

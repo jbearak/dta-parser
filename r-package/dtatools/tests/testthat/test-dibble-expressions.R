@@ -11,6 +11,7 @@ expression_context_snapshot <- function() {
 }
 
 test_that("the helper adapter compares numeric version components", {
+    skip_if_not_installed("dplyr", "1.2.1")
     loadNamespace("dplyr")
     adapter_for_version <- function(version) {
         force(version)
@@ -45,6 +46,7 @@ test_that("the core evaluator accepts ordinary quosures without whole verbs", {
 })
 
 test_that("qualified and aliased helpers see original group rows and keys", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(g = c("b", "a", "b"), x = 1:3, y = 4:6)
     alias <- dplyr::n
     read_context <- function() list(n = alias(), id = dplyr::cur_group_id(),
@@ -65,6 +67,7 @@ test_that("qualified and aliased helpers see original group rows and keys", {
 })
 
 test_that("pick expansion and arbitrary fallback preserve selection rules", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(g = c(1, 1, 2, 2),
         x = c(0, 0, 1, 1), y = c(1, 1, 0, 0)), g)
     alias <- dplyr::pick
@@ -86,6 +89,7 @@ test_that("pick expansion and arbitrary fallback preserve selection rules", {
 })
 
 test_that("across expansion counts and side effects follow real dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(g = c(1, 1, 2), x = 1:3, y = 4:6), g)
     alias <- dplyr::across
     for (mode in c("expanded", "aliased", "named", "unpacked")) {
@@ -117,6 +121,7 @@ test_that("across expansion counts and side effects follow real dplyr", {
 })
 
 test_that("across fallback supports dots unpacking and logical helpers", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(g = c(1, 1, 2), x = 1:3, y = 4:6), g)
     count <- 0L
     amount <- function() { count <<- count + 1L; 10L }
@@ -135,6 +140,7 @@ test_that("across fallback supports dots unpacking and logical helpers", {
 })
 
 test_that("nested verbs and failures restore every helper context binding", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(g = c(1, 1, 2), x = 1:3), g)
     real <- dplyr::group_by(tibble::tibble(g = c(1, 2, 2), x = 4:6), g)
     check <- function(value, inner) {
@@ -159,6 +165,7 @@ test_that("nested verbs and failures restore every helper context binding", {
 })
 
 test_that("captures retain earlier values while deferred column resolution expires", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(g = c(2, 1, 2), x = c(10, 20, 30)), g)
     saved <- list(); closures <- list(); pronouns <- list(); quosures <- list()
     late <- new.env(parent = emptyenv())
@@ -189,6 +196,7 @@ test_that("captures retain earlier values while deferred column resolution expir
 })
 
 test_that("mask snapshots survive explicit writes inside arbitrary helpers", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = c(1, 2), y = c(3, 4))
     write_source <- function(pronoun) {
         repl(data, y = 99, where = 1L)
@@ -204,6 +212,7 @@ test_that("mask snapshots survive explicit writes inside arbitrary helpers", {
 })
 
 test_that("foreign callback values are captured before the next group", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("data.table")
     foreign <- data.table::data.table(x = c(1, 2), s = c("a", "b"))
     data <- dplyr::group_by(dibble(g = c(1, 1, 2, 2)), g)
@@ -218,6 +227,7 @@ test_that("foreign callback values are captured before the next group", {
 })
 
 test_that("empty groups and empty rowwise list prototypes remain observable", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (input in list(dibble(x = integer()),
                        dplyr::group_by(dibble(g = character(), x = integer()), g),
                        dplyr::rowwise(dibble(x = integer())))) {
@@ -246,6 +256,7 @@ test_that("empty groups and empty rowwise list prototypes remain observable", {
 })
 
 test_that("placement keep and transmute retain their separate column order", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = 1:3, y = 4:6, z = 7:9)
     expect_identical(names(dplyr::mutate(data, new = y + 1, .keep = "used", .before = x)), c("new", "y"))
     expect_identical(names(dplyr::mutate(data, new = y + 1, .keep = "unused")), c("x", "z", "new"))
@@ -260,6 +271,7 @@ test_that("placement keep and transmute retain their separate column order", {
 })
 
 test_that("computed grouping ignores old partitions and owns its metadata", {
+    skip_if_not_installed("dplyr", "1.2.1")
     input <- dplyr::group_by(dibble(g = c("b", "a", "b"), x = c(10, 20, 30)), g)
     out <- dplyr::group_by(input, k = dplyr::n(), s = c(NA_character_, "", "a"), .add = TRUE)
     expect_identical(as.integer(out$k), rep(3L, 3L))
@@ -277,6 +289,7 @@ test_that("computed grouping ignores old partitions and owns its metadata", {
 
 
 test_that("duplicate unpacked names and grouped warning aggregation retain their contracts", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = 1:3)
     result <- dplyr::mutate(data, tibble::new_tibble(list(a = 1:3, a = 4:6), nrow = 3L))
     expect_identical(as.integer(result$a), 4:6)
@@ -296,6 +309,7 @@ test_that("duplicate unpacked names and grouped warning aggregation retain their
 
 
 test_that("persistent grouping keys cannot be removed by mutation", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(g = c(1, 1, 2), x = 1:3)
     for (input in list(dplyr::group_by(data, g), dplyr::rowwise(data, g))) {
         expect_error(dplyr::mutate(input, g = NULL), "Grouping variables must remain")
@@ -306,6 +320,7 @@ test_that("persistent grouping keys cannot be removed by mutation", {
 
 
 test_that("symbol results preserve attributes and rowwise frame columns remain frames", {
+    skip_if_not_installed("dplyr", "1.2.1")
     x <- dta_double(1:3)
     attr(x, "other") <- list(a = 1:3)
     data <- dplyr::group_by(dibble(g = c(1, 1, 2), x = x), g)
@@ -319,6 +334,7 @@ test_that("symbol results preserve attributes and rowwise frame columns remain f
 })
 
 test_that("diagnostics identify the actual expression entry point", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = 1:2)
     for (verb in list(dplyr::mutate, dplyr::transmute, dplyr::group_by)) {
         name <- if (identical(verb, dplyr::mutate)) "mutate()" else
@@ -331,6 +347,7 @@ test_that("diagnostics identify the actual expression entry point", {
 
 
 test_that("within-call captures keep their original generation and group", {
+    skip_if_not_installed("dplyr", "1.2.1")
     input <- dplyr::group_by(dibble(g = c(1, 1, 2, 2), x = c(1, 2, 3, 4)), g)
     closures <- list(); pronouns <- list(); quosures <- list()
     promises <- new.env(parent = emptyenv())
@@ -359,6 +376,7 @@ test_that("within-call captures keep their original generation and group", {
 })
 
 test_that("removed and re-added column generations retain values and expire", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = c(1, 2), y = c(3, 4))
     old <- new <- NULL
     result <- dplyr::mutate(data, before = {
@@ -419,6 +437,7 @@ test_that("expired capture masks release source payloads on success and failure"
 
 
 test_that("ungroup preserves raw row names on an already ungrouped dibble", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = 1:2)
     attr(data, "row.names") <- c("r1", "r2")
     result <- dplyr::ungroup(data)
@@ -430,6 +449,7 @@ test_that("ungroup preserves raw row names on an already ungrouped dibble", {
 
 
 test_that("expired column promises retain repeated-resolution warnings", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(g = 1:2, x = c(10, 20)), g)
     closures <- list()
     dplyr::mutate(data, y = {
@@ -452,6 +472,7 @@ test_that("expired column promises retain repeated-resolution warnings", {
 })
 
 test_that("mutate preserves existing group order until a key changes", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(g = c(1, 1, 2), x = 1:3), g)
     attr(data, "groups") <- attr(data, "groups")[2:1, ]
     original <- attr(data, "groups")

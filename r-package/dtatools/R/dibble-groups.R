@@ -284,3 +284,21 @@
         setdiff(classes, c("grouped_df", "rowwise_df"))
     result
 }
+
+# Optional grouping methods can be absent even for valid grouped fixtures.
+# Preserve any visible or registered same-class extension before native repair.
+.native_group_method_missing <- function(data, generic, envir = parent.frame(),
+                                          registry = baseenv()) {
+    classes <- .reference_base_classes(class(data))
+    grouping <- intersect(classes, c("grouped_df", "rowwise_df"))
+    standard <- c("grouped_df", "rowwise_df", "dtatools_dta_metadata",
+                  "tbl_df", "tbl", "data.frame")
+    if (length(grouping) != 1L || any(!classes %in% standard)) return(NULL)
+    method <- paste(generic, grouping, sep = ".")
+    # Visible same-class methods can participate before registered methods.
+    if (!is.null(get0(method, envir, mode = "function", inherits = TRUE)) ||
+        !is.null(get0(method, .GlobalEnv, mode = "function", inherits = TRUE)) ||
+        !is.null(utils::getS3method(generic, grouping, optional = TRUE,
+                                   envir = registry))) return(NULL)
+    grouping
+}

@@ -1,9 +1,9 @@
 # Retained-history regression for the four Stage8 memo seams. Exact installed
 # 500-call evidence is separate; this shorter test has no elapsed/RSS claim.
-test_that("H01 selector construction and reserve do not retain address history", {
+expect_bounded_result_history <- function(kinds) {
     skip_if_not_installed("callr")
-    for (kind in c("selector", "duplicate", "constructor", "reserve")) {
-        observed <- callr::r(function(libraries, kind) {
+    for (kind in kinds) {
+        observed <- .dtatools_child_r("history", function(libraries, kind) {
             .libPaths(libraries)
             library(dtatools)
             rows <- 64L
@@ -62,6 +62,15 @@ test_that("H01 selector construction and reserve do not retain address history",
         expect_lt(observed$ncells, 1000)
         expect_lt(observed$vector_bytes, 40000)
     }
+}
+
+test_that("H01 construction and reserve do not retain address history", {
+    expect_bounded_result_history(c("constructor", "reserve"))
+})
+
+test_that("H03 selectors do not retain address history", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    expect_bounded_result_history(c("selector", "duplicate"))
 })
 
 test_that("H02 atomic nested capture preserves copies and opaque identities", {

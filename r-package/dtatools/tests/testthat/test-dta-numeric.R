@@ -414,7 +414,7 @@ test_that("legacy compact widths preserve system missing encoding", {
     }
 })
 
-test_that("narrow dates validate and encode in Stata source units", {
+.check_optional_split_dta_numeric_417 <- function(include_dplyr) {
     byte_path <- fixture_with_temporal_storage("foreign")
     int_path <- fixture_with_temporal_storage("price")
     on.exit(unlink(c(byte_path, int_path)), add = TRUE)
@@ -427,18 +427,20 @@ test_that("narrow dates validate and encode in Stata source units", {
     expect_identical(dta_storage_type(byte_date + 1), "byte")
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(byte_date[1]))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(byte_date + 1))
-    conditional <- dplyr::if_else(
-        rep(TRUE, length(byte_date)), byte_date, byte_date
-    )
-    expect_identical(dta_storage_type(conditional), "byte")
-    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(conditional))
-    expect_identical(
-        dta_storage_type(dplyr::slice(
-            tibble::tibble(value = byte_date), 1:2
-        )$value),
-        "byte"
-    )
+    if (include_dplyr) {
+        conditional <- dplyr::if_else(
+            rep(TRUE, length(byte_date)), byte_date, byte_date
+        )
+        expect_identical(dta_storage_type(conditional), "byte")
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(conditional))
+        expect_identical(
+            dta_storage_type(dplyr::slice(
+                tibble::tibble(value = byte_date), 1:2
+            )$value),
+            "byte"
+        )
 
+    }
     updated <- byte_date
     updated[1] <- as.Date(-3553, origin = "1970-01-01")
     expect_identical(dta_storage_type(updated), "byte")
@@ -462,9 +464,17 @@ test_that("narrow dates validate and encode in Stata source units", {
         int_date[1] <- as.Date(29088, origin = "1970-01-01")
     }, "dta_long\\(x\\)")
     expect_identical(dta_storage_type(int_date[[1]] + 1), "long")
+}
+
+test_that("narrow dates validate and encode in Stata source units", {
+    .check_optional_split_dta_numeric_417(FALSE)
 })
 
-test_that("temporal summaries, concatenation, and recodes retain storage", {
+test_that("narrow temporal storage through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dta_numeric_417(TRUE)
+})
+.check_optional_split_dta_numeric_467 <- function(include_dplyr) {
     path <- fixture_with_temporal_storage("foreign")
     on.exit(unlink(path), add = TRUE)
     values <- read_dta(path)$foreign
@@ -485,15 +495,18 @@ test_that("temporal summaries, concatenation, and recodes retain storage", {
     )
 
     unlabelled <- set_var_labels(set_val_labels(values), NULL)
-    for (combined in list(
+    combined_values <- list(
         vctrs::vec_c(values, unlabelled),
-        vctrs::vec_c(unlabelled, values),
-        dplyr::if_else(
+        vctrs::vec_c(unlabelled, values)
+    )
+    if (include_dplyr) {
+        combined_values[[3L]] <- dplyr::if_else(
             rep(c(TRUE, FALSE), length.out = length(values)),
             values,
             unlabelled
         )
-    )) {
+    }
+    for (combined in combined_values) {
         expect_identical(var_label(combined), "Car origin")
         expect_identical(
             val_labels(combined), c(Domestic = 0, Foreign = 1)
@@ -507,8 +520,16 @@ test_that("temporal summaries, concatenation, and recodes retain storage", {
     expect_s3_class(recoded, "Date")
     expect_identical(dta_storage_type(recoded), "byte")
     expect_true(all(as.double(recoded[as.double(values) == -3653]) == -3651))
+}
+
+test_that("temporal summaries, concatenation, and recodes retain storage", {
+    .check_optional_split_dta_numeric_467(FALSE)
 })
 
+test_that("temporal label reconciliation through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dta_numeric_467(TRUE)
+})
 test_that("temporal common operations reject mixed kinds", {
     date_path <- fixture_with_temporal_storage("foreign", "%td")
     datetime_path <- fixture_with_temporal_storage("foreign", "%tc")
@@ -630,39 +651,56 @@ test_that("casts into declared storage are strict and preserve missing tags", {
     )
 })
 
-test_that("assignment and vctrs recodes re-encode compact storage", {
+.check_optional_split_dta_numeric_633 <- function(include_dplyr) {
     values <- dta_byte(c(1, 2, 3, tagged_missing("a")))
     values[2] <- 10
     replaced <- replace(values, 1, 20)
     # A typed literal keeps the declared storage; a bare double would
     # widen the result to `double` by the mapping in
     # `?dta-storage-defaults`.
-    conditional <- dplyr::if_else(
-        c(TRUE, FALSE, FALSE, FALSE), dta_byte(30), values
-    )
+    if (include_dplyr) {
+        conditional <- dplyr::if_else(
+            c(TRUE, FALSE, FALSE, FALSE), dta_byte(30), values
+        )
 
-    for (result in list(values, replaced, conditional)) {
+    }
+    results <- list(values, replaced)
+    if (include_dplyr) results[[3L]] <- conditional
+    for (result in results) {
         expect_identical(dta_storage_type(result), "byte")
         expect_true(dtatools:::.is_numeric_altrep(result))
         expect_identical(missing_tag(result)[4], "a")
     }
     expect_identical(as.double(values)[1:3], c(1, 10, 3))
     expect_identical(as.double(replaced)[1:3], c(20, 10, 3))
-    expect_identical(as.double(conditional)[1:3], c(30, 10, 3))
+    if (include_dplyr) {
+        expect_identical(as.double(conditional)[1:3], c(30, 10, 3))
+    }
 
     expect_error({
         values[1] <- 101
     }, "dta_int\\(x\\)")
     expect_error(replace(values, 1, 101), "dta_int\\(x\\)")
-    widened <- dplyr::if_else(rep(TRUE, length(values)), 101, values)
-    expect_identical(dta_storage_type(widened), "double")
-    expect_identical(as.double(widened)[1:3], c(101, 101, 101))
-    expect_error(
-        dplyr::if_else(rep(TRUE, length(values)), dta_byte(1), 1000L),
-        NA
-    )
+    if (include_dplyr) {
+        widened <- dplyr::if_else(rep(TRUE, length(values)), 101, values)
+        expect_identical(dta_storage_type(widened), "double")
+        expect_identical(as.double(widened)[1:3], c(101, 101, 101))
+        expect_error(
+            dplyr::if_else(rep(TRUE, length(values)), dta_byte(1), 1000L),
+            NA
+        )
+
+    }
+}
+
+test_that("assignment and vctrs recodes re-encode compact storage", {
+    .check_optional_split_dta_numeric_633(FALSE)
 })
 
+test_that("compact numeric conditional storage through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dta_numeric_633(TRUE)
+})
 test_that("base right and full merges can append native Stata keys", {
     left <- data.frame(
         id = set_var_labels(
@@ -756,6 +794,7 @@ test_that("extension promotes declared inputs without weakening assignment", {
 })
 
 test_that("dplyr joins preserve compatible Stata key information", {
+    skip_if_not_installed("dplyr", "1.2.1")
     left_key <- set_var_labels(
         set_val_labels(dta_byte(c(1, 2)), One = 1),
         "Identifier"
@@ -804,7 +843,7 @@ test_that("value labels compose with declared storage classes", {
     expect_identical(dta_storage_type(values), "byte")
 })
 
-test_that("common types reconcile value and variable labels", {
+.check_optional_split_dta_numeric_807 <- function(include_dplyr) {
     left <- set_var_labels(
         set_val_labels(dta_byte(c(1, 2)), One = 1),
         "Left variable"
@@ -818,29 +857,35 @@ test_that("common types reconcile value and variable labels", {
         dta_byte(c(1, 2)), "Only variable"
     )
 
-    for (result in list(
+    results <- list(
         vctrs::vec_c(left, unlabelled),
-        vctrs::vec_c(unlabelled, left),
-        dplyr::if_else(c(TRUE, FALSE), left, unlabelled)
-    )) {
+        vctrs::vec_c(unlabelled, left)
+    )
+    if (include_dplyr) results[[3L]] <- dplyr::if_else(c(TRUE, FALSE), left, unlabelled)
+    for (result in results) {
         expect_s3_class(result, "haven_labelled")
         expect_identical(val_labels(result), c(One = 1))
     }
 
-    for (result in list(
+    results <- list(
         vctrs::vec_c(variable_only, unlabelled),
-        vctrs::vec_c(unlabelled, variable_only),
-        dplyr::if_else(c(TRUE, FALSE), variable_only, unlabelled)
-    )) {
+        vctrs::vec_c(unlabelled, variable_only)
+    )
+    if (include_dplyr) results[[3L]] <- dplyr::if_else(c(TRUE, FALSE), variable_only, unlabelled)
+    for (result in results) {
         expect_identical(var_label(result), "Only variable")
     }
 
     left_right <- vctrs::vec_c(left, right)
     right_left <- vctrs::vec_c(right, left)
-    conditional <- dplyr::if_else(c(TRUE, FALSE), left, right)
+    if (include_dplyr) {
+        conditional <- dplyr::if_else(c(TRUE, FALSE), left, right)
+    }
     expect_identical(val_labels(left_right), c(One = 1, Three = 3))
     expect_identical(val_labels(right_left), c(Three = 3, One = 1))
-    expect_identical(val_labels(conditional), c(One = 1, Three = 3))
+    if (include_dplyr) {
+        expect_identical(val_labels(conditional), c(One = 1, Three = 3))
+    }
     expect_identical(var_label(left_right), "Left variable")
     expect_identical(var_label(right_left), "Right variable")
 
@@ -856,8 +901,16 @@ test_that("common types reconcile value and variable labels", {
         "conflicting value labels"
     )
     expect_identical(names(val_labels(reversed))[[1L]], "Uno")
+}
+
+test_that("common types reconcile value and variable labels", {
+    .check_optional_split_dta_numeric_807(FALSE)
 })
 
+test_that("common type label reconciliation through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dta_numeric_807(TRUE)
+})
 test_that("common types reconcile notes and characteristics left first", {
     left <- set_dta_note(dta_byte(c(1, 2)), 3, "left note")
     left <- set_dta_characteristic(left, "source", "master")

@@ -392,7 +392,7 @@ test_that("native write interrupts roll back values and compact state", {
     skip_if_not_installed("callr")
 
     package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
-    result <- callr::r(
+    result <- .dtatools_child_r("write-interrupt",
         function(package_path, load_package) {
             load_package(package_path)
             interrupt_patch <- function(compact) {
@@ -612,7 +612,7 @@ test_that("native write interrupts roll back values and compact state", {
 test_that("native generation interrupts leave reference state unchanged", {
     skip_if_not_installed("callr")
     package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
-    result <- callr::r(native_generation_interrupt_cases,
+    result <- .dtatools_child_r("generation-interrupt", native_generation_interrupt_cases,
         args = list(package_path = package_path,
             load_package = load_dtatools_for_subprocess, mode = 1L),
         libpath = .libPaths(), timeout = 120)
@@ -632,16 +632,8 @@ test_that("POSIX generation checkpoints tolerate a full child stderr pipe", {
     skip_on_os("windows")
     skip_if_not_installed("callr")
     package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
-    noisy_loader <- local({
-        load <- load_dtatools_for_subprocess
-        function(package_path) {
-            load(package_path)
-            cat(rep(paste0("induced-stderr:", strrep("x", 1010L)), 2048L),
-                sep = "\n", file = stderr())
-            flush(stderr())
-        }
-    })
-    result <- run_posix_generation_interrupt_cases(package_path, noisy_loader)
+    result <- run_posix_generation_interrupt_cases(
+        package_path, load_dtatools_for_subprocess, noisy = TRUE)
     expect_generation_interrupt_cases(result)
 })
 
@@ -677,16 +669,21 @@ test_that("generic ALTREP detachment interrupts before installation", {
     skip_if_not_installed("callr")
 
     package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
-    result <- callr::r(
+    result <- .dtatools_child_r("detach-interrupt",
         function(package_path, load_package) {
             load_package(package_path)
             size <- 20000000L
             data <- data.frame(x = seq_len(size))
             before <- serialize(data, NULL)
             parent <- Sys.getpid()
+            loadNamespace("parallel")
+            request <- if (is.null(getOption("dtatools.native.child"))) NULL else
+                native_fork_request("detach-signal")
             signal <- parallel::mcparallel({
-                Sys.sleep(0.01)
-                tools::pskill(parent, tools::SIGINT)
+                if (is.null(request)) {
+                    Sys.sleep(0.01)
+                    tools::pskill(parent, tools::SIGINT)
+                } else native_fork_signal(request, 0.01, tools::SIGINT)
             }, silent = TRUE)
             condition <- tryCatch(
                 {
@@ -695,10 +692,9 @@ test_that("generic ALTREP detachment interrupts before installation", {
                 },
                 condition = identity
             )
-            tryCatch(
-                suppressWarnings(parallel::mccollect(signal)),
-                condition = function(...) NULL
-            )
+            collected <- tryCatch(
+                suppressWarnings(parallel::mccollect(signal)), condition = identity)
+            if (!is.null(request)) native_fork_finish(request, collected, signal$pid)
             list(
                 interrupted = inherits(condition, "interrupt"),
                 unchanged = identical(serialize(data, NULL), before),
@@ -1156,9 +1152,7 @@ test_that("copy_data isolates every mutable column backing", {
     )
     expect_identical(names(isolated), c("compact", "ordinary", "string"))
 
-    grouped <- dplyr::group_by(
-        data.frame(group = c("a", "b"), value = 1:2), group
-    )
+    grouped <- .group_fixture("group_ab")$data
     grouped_copy <- copy_data(grouped)
     copied_groups <- attr(grouped_copy, "groups", exact = TRUE)
     replace_values(copied_groups, group, "changed", where = 1)
@@ -1664,7 +1658,7 @@ test_that("generated variables participate in package writes", {
     expect_identical(as.double(arrow_actual$y), c(10, 20, 30))
 })
 
-test_that("reference data preserves base and tibble access semantics", {
+.check_optional_split_mutate_data_1667 <- function(include_dplyr) {
     frame <- data.frame(x = 1:3, y = 4:6, foobar = 7:9)
     row.names(frame) <- c("a", "b", "c")
     frame <- reserve_columns(frame)
@@ -1698,32 +1692,43 @@ test_that("reference data preserves base and tibble access semantics", {
     expect_warning(tbl$missing, "Unknown or uninitialised column")
     expect_s3_class(tbl[, "x"], "tbl_df")
     expect_identical(names(tibble::as_tibble(tbl)), c("x", "y"))
-    expect_identical(names(dplyr::mutate(tbl, z = y + 1)), c("x", "y", "z"))
-    expect_identical(names(dplyr::select(tbl, y)), "y")
-    expect_identical(
-        as.double(dplyr::arrange(tbl, dplyr::desc(y))$y),
-        c(6, 4, 2)
-    )
-    expect_identical(names(dplyr::relocate(tbl, y)), c("y", "x"))
-    expect_identical(names(dplyr::rename(tbl, doubled = y)), c("x", "doubled"))
-    expect_identical(as.double(dplyr::filter(tbl, y >= 4)$y), c(4, 6))
-    expect_identical(as.double(dplyr::slice(tbl, 2:3)$y), c(4, 6))
-    expect_identical(names(dplyr::transmute(tbl, z = y + 1)), "z")
-    expect_identical(nrow(dplyr::distinct(tbl, y)), 3L)
-    grouped <- dplyr::group_by(tbl, y)
-    expect_identical(names(grouped), c("x", "y"))
-    expect_identical(dplyr::group_vars(grouped), "y")
-    expect_identical(
-        as.integer(dplyr::summarise(grouped, n = dplyr::n())$n),
-        rep(1L, 3)
-    )
-    expect_s3_class(dplyr::rowwise(tbl), "rowwise_df")
-    combined <- dplyr::bind_rows(
-        tibble::as_tibble(tbl), tibble::as_tibble(tbl)
-    )
-    expect_equal(dim(combined), c(6L, 2L))
+    if (include_dplyr) {
+        expect_identical(names(dplyr::mutate(tbl, z = y + 1)), c("x", "y", "z"))
+        expect_identical(names(dplyr::select(tbl, y)), "y")
+        expect_identical(
+            as.double(dplyr::arrange(tbl, dplyr::desc(y))$y),
+            c(6, 4, 2)
+        )
+        expect_identical(names(dplyr::relocate(tbl, y)), c("y", "x"))
+        expect_identical(names(dplyr::rename(tbl, doubled = y)), c("x", "doubled"))
+        expect_identical(as.double(dplyr::filter(tbl, y >= 4)$y), c(4, 6))
+        expect_identical(as.double(dplyr::slice(tbl, 2:3)$y), c(4, 6))
+        expect_identical(names(dplyr::transmute(tbl, z = y + 1)), "z")
+        expect_identical(nrow(dplyr::distinct(tbl, y)), 3L)
+        grouped <- dplyr::group_by(tbl, y)
+        expect_identical(names(grouped), c("x", "y"))
+        expect_identical(dplyr::group_vars(grouped), "y")
+        expect_identical(
+            as.integer(dplyr::summarise(grouped, n = dplyr::n())$n),
+            rep(1L, 3)
+        )
+        expect_s3_class(dplyr::rowwise(tbl), "rowwise_df")
+        combined <- dplyr::bind_rows(
+            tibble::as_tibble(tbl), tibble::as_tibble(tbl)
+        )
+        expect_equal(dim(combined), c(6L, 2L))
+
+    }
+}
+
+test_that("reference data preserves base and tibble access semantics", {
+    .check_optional_split_mutate_data_1667(FALSE)
 })
 
+test_that("reference data consumers through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_mutate_data_1667(TRUE)
+})
 test_that("explicit replacement isolates separate tables sharing target vectors", {
     column <- dta_int(1:3)
     left <- data.frame(x = column)
@@ -1741,7 +1746,7 @@ test_that("explicit replacement isolates separate tables sharing target vectors"
 })
 
 test_that("rowwise inputs fail before reference mutation", {
-    rowwise <- dplyr::rowwise(tibble::tibble(x = 1:2))
+    rowwise <- .group_fixture("rowwise_x2")$data
     before <- serialize(rowwise, NULL)
     expect_error(replace_values(rowwise, x, 1L), "ungrouped")
     expect_error(gen(rowwise, y, 1L), "ungrouped")
@@ -1970,7 +1975,7 @@ test_that("by and bysort are exclusive and reject a grouped input", {
     expect_error(gen(data, y = 1, by = id, bysort = id), "not both")
     expect_error(repl(data, x = 1L, by = id, bysort = id), "not both")
 
-    grouped <- reserve_columns(dplyr::group_by(tibble::tibble(id = c(1, 2), x = 1:2), id))
+    grouped <- reserve_columns(.group_fixture("id_12")$data)
     before <- serialize(grouped, NULL)
     expect_error(
         gen(grouped, y = 1, by = id),
@@ -1980,10 +1985,10 @@ test_that("by and bysort are exclusive and reject a grouped input", {
     expect_identical(serialize(grouped, NULL), before)
 })
 
-test_that("a grouped tibble supplies the assignment groups", {
-    grouped <- reserve_columns(dplyr::group_by(
+.check_optional_split_mutate_data_1983 <- function(include_dplyr) {
+    grouped <- reserve_columns(if (include_dplyr) dplyr::group_by(
         tibble::tibble(id = c(1, 2, 1, 3), x = c(1, 2, 3, 4)), id
-    ))
+    ) else .group_fixture("id_1213")$data)
     gen(grouped, total = sum(x))
     gen(grouped, n = .n)
     expect_identical(as.double(grouped$total), c(4, 2, 4, 4))
@@ -1991,26 +1996,37 @@ test_that("a grouped tibble supplies the assignment groups", {
     repl(grouped, x = 0, where = .n == .N)
     expect_identical(as.double(grouped$x), c(1, 0, 0, 0))
     expect_s3_class(grouped, "grouped_df")
-    expect_identical(dplyr::group_vars(grouped), "id")
-    expect_identical(
-        as.integer(dplyr::summarise(grouped, n = dplyr::n())$n),
-        c(2L, 1L, 1L)
-    )
+    expect_identical(if (include_dplyr) dplyr::group_vars(grouped) else setdiff(names(attr(grouped, "groups", exact = TRUE)), ".rows"), "id")
+    expect_identical(lengths(attr(grouped, "groups", exact = TRUE)$.rows), c(2L, 1L, 1L))
+    if (include_dplyr) {
+        expect_identical(
+            as.integer(dplyr::summarise(grouped, n = dplyr::n())$n),
+            c(2L, 1L, 1L)
+        )
+    }
 
     # `.drop = FALSE` may record empty groups; they contribute nothing.
-    factor_grouped <- reserve_columns(dplyr::group_by(
+    factor_grouped <- reserve_columns(if (include_dplyr) dplyr::group_by(
         tibble::tibble(f = factor(c("a", "a"), levels = c("a", "b")), x = 1:2),
         f, .drop = FALSE
-    ))
+    ) else .group_fixture("factor_unused")$data)
     gen(factor_grouped, n = .N)
     expect_identical(as.double(factor_grouped$n), c(2, 2))
 
     isolated <- copy_data(grouped)
     expect_s3_class(isolated, "grouped_df")
-    expect_identical(dplyr::group_vars(isolated), "id")
+    expect_identical(if (include_dplyr) dplyr::group_vars(isolated) else setdiff(names(attr(isolated, "groups", exact = TRUE)), ".rows"), "id")
     expect_identical(as.data.frame(isolated), as.data.frame(grouped))
+}
+
+test_that("a grouped tibble supplies the assignment groups", {
+    .check_optional_split_mutate_data_1983(FALSE)
 })
 
+test_that("grouped native assignment consumers through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_mutate_data_1983(TRUE)
+})
 test_that("compact targets stay compact under by", {
     data <- data.frame(id = c(1, 1, 2, 2), x = dta_int(1:4))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
@@ -2623,41 +2639,69 @@ test_that("a symbol bound as both column and object is an error", {
     expect_identical(data$x, c(0, 0, 0))
 })
 
-test_that("replacing a grouping column rebuilds the dplyr groups", {
-    grouped <- reserve_columns(dplyr::group_by(
+.check_optional_split_mutate_data_2626 <- function(include_dplyr) {
+    grouped <- reserve_columns(if (include_dplyr) dplyr::group_by(
         tibble::tibble(id = c(1, 1, 2), x = 1:3), id
-    ))
+    ) else .group_fixture("id_112")$data)
     repl(grouped, id = 1)
-    expect_identical(dplyr::group_vars(grouped), "id")
+    expect_identical(if (include_dplyr) dplyr::group_vars(grouped) else setdiff(names(attr(grouped, "groups", exact = TRUE)), ".rows"), "id")
     groups <- attr(grouped, "groups", exact = TRUE)
     expect_identical(groups$id, 1)
     expect_identical(as.integer(groups$.rows[[1L]]), 1:3)
-    expect_identical(dplyr::summarise(grouped, n = dplyr::n())$n, 3L)
+    if (include_dplyr) {
+        expect_identical(dplyr::summarise(grouped, n = dplyr::n())$n, 3L)
+    }
     gen(grouped, size = .N)
     expect_identical(as.double(grouped$size), c(3, 3, 3))
 
     # A grouped dibble keeps the rebuilt groups in its snapshot too.
-    dib <- dplyr::group_by(dibble(id = c("a", "b", "b"), x = 1:3), id)
+    dib <- if (include_dplyr) dplyr::group_by(dibble(id = c("a", "b", "b"), x = 1:3), id) else
+        as_dibble(.group_fixture("id_abb_typed")$data)
     dib[, id := "b"]
     expect_true(is_dibble(dib))
     expect_identical(
         as.character(attr(dib, "groups", exact = TRUE)$id), "b"
     )
-    expect_identical(as.integer(dplyr::summarise(dib, n = dplyr::n())$n), 3L)
+    expect_identical(lengths(attr(dib, "groups", exact = TRUE)$.rows), 3L)
+    if (include_dplyr) {
+        expect_identical(as.integer(dplyr::summarise(dib, n = dplyr::n())$n), 3L)
+    }
+}
+
+test_that("replacing a grouping column rebuilds the dplyr groups", {
+    .check_optional_split_mutate_data_2626(FALSE)
 })
 
-test_that("an aliased grouping column is regrouped after replacement", {
+test_that("native regrouping consumers through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_mutate_data_2626(TRUE)
+})
+.check_optional_split_mutate_data_2649 <- function(include_dplyr) {
+    plain_spec <- if (!include_dplyr) .group_fixture_spec(tibble::tibble(
+        id = dta_int(c(1L, 1L, 2L)), x = dta_int(c(1L, 1L, 2L))))
     shared <- dta_int(c(1L, 1L, 2L))
-    grouped <- dplyr::group_by(tibble::tibble(id = shared, x = shared), id)
+    grouped <- if (include_dplyr) dplyr::group_by(tibble::tibble(id = shared, x = shared), id) else
+        .group_fixture_attach("id_112_shared", tibble::tibble(id = shared, x = shared), plain_spec)
     # `x` and `id` share one compact vector; replacing `x` rewrites `id`.
     repl(grouped, x = 1L)
     expect_identical(as.double(grouped$id), c(1, 1, 1))
     expect_identical(
         as.double(attr(grouped, "groups", exact = TRUE)$id), 1
     )
-    expect_identical(dplyr::summarise(grouped, n = dplyr::n())$n, 3L)
+    expect_identical(lengths(attr(grouped, "groups", exact = TRUE)$.rows), 3L)
+    if (include_dplyr) {
+        expect_identical(dplyr::summarise(grouped, n = dplyr::n())$n, 3L)
+    }
+}
+
+test_that("an aliased grouping column is regrouped after replacement", {
+    .check_optional_split_mutate_data_2649(FALSE)
 })
 
+test_that("aliased key regrouping consumers through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_mutate_data_2649(TRUE)
+})
 test_that("row counters mask a column named .n or .N", {
     data <- reserve_columns(data.frame(.n = c(100, 200), .N = c(7, 7), x = 1:2))
     gen(data, row = .n)

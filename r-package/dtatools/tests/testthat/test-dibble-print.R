@@ -79,7 +79,10 @@ test_that("metadata wrappers preserve string storage labels and cell formatting"
     alias <- data
     before <- attributes(data$text)
     expect_identical(class(data$text), "dtatools_dta_metadata_vector")
-    for (table in list(data, dplyr::group_by(data, identifier))) {
+    grouped <- as_dibble(.group_fixture("identifier_123_text_typed")$data)
+    set_dta_note(grouped, 1L, "note", variable = "text")
+    set_dta_characteristic(grouped, "source", "survey", variable = "text")
+    for (table in list(data, grouped)) {
         wide <- paste(format(table, width = 100L), collapse = "\n")
         narrow <- paste(format(table, width = 12L, n = 1L), collapse = "\n")
         expect_match(wide, "<str1>", fixed = TRUE)
@@ -137,7 +140,8 @@ test_that("metadata setters leave declared string types visible", {
 
 test_that("display snapshots retain grouping and empty dimensions", {
     source <- dibble(group = c("a", "b", "a"), value = 1:3)
-    for (data in list(dplyr::group_by(source, group), dplyr::rowwise(source, group))) {
+    for (data in list(as_dibble(.group_fixture("group_aba_typed")$data),
+                      as_dibble(.group_fixture("group_aba_typed_rowwise")$data))) {
         output <- format(data, width = 100)
         expect_match(output[[1L]], "^# A dibble: 3")
         expect_match(output[[2L]], if (inherits(data, "grouped_df")) "Groups:.*group" else "Rowwise:.*group")

@@ -169,6 +169,7 @@ test_that("dibble construction keeps compact columns unmaterialized", {
 })
 
 test_that("grouping keeps a dibble a dibble", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(group = c("a", "b", "a"), value = 1:3)
 
     grouped <- dplyr::group_by(data, group)
@@ -441,29 +442,29 @@ test_that("dataset-scoped metadata setters return the same dibble", {
 })
 
 test_that("slicing a grouped dibble keeps dataset metadata", {
-    data <- dplyr::group_by(read_dta(fixture("auto_v118.dta")), foreign)
+    data <- as_dibble(.group_fixture("auto_foreign_typed")$data)
     sliced <- slice_dta_rows(data, 1:3)
     expect_true(is_dibble(sliced))
-    expect_identical(dplyr::group_vars(sliced), "foreign")
+    expect_identical(setdiff(names(attr(sliced, "groups", exact = TRUE)), ".rows"), "foreign")
     expect_identical(attr(sliced, "label"), attr(data, "label"))
     expect_identical(dta_notes(sliced), dta_notes(data))
     expect_identical(nrow(sliced), 3L)
 })
 
 test_that("slice_dta_rows keeps a grouped dibble's grouping", {
-    data <- dplyr::group_by(dibble(g = c(1, 1, 2, 2), x = 1:4), g)
+    data <- as_dibble(.group_fixture("g_1122_typed")$data)
     sliced <- slice_dta_rows(data, c(2L, 4L))
     expect_true(is_dibble(sliced))
-    expect_identical(dplyr::group_vars(sliced), "g")
+    expect_identical(setdiff(names(attr(sliced, "groups", exact = TRUE)), ".rows"), "g")
     expect_identical(as.double(sliced$x), c(2, 4))
-    expect_identical(dplyr::group_size(sliced), c(1L, 1L))
+    expect_identical(lengths(attr(sliced, "groups", exact = TRUE)$.rows), c(1L, 1L))
     repl(sliced, x = .N)
     expect_identical(as.double(sliced$x), c(1, 1))
-    expect_identical(dplyr::group_vars(data), "g")
+    expect_identical(setdiff(names(attr(data, "groups", exact = TRUE)), ".rows"), "g")
     expect_identical(nrow(data), 4L)
 })
 
-test_that("gen() and a new := column take Stata's generate default", {
+.check_optional_split_dibble_466 <- function(include_dplyr) {
     data <- dibble(id = 1:3)
     gen(data, adjusted = c(1.1, 2.2, 3.3))
     gen(data, missing = NA_real_)
@@ -494,8 +495,10 @@ test_that("gen() and a new := column take Stata's generate default", {
     expect_identical(dta_storage_type(data$narrow), "float")
     withr::local_options(dtatools.generate_type = "float")
     # Every R entry point keeps the container mapping.
-    via_mutate <- dplyr::mutate(data, m = c(1.1, 2.2, 3.3))
-    expect_identical(dta_storage_type(via_mutate$m), "double")
+    if (include_dplyr) {
+        via_mutate <- dplyr::mutate(data, m = c(1.1, 2.2, 3.3))
+        expect_identical(dta_storage_type(via_mutate$m), "double")
+    }
     data$dollar <- c(1.1, 2.2, 3.3)
     expect_identical(dta_storage_type(data$dollar), "double")
     # Overwriting through `:=` promotes from the column, not the default.
@@ -508,9 +511,18 @@ test_that("gen() and a new := column take Stata's generate default", {
     expect_identical(as.double(data$count), c(2, 4, 6))
     withr::local_options(dtatools.generate_type = "long")
     expect_error(gen(data, bad = 1), "must be \"float\" or \"double\"")
+}
+
+test_that("gen() and a new := column take Stata's generate default", {
+    .check_optional_split_dibble_466(FALSE)
 })
 
+test_that("generate container defaults through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_466(TRUE)
+})
 test_that("mutate and transmute type new columns by the container mapping", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(
         id = 1:3, income = c(10, 20, 30), name = c("a", "bb", "ccc")
     )
@@ -625,6 +637,7 @@ test_that("mutate and transmute type new columns by the container mapping", {
 })
 
 test_that("mutate keeps untouched compact columns compact", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- read_dta(fixture("all_types_v118.dta"))
     result <- dplyr::mutate(data, extra = 1)
     expect_true(is_dibble(result))
@@ -636,10 +649,10 @@ test_that("mutate keeps untouched compact columns compact", {
     )
 })
 
-test_that("a dibble is closed under dataset operations", {
+.check_optional_split_dibble_639 <- function(include_dplyr) {
     data <- dibble(id = 1:3, x = c(1.5, 2, 3), s = c("a", "b", "c"))
     other <- tibble::tibble(id = 1:3, z = c(TRUE, FALSE, TRUE))
-    closed <- list(
+    closed <- c(if (include_dplyr) list(
         arrange = dplyr::arrange(data, dplyr::desc(x)),
         select = dplyr::select(data, x),
         slice = dplyr::slice(data, 1:2),
@@ -648,7 +661,8 @@ test_that("a dibble is closed under dataset operations", {
         distinct = dplyr::distinct(data, s),
         summarise = dplyr::summarise(data, n = dplyr::n()),
         left_join = dplyr::left_join(data, other, by = "id"),
-        bind_rows = dplyr::bind_rows(data, data),
+        bind_rows = dplyr::bind_rows(data, data)
+    ) else list(), list(
         subset = subset(data, x > 1),
         transform = transform(data, w = x + 1),
         within = within(data, w <- x + 1),
@@ -657,7 +671,7 @@ test_that("a dibble is closed under dataset operations", {
         cbind = cbind(data, extra = 10:12),
         bracket_rows = data[1:2, ],
         bracket_cols = data[c("id", "s")]
-    )
+    ))
     for (name in names(closed)) {
         expect_true(is_dibble(closed[[name]]), info = name)
     }
@@ -666,13 +680,23 @@ test_that("a dibble is closed under dataset operations", {
     expect_identical(dta_storage_type(closed$transform$w), "double")
     expect_identical(dta_storage_type(closed$within$w), "double")
     expect_identical(dta_storage_type(closed$cbind$extra), "long")
-    expect_identical(closed$left_join$z, other$z)
-    expect_identical(dta_storage_type(closed$summarise$n), "long")
+    if (include_dplyr) {
+        expect_identical(closed$left_join$z, other$z)
+        expect_identical(dta_storage_type(closed$summarise$n), "long")
+    }
     # Non-dataset results are returned as they are.
     expect_identical(with(data, sum(as.double(x))), 6.5)
     expect_identical(as.list(data)$s, data$s)
+}
+
+test_that("a dibble is closed under dataset operations", {
+    .check_optional_split_dibble_639(FALSE)
 })
 
+test_that("dataset closure through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_639(TRUE)
+})
 test_that("replacement operators type their columns and keep the dibble", {
     data <- dibble(id = 1:3)
     data$score <- c(1.5, 2, 3)
@@ -708,10 +732,12 @@ test_that("replacement operators type their columns and keep the dibble", {
     expect_identical(dta_storage_type(tbl$y), "long")
 })
 
-test_that("logical columns stay logical in a dibble", {
+.check_optional_split_dibble_711 <- function(include_dplyr) {
     data <- dibble(flag = c(TRUE, FALSE, TRUE), x = 1:3)
     expect_identical(data$flag, c(TRUE, FALSE, TRUE))
-    expect_identical(nrow(dplyr::filter(data, flag)), 2L)
+    if (include_dplyr) {
+        expect_identical(nrow(dplyr::filter(data, flag)), 2L)
+    }
     gen(data, y = 1, where = flag)
     expect_identical(as.double(data$y), c(1, NA, 1))
     data[flag, z := x]
@@ -724,8 +750,16 @@ test_that("logical columns stay logical in a dibble", {
     on.exit(unlink(path), add = TRUE)
     save_dta(data, path)
     expect_identical(dta_storage_type(read_dta(path)$flag), "byte")
+}
+
+test_that("logical columns stay logical in a dibble", {
+    .check_optional_split_dibble_711(FALSE)
 })
 
+test_that("logical columns through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_711(TRUE)
+})
 test_that("Arrow strings enter a dibble compact with an inferred width", {
     skip_if_not_installed("arrow")
     path <- tempfile(fileext = ".arrow")
@@ -858,6 +892,7 @@ test_that("gen and := accept factors as mutate does", {
 })
 
 test_that("computed distinct and group_by type columns as mutate does", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = dta_byte(1:3), s = c("a", "b", "a"))
     unique_wide <- dplyr::distinct(data, x = 1000L)
     expect_true(is_dibble(unique_wide))
@@ -873,11 +908,13 @@ test_that("computed distinct and group_by type columns as mutate does", {
     expect_identical(dta_storage_type(by_flag$x), "byte")
 })
 
-test_that("a logical overwriting a Stata numeric keeps its storage", {
+.check_optional_split_dibble_876 <- function(include_dplyr) {
     data <- dibble(x = dta_byte(1:3), n = dta_long(1:3))
-    flagged <- dplyr::mutate(data, x = x > 1)
-    expect_identical(dta_storage_type(flagged$x), "byte")
-    expect_identical(as.double(flagged$x), c(0, 1, 1))
+    if (include_dplyr) {
+        flagged <- dplyr::mutate(data, x = x > 1)
+        expect_identical(dta_storage_type(flagged$x), "byte")
+        expect_identical(as.double(flagged$x), c(0, 1, 1))
+    }
     data$n <- c(TRUE, FALSE, NA)
     expect_identical(dta_storage_type(data$n), "long")
     expect_identical(as.double(data$n), c(1, 0, NA))
@@ -885,28 +922,49 @@ test_that("a logical overwriting a Stata numeric keeps its storage", {
     expect_identical(dta_storage_type(data$x), "byte")
     expect_identical(as.double(data$x), c(0, 1, 0))
     # A logical replacing a logical, a date, or a factor stays logical.
-    mixed <- dibble(flag = c(TRUE, FALSE), day = as.Date("2024-01-01") + 0:1)
-    mixed <- dplyr::mutate(
-        mixed, flag = !flag, day = day > as.Date("2024-01-01")
-    )
-    expect_identical(mixed$flag, c(FALSE, TRUE))
-    expect_identical(mixed$day, c(FALSE, TRUE))
+    if (include_dplyr) {
+        mixed <- dibble(flag = c(TRUE, FALSE), day = as.Date("2024-01-01") + 0:1)
+        mixed <- dplyr::mutate(
+            mixed, flag = !flag, day = day > as.Date("2024-01-01")
+        )
+        expect_identical(mixed$flag, c(FALSE, TRUE))
+        expect_identical(mixed$day, c(FALSE, TRUE))
+    }
+}
+
+test_that("a logical overwriting a Stata numeric keeps its storage", {
+    .check_optional_split_dibble_876(FALSE)
 })
 
-test_that("overwriting a typed column with an untypable one passes through", {
+test_that("logical replacement storage through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_876(TRUE)
+})
+.check_optional_split_dibble_896 <- function(include_dplyr) {
     data <- dibble(x = 1:3, s = c("a", "b", "c"))
-    listed <- dplyr::mutate(data, x = as.list(as.integer(x)))
-    expect_type(listed$x, "list")
-    spanned <- dplyr::mutate(
-        data, x = as.difftime(as.double(x), units = "days")
-    )
-    expect_s3_class(spanned$x, "difftime")
+    if (include_dplyr) {
+        listed <- dplyr::mutate(data, x = as.list(as.integer(x)))
+        expect_type(listed$x, "list")
+        spanned <- dplyr::mutate(
+            data, x = as.difftime(as.double(x), units = "days")
+        )
+        expect_s3_class(spanned$x, "difftime")
+    }
     data$s <- as.raw(1:3)
     expect_type(data$s, "raw")
     expect_true(is_dibble(data))
+}
+
+test_that("overwriting a typed column with an untypable one passes through", {
+    .check_optional_split_dibble_896(FALSE)
 })
 
+test_that("untypable replacements through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_896(TRUE)
+})
 test_that("reframe, group_modify, and nest_by return dibbles", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(g = c("a", "a", "b"), v = c(1, 2, 3))
     reframed <- dplyr::reframe(data, total = sum(as.double(v)), .by = g)
     expect_true(is_dibble(reframed))
@@ -995,6 +1053,7 @@ test_that("a := value with declared storage widens the column to it", {
 })
 
 test_that("grouped and rowwise row verbs return dibbles", {
+    skip_if_not_installed("dplyr", "1.2.1")
     grouped <- dplyr::group_by(dibble(g = c("a", "b"), v = 1:2), g)
     kept <- dplyr::semi_join(grouped, tibble::tibble(g = "a"), by = "g")
     expect_true(is_dibble(kept))
@@ -1027,18 +1086,28 @@ test_that("grouped and rowwise row verbs return dibbles", {
     expect_identical(as.integer(wise$id), 2L)
 })
 
-test_that("difftime arithmetic with Stata numerics works", {
+.check_optional_split_dibble_1030 <- function(include_dplyr) {
     data <- dibble(span = as.difftime(1:2, units = "days"), id = 1:2)
-    result <- dplyr::mutate(data, later = span + id, scaled = span * id)
-    expect_s3_class(result$later, "difftime")
-    expect_identical(as.double(result$later), c(2, 4))
-    expect_s3_class(result$scaled, "difftime")
+    if (include_dplyr) {
+        result <- dplyr::mutate(data, later = span + id, scaled = span * id)
+        expect_s3_class(result$later, "difftime")
+        expect_identical(as.double(result$later), c(2, 4))
+        expect_s3_class(result$scaled, "difftime")
+    }
     expect_identical(
         dta_long(2L) + as.difftime(1, units = "days"),
         as.difftime(3, units = "days")
     )
+}
+
+test_that("difftime arithmetic with Stata numerics works", {
+    .check_optional_split_dibble_1030(FALSE)
 })
 
+test_that("difftime arithmetic through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_1030(TRUE)
+})
 test_that("the first gen on a tibble leaves its columns alone", {
     tbl <- reserve_columns(tibble::tibble(ok = 1:2, bad = c(Inf, Inf), typed = dta_byte(1:2)))
     alias <- tbl
@@ -1055,20 +1124,25 @@ test_that("the first gen on a tibble leaves its columns alone", {
     expect_identical(dta_storage_type(tbl$y), "float")
 })
 
-test_that("a stale string declaration is redone on entering a dibble", {
+.check_optional_split_dibble_1058 <- function(include_dplyr) {
     left <- dibble(id = 1:2, s = c("a", "b"))
     # A join pads the str1 column with NA; the dibble restores Stata's ""
     # and keeps the width that fits.
-    joined <- dplyr::full_join(left, tibble::tibble(id = 3L), by = "id")
-    expect_true(is_dibble(joined))
-    expect_identical(as.character(joined$s), c("a", "b", ""))
-    expect_identical(attr(joined$s, "stata.string.storage"), "str1")
+    if (include_dplyr) {
+        joined <- dplyr::full_join(left, tibble::tibble(id = 3L), by = "id")
+        expect_true(is_dibble(joined))
+        expect_identical(as.character(joined$s), c("a", "b", ""))
+        expect_identical(attr(joined$s, "stata.string.storage"), "str1")
+
+    }
     # rbind() carries the first frame's declaration onto wider values.
     stacked <- rbind(left, tibble::tibble(id = 3L, s = "longer"))
     expect_identical(attr(stacked$s, "stata.string.storage"), "str6")
     expect_identical(as.character(stacked$s), c("a", "b", "longer"))
-    bound <- dplyr::bind_rows(left, tibble::tibble(id = 3L, s = "wide"))
-    expect_identical(attr(bound$s, "stata.string.storage"), "str4")
+    if (include_dplyr) {
+        bound <- dplyr::bind_rows(left, tibble::tibble(id = 3L, s = "wide"))
+        expect_identical(attr(bound$s, "stata.string.storage"), "str4")
+    }
     # A malformed declaration is replaced, not trusted.
     bad <- tibble::tibble(
         s = structure(c("a", "b"), stata.string.storage = "str0")
@@ -1091,23 +1165,39 @@ test_that("a stale string declaration is redone on entering a dibble", {
     # The repaired column survives an Arrow round trip.
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
-    save_arrow(joined, path)
-    back <- read_arrow(path)
-    expect_identical(as.character(back$s), c("a", "b", ""))
-    expect_identical(attr(back$s, "stata.string.storage"), "str1")
+    if (include_dplyr) {
+        save_arrow(joined, path)
+        back <- read_arrow(path)
+        expect_identical(as.character(back$s), c("a", "b", ""))
+        expect_identical(attr(back$s, "stata.string.storage"), "str1")
+    } else {
+        save_arrow(repaired, path)
+        back <- read_arrow(path)
+        expect_identical(as.character(back$s), c("a", "long"))
+        expect_identical(attr(back$s, "stata.string.storage"), "str4")
+    }
+}
+
+test_that("a stale string declaration is redone on entering a dibble", {
+    .check_optional_split_dibble_1058(FALSE)
 })
 
-test_that("a derived dibble owns its columns", {
+test_that("stale string declaration repair through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_1058(TRUE)
+})
+.check_optional_split_dibble_1100 <- function(include_dplyr) {
     source <- dibble(x = 1:3, s = c("a", "b", "c"), flag = c(TRUE, FALSE, TRUE))
-    derived <- list(
+    derived <- c(if (include_dplyr) list(
         select = dplyr::select(source, x, s),
         relocate = dplyr::relocate(source, s),
         mutate = dplyr::mutate(source, y = x + 1L),
         rename = dplyr::rename(source, id = x),
         group_by = dplyr::group_by(source, flag),
-        bind_cols = dplyr::bind_cols(source, dibble(z = 4:6)),
+        bind_cols = dplyr::bind_cols(source, dibble(z = 4:6))
+    ) else list(), list(
         noted_copy = add_dta_note(copy_data(source), "a note", variable = "s")
-    )
+    ))
     for (name in names(derived)) {
         piece <- derived[[name]]
         x_name <- if (identical(name, "rename")) "id" else "x"
@@ -1123,7 +1213,7 @@ test_that("a derived dibble owns its columns", {
         expect_identical(as.character(piece$s), c("z", "z", "z"), info = name)
     }
     # And a write through the source leaves an earlier derived dibble alone.
-    piece <- dplyr::select(source, x, flag)
+    piece <- if (include_dplyr) dplyr::select(source, x, flag) else copy_data(source)
     source[, x := 0L]
     repl(source, flag = FALSE)
     expect_identical(as.integer(piece$x), 1:3)
@@ -1134,7 +1224,7 @@ test_that("a derived dibble owns its columns", {
     on.exit(unlink(path), add = TRUE)
     save_dta(dibble(n = 1:4, s = c("aa", "bb", "aa", "cc")), path)
     data <- read_dta(path)
-    piece <- dplyr::select(data, n, s)
+    piece <- if (include_dplyr) dplyr::select(data, n, s) else copy_data(data)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(piece$n))
     expect_true(dtatools:::.is_unmaterialized_dictstring(piece$s))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$n))
@@ -1147,9 +1237,18 @@ test_that("a derived dibble owns its columns", {
     expect_identical(as.character(piece$s), c("aa", "dd", "aa", "cc"))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$n))
     expect_true(dtatools:::.is_unmaterialized_dictstring(data$s))
+}
+
+test_that("a derived dibble owns its columns", {
+    .check_optional_split_dibble_1100(FALSE)
 })
 
+test_that("derived result ownership through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_1100(TRUE)
+})
 test_that("a dta_string column padded with NA is retyped on closure", {
+    skip_if_not_installed("dplyr", "1.2.1")
     left <- dibble(id = 1:2, s = dta_string(c("a", "b")))
     right <- dibble(id = 2:4, t = dta_string(c("x", "y", "z")))
     joined <- dplyr::full_join(left, right, by = "id")
@@ -1176,7 +1275,7 @@ test_that("a dta_string column padded with NA is retyped on closure", {
     expect_identical(as.character(read_dta(path)$s), c("a", "b", "", ""))
 })
 
-test_that("subsetting keeps compact dictionary strings compact", {
+.check_optional_split_dibble_1179 <- function(include_dplyr) {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
     save_dta(dibble(n = 1:5, s = c("aa", "bb", "aa", "cc", "bb")), path)
@@ -1184,7 +1283,7 @@ test_that("subsetting keeps compact dictionary strings compact", {
     compact <- function(value) dtatools:::.is_unmaterialized_dictstring(value)
     expect_true(compact(data$s))
 
-    filtered <- dplyr::filter(data, n > 2L)
+    filtered <- if (include_dplyr) dplyr::filter(data, n > 2L) else data[3:5, ]
     expect_true(compact(filtered$s))
     expect_true(compact(data$s))
     expect_identical(as.character(filtered$s), c("aa", "cc", "bb"))
@@ -1209,9 +1308,11 @@ test_that("subsetting keeps compact dictionary strings compact", {
     expect_identical(as.character(rows$s), c("bb", "aa"))
     expect_identical(as.character(head(data, 2)$s), c("aa", "bb"))
     expect_true(compact(head(data, 2)$s))
-    expect_identical(as.character(dplyr::arrange(data, dplyr::desc(n))$s),
-        c("bb", "cc", "aa", "bb", "aa"))
-    expect_true(compact(dplyr::arrange(data, dplyr::desc(n))$s))
+    if (include_dplyr) {
+        expect_identical(as.character(dplyr::arrange(data, dplyr::desc(n))$s),
+            c("bb", "cc", "aa", "bb", "aa"))
+        expect_true(compact(dplyr::arrange(data, dplyr::desc(n))$s))
+    }
 
     # An index outside the vector needs `NA`, which the dictionary cannot
     # hold, so that subset materializes as R's `[` would.
@@ -1222,7 +1323,7 @@ test_that("subsetting keeps compact dictionary strings compact", {
     expect_identical(as.character(data$s), c("aa", "bb", "aa", "cc", "bb"))
 
     # A subset is its own vector: writing into it leaves the source alone.
-    piece <- dplyr::filter(data, n <= 2L)
+    piece <- if (include_dplyr) dplyr::filter(data, n <= 2L) else data[1:2, ]
     repl(piece, s = "zz")
     expect_identical(as.character(piece$s), c("zz", "zz"))
     expect_identical(as.character(data$s), c("aa", "bb", "aa", "cc", "bb"))
@@ -1231,9 +1332,17 @@ test_that("subsetting keeps compact dictionary strings compact", {
     repl(data, s = "yy", where = n == 4L)
     expect_identical(as.character(data$s), c("aa", "bb", "aa", "yy", "bb"))
     expect_identical(as.character(filtered$s), c("aa", "cc", "bb"))
+}
+
+test_that("subsetting keeps compact dictionary strings compact", {
+    .check_optional_split_dibble_1179(FALSE)
 })
 
-test_that("generated columns reach consumers that read the column list", {
+test_that("compact dictionary subsetting through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_1179(TRUE)
+})
+.check_optional_split_dibble_1236 <- function(include_dplyr) {
     data <- dibble(x = 1:2)
     gen(data, y = x * 2L)
     gen(data, s = "a")
@@ -1241,12 +1350,15 @@ test_that("generated columns reach consumers that read the column list", {
     expect_identical(names(data), c("x", "y", "s"))
     # The physical list holds every column, so vctrs' binders see them.
     expect_identical(names(unclass(data)), c("x", "y", "s"))
-    stacked <- dplyr::bind_rows(data, data)
-    expect_true(is_dibble(stacked))
-    expect_identical(names(stacked), c("x", "y", "s"))
-    expect_identical(as.integer(stacked$y), c(2L, 4L, 2L, 4L))
-    beside <- dplyr::bind_cols(data, dibble(z = 3:4))
-    expect_identical(names(beside), c("x", "y", "s", "z"))
+    if (include_dplyr) {
+        stacked <- dplyr::bind_rows(data, data)
+        expect_true(is_dibble(stacked))
+        expect_identical(names(stacked), c("x", "y", "s"))
+        expect_identical(as.integer(stacked$y), c(2L, 4L, 2L, 4L))
+        beside <- dplyr::bind_cols(data, dibble(z = 3:4))
+        expect_identical(names(beside), c("x", "y", "s", "z"))
+
+    }
     expect_identical(names(vctrs::vec_rbind(data, data)), c("x", "y", "s"))
     expect_identical(names(lapply(data, class)), c("x", "y", "s"))
     # Other bindings to the same object see the appended columns too.
@@ -1270,24 +1382,37 @@ test_that("generated columns reach consumers that read the column list", {
     expect_silent(gen(tbl, b = a))
     gen(tbl, c = a)
     expect_identical(names(unclass(tbl)), c("a", "b", "c"))
-    expect_identical(names(dplyr::bind_rows(tbl, tbl)), c("a", "b", "c"))
+    if (include_dplyr) {
+        expect_identical(names(dplyr::bind_rows(tbl, tbl)), c("a", "b", "c"))
+    }
     state <- dtatools:::.reference_state(tbl)
     expect_identical(state$generated_count, 0L)
     expect_false(state$physical_overlay)
+}
+
+test_that("generated columns reach consumers that read the column list", {
+    .check_optional_split_dibble_1236(FALSE)
 })
 
-test_that("column binding isolates every input, not only the first", {
+test_that("generated column consumers through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_1236(TRUE)
+})
+.check_optional_split_dibble_1279 <- function(include_dplyr) {
     left <- dibble(x = 1:2)
     right <- tibble::tibble(flag = c(TRUE, FALSE), s = c("a", "b"))
     other <- dibble(z = dta_long(5:6))
-    bound <- dplyr::bind_cols(left, right, other)
-    repl(bound, flag = FALSE)
-    repl(bound, s = "z")
-    bound[, z := 0L]
-    expect_identical(right$flag, c(TRUE, FALSE))
-    expect_identical(right$s, c("a", "b"))
-    expect_identical(as.integer(other$z), 5:6)
-    expect_identical(bound$flag, c(FALSE, FALSE))
+    if (include_dplyr) {
+        bound <- dplyr::bind_cols(left, right, other)
+        repl(bound, flag = FALSE)
+        repl(bound, s = "z")
+        bound[, z := 0L]
+        expect_identical(right$flag, c(TRUE, FALSE))
+        expect_identical(right$s, c("a", "b"))
+        expect_identical(as.integer(other$z), 5:6)
+        expect_identical(bound$flag, c(FALSE, FALSE))
+
+    }
     stacked <- cbind(left, right)
     repl(stacked, flag = FALSE)
     expect_identical(right$flag, c(TRUE, FALSE))
@@ -1301,45 +1426,48 @@ test_that("column binding isolates every input, not only the first", {
     stacked_rows <- rbind(left, dibble(x = 3L))
     stacked_rows[, x := 0L]
     expect_identical(as.integer(left$x), 1:2)
-    joined_source <- tibble::tibble(x = 1:2, w = c(TRUE, TRUE))
-    joined <- dplyr::left_join(left, joined_source, by = "x")
-    repl(joined, w = FALSE)
-    expect_identical(joined_source$w, c(TRUE, TRUE))
-    # A data-masked verb can bring a vector in from any frame.
-    masked <- dplyr::mutate(left, copied = right$flag)
-    masked[, copied := FALSE]
-    expect_identical(right$flag, c(TRUE, FALSE))
-    keyed <- dplyr::group_by(left, g = right$flag)
-    keyed[, g := FALSE]
-    expect_identical(right$flag, c(TRUE, FALSE))
-    # Binding a bare column onto a narrow Stata column widens it by the
-    # bare vector's own mapping instead of failing the cast.
-    widened <- dplyr::bind_rows(
-        dibble(x = dta_byte(1)), tibble::tibble(x = 1000L)
-    )
-    expect_true(is_dibble(widened))
-    expect_identical(dta_storage_type(widened$x), "long")
-    expect_identical(as.double(widened$x), c(1, 1000))
-    joined_wide <- dplyr::full_join(
-        dibble(id = 1L, x = dta_byte(1)), tibble::tibble(id = 2L, x = 0.5),
-        by = c("id", "x")
-    )
-    expect_identical(dta_storage_type(joined_wide$x), "double")
-    # A Stata string key meeting a bare character key in an outer join
-    # is padded with Stata's `""`, and the result is a dibble.
-    keyed <- dplyr::full_join(
-        dibble(id = 1:2, s = dta_string(c("a", "b"))),
-        tibble::tibble(s = c("b", "c"), w = 1:2), by = "s"
-    )
-    expect_true(is_dibble(keyed))
-    expect_identical(as.character(keyed$s), c("a", "b", "c"))
-    expect_identical(as.integer(keyed$id), c(1L, 2L, NA))
-    righted <- dplyr::right_join(
-        dibble(s = dta_string(c("a", "b")), v = 1:2),
-        tibble::tibble(s = c("b", "c")), by = "s"
-    )
-    expect_identical(as.character(righted$s), c("b", "c"))
-    expect_identical(as.integer(righted$v), c(2L, NA))
+    if (include_dplyr) {
+        joined_source <- tibble::tibble(x = 1:2, w = c(TRUE, TRUE))
+        joined <- dplyr::left_join(left, joined_source, by = "x")
+        repl(joined, w = FALSE)
+        expect_identical(joined_source$w, c(TRUE, TRUE))
+        # A data-masked verb can bring a vector in from any frame.
+        masked <- dplyr::mutate(left, copied = right$flag)
+        masked[, copied := FALSE]
+        expect_identical(right$flag, c(TRUE, FALSE))
+        keyed <- dplyr::group_by(left, g = right$flag)
+        keyed[, g := FALSE]
+        expect_identical(right$flag, c(TRUE, FALSE))
+        # Binding a bare column onto a narrow Stata column widens it by the
+        # bare vector's own mapping instead of failing the cast.
+        widened <- dplyr::bind_rows(
+            dibble(x = dta_byte(1)), tibble::tibble(x = 1000L)
+        )
+        expect_true(is_dibble(widened))
+        expect_identical(dta_storage_type(widened$x), "long")
+        expect_identical(as.double(widened$x), c(1, 1000))
+        joined_wide <- dplyr::full_join(
+            dibble(id = 1L, x = dta_byte(1)), tibble::tibble(id = 2L, x = 0.5),
+            by = c("id", "x")
+        )
+        expect_identical(dta_storage_type(joined_wide$x), "double")
+        # A Stata string key meeting a bare character key in an outer join
+        # is padded with Stata's `""`, and the result is a dibble.
+        keyed <- dplyr::full_join(
+            dibble(id = 1:2, s = dta_string(c("a", "b"))),
+            tibble::tibble(s = c("b", "c"), w = 1:2), by = "s"
+        )
+        expect_true(is_dibble(keyed))
+        expect_identical(as.character(keyed$s), c("a", "b", "c"))
+        expect_identical(as.integer(keyed$id), c(1L, 2L, NA))
+        righted <- dplyr::right_join(
+            dibble(s = dta_string(c("a", "b")), v = 1:2),
+            tibble::tibble(s = c("b", "c")), by = "s"
+        )
+        expect_identical(as.character(righted$s), c("b", "c"))
+        expect_identical(as.integer(righted$v), c(2L, NA))
+
+    }
     # Base rbind() widens by the same mapping.
     stacked_num <- rbind(dibble(x = dta_byte(1)), data.frame(x = 1000L))
     expect_true(is_dibble(stacked_num))
@@ -1354,11 +1482,22 @@ test_that("column binding isolates every input, not only the first", {
     expect_true(is_dibble(dropped))
     expect_identical(names(dropped), "x")
     # bind_rows() with a single input shares nothing that can leak either.
-    rows <- dplyr::bind_rows(left, tibble::tibble(x = 3L))
-    rows[, x := 0L]
-    expect_identical(as.integer(left$x), 1:2)
+    if (include_dplyr) {
+        rows <- dplyr::bind_rows(left, tibble::tibble(x = 3L))
+        rows[, x := 0L]
+        expect_identical(as.integer(left$x), 1:2)
+
+    }
+}
+
+test_that("column binding isolates every input, not only the first", {
+    .check_optional_split_dibble_1279(FALSE)
 })
 
+test_that("multi-input binding isolation through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_1279(TRUE)
+})
 test_that("gen on a tibble evaluates against the tibble's own columns", {
     # Stata's collation of `NA` with "" applies where a Stata dataset is.
     # A tibble is not one, so R's own semantics hold and the two are two
@@ -1368,9 +1507,7 @@ test_that("gen on a tibble evaluates against the tibble's own columns", {
     expect_false(is_dibble(tbl))
     expect_identical(as.integer(tbl$n), c(1L, 1L))
     expect_identical(tbl$g, c(NA_character_, ""))
-    grouped <- reserve_columns(dplyr::group_by(
-        tibble::tibble(g = c(NA_character_, ""), v = 1:2), g
-    ))
+    grouped <- reserve_columns(.group_fixture("ordinary_na_empty")$data)
     gen(grouped, n = .N)
     expect_identical(as.integer(grouped$n), c(1L, 1L))
     expect_identical(nrow(attr(grouped, "groups")), 2L)
@@ -1396,9 +1533,7 @@ test_that("gen on a tibble evaluates against the tibble's own columns", {
     expect_identical(sorted$flag, c(FALSE, TRUE))
     expect_identical(as.character(sorted$f), c("a", "b"))
     # A failing gen leaves the tibble as it was, grouping included.
-    bad <- reserve_columns(dplyr::group_by(
-        tibble::tibble(g = c(NA_character_, "b"), v = 1:2), g
-    ))
+    bad <- reserve_columns(.group_fixture("ordinary_na_b")$data)
     alias <- bad
     expect_error(gen(bad, y = stop("boom")), "boom")
     expect_false(is_dibble(bad))
@@ -1408,6 +1543,7 @@ test_that("gen on a tibble evaluates against the tibble's own columns", {
 })
 
 test_that("data-masking verbs type each result as it enters the mask", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:2)
     later <- dplyr::mutate(data, y = c(NA_real_, 1), z = y > 0)
     expect_identical(later$z, c(TRUE, TRUE))
@@ -1440,6 +1576,7 @@ test_that("data-masking verbs type each result as it enters the mask", {
 })
 
 test_that("mask typing keeps dplyr's names, arguments, and messages", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = c(1, 2, 3), g = c(1, 1, 2))
     unnamed <- dplyr::mutate(data, x + 1, .data$g, .keep = "used")
     expect_identical(names(unnamed), c("x", "g", "x + 1"))
@@ -1486,7 +1623,7 @@ test_that("grouped gen() keeps a factor's attributes", {
     expect_identical(as.character(data$h), c("a", "b", "a"))
 })
 
-test_that("ordinary replacement stays local while explicit metadata reaches callers", {
+.check_optional_split_dibble_1489 <- function(include_dplyr) {
     data <- dibble(x = 1:2, s = c("a", "b"))
     alias <- data
     annotate <- function(target) {
@@ -1543,14 +1680,28 @@ test_that("ordinary replacement stays local while explicit metadata reaches call
     changed[, k := 0L]
     expect_identical(as.integer(current_alias$w), c(2L, 4L))
     expect_identical(as.integer(current_alias$k), c(0L, 0L))
-    expect_identical(names(dplyr::bind_rows(changed, changed)), c("k", "s", "w"))
+    if (include_dplyr) {
+        expect_identical(names(dplyr::bind_rows(changed, changed)), c("k", "s", "w"))
+    }
     expect_identical(as.integer(old$x), 1:2)
+}
+
+test_that("ordinary replacement stays local while explicit metadata reaches callers", {
+    .check_optional_split_dibble_1489(FALSE)
 })
 
-test_that("copying replacement isolates vectors and preserves grouping", {
+test_that("ordinary replacement and explicit metadata through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_1489(TRUE)
+})
+.check_optional_split_dibble_1550 <- function(include_dplyr) {
+    group_vars <- if (include_dplyr) dplyr::group_vars else
+        function(x) setdiff(names(attr(x, "groups", exact = TRUE)), ".rows")
+    n_groups <- if (include_dplyr) dplyr::n_groups else
+        function(x) nrow(attr(x, "groups", exact = TRUE))
     # A derived dibble never writes into its source.
     source <- dibble(x = dta_byte(1:2), w = 1:2)
-    piece <- dplyr::select(source, x)
+    piece <- if (include_dplyr) dplyr::select(source, x) else source["x"]
     piece$x <- c(9L, 9L)
     expect_identical(as.integer(source$x), 1:2)
     # A vector assigned in stays the caller's own.
@@ -1597,20 +1748,22 @@ test_that("copying replacement isolates vectors and preserves grouping", {
     expect_identical(names(named), "y")
     expect_true(is_dibble(named_alias))
     # A grouped dibble regroups when a key changes.
-    grouped <- dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g)
+    grouped <- if (include_dplyr) dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g) else
+        as_dibble(.group_fixture("x12_g11_typed")$data)
     grouped$h <- 1L
-    expect_identical(dplyr::group_vars(grouped), "g")
+    expect_identical(group_vars(grouped), "g")
     grouped$g <- c(1, 2)
-    expect_identical(dplyr::n_groups(grouped), 2L)
+    expect_identical(n_groups(grouped), 2L)
     expect_true(is_dibble(grouped))
     # Renaming a key through `names<-` renames the grouping too, so later
     # grouped work finds the key.
-    renamed <- dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g)
+    renamed <- if (include_dplyr) dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g) else
+        as_dibble(.group_fixture("x12_g11_typed")$data)
     renamed_alias <- renamed
     names(renamed) <- c("x", "k")
-    expect_identical(dplyr::group_vars(renamed_alias), "g")
+    expect_identical(group_vars(renamed_alias), "g")
     renamed_alias <- renamed
-    expect_identical(dplyr::group_vars(renamed_alias), "k")
+    expect_identical(group_vars(renamed_alias), "k")
     expect_identical(
         names(attr(renamed_alias, "groups", exact = TRUE)),
         c("k", ".rows")
@@ -1618,17 +1771,20 @@ test_that("copying replacement isolates vectors and preserves grouping", {
     gen(renamed_alias, z = x + 1)
     replace_values(renamed_alias, z, 0, where = k == 1)
     expect_identical(as.double(renamed_alias$z), c(0, 0))
-    expect_identical(
-        as.double(dplyr::summarise(renamed_alias, n = dplyr::n())$n), 2
-    )
+    if (include_dplyr) {
+        expect_identical(
+            as.double(dplyr::summarise(renamed_alias, n = dplyr::n())$n), 2
+        )
+    }
     expect_true(is_dibble(renamed_alias))
     # `dimnames<-` renames the same way.
-    both <- dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g)
+    both <- if (include_dplyr) dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g) else
+        as_dibble(.group_fixture("x12_g11_typed")$data)
     both_alias <- both
     suppressWarnings(dimnames(both) <- list(row.names(both), c("x", "k")))
-    expect_identical(dplyr::group_vars(both_alias), "g")
+    expect_identical(group_vars(both_alias), "g")
     both_alias <- both
-    expect_identical(dplyr::group_vars(both_alias), "k")
+    expect_identical(group_vars(both_alias), "k")
     expect_identical(
         names(attr(both_alias, "groups", exact = TRUE)),
         c("k", ".rows")
@@ -1636,14 +1792,23 @@ test_that("copying replacement isolates vectors and preserves grouping", {
     gen(both_alias, z = x + 1)
     replace_values(both_alias, z, 0, where = k == 1)
     expect_identical(as.double(both_alias$z), c(0, 0))
-    expect_identical(
-        as.double(dplyr::summarise(both_alias, n = dplyr::n())$n), 2
-    )
+    if (include_dplyr) {
+        expect_identical(
+            as.double(dplyr::summarise(both_alias, n = dplyr::n())$n), 2
+        )
+    }
     expect_true(is_dibble(both_alias))
+}
+
+test_that("copying replacement isolates vectors and preserves grouping", {
+    .check_optional_split_dibble_1550(FALSE)
 })
 
-
-test_that("serialized legacy dibbles retain typing and closure", {
+test_that("copying replacement and regrouping through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_1550(TRUE)
+})
+.check_optional_split_dibble_1646 <- function(include_dplyr) {
     legacy <- dibble(x = 1:3)
     state <- dtatools:::.reference_state(legacy)
     state$dibble <- NULL
@@ -1659,9 +1824,11 @@ test_that("serialized legacy dibbles retain typing and closure", {
     restored[1, "x"] <- 10L
     expect_identical(dta_storage_type(restored$x), "long")
     expect_identical(as.integer(restored$x), c(10L, 8L, 9L))
-    closed <- dplyr::mutate(restored, y = x + 1)
-    expect_true(is_dibble(closed))
-    expect_identical(dta_storage_type(closed$y), "long")
+    if (include_dplyr) {
+        closed <- dplyr::mutate(restored, y = x + 1)
+        expect_true(is_dibble(closed))
+        expect_identical(dta_storage_type(closed$y), "long")
+    }
     gen(restored, z = 1)
     expect_identical(dta_storage_type(restored$z), "float")
     # This checks the restored mutation target, not aliases across serialization.
@@ -1670,9 +1837,18 @@ test_that("serialized legacy dibbles retain typing and closure", {
     gen(ordinary, y = 1)
     expect_identical(dtatools:::.reference_state(ordinary)$dibble, FALSE)
     expect_false(is_dibble(unserialize(serialize(ordinary, NULL))))
+}
+
+test_that("serialized legacy dibbles retain typing and closure", {
+    .check_optional_split_dibble_1646(FALSE)
 })
 
+test_that("serialized legacy closure through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_1646(TRUE)
+})
 test_that("across results are typed before later mask expressions", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(g = c(1L, 1L), x = c("a", "b"))
     for (input in list(data, dplyr::group_by(data, g), dplyr::rowwise(data))) {
         result <- dplyr::mutate(
@@ -1698,6 +1874,7 @@ test_that("across results are typed before later mask expressions", {
 })
 
 test_that("caller-backed symbols are typed on entry to the data mask", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = 1:2)
     values <- c(NA_real_, 1)
     strings <- c(NA_character_, "")
@@ -1715,6 +1892,7 @@ test_that("caller-backed symbols are typed on entry to the data mask", {
 })
 
 test_that("unnamed computations use their natural names in the mask", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = 1:2, `x + 1` = 0L)
     result <- dplyr::mutate(data, x + 1, later = `x + 1` * 10)
     expect_identical(names(result), c("x", "x + 1", "later"))
@@ -1736,6 +1914,7 @@ test_that("unnamed computations use their natural names in the mask", {
 })
 
 test_that("mask promotion sees prior clauses' storage and metadata", {
+    skip_if_not_installed("dplyr", "1.2.1")
     narrow <- dta_byte(1:2)
     var_label(narrow) <- "old"
     wide <- dta_double(1:2)
@@ -1761,6 +1940,7 @@ test_that("mask promotion sees prior clauses' storage and metadata", {
 })
 
 test_that("mask warning labels leave caller-binding messages unchanged", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (unicode in c(TRUE, FALSE)) {
         withr::local_options(cli.unicode = unicode)
         for (delayed in c(FALSE, TRUE)) {

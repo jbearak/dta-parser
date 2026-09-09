@@ -210,6 +210,55 @@ Adapted from dplyr 1.2.1:
     implementation is incorporated by these changes.
     tests/testthat/test-dibble-result-history.R adds package-specific finite
     retained-heap budgets and atomic-copy/opaque-identity assertions.
+  Additional Stage 9 display sources:
+    R/grouped-df.R: group_sum and tbl_sum.grouped_df
+    R/rowwise.R: tbl_sum.rowwise_df
+    R/utils-format.R: big_mark
+    R/utils.R: commas
+  Destination: the grouped/rowwise metadata fallback in R/print-dibble.R.
+  Changes: preserve existing registered table summaries and supply only a
+    missing Groups or Rowwise header from the stored grouping metadata.
+    No optional namespace is loaded to format the header.
+  Additional Stage 9 replacement sources:
+    R/grouped-df.R: [<-.grouped_df, [[<-.grouped_df and names<-.grouped_df
+    R/rowwise.R: [<-.rowwise_df and names<-.rowwise_df
+  Destinations: replacement finalization in R/mutate-data.R and method
+    availability checks in R/dibble-groups.R.
+  Changes: when a standard grouping method is absent, validate the original,
+    normalize an ungrouped intermediate, and rebuild its groups through the
+    shared package module. Rowwise [<- instead captures its observable raw
+    key metadata before column promotion, retaining final validation.
+    Renaming preserves the original partition. Visible
+    or registered grouping methods retain their existing dispatch path.
+  Additional recoding sources:
+    R/recode.R: recode.character(), recode.factor(), find_template(),
+      validate_recode_default(), recode_default.default(),
+      recode_default.factor(), replace_with() and replacement checks.
+    R/error.R: bounded positional-argument formatting.
+  Destination: owned character/factor kernels and helpers in R/recode.R.
+  Changes: qualified public rlang/base calls replace dplyr helper access;
+    replacement type errors use the package's typeof wording. The private
+    dispatcher uses public S3 lookup and base dispatch for owned core methods.
+    A separate optional adapter calls the public generic only for a selected
+    foreign method, preserving its dispatch environment and dynamic NextMethod
+    behavior. Numeric Stata and legacy kernels remain
+    distinct. Character-backed Haven inputs extract their underlying character
+    data through public vctrs APIs and use the owned character kernel,
+    avoiding the former public-wrapper/generic recursion. Metadata wrappers
+    retain their existing separate restoration policy. No dplyr generic or
+    recode_factor implementation is incorporated.
+  Additional tests: tests/testthat/test-recode-core.R adapts named replacement,
+    default/missing, dynamic dots, factor-level order/collapse and validation
+    cases from tests/testthat/test-recode.R. Additional package-specific tests
+    cover metadata, missing tags, forcing and external S3 continuation; no
+    upstream snapshots or numeric tests were copied.
+  Package-specific optional registration in R/dplyr-registration.R uses public
+    base registration and package-event APIs. It retains prior method ownership,
+    removes its own hooks on unload and leaves unrelated replacements intact.
+    R 4.6.1 src/library/base/R/namespace.R was studied to identify retained
+    delayed hooks and registration metadata; no implementation was copied.
+    tests/testthat/test-dplyr-optional.R adds namespace, reload, restoration,
+    registration rollback and native no-load checks.
   The inspected files contain no separate file-level copyright or license.
 
 Adapted from R 4.6.1, released 2026-06-24 (SVN revision 90187):
@@ -308,7 +357,43 @@ Studied as references only, with no dtplyr implementation incorporated:
 
 Public tidyselect, rlang, vctrs, tibble and dplyr APIs remain dependencies.
 Calling those APIs does not incorporate their implementations. Tibble index implementation was inspected to check the public planning API;
-no tibble, vctrs or data.table source was copied or adapted.
+no tibble or data.table source was copied or adapted. The bounded vctrs
+restoration-policy adaptation below is separate from public API use.
+
+Adapted from vctrs 0.7.3:
+  Source archive: https://cran.r-project.org/src/contrib/vctrs_0.7.3.tar.gz
+  SHA256: b45078413e06ac624dddb7221a3a43908b405c8abec09822cb86638d30b0435b
+  R/type-dplyr.R: vec_restore_grouped_df and vec_restore_rowwise_df policies
+  R/zzz.R: conditional grouping-method registration was inspected as reference.
+  Destination: vec_restore.dtatools_ref_data in R/mutate-data.R.
+  Changes: when grouping methods are absent, restore a plain intermediate,
+    apply package typing and owned capture, and rebuild grouping metadata.
+    Grouped keys/drop are retained; rowwise restoration removes identifiers.
+    Existing visible/registered methods and custom subclasses keep their
+    previous dispatch path. No other vctrs implementation is incorporated.
+
+Preserved vctrs license
+----------------------
+
+Copyright (c) 2023 vctrs authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 Preserved dplyr license
 ----------------------

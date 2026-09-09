@@ -107,12 +107,12 @@ test_that("egen stages bysort and commits only after success", {
 })
 
 test_that("egen grouped inputs supply groups and counters describe the sample", {
-    d <- dplyr::group_by(dibble(g = c(1, 1, 2, 2), x = c(1, 2, 3, 4)), g)
+    d <- as_dibble(.group_fixture("g_1122_double_x_typed")$data)
     egen(d, y = dta_total(x), where = .n == 1)
     expect_equal(as.double(d$y), c(1, NA, 3, NA))
     egen(d, size = dta_total(rep(1, .N)), where = .n == 1)
     expect_equal(as.double(d$size), c(1, NA, 1, NA))
-    expect_identical(dplyr::group_vars(d), "g")
+    expect_identical(setdiff(names(attr(d, "groups", exact = TRUE)), ".rows"), "g")
     expect_error(egen(d, bad = dta_mean(x), by = g), "already grouped")
     expect_error(egen(d, bad = dta_group_id(g)), "does not allow outer")
 })

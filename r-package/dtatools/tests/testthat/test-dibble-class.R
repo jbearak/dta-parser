@@ -41,24 +41,28 @@ test_that("reference support does not grant ordinary containers dibble identity"
     }
 })
 
-test_that("grouping and metadata classes follow dibble identity", {
+.check_optional_split_dibble_class_44 <- function(include_dplyr) {
     data <- dibble(g = c(1L, 1L, 2L), x = 1:3)
     base <- c("tbl_df", "tbl", "data.frame")
     for (kind in c("plain", "grouped", "rowwise")) {
-        input <- switch(kind, plain = data,
+        input <- if (include_dplyr) switch(kind, plain = data,
                         grouped = dplyr::group_by(data, g),
-                        rowwise = dplyr::rowwise(data, g))
+                        rowwise = dplyr::rowwise(data, g)) else switch(kind,
+                        plain = data,
+                        grouped = as_dibble(.group_fixture("g_112_i_typed")$data),
+                        rowwise = as_dibble(.group_fixture("g_112_i_typed_rowwise")$data))
         grouping <- switch(kind, plain = character(), grouped = "grouped_df",
                            rowwise = "rowwise_df")
         expected <- c("dibble", "dtatools_ref_data", grouping, base)
         expect_identical(class(input), expected)
-        for (operation in list(as_dibble, copy_data, reserve_columns,
-                               function(x) x[1:2, ],
-                               function(x) vctrs::vec_slice(x, 1:2),
-                               function(x) dplyr::select(x, g, x),
-                               function(x) dplyr::mutate(x, y = x + 1L),
-                               function(x) dplyr::dplyr_reconstruct(
-                                   tibble::as_tibble(x), x))) {
+        operations <- list(as_dibble, copy_data, reserve_columns,
+                           function(x) x[1:2, ],
+                           function(x) vctrs::vec_slice(x, 1:2))
+        if (include_dplyr) operations <- c(operations, list(
+            function(x) dplyr::select(x, g, x),
+            function(x) dplyr::mutate(x, y = x + 1L),
+            function(x) dplyr::dplyr_reconstruct(tibble::as_tibble(x), x)))
+        for (operation in operations) {
             result <- operation(input)
             expect_identical(class(result), expected)
             expect_true(is_dibble(result))
@@ -73,9 +77,17 @@ test_that("grouping and metadata classes follow dibble identity", {
         set_dta_note(input, 1L, NULL)
         expect_identical(class(input), expected)
     }
+}
+
+test_that("grouping and metadata classes follow dibble identity", {
+    .check_optional_split_dibble_class_44(FALSE)
 })
 
-test_that("legacy flags recognize type and assigned upgrade isolates aliases", {
+test_that("grouping and metadata class identity through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_class_44(TRUE)
+})
+.check_optional_split_dibble_class_78 <- function(include_dplyr) {
     for (flag in list(TRUE, NULL)) {
         data <- dibble(x = 1:3, text = c("a", "b", "c"))
         state <- dtatools:::.reference_state(data)
@@ -89,9 +101,11 @@ test_that("legacy flags recognize type and assigned upgrade isolates aliases", {
         expect_false(inherits(legacy, "dibble"))
         expect_match(format(legacy)[[1L]], "^# A dibble:")
         expect_identical(capture.output(print(legacy)), format(legacy))
-        for (operation in list(as_dibble, copy_data, reserve_columns,
-                               function(x) x[1:2, ],
-                               function(x) dplyr::mutate(x, y = x + 1L))) {
+        operations <- list(as_dibble, copy_data, reserve_columns,
+                           function(x) x[1:2, ])
+        if (include_dplyr) operations <- c(operations, list(
+            function(x) dplyr::mutate(x, y = x + 1L)))
+        for (operation in operations) {
             result <- operation(legacy)
             expect_s3_class(result, "dibble")
             expect_true(dtatools:::.reference_state_valid(result))
@@ -108,8 +122,16 @@ test_that("legacy flags recognize type and assigned upgrade isolates aliases", {
     expect_false(is_dibble(restored))
     expect_false(inherits(reserve_columns(restored), "dibble"))
     expect_match(format(restored)[[1L]], "^# A tibble:")
+}
+
+test_that("legacy flags recognize type and assigned upgrade isolates aliases", {
+    .check_optional_split_dibble_class_78(FALSE)
 })
 
+test_that("legacy assigned upgrade through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_dibble_class_78(TRUE)
+})
 test_that("class snapshots and display dispatch preserve compact source columns", {
     data <- read_dta(fixture("all_types_v118.dta"))
     alias <- data
@@ -157,4 +179,65 @@ test_that("class-preserving replacement and structural helpers retain alias cont
     expect_identical(names(alias), c("flag", "x"))
     drop_vars(data, flag)
     expect_s3_class(alias, "dibble")
+})
+
+test_that("grouped restoration preserves memberships and later write isolation", {
+    source <- as_dibble(.group_fixture("g_112_i_typed")$data)
+    before <- attr(source, "groups", exact = TRUE)
+    result <- vctrs::vec_slice(source, c(3L, 1L, 3L))
+    expect_identical(as.integer(result$x), c(3L, 1L, 3L))
+    expect_identical(as.integer(attr(result, "groups")$g), 1:2)
+    expect_identical(as.list(attr(result, "groups")$.rows), list(2L, c(1L, 3L)))
+    empty <- vctrs::vec_slice(source, integer())
+    expect_identical(nrow(empty), 0L)
+    expect_identical(nrow(attr(empty, "groups")), 0L)
+    expect_identical(.row_names_info(attr(empty, "groups"), 0L), integer())
+    renamed <- source
+    withCallingHandlers(dimnames(renamed) <- list(row.names(renamed), c("key", "x")),
+        warning = function(warning) {
+            if (identical(conditionMessage(warning),
+                "Setting row names on a tibble is deprecated.")) invokeRestart("muffleWarning")
+        })
+    expect_identical(.row_names_info(renamed, 0L), c(NA_integer_, -3L))
+    result$g <- c(1L, 2L, 1L)
+    expect_identical(as.list(attr(result, "groups")$.rows), list(c(1L, 3L), 2L))
+    repl(result, x = 0L)
+    expect_identical(as.integer(result$x), c(0L, 0L, 0L))
+    expect_identical(as.integer(source$x), 1:3)
+    expect_identical(as.integer(source$g), c(1L, 1L, 2L))
+    expect_identical(attr(source, "groups", exact = TRUE), before)
+    wise <- as_dibble(.group_fixture("g_112_i_typed_rowwise")$data)
+    wise[, "g"] <- 3:1
+    expect_identical(attr(wise, "groups")$g, 3:1)
+    sliced <- vctrs::vec_slice(wise, c(3L, 1L, 3L))
+    expect_identical(as.integer(sliced$x), c(3L, 1L, 3L))
+    expect_identical(names(attr(sliced, "groups")), ".rows")
+    expect_identical(as.list(attr(sliced, "groups")$.rows), list(1L, 2L, 3L))
+    expect_s3_class(sliced, "rowwise_df")
+})
+
+test_that("bracket replacement retains a caller-local grouping method", {
+    source <- as_dibble(.group_fixture("g_212_i_typed")$data)
+    before <- attr(source, "groups", exact = TRUE)
+    caller <- new.env(parent = environment())
+    caller$source <- source
+    caller$`[<-.grouped_df` <- function(x, i, j, ..., value) {
+        classes <- class(x)
+        groups <- attr(x, "groups", exact = TRUE)
+        class(x) <- setdiff(classes, "grouped_df")
+        x[, j] <- value
+        groups <- vctrs::vec_slice(groups, order(as.double(groups$g), decreasing = TRUE))
+        attr(x, "groups") <- groups
+        attr(x, "caller_group_method") <- TRUE
+        class(x) <- classes
+        x
+    }
+    # Keep this witness on caller dispatch; later promotion has its own regrouping policy.
+    result <- eval(quote({ changed <- source; changed[, "x"] <- dta_long(4:6); changed }), caller)
+    expect_true(attr(result, "caller_group_method", exact = TRUE))
+    expect_identical(as.integer(result$x), 4:6)
+    expect_identical(as.double(attr(result, "groups")$g), c(2, 1))
+    expect_identical(as.list(attr(result, "groups")$.rows), list(c(1L, 3L), 2L))
+    expect_identical(as.integer(source$x), 1:3)
+    expect_identical(attr(source, "groups", exact = TRUE), before)
 })

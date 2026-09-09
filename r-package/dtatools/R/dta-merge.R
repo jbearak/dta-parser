@@ -71,7 +71,7 @@
 #' result keeps `x` rows in their original order followed by unmatched `y`
 #' rows in theirs. Sort afterward if key order matters.
 #'
-#' @param x,y Data frames to merge, or file paths read with [read_dta()] or
+#' @param x,y Data frames to merge, or file paths read with [`read_dta()`][dtatools::read_dta] or
 #'   [read_arrow()], in any combination. `x` supplies the retained values for
 #'   overlapping variables, dataset label, and dataset characteristics.
 #'   Base data frames, tibbles, and data.tables are accepted without mutation.

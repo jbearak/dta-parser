@@ -2,6 +2,7 @@
 # Adapted policy cases: dplyr 95740975 test-arrange.R and test-distinct.R.
 
 test_that("S6-O01 arrange keys are independent and see original ungrouped columns", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(id = 1:4, g = c("b", "a", "b", "a"),
         x = c(2, 1, 2, 1)), g)
     sizes <- integer()
@@ -21,6 +22,7 @@ test_that("S6-O01 arrange keys are independent and see original ungrouped column
 })
 
 test_that("S6-O02 arrange flattens pick/across keys and applies stable directions", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:4, x = c(1, 3, 2, 1), y = c(4, 3, 2, 1))
     expect_identical(.s6_ids(dplyr::arrange(data, dplyr::pick(x, y))), c(4L, 1L, 3L, 2L))
     expect_identical(.s6_ids(dplyr::arrange(data, dplyr::across(c(x, y), dplyr::desc))),
@@ -34,6 +36,7 @@ test_that("S6-O02 arrange flattens pick/across keys and applies stable direction
 })
 
 test_that("S6-O03 arrange uses explicit C collation and validates locale", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:4, x = c("A", "a", "b", "B"))
     expect_identical(.s6_ids(dplyr::arrange(data, x, .locale = "C")), c(1L, 4L, 2L, 3L))
     expect_identical(.s6_ids(dplyr::arrange(data, dplyr::desc(x), .locale = "C")),
@@ -43,12 +46,14 @@ test_that("S6-O03 arrange uses explicit C collation and validates locale", {
 })
 
 test_that("S6-O04 arrange supports optional ICU collation", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("stringi", "1.5.3")
     data <- dibble(id = 1:4, x = c("A", "a", "b", "B"))
     expect_identical(.s6_ids(dplyr::arrange(data, x, .locale = "en")), c(2L, 1L, 3L, 4L))
 })
 
 test_that("S6-D01 distinct types each computed key before a dependent key", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:3, g = c("b", "a", "b"))
     sizes <- integer()
     out <- dplyr::distinct(dplyr::group_by(data, g),
@@ -66,6 +71,7 @@ test_that("S6-D01 distinct types each computed key before a dependent key", {
 })
 
 test_that("S6-D02 distinct keeps first rows and only prepends missing group keys", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:4, g = c("b", "a", "b", "a"), x = c(1, 2, 1, 2))
     grouped <- dplyr::group_by(data, g)
     expect_identical(names(dplyr::distinct(grouped, x)), c("g", "x"))
@@ -79,6 +85,7 @@ test_that("S6-D02 distinct keeps first rows and only prepends missing group keys
 })
 
 test_that("S6-D03 distinct handles list keys and zero-column row counts", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:4, key = list(1:2, NULL, 1:2, NULL))
     expect_identical(.s6_ids(dplyr::distinct(data, key, .keep_all = TRUE)), 1:2)
     for (n in c(0L, 3L)) {
@@ -89,6 +96,7 @@ test_that("S6-D03 distinct handles list keys and zero-column row counts", {
 })
 
 test_that("S6-D04 computed grouping keys rebuild before subsequent group operations", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(id = 1:2, g = c("a", "b")), g)
     out <- dplyr::distinct(data, g = "z", .keep_all = TRUE)
     expect_identical(.s6_ids(out), 1L)
@@ -102,6 +110,7 @@ test_that("S6-D04 computed grouping keys rebuild before subsequent group operati
 })
 
 test_that("S6-D05 caller symbols are typed while data columns retain precedence", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = 1:2)
     caller <- new.env(parent = environment())
     caller$data <- data
@@ -123,6 +132,7 @@ test_that("S6-D05 caller symbols are typed while data columns retain precedence"
 })
 
 test_that("S6-O07 arrange expands pick before each independent key", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:2, x = 2:1)
     events <- list()
     out <- dplyr::arrange(data, {
@@ -138,6 +148,7 @@ test_that("S6-O07 arrange expands pick before each independent key", {
 })
 
 test_that("S6-O05 typed ordering and equality retain tagged missing identity", {
+    skip_if_not_installed("dplyr", "1.2.1")
     constructors <- list(dta_byte, dta_int, dta_long, dta_float, dta_double)
     for (constructor in constructors) {
         key <- constructor(c(2, NA_real_, tagged_missing("a"), 1, tagged_missing("a")))
@@ -150,6 +161,7 @@ test_that("S6-O05 typed ordering and equality retain tagged missing identity", {
 })
 
 test_that("S6-O06 legacy collation and nested proxy directions retain stable locations", {
+    skip_if_not_installed("dplyr", "1.2.1")
     withr::local_locale(c(LC_COLLATE = "C"))
     withr::local_options(dplyr.legacy_locale = TRUE, lifecycle_verbosity = "warning")
     data <- dibble(id = 1:4, x = c("b", "A", "a", "A"))

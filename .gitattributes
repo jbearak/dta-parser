@@ -1,0 +1,4 @@
+# Native manifest hashes describe these text files with LF line endings.
+/r-package/dtatools/tests/testthat/*.R text eol=lf
+/r-package/dtatools/tests/testthat/fixtures/README.md text eol=lf
+/r-package/dtatools/tests/testthat/fixtures/*.rds -text

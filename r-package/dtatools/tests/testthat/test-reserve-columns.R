@@ -310,13 +310,15 @@ test_that("zero-column tables can reserve and consume their first slot", {
     }
 })
 
-test_that("prepared physical columns remain visible to direct consumers", {
+.check_optional_split_reserve_columns_313 <- function(include_dplyr) {
     x <- reserve_columns(dibble(x = c(3L, 1L, 2L)), 1)
     gen(x, y = .data$x * 2L)
     reorder_dta_rows(x, c(2L, 3L, 1L))
     expect_physical_table(x, c("x", "y"))
-    expect_identical(names(dplyr::bind_rows(x, x)), c("x", "y"))
-    expect_identical(names(dplyr::bind_cols(x, tibble::tibble(z = 1:3))), c("x", "y", "z"))
+    if (include_dplyr) {
+        expect_identical(names(dplyr::bind_rows(x, x)), c("x", "y"))
+        expect_identical(names(dplyr::bind_cols(x, tibble::tibble(z = 1:3))), c("x", "y", "z"))
+    }
     if (requireNamespace("purrr", quietly = TRUE)) expect_named(purrr::map(x, as.integer), c("x", "y"))
     if (requireNamespace("jsonlite", quietly = TRUE)) {
         json <- jsonlite::fromJSON(jsonlite::toJSON(x))
@@ -329,8 +331,16 @@ test_that("prepared physical columns remain visible to direct consumers", {
     csv <- read.csv(path)
     expect_named(csv, c("x", "y"))
     expect_identical(csv$y, c(2L, 4L, 6L))
+}
+
+test_that("prepared physical columns remain visible to direct consumers", {
+    .check_optional_split_reserve_columns_313(FALSE)
 })
 
+test_that("prepared physical column consumers through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_reserve_columns_313(TRUE)
+})
 test_that("data.table readiness requires valid self-reference and preserves lookups on failure", {
     .datatable.aware <- TRUE
     skip_if_not_installed("data.table")
@@ -468,7 +478,7 @@ test_that("unprepared keep-all is a validated no-op and invalid selectors keep t
 test_that("an unsupported loaded data.table version is rejected before mutation", {
     skip_if_not_installed("data.table", "1.18.2.1")
     skip_if_not_installed("callr")
-    results <- callr::r(function() {
+    results <- .dtatools_child_r("data-table-version", function() {
         library(dtatools)
         data <- data.table::data.table(x = 1:3, y = 4:6)
         alias <- data

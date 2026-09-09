@@ -10,7 +10,7 @@ CodeRabbit. Its documentation-coverage warning is always nonblocking. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stages 1 through 7 complete, Stage 8 active
+## Stages 1 through 8 complete, Stage 9 active
 
 Stage 6 [PR #209](https://github.com/jbearak/dta-parser/pull/209) merged normally
 on September 8, 2026 at 20:33:25 UTC as
@@ -193,11 +193,71 @@ The corrected Rust reuse scope includes the actual workspace crate and embedded
 fixtures; its 119 selected leaves match the original qualified source. The earlier
 45-leaf comparison omitted that crate and is insufficient by itself.
 
-Durable evidence publication, actual implementation CodeRabbit/CI and normal
-merge remain pending. Stage 9 optional
-dependencies and physical absence/present/load-order checks, issue #172, the twelve
-earlier base-R read regressions, four Stage 7 many-small-group public latency
-limits and actual fertility renv validation/restoration remain open.
+Stage 8 evidence [PR #215](https://github.com/jbearak/dta-parser/pull/215)
+merged normally as `994b538d08731929e1ee1a57a54676f307650e43` after all 15
+checks passed. Implementation [PR #214](https://github.com/jbearak/dta-parser/pull/214)
+merged normally as `7a7aa79228dd00e263f9d425406ea1b884df05dc` after all 15
+checks, substantive CodeRabbit review and complementary review completed.
+The merged source preserves the evidence subtree and qualified package.
+The preexisting unnamed-cbind naming limitation remains explicit; the Stage 9
+README documents typed rows_patch behavior and the explicit-name workaround.
+
+### Current Stage 9 qualification
+
+Stage 9 starts at that verified merge in an isolated worktree. It replays all
+three reviewed recode commits, keeps all 106 exports and makes dplyr optional.
+Native tests are separated from optional comparisons without discarding native
+assertions. A finite registry of 133 grouped/rowwise fixtures is produced in a
+separate dplyr-present process; consumers create fresh ownership where needed.
+The native runner checks every visible dependency library, namespace paths,
+selected DLL identity, each helper/family boundary and declared child/fork counts.
+
+Candidate `016e6aefb5b18fae5918963d7b6cbcde88ddbca4`, package tree
+`fc782ca64a8906c77e8ebde7383404877f3dc042`, passed a fresh host installation,
+842 assertions in the 83-block native regression, and the full 1,155-block
+native suite: 14,965 assertions, no failures/errors, three expected warnings and
+201 declared optional skips. All 954 native blocks executed. A separate isolated
+source build passed with before/after library guards; its archive has the same
+member paths/types/modes/sizes and bytes except the generated DESCRIPTION
+`Packaged` timestamp. These results retain their actual source and archive IDs.
+
+The full present run completed with 20,183 passing assertions and two failures in
+the new caller-local test. Source review and paired outcomes support later
+registered regrouping during typing of its raw replacement. Actual old/current
+public controls matched for both raw and
+typed replacements, with 13 assertions passing on each. The test correction uses
+a typed replacement to isolate caller dispatch and keeps all six assertions.
+Commit `f1592a21c682e5825e684857337eac3ad1ed0db9`, package tree
+`84a6ec94b13766f26442dd8e9dd56281aef20cc2`, contains that test correction,
+symmetric Windows helper path normalization, the manifest's two updated source
+hashes and the isolated build/CI wiring. Production R/native/Rust sources are
+unchanged. The fresh `f1592a21` installation and corrected 83-block native regression
+pass: 842 assertions, three expected warnings and 30 optional skips. The corrected
+full present run is active. Full native refinement, minimum/floor/package checks,
+guarded native examples and hosted CI remain pending.
+
+The first full native attempt exposed real grouped restoration/replacement and
+print-header gaps. Copied controls then found three observable group/row-name
+representation differences. The final repair matches all 18 cross-lane semantic
+cases under a named-attribute-map comparison; that scope does not require the
+same ordering of attribute-pairlist entries. Raw rowwise keys are captured before
+data promotion, with final validation and source isolation preserved. All failed
+runs and earlier incomplete scopes remain retained locally.
+
+Declared direct floors are rlang 1.2.0, vctrs 0.7.3, tibble 3.3.1, pillar 1.9.0
+and tidyselect 1.2.0. Exact unmodified floor sources build on R 4.6.0 and 4.6.1;
+this dependency result does not yet qualify dtatools on those lanes. The native
+manifest contains 954 native blocks and 201 optional comparisons, with only
+predetermined capability overrides. CI and release source/binary gates are
+implemented but have not yet run on the remote candidate.
+
+Issue #172 remains open until integrated acceptance. After Stage 9, the requested
+#213 bracket feature is a separate implementation, followed by #216 reader
+research without an automatic production commitment. Final integrated performance
+and actual fertility renv validation/restoration must use the resulting final
+source. The twelve earlier base-R read regressions and four Stage 7 many-small-group
+latency limits remain explicit. Evidence publication must exclude other
+repositories' code and data.
 
 ### Earlier Stage 7 checkpoints
 

@@ -12,7 +12,7 @@
 #' entries. Missing-label entries become levels only when missing codes are
 #' distinguished.
 #' Conversion and [tab()] share a native grouping implementation that does not
-#' materialize compact numeric columns returned by [read_dta()].
+#' materialize compact numeric columns returned by [`read_dta()`][dtatools::read_dta].
 #'
 #' @param x An undimensioned numeric-storage vector, including `Date` and
 #'   `POSIXct`.

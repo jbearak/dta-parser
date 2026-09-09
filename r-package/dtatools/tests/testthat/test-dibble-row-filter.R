@@ -3,6 +3,7 @@
 # package test-dibble-expressions.R; retained Stage 6 caller witnesses.
 
 test_that("S6-F01 filter_out complements the completed TRUE-only conjunction", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:9,
         a = rep(c(TRUE, FALSE, NA), each = 3),
         b = rep(c(TRUE, FALSE, NA), 3))
@@ -20,6 +21,7 @@ test_that("S6-F01 filter_out complements the completed TRUE-only conjunction", {
 })
 
 test_that("S6-F02 predicates validate type, size, names and dynamic dots", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:3, a = c(TRUE, FALSE, NA))
     for (verb in list(dplyr::filter, dplyr::filter_out)) {
         expect_error(verb(data, 1L))
@@ -42,6 +44,7 @@ test_that("S6-F02 predicates validate type, size, names and dynamic dots", {
 })
 
 test_that("S6-F03 filter and slice dots share a group-local temporary frame", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (grouped in c(FALSE, TRUE)) {
         data <- dibble(id = 1:4, g = c(1, 1, 2, 2), x = 1:4)
         if (grouped) data <- dplyr::group_by(data, g)
@@ -65,6 +68,7 @@ test_that("S6-F03 filter and slice dots share a group-local temporary frame", {
 })
 
 test_that("S6-F04 persistent grouping and .by retain distinct row-order policies", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:4, g = c("b", "a", "b", "a"), x = c(1, 2, 3, 4))
     threshold <- 2
     out <- dplyr::filter(data, .data$x > .env$threshold, .by = g)
@@ -88,6 +92,7 @@ test_that("S6-F04 persistent grouping and .by retain distinct row-order policies
 })
 
 test_that("S6-F05 empty groups execute the witnessed synthetic and real callbacks", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (shape in c("zero", "drop", "retained", "rowwise", "by")) {
         data <- dibble(id = integer(), g = if (shape == "retained")
             factor(character(), levels = c("a", "b")) else integer())
@@ -122,6 +127,7 @@ test_that("S6-F05 empty groups execute the witnessed synthetic and real callback
 })
 
 test_that("S6-F06 top-level if helpers retain factory and predicate context order", {
+    skip_if_not_installed("dplyr", "1.2.1")
     # Same fixture as the completed caller witness: ordering, not AND/OR discrimination.
     data <- dplyr::group_by(dibble(id = 1:4, g = c(1, 1, 2, 2),
         x = c(0, 1, 2, 3), y = c(1, 0, 3, 2)), g)
@@ -152,6 +158,7 @@ test_that("S6-F06 top-level if helpers retain factory and predicate context orde
 })
 
 test_that("S6-F07 aliases and arbitrary helpers use the active group context", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(id = 1:4, g = c("b", "a", "b", "a"),
         x = c(0, 1, 2, 3), y = c(1, 0, 3, 2)), g)
     size <- dplyr::n
@@ -194,6 +201,7 @@ test_that("S6-F08 filter reduction avoids repeated full-size logical temporaries
 })
 
 test_that("S6-F09 native reduction preserves predicate attributes and later evaluation", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:6, g = c("b", "a", "b", "a", "b", "a"),
                    keep = c(TRUE, FALSE, NA, TRUE, FALSE, NA))
     predicate <- structure(c(TRUE, FALSE, NA, TRUE, FALSE, NA),
@@ -262,6 +270,7 @@ test_that("S6-F11 reduction state and owned predicates survive forced collection
 })
 
 test_that("S6-F12 errors and R interrupts expire active masks before a later filter", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:3, keep = c(TRUE, FALSE, NA))
     for (kind in c("error", "interrupt")) {
         captured <- new.env(parent = emptyenv())

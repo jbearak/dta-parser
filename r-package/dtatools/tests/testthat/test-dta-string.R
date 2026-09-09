@@ -77,6 +77,7 @@ test_that("Stata string concatenation widens and replacement stays strict", {
 })
 
 test_that("common type with bare character can hold values chosen later", {
+    skip_if_not_installed("dplyr", "1.2.1")
     value <- dta_string(c("alpha", "beta"), storage = "str5")
     result <- dplyr::if_else(value == "alpha", "recoded", value)
 

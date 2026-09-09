@@ -6,6 +6,13 @@ and writes standalone Stata 18/19 datasets. Use it instead of
 common arguments and returns compatible values, labels, dates, and tagged
 missing values. Numeric columns also retain their declared Stata storage type.
 
+Dplyr is optional. Reading, writing, recoding, base operations, metadata helpers,
+and explicit mutation work without loading it. Install dplyr 1.2.1 or newer to
+use its verbs with dibbles. The methods register whenever both supported namespaces
+are loaded, in either order. An older loaded dplyr triggers one warning per
+dtatools namespace load and leaves its dplyr methods unregistered; native
+dtatools operations remain available.
+
 ## Functions
 
 | Function | Purpose |
@@ -548,6 +555,34 @@ rather than a reduction in peak memory during construction.
 
 `recode()` changes selected values without losing unmatched system or extended missing codes. It also preserves classes and Stata metadata for numeric, `haven_labelled`, `Date`, and `POSIXct` vectors.
 
+Character and factor recoding uses package-owned kernels. Character output does
+not restore source labels or Stata string-width declarations; character-backed
+Haven vectors now follow that rule without requiring Haven to be loaded or
+recursing through the two recode interfaces. Character factor replacements retain
+factor attributes and level order. Numeric recoding keeps its separate Stata
+missing-value policy. See
+`?recode` for default, missing and metadata-wrapper behavior.
+Selected foreign S3 recode methods retain an optional public dplyr adapter;
+the standard character, factor and numeric paths use the owned kernels.
+
+With dplyr, `rows_patch()` follows the column's missing-value policy. A typed
+Stata numeric destination keeps its system missing value, while an ordinary
+tibble `NA` can be patched:
+
+```r
+if (requireNamespace("dplyr", quietly = TRUE)) {
+    typed <- dibble(id = 1:3, x = c(10, NA, 30))
+    ordinary <- tibble::tibble(id = 1:3, x = c(10, NA, 30))
+    patch <- tibble::tibble(id = 2L, x = 99)
+    as.double(dplyr::rows_patch(typed, patch, by = "id")$x) # 10 NA 30
+    dplyr::rows_patch(ordinary, patch, by = "id")$x         # 10 99 30
+}
+```
+
+Use explicit column names with base `cbind()`, such as `cbind(data, extra = x)`,
+when the output name matters. An unnamed argument following a dibble can retain
+a value-derived name from the existing base-binding adapter.
+
 `tab()` creates one-way and multidimensional frequency tables using Stata value labels. With `missing = TRUE`, it keeps `.`, `.a` through `.z`, and R `NaN` as separate categories when they occur:
 
 ```r
@@ -835,7 +870,8 @@ GPL-3.0. See the repository's [LICENSE](https://github.com/jbearak/dta-parser/bl
 ## Acknowledgements
 
 The direct dibble selectors, grouping metadata and row/reconstruction hooks
-adapt dplyr's selector, grouping and reconstruction rules.
+adapt dplyr's selector, grouping and reconstruction rules. Character/factor
+recoding kernels and their tests also adapt dplyr's legacy replacement rules.
 Its implementation and tests are credited in the [installed source notice](inst/NOTICE),
 which includes the upstream MIT copyright and license. The dtplyr implementation
 and tests were studied for operation planning and copying behavior; no dtplyr
@@ -891,3 +927,9 @@ Direct rows methods and column modification adapt pinned dplyr policies while
 retaining public vector casting, matching and reconstruction extensions.
 Package-specific result caches use actual object keys or prepared result slots;
 atomic nested capture retains metadata-copy and opaque-reference behavior.
+
+Grouped display and replacement fallbacks adapt dplyr 1.2.1 policies. Grouped
+and rowwise vector restoration also adapts the conditional compatibility
+methods in vctrs 0.7.3. These fallbacks support grouped objects when dplyr is
+absent while retaining supplied grouping methods. Source details and both MIT
+notices are preserved in [NOTICE](inst/NOTICE).

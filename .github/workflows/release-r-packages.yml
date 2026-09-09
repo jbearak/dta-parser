@@ -40,11 +40,27 @@ jobs:
           ref: ${{ github.event.release.tag_name || inputs.tag }}
           persist-credentials: false
 
+      - name: Disable unused Chrome apt repository
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Chrome is not used by these R jobs. A stale browser index must not
+          # prevent setup-r from installing R and its system dependencies.
+          for source in /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources; do
+            if [[ -f "$source" ]]; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
+
       - name: Set up R release
         uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
           r-version: release
           use-public-rspm: true
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
 
       - name: Verify R architecture
         shell: bash
@@ -80,14 +96,51 @@ jobs:
             exit 1
           fi
 
-      - name: Install R dependencies
+      - name: Install native Linux build dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libuv1-dev pkg-config
+      - name: Install CRAN macOS gettext build dependencies
+        if: runner.os == 'macOS' && runner.arch == 'ARM64'
+        shell: bash
+        run: |
+          base=https://mac.r-project.org/bin/darwin23/arm64
+          cache="$RUNNER_TEMP/cran-gettext"
+          mkdir -p "$cache"
+          curl --fail --show-error --location --retry 3 "$base/texinfo-7.3-darwin.23-arm64.tar.xz" -o "$cache/texinfo.tar.xz"
+          curl --fail --show-error --location --retry 3 "$base/gettext-0.22.5-darwin.23-arm64.tar.xz" -o "$cache/gettext.tar.xz"
+          printf '%s  %s\n' \
+            '78b7af1aea3fd725a77c6cc7295a717bdc94e1d534c5acb3801646d72c4515dd' "$cache/texinfo.tar.xz" \
+            'bdc3356cfb2c8dd69618fd76975474f4ec793cbe8f4894389d0426da8f4facc3' "$cache/gettext.tar.xz" | shasum -a 256 -c -
+          sudo tar -xf "$cache/texinfo.tar.xz" -C /
+          sudo tar -xf "$cache/gettext.tar.xz" -C /
+          test -s /opt/R/arm64/include/libintl.h
+          test -s /opt/R/arm64/lib/libintl.a
+
+      - name: Install runtime and present test dependencies
         shell: Rscript {0}
         run: |
           install.packages(
-            c("dplyr", "readr", "rlang", "tibble", "tidyselect", "stringi"),
+            c("dplyr", "readr", "rlang", "tibble", "tidyselect", "stringi",
+              "testthat", "callr", "data.table", "httpuv", "arrow", "jsonlite",
+              "purrr", "haven", "labelled"),
             repos = "https://cloud.r-project.org",
             Ncpus = 2L
           )
+
+      - name: Provision physical native release libraries
+        shell: bash
+        run: >-
+          Rscript --vanilla scripts/provision-r-native-libraries.R
+          r-package/dtatools release-native-libraries current release with-arrow
+
+      - name: Build source with isolated native dependencies
+        shell: bash
+        run: >-
+          python scripts/build-r-native.py r-package/dtatools
+          release-native-libraries/evidence/lane-plan.json release release-native-build
 
       - name: Build binary package
         id: package
@@ -104,16 +157,15 @@ jobs:
           library_dir="$workspace/release-build/library"
           mkdir -p "$source_dir" "$binary_dir" "$library_dir"
 
-          (
-            cd "$source_dir"
-            R CMD build "$workspace/r-package/dtatools"
-          )
           source_archive="$source_dir/dtatools_${package_version}.tar.gz"
+          cp "$workspace/release-native-build/payload/dtatools_${package_version}.tar.gz" "$source_archive"
+          python -c 'import pathlib, sys; a, b = map(pathlib.Path, sys.argv[1:]); sys.exit(0 if a.read_bytes() == b.read_bytes() else 1)' \
+            "$workspace/release-native-build/payload/dtatools_${package_version}.tar.gz" "$source_archive"
           "$workspace/scripts/check-r-package-archive.sh" "$source_archive"
 
           (
             cd "$binary_dir"
-            R CMD INSTALL --build --clean --library="$library_dir" "$source_archive"
+            R CMD INSTALL --build --clean --install-tests --library="$library_dir" "$source_archive"
           )
 
           case "$ASSET_PLATFORM" in
@@ -162,6 +214,43 @@ jobs:
             readLines(file.path(unpacked, "dtatools", "NOTICE"), warn = FALSE),
             expected
           ))
+
+      - name: Run complete present suite before release
+        shell: Rscript {0}
+        run: |
+          .libPaths(c(file.path(getwd(), "release-build", "library"), .libPaths()))
+          expected <- normalizePath(file.path("release-build", "library", "dtatools"))
+          actual <- normalizePath(getNamespaceInfo(loadNamespace("dtatools"), "path"))
+          stopifnot(identical(actual, expected))
+          test_root <- system.file("tests", package = "dtatools", mustWork = TRUE)
+          stopifnot(dir.exists(file.path(test_root, "testthat")))
+          setwd(test_root)
+          testthat::test_check("dtatools")
+
+      - name: Qualify source and fresh binary installations without optional packages
+        shell: bash
+        env:
+          BINARY_ASSET: ${{ steps.package.outputs.asset }}
+        run: |
+          version=$(Rscript --vanilla -e 'cat(read.dcf("r-package/dtatools/DESCRIPTION", fields = "Version"))')
+          source_archive="release-build/source/dtatools_${version}.tar.gz"
+          python scripts/check-r-native.py "$source_archive" \
+            release-native-libraries/evidence/lane-plan.json release release-native-source
+          python scripts/check-r-native.py "$source_archive" \
+            release-native-libraries/evidence/lane-plan.json release release-native-binary \
+            --binary-archive "$BINARY_ASSET"
+
+      - name: Retain release native qualification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-release-${{ matrix.platform }}
+          path: |
+            release-native-libraries/evidence
+            release-native-build/evidence
+            release-native-source/evidence
+            release-native-binary/evidence
+          if-no-files-found: warn
 
       - name: Stage binary for release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

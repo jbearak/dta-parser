@@ -2,6 +2,7 @@
 # documented in installed NOTICE. Expected row indices below are independent.
 
 test_that("J11 ordinary reference frames retain their next-method routes", {
+    skip_if_not_installed("dplyr", "1.2.1")
     make_reference <- function() {
         value <- reserve_columns(data.frame(k = 1:2, value = c(10, NA_real_)))
         dtatools:::.mark_reference_data(value,
@@ -39,6 +40,7 @@ test_that("J11 ordinary reference frames retain their next-method routes", {
 })
 
 test_that("J01 direct joins preserve duplicate expansion and unmatched order", {
+    skip_if_not_installed("dplyr", "1.2.1")
     x <- dibble(k = c(2L, 1L, 2L, 3L), xid = 1:4)
     y <- dibble(k = c(2L, 4L, 2L), yid = 1:3)
     indices <- list(
@@ -67,6 +69,7 @@ test_that("J01 direct joins preserve duplicate expansion and unmatched order", {
 })
 
 test_that("J07 join arguments keep public forcing and nesting names", {
+    skip_if_not_installed("dplyr", "1.2.1")
     x <- dibble(k = 1:2, value = c(10, 20))
     right <- dibble(k = 1L, other = 30)
     nested <- dplyr::nest_join(x, right, by = "k")
@@ -97,6 +100,7 @@ test_that("J07 join arguments keep public forcing and nesting names", {
 })
 
 test_that("J08 foreign join conversion runs once and preserves its conditions", {
+    skip_if_not_installed("dplyr", "1.2.1")
     method <- "as_tibble.stage8_installed_join_conversion"
     stopifnot(!exists(method, .GlobalEnv, inherits = FALSE))
     events <- character()
@@ -138,6 +142,7 @@ test_that("J08 foreign join conversion runs once and preserves its conditions", 
 })
 
 test_that("J09 nested join writes preserve sources siblings and scalar constants", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("callr")
     skip_if_not_installed("data.table")
     observed <- callr::r(function(libraries, expected_namespace) {
@@ -174,6 +179,7 @@ test_that("J09 nested join writes preserve sources siblings and scalar constants
 })
 
 test_that("J02 named outer keys coalesce and string padding remains typed", {
+    skip_if_not_installed("dplyr", "1.2.1")
     x <- dibble(left = dta_byte(c(2, 1)), text = dta_string(c("aa", "b"), "str2"))
     y <- dibble(right = dta_long(c(2, 300)), text = dta_string(c("c", "long"), "str4"))
     set_var_label(x, text, "left text")
@@ -195,6 +201,7 @@ test_that("J02 named outer keys coalesce and string padding remains typed", {
 })
 
 test_that("J03 typed join keys distinguish every Stata missing payload", {
+    skip_if_not_installed("dplyr", "1.2.1")
     values <- c(1, NA_real_, vapply(letters, tagged_missing, double(1)))
     encode <- function(x) writeBin(as.double(x), raw(), size = 8L, endian = "little")
     for (type in list(dta_byte, dta_int, dta_long, dta_float, dta_double)) {
@@ -213,6 +220,7 @@ test_that("J03 typed join keys distinguish every Stata missing payload", {
 })
 
 test_that("J04 interval and rolling joins honor pair predicates and filters", {
+    skip_if_not_installed("dplyr", "1.2.1")
     x <- dibble(point = c(2L, 5L, 8L), xid = 1:3)
     y <- dibble(start = c(1L, 3L, 7L), end = c(3L, 6L, 9L), yid = 1:3)
     out <- dplyr::inner_join(x, y, dplyr::join_by(point >= start, point <= end))
@@ -230,6 +238,7 @@ test_that("J04 interval and rolling joins honor pair predicates and filters", {
 })
 
 test_that("J05 default warnings and explicit relationship policies stay distinct", {
+    skip_if_not_installed("dplyr", "1.2.1")
     x <- dibble(k = c(1L, 1L), xid = 1:2)
     y <- dibble(k = c(1L, 1L), yid = 1:2)
     expect_warning(dplyr::left_join(x, y, by = "k"),
@@ -244,6 +253,7 @@ test_that("J05 default warnings and explicit relationship policies stay distinct
 })
 
 test_that("J06 joined flat payload and labels remain isolated after later writes", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("data.table")
     snapshot <- function(column) {
         out <- numeric(length(column))
@@ -290,6 +300,7 @@ test_that("J06 joined flat payload and labels remain isolated after later writes
 # New package-owned regression. Public vctrs methods run in one disposable child;
 # no methods or namespace bindings are installed in the parent test process.
 test_that("J10 custom join keys retain public common-type cast and matching proxy dispatch", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("callr")
     observed <- callr::r(function(libraries, expected_namespace) {
         .libPaths(libraries)

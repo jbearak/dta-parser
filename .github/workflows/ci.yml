@@ -118,6 +118,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Disable unused Chrome apt repository
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Chrome is not used by these R jobs. A stale browser index must not
+          # prevent setup-r from installing R and its system dependencies.
+          for source in /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources; do
+            if [[ -f "$source" ]]; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
       - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
           use-public-rspm: true
@@ -145,7 +156,7 @@ jobs:
           rustup default "$RUSTUP_TOOLCHAIN"
       - name: Install package and declared test dependencies
         shell: Rscript {0}
-        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "dplyr", "callr", "data.table", "httpuv", "arrow", "roxygen2", "stringi"))
+        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "dplyr", "callr", "data.table", "httpuv", "arrow", "roxygen2", "stringi", "jsonlite", "purrr", "haven", "labelled"))
       - name: Check generated documentation is up to date
         if: runner.os == 'Linux'
         shell: bash
@@ -163,7 +174,7 @@ jobs:
         shell: bash
         run: |
           R CMD build r-package/dtatools
-          version=$(sed -n 's/^Version: //p' r-package/dtatools/DESCRIPTION)
+          version=$(Rscript --vanilla -e 'cat(read.dcf("r-package/dtatools/DESCRIPTION", fields = "Version"))')
           tarball="dtatools_${version}.tar.gz"
           scripts/check-r-package-archive.sh "$tarball"
           R CMD check --no-manual --as-cran "$tarball"
@@ -234,25 +245,168 @@ jobs:
           Rscript --vanilla scripts/test-haven-helper-interop.R
 
   r-minimum:
-    name: R package / R 4.6.0
+    name: R present / R ${{ matrix.r }} / dplyr ${{ matrix.dplyr }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - r: "4.6.0"
+            dplyr: current
+          - r: "4.6.0"
+            dplyr: "1.2.1"
+          - r: release
+            dplyr: "1.2.1"
     env:
       RUSTUP_TOOLCHAIN: 1.98.0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Disable unused Chrome apt repository
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Chrome is not used by these R jobs. A stale browser index must not
+          # prevent setup-r from installing R and its system dependencies.
+          for source in /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources; do
+            if [[ -f "$source" ]]; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
       - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
-          r-version: "4.6.0"
+          r-version: ${{ matrix.r }}
           use-public-rspm: true
       - name: Install Rust
         shell: bash
         run: |
           rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
           rustup default "$RUSTUP_TOOLCHAIN"
-      - name: Install runtime dependencies
+      - name: Install runtime and present test dependencies
         shell: Rscript {0}
-        run: install.packages(c("dplyr", "readr", "rlang", "tibble", "tidyselect", "vctrs"))
-      - name: Install on the declared minimum R version
-        run: R CMD INSTALL r-package/dtatools
+        run: install.packages(c("dplyr", "readr", "rlang", "tibble", "tidyselect", "vctrs", "testthat", "callr", "data.table", "httpuv", "arrow", "stringi", "jsonlite", "purrr", "haven", "labelled"))
+      - name: Install supported minimum dplyr
+        if: matrix.dplyr == '1.2.1'
+        shell: Rscript {0}
+        run: |
+          install.packages("remotes")
+          remotes::install_version("dplyr", "1.2.1", upgrade = "never")
+          stopifnot(as.character(packageVersion("dplyr")) == "1.2.1")
+      - name: Install complete present tests
+        run: R CMD INSTALL --install-tests r-package/dtatools
+      - name: Run complete present suite
+        shell: Rscript {0}
+        run: |
+          test_root <- system.file("tests", package = "dtatools", mustWork = TRUE)
+          stopifnot(dir.exists(file.path(test_root, "testthat")))
+          setwd(test_root)
+          testthat::test_check("dtatools")
+
+  r-native:
+    name: R native / ${{ matrix.os }} / R ${{ matrix.r }} / ${{ matrix.dependencies }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            r: release
+            dependencies: current
+            rust_toolchain: 1.98.0
+          - os: macos-latest
+            r: release
+            dependencies: current
+            rust_toolchain: 1.98.0
+          - os: windows-latest
+            r: release
+            dependencies: current
+            rust_toolchain: 1.98.0-x86_64-pc-windows-gnu
+          - os: ubuntu-latest
+            r: "4.6.0"
+            dependencies: current
+            rust_toolchain: 1.98.0
+          - os: ubuntu-latest
+            r: release
+            dependencies: floors
+            rust_toolchain: 1.98.0
+          - os: ubuntu-latest
+            r: "4.6.0"
+            dependencies: floors
+            rust_toolchain: 1.98.0
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
+      NOT_CRAN: "true"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+      - name: Disable unused Chrome apt repository
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Chrome is not used by these R jobs. A stale browser index must not
+          # prevent setup-r from installing R and its system dependencies.
+          for source in /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources; do
+            if [[ -f "$source" ]]; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
+      - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          r-version: ${{ matrix.r }}
+          use-public-rspm: true
+      - name: Install selected Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup default "$RUSTUP_TOOLCHAIN"
+      - name: Install native Linux build dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libuv1-dev pkg-config
+      - name: Install CRAN macOS gettext build dependencies
+        if: runner.os == 'macOS' && runner.arch == 'ARM64'
+        shell: bash
+        run: |
+          base=https://mac.r-project.org/bin/darwin23/arm64
+          cache="$RUNNER_TEMP/cran-gettext"
+          mkdir -p "$cache"
+          curl --fail --show-error --location --retry 3 "$base/texinfo-7.3-darwin.23-arm64.tar.xz" -o "$cache/texinfo.tar.xz"
+          curl --fail --show-error --location --retry 3 "$base/gettext-0.22.5-darwin.23-arm64.tar.xz" -o "$cache/gettext.tar.xz"
+          printf '%s  %s\n' \
+            '78b7af1aea3fd725a77c6cc7295a717bdc94e1d534c5acb3801646d72c4515dd' "$cache/texinfo.tar.xz" \
+            'bdc3356cfb2c8dd69618fd76975474f4ec793cbe8f4894389d0426da8f4facc3' "$cache/gettext.tar.xz" | shasum -a 256 -c -
+          sudo tar -xf "$cache/texinfo.tar.xz" -C /
+          sudo tar -xf "$cache/gettext.tar.xz" -C /
+          test -s /opt/R/arm64/include/libintl.h
+          test -s /opt/R/arm64/lib/libintl.a
+
+      - name: Provision physical native dependency libraries
+        shell: bash
+        run: >-
+          Rscript --vanilla scripts/provision-r-native-libraries.R
+          r-package/dtatools native-libraries ${{ matrix.dependencies }} native with-arrow
+      - name: Build and qualify source with isolated native dependencies
+        shell: bash
+        run: |
+          python scripts/build-r-native.py r-package/dtatools \
+            native-libraries/evidence/lane-plan.json native native-build
+          version=$(Rscript --vanilla -e 'cat(read.dcf("r-package/dtatools/DESCRIPTION", fields = "Version"))')
+          python scripts/check-r-native.py "native-build/payload/dtatools_${version}.tar.gz" \
+            native-libraries/evidence/lane-plan.json native native-check
+      - name: Retain native qualification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-${{ matrix.os }}-${{ matrix.r }}-${{ matrix.dependencies }}
+          path: |
+            native-libraries/evidence
+            native-build/evidence
+            native-check/evidence
+          if-no-files-found: warn

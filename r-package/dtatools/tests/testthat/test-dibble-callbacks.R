@@ -1,6 +1,7 @@
 # Summary/callback policies adapted from pinned dplyr tests; see inst/NOTICE.
 # The original fifteen-block draft was qualified on the Stage6 predecessor.
 test_that("S7-C01 grouped callbacks receive ordered keys and .keep uses TRUE only", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (keep in list(FALSE, TRUE, 1L)) {
         seen <- list()
         data <- dplyr::group_by(dibble(g = c("b", "a", "b"), x = 1:3), g)
@@ -24,6 +25,7 @@ test_that("S7-C01 grouped callbacks receive ordered keys and .keep uses TRUE onl
 })
 
 test_that("S7-C02 plain and rowwise group_modify invoke one whole-table callback", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (rowwise in c(FALSE, TRUE)) {
         data <- dibble(id = 1:3, x = 4:6)
         if (rowwise) data <- dplyr::rowwise(data, id)
@@ -41,6 +43,7 @@ test_that("S7-C02 plain and rowwise group_modify invoke one whole-table callback
 })
 
 test_that("S7-C03 zero groups still invoke the callback once on prototypes", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(g = character(), x = integer()), g)
     calls <- 0L; seen <- NULL
     result <- dplyr::group_modify(data, function(.x, .y) {
@@ -56,6 +59,7 @@ test_that("S7-C03 zero groups still invoke the callback once on prototypes", {
 })
 
 test_that("S7-C04 nesting distinguishes no dots whole input from grouped list-of chunks", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (rows in c(0L, 3L)) {
         data <- dibble(id = seq_len(rows), x = seq_len(rows))
         result <- dplyr::group_nest(data)
@@ -79,6 +83,7 @@ test_that("S7-C04 nesting distinguishes no dots whole input from grouped list-of
 })
 
 test_that("S7-C05 computed nesting keys use sequential Stata typing", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(id = 1:2)
     for (verb in list(dplyr::group_nest, dplyr::nest_by)) {
         result <- verb(data, g = c(NA_character_, ""), observed = g == "")
@@ -90,6 +95,7 @@ test_that("S7-C05 computed nesting keys use sequential Stata typing", {
 })
 
 test_that("S7-C06 nested foreign writes cannot reach scalar constants or either source", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("callr")
     skip_if_not_installed("data.table")
     # Keep the historical singleton corruption inside disposable R children.
@@ -138,6 +144,7 @@ test_that("S7-C06 nested foreign writes cannot reach scalar constants or either 
 })
 
 test_that("S7-C07 nested frame capture retains containers, prototypes and reference objects", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("data.table")
     foreign <- data.table::data.table(x = c(TRUE, FALSE))
     attr(foreign$x, "label") <- "logical label"
@@ -166,6 +173,7 @@ test_that("S7-C07 nested frame capture retains containers, prototypes and refere
 })
 
 test_that("S7-C08 callback return capture happens before later callbacks mutate the same table", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("data.table")
     shared <- data.table::data.table(value = 0L)
     source <- dplyr::group_by(dibble(g = c("a", "b"), x = 1:2), g)
@@ -179,6 +187,7 @@ test_that("S7-C08 callback return capture happens before later callbacks mutate 
 })
 
 test_that("S7-C09 callback data and fun arguments are forwarded without helper collisions", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (grouped in c(FALSE, TRUE)) {
         source <- dibble(g = c("a", "b"), x = 1:2)
         if (grouped) source <- dplyr::group_by(source, g)
@@ -190,6 +199,7 @@ test_that("S7-C09 callback data and fun arguments are forwarded without helper c
 })
 
 test_that("S7-C10 nested publication validates dibbles, reuses siblings and rejects cycles", {
+    skip_if_not_installed("dplyr", "1.2.1")
     stale <- dibble(x = c("a", "b"))
     .Call(dtatools:::C_dtatools_set_data_column, stale, 1L,
         structure(c(NA_character_, "widened"), class = "dta_string", stata.string.storage = "str1"))
@@ -198,11 +208,6 @@ test_that("S7-C10 nested publication validates dibbles, reuses siblings and reje
     expect_identical(attr(result$nested[[1L]]$x, "stata.string.storage"), "str7")
     expect_true(dtatools:::.reference_state_valid(result$nested[[1L]]))
     expect_true(can_add_columns(result$nested[[1L]]))
-    shared <- list(value = 1L)
-    captured <- dtatools:::.capture_dibble_nested(list(list(shared), list(shared)))
-    expect_identical(rlang::obj_address(captured[[1L]][[1L]]),
-        rlang::obj_address(captured[[2L]][[1L]]))
-    expect_false(identical(rlang::obj_address(captured[[1L]][[1L]]), rlang::obj_address(shared)))
     skip_if_not_installed("callr")
     # The unguarded candidate and plain upstream summary overflowed the C stack.
     # Keep this boundary isolated so a regression cannot end the entire suite.
@@ -223,7 +228,16 @@ test_that("S7-C10 nested publication validates dibbles, reuses siblings and reje
     expect_identical(observed$constants, c(1L, 0L))
 })
 
+test_that("S7-C20 native nested capture reuses siblings", {
+    shared <- list(value = 1L)
+    captured <- dtatools:::.capture_dibble_nested(list(list(shared), list(shared)))
+    expect_identical(rlang::obj_address(captured[[1L]][[1L]]),
+        rlang::obj_address(captured[[2L]][[1L]]))
+    expect_false(identical(rlang::obj_address(captured[[1L]][[1L]]), rlang::obj_address(shared)))
+})
+
 test_that("S7-C11 callbacks observe a fixed source generation across groups", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("data.table")
     source <- dplyr::group_by(dibble(g = c("a", "b"), x = 1:2), g)
     attr(source$x, "label") <- "original"
@@ -243,6 +257,7 @@ test_that("S7-C11 callbacks observe a fixed source generation across groups", {
 })
 
 test_that("S7-C12 a zero-group prototype callback can produce padded key rows", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (size in 0:2) {
         source <- dplyr::group_by(dibble(g = character(), x = integer()), g)
         result <- dplyr::group_modify(source, function(.x, .y)
@@ -254,6 +269,7 @@ test_that("S7-C12 a zero-group prototype callback can produce padded key rows", 
 })
 
 test_that("S7-C13 opaque pairlists and classed list slots retain representation", {
+    skip_if_not_installed("dplyr", "1.2.1")
     pair <- pairlist(a = 1L, b = quote(x))
     classed <- structure(list(1L, 2L), class = "stage7_opaque_list", names = c("a", "b"))
     rlang::local_bindings(as.list.stage7_opaque_list = function(...) stop("must not dispatch"),
@@ -266,6 +282,7 @@ test_that("S7-C13 opaque pairlists and classed list slots retain representation"
 })
 
 test_that("S7-C14 grouped chunks drop table metadata while whole-input nesting retains it", {
+    skip_if_not_installed("dplyr", "1.2.1")
     source <- dibble(g = c("a", "b"), x = 1:2)
     attr(source, "label") <- "dataset"
     attr(source$x, "label") <- "variable"
@@ -287,6 +304,7 @@ test_that("S7-C14 grouped chunks drop table metadata while whole-input nesting r
 })
 
 test_that("S7-C15 plain and rowwise callback return policies preserve reference identity", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (rowwise in c(FALSE, TRUE)) for (form in c("null", "scalar", "list", "environment")) {
         data <- dibble(id = 1:2, x = 3:4)
         if (rowwise) data <- dplyr::rowwise(data, id)
@@ -307,6 +325,7 @@ test_that("S7-C15 plain and rowwise callback return policies preserve reference 
 })
 
 test_that("S7-C16 nesting preserves key policy, empty prototypes and unforced grouped dots", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(g = c("b", "a"), x = 1:2), g)
     for (verb in list(dplyr::group_nest, dplyr::nest_by)) {
         collision <- verb(data, .key = "g")
@@ -338,6 +357,7 @@ test_that("S7-C16 nesting preserves key policy, empty prototypes and unforced gr
 })
 
 test_that('S7-C17 repeated nesting does not retain per-call address history', {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed('callr')
     observed <- callr::r(function(libraries) {
         .libPaths(libraries)
@@ -370,6 +390,7 @@ test_that('S7-C17 repeated nesting does not retain per-call address history', {
 
 
 test_that("S7-C18 nesting allocation scales with the number of groups", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not(capabilities("profmem"))
     output <- tempfile("nesting-scaling-")
     dir.create(output)

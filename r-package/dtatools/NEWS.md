@@ -1,3 +1,16 @@
+# dtatools 0.8.0
+
+* Dplyr is optional. Package-native operations and recoding work independently;
+  installing dplyr retains its generic integration and supported foreign recode
+  methods. Optional methods register across either package load order and
+  unload/reload.
+* Grouped and rowwise dibbles retain their restoration, replacement and display
+  behavior without dplyr. Existing custom grouping methods remain in control.
+* Direct dependency minimums are rlang 1.2.0, vctrs 0.7.3, tibble 3.3.1,
+  pillar 1.9.0 and tidyselect 1.2.0. R 4.6.0 remains the supported minimum.
+* CI and release checks add isolated native installations with recorded
+  dependency libraries, explicit optional-test policies and subprocess checks.
+
 # dtatools 0.7.1.9000
 
 * Dibble filter, filter_out, arrange, distinct and slice helpers now plan rows

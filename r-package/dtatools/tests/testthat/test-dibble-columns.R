@@ -24,6 +24,7 @@ expect_column_result <- function(actual, expected) {
 }
 
 test_that("direct column selectors match typed tibble selections", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(a = dta_int(1:3), b = dta_string(c("a", "", "bb"), "str12"),
                    c = c(TRUE, FALSE, NA), `other name` = factor(c("a", "b", "a")))
     set_var_label(data, a, "identifier")
@@ -61,6 +62,7 @@ test_that("direct column selectors match typed tibble selections", {
 })
 
 test_that("selectors preserve dataset metadata", {
+    skip_if_not_installed("dplyr", "1.2.1")
     plain <- dibble(a = 1:3, b = c("a", "b", "c"), flag = TRUE)
     containers <- list(plain, dplyr::group_by(plain, a), dplyr::rowwise(plain, a))
     operations <- list(
@@ -96,6 +98,7 @@ test_that("selectors preserve dataset metadata", {
 })
 
 test_that("selectors retain established tibble row-name policies", {
+    skip_if_not_installed("dplyr", "1.2.1")
     plain <- dibble(a = 1:3, b = c("a", "b", "c"))
     containers <- list(plain, dplyr::group_by(plain, a), dplyr::rowwise(plain, a))
     for (structural in c(FALSE, TRUE)) {
@@ -138,6 +141,7 @@ test_that("selectors retain established tibble row-name policies", {
 })
 
 test_that("direct selectors retain grouped and rowwise policies", {
+    skip_if_not_installed("dplyr", "1.2.1")
     plain <- dibble(g = factor(c("a", "a", "b"), levels = c("a", "b", "c")),
                     h = dta_int(c(1, 2, 2)), x = 4:6)
     containers <- list(dplyr::group_by(plain, g, h, .drop = FALSE),
@@ -165,6 +169,7 @@ test_that("direct selectors retain grouped and rowwise policies", {
 })
 
 test_that("shadowing every omitted grouping key clears the grouping attribute", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dplyr::group_by(dibble(g = c(1, 2), x = c(3, 4)), g)
     out <- dplyr::select(data, g = x)
     expected <- dplyr::select(dtatools:::.reference_snapshot(data), g = x)
@@ -175,6 +180,7 @@ test_that("shadowing every omitted grouping key clears the grouping attribute", 
 })
 
 test_that("selector expressions run once in their captured environment", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(a = 1, b = 2, c = 3)
     calls <- 0L
     choose <- function() { calls <<- calls + 1L; "b" }
@@ -190,6 +196,7 @@ test_that("selector expressions run once in their captured environment", {
 })
 
 test_that("column results isolate later writes in both directions and duplicated slots", {
+    skip_if_not_installed("dplyr", "1.2.1")
     operations <- list(
         function(x) dplyr::select(x, x = x, again = x, s, flag),
         function(x) dplyr::rename(x, renamed = x),
@@ -230,6 +237,7 @@ test_that("column results isolate later writes in both directions and duplicated
 })
 
 test_that("borrowed and stale strings are checked on every column result", {
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("data.table", "1.18.2.1")
     foreign <- data.table::data.table(s = structure(c("a", "b"),
         stata.string.storage = "str1"))
@@ -283,6 +291,7 @@ test_that("string validation counts current UTF-8 bytes", {
 })
 
 test_that("isolated string results preserve encodings and complete metadata", {
+    skip_if_not_installed("dplyr", "1.2.1")
     latin <- iconv("\u00e9", from = "UTF-8", to = "latin1")
     Encoding(latin) <- "latin1"
     bytes <- rawToChar(as.raw(255L))
@@ -323,6 +332,7 @@ test_that("isolated string results preserve encodings and complete metadata", {
 })
 
 test_that("column results preserve metadata, compact columns and legacy recognition", {
+    skip_if_not_installed("dplyr", "1.2.1")
     data <- read_dta(fixture("auto_v118.dta"))
     set_dta_metadata(data, notes = "dataset note", stata.note.numbers = 2L)
     set_dta_metadata(data, variable = "price", notes = "variable note",
@@ -347,6 +357,7 @@ test_that("column results preserve metadata, compact columns and legacy recognit
 })
 
 test_that("selectors retain automatic row-name bookkeeping and rename policy", {
+    skip_if_not_installed("dplyr", "1.2.1")
     for (row_names in list(NULL, 1:3, c("a", "b", "c"))) {
         data <- dibble(x = 1:3, y = 4:6)
         if (!is.null(row_names)) attr(data, "row.names") <- row_names

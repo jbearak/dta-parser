@@ -225,12 +225,10 @@ test_that("base R recoding preserves tags with complete predicates", {
     }
 })
 
-test_that("both recode interfaces preserve every Stata missing code", {
+.check_optional_split_read_dta_228 <- function(include_dplyr) {
     expected_tags <- c(NA_character_, letters)
-    interfaces <- list(
-        dtatools = dtatools::recode,
-        dplyr = dplyr::recode
-    )
+    interfaces <- list(dtatools = dtatools::recode)
+    if (include_dplyr) interfaces$dplyr <- dplyr::recode
 
     paths <- character()
     on.exit(unlink(paths), add = TRUE)
@@ -328,44 +326,55 @@ test_that("both recode interfaces preserve every Stata missing code", {
                 }
             }
 
-            mutated <- dplyr::mutate(
-                actual,
-                dplyr::across(
-                    dplyr::everything(),
-                    function(values) {
-                        dynamic_replacement <- stats::setNames(
-                            list(-1), as.character(values[[28L]])
-                        )
-                        do.call(
-                            dplyr::recode,
-                            c(list(values), dynamic_replacement)
-                        )
-                    }
+            if (include_dplyr) {
+                mutated <- dplyr::mutate(
+                    actual,
+                    dplyr::across(
+                        dplyr::everything(),
+                        function(values) {
+                            dynamic_replacement <- stats::setNames(
+                                list(-1), as.character(values[[28L]])
+                            )
+                            do.call(
+                                dplyr::recode,
+                                c(list(values), dynamic_replacement)
+                            )
+                        }
+                    )
                 )
-            )
-            for (index in seq_along(mutated)) {
-                info <- paste(name, storage[[index]], mode, "mutate")
-                expect_identical(
-                    missing_tag(mutated[[index]][seq_len(27L)]),
-                    expected_tags,
-                    info = paste(info, "tags")
-                )
-                expect_identical(
-                    attributes(mutated[[index]]),
-                    attributes(actual[[index]]),
-                    info = paste(info, "attributes")
-                )
-                expect_identical(
-                    unname(as.double(mutated[[index]][[28L]])),
-                    -1,
-                    info = paste(info, "observed replacement")
-                )
+                for (index in seq_along(mutated)) {
+                    info <- paste(name, storage[[index]], mode, "mutate")
+                    expect_identical(
+                        missing_tag(mutated[[index]][seq_len(27L)]),
+                        expected_tags,
+                        info = paste(info, "tags")
+                    )
+                    expect_identical(
+                        attributes(mutated[[index]]),
+                        attributes(actual[[index]]),
+                        info = paste(info, "attributes")
+                    )
+                    expect_identical(
+                        unname(as.double(mutated[[index]][[28L]])),
+                        -1,
+                        info = paste(info, "observed replacement")
+                    )
+                }
             }
         }
     }
+}
+
+test_that("both recode interfaces preserve every Stata missing code", {
+    .check_optional_split_read_dta_228(FALSE)
 })
 
+test_that("Stata missing code recode interfaces through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_read_dta_228(TRUE)
+})
 test_that("dplyr recode keeps its ordinary numeric behavior", {
+    skip_if_not_installed("dplyr", "1.2.1")
     cases <- list(
         list(
             source = c(1, 2, 3), replacements = list(10, 20),
@@ -452,7 +461,7 @@ test_that("dplyr recode keeps its ordinary numeric behavior", {
     }
 })
 
-test_that("tag detection distinguishes R missing payloads", {
+.check_optional_split_read_dta_455 <- function(include_dplyr) {
     untagged <- c(
         1, NA_real_, NA_real_ + 0, -NA_real_, -(NA_real_ + 0), NaN, -NaN
     )
@@ -479,22 +488,43 @@ test_that("tag detection distinguishes R missing payloads", {
             dtatools:::.has_tagged_na(values),
             info = paste(name, "detected by dtatools")
         )
-        recoded <- dplyr::recode(c(values, 1), `1` = 10)
+        recoded <- dtatools::recode(c(values, 1), `1` = 10)
         expect_identical(
             missing_tag(recoded[seq_along(values)]), expected_tags,
-            info = paste(name, "preserved by dplyr recode")
+            info = paste(name, "preserved by native recode")
         )
+        if (include_dplyr) {
+            recoded <- dplyr::recode(c(values, 1), `1` = 10)
+            expect_identical(
+                missing_tag(recoded[seq_along(values)]), expected_tags,
+                info = paste(name, "preserved by dplyr recode")
+            )
+        }
     }
 
     created <- 1:3
     created[[2L]] <- tagged_missing("f")
     expect_type(created, "double")
     expect_identical(
-        missing_tag(dplyr::recode(created, `1` = 10)),
+        missing_tag(dtatools::recode(created, `1` = 10)),
         c(NA_character_, "f", NA_character_)
     )
+    if (include_dplyr) {
+        expect_identical(
+            missing_tag(dplyr::recode(created, `1` = 10)),
+            c(NA_character_, "f", NA_character_)
+        )
+    }
+}
+
+test_that("tag detection distinguishes R missing payloads", {
+    .check_optional_split_read_dta_455(FALSE)
 })
 
+test_that("all tagged missing payloads through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_read_dta_455(TRUE)
+})
 test_that("dtatools recode retains the familiar vector interface", {
     expect_true("recode" %in% getNamespaceExports("dtatools"))
     expect_identical(

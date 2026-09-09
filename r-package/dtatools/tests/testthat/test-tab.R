@@ -32,7 +32,7 @@ test_that("tab is exported and returns ordinary table objects", {
     )
 })
 
-test_that("tab supports data frames and pipes", {
+.check_optional_split_tab_35 <- function(include_dplyr) {
     data <- data.frame(
         status = c(1, 1, 2, 2),
         region = c("north", "south", "north", "south")
@@ -43,14 +43,17 @@ test_that("tab supports data frames and pipes", {
     expect_identical(tab(data = data), expected)
     expect_identical(tab(status, region, data = data), expected)
     expect_identical(data |> tab(status, region), expected)
-    expect_identical(
-        data |> dplyr::select(status, region) |> tab(),
-        expected
-    )
-    expect_identical(
-        dplyr::`%>%`(data, tab(status, region)),
-        expected
-    )
+    if (include_dplyr) {
+        expect_identical(
+            data |> dplyr::select(status, region) |> tab(),
+            expected
+        )
+        expect_identical(
+            dplyr::`%>%`(data, tab(status, region)),
+            expected
+        )
+
+    }
     expect_identical(tab(first = data$status), table(first = data$status))
     expect_identical(data$status |> tab(), table(data$status))
 
@@ -63,8 +66,16 @@ test_that("tab supports data frames and pipes", {
         tab(status, data = duplicated),
         "ambiguous because its name is duplicated"
     )
+}
+
+test_that("tab supports data frames and pipes", {
+    .check_optional_split_tab_35(FALSE)
 })
 
+test_that("tabulation pipes through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_tab_35(TRUE)
+})
 test_that("labelled temporal vectors match Stata codes and format fallbacks", {
     dates <- as.Date(c("1960-01-01", "1960-01-02"))
     attr(dates, "format.stata") <- "%td"
@@ -176,7 +187,7 @@ test_that("tab preserves source values and metadata", {
     expect_identical(x, before)
 })
 
-test_that("tab handles imported labelled ALTREP columns", {
+.check_optional_split_tab_179 <- function(include_dplyr) {
     input <- fixture("auto_v118.dta")
     data <- read_dta(input)
     before <- data$foreign
@@ -193,15 +204,26 @@ test_that("tab handles imported labelled ALTREP columns", {
     subset <- data$foreign[c(1L, 2L, 1L)]
     expect_identical(sum(tab(subset)), length(subset))
 
-    filtered <- dplyr::filter(data, mpg > stats::median(mpg))
-    filtered_result <- filtered |> tab(foreign)
-    expect_identical(
-        dimnames(filtered_result)[[1L]],
-        c("Domestic", "Foreign")
-    )
-    expect_identical(sum(filtered_result), nrow(filtered))
+    if (include_dplyr) {
+        filtered <- dplyr::filter(data, mpg > stats::median(mpg))
+        filtered_result <- filtered |> tab(foreign)
+        expect_identical(
+            dimnames(filtered_result)[[1L]],
+            c("Domestic", "Foreign")
+        )
+        expect_identical(sum(filtered_result), nrow(filtered))
+
+    }
+}
+
+test_that("tab handles imported labelled ALTREP columns", {
+    .check_optional_split_tab_179(FALSE)
 })
 
+test_that("imported labelled tabulation through dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .check_optional_split_tab_179(TRUE)
+})
 test_that("tab distinguishes all missing codes read by dtatools", {
     path <- fixture_with_all_numeric_missing_codes(
         "missing_values_v118.dta"
