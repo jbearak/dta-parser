@@ -332,12 +332,13 @@ jobs:
         run: >-
           Rscript --vanilla scripts/provision-r-native-libraries.R
           r-package/dtatools native-libraries ${{ matrix.dependencies }} native with-arrow
-      - name: Build source archive and qualify an isolated native installation
+      - name: Build and qualify source with isolated native dependencies
         shell: bash
         run: |
-          R CMD build r-package/dtatools
+          python scripts/build-r-native.py r-package/dtatools \
+            native-libraries/evidence/lane-plan.json native native-build
           version=$(sed -n 's/^Version: //p' r-package/dtatools/DESCRIPTION)
-          python scripts/check-r-native.py "dtatools_${version}.tar.gz" \
+          python scripts/check-r-native.py "native-build/payload/dtatools_${version}.tar.gz" \
             native-libraries/evidence/lane-plan.json native native-check
       - name: Retain native qualification evidence
         if: always()
@@ -346,5 +347,6 @@ jobs:
           name: native-${{ matrix.os }}-${{ matrix.r }}-${{ matrix.dependencies }}
           path: |
             native-libraries/evidence
+            native-build/evidence
             native-check/evidence
           if-no-files-found: warn

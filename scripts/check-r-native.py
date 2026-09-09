@@ -147,7 +147,7 @@ output <- args[[2L]]
 check <- function(ok, text) if (!isTRUE(ok)) stop(text, call. = FALSE)
 path <- function(x) unname(normalizePath(x, winslash = "/", mustWork = TRUE))
 chr <- function(x) unname(as.character(unlist(x, use.names = FALSE)))
-libraries <- c(chr(cfg$libraries), path(.Library))
+libraries <- c(path(chr(cfg$libraries)), path(.Library))
 observe <- function() {
     actual <- path(.libPaths())
     check(identical(actual, libraries), "Probe startup/terminal libraries differ")
@@ -434,7 +434,8 @@ def main():
         after_probe = probe("installed-probe", installed, before_probe["source_version"])
         require(after_probe["capabilities"] == before_probe["capabilities"] and after_probe["runtime"] == before_probe["runtime"], "Runtime/capabilities changed before tests")
         package = after_probe["package"]
-        require(package["dll_path"] in {row["resolved"] for row in installed_files}, "Loaded DLL is not an inventoried installed member")
+        require(Path(package["dll_path"]).resolve(strict=True) in
+                {Path(row["resolved"]) for row in installed_files}, "Loaded DLL is not an inventoried installed member")
         package["files"] = installed_files
         effective, applied = effective_manifest(source_manifest, before_probe["capabilities"])
         effective_path = evidence / "effective-manifest.json"

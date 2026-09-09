@@ -232,7 +232,8 @@ test_that("bracket replacement retains a caller-local grouping method", {
         class(x) <- classes
         x
     }
-    result <- eval(quote({ changed <- source; changed[, "x"] <- 4:6; changed }), caller)
+    # Keep this witness on caller dispatch; later promotion has its own regrouping policy.
+    result <- eval(quote({ changed <- source; changed[, "x"] <- dta_long(4:6); changed }), caller)
     expect_true(attr(result, "caller_group_method", exact = TRUE))
     expect_identical(as.integer(result$x), 4:6)
     expect_identical(as.double(attr(result, "groups")$g), c(2, 1))

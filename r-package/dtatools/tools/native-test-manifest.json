@@ -123,7 +123,7 @@
     },
     {
       "path": "tests/testthat/helper-native-children.R",
-      "sha256": "17cda8d2ddca91e6eae72e79b21160c8a1f4de838a75ffdf61ca409bf3adfe77"
+      "sha256": "4b39f9b96e9d6ea0bda9f3d2492e16aceb097aaaac570064f085b062710d9125"
     },
     {
       "path": "tests/testthat/helper-stage6-row.R",
@@ -5896,7 +5896,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
-          "sha256": "754e82d9ac75b67f648110b24c336af4cd786719883df5e4bc2fbeb018ab0784"
+          "sha256": "8338a43a21176eced9a5fd2dcc9b5536d51613480aa1d8041f9afad17040b00f"
         },
         {
           "path": "tests/testthat/test-dibble-print.R",

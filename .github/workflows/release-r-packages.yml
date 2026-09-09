@@ -95,6 +95,18 @@ jobs:
             Ncpus = 2L
           )
 
+      - name: Provision physical native release libraries
+        shell: bash
+        run: >-
+          Rscript --vanilla scripts/provision-r-native-libraries.R
+          r-package/dtatools release-native-libraries current release with-arrow
+
+      - name: Build source with isolated native dependencies
+        shell: bash
+        run: >-
+          python scripts/build-r-native.py r-package/dtatools
+          release-native-libraries/evidence/lane-plan.json release release-native-build
+
       - name: Build binary package
         id: package
         shell: bash
@@ -110,11 +122,10 @@ jobs:
           library_dir="$workspace/release-build/library"
           mkdir -p "$source_dir" "$binary_dir" "$library_dir"
 
-          (
-            cd "$source_dir"
-            R CMD build "$workspace/r-package/dtatools"
-          )
           source_archive="$source_dir/dtatools_${package_version}.tar.gz"
+          cp "$workspace/release-native-build/payload/dtatools_${package_version}.tar.gz" "$source_archive"
+          python -c 'import pathlib, sys; a, b = map(pathlib.Path, sys.argv[1:]); sys.exit(0 if a.read_bytes() == b.read_bytes() else 1)' \
+            "$workspace/release-native-build/payload/dtatools_${package_version}.tar.gz" "$source_archive"
           "$workspace/scripts/check-r-package-archive.sh" "$source_archive"
 
           (
@@ -178,12 +189,6 @@ jobs:
           stopifnot(identical(actual, expected))
           testthat::test_check("dtatools")
 
-      - name: Provision physical native release libraries
-        shell: bash
-        run: >-
-          Rscript --vanilla scripts/provision-r-native-libraries.R
-          r-package/dtatools release-native-libraries current release with-arrow
-
       - name: Qualify source and fresh binary installations without optional packages
         shell: bash
         env:
@@ -204,6 +209,7 @@ jobs:
           name: native-release-${{ matrix.platform }}
           path: |
             release-native-libraries/evidence
+            release-native-build/evidence
             release-native-source/evidence
             release-native-binary/evidence
           if-no-files-found: warn

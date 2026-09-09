@@ -4,7 +4,7 @@
     context <- getOption("dtatools.native.context")
     if (is.null(context)) return(FALSE)
     stopifnot(identical(unname(normalizePath(libpath, winslash = "/", mustWork = TRUE)),
-        .native_chr(context$cfg$libraries)))
+        .native_path(.native_chr(context$cfg$libraries))))
     TRUE
 }
 .dtatools_child_r <- function(id, func, args = list(), libpath = .libPaths(), timeout = 120) {
