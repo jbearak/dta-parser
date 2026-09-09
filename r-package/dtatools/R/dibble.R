@@ -299,16 +299,35 @@ is_dibble <- function(x) {
 #' `.n` and `.N` are the same in every assignment of one call. `by` or
 #' `bysort` without a `:=` in `j` is an error.
 #'
-#' Without `:=` the brackets are ordinary tibble subsetting of the current
-#' contents: `data[1, ]`, `data[, "x"]`, `data["x"]`, and `data[i, cols]`
-#' return a new dibble holding the selection, following copy-on-modify.
+#' Without `:=`, brackets return a new dibble holding the selection. Later
+#' writes to the source or result leave the other dataset unchanged.
+#' In two-dimensional reads, compound row expressions such as `data[x == y, ]`
+#' resolve columns first, then caller objects. Use `.env$x` to request a caller
+#' object when a column is also named `x`. Expressions run once over the whole
+#' table, including grouped and rowwise dibbles. A lone symbol remains a
+#' programmatic index: `data[rows, ]` reads `rows` from the caller. Parentheses
+#' make `(rows)` a compound expression, so a column named `rows` wins there;
+#' `.env$rows` always requests the caller index. The resulting value follows
+#' tibble's index rules; returned language is not evaluated again.
+#' Missing `i` selects all rows, explicit `NULL` selects none, and logical `NA`
+#' produces a padded missing row. Typed strings in padded rows are empty.
+#'
+#' `data[, .(x, y)]` selects columns in the stated order, and combines with row
+#' expressions as `data[x == y, .(x, y)]`. Read `.()` accepts unnamed bare column
+#' names or literal strings only. It does not compute or rename columns, and
+#' `.()` selects zero columns. For dynamic names, use `data[, cols]` with a
+#' character or numeric index. Ordinary indexing such as `data[1, ]`,
+#' `data[, "x"]`, and one-dimensional `data["x"]` remains available. These read
+#' forms need neither dplyr nor data.table. Assignment retains its separate
+#' lookup rules and the dynamic target spelling `.(name) := value`.
 #'
 #' @param x A dibble.
 #' @param i Row selection, as `where` in \code{\link[=replace_values]{replace_values()}}: missing or
 #'   `NULL` for every row, a logical expression, or row positions.
-#'   Without `:=` in `j`, ordinary tibble row indexing.
+#'   Without `:=` in `j`, a whole-table column expression or a caller-supplied
+#'   index, following tibble's row rules; explicit `NULL` selects no rows.
 #' @param j One or more `:=` assignments, or, without `:=`, ordinary
-#'   tibble column indexing.
+#'   tibble column indexing or `.()` with unnamed column names or strings.
 #' @param ... Passed to tibble's `[` when `j` is not an assignment.
 #'   Not allowed otherwise.
 #' @param by,bysort Assignment groups, as in \code{\link[=replace_values]{replace_values()}}. Only
@@ -326,6 +345,11 @@ is_dibble <- function(x) {
 #' name <- "flag"
 #' survey[id > 2, .(name) := TRUE]
 #' survey[1, ]
+#' survey[income > 20, .(id, income)]
+#' cutoff <- 20
+#' survey[income > .env$cutoff, .("income", id)]
+#' cols <- c("income", "id")
+#' survey[, cols]
 #' @seealso [dibble], \code{\link[=replace_values]{replace_values()}}
 #' @name dibble-bracket
 NULL

@@ -6,6 +6,194 @@
     data
 }
 
+test_that("read brackets combine column predicates and ordered selections", {
+    data <- dibble(x = c(1, 2, 3), y = c(1, 9, 3), z = letters[1:3])
+    . <- function(...) stop("caller dot ran")
+    rows <- data[x == y, ]
+    columns <- data[, .(y, x)]
+    both <- data[x == y, .(y, x)]
+    expect_identical(as.double(rows$x), c(1, 3))
+    expect_identical(as.character(rows$z), c("a", "c"))
+    expect_identical(names(columns), c("y", "x"))
+    expect_identical(as.double(columns$y), c(1, 9, 3))
+    expect_identical(names(both), c("y", "x"))
+    expect_identical(as.double(both$y), c(1, 3))
+    expect_identical(as.double(both$x), c(1, 3))
+    expect_true(is_dibble(both))
+    expect_identical(dta_storage_type(both$x), dta_storage_type(data$x))
+    expect_identical(.row_result_plain(data[, j = .(y, x)]), .row_result_plain(columns))
+})
+
+test_that("read predicates distinguish columns, caller values, and lone indices", {
+    data <- dibble(x = 1:3, y = c(1, 9, 3), rows = c(FALSE, TRUE, FALSE))
+    x <- 2
+    delayedAssign("y", stop("caller y forced"))
+    cutoff <- 1
+    rows <- c(3L, 1L)
+    pick <- function() rows
+    expect_identical(as.double(data[x == y, ]$x), c(1, 3))
+    expect_identical(as.double(data[x > cutoff, ]$x), c(2, 3))
+    expect_identical(as.double(data[x > .env$x, ]$x), 3)
+    expect_identical(as.double(data[rows, ]$x), c(3, 1))
+    expect_identical(as.double(data[(rows), ]$x), 2)
+    expect_identical(as.double(data[.env$rows, ]$x), c(3, 1))
+    expect_identical(as.double(data[pick(), ]$x), c(3, 1))
+    cols <- c("y", "x")
+    expect_identical(names(data[, cols]), cols)
+    expect_identical(names(data[cols]), cols)
+})
+
+test_that("dot selections contain column names rather than computations", {
+    data <- dibble(x = 1:3, y = 4:6)
+    calls <- 0L
+    f <- function() { calls <<- calls + 1L; "x" }
+    expect_identical(dim(data[, .()]), c(3L, 0L))
+    expect_identical(dim(data[x > 1, .()]), c(2L, 0L))
+    expect_identical(names(data[, .("y", x)]), c("y", "x"))
+    cols <- c("y", "x")
+    expect_error(data[, .(cols)], "cols")
+    expect_error(data[, .(x + 1)], "unnamed column names or strings", fixed = TRUE)
+    expect_error(data[, .(f())], "unnamed column names or strings", fixed = TRUE)
+    expect_error(data[, .(x, )], "unnamed column names or strings", fixed = TRUE)
+    expect_error(data[, .(, x)], "unnamed column names or strings", fixed = TRUE)
+    expect_error(data[, .(renamed = x)], "unnamed column names or strings", fixed = TRUE)
+    expect_error(data[, .(absent)], "absent")
+    expect_error(data[, .(x, x)], "unique")
+    expect_identical(calls, 0L)
+})
+
+test_that("read syntax retains metadata wrapper forcing and notes", {
+    data <- dibble(x = 1:3, y = c(1, 9, 3))
+    add_dta_note(data, "dataset")
+    add_dta_note(data, "column", variable = "x")
+    expect_s3_class(dtatools:::.reference_snapshot(data), "dtatools_dta_metadata")
+    for (result in list(data[x == y, ], data[, .(y, x)], data[x == y, .(y, x)])) {
+        expect_identical(dta_notes(result), dta_notes(data))
+        expect_identical(dta_notes(result, variable = "x"), dta_notes(data, variable = "x"))
+    }
+    events <- character()
+    cols <- function() { events <<- c(events, "j"); "x" }
+    drop <- function() { events <<- c(events, "drop"); FALSE }
+    data[{ events <<- c(events, "i"); x == y }, cols(), drop = drop()]
+    expect_identical(events, c("j", "i", "drop"))
+    events <- character()
+    data[{ events <<- c(events, "i"); x == y }, .(x), drop = drop()]
+    expect_identical(events, c("i", "drop"))
+    expect_error(data[stop("row ran"), .(x + 1)], "unnamed column names or strings", fixed = TRUE)
+})
+
+test_that("read predicates preserve missing empty and drop policies", {
+    data <- dibble(x = dta_double(c(1, NA, 3)), y = dta_double(c(1, 2, 9)), s = letters[1:3])
+    expect_identical(as.double(data[x == y, .(x)]$x), 1)
+    result <- data[as.double(x) == as.double(y), .(x, s)]
+    expect_identical(as.double(result$x), c(1, NA_real_))
+    expect_identical(as.character(result$s), c("a", ""))
+    expect_identical(dta_storage_type(result$x), "double")
+    expect_identical(dim(data[, .(s)]), c(3L, 1L))
+    expect_identical(dim(data[NULL, .(s)]), c(0L, 1L))
+    expect_identical(dim(data[integer(), .(s)]), c(0L, 1L))
+    expect_identical(dim(data[x < 0 & !is.na(x), .(s)]), c(0L, 1L))
+    expect_error(data[c(TRUE, FALSE), .(s)], "size")
+    expect_identical(as.character(data[1L, .(s), drop = TRUE]), "a")
+    expect_identical(.row_result_plain(result), .row_result_plain(data[c(TRUE, NA, FALSE), c("x", "s")]))
+})
+
+test_that("grouped read predicates evaluate over the complete table", {
+    for (id in c("row_entry_keep", "row_entry_drop", "row_entry_ids", "row_entry_no_ids")) {
+        data <- as_dibble(.group_fixture(id)$data)
+        result <- data[x == min(x), .(g, id, x)]
+        expect_identical(as.double(result$x), 1)
+        expect_identical(as.double(result$id), 2)
+        expect_identical(as.character(result$g), "b")
+        expect_identical(.row_result_plain(result), .row_result_plain(data[1L, c("g", "id", "x")]))
+        expect_identical(.row_result_plain(data[x == min(x), .(x)]), .row_result_plain(data[1L, "x"]))
+        expect_identical(.row_result_plain(data[x == min(x), .()]), .row_result_plain(data[1L, character()]))
+    }
+})
+
+test_that("read predicate results preserve metadata and later write isolation", {
+    for (predicate in c(FALSE, TRUE)) {
+        data <- dibble(x = dta_int(1:3), s = letters[1:3])
+        set_var_labels(data, x = "source x")
+        add_dta_note(data, "dataset")
+        standalone <- data$x
+        result <- if (predicate) data[x != 2, .(s, x)] else data[, .(s, x)]
+        original <- if (predicate) c(1, 3) else c(1, 2, 3)
+        strings <- if (predicate) c("a", "c") else letters[1:3]
+        expect_identical(dta_notes(result), dta_notes(data))
+        repl(data, x = 9L, where = 1L)
+        repl(data, s = "z", where = 1L)
+        set_var_labels(data, x = "changed source")
+        expect_identical(as.double(result$x), original)
+        expect_identical(as.character(result$s), strings)
+        expect_identical(attr(result$x, "label"), "source x")
+        expect_identical(as.double(standalone), c(1, 2, 3))
+        repl(result, x = 8L, where = 1L)
+        repl(result, s = "q", where = 1L)
+        set_var_labels(result, x = "changed result")
+        result[, extra := 1L]
+        expect_identical(as.double(data$x), c(9, 2, 3))
+        expect_identical(as.character(data$s), c("z", "b", "c"))
+        expect_identical(attr(data$x, "label"), "changed source")
+        expect_identical(names(data), c("x", "s"))
+        pair <- unserialize(serialize(list(data, result), NULL))
+        repl(pair[[1L]], x = 7L, where = 1L)
+        expect_identical(as.double(pair[[2L]]$x), c(8, original[-1L]))
+    }
+})
+
+test_that("escaped read masks protect unread owned compact and overlay columns", {
+    for (kind in c("owned", "compact", "overlay")) for (pronoun in c(FALSE, TRUE))
+        for (outcome in c("success", "empty", "error")) {
+        data <- dibble(x = if (kind == "owned") dta_double(c(1, 2, 3)) else dta_int(1:3), s = letters[1:3])
+        if (kind == "owned") {
+            expect_false(is.null(.Call(dtatools:::C_dtatools_owned_info, .subset2(data, "x"))))
+        } else expect_true(dtatools:::.is_unmaterialized_numeric_altrep(.subset2(data, "x")))
+        if (kind == "overlay") {
+            state <- dtatools:::.reference_state(data)
+            dtatools:::.append_generated_column(state, "extra",
+                .Call(dtatools:::C_dtatools_capture_column, dta_double(c(4, 5, 6))))
+            expect_true(dtatools:::.has_column_overlay(data))
+            expect_false(is.null(.Call(dtatools:::C_dtatools_owned_info, state$columns$extra)))
+        }
+        holder <- new.env(parent = emptyenv())
+        result <- tryCatch(if (pronoun) data[{
+            holder$mask <- environment()
+            if (outcome == "error") stop("predicate failed")
+            .data$x > if (outcome == "empty") 3 else 1
+        }, .(x, s)] else data[{
+            holder$mask <- environment()
+            if (outcome == "error") stop("predicate failed")
+            x > if (outcome == "empty") 3 else 1
+        }, .(x, s)], error = identity)
+        # Neither s nor the overlay-only extra has been read through the mask.
+        if (kind == "overlay") {
+            # Public repl requires assigned overlay preparation. This existing
+            # internal setter tests the original handles without normalizing
+            # the table or obtaining copies through its public $ extractor.
+            .Call(dtatools:::C_dtatools_patch_vector, .subset2(data, "x"), 1L, 9L)
+            .Call(dtatools:::C_dtatools_patch_vector, .subset2(data, "s"), 1L, "z")
+            .Call(dtatools:::C_dtatools_patch_vector, state$columns$extra, 1L, 0)
+            expect_identical(as.double(state$columns$extra), c(0, 5, 6))
+        } else {
+            repl(data, x = 9L, where = 1L)
+            repl(data, s = "z", where = 1L)
+        }
+        expect_identical(as.double(data$x), c(9, 2, 3))
+        expect_identical(as.character(data$s), c("z", "b", "c"))
+        expect_identical(as.double(eval(quote(x), holder$mask)), c(1, 2, 3))
+        expect_identical(as.character(eval(quote(s), holder$mask)), letters[1:3])
+        if (kind == "overlay") expect_identical(as.double(eval(quote(extra), holder$mask)), c(4, 5, 6))
+        if (outcome == "error") {
+            expect_s3_class(result, "error")
+            expect_identical(conditionMessage(result), "predicate failed")
+        } else {
+            expect_identical(as.double(result$x), if (outcome == "empty") double() else c(2, 3))
+            expect_identical(as.character(result$s), if (outcome == "empty") character() else c("b", "c"))
+        }
+    }
+})
+
 test_that("bracket row plans preserve tibble call shapes and index policies", {
     plain <- tibble::tibble(x = dta_long(1:4), s = dta_string(letters[1:4]),
                             flag = c(TRUE, FALSE, NA, TRUE))
@@ -47,7 +235,7 @@ test_that("bracket row plans preserve tibble call shapes and index policies", {
     expect_error(data[, c("x", "x")], "unique")
 })
 
-test_that("bracket subscript evaluation is once, ordered, and outside the data mask", {
+test_that("bracket subscript calls are evaluated once in their established order", {
     data <- dibble(x = 1:3, y = 4:6)
     events <- character()
     i <- function() { events <<- c(events, "i"); c(3L, 1L) }
@@ -328,6 +516,13 @@ test_that("unknown column reconstruction through dplyr", {
 })
 test_that("bracket planning never executes language-valued indices", {
     data <- dibble(x = 1:3, y = 4:6)
+    index <- quote(stop("index executed"))
+    for (expression in alist(data[identity(index), ], data[quote(stop("index executed")), ],
+                            data[~stop("index executed"), ])) {
+        error <- tryCatch(eval(expression), error = identity)
+        expect_s3_class(error, "error")
+        expect_false(identical(conditionMessage(error), "index executed"))
+    }
     for (index in list(quote(stop("index executed")), quote(x), expression(stop("index executed")))) {
         for (operation in list(function(d) d[index], function(d) d[, index], function(d) d[index, ])) {
             expected <- tryCatch(operation(dtatools:::.reference_snapshot(data)), error = identity)

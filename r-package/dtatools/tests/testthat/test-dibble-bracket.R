@@ -232,6 +232,11 @@ test_that("brackets without := subset the current contents into a dibble", {
     expect_identical(data[, "x", drop = TRUE], snapshot[, "x", drop = TRUE])
     expect_error(data[, "missing"], "missing")
     expect_identical(names(data), c("x", "y", "z"))
+    name <- "dynamic"
+    data[, .(name) := 7L]
+    expect_identical(as.double(data$dynamic), rep(7, 3))
+    expect_error(data[, .(name)], "name")
+    drop_vars(data, dynamic)
     # The subset is its own dataset: assigning into it leaves the source.
     piece <- data[1:2, ]
     piece[, w := 1]

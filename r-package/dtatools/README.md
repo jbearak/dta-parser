@@ -758,6 +758,26 @@ survey[, last := .n == .N, bysort = id]
 Only a dibble supports the bracket form. On a data table it runs
 data.table's own `:=`, which ignores declared Stata storage.
 
+Without `:=`, brackets return an independent selection. Compound row
+expressions read columns first, with `.env` available for caller objects.
+Read `.()` takes unnamed column names or strings in the requested order.
+
+```r
+survey[income > 20, .(id, income)]
+cutoff <- 20
+survey[income > .env$cutoff, .("income", id)]
+rows <- c(3L, 1L)
+cols <- c("income", "id")
+survey[rows, cols]
+```
+
+A lone row-index name such as `rows` is read from the caller. Compound
+predicates run once over the whole table, including grouped dibbles. Logical
+`NA` produces a padded missing row; explicit `NULL` selects no rows. `.()`
+selects zero columns and does not compute or rename columns. These reads work
+without dplyr or data.table. Assignment keeps its existing shadow check and
+dynamic target form `.(name) := value`.
+
 ### Programming with variable names
 
 `gen()`, `repl()`, `replace_values()`, and `set_var_label()` capture their
