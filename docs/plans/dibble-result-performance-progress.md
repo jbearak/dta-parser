@@ -10,7 +10,7 @@ CodeRabbit. Its documentation-coverage warning is always nonblocking. The
 original orchestration prompt was supplied outside the repository; its operative
 decisions are recorded in that plan.
 
-## Stages 1 through 6 complete, Stage 7 active
+## Stages 1 through 7 complete, Stage 8 active
 
 Stage 6 [PR #209](https://github.com/jbearak/dta-parser/pull/209) merged normally
 on September 8, 2026 at 20:33:25 UTC as
@@ -114,11 +114,53 @@ merged normally on September 9, 2026 at 07:00:33 UTC as
 `91892d8822c75761f38a976b2cc05022cc306f2f`, after all 15 checks passed. Its
 1,104 research-only files preserve the reviewed head `8c159021`. This separates
 the evidence from substantive CodeRabbit review of the implementation.
-Documentation-only integration preserves qualified package3db and the executed
-helper inputs. Implementation CI,
-substantive CodeRabbit review and normal merge remain required. Stages 8–9, the
-twelve base-R read regressions introduced earlier and actual fertility renv
+Documentation-only integration preserves the qualified package and executed
+helper inputs. Implementation [PR #212](https://github.com/jbearak/dta-parser/pull/212)
+merged normally on September 9, 2026 at 07:29:34 UTC as
+`af0bed0b9c200f82d37891902266d200a1819196`, after all 15 checks succeeded and
+substantive latest-head CodeRabbit and complementary reviews completed. Its
+parents are the evidence merge `91892d8822c75761f38a976b2cc05022cc306f2f` and
+reviewed implementation head `abc0f38ee74786361d6bb4ea5d2287715ab647d4`.
+The complete merged tree matches the reviewed head; package tree
+`fd8642daf27875e5cece5822e1ac9cd5615ff3c6` and the evidence subtree are preserved.
+Stages 8–9, the twelve base-R read regressions introduced earlier, the four
+Stage 7 many-small-group public latency limits and actual fertility renv
 validation remain open; issue #172 stays open.
+
+### Current Stage 8 work
+
+Stage 8 starts from verified merge `af0bed0b9c200f82d37891902266d200a1819196`
+on `codex/direct-dibble-joins-bindings` in an isolated worktree. Its fresh
+predecessor installation retains that exact source and package identity.
+Working source owns join key/name/match planning and batched result assembly,
+base frame/binding construction, six rows methods and column-modification
+assembly. Public matching/casting, custom table conversion/reconstruction and
+non-dispatching dplyr bind orchestrators remain explicit compatibility boundaries.
+No installed Stage 8 candidate has yet been qualified.
+
+Copied join controls pass 1,931 assertions across ten blocks, including the
+250-case predecessor comparison, custom conversions and the corrected default
+many-to-many caller policy. Copied binding controls pass 1,518 assertions across
+11 blocks after correcting the public argument name and a test assertion API.
+Grouped comparison aligns only the top frame's named attributes; every value
+and ordered class, column and group structure remains checked, and raw attribute
+order is retained. Initial failed runs remain recorded. These local-closure
+controls do not qualify installed dispatch, arbitrary forcing or later writes.
+The additive base construction/dispatch control passes 687 assertions, including
+17 recorder checks. Twenty-one durable regression blocks are source-reviewed
+and await the first installed candidate gate.
+
+The shared-finalizer control passes 1,523 assertions, with 163 complete saved
+records and 118 independently checked semantic comparisons. Separate finite
+500-call controls support removing unused column lineage together with the
+repeated-slot address cache, and replacing constructor/reserve address-name
+bindings with actual-object hashes. Atomic nested capture retains metadata-copy
+and opaque-reference behavior while deferring its list memo. The combined
+changes are in working source; fresh installed history, foreign-write and
+integration checks remain required. Measurements and diagnostic receipts for
+this in-progress stage are retained locally, not yet published as repository
+evidence. Full host/minimum/package, whole-operation performance/RSS, source
+attribution, actual implementation CodeRabbit/CI and normal merge gates remain.
 
 ### Earlier Stage 7 checkpoints
 

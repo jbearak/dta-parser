@@ -55,9 +55,12 @@ columns only in \code{y}, and \verb{_merge}, in that order.
 \description{
 \code{dta_merge()} follows Stata's \code{merge} command. It matches key columns
 under Stata missing-code identity: system missing \code{.} matches only \code{.},
-and each extended missing \code{.a} through \code{.z} matches only itself. Base
-\code{\link[=merge]{merge()}} and dplyr joins instead place all 27 codes in one R missing
-bucket. Keys containing R \code{NaN} are rejected because \code{NaN} has no Stata
+and each extended missing \code{.a} through \code{.z} matches only itself.
+For bare double keys, dplyr equality joins with \code{na_matches = "na"}
+match the Stata missing codes together. Homogeneous dtatools numeric keys
+distinguish these codes through their typed equality proxies. \code{dta_merge()}
+applies Stata missing-code identity to both bare and typed numeric keys.
+Keys containing R \code{NaN} are rejected because \code{NaN} has no Stata
 missing identity; use \code{NA_real_} or \code{\link[=tagged_missing]{tagged_missing()}}.
 Character keys containing \code{NA_character_} are also rejected because Stata
 has only the empty string for a missing string; use \code{""} instead.

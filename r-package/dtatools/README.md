@@ -407,16 +407,14 @@ extensionless output path receives `.dta` with a warning.
 merged <- dta_merge(cars, "makes.dta", by = "make", relationship = "m:1")
 ```
 
-Use `dta_merge()` instead of base `merge()` or a dplyr join when Stata key
-identity matters. Both of those match keys with R missing semantics: system
-missing `.` and extended missings `.a` through `.z` fall into one missing
-bucket, so by default every missing key matches every other missing key. Rows
-that Stata would keep apart match each other, sometimes into an accidental
-many-to-many expansion, and the opt-outs (`incomparables`, `na_matches`) can
-only stop missing keys from matching at all. This affects only the key columns
-being matched; non-key columns pass through any of these joins with their
-missing codes intact. Base `merge()` can additionally drop the right key's
-labels and other metadata, since it keeps only the left key column.
+`dta_merge()` applies Stata missing-code identity to both bare and typed numeric
+keys. For bare double keys, dplyr equality joins with `na_matches = "na"` match
+system missing `.` and extended missings `.a` through `.z` together. Homogeneous
+dtatools numeric keys distinguish those codes through their typed equality
+proxies. The bare-double behavior can create a many-to-many expansion; it
+does not mean non-key missing payloads are discarded. Base `merge()` can also
+drop the right key's labels and other metadata when it retains only the left
+key column.
 
 `dta_merge()` matches each of the 27 missing codes only to itself, requires
 the relationship declaration (`"1:1"`, `"m:1"`, or `"1:m"`), coalesces key
@@ -878,3 +876,18 @@ mask, row gatherer and result finalizer; nested publication captures frame
 storage while retaining ordinary nested classes and intentional reference
 objects. Cyclic nested lists and data frames produce an explicit error before
 vector assembly. The installed notice identifies the source functions and test policies.
+
+Direct dibble joins adapt the pinned dplyr 1.2.1 key, naming, match-policy and
+coalescing rules. Package-owned planning calls public vctrs matching, then
+uses shared batched gathering and result finalization; nested outputs pass
+through the same capture boundary. The [installed notice](inst/NOTICE) records
+the exact source functions and license. Stata-specific `dta_merge()` matching
+and output policy remain separate.
+
+Base binding also adapts R 4.6.1's data-frame construction, row binding and
+column binding, preserving its factor, recycling and naming rules. Its full
+GPL notice and John Chambers/R Core attribution are in the installed notice.
+Direct rows methods and column modification adapt pinned dplyr policies while
+retaining public vector casting, matching and reconstruction extensions.
+Package-specific result caches use actual object keys or prepared result slots;
+atomic nested capture retains metadata-copy and opaque-reference behavior.

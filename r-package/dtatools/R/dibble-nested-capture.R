@@ -5,6 +5,9 @@
 # it is discarded after publication and never becomes an ownership registry.
 # Cyclic payloads are rejected before public vector assembly traverses them.
 .capture_dibble_nested <- function(value) {
+    if (is.environment(value) || is.function(value) ||
+        typeof(value) %in% c("externalptr", "weakref", "bytecode")) return(value)
+    if (typeof(value) != "list") return(.metadata_copy(value))
     completed <- utils::hashtab(type = "address")
     capture <- function(value) {
         if (is.environment(value) || is.function(value) ||

@@ -138,7 +138,7 @@
 }
 
 .build_group_metadata <- function(columns, keys, row_count,
-                                   drop = TRUE, rowwise = FALSE) {
+                                   drop = TRUE, rowwise = FALSE, signal_regroup = FALSE) {
     key_frame <- .group_key_frame(columns, keys, row_count)
     if (rowwise) {
         key_frame$.rows <- vctrs::new_list_of(as.list(seq_len(row_count)),
@@ -155,6 +155,7 @@
         if (legacy_locale) located <- vctrs::vec_slice(
             located, .group_order_legacy(located$key))
     }
+    if (signal_regroup) rlang::signal("", class = "dplyr_regroup")
     groups <- tibble::new_tibble(as.list(located$key), nrow = nrow(located$key))
     groups$.rows <- vctrs::new_list_of(located$loc, ptype = integer())
     if (!isTRUE(drop) && any(vapply(groups[keys], is.factor, logical(1)))) {
