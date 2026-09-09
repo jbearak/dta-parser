@@ -7068,7 +7068,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble-rows.R",
-          "sha256": "c5fb34e389cb1a61474093e24e57ae6dca9bff4957c339516640d481353af34f"
+          "sha256": "806556513ae27baaa8be1d465f810cbf0dc9cb3bbaacb0e185fc14c38fac9ff9"
         },
         {
           "path": "tests/testthat/test-dibble-row-filter.R",

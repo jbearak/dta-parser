@@ -25,7 +25,7 @@ test_that("read brackets combine column predicates and ordered selections", {
 })
 
 test_that("read predicates distinguish columns, caller values, and lone indices", {
-    data <- dibble(x = 1:3, y = c(1, 9, 3), rows = c(1, 2, 3))
+    data <- dibble(x = 1:3, y = c(1, 9, 3), rows = c(FALSE, TRUE, FALSE))
     x <- 2
     delayedAssign("y", stop("caller y forced"))
     cutoff <- 1
@@ -35,7 +35,7 @@ test_that("read predicates distinguish columns, caller values, and lone indices"
     expect_identical(as.double(data[x > cutoff, ]$x), c(2, 3))
     expect_identical(as.double(data[x > .env$x, ]$x), 3)
     expect_identical(as.double(data[rows, ]$x), c(3, 1))
-    expect_identical(as.double(data[(rows), ]$x), c(1, 2, 3))
+    expect_identical(as.double(data[(rows), ]$x), 2)
     expect_identical(as.double(data[.env$rows, ]$x), c(3, 1))
     expect_identical(as.double(data[pick(), ]$x), c(3, 1))
     cols <- c("y", "x")
@@ -121,13 +121,15 @@ test_that("read predicate results preserve metadata and later write isolation", 
         original <- if (predicate) c(1, 3) else c(1, 2, 3)
         strings <- if (predicate) c("a", "c") else letters[1:3]
         expect_identical(dta_notes(result), dta_notes(data))
-        repl(data, x = 9L, s = "z", where = 1L)
+        repl(data, x = 9L, where = 1L)
+        repl(data, s = "z", where = 1L)
         set_var_labels(data, x = "changed source")
         expect_identical(as.double(result$x), original)
         expect_identical(as.character(result$s), strings)
         expect_identical(attr(result$x, "label"), "source x")
         expect_identical(as.double(standalone), c(1, 2, 3))
-        repl(result, x = 8L, s = "q", where = 1L)
+        repl(result, x = 8L, where = 1L)
+        repl(result, s = "q", where = 1L)
         set_var_labels(result, x = "changed result")
         result[, extra := 1L]
         expect_identical(as.double(data$x), c(9, 2, 3))
@@ -173,7 +175,10 @@ test_that("escaped read masks protect unread owned compact and overlay columns",
             .Call(dtatools:::C_dtatools_patch_vector, .subset2(data, "s"), 1L, "z")
             .Call(dtatools:::C_dtatools_patch_vector, state$columns$extra, 1L, 0)
             expect_identical(as.double(state$columns$extra), c(0, 5, 6))
-        } else repl(data, x = 9L, s = "z", where = 1L)
+        } else {
+            repl(data, x = 9L, where = 1L)
+            repl(data, s = "z", where = 1L)
+        }
         expect_identical(as.double(data$x), c(9, 2, 3))
         expect_identical(as.character(data$s), c("z", "b", "c"))
         expect_identical(as.double(eval(quote(x), holder$mask)), c(1, 2, 3))
