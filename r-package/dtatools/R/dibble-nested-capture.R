@@ -5,7 +5,8 @@
 # it is discarded after publication and never becomes an ownership registry.
 # Cyclic payloads are rejected before public vector assembly traverses them.
 .capture_dibble_nested <- function(value) {
-    completed <- new.env(hash = TRUE, parent = emptyenv())
+    completed <- list()
+    completed_addresses <- character()
     capture <- function(value) {
         if (is.environment(value) || is.function(value) ||
             typeof(value) %in% c("externalptr", "weakref", "bytecode")) return(value)
@@ -13,8 +14,9 @@
         # the physical-slot setters below operate only on ordinary list vectors.
         if (typeof(value) != "list") return(.metadata_copy(value))
         address <- rlang::obj_address(value)
-        if (exists(address, completed, inherits = FALSE)) {
-            entry <- completed[[address]]
+        position <- match(address, completed_addresses)
+        if (!is.na(position)) {
+            entry <- completed[[position]]
             if (entry$active) rlang::abort("Cyclic nested list or data frame values are not supported.")
             return(entry$result)
         }
@@ -40,7 +42,13 @@
             result <- .reserve_column_capacity(result)
         }
         if (frame && inherits(result, "data.table")) result <- data.table::setalloccol(result)
-        completed[[address]] <- list(source = value, result = result, active = TRUE)
+        position <- length(completed) + 1L
+        completed_addresses[[position]] <<- address
+        entry <- new.env(parent = emptyenv())
+        entry$source <- value
+        entry$result <- result
+        entry$active <- TRUE
+        completed[[position]] <<- entry
         addresses <- vapply(columns, rlang::obj_address, character(1))
         for (index in seq_along(columns)) {
             prior <- match(addresses[[index]], addresses[seq_len(index - 1L)])
@@ -55,7 +63,7 @@
         if (dibble) .validate_group_metadata(result)
         if (dibble || reference) .mark_reference_data(result,
             .new_reference_state(result, dibble = dibble))
-        completed[[address]]$active <- FALSE
+        entry$active <- FALSE
         result
     }
     capture(value)

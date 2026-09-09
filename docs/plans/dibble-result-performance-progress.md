@@ -143,18 +143,45 @@ claimed. The three copied routes preserve their tracked source state, while
 both public controls returned NULL owned-info and provide no tracked-backing
 proof through that assertion.
 
-The current correction caches sizes only during the existing delayed validation
+The reframe correction caches sizes only during the existing delayed validation
 pass and compares every group's final size, preserving actual resizing, zero
 groups, mask installation and final capture. Its regression checks a constant
 total row count with changed per-group sizes, nested writes in both directions,
 and callbacks against the same runtime's ordinary grouped-tibble reference.
 The corrected red run on eab has sixteen passes and the expected callback
 failure, with no errors or warnings. Its initial draft also retained an unrelated
-custom-vector inspection error. Fresh installed focused checks and the unchanged
-full operation grid must qualify this correction; no elapsed benefit is inferred
-from the copied allocation control. The size cache also affects summarise and
-remains covered by that grid. Final full, minimum, package, native, retained/peak
-memory, implementation review and CI gates are still required.
+custom-vector inspection error. No elapsed benefit is inferred from the copied
+allocation control. The size cache also affects summarise, so the complete
+installed-source grid below covers both verbs.
+
+Source `96b9c3c7` passed 141 focused blocks with 2,866 assertions and the full
+suite with 18,144 assertions, no failures, errors or skips and four known full
+suite warnings. Its 54-series operation grid produced no joint timing flags
+against either predecessor route, across 108 comparisons. The package check
+completed with three warnings and three notes, including a new undefined `:=`
+and `head` note. The current source imports the existing rlang operator and
+qualifies `utils::head`; a fresh package check must verify that correction.
+
+The six 50-call memory cases on `96b9c3c7` revealed retained small-object growth.
+A separate 500-call diagnostic at 256 rows and 128 groups showed that extra
+full garbage collections did not remove it. Changing the nested capture memo
+from address-named environment bindings to character address values and rooted,
+fixed-field entries reduced the copied control's 5-to-500-call growth from
+37,271 to 131 Ncells and from 201,200 to 3,120 vector-heap bytes. Both routes
+retain source and latest result only. Recorder overhead and residual objects
+remain; these are separate heap measures, not RSS or cumulative allocation.
+
+The fixed-entry control passes 150 semantic assertions, including cyclic-input
+rejection followed by healthy capture, shared siblings and both foreign-write
+directions. A preceding list-entry control failed on cyclic input, and its
+acyclic memory result remains separate. The new public regression runs in a
+fresh child and checks retained Ncells after five warmups and 100 nesting calls.
+On installed `96b9c3c7`, it preserves source/output values but fails the
+1,000-Ncell budget with 36,169 additional Ncells. The proposed repair keeps
+addresses as values and mutates only fixed `source`, `result` and `active`
+fields. Other address-keyed result environments are unchanged. Fresh installed
+functional, package, native, timing and memory qualification remains required;
+the earlier source's results do not qualify this repair.
 
 ## Historical Stage 6 implementation checkpoints
 

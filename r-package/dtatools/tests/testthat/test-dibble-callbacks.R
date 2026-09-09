@@ -336,3 +336,34 @@ test_that("S7-C16 nesting preserves key policy, empty prototypes and unforced gr
     expect_error(dplyr::nest_by(data, ignored = { events$forced <- TRUE; stop("forced ignored dot") }), "re-group")
     expect_false(events$forced)
 })
+
+test_that('S7-C17 repeated nesting does not retain per-call address history', {
+    skip_if_not_installed('callr')
+    observed <- callr::r(function(libraries) {
+        .libPaths(libraries)
+        library(dtatools)
+        source <- dplyr::group_by(dibble(g = rep(seq_len(128L), each = 2L),
+            x = seq_len(256L)), g)
+        heap <- function() {
+            gc(full = TRUE)
+            gc(full = TRUE)[, 'used']
+        }
+        # Warm dispatch and prototype work before comparing live source/latest
+        # checkpoints. Every call starts from the same original source.
+        for (i in seq_len(5L)) output <- dplyr::group_nest(source)
+        before <- heap()
+        for (i in seq_len(100L)) output <- dplyr::group_nest(source)
+        after <- heap()
+        list(before = before, after = after, delta = after - before,
+            source = as.integer(source$x), rows = nrow(output),
+            values = unlist(lapply(output$data, function(chunk) as.integer(chunk$x)),
+                use.names = FALSE), package = find.package('dtatools'))
+    }, args = list(.libPaths()), libpath = .libPaths())
+    expect_identical(observed$package, find.package('dtatools'))
+    expect_identical(observed$source, seq_len(256L))
+    expect_identical(observed$rows, 128L)
+    expect_identical(observed$values, seq_len(256L))
+    # This guards retained small objects, not cumulative allocation or RSS.
+    # The budget allows fixed dispatch/measurement overhead after warming.
+    expect_lt(unname(observed$delta[['Ncells']]), 1000)
+})

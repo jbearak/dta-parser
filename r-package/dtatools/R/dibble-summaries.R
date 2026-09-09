@@ -186,7 +186,7 @@
         }
         vars <- if (identical(policy, "rowwise") && (grouped || rowwise)) groups$names else
             if ((grouped || rowwise) && identical(policy, "keep")) groups$names else
-            if (grouped && identical(policy, "drop_last")) head(groups$names, -1L) else character()
+            if (grouped && identical(policy, "drop_last")) utils::head(groups$names, -1L) else character()
         is_rowwise <- identical(policy, "rowwise")
         grouping <- function(result) {
             if (length(vars) || is_rowwise) {
