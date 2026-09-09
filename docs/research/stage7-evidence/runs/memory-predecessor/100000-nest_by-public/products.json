@@ -1,0 +1,400 @@
+{
+  "products": [
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/accepted-input-identities.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/accepted-input-identities.json",
+      "bytes": 34056,
+      "mode": "0o644",
+      "sha256": "c8412a96c56834e0fb8aebeeb5bad1595a1737d0ac1b5ec9ef50904fa4ac04c1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/command-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/command-before.json",
+      "bytes": 3191,
+      "mode": "0o644",
+      "sha256": "db920e43cc8a60d02119ffc6f0d0f7386e1cb182a6e77645ffad5062beb68ee2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/command-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/command-result.json",
+      "bytes": 3243,
+      "mode": "0o644",
+      "sha256": "f59240c0583b3f6b3628d2a5c928a1f6ad2e4882e4bdeac05bc579b01889cf60"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/dlls.tsv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/dlls.tsv",
+      "bytes": 1153,
+      "mode": "0o644",
+      "sha256": "8681199aff81d63248fcd8f54d39b2b20773fdb65c430597465b86424ce60e29"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-00-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-00-before.json",
+      "bytes": 1464,
+      "mode": "0o644",
+      "sha256": "7405bd2e0cee6e4d55bba359c2e92c1bbfc2b6f026238267720ec5781c305b35"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-00-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-00-result.json",
+      "bytes": 1611,
+      "mode": "0o644",
+      "sha256": "d25f0eaf89fa0f35a72032c540d13b421a28535bfb7981dabba5cba2cadcff66"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-00.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-00.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-00.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-00.stdout",
+      "bytes": 41,
+      "mode": "0o644",
+      "sha256": "61c5b5b6c3f654f1d17b4502ee40da272255b8d75b5051c99335e570fde89d47"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-01-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-01-before.json",
+      "bytes": 1488,
+      "mode": "0o644",
+      "sha256": "a255ffea2dbb94fa73b3a145bdc0865c789b4d19f3f5cb2a4bc15a8cd56f7545"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-01-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-01-result.json",
+      "bytes": 1637,
+      "mode": "0o644",
+      "sha256": "bb89f50ee734fb311f4beaec2bd6321677897cd54b517f67c2ef65ea64bab1e8"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-01.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-01.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-01.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-01.stdout",
+      "bytes": 4098,
+      "mode": "0o644",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-02-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-02-before.json",
+      "bytes": 1514,
+      "mode": "0o644",
+      "sha256": "736f52a73f18b48ea6c73d4e76f5f4d72bc537bb919a21a1867cad4283504297"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-02-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-02-result.json",
+      "bytes": 1663,
+      "mode": "0o644",
+      "sha256": "eadf682b37fe7436712f5eca696cb8ebe4b660a744fefb2da6459cf9658c6f40"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-02.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-02.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-02.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-02.stdout",
+      "bytes": 6118,
+      "mode": "0o644",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-03-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-03-before.json",
+      "bytes": 1514,
+      "mode": "0o644",
+      "sha256": "ce8c95fdf03709c3d7348c731dee5ccfb3465066f5a25f4cb3bb2355c49ebd7e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-03-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-03-result.json",
+      "bytes": 1663,
+      "mode": "0o644",
+      "sha256": "b552f8612c6dd414799893716b228d89a71998239469762228173434437718ac"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-03.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-03.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-03.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-03.stdout",
+      "bytes": 8386,
+      "mode": "0o644",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-04-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-04-before.json",
+      "bytes": 1498,
+      "mode": "0o644",
+      "sha256": "1b5643b9c3560d8951c7291e25374a62fe9d4197b2521af88e9b4fc7d6ec0c6e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-04-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-04-result.json",
+      "bytes": 1648,
+      "mode": "0o644",
+      "sha256": "63417f5929da66f79f49b2f17c1c52169e67bc355dd6acb5f315800aa6b53cce"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-04.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-04.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-04.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-04.stdout",
+      "bytes": 12810,
+      "mode": "0o644",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-05-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-05-before.json",
+      "bytes": 1512,
+      "mode": "0o644",
+      "sha256": "8cdedff2ccc0911094496f55e9c812485bcd0827f678eec00e4807de00891c8e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-05-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-05-result.json",
+      "bytes": 1661,
+      "mode": "0o644",
+      "sha256": "08710d613a240500b4e2af38e3687c38edee3f54ab968c73a1123fb488b018e3"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-05.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-05.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-05.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-05.stdout",
+      "bytes": 2620,
+      "mode": "0o644",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-selection.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/git-selection.json",
+      "bytes": 1301,
+      "mode": "0o644",
+      "sha256": "654862a874ef7f90908299ae477e6ebf2a71f4981d19fc8486bdc9df6f19f67f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/inputs-after.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/inputs-after.json",
+      "bytes": 15157665,
+      "mode": "0o644",
+      "sha256": "da510fb4e04214250f8f78d25b479f782e5fc3d8cfc3257a0d283a6d337804b7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/inputs-before.json",
+      "bytes": 15157665,
+      "mode": "0o644",
+      "sha256": "da510fb4e04214250f8f78d25b479f782e5fc3d8cfc3257a0d283a6d337804b7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/installation-comparison.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/installation-comparison.json",
+      "bytes": 1288,
+      "mode": "0o644",
+      "sha256": "a072344ada5d27763ee750cec7fb5531781a1ee8882ad6c5d058416c29691703"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/namespaces.tsv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/namespaces.tsv",
+      "bytes": 1405,
+      "mode": "0o644",
+      "sha256": "22a3bff232e59dd5d3fd29ba1ea0d3e56f586ac2a72e4797fd294c1f063e113f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/result.json",
+      "bytes": 501,
+      "mode": "0o644",
+      "sha256": "49f0ab81e7e7c3edf052f81499333f6f832591a8f7274776544b44a900a3697e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/results/heap.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/results/heap.csv",
+      "bytes": 386,
+      "mode": "0o644",
+      "sha256": "249ddcdeb11c52027b3734f7d00820fe3bc0699f6fd13613fd467b92dfdc3392"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/results/session.txt",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/results/session.txt",
+      "bytes": 2181,
+      "mode": "0o644",
+      "sha256": "2a2777a902814d8d6e2dd18306a419260576118a652b9d7099a48f0a37720da0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/results/states.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/results/states.csv",
+      "bytes": 346288,
+      "mode": "0o644",
+      "sha256": "e8113df206b2b81901aca6ac4a948db8eba31a16810c7dffc8cb01a0876e36b4"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/results/validation.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/results/validation.csv",
+      "bytes": 125,
+      "mode": "0o644",
+      "sha256": "57d350ebc812d09ed61fe6ec73c3bbc63e9f5461495c3cc521e7033f7853522f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/runner.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/runner.log",
+      "bytes": 869,
+      "mode": "0o644",
+      "sha256": "1ad40ffadaf8c2283a2d0a733842bb7a3633f3fd902e2d509ff0e74395db8efa"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/runtime-coverage.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/runtime-coverage.json",
+      "bytes": 206,
+      "mode": "0o644",
+      "sha256": "91d3acf06d0730d76b8368b419b2de427153b2efbb6494bdff97c06043b3c193"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/runtime.txt",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/runtime.txt",
+      "bytes": 892,
+      "mode": "0o644",
+      "sha256": "521974d04554e29f56b520a2b7ad9f63bdf31cec94937728ec2aca307631e564"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/README-memory-v2.md",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/README-memory-v2.md",
+      "bytes": 3425,
+      "mode": "0o644",
+      "sha256": "5e8de47f544b909818785559497160aaf11b368df6f2f066f9bc2ad485381098"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/benchmarks/r-dibble-dplyr/helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/benchmarks/r-dibble-dplyr/helpers.R",
+      "bytes": 4098,
+      "mode": "0o644",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "bytes": 8386,
+      "mode": "0o644",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "bytes": 2620,
+      "mode": "0o644",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "bytes": 12810,
+      "mode": "0o644",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "bytes": 6118,
+      "mode": "0o644",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/entry-v2.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/entry-v2.R",
+      "bytes": 1522,
+      "mode": "0o644",
+      "sha256": "b9a2490b5b1ae491983e80cc67520acfc37b4fbe9ccabe54c85881627d98d0d0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/run-memory-v2.py",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/run-memory-v2.py",
+      "bytes": 17758,
+      "mode": "0o644",
+      "sha256": "4b516ef44549e550bfbaf20e671fffc17c870d83643687188019a4c7c5081336"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/selected-workload.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/selected-workload.R",
+      "bytes": 6167,
+      "mode": "0o644",
+      "sha256": "136b884fecb4e393b0a7ffd3d18827f675d5d558ebffe14b2b4e2a710fb33cdd"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/stage7-support/reference-v1.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/stage7-support/reference-v1.R",
+      "bytes": 3309,
+      "mode": "0o644",
+      "sha256": "da2aa1a4fbf15314470b27bf5e1f9e96fd228c6025719b0ae091b4260658a3c5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/stage7-support/schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/stage7-support/schemas.R",
+      "bytes": 106759,
+      "mode": "0o644",
+      "sha256": "d44ee08e5c981fd9490bfbd4354dabc766eece6d6dbd7192cf608cfb8efebe33"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/stage7-support/validation-v2.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/stage7-support/validation-v2.R",
+      "bytes": 6702,
+      "mode": "0o644",
+      "sha256": "2fadab4910b40743ddfb40e65c9d01c347572215daf7928d1b04b60a32090d76"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/stage7-support/workloads-v1.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source/stage7-support/workloads-v1.R",
+      "bytes": 3355,
+      "mode": "0o644",
+      "sha256": "2de69c883dc81ad1bfc2fed4c322c5978ed31c3c67ddcc5640a0648bce38e6b1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source-exports.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/source-exports.json",
+      "bytes": 10252,
+      "mode": "0o644",
+      "sha256": "b09e431a74c33d2960b3fa837d971051a311c15e82b7072765b36f6b746440dd"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/whole-child-rss.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/100000-nest_by-public/whole-child-rss.json",
+      "bytes": 233,
+      "mode": "0o644",
+      "sha256": "d952259682b50c03f2f9977796fd3b12caa387328fa7d5fae24ae5222ce95575"
+    }
+  ],
+  "excluded": [
+    "products.json",
+    "receipt.json"
+  ]
+}

@@ -1,0 +1,250 @@
+{
+  "commands": [
+    [
+      "/opt/homebrew/Cellar/python@3.14/3.14.7/bin/python3.14",
+      "-I",
+      "-B",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-v2.py",
+      "/Users/jmb/repos/dta-parser",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+      "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01",
+      "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4",
+      "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01/100000-group_modify_identity-public",
+      "--receipt-sha256",
+      "ae4ac8ac38d6f9b9dffc42e44a6716ace51f67cbcd51cf5ba10c7a2d19a087d0",
+      "--rows",
+      "100000",
+      "--script",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/memory-v2.R",
+      "--routes",
+      "public",
+      "--workload",
+      "group_modify_identity"
+    ],
+    [
+      "/opt/homebrew/Cellar/python@3.14/3.14.7/bin/python3.14",
+      "-I",
+      "-B",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-v2.py",
+      "/Users/jmb/repos/dta-parser",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+      "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01",
+      "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4",
+      "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01/1000000-group_modify_identity-public",
+      "--receipt-sha256",
+      "ae4ac8ac38d6f9b9dffc42e44a6716ace51f67cbcd51cf5ba10c7a2d19a087d0",
+      "--rows",
+      "1000000",
+      "--script",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/memory-v2.R",
+      "--routes",
+      "public",
+      "--workload",
+      "group_modify_identity"
+    ],
+    [
+      "/opt/homebrew/Cellar/python@3.14/3.14.7/bin/python3.14",
+      "-I",
+      "-B",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-v2.py",
+      "/Users/jmb/repos/dta-parser",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+      "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01",
+      "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4",
+      "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01/100000-group_nest-public",
+      "--receipt-sha256",
+      "ae4ac8ac38d6f9b9dffc42e44a6716ace51f67cbcd51cf5ba10c7a2d19a087d0",
+      "--rows",
+      "100000",
+      "--script",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/memory-v2.R",
+      "--routes",
+      "public",
+      "--workload",
+      "group_nest"
+    ],
+    [
+      "/opt/homebrew/Cellar/python@3.14/3.14.7/bin/python3.14",
+      "-I",
+      "-B",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-v2.py",
+      "/Users/jmb/repos/dta-parser",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+      "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01",
+      "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4",
+      "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01/1000000-group_nest-public",
+      "--receipt-sha256",
+      "ae4ac8ac38d6f9b9dffc42e44a6716ace51f67cbcd51cf5ba10c7a2d19a087d0",
+      "--rows",
+      "1000000",
+      "--script",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/memory-v2.R",
+      "--routes",
+      "public",
+      "--workload",
+      "group_nest"
+    ],
+    [
+      "/opt/homebrew/Cellar/python@3.14/3.14.7/bin/python3.14",
+      "-I",
+      "-B",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-v2.py",
+      "/Users/jmb/repos/dta-parser",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+      "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01",
+      "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4",
+      "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01/100000-nest_by-public",
+      "--receipt-sha256",
+      "ae4ac8ac38d6f9b9dffc42e44a6716ace51f67cbcd51cf5ba10c7a2d19a087d0",
+      "--rows",
+      "100000",
+      "--script",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/memory-v2.R",
+      "--routes",
+      "public",
+      "--workload",
+      "nest_by"
+    ],
+    [
+      "/opt/homebrew/Cellar/python@3.14/3.14.7/bin/python3.14",
+      "-I",
+      "-B",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-v2.py",
+      "/Users/jmb/repos/dta-parser",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+      "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01",
+      "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4",
+      "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01/1000000-nest_by-public",
+      "--receipt-sha256",
+      "ae4ac8ac38d6f9b9dffc42e44a6716ace51f67cbcd51cf5ba10c7a2d19a087d0",
+      "--rows",
+      "1000000",
+      "--script",
+      "/private/tmp/dta-direct-stage7-performance-preparation-01/memory-v2.R",
+      "--routes",
+      "public",
+      "--workload",
+      "nest_by"
+    ]
+  ],
+  "selected": [
+    {
+      "path": "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-batch-v2.py",
+      "resolved": "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-batch-v2.py",
+      "bytes": 4967,
+      "mode": "0o644",
+      "sha256": "d1a2c4d08b6d306c5b8b6932813eec9cb09df5a51038990c06859c4c43da55f5"
+    },
+    {
+      "path": "/opt/homebrew/Cellar/python@3.14/3.14.7/bin/python3.14",
+      "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "bytes": 34640,
+      "mode": "0o755",
+      "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+    },
+    {
+      "path": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "bytes": 34640,
+      "mode": "0o755",
+      "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-v2.py",
+      "resolved": "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-v2.py",
+      "bytes": 17758,
+      "mode": "0o644",
+      "sha256": "4b516ef44549e550bfbaf20e671fffc17c870d83643687188019a4c7c5081336"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-performance-preparation-01/memory-v2.R",
+      "resolved": "/private/tmp/dta-direct-stage7-performance-preparation-01/memory-v2.R",
+      "bytes": 6167,
+      "mode": "0o644",
+      "sha256": "136b884fecb4e393b0a7ffd3d18827f675d5d558ebffe14b2b4e2a710fb33cdd"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-performance-preparation-01/entry-v2.R",
+      "resolved": "/private/tmp/dta-direct-stage7-performance-preparation-01/entry-v2.R",
+      "bytes": 1522,
+      "mode": "0o644",
+      "sha256": "b9a2490b5b1ae491983e80cc67520acfc37b4fbe9ccabe54c85881627d98d0d0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-performance-preparation-01/README-memory-v2.md",
+      "resolved": "/private/tmp/dta-direct-stage7-performance-preparation-01/README-memory-v2.md",
+      "bytes": 3425,
+      "mode": "0o644",
+      "sha256": "5e8de47f544b909818785559497160aaf11b368df6f2f066f9bc2ad485381098"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-performance-preparation-01/support-v2/reference-v1.R",
+      "resolved": "/private/tmp/dta-direct-stage7-performance-preparation-01/support-v2/reference-v1.R",
+      "bytes": 3309,
+      "mode": "0o644",
+      "sha256": "da2aa1a4fbf15314470b27bf5e1f9e96fd228c6025719b0ae091b4260658a3c5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-performance-preparation-01/support-v2/schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-performance-preparation-01/support-v2/schemas.R",
+      "bytes": 106759,
+      "mode": "0o644",
+      "sha256": "d44ee08e5c981fd9490bfbd4354dabc766eece6d6dbd7192cf608cfb8efebe33"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-performance-preparation-01/support-v2/validation-v2.R",
+      "resolved": "/private/tmp/dta-direct-stage7-performance-preparation-01/support-v2/validation-v2.R",
+      "bytes": 6702,
+      "mode": "0o644",
+      "sha256": "2fadab4910b40743ddfb40e65c9d01c347572215daf7928d1b04b60a32090d76"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-performance-preparation-01/support-v2/workloads-v1.R",
+      "resolved": "/private/tmp/dta-direct-stage7-performance-preparation-01/support-v2/workloads-v1.R",
+      "bytes": 3355,
+      "mode": "0o644",
+      "sha256": "2de69c883dc81ad1bfc2fed4c322c5978ed31c3c67ddcc5640a0648bce38e6b1"
+    },
+    {
+      "path": "/opt/homebrew/bin/git",
+      "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+      "bytes": 3699840,
+      "mode": "0o555",
+      "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+    },
+    {
+      "path": "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "resolved": "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+      "bytes": 51528,
+      "mode": "0o555",
+      "sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+    },
+    {
+      "path": "/usr/bin/time",
+      "resolved": "/usr/bin/time",
+      "bytes": 134960,
+      "mode": "0o755",
+      "sha256": "e1e98e68fd988f353cc51842f5a576bc2cb4c341ae24fd2ca4f625f33b38f23a"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01/completed-receipt.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01/completed-receipt.json",
+      "bytes": 555,
+      "mode": "0o644",
+      "sha256": "ae4ac8ac38d6f9b9dffc42e44a6716ace51f67cbcd51cf5ba10c7a2d19a087d0"
+    }
+  ],
+  "python_invocation": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "-I",
+    "-B",
+    "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-batch-v2.py",
+    "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4",
+    "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01",
+    "ae4ac8ac38d6f9b9dffc42e44a6716ace51f67cbcd51cf5ba10c7a2d19a087d0",
+    "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01"
+  ],
+  "PATH": "/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.local/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/opt/homebrew/sbin:/opt/homebrew/bin:/usr/local/texlive/2026/bin/universal-darwin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path",
+  "started_utc": "2026-09-09T02:49:22.853260+00:00",
+  "scope": "Sequential quiet-window memory cases; each reviewed wrapper binds its own accepted installation and runtime. This outer record binds selected launch sources/endpoints, not complete Python or child image closure. Predecessor public memory is read-only and retains its known foreign-write defect."
+}

@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/rust/1.98.0/bin/cargo",
+    "-vV"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage7-validation/implementation/candidate-3db15d44-01",
+  "finished_utc": "2026-09-09T04:05:09.038779+00:00",
+  "label": "cargo-version",
+  "log": {
+    "bytes": 314,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage7-validation/implementation/candidate-3db15d44-01/cargo-version.log",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/implementation/candidate-3db15d44-01/cargo-version.log",
+    "sha256": "30a8ffbf5019e716b5592ff2a57ead71e42015b7b082bb9a8e76aae1d85b34df"
+  },
+  "returncode": 0,
+  "started_utc": "2026-09-09T04:05:08.998244+00:00"
+}

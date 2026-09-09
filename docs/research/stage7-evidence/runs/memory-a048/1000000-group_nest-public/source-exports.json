@@ -1,0 +1,182 @@
+[
+  {
+    "requested": [
+      "git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "rev-parse",
+      "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4:r-package/dtatools"
+    ],
+    "command": [
+      "/opt/homebrew/bin/git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "rev-parse",
+      "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4:r-package/dtatools"
+    ],
+    "git": {
+      "path": "/opt/homebrew/bin/git",
+      "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+      "bytes": 3699840,
+      "mode": "0o555",
+      "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+    },
+    "PATH": "/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.local/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/opt/homebrew/sbin:/opt/homebrew/bin:/usr/local/texlive/2026/bin/universal-darwin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path",
+    "started_utc": "2026-09-09T02:50:25.572318+00:00",
+    "returncode": 0,
+    "error": null,
+    "bytes": 41,
+    "sha256": "5e0566083d8e204dc6e87dda7c985304d6541a3f2cf434ecccc3f1600afb4a6c",
+    "completed_utc": "2026-09-09T02:50:25.581776+00:00"
+  },
+  {
+    "requested": [
+      "git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "show",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042:benchmarks/r-dibble-dplyr/helpers.R"
+    ],
+    "command": [
+      "/opt/homebrew/bin/git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "show",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042:benchmarks/r-dibble-dplyr/helpers.R"
+    ],
+    "git": {
+      "path": "/opt/homebrew/bin/git",
+      "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+      "bytes": 3699840,
+      "mode": "0o555",
+      "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+    },
+    "PATH": "/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.local/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/opt/homebrew/sbin:/opt/homebrew/bin:/usr/local/texlive/2026/bin/universal-darwin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path",
+    "started_utc": "2026-09-09T02:50:25.585061+00:00",
+    "returncode": 0,
+    "error": null,
+    "bytes": 4098,
+    "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219",
+    "completed_utc": "2026-09-09T02:50:25.593605+00:00"
+  },
+  {
+    "requested": [
+      "git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "show",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042:benchmarks/r-dibble-dplyr/owned-double-helpers.R"
+    ],
+    "command": [
+      "/opt/homebrew/bin/git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "show",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042:benchmarks/r-dibble-dplyr/owned-double-helpers.R"
+    ],
+    "git": {
+      "path": "/opt/homebrew/bin/git",
+      "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+      "bytes": 3699840,
+      "mode": "0o555",
+      "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+    },
+    "PATH": "/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.local/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/opt/homebrew/sbin:/opt/homebrew/bin:/usr/local/texlive/2026/bin/universal-darwin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path",
+    "started_utc": "2026-09-09T02:50:25.593926+00:00",
+    "returncode": 0,
+    "error": null,
+    "bytes": 6118,
+    "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2",
+    "completed_utc": "2026-09-09T02:50:25.601844+00:00"
+  },
+  {
+    "requested": [
+      "git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "show",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042:benchmarks/r-dibble-dplyr/owned-atomic-helpers.R"
+    ],
+    "command": [
+      "/opt/homebrew/bin/git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "show",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042:benchmarks/r-dibble-dplyr/owned-atomic-helpers.R"
+    ],
+    "git": {
+      "path": "/opt/homebrew/bin/git",
+      "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+      "bytes": 3699840,
+      "mode": "0o555",
+      "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+    },
+    "PATH": "/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.local/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/opt/homebrew/sbin:/opt/homebrew/bin:/usr/local/texlive/2026/bin/universal-darwin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path",
+    "started_utc": "2026-09-09T02:50:25.602071+00:00",
+    "returncode": 0,
+    "error": null,
+    "bytes": 8386,
+    "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1",
+    "completed_utc": "2026-09-09T02:50:25.609767+00:00"
+  },
+  {
+    "requested": [
+      "git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "show",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042:benchmarks/r-dibble-dplyr/owned-atomic.R"
+    ],
+    "command": [
+      "/opt/homebrew/bin/git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "show",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042:benchmarks/r-dibble-dplyr/owned-atomic.R"
+    ],
+    "git": {
+      "path": "/opt/homebrew/bin/git",
+      "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+      "bytes": 3699840,
+      "mode": "0o555",
+      "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+    },
+    "PATH": "/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.local/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/opt/homebrew/sbin:/opt/homebrew/bin:/usr/local/texlive/2026/bin/universal-darwin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path",
+    "started_utc": "2026-09-09T02:50:25.610005+00:00",
+    "returncode": 0,
+    "error": null,
+    "bytes": 12810,
+    "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012",
+    "completed_utc": "2026-09-09T02:50:25.617976+00:00"
+  },
+  {
+    "requested": [
+      "git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "show",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042:benchmarks/r-dibble-dplyr/owned-atomic-memory.R"
+    ],
+    "command": [
+      "/opt/homebrew/bin/git",
+      "-C",
+      "/Users/jmb/repos/dta-parser",
+      "show",
+      "f3b8b984c6a9ea5a0f062eee70e392bb567e5042:benchmarks/r-dibble-dplyr/owned-atomic-memory.R"
+    ],
+    "git": {
+      "path": "/opt/homebrew/bin/git",
+      "resolved": "/opt/homebrew/Cellar/git/2.55.0/bin/git",
+      "bytes": 3699840,
+      "mode": "0o555",
+      "sha256": "9048038886ac36210fbb616b49b0707465f63683cb04e33a2013baf95f746938"
+    },
+    "PATH": "/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.local/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/opt/homebrew/sbin:/opt/homebrew/bin:/usr/local/texlive/2026/bin/universal-darwin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path",
+    "started_utc": "2026-09-09T02:50:25.618233+00:00",
+    "returncode": 0,
+    "error": null,
+    "bytes": 2620,
+    "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2",
+    "completed_utc": "2026-09-09T02:50:25.626379+00:00"
+  }
+]

@@ -1,0 +1,9 @@
+"rows","groups","payload_columns","workload","route","median_ms","iterations","gc_count","warm_r_allocated_bytes","warm_r_largest_allocation_bytes","values_groups_source"
+2048,1024,1,"group_nest","public",35.7709420204628,7,17,90560,40064,TRUE
+2048,1024,1,"group_nest","predecessor_safe_reference",184.001768036978,7,81,82500600,40064,TRUE
+2048,1024,1,"nest_by","public",40.6495729985181,7,22,377792,40064,TRUE
+2048,1024,1,"nest_by","predecessor_safe_reference",190.041477995692,7,89,82787832,40064,TRUE
+8192,4096,1,"group_nest","public",151.907747029327,7,85,115136,40064,TRUE
+8192,4096,1,"group_nest","predecessor_safe_reference",719.724578026216,7,241,329513976,40064,TRUE
+8192,4096,1,"nest_by","public",167.867776035564,7,59,1244096,40064,TRUE
+8192,4096,1,"nest_by","predecessor_safe_reference",738.695236999774,7,262,330642936,40064,TRUE

@@ -1,0 +1,19 @@
+PASS repeated-source memory workload and final independent value/schema/group/source checks
+        2.83 real         2.73 user         0.26 sys
+           245972992  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               58494  page reclaims
+                  37  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   9  voluntary context switches
+               26391  involuntary context switches
+         54106322805  instructions retired
+         12787142192  cycles elapsed
+           228311760  peak memory footprint

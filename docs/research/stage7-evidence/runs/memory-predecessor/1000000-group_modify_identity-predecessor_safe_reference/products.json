@@ -1,0 +1,400 @@
+{
+  "products": [
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/accepted-input-identities.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/accepted-input-identities.json",
+      "bytes": 34966,
+      "mode": "0o644",
+      "sha256": "42666106c72a2f257b1ca0d48d9625b9da2554a4ed963f101ae4c32338f8fa9b"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/command-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/command-before.json",
+      "bytes": 3367,
+      "mode": "0o644",
+      "sha256": "e3dd0d1a072ca9ce232889451b40dc0986f7535e609ba9ae1ad0f83f5ab6f9b8"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/command-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/command-result.json",
+      "bytes": 3419,
+      "mode": "0o644",
+      "sha256": "294e5d14b3c0ff88543fcf891ad9fa3b89f62b499a10a881bcaff2487f6a1827"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/dlls.tsv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/dlls.tsv",
+      "bytes": 1153,
+      "mode": "0o644",
+      "sha256": "8681199aff81d63248fcd8f54d39b2b20773fdb65c430597465b86424ce60e29"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-00-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-00-before.json",
+      "bytes": 1464,
+      "mode": "0o644",
+      "sha256": "4e48b999e189748a36363955859c35eefdbca34fba9f8514ff8ec1b9119fd53d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-00-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-00-result.json",
+      "bytes": 1611,
+      "mode": "0o644",
+      "sha256": "164697a5477cd5368549992396d250f525920f205ba63f4897f46129658f4a8c"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-00.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-00.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-00.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-00.stdout",
+      "bytes": 41,
+      "mode": "0o644",
+      "sha256": "61c5b5b6c3f654f1d17b4502ee40da272255b8d75b5051c99335e570fde89d47"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-01-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-01-before.json",
+      "bytes": 1488,
+      "mode": "0o644",
+      "sha256": "9501e938f1e5a5306bd8f0022633c23c7ca349e2fb5302c1f5aa2414ca5d31f4"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-01-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-01-result.json",
+      "bytes": 1637,
+      "mode": "0o644",
+      "sha256": "c9127fe1f5082222ea022737d34e515fc6f3a88f6d65dd811c9d9d7282ac52c9"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-01.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-01.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-01.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-01.stdout",
+      "bytes": 4098,
+      "mode": "0o644",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-02-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-02-before.json",
+      "bytes": 1514,
+      "mode": "0o644",
+      "sha256": "4b3c2f1930556feb8e42d2b73328475bbcfb49789efa598de5248554dbda30b6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-02-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-02-result.json",
+      "bytes": 1663,
+      "mode": "0o644",
+      "sha256": "fa9bcd0eda544116790ebd4c9764a1d7c85ea21ddb41f9e2ccb24e6b8e6219ae"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-02.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-02.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-02.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-02.stdout",
+      "bytes": 6118,
+      "mode": "0o644",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-03-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-03-before.json",
+      "bytes": 1514,
+      "mode": "0o644",
+      "sha256": "7ebe663dec4158b38837e3390e3b6d4c84472747a6198a4b048203729e0ad240"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-03-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-03-result.json",
+      "bytes": 1663,
+      "mode": "0o644",
+      "sha256": "bfb86619b608c63ff438434f847c378da5389bf57933c8319b199a1d40a5a485"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-03.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-03.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-03.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-03.stdout",
+      "bytes": 8386,
+      "mode": "0o644",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-04-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-04-before.json",
+      "bytes": 1498,
+      "mode": "0o644",
+      "sha256": "5780bcd8655f894590e0a09e49c39ecf88fc9da14e2bf0e621e722caadedc2a3"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-04-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-04-result.json",
+      "bytes": 1648,
+      "mode": "0o644",
+      "sha256": "9abdd9e42587081cca9e662d9ae790e7a62aa88edf1dc36af2ca71f7b63ed890"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-04.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-04.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-04.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-04.stdout",
+      "bytes": 12810,
+      "mode": "0o644",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-05-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-05-before.json",
+      "bytes": 1512,
+      "mode": "0o644",
+      "sha256": "a32ebb4f754ca11eb85a55daea941cba1b055d941cb7cb8da262329e285b3c73"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-05-result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-05-result.json",
+      "bytes": 1661,
+      "mode": "0o644",
+      "sha256": "e52126c1e4a883ff8700c85e002e0ffb5220ea49c24d262f51d9a7cfc0ddb3bf"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-05.stderr",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-05.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-05.stdout",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-05.stdout",
+      "bytes": 2620,
+      "mode": "0o644",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-selection.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/git-selection.json",
+      "bytes": 1301,
+      "mode": "0o644",
+      "sha256": "654862a874ef7f90908299ae477e6ebf2a71f4981d19fc8486bdc9df6f19f67f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/inputs-after.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/inputs-after.json",
+      "bytes": 15158575,
+      "mode": "0o644",
+      "sha256": "b43067114e5d951986bf03ace9caac3c40620bbefa32665f4e1ec9addaab9624"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/inputs-before.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/inputs-before.json",
+      "bytes": 15158575,
+      "mode": "0o644",
+      "sha256": "b43067114e5d951986bf03ace9caac3c40620bbefa32665f4e1ec9addaab9624"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/installation-comparison.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/installation-comparison.json",
+      "bytes": 1288,
+      "mode": "0o644",
+      "sha256": "a072344ada5d27763ee750cec7fb5531781a1ee8882ad6c5d058416c29691703"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/namespaces.tsv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/namespaces.tsv",
+      "bytes": 1356,
+      "mode": "0o644",
+      "sha256": "5a599af06693c1df5724dd52374f5e8b9dbea023dfe60d3f6c362949a07a4e78"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/result.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/result.json",
+      "bytes": 501,
+      "mode": "0o644",
+      "sha256": "49f0ab81e7e7c3edf052f81499333f6f832591a8f7274776544b44a900a3697e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/results/heap.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/results/heap.csv",
+      "bytes": 396,
+      "mode": "0o644",
+      "sha256": "f2a2b1670de843b961e9c4fe591351a145693cbc97310bd11d66ac312e5d1de6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/results/session.txt",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/results/session.txt",
+      "bytes": 2216,
+      "mode": "0o644",
+      "sha256": "8a2aeb1819aec1079ececb9b994e5412f1a921e7f7ce750fae2402ddedbb54a7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/results/states.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/results/states.csv",
+      "bytes": 6783,
+      "mode": "0o644",
+      "sha256": "41f7a431ae3830e8919d6acefbb68cc76040aa499e9eb9e7386f3a7db348dc56"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/results/validation.csv",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/results/validation.csv",
+      "bytes": 160,
+      "mode": "0o644",
+      "sha256": "5758b7bd1d8cadabe2c6b70fe98b019ec2a17460702b1b91de3f0a76c7b603ed"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/runner.log",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/runner.log",
+      "bytes": 869,
+      "mode": "0o644",
+      "sha256": "5de190760d9dda956ded5ad7ac723463a394eecd34fdca1044d8a0b8e6d049ea"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/runtime-coverage.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/runtime-coverage.json",
+      "bytes": 206,
+      "mode": "0o644",
+      "sha256": "b5a27a7ac0202ca6fdd9d2552b0ba1a6f75daed091ceac54953ee1cae6e9d01e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/runtime.txt",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/runtime.txt",
+      "bytes": 875,
+      "mode": "0o644",
+      "sha256": "1c02c4cbfe3119a7e3a7affae029a2e3393cfe69768809bcba99af900a5063e8"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/README-memory-v2.md",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/README-memory-v2.md",
+      "bytes": 3425,
+      "mode": "0o644",
+      "sha256": "5e8de47f544b909818785559497160aaf11b368df6f2f066f9bc2ad485381098"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/benchmarks/r-dibble-dplyr/helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/benchmarks/r-dibble-dplyr/helpers.R",
+      "bytes": 4098,
+      "mode": "0o644",
+      "sha256": "38be0d6709ba66af9307446c58dce5c6c953e3390da1c3d90258b8c727cf7219"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/benchmarks/r-dibble-dplyr/owned-atomic-helpers.R",
+      "bytes": 8386,
+      "mode": "0o644",
+      "sha256": "4ea65133046e058f2bdf071417ed3c701a6ae98ec600e842dd14fde95ffa4ba1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/benchmarks/r-dibble-dplyr/owned-atomic-memory.R",
+      "bytes": 2620,
+      "mode": "0o644",
+      "sha256": "38f4aa25fe12193ec6c1860dfc85accbdd857e1afb207ab2867bc8cff3a966f2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/benchmarks/r-dibble-dplyr/owned-atomic.R",
+      "bytes": 12810,
+      "mode": "0o644",
+      "sha256": "1b86479434dac71c2354d120894f9deacf57bbb0887567630b4e5b2be80c3012"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/benchmarks/r-dibble-dplyr/owned-double-helpers.R",
+      "bytes": 6118,
+      "mode": "0o644",
+      "sha256": "a6c5a83561a03401258aa5f0ebbd8dc494a1f8ac46fdc3f1d9fdd19c3dfd53c2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/entry-v2.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/entry-v2.R",
+      "bytes": 1522,
+      "mode": "0o644",
+      "sha256": "b9a2490b5b1ae491983e80cc67520acfc37b4fbe9ccabe54c85881627d98d0d0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/run-memory-v2.py",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/run-memory-v2.py",
+      "bytes": 17758,
+      "mode": "0o644",
+      "sha256": "4b516ef44549e550bfbaf20e671fffc17c870d83643687188019a4c7c5081336"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/selected-workload.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/selected-workload.R",
+      "bytes": 6167,
+      "mode": "0o644",
+      "sha256": "136b884fecb4e393b0a7ffd3d18827f675d5d558ebffe14b2b4e2a710fb33cdd"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/stage7-support/reference-v1.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/stage7-support/reference-v1.R",
+      "bytes": 3309,
+      "mode": "0o644",
+      "sha256": "da2aa1a4fbf15314470b27bf5e1f9e96fd228c6025719b0ae091b4260658a3c5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/stage7-support/schemas.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/stage7-support/schemas.R",
+      "bytes": 106759,
+      "mode": "0o644",
+      "sha256": "d44ee08e5c981fd9490bfbd4354dabc766eece6d6dbd7192cf608cfb8efebe33"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/stage7-support/validation-v2.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/stage7-support/validation-v2.R",
+      "bytes": 6702,
+      "mode": "0o644",
+      "sha256": "2fadab4910b40743ddfb40e65c9d01c347572215daf7928d1b04b60a32090d76"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/stage7-support/workloads-v1.R",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source/stage7-support/workloads-v1.R",
+      "bytes": 3355,
+      "mode": "0o644",
+      "sha256": "2de69c883dc81ad1bfc2fed4c322c5978ed31c3c67ddcc5640a0648bce38e6b1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source-exports.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/source-exports.json",
+      "bytes": 10252,
+      "mode": "0o644",
+      "sha256": "9a6ea1aae3e255a38442ad24da2187187018385196cbdd2ec1460f32c9ff0db5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/whole-child-rss.json",
+      "resolved": "/private/tmp/dta-direct-stage7-validation/root-memory-predecessor-4d07-v2-01/1000000-group_modify_identity-predecessor_safe_reference/whole-child-rss.json",
+      "bytes": 268,
+      "mode": "0o644",
+      "sha256": "b6a7996ff264dac9ea18d1e012f1058da633cb2026e3f7c11f7d43136df564b8"
+    }
+  ],
+  "excluded": [
+    "products.json",
+    "receipt.json"
+  ]
+}

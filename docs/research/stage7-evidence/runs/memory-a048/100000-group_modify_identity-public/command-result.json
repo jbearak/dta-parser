@@ -1,0 +1,62 @@
+{
+  "command": [
+    "/usr/bin/time",
+    "-l",
+    "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "--vanilla",
+    "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01/100000-group_modify_identity-public/source/entry-v2.R",
+    "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01/library",
+    "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01/100000-group_modify_identity-public/results",
+    "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4",
+    "7",
+    "100000"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01/100000-group_modify_identity-public/source",
+  "PATH": "/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path:/Users/jmb/.pyenv/shims:/Users/jmb/bin:/Users/jmb/.local/bin:/Users/jmb/.npm-global/bin:/Users/jmb/.bun/bin:/Users/jmb/.cargo/bin:/opt/homebrew/sbin:/opt/homebrew/bin:/usr/local/texlive/2026/bin/universal-darwin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/X11/bin:/Library/TeX/texbin:/Users/jmb/.codex/tmp/arg0/codex-arg0edbGxm:/Users/jmb/.codex/packages/standalone/releases/0.153.4-aarch64-apple-darwin/codex-path",
+  "selected_rscript": {
+    "path": "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "resolved": "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "bytes": 51528,
+    "mode": "0o555",
+    "sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+  },
+  "selected_time": {
+    "path": "/usr/bin/time",
+    "resolved": "/usr/bin/time",
+    "bytes": 134960,
+    "mode": "0o755",
+    "sha256": "e1e98e68fd988f353cc51842f5a576bc2cb4c341ae24fd2ca4f625f33b38f23a"
+  },
+  "python": {
+    "path": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "resolved": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "bytes": 34640,
+    "mode": "0o755",
+    "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+  },
+  "python_invocation": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "-I",
+    "-B",
+    "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-v2.py",
+    "/Users/jmb/repos/dta-parser",
+    "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+    "/private/tmp/dta-direct-stage7-validation/implementation/candidate-a0485ac7-01",
+    "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4",
+    "/private/tmp/dta-direct-stage7-validation/root-memory-a0485ac7-v2-01/100000-group_modify_identity-public",
+    "--receipt-sha256",
+    "ae4ac8ac38d6f9b9dffc42e44a6716ace51f67cbcd51cf5ba10c7a2d19a087d0",
+    "--rows",
+    "100000",
+    "--script",
+    "/private/tmp/dta-direct-stage7-performance-preparation-01/memory-v2.R",
+    "--routes",
+    "public",
+    "--workload",
+    "group_modify_identity"
+  ],
+  "started_utc": "2026-09-09T02:49:26.609192+00:00",
+  "returncode": 0,
+  "error": null,
+  "completed_utc": "2026-09-09T02:49:38.670231+00:00"
+}

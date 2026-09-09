@@ -1,0 +1,32 @@
+--- /private/tmp/dta-direct-stage7-high-cardinality-preparation-01/assess-v2.py
++++ /private/tmp/dta-direct-stage7-high-cardinality-preparation-01/assess-v3.py
+@@ -18,9 +18,14 @@
+ parser.add_argument('candidate_source')
+ parser.add_argument('candidate_receipt_sha256')
+ parser.add_argument('output', type=Path)
++parser.add_argument('--predecessor-directory', type=Path, required=True)
++parser.add_argument('--predecessor-receipt-sha256', required=True)
+ args = parser.parse_args()
+ assert re.fullmatch('[0-9a-f]{40}', args.candidate_source)
+ assert re.fullmatch('[0-9a-f]{64}', args.candidate_receipt_sha256)
++assert re.fullmatch('[0-9a-f]{64}', args.predecessor_receipt_sha256)
++assert args.predecessor_directory.is_absolute()
++assert args.predecessor_directory.resolve(strict=True) == args.predecessor_directory
+ assert args.candidate_directory.is_absolute()
+ assert args.candidate_directory.resolve(strict=True) == args.candidate_directory
+ assert args.output.is_absolute() and not args.output.exists() and not args.output.is_symlink()
+@@ -37,12 +42,12 @@
+ runs = []
+ schemas = {}
+ for name, source, routes in [
+-    ('root-high-cardinality-predecessor-01', '4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c',
++    (args.predecessor_directory, '4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c',
+      ['public', 'predecessor_safe_reference']),
+     (args.candidate_directory, args.candidate_source, ['public'])]:
+     root = V / name
+     receipt_path = root / 'receipt.json'
+-    expected_receipt = ('6e0df5c4ba933a3dd0261868de46a3e883ebb5f1ed85466d83bb354c22a0cf6d'
++    expected_receipt = (args.predecessor_receipt_sha256
+         if source == '4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c'
+         else args.candidate_receipt_sha256)
+     assert identity(receipt_path)['sha256'] == expected_receipt

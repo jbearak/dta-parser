@@ -1,0 +1,256 @@
+{
+  "assessor": {
+    "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/summarize-repeats-v1.py",
+    "bytes": 5235,
+    "sha256": "504a5cca4fa38c4ac316783d00c9436437567149f2b32f94b06a0f5340d78c4a"
+  },
+  "plan": {
+    "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/repeat-plan-3db15d44-01.json",
+    "bytes": 1666,
+    "sha256": "a15fb246eed862dcaa9cfd2948c9bf6dc65766466a29ccec6e6a7f477638f23a"
+  },
+  "pair_assessments": [
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/root-pair-3db15d44-01.json",
+      "bytes": 82176,
+      "sha256": "cb72ebfd86e269a6e511e9dcc28f7c6a1ea8c0c6d43ea7c37d4eb6bef84a820e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/root-pair-3db15d44-02.json",
+      "bytes": 82191,
+      "sha256": "edb866f9f791c129c879b1d73b1e8b187e854068d5303f4110b8d648f0f20e4d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/root-pair-3db15d44-03.json",
+      "bytes": 82178,
+      "sha256": "daaef9c7d26fda027b36cb3cc311ae0807c65eedcd3b3eb72c2570a4d2e37494"
+    }
+  ],
+  "executed_order": [
+    {
+      "pair": 1,
+      "role": "candidate",
+      "command": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-01/command-result.json",
+        "bytes": 2941,
+        "sha256": "e8c71186c3304b3ea8ff754c31a64820f0648082343c97a2588d3023ab9409ae"
+      },
+      "started": "2026-09-09T04:17:58.291300+00:00",
+      "completed": "2026-09-09T04:18:10.780562+00:00"
+    },
+    {
+      "pair": 1,
+      "role": "predecessor",
+      "command": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-01/command-result.json",
+        "bytes": 2984,
+        "sha256": "a7f549154768952e2e128bc8b089ebdae4f3ed7fc0bdaf33ff8161b7c7880c25"
+      },
+      "started": "2026-09-09T04:18:51.369630+00:00",
+      "completed": "2026-09-09T04:19:21.348459+00:00"
+    },
+    {
+      "pair": 2,
+      "role": "predecessor",
+      "command": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-02/command-result.json",
+        "bytes": 2984,
+        "sha256": "51f7bbb0f1bc5d6ae2c810d890ed39113591d3ef61022aaa5ac7550d7fbd74e4"
+      },
+      "started": "2026-09-09T04:21:04.465005+00:00",
+      "completed": "2026-09-09T04:21:34.734014+00:00"
+    },
+    {
+      "pair": 2,
+      "role": "candidate",
+      "command": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-02/command-result.json",
+        "bytes": 2941,
+        "sha256": "d147749043208afb19ceee98be484bbe767ec0faf03901ac352e5132d4735810"
+      },
+      "started": "2026-09-09T04:23:27.587672+00:00",
+      "completed": "2026-09-09T04:23:39.958040+00:00"
+    },
+    {
+      "pair": 3,
+      "role": "candidate",
+      "command": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-3db15d44-repeat-03/command-result.json",
+        "bytes": 2941,
+        "sha256": "4ef87449621d57ccdd214b3339eb4aa5184ff145c29e65b8e09e55922e3df838"
+      },
+      "started": "2026-09-09T04:24:26.185270+00:00",
+      "completed": "2026-09-09T04:24:38.633486+00:00"
+    },
+    {
+      "pair": 3,
+      "role": "predecessor",
+      "command": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-high-cardinality-predecessor-repeat-03/command-result.json",
+        "bytes": 2984,
+        "sha256": "ea51e34adcab6870cbd0453d8ed3f20c6dcaf13fd44bb8cf7ddca80ea5c14cf0"
+      },
+      "started": "2026-09-09T04:25:27.601005+00:00",
+      "completed": "2026-09-09T04:25:57.674949+00:00"
+    }
+  ],
+  "series": 36,
+  "samples": 252,
+  "profiles": 36,
+  "cross_source_schema_pairs": 24,
+  "shape_summaries": [
+    {
+      "groups": 1024,
+      "workload": "group_nest",
+      "predecessor_public_ms": [
+        35.3372849931475,
+        35.7709420204628
+      ],
+      "candidate_ms": [
+        68.0394589726347,
+        69.909714977257
+      ],
+      "public_delta_ms": [
+        32.26851695217191,
+        34.5724299841095
+      ],
+      "public_ratio": [
+        1.902087424304137,
+        1.9783555808210416
+      ],
+      "fixed_safe_ms": [
+        182.689932000358,
+        186.682225001277
+      ],
+      "fixed_safe_delta_ms": [
+        -116.77251002402001,
+        -114.0713889908515
+      ],
+      "fixed_safe_ratio": [
+        0.3697761151890732,
+        0.3756011196576067
+      ],
+      "predecessor_public_R_bytes": 90560,
+      "candidate_R_bytes": 679976,
+      "fixed_safe_R_bytes": 82500600,
+      "flags_repeated": 3,
+      "fixed_safe_flags": 0,
+      "paired_schemas_equal": true
+    },
+    {
+      "groups": 1024,
+      "workload": "nest_by",
+      "predecessor_public_ms": [
+        40.4026300238911,
+        40.7235370075796
+      ],
+      "candidate_ms": [
+        71.7002259916626,
+        72.4971019953955
+      ],
+      "public_delta_ms": [
+        31.297595967771507,
+        31.847528996877394
+      ],
+      "public_ratio": [
+        1.7727788483087568,
+        1.7834652776804916
+      ],
+      "fixed_safe_ms": [
+        189.398638991406,
+        190.990259026876
+      ],
+      "fixed_safe_delta_ms": [
+        -119.2900330352134,
+        -117.20481395604999
+      ],
+      "fixed_safe_ratio": [
+        0.3754129993696328,
+        0.38148041553875367
+      ],
+      "predecessor_public_R_bytes": 377792,
+      "candidate_R_bytes": 810040,
+      "fixed_safe_R_bytes": 82787832,
+      "flags_repeated": 3,
+      "fixed_safe_flags": 0,
+      "paired_schemas_equal": true
+    },
+    {
+      "groups": 4096,
+      "workload": "group_nest",
+      "predecessor_public_ms": [
+        151.50184702361,
+        153.237418009667
+      ],
+      "candidate_ms": [
+        288.267720025033,
+        291.559732984751
+      ],
+      "public_delta_ms": [
+        136.359972995706,
+        138.322314975084
+      ],
+      "public_ratio": [
+        1.8976498938489332,
+        1.9109775009028953
+      ],
+      "fixed_safe_ms": [
+        712.495909014251,
+        719.724578026216
+      ],
+      "fixed_safe_delta_ms": [
+        -431.45685800118304,
+        -421.684139058926
+      ],
+      "fixed_safe_ratio": [
+        0.4005250464220395,
+        0.40877986396060717
+      ],
+      "predecessor_public_R_bytes": 115136,
+      "candidate_R_bytes": 2467976,
+      "fixed_safe_R_bytes": 329513976,
+      "flags_repeated": 3,
+      "fixed_safe_flags": 0,
+      "paired_schemas_equal": true
+    },
+    {
+      "groups": 4096,
+      "workload": "nest_by",
+      "predecessor_public_ms": [
+        165.166573016904,
+        167.867776035564
+      ],
+      "candidate_ms": [
+        325.31294200453,
+        331.029859022237
+      ],
+      "public_delta_ms": [
+        158.380786015187,
+        165.863286005333
+      ],
+      "public_ratio": [
+        1.948773380877547,
+        2.0042182445013115
+      ],
+      "fixed_safe_ms": [
+        737.766095000552,
+        741.612387006171
+      ],
+      "fixed_safe_delta_ms": [
+        -416.29944500164106,
+        -406.736235978315
+      ],
+      "fixed_safe_ratio": [
+        0.4386562949923098,
+        0.4486921549600207
+      ],
+      "predecessor_public_R_bytes": 1244096,
+      "candidate_R_bytes": 2982040,
+      "fixed_safe_R_bytes": 330642936,
+      "flags_repeated": 3,
+      "fixed_safe_flags": 0,
+      "paired_schemas_equal": true
+    }
+  ],
+  "scope": "Three fresh serial process pairs, alternating run order. Each preceding assessor checks complete raw timings/profiles and schema equality; this summarizer reuses those assessments and checks selected command identities/order and cross-repeat numerical consistency. Four public elapsed flags recur in every pair; all fixed-safe comparisons improve. No significance test, paired individual-sample test, exclusive phase/CPU attribution, RSS/retention result, universal scaling or claim that remaining overhead is unavoidable. Public predecessor has weaker foreign-write isolation; its elapsed/allocated regressions remain reported."
+}
