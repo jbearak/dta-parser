@@ -98,6 +98,28 @@ timing flags. Package, native, final-candidate memory and external PR gates
 remain open. The twelve earlier-stage read regressions, Stages 8–9 and final
 actual fertility validation remain required.
 
+Source `1ae15066` passed the new allocation budget, but its 137-block focused
+run retained 2,798 passes and one failure: the mixed-encoding owned source's
+private sharing flag changed. A five-block diagnostic on that exact installation
+passed 530 preservation assertions. Public matching of Latin-1 payload or
+metadata leaves a conservative tracked fork; source values, encodings,
+attributes, backing and exposure remain unchanged. Key-only conversion already
+changes sharing in the original validator's duplicate-key check. The regression
+now checks backing and semantic preservation without requiring that private flag
+to stay FALSE, and adds two-way foreign writes and the preserved bytes-metadata
+error boundary. Production matching and native ownership code are unchanged.
+
+That choice retains a measured later-write cost. For 100,000 strings, an owned
+setter after conversion required 800,048 R allocation bytes, including 800,000
+native capture bytes, versus zero in the original-validator setter control.
+These measurements overlap and must not be added. Four-element captures record
+32 native bytes despite no retained Rprofmem events. All 18 separate captured-
+handle foreign-write cases protect the other handle in both directions. All 40
+bytes-attribute controls retain the same old/new translation error; they are
+preserved error outcomes, not supported bytes conversion. Earlier failures and
+measurements remain retained, and fresh focused qualification and the complete
+operation grid are still required before performance acceptance.
+
 ## Historical Stage 6 implementation checkpoints
 
 
