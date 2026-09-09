@@ -15,7 +15,7 @@ test_that("registered recode methods retain continuation context", {
         events[[length(events) + 1L]] <<- list(.Generic, .Class)
         NextMethod()
     }
-    registerS3method("recode", name, method, envir = generic_namespace)
+    registerS3method("recode", name, method, envir = new.env(parent = generic_namespace))
     x <- structure("a", class = c(name, "character"))
     expect_identical(recode(x, a = "A"), "A")
     expect_identical(events, list(list("recode", class(x))))
@@ -52,14 +52,14 @@ test_that("foreign registrations preserve registry precedence and function ident
         else assign(global_key, global_old, .GlobalEnv)
     })
     assign(global_key, function(.x, ...) "global", .GlobalEnv)
-    registerS3method("recode", classes[[1L]], function(.x, ...) "registered", ns)
+    registerS3method("recode", classes[[1L]], function(.x, ...) "registered", envir = new.env(parent = ns))
     expect_identical(recode(structure("a", class = c(classes[[1L]], "character"))), "registered")
     foreign <- eval(quote(function(.x, ...) "foreign namespace closure"), ns)
-    registerS3method("recode", classes[[2L]], foreign, ns)
+    registerS3method("recode", classes[[2L]], foreign, envir = new.env(parent = ns))
     expect_identical(recode(structure(list(1), class = classes[[2L]])), "foreign namespace closure")
-    registerS3method("recode", "character", foreign, ns)
+    registerS3method("recode", "character", foreign, envir = new.env(parent = ns))
     expect_identical(recode("a"), "foreign namespace closure")
-    registerS3method("recode", "default", foreign, ns)
+    registerS3method("recode", "default", foreign, envir = new.env(parent = ns))
     expect_identical(recode(TRUE), "foreign namespace closure")
 })
 
@@ -84,7 +84,7 @@ test_that("package-visible recode methods precede same-slot foreign registration
             else assign(keys[[i]], old[[i]], table)
         }
     })
-    for (class in classes) registerS3method("recode", class, function(.x, ...) "foreign", ns)
+    for (class in classes) registerS3method("recode", class, function(.x, ...) "foreign", envir = new.env(parent = ns))
     x <- set_dta_note(c("a", "b"), 1L, "note")
     out <- recode(x, a = "A")
     expect_identical(as.vector(out), c("A", "b"))
@@ -110,11 +110,11 @@ test_that("foreign methods retain the real generic environment and dynamic conti
         }
     })
     first <- function(.x, ..., .default = NULL, .missing = NULL) {
-        registerS3method("recode", classes[[2L]], function(.x, ...) "updated", ns)
+        registerS3method("recode", classes[[2L]], function(.x, ...) "updated", envir = new.env(parent = ns))
         list(generic = .Generic, definition = .GenericDefEnv, next_value = NextMethod())
     }
-    registerS3method("recode", classes[[1L]], first, ns)
-    registerS3method("recode", classes[[2L]], function(.x, ...) "old", ns)
+    registerS3method("recode", classes[[1L]], first, envir = new.env(parent = ns))
+    registerS3method("recode", classes[[2L]], function(.x, ...) "old", envir = new.env(parent = ns))
     out <- recode(structure("a", class = c(classes, "character")))
     expect_identical(out$generic, "recode")
     expect_identical(out$definition, ns)

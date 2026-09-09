@@ -1,26 +1,3 @@
-.register_labelled_recode_method <- function(method) {
-    registration_environment <- new.env(parent = asNamespace("dplyr"))
-    registerS3method(
-        "recode",
-        "haven_labelled",
-        method,
-        envir = registration_environment
-    )
-    invisible(NULL)
-}
-
-.register_dtatools_labelled_recode <- function(...) {
-    if (!isNamespaceLoaded("dtatools") || !isNamespaceLoaded("dplyr")) {
-        return(invisible(NULL))
-    }
-
-    .register_labelled_recode_method(get(
-        "recode.haven_labelled",
-        envir = asNamespace("dtatools"),
-        inherits = FALSE
-    ))
-}
-
 .labelled_attach_state <- new.env(parent = emptyenv())
 .labelled_attach_state$warned <- FALSE
 
@@ -50,55 +27,19 @@
 }
 
 .onLoad <- function(libname, pkgname) {
-    # labelled registers the same generic/class pair. If its optional namespace
-    # loads later, reapply the dtatools package's tag- and metadata-preserving contract.
-    setHook(
-        packageEvent("labelled", "onLoad"),
-        .register_dtatools_labelled_recode,
-        action = "append"
-    )
-    setHook(
-        packageEvent("labelled", "attach"),
-        .warn_labelled_masking,
-        action = "append"
-    )
-    if (isNamespaceLoaded("labelled")) {
-        .register_dtatools_labelled_recode()
-    }
+    complete <- FALSE
+    on.exit({
+        if (!complete) {
+            try(.set_dtatools_optional_hooks(remove = TRUE), silent = TRUE)
+            try(.restore_dplyr_methods(), silent = TRUE)
+        }
+    }, add = TRUE)
+    .set_dtatools_optional_hooks()
+    .register_dplyr_methods()
+    complete <- TRUE
 }
 
 .onUnload <- function(libpath) {
-    hook_name <- packageEvent("labelled", "onLoad")
-    hooks <- getHook(hook_name)
-    keep <- !vapply(
-        hooks,
-        identical,
-        logical(1),
-        y = .register_dtatools_labelled_recode
-    )
-    setHook(hook_name, hooks[keep], action = "replace")
-
-    hook_name <- packageEvent("labelled", "attach")
-    hooks <- getHook(hook_name)
-    keep <- !vapply(
-        hooks,
-        identical,
-        logical(1),
-        y = .warn_labelled_masking
-    )
-    setHook(hook_name, hooks[keep], action = "replace")
-
-    # Do not leave the optional package pointing at an unloaded namespace.
-    if (isNamespaceLoaded("labelled") && isNamespaceLoaded("dplyr") &&
-        exists(
-            "recode.haven_labelled",
-            envir = asNamespace("labelled"),
-            inherits = FALSE
-        )) {
-        .register_labelled_recode_method(get(
-            "recode.haven_labelled",
-            envir = asNamespace("labelled"),
-            inherits = FALSE
-        ))
-    }
+    .set_dtatools_optional_hooks(remove = TRUE)
+    .restore_dplyr_methods()
 }

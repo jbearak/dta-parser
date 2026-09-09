@@ -56,7 +56,8 @@
 #' Numeric inputs to this public function continue to use the Stata-preserving
 #' policy above.
 #'
-#' When the dtatools namespace is loaded, `dplyr::recode()` dispatches here
+#' Dplyr is optional. Native recoding does not load its namespace. When both
+#' namespaces are loaded, `dplyr::recode()` dispatches here
 #' for bare numeric, `haven_labelled`, `Date`, and `POSIXct` vectors. This also
 #' applies when `recode()` is called inside `dplyr::mutate()`, regardless of
 #' package attachment order. For numeric vectors without tags, this method

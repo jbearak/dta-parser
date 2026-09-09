@@ -72,7 +72,8 @@ uses its public generic to retain that method's dispatch environment and
 Numeric inputs to this public function continue to use the Stata-preserving
 policy above.
 
-When the dtatools namespace is loaded, \code{dplyr::recode()} dispatches here
+Dplyr is optional. Native recoding does not load its namespace. When both
+namespaces are loaded, \code{dplyr::recode()} dispatches here
 for bare numeric, \code{haven_labelled}, \code{Date}, and \code{POSIXct}
 vectors. This also applies when \code{recode()} is called inside
 \code{dplyr::mutate()}, regardless of package attachment order. For numeric

@@ -6,6 +6,11 @@ and writes standalone Stata 18/19 datasets. Use it instead of
 common arguments and returns compatible values, labels, dates, and tagged
 missing values. Numeric columns also retain their declared Stata storage type.
 
+Dplyr is optional. Reading, writing, recoding, base operations, metadata helpers,
+and explicit mutation work without loading it. Install dplyr 1.2.1 or newer to
+use its verbs with dibbles. The methods register whenever both namespaces are
+loaded, in either order.
+
 ## Functions
 
 | Function | Purpose |
@@ -557,6 +562,24 @@ missing-value policy. See
 `?recode` for default, missing and metadata-wrapper behavior.
 Selected foreign S3 recode methods retain an optional public dplyr adapter;
 the standard character, factor and numeric paths use the owned kernels.
+
+With dplyr, `rows_patch()` follows the column's missing-value policy. A typed
+Stata numeric destination keeps its system missing value, while an ordinary
+tibble `NA` can be patched:
+
+```r
+if (requireNamespace("dplyr", quietly = TRUE)) {
+    typed <- dibble(id = 1:3, x = c(10, NA, 30))
+    ordinary <- tibble::tibble(id = 1:3, x = c(10, NA, 30))
+    patch <- tibble::tibble(id = 2L, x = 99)
+    as.double(dplyr::rows_patch(typed, patch, by = "id")$x) # 10 NA 30
+    dplyr::rows_patch(ordinary, patch, by = "id")$x         # 10 99 30
+}
+```
+
+Use explicit column names with base `cbind()`, such as `cbind(data, extra = x)`,
+when the output name matters. An unnamed argument following a dibble can retain
+a value-derived name from the existing base-binding adapter.
 
 `tab()` creates one-way and multidimensional frequency tables using Stata value labels. With `missing = TRUE`, it keeps `.`, `.a` through `.z`, and R `NaN` as separate categories when they occur:
 

@@ -232,6 +232,13 @@ Adapted from dplyr 1.2.1:
     cases from tests/testthat/test-recode.R. Additional package-specific tests
     cover metadata, missing tags, forcing and external S3 continuation; no
     upstream snapshots or numeric tests were copied.
+  Package-specific optional registration in R/dplyr-registration.R uses public
+    base registration and package-event APIs. It retains prior method ownership,
+    removes its own hooks on unload and leaves unrelated replacements intact.
+    R 4.6.1 src/library/base/R/namespace.R was studied to identify retained
+    delayed hooks and registration metadata; no implementation was copied.
+    tests/testthat/test-dplyr-optional.R adds namespace, reload, restoration,
+    registration rollback and native no-load checks.
   The inspected files contain no separate file-level copyright or license.
 
 Adapted from R 4.6.1, released 2026-06-24 (SVN revision 90187):
