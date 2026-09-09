@@ -437,6 +437,26 @@ def main():
         require(Path(package["dll_path"]).resolve(strict=True) in
                 {Path(row["resolved"]) for row in installed_files}, "Loaded DLL is not an inventoried installed member")
         package["files"] = installed_files
+        examples_script = scripts / "run-r-native-examples.R"
+        bind(examples_script)
+        examples_output = evidence / "examples"
+        examples_output.mkdir()
+        examples_guard = source / "tools/library-guard.R"
+        bind(examples_guard)
+        examples_config = evidence / "examples-config.R"
+        examples_config.write_text(r_literal(dict(
+            libraries=[*library_paths, runtime["base_library"]], expected_packages={
+                **expected, "dtatools": dict(path=str(installed), version=before_probe["source_version"])},
+            runtime=runtime, package=package, forbidden=sorted(FORBIDDEN),
+            exports=source_manifest["exports"], guard=str(examples_guard),
+            empty_startup=str(startup), source_man=str(source / "man"),
+            output=str(examples_output), code_output=str(payload / "example-code"))) + "\n", encoding="utf-8")
+        bind(examples_config)
+        step("native-examples", [selected_r["path"], "--vanilla", "--slave", "-f",
+            str(examples_script), "--args", str(examples_config)], env, args.timeout_seconds)
+        examples_status = read_json(examples_output / "result.json")
+        require(examples_status["complete"] is True, "Native examples did not complete")
+        bind_tree("example-code", payload / "example-code")
         effective, applied = effective_manifest(source_manifest, before_probe["capabilities"])
         effective_path = evidence / "effective-manifest.json"
         write_json(effective_path, effective)
