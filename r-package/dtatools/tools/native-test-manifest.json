@@ -146,7 +146,7 @@
       "files": [
         {
           "path": "tests/testthat/test-arrow.R",
-          "sha256": "1df4c2ecb937ee0a09b45b498766e1890fdca60b28d91daef4048e120b8646f9"
+          "sha256": "aa4ea4d8e1ca3498d610cc2367460c423cc53c55e8fa8a740894c2cbe3c784fd"
         },
         {
           "path": "tests/testthat/test-read-dta.R",
@@ -2148,7 +2148,7 @@
         },
         {
           "path": "tests/testthat/test-value-label-table-names.R",
-          "sha256": "1fd234c05f7e59c676b3358d94154bf69a2af2618e58fc84ce48202b175f1003"
+          "sha256": "376317cadbcb9b5814972df99ac115e6327b480e5c8ce5c58ad1beb683f98842"
         },
         {
           "path": "tests/testthat/test-name-strings.R",

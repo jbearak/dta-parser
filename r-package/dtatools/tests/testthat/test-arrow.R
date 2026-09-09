@@ -1189,7 +1189,8 @@ test_that("profiled UInt16 columns retain projected shared value labels", {
     )
     expect_identical(val_labels(projected$second), c(Yes = 1))
     expect_identical(
-        tracemem(val_labels(full$first)), tracemem(val_labels(full$second))
+        rlang::obj_address(val_labels(full$first)),
+        rlang::obj_address(val_labels(full$second))
     )
 
     roundtrip_path <- arrow_tempfile()
