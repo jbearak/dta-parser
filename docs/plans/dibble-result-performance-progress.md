@@ -53,6 +53,75 @@ read-only scalar-address observations identify a lead, not a traced C cause.
 Stages 8–9, the twelve residual read costs, and final actual fertility renv
 validation remain required. Issue #172 stays open.
 
+### Current Stage 7 qualification
+
+Exact source `3db15d44f2b557f5282fb7a30fd59c7980a4484c`, package tree
+`fd8642daf27875e5cece5822e1ac9cd5615ff3c6`, completes the five direct verbs and
+shared nested capture. The final memo uses actual object keys in the public utils
+address hash and computes sibling first identities once. It preserves active-cycle
+rejection, completed-child reuse and fixed-field roots while correcting the
+observed high-cardinality allocation growth. The API is experimental; host R
+4.6.1 and minimum R 4.6.0 controls exercise its required behavior.
+
+The fresh host focused run passes 2,896 assertions in 144 blocks without
+failures, errors, warnings or skips. The full suite passes 18,174 assertions in
+1,058 blocks with four known warnings and no failures, errors or skips. R 4.6.0
+passes 6,481 assertions in 339 blocks with four known warnings and seven capability
+skips. The three Stage 7 test files contribute 44 blocks and 516 host passes,
+or 498 minimum passes with two profiling skips. The fresh-child retention test
+runs on both runtimes; the new allocation-ratio test requires profmem.
+
+All 16 package commands complete, including conformance, interoperability,
+source/archive checks, R CMD check and binary packaging. Packaged tests pass
+18,174 assertions with four warnings. The check retains three warnings and two
+notes; the earlier undefined `:=`/`head` note is removed. Nested Apple nm inspection
+still reports 22 LLVM attribute errors and status one, so outer success is not
+complete nested-tool success. SDK/vendor diagnostics, repository-access warnings
+and the separate Haven loopback capability skip remain. Host, binary and minimum
+DLL direct-linkage checks pass.
+
+Native allocation/isolation and repeated-generation results retain their a048
+source identity and are reused only for equal selected native/workload/runner
+inputs. Full Rust qualification retains source7b/runner7272 and equal selected
+Rust inputs. Neither reuse covers the changed R capture module or claims a new
+runtime execution. Fresh R functional, performance, retention and isolated-write
+gates qualify that change. Nine semantic edge products match a048 byte-for-byte,
+including recorded errors and interrupts; 126-record completion is not blanket
+acceptance of every outcome.
+
+The ordinary 54-shape grid has no joint greater-than-10% and greater-than-1 ms
+flags in 108 comparisons. Twelve positive timing deltas, 32 R-allocation increases
+and nonuniform RSS remain. At 1,024 and 4,096 groups with two integer rows per
+group, four public latency flags persist in all three fresh paired repeats.
+Candidate medians are 31.3–165.9 ms, about 77–100%, above predecessor public and
+about 55–63% below the fixed safe reference. Those read-only integer cases pass
+value/schema checks. The complete gap is not attributed to mandatory safety work
+or declared unavoidable. The root disposition reports this remaining latency
+limitation under the handoff's resolve-or-report rule.
+
+Fourfold group growth now allocates 3.63 times as much for group_nest and 3.68
+for nest_by, rather than approximately fifteenfold on a048. This finite check
+is not an asymptotic bound. All six 50-call memory cases grow by 2,504 vector bytes
+and 85 Ncells between calls 5 and 50. The installed 500-call follow-up grows by
+131 Ncells and 3,120 vector bytes between calls 5 and 500, with nonzero released
+residuals and recorder limits retained. All twelve repeated-write cases preserve
+source/early/latest values and logical constants while checking each intended
+change. The [durable performance note and complete table](../research/stage7-direct-summary-nesting-performance.md)
+record the measurements and selected evidence, including omitted local artifacts.
+
+The selected evidence [PR #211](https://github.com/jbearak/dta-parser/pull/211)
+merged normally on September 9, 2026 at 07:00:33 UTC as
+`91892d8822c75761f38a976b2cc05022cc306f2f`, after all 15 checks passed. Its
+1,104 research-only files preserve the reviewed head `8c159021`. This separates
+the evidence from substantive CodeRabbit review of the implementation.
+Documentation-only integration preserves qualified package3db and the executed
+helper inputs. Implementation CI,
+substantive CodeRabbit review and normal merge remain required. Stages 8–9, the
+twelve base-R read regressions introduced earlier and actual fertility renv
+validation remain open; issue #172 stays open.
+
+### Earlier Stage 7 checkpoints
+
 The initial Stage 7 candidate exposed an unsupported cyclic nested graph to
 vector assembly, causing a C-stack overflow. That failed run remains retained.
 The shared capture boundary now rejects active ancestor cycles before assembly,
