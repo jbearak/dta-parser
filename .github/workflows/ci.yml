@@ -118,6 +118,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Disable unused Chrome apt repository
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Chrome is not used by these R jobs. A stale browser index must not
+          # prevent setup-r from installing R and its system dependencies.
+          for source in /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources; do
+            if [[ -f "$source" ]]; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
       - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
           use-public-rspm: true
@@ -163,7 +174,7 @@ jobs:
         shell: bash
         run: |
           R CMD build r-package/dtatools
-          version=$(sed -n 's/^Version: //p' r-package/dtatools/DESCRIPTION)
+          version=$(Rscript --vanilla -e 'cat(read.dcf("r-package/dtatools/DESCRIPTION", fields = "Version"))')
           tarball="dtatools_${version}.tar.gz"
           scripts/check-r-package-archive.sh "$tarball"
           R CMD check --no-manual --as-cran "$tarball"
@@ -252,6 +263,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Disable unused Chrome apt repository
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Chrome is not used by these R jobs. A stale browser index must not
+          # prevent setup-r from installing R and its system dependencies.
+          for source in /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources; do
+            if [[ -f "$source" ]]; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
       - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
           r-version: ${{ matrix.r }}
@@ -318,6 +340,17 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.11"
+      - name: Disable unused Chrome apt repository
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Chrome is not used by these R jobs. A stale browser index must not
+          # prevent setup-r from installing R and its system dependencies.
+          for source in /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources; do
+            if [[ -f "$source" ]]; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
       - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
           r-version: ${{ matrix.r }}
@@ -337,7 +370,7 @@ jobs:
         run: |
           python scripts/build-r-native.py r-package/dtatools \
             native-libraries/evidence/lane-plan.json native native-build
-          version=$(sed -n 's/^Version: //p' r-package/dtatools/DESCRIPTION)
+          version=$(Rscript --vanilla -e 'cat(read.dcf("r-package/dtatools/DESCRIPTION", fields = "Version"))')
           python scripts/check-r-native.py "native-build/payload/dtatools_${version}.tar.gz" \
             native-libraries/evidence/lane-plan.json native native-check
       - name: Retain native qualification evidence

@@ -8,8 +8,10 @@ missing values. Numeric columns also retain their declared Stata storage type.
 
 Dplyr is optional. Reading, writing, recoding, base operations, metadata helpers,
 and explicit mutation work without loading it. Install dplyr 1.2.1 or newer to
-use its verbs with dibbles. The methods register whenever both namespaces are
-loaded, in either order.
+use its verbs with dibbles. The methods register whenever both supported namespaces
+are loaded, in either order. An older loaded dplyr triggers one warning per
+dtatools namespace load and leaves its dplyr methods unregistered; native
+dtatools operations remain available.
 
 ## Functions
 

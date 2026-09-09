@@ -152,7 +152,9 @@ def main():
         shutil.copytree(source, staged)
         staged_files = bind_tree("staged-source", staged)
         selected_fields = ("relative", "bytes", "mode", "sha256")
-        project = lambda rows: [{key: row[key] for key in selected_fields} for row in rows]
+        def project(rows):
+            return [{key: row[key] for key in selected_fields} for row in rows]
+
         require(project(staged_files) == project(source_files), "Staged source differs from selected source")
         probe_script = evidence / "probe.R"
         probe_script.write_text(helper.PROBE_R, encoding="utf-8")

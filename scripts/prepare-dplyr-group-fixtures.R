@@ -233,6 +233,7 @@ local({
     })
 })
 auto_path <- file.path(repo, "r-package/dtatools/inst/extdata/auto_v118.dta")
+# read_dta already supplies typed columns; ordinary preserves those classes.
 auto <- ordinary(read_dta(auto_path))
 add("auto_foreign", auto, "foreign")
 add("auto_foreign_typed", auto, "foreign")

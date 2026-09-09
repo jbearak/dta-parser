@@ -215,6 +215,7 @@ tryCatch({
     result <- list(complete = TRUE, before = before, after = after,
         runtime = list(version = as.character(getRversion()), platform = R.version$platform,
             home = path(R.home()), base_library = path(.Library),
+            child_r = path(file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rterm.exe" else "R")),
             rscript = path(file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript"))),
         capabilities = list(arrow = "arrow" %in% names(cfg$expected_packages),
             profmem = isTRUE(capabilities("profmem")), posix = .Platform$OS.type != "windows",
@@ -385,7 +386,7 @@ def main():
 
         before_probe = probe("dependency-probe")
         runtime = copy.deepcopy(before_probe["runtime"])
-        runtime.update(r=selected_r, child_r=selected_r, rscript=bind(runtime["rscript"]))
+        runtime.update(r=selected_r, child_r=bind(runtime["child_r"]), rscript=bind(runtime["rscript"]))
         for executable in before_probe["command_paths"].values():
             if executable:
                 bind(executable)

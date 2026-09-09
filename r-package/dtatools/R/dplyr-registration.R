@@ -49,6 +49,7 @@
 .dplyr_registration_state <- new.env(parent = emptyenv())
 .dplyr_registration_state$namespace <- NULL
 .dplyr_registration_state$previous <- list()
+.dplyr_registration_state$unsupported_warned <- FALSE
 
 .write_dplyr_method <- function(generic, class, method, namespace) {
     # A non-namespace environment resolves the real generic without appending
@@ -61,7 +62,13 @@
     if (!isNamespaceLoaded("dplyr")) return(invisible(NULL))
     namespace <- asNamespace("dplyr")
     if (package_version(getNamespaceVersion(namespace)) < "1.2.1") {
-        stop("Dibble integration requires dplyr 1.2.1 or newer.", call. = FALSE)
+        if (!.dplyr_registration_state$unsupported_warned) {
+            .dplyr_registration_state$unsupported_warned <- TRUE
+            warning("dplyr integration requires dplyr 1.2.1 or newer; ",
+                "dtatools continues without registering its dplyr methods.",
+                call. = FALSE)
+        }
+        return(invisible(NULL))
     }
     for (generic in names(.dplyr_method_classes)) {
         if (!is.function(getExportedValue("dplyr", generic))) {

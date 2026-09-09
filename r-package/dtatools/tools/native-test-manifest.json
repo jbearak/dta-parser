@@ -1223,7 +1223,7 @@
         },
         {
           "path": "tests/testthat/test-recode-interop.R",
-          "sha256": "7a88ca104daa8e542b594b349b0bbf522cd02a3ee1b6445914364875683d400a"
+          "sha256": "25d9ef200ff3db4605aaaeeff0b67376684e0e79e1116d423691f4fffbb6ff68"
         }
       ],
       "blocks": [
@@ -3332,7 +3332,7 @@
       "files": [
         {
           "path": "tests/testthat/test-owned-atoms.R",
-          "sha256": "f8a76f9c7f191695f561411c6c95b3da190e6170a200c386190d8f521a63278f"
+          "sha256": "bfa99edc530d1764f5e08c14360e0b93297cad4e2242f2ed4da11341fa234042"
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
@@ -3442,6 +3442,14 @@
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "native owned string copies and renaming reuse validation facts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
         },
         {
           "file": "test-owned-atoms.R",
@@ -5916,7 +5924,7 @@
         },
         {
           "path": "tests/testthat/test-dplyr-optional.R",
-          "sha256": "5617c2ad7120dcb72bada50ac284f35fe08d9168129865de116665b53e79212f"
+          "sha256": "ec21934e3403c4e021696ef3a81b94bab57c40c0eb1baaec7d30c1b2303a5b16"
         }
       ],
       "blocks": [
@@ -6965,6 +6973,14 @@
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dplyr-optional.R",
+          "test": "unsupported dplyr registration warns once without touching methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
         },
         {
           "file": "test-dplyr-optional.R",

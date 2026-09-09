@@ -81,9 +81,27 @@
     .native_dep_require(nrow(value) == 1L, paste("Expected one DESCRIPTION:", path))
     as.list(setNames(unname(value[1L, ]), colnames(value)))
 }
+.native_dep_diagnostics <- function(path) {
+    tryCatch({
+        lines <- readLines(path, warn = FALSE)
+        # Keep diagnostic messages, never adjacent compiler source excerpts.
+        selected <- grep(
+            paste0("^(ERROR:|Error:|fatal error:|configure: error:|",
+                "[^[:space:]].*:[0-9]+(:[0-9]+)?:[[:space:]]*(fatal )?error:|",
+                "(clang|clang\\+\\+|gcc|g\\+\\+|ld|collect2):[[:space:]]*(fatal )?error:)"),
+            lines, value = TRUE, perl = TRUE
+        )
+        total <- length(selected)
+        kept <- if (total > 40L) c(head(selected, 20L), tail(selected, 20L)) else selected
+        list(available = TRUE, total = total, truncated = total > 40L || any(nchar(kept) > 2000L),
+             lines = substr(kept, 1L, 2000L))
+    }, error = function(e) list(available = FALSE, error = conditionMessage(e)))
+}
 .native_dep_main <- function(args = commandArgs(TRUE)) {
     .native_dep_require(length(args) == 5L,
         "Arguments: PACKAGE_SOURCE NEW_OUTPUT current|floors LANE with-arrow|without-arrow")
+    previous_timeout <- options(timeout = max(1800, getOption("timeout", 60)))
+    on.exit(options(previous_timeout), add = TRUE)
     package <- normalizePath(args[[1L]], winslash = "/", mustWork = TRUE)
     output <- args[[2L]]; mode <- args[[3L]]; lane <- args[[4L]]; arrow <- args[[5L]]
     .native_dep_require(mode %in% c("current", "floors"), "Unknown dependency mode")
@@ -135,7 +153,10 @@
         .native_dep_require(length(python) == 1L && !is.na(python) && nzchar(python), "Python 3 is required for SHA256 and safe DESCRIPTION reads")
         python <- normalizePath(python, winslash = "/", mustWork = TRUE)
         python_call <- function(code, paths) {
-            value <- system2(python, c("-c", shQuote(code), shQuote(paths)), stdout = TRUE, stderr = TRUE)
+            script_file <- tempfile(fileext = ".py")
+            on.exit(unlink(script_file), add = TRUE)
+            writeLines(code, script_file, useBytes = TRUE)
+            value <- system2(python, c(shQuote(script_file), shQuote(paths)), stdout = TRUE, stderr = TRUE)
             status <- attr(value, "status")
             .native_dep_require(is.null(status) || status == 0L, "Python identity/metadata helper failed")
             value
@@ -276,6 +297,7 @@
                 error = function(e) { install_error <<- conditionMessage(e); NULL })
             record(paste0("install-", name, "-result"), list(status = status, error = install_error,
                 log = log, log_sha256 = if (file.exists(log)) observe_sha(log) else NULL,
+                diagnostics = if (identical(status, 0L) || identical(status, 0)) NULL else .native_dep_diagnostics(log),
                 source_sha256_after = observe_sha(archive)))
             .native_dep_require(identical(status, 0L) || identical(status, 0), paste("Dependency installation failed:", name))
             .native_dep_require(identical(sha(archive), archive_sha), "Source archive changed during install")

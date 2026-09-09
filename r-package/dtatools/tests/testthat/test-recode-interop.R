@@ -1,5 +1,5 @@
 test_that("registered recode methods retain continuation context", {
-    skip_if_not_installed("dplyr")
+    skip_if_not_installed("dplyr", "1.2.1")
     generic_namespace <- asNamespace("dplyr")
     # A disposable method name confines this optional registration fixture.
     name <- "dtatools_registered_recode_test"
@@ -25,7 +25,7 @@ test_that("registered recode methods retain continuation context", {
 })
 
 test_that("optional generic and public numeric recoding keep distinct policies", {
-    skip_if_not_installed("dplyr")
+    skip_if_not_installed("dplyr", "1.2.1")
     expect_warning(legacy <- dplyr::recode(1:2, `1` = 10), "Unreplaced values")
     expect_identical(legacy, c(10, NA_real_))
     expect_identical(recode(1:2, `1` = 10), c(10L, 2L))
@@ -34,7 +34,7 @@ test_that("optional generic and public numeric recoding keep distinct policies",
 })
 
 test_that("foreign registrations preserve registry precedence and function identity", {
-    skip_if_not_installed("dplyr")
+    skip_if_not_installed("dplyr", "1.2.1")
     ns <- asNamespace("dplyr")
     table <- get(".__S3MethodsTable__.", ns)
     classes <- c("dtatools_recode_collision", "dtatools_recode_namespace", "character", "default")
@@ -64,7 +64,7 @@ test_that("foreign registrations preserve registry precedence and function ident
 })
 
 test_that("actual Haven character input works through both public interfaces", {
-    skip_if_not_installed("dplyr")
+    skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("haven")
     x <- haven::labelled(c("a", "b", NA_character_), c(A = "a"), label = "label")
     expect_identical(dtatools::recode(x, a = "A"), c("A", "b", NA_character_))
@@ -72,7 +72,7 @@ test_that("actual Haven character input works through both public interfaces", {
 })
 
 test_that("package-visible recode methods precede same-slot foreign registrations", {
-    skip_if_not_installed("dplyr")
+    skip_if_not_installed("dplyr", "1.2.1")
     ns <- asNamespace("dplyr")
     table <- get(".__S3MethodsTable__.", ns)
     classes <- c("numeric", "haven_labelled", "dtatools_dta_metadata_vector")
@@ -97,7 +97,7 @@ test_that("package-visible recode methods precede same-slot foreign registration
 })
 
 test_that("foreign methods retain the real generic environment and dynamic continuation", {
-    skip_if_not_installed("dplyr")
+    skip_if_not_installed("dplyr", "1.2.1")
     ns <- asNamespace("dplyr")
     table <- get(".__S3MethodsTable__.", ns)
     classes <- c("dtatools_recode_dynamic_first", "dtatools_recode_dynamic_next")

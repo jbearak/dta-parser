@@ -1,3 +1,33 @@
+test_that("unsupported dplyr registration warns once without touching methods", {
+    # Exercise the version policy on a private copy of the registration closure.
+    # This does not load an old dplyr or mutate a namespace.
+    register <- .register_dplyr_methods
+    scope <- new.env(parent = environment(register))
+    state <- new.env(parent = emptyenv())
+    state$namespace <- NULL
+    state$previous <- list()
+    state$unsupported_warned <- FALSE
+    scope$.dplyr_registration_state <- state
+    scope$isNamespaceLoaded <- function(package) TRUE
+    scope$asNamespace <- function(package) emptyenv()
+    scope$getNamespaceVersion <- function(namespace) package_version("1.2.0")
+    scope$getExportedValue <- function(...) stop("Unexpected generic lookup")
+    environment(register) <- scope
+
+    expect_warning(result <- register(), "dplyr integration requires dplyr 1.2.1 or newer")
+    expect_null(result)
+    expect_true(state$unsupported_warned)
+    expect_silent(register())
+    expect_silent(register(only = "recode.haven_labelled"))
+    expect_null(state$namespace)
+    expect_identical(state$previous, list())
+
+    # The absent path must still return before even asking for a namespace.
+    scope$isNamespaceLoaded <- function(package) FALSE
+    scope$asNamespace <- function(package) stop("Unexpected namespace lookup")
+    expect_silent(register())
+})
+
 test_that("native namespace loading and recoding leave dplyr unloaded", {
     skip_if_not_installed("callr")
     observed <- .dtatools_child_r("native-namespace", function(libraries, expected_path) {

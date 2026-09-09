@@ -40,6 +40,18 @@ jobs:
           ref: ${{ github.event.release.tag_name || inputs.tag }}
           persist-credentials: false
 
+      - name: Disable unused Chrome apt repository
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Chrome is not used by these R jobs. A stale browser index must not
+          # prevent setup-r from installing R and its system dependencies.
+          for source in /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources; do
+            if [[ -f "$source" ]]; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
+
       - name: Set up R release
         uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
@@ -194,7 +206,7 @@ jobs:
         env:
           BINARY_ASSET: ${{ steps.package.outputs.asset }}
         run: |
-          version=$(sed -n 's/^Version: //p' r-package/dtatools/DESCRIPTION)
+          version=$(Rscript --vanilla -e 'cat(read.dcf("r-package/dtatools/DESCRIPTION", fields = "Version"))')
           source_archive="release-build/source/dtatools_${version}.tar.gz"
           python scripts/check-r-native.py "$source_archive" \
             release-native-libraries/evidence/lane-plan.json release release-native-source

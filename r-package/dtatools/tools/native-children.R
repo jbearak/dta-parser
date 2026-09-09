@@ -317,8 +317,16 @@ native_fork_request <- function(id) {
     .native_require(dir.create(directory, recursive = TRUE), "Fork id already used")
     observed <- .native_checkpoint(context$cfg, "before-fork", file.path(directory, "parent-before.R"))
     expected <- .native_fork_snapshot()
-    .native_require(identical(expected$state$libraries, observed$libraries) &&
-                    identical(expected$state$namespaces, observed$namespaces),
+    # Resolve aliases only in the parent. Fork snapshots stay in memory before
+    # the existing signal delay and retain their raw paths for equality checks.
+    canonical <- expected$state
+    canonical$libraries <- .native_path(canonical$libraries)
+    canonical$namespaces <- lapply(canonical$namespaces, function(namespace) {
+        namespace$path <- .native_path(namespace$path)
+        namespace
+    })
+    .native_require(identical(canonical$libraries, observed$libraries) &&
+                    identical(canonical$namespaces, observed$namespaces),
                     "Caller state changed while preparing fork")
     request <- list(id = id, directory = directory, policy = policies[[1L]],
                     parent_pid = Sys.getpid(), expected = expected)

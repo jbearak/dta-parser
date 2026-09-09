@@ -206,6 +206,30 @@ test_that("ordinary atom backing through dplyr", {
     skip_if_not_installed("dplyr", "1.2.1")
     .check_optional_split_owned_atoms_173(TRUE)
 })
+test_that("native owned string copies and renaming reuse validation facts", {
+    for (value in owned_atom_fixtures()[c("string", "declared")]) {
+        expected <- as.character(value)
+        data <- dibble(x = value, other = value)
+        original <- data
+        owned_atom_scan_stats(TRUE)
+        for (i in 1:50) {
+            data <- copy_data(data)
+            data <- reserve_columns(data, 8L)
+            names(data) <- c("third", "other")
+            names(data) <- c("x", "other")
+        }
+        expect_true(.Call(C_dtatools_owned_string_fits, data$x, 8))
+        expect_identical(owned_atom_scan_stats(), c(0, 0))
+        expect_identical(owned_atom_info(data$x)$depth, 1L)
+        expect_identical(as.character(data$x), expected)
+        expect_identical(as.character(original$x), expected)
+        .Call(C_dtatools_owned_set_string, data$x, 1L, "new")
+        expect_identical(as.character(data$x), c("new", expected[-1L]))
+        expect_identical(as.character(original$x), expected)
+        expect_identical(as.character(data$other), expected)
+    }
+})
+
 test_that("unchanged owned string selectors reuse validation facts", {
     skip_if_not_installed("dplyr", "1.2.1")
     for (value in owned_atom_fixtures()[c("string", "declared")]) {
