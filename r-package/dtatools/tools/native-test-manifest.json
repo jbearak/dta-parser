@@ -4335,7 +4335,7 @@
         },
         {
           "path": "tests/testthat/test-raven-nse.R",
-          "sha256": "9e96c06aac46aa578d12720f98f8a6ad7790bbc19bc67aff47a02aa42c8fc410"
+          "sha256": "a762cad391dba4a9f0a0dbd0160427f4934400cafa4a96b9d297fe3e2034eeda"
         }
       ],
       "blocks": [
@@ -5649,10 +5649,18 @@
         },
         {
           "file": "test-raven-nse.R",
+          "test": "the [subset] table names exported dibble constructors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-raven-nse.R",
           "test": "every declared function is exported by the package",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 10,
+          "min_pass": 27,
           "warnings": 0
         },
         {
@@ -5660,7 +5668,7 @@
           "test": "the declaration file still carries the expected policy",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 19,
+          "min_pass": 53,
           "warnings": 0
         },
         {
@@ -5668,7 +5676,7 @@
           "test": "declared formals match the function signatures",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 9,
+          "min_pass": 26,
           "warnings": 0
         },
         {
@@ -5676,7 +5684,7 @@
           "test": "captured arguments name real formals",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 9,
+          "min_pass": 26,
           "warnings": 0
         },
         {

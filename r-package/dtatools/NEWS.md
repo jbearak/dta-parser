@@ -1,3 +1,13 @@
+# dtatools 0.8.0.9000
+
+* The Raven sidecar `inst/raven/nse.toml` now declares the captured
+  arguments of egen, the dta_* summary and group helpers, set_var_format,
+  set_var_formats, set_var_labels, set_val_labels, var_label, val_labels,
+  order_vars and rename_vars, and carries a `[subset]` table naming the
+  dibble constructors and converters so Raven treats `[` with `:=` on a
+  dibble as data-masking. Callers no longer see undefined-variable
+  warnings for bare column names passed to these functions.
+
 # dtatools 0.8.0
 
 * Dplyr is optional. Package-native operations and recoding work independently;

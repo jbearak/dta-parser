@@ -5,7 +5,8 @@
 
 # Minimal reader for the subset of TOML the declaration file uses: `[[function]]
 # table headers, `key = "string"`, `key = true/false`, and string arrays written
-# either on one line or across several. Comments and blank lines are dropped.
+# either on one line or across several, plus the `[subset]` table read by a
+# second helper. Comments and blank lines are dropped.
 # Deliberately not a general TOML parser -- it only has to read a file this
 # package writes.
 read_nse_declarations <- function(path) {
@@ -75,8 +76,64 @@ expected_policy <- list(
     set_var_label = list(captured = "variable", captured_dots = FALSE),
     tab = list(captured = "x", captured_dots = TRUE),
     read_dta = list(captured = "col_select", captured_dots = FALSE),
-    read_arrow = list(captured = "col_select", captured_dots = FALSE)
+    read_arrow = list(captured = "col_select", captured_dots = FALSE),
+    egen = list(captured = c("where", "by", "bysort"), captured_dots = TRUE),
+    dta_mean = list(captured = "x", captured_dots = FALSE),
+    dta_min = list(captured = "x", captured_dots = FALSE),
+    dta_max = list(captured = "x", captured_dots = FALSE),
+    dta_total = list(captured = "x", captured_dots = FALSE),
+    dta_row_max = list(captured = character(), captured_dots = TRUE),
+    dta_row_total = list(captured = character(), captured_dots = TRUE),
+    dta_group_id = list(captured = character(), captured_dots = TRUE),
+    dta_group_tag = list(captured = character(), captured_dots = TRUE),
+    set_var_format = list(captured = "variable", captured_dots = FALSE),
+    set_var_formats = list(captured = character(), captured_dots = TRUE),
+    set_var_labels = list(captured = character(), captured_dots = TRUE),
+    set_val_labels = list(captured = character(), captured_dots = TRUE),
+    var_label = list(captured = "variable", captured_dots = FALSE),
+    val_labels = list(captured = "variable", captured_dots = FALSE),
+    order_vars = list(captured = character(), captured_dots = TRUE),
+    rename_vars = list(captured = character(), captured_dots = TRUE)
 )
+
+# The `[subset]` table declares which exported functions produce a dibble,
+# so Raven treats `d[i, j]` on their result as data-masking. Every name it
+# lists must stay exported, and the constructors must really return one.
+expected_subset <- list(
+    constructors = c("dibble", "as_dibble", "read_dta", "read_arrow",
+                     "copy_data"),
+    converters = "reserve_columns"
+)
+
+read_subset_declaration <- function(path) {
+    lines <- readLines(path, warn = FALSE)
+    lines <- trimws(sub("(^|\\s)#.*$", "", lines))
+    lines <- lines[nzchar(lines)]
+    start <- match("[subset]", lines)
+    if (is.na(start)) return(NULL)
+    body <- lines[seq(start + 1L, length(lines))]
+    stop_at <- grep("^\\[", body)
+    if (length(stop_at)) body <- body[seq_len(stop_at[[1L]] - 1L)]
+    result <- list()
+    for (line in body) {
+        parts <- regmatches(line, regexpr("=", line), invert = TRUE)[[1]]
+        quoted <- unlist(regmatches(parts[[2]], gregexpr('"[^"]*"', parts[[2]])))
+        result[[trimws(parts[[1]])]] <- gsub('"', "", quoted, fixed = TRUE)
+    }
+    result
+}
+
+test_that("the [subset] table names exported dibble constructors", {
+    declared <- read_subset_declaration(declaration_path())
+    expect_identical(declared$constructors, expected_subset$constructors)
+    expect_identical(declared$converters, expected_subset$converters)
+    exported <- getNamespaceExports("dtatools")
+    expect_true(all(unlist(declared) %in% exported))
+    expect_true(is_dibble(dibble(x = 1)))
+    expect_true(is_dibble(as_dibble(data.frame(x = 1))))
+    expect_true(is_dibble(copy_data(dibble(x = 1))))
+    expect_true(is_dibble(reserve_columns(dibble(x = 1), 1)))
+})
 
 test_that("every declared function is exported by the package", {
     declarations <- read_nse_declarations(declaration_path())
