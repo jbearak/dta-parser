@@ -1,0 +1,26 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/bin/python3.14",
+    "-I",
+    "-B",
+    "/private/tmp/dta-direct-stage7-performance-preparation-01/run-memory-v2.py",
+    "/Users/jmb/repos/dta-parser",
+    "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+    "/private/tmp/dta-direct-stage7-validation/implementation/candidate-3db15d44-01",
+    "3db15d44f2b557f5282fb7a30fd59c7980a4484c",
+    "/private/tmp/dta-direct-stage7-validation/root-memory-3db15d44-v2-01/100000-nest_by-public",
+    "--receipt-sha256",
+    "3bcefce0a2b178dc935c6615fbec9b5abedc751c949416bb3236ef872296add8",
+    "--rows",
+    "100000",
+    "--script",
+    "/private/tmp/dta-direct-stage7-performance-preparation-01/memory-v2.R",
+    "--routes",
+    "public",
+    "--workload",
+    "nest_by"
+  ],
+  "started_utc": "2026-09-09T04:30:06.892077+00:00",
+  "returncode": null,
+  "error": null
+}

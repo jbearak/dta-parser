@@ -1,0 +1,21 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/R",
+    "CMD",
+    "INSTALL",
+    "--library=/private/tmp/dta-direct-stage7-validation/implementation/predecessor-4d07d656-01/library",
+    "/private/tmp/dta-direct-stage7-validation/implementation/predecessor-4d07d656-01/build/dtatools_0.8.0.tar.gz"
+  ],
+  "cwd": "/private/tmp/dta-direct-stage7-validation/implementation/predecessor-4d07d656-01/build",
+  "finished_utc": "2026-09-08T20:54:16.274539+00:00",
+  "label": "install",
+  "log": {
+    "bytes": 13583,
+    "mode": "0o644",
+    "path": "/private/tmp/dta-direct-stage7-validation/implementation/predecessor-4d07d656-01/install.log",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/implementation/predecessor-4d07d656-01/install.log",
+    "sha256": "d5c3c2f6a981cd9d680c6becf9b79578bd8d753bd4407fc285cd065aef379806"
+  },
+  "returncode": 0,
+  "started_utc": "2026-09-08T20:53:55.366546+00:00"
+}

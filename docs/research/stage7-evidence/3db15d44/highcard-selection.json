@@ -1,0 +1,86 @@
+{
+  "candidate": "3db15d44f2b557f5282fb7a30fd59c7980a4484c",
+  "runs": [
+    {
+      "name": "root-high-cardinality-predecessor-01",
+      "receipt_sha256": "6e0df5c4ba933a3dd0261868de46a3e883ebb5f1ed85466d83bb354c22a0cf6d"
+    },
+    {
+      "name": "root-high-cardinality-3db15d44-01",
+      "receipt_sha256": "20a6934ded80fa207130c9a46d956aa69cb36738f88b1db14de0a597c437b2db"
+    },
+    {
+      "name": "root-high-cardinality-predecessor-repeat-01",
+      "receipt_sha256": "9fd211a4108529c60f5e563f5a8f2821c9a7ac4b17f54e6d7faae0a827cee273"
+    },
+    {
+      "name": "root-high-cardinality-3db15d44-repeat-01",
+      "receipt_sha256": "4741d347e93482e929f7240ee9cb1e78a8e33b5a576f24efdebb9e9711fe5d5b"
+    },
+    {
+      "name": "root-high-cardinality-predecessor-repeat-02",
+      "receipt_sha256": "7cc34ea92b19a700d525573814371d4f4951c610ba29b3ac42a086fceac14b3e"
+    },
+    {
+      "name": "root-high-cardinality-3db15d44-repeat-02",
+      "receipt_sha256": "4d111953d4e27da05ccc2596edb8e78f385fb81142e46b8216cf9b76417cab64"
+    },
+    {
+      "name": "root-high-cardinality-predecessor-repeat-03",
+      "receipt_sha256": "ea9d9a7fe2bda7a413785a9430ac7915467131b256572f311909f743e900c52d"
+    },
+    {
+      "name": "root-high-cardinality-3db15d44-repeat-03",
+      "receipt_sha256": "0d177cb379be4aa85d5910a1d737317506b9392b83a61b1573cd81ea7ba919d3"
+    }
+  ],
+  "assessments": [
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/root-assessment-3db15d44-01.json",
+      "sha256": "1ccd1295633d0b4a6e162dc660f9ce384cbcd585001f4bdaeff580401bff1e48"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/root-pair-3db15d44-01.json",
+      "sha256": "cb72ebfd86e269a6e511e9dcc28f7c6a1ea8c0c6d43ea7c37d4eb6bef84a820e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/root-pair-3db15d44-02.json",
+      "sha256": "edb866f9f791c129c879b1d73b1e8b187e854068d5303f4110b8d648f0f20e4d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/root-pair-3db15d44-03.json",
+      "sha256": "daaef9c7d26fda027b36cb3cc311ae0807c65eedcd3b3eb72c2570a4d2e37494"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/root-repeat-summary-3db15d44-01.json",
+      "sha256": "9a253f55993a70ec209fad0cdc4e25f81fc0e3c97b657d4ba344347259a0d647"
+    }
+  ],
+  "sources": [
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/assess-v2.py",
+      "sha256": "626579679ae625a0731521f35005742c91f56769d9c16935659ea2883ed7d9c6"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/assess-v3.py",
+      "sha256": "3dbefe88831f75f01b297655427cef4c0739e29b872f13550191444c00db2fd0"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/summarize-repeats-v1.py",
+      "sha256": "504a5cca4fa38c4ac316783d00c9436437567149f2b32f94b06a0f5340d78c4a"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/assess-v1-to-v2.patch",
+      "sha256": "249b05a326c9c8b1033f4c22a07688386ba3a308617f55a65d48041d0bdd9045"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/assess-v2-to-v3.patch",
+      "sha256": "9ab705e68a66d8c08936f978ac89ed4bf5041f0255f86827963401c64454173e"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-high-cardinality-preparation-01/repeat-plan-3db15d44-01.json",
+      "sha256": "a15fb246eed862dcaa9cfd2948c9bf6dc65766466a29ccec6e6a7f477638f23a"
+    }
+  ],
+  "scope": "Selected completed initial and three repeated pairs, actual receipt digests observed after execution. No omitted-profile/runtime image archive claim."
+}

@@ -1,0 +1,40 @@
+  rows groups payload_columns   workload  route median_ms iterations gc_count
+1 2048   1024               1 group_nest public  35.77094          7       17
+  warm_r_allocated_bytes warm_r_largest_allocation_bytes values_groups_source
+1                  90560                           40064                 TRUE
+  rows groups payload_columns   workload                      route median_ms
+1 2048   1024               1 group_nest predecessor_safe_reference  184.0018
+  iterations gc_count warm_r_allocated_bytes warm_r_largest_allocation_bytes
+1          7       81               82500600                           40064
+  values_groups_source
+1                 TRUE
+  rows groups payload_columns workload  route median_ms iterations gc_count
+1 2048   1024               1  nest_by public  40.64957          7       22
+  warm_r_allocated_bytes warm_r_largest_allocation_bytes values_groups_source
+1                 377792                           40064                 TRUE
+  rows groups payload_columns workload                      route median_ms
+1 2048   1024               1  nest_by predecessor_safe_reference  190.0415
+  iterations gc_count warm_r_allocated_bytes warm_r_largest_allocation_bytes
+1          7       89               82787832                           40064
+  values_groups_source
+1                 TRUE
+  rows groups payload_columns   workload  route median_ms iterations gc_count
+1 8192   4096               1 group_nest public  151.9077          7       85
+  warm_r_allocated_bytes warm_r_largest_allocation_bytes values_groups_source
+1                 115136                           40064                 TRUE
+  rows groups payload_columns   workload                      route median_ms
+1 8192   4096               1 group_nest predecessor_safe_reference  719.7246
+  iterations gc_count warm_r_allocated_bytes warm_r_largest_allocation_bytes
+1          7      241              329513976                           40064
+  values_groups_source
+1                 TRUE
+  rows groups payload_columns workload  route median_ms iterations gc_count
+1 8192   4096               1  nest_by public  167.8678          7       59
+  warm_r_allocated_bytes warm_r_largest_allocation_bytes values_groups_source
+1                1244096                           40064                 TRUE
+  rows groups payload_columns workload                      route median_ms
+1 8192   4096               1  nest_by predecessor_safe_reference  738.6952
+  iterations gc_count warm_r_allocated_bytes warm_r_largest_allocation_bytes
+1          7      262              330642936                           40064
+  values_groups_source
+1                 TRUE

@@ -1,0 +1,7 @@
+{
+  "bytes": 860061696,
+  "workload": "group_modify_identity",
+  "rows": 1000000,
+  "route": "predecessor_safe_reference",
+  "scope": "macOS time -l maximum RSS for the whole R child, including setup, validation and runtime recording; not individual-operation peak"
+}

@@ -1,0 +1,315 @@
+{
+  "source": {
+    "path": "/private/tmp/dta-direct-stage7-memory-history-diagnosis-01/assess-installed-3db15d44-v1.py",
+    "bytes": 6387,
+    "sha256": "f3ca0290f8c47e02693c52fbfcf416e1375e976fd48f6308d44487d7e185db73"
+  },
+  "cases": [
+    {
+      "mode": "installed-3db15d44",
+      "receipt": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-3db15d44-01/receipt.json",
+        "bytes": 725,
+        "sha256": "b830a67dffa26ed68a4b8dbd3edcfc7ef30d0212fad3f67c6633c21ec8c628f6"
+      },
+      "manifest": {
+        "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-3db15d44-01/products.json",
+        "bytes": 20451,
+        "sha256": "96bbfb3eba44585e55b1e395774a19dd523f2c181e41f3df3d9a51bd702a2b39"
+      },
+      "consumed": [
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-3db15d44-01/result.json",
+          "bytes": 483,
+          "sha256": "73d2d516a2a56a2ee750bc01c65d87dab39816d26f3e16ab900849f2f4514491"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-3db15d44-01/command-result.json",
+          "bytes": 2899,
+          "sha256": "5fd1501e6a6dc5af75f546141894542c84a3d63c6df0a59f52e6888d064fb3c9"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-3db15d44-01/source/selected-workload.R",
+          "bytes": 6560,
+          "sha256": "1267421734c0feb8d3dcef5ef75d871a8f52e8b3366348b8fde8501f4dd0592e"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-3db15d44-01/results/validation.csv",
+          "bytes": 126,
+          "sha256": "a55bf0c7c655c01eb6a5ef3399bfde84186c6d1a5d778700d95a453a6d2ad5a1"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-3db15d44-01/results/heap.csv",
+          "bytes": 1374,
+          "sha256": "f3a12201ffa80c214460bc1b4ba0ae1922e6036c1616c5333c5879eebd056688"
+        },
+        {
+          "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-3db15d44-01/results/states.csv",
+          "bytes": 653746,
+          "sha256": "515d651561b828e958a050de4609baaeefb003ed7e2bb94c4f7a7b98034c7b78"
+        }
+      ],
+      "heap": [
+        {
+          "checkpoint": "prefixture",
+          "n_cells_used": "684498",
+          "v_cells_used": "1169275",
+          "vector_heap_bytes": "9354200",
+          "gc_used_megabytes_rounded": "45.6"
+        },
+        {
+          "checkpoint": "0_source_only",
+          "n_cells_used": "686985",
+          "v_cells_used": "1187010",
+          "vector_heap_bytes": "9496080",
+          "gc_used_megabytes_rounded": "45.8"
+        },
+        {
+          "checkpoint": "5",
+          "n_cells_used": "695162",
+          "v_cells_used": "1205991",
+          "vector_heap_bytes": "9647928",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "50",
+          "n_cells_used": "695247",
+          "v_cells_used": "1206304",
+          "vector_heap_bytes": "9650432",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "100",
+          "n_cells_used": "695262",
+          "v_cells_used": "1206328",
+          "vector_heap_bytes": "9650624",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "250",
+          "n_cells_used": "695277",
+          "v_cells_used": "1206356",
+          "vector_heap_bytes": "9650848",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "500",
+          "n_cells_used": "695293",
+          "v_cells_used": "1206381",
+          "vector_heap_bytes": "9651048",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "gc_only_1",
+          "n_cells_used": "695310",
+          "v_cells_used": "1206406",
+          "vector_heap_bytes": "9651248",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "gc_only_2",
+          "n_cells_used": "695322",
+          "v_cells_used": "1206430",
+          "vector_heap_bytes": "9651440",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "gc_only_3",
+          "n_cells_used": "695334",
+          "v_cells_used": "1206462",
+          "vector_heap_bytes": "9651696",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "gc_only_4",
+          "n_cells_used": "695346",
+          "v_cells_used": "1206486",
+          "vector_heap_bytes": "9651888",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "gc_only_5",
+          "n_cells_used": "695358",
+          "v_cells_used": "1206510",
+          "vector_heap_bytes": "9652080",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "gc_only_6",
+          "n_cells_used": "695370",
+          "v_cells_used": "1206534",
+          "vector_heap_bytes": "9652272",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "gc_only_7",
+          "n_cells_used": "695382",
+          "v_cells_used": "1206558",
+          "vector_heap_bytes": "9652464",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "gc_only_8",
+          "n_cells_used": "695394",
+          "v_cells_used": "1206582",
+          "vector_heap_bytes": "9652656",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "gc_only_9",
+          "n_cells_used": "695406",
+          "v_cells_used": "1206606",
+          "vector_heap_bytes": "9652848",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "gc_only_10",
+          "n_cells_used": "695418",
+          "v_cells_used": "1206630",
+          "vector_heap_bytes": "9653040",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "after_validation",
+          "n_cells_used": "695491",
+          "v_cells_used": "1206841",
+          "vector_heap_bytes": "9654728",
+          "gc_used_megabytes_rounded": "46.5"
+        },
+        {
+          "checkpoint": "source_released",
+          "n_cells_used": "695270",
+          "v_cells_used": "1194695",
+          "vector_heap_bytes": "9557560",
+          "gc_used_megabytes_rounded": "46.4"
+        },
+        {
+          "checkpoint": "result_released",
+          "n_cells_used": "686973",
+          "v_cells_used": "1175472",
+          "vector_heap_bytes": "9403776",
+          "gc_used_megabytes_rounded": "45.7"
+        },
+        {
+          "checkpoint": "released_gc_only_1",
+          "n_cells_used": "686987",
+          "v_cells_used": "1175501",
+          "vector_heap_bytes": "9404008",
+          "gc_used_megabytes_rounded": "45.7"
+        },
+        {
+          "checkpoint": "released_gc_only_2",
+          "n_cells_used": "686999",
+          "v_cells_used": "1175527",
+          "vector_heap_bytes": "9404216",
+          "gc_used_megabytes_rounded": "45.7"
+        },
+        {
+          "checkpoint": "released_gc_only_3",
+          "n_cells_used": "687011",
+          "v_cells_used": "1175555",
+          "vector_heap_bytes": "9404440",
+          "gc_used_megabytes_rounded": "45.7"
+        },
+        {
+          "checkpoint": "released_gc_only_4",
+          "n_cells_used": "687023",
+          "v_cells_used": "1175581",
+          "vector_heap_bytes": "9404648",
+          "gc_used_megabytes_rounded": "45.7"
+        },
+        {
+          "checkpoint": "released_gc_only_5",
+          "n_cells_used": "687035",
+          "v_cells_used": "1175609",
+          "vector_heap_bytes": "9404872",
+          "gc_used_megabytes_rounded": "45.7"
+        },
+        {
+          "checkpoint": "released_gc_only_6",
+          "n_cells_used": "687047",
+          "v_cells_used": "1175635",
+          "vector_heap_bytes": "9405080",
+          "gc_used_megabytes_rounded": "45.7"
+        },
+        {
+          "checkpoint": "released_gc_only_7",
+          "n_cells_used": "687059",
+          "v_cells_used": "1175663",
+          "vector_heap_bytes": "9405304",
+          "gc_used_megabytes_rounded": "45.7"
+        },
+        {
+          "checkpoint": "released_gc_only_8",
+          "n_cells_used": "687071",
+          "v_cells_used": "1175689",
+          "vector_heap_bytes": "9405512",
+          "gc_used_megabytes_rounded": "45.7"
+        },
+        {
+          "checkpoint": "released_gc_only_9",
+          "n_cells_used": "687083",
+          "v_cells_used": "1175717",
+          "vector_heap_bytes": "9405736",
+          "gc_used_megabytes_rounded": "45.7"
+        },
+        {
+          "checkpoint": "released_gc_only_10",
+          "n_cells_used": "687095",
+          "v_cells_used": "1175743",
+          "vector_heap_bytes": "9405944",
+          "gc_used_megabytes_rounded": "45.7"
+        }
+      ],
+      "state_rows": 6261,
+      "deltas": {
+        "5_to_50": {
+          "n_cells_used": 85,
+          "vector_heap_bytes": 2504
+        },
+        "5_to_500": {
+          "n_cells_used": 131,
+          "vector_heap_bytes": 3120
+        },
+        "50_to_500": {
+          "n_cells_used": 46,
+          "vector_heap_bytes": 616
+        },
+        "prefixture_to_result_released": {
+          "n_cells_used": 2475,
+          "vector_heap_bytes": 49576
+        }
+      }
+    }
+  ],
+  "original_assessment": {
+    "path": "/private/tmp/dta-direct-stage7-memory-history-diagnosis-01/root-installed-history-assessment-01.json",
+    "bytes": 8820,
+    "sha256": "8098e8179d3354297981ebe1fc4c179b1d0fddcf1270af27101bee334b922b8c"
+  },
+  "original_deltas": {
+    "5_to_50": {
+      "n_cells_used": 12853,
+      "vector_heap_bytes": 70600
+    },
+    "5_to_500": {
+      "n_cells_used": 36386,
+      "vector_heap_bytes": 196480
+    },
+    "50_to_500": {
+      "n_cells_used": 23533,
+      "vector_heap_bytes": 125880
+    },
+    "prefixture_to_result_released": {
+      "n_cells_used": 40581,
+      "vector_heap_bytes": 252808
+    }
+  },
+  "interpretation": [
+    "Actual installed 3db15d44 completes500 fixed-source group_nest calls with final value/schema/group/source checks using the unchanged installed500 driver.",
+    "Exact heap deltas are reported alongside the bound previously assessed installed96 baseline; copied controls and failed list routes remain separate.",
+    "All6261 native rows have expected membership/length, unexposed state, owned depth1 and length-scaled bytes; source fields stay stable.",
+    "Recorded fixed-size history observation, not exclusive identification of every retained object or an asymptotic memory bound."
+  ],
+  "scope": "Installed 3db15d44 on the256row128group fixture. Selected raw products checked; original installed96 raw assessment reused by identity, not reswept. No full runtime closure, R payload replay, timing or RSS claim. Driver recorder history and other address-keyed result environments remain unchanged."
+}

@@ -1,0 +1,276 @@
+{
+  "source": "96b9c3c72400a36b13ed0172748537102364f8ea",
+  "receipt": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-96b9c3c7-01/receipt.json",
+    "bytes": 725,
+    "sha256": "3f26a246c238b4b322470b5298c781fc66a7a6a5df1e44759d89b3aa4dea1936"
+  },
+  "manifest": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-96b9c3c7-01/products.json",
+    "bytes": 20451,
+    "sha256": "eaab5a1b08341d094b490ae5dd7c9369ce6afa87a4d3b14430b76ab9d0087792"
+  },
+  "consumed": [
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-96b9c3c7-01/results/heap.csv",
+      "bytes": 1352,
+      "sha256": "45cf81270632d3f4ddc1d457d2d92c99a936ebbf53220fa58d881ae3c46fb1ff"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-96b9c3c7-01/results/states.csv",
+      "bytes": 653746,
+      "sha256": "59afcf630ae582d56fb22515c9bbcc6b591059fef1dfb80506cbc9b5855d7d75"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-96b9c3c7-01/results/validation.csv",
+      "bytes": 126,
+      "sha256": "a55bf0c7c655c01eb6a5ef3399bfde84186c6d1a5d778700d95a453a6d2ad5a1"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-96b9c3c7-01/result.json",
+      "bytes": 483,
+      "sha256": "4c461a25624899530030bcbd9feacb7619d2d3e176859e3c800c454b2b27e834"
+    },
+    {
+      "path": "/private/tmp/dta-direct-stage7-validation/root-memory-history-96b9c3c7-01/command-result.json",
+      "bytes": 2899,
+      "sha256": "25b7474afe9f66d1e33293475853b132464110ace25e71c8530ae6a10c8d8ef9"
+    }
+  ],
+  "heap": [
+    {
+      "checkpoint": "prefixture",
+      "n_cells_used": "684751",
+      "v_cells_used": "1169297",
+      "vector_heap_bytes": "9354376",
+      "gc_used_megabytes_rounded": "45.6"
+    },
+    {
+      "checkpoint": "0_source_only",
+      "n_cells_used": "687238",
+      "v_cells_used": "1187032",
+      "vector_heap_bytes": "9496256",
+      "gc_used_megabytes_rounded": "45.9"
+    },
+    {
+      "checkpoint": "5",
+      "n_cells_used": "697266",
+      "v_cells_used": "1207247",
+      "vector_heap_bytes": "9657976",
+      "gc_used_megabytes_rounded": "46.6"
+    },
+    {
+      "checkpoint": "50",
+      "n_cells_used": "710119",
+      "v_cells_used": "1216072",
+      "vector_heap_bytes": "9728576",
+      "gc_used_megabytes_rounded": "47.3"
+    },
+    {
+      "checkpoint": "100",
+      "n_cells_used": "718042",
+      "v_cells_used": "1221368",
+      "vector_heap_bytes": "9770944",
+      "gc_used_megabytes_rounded": "47.8"
+    },
+    {
+      "checkpoint": "250",
+      "n_cells_used": "728866",
+      "v_cells_used": "1228602",
+      "vector_heap_bytes": "9828816",
+      "gc_used_megabytes_rounded": "48.4"
+    },
+    {
+      "checkpoint": "500",
+      "n_cells_used": "733652",
+      "v_cells_used": "1231807",
+      "vector_heap_bytes": "9854456",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "gc_only_1",
+      "n_cells_used": "733669",
+      "v_cells_used": "1231832",
+      "vector_heap_bytes": "9854656",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "gc_only_2",
+      "n_cells_used": "733681",
+      "v_cells_used": "1231856",
+      "vector_heap_bytes": "9854848",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "gc_only_3",
+      "n_cells_used": "733693",
+      "v_cells_used": "1231888",
+      "vector_heap_bytes": "9855104",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "gc_only_4",
+      "n_cells_used": "733705",
+      "v_cells_used": "1231912",
+      "vector_heap_bytes": "9855296",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "gc_only_5",
+      "n_cells_used": "733717",
+      "v_cells_used": "1231936",
+      "vector_heap_bytes": "9855488",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "gc_only_6",
+      "n_cells_used": "733729",
+      "v_cells_used": "1231960",
+      "vector_heap_bytes": "9855680",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "gc_only_7",
+      "n_cells_used": "733741",
+      "v_cells_used": "1231984",
+      "vector_heap_bytes": "9855872",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "gc_only_8",
+      "n_cells_used": "733753",
+      "v_cells_used": "1232008",
+      "vector_heap_bytes": "9856064",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "gc_only_9",
+      "n_cells_used": "733765",
+      "v_cells_used": "1232032",
+      "vector_heap_bytes": "9856256",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "gc_only_10",
+      "n_cells_used": "733777",
+      "v_cells_used": "1232056",
+      "vector_heap_bytes": "9856448",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "after_validation",
+      "n_cells_used": "733850",
+      "v_cells_used": "1232267",
+      "vector_heap_bytes": "9858136",
+      "gc_used_megabytes_rounded": "48.7"
+    },
+    {
+      "checkpoint": "source_released",
+      "n_cells_used": "733629",
+      "v_cells_used": "1220121",
+      "vector_heap_bytes": "9760968",
+      "gc_used_megabytes_rounded": "48.6"
+    },
+    {
+      "checkpoint": "result_released",
+      "n_cells_used": "725332",
+      "v_cells_used": "1200898",
+      "vector_heap_bytes": "9607184",
+      "gc_used_megabytes_rounded": "48"
+    },
+    {
+      "checkpoint": "released_gc_only_1",
+      "n_cells_used": "725346",
+      "v_cells_used": "1200927",
+      "vector_heap_bytes": "9607416",
+      "gc_used_megabytes_rounded": "48"
+    },
+    {
+      "checkpoint": "released_gc_only_2",
+      "n_cells_used": "725358",
+      "v_cells_used": "1200953",
+      "vector_heap_bytes": "9607624",
+      "gc_used_megabytes_rounded": "48"
+    },
+    {
+      "checkpoint": "released_gc_only_3",
+      "n_cells_used": "725370",
+      "v_cells_used": "1200981",
+      "vector_heap_bytes": "9607848",
+      "gc_used_megabytes_rounded": "48"
+    },
+    {
+      "checkpoint": "released_gc_only_4",
+      "n_cells_used": "725382",
+      "v_cells_used": "1201007",
+      "vector_heap_bytes": "9608056",
+      "gc_used_megabytes_rounded": "48"
+    },
+    {
+      "checkpoint": "released_gc_only_5",
+      "n_cells_used": "725394",
+      "v_cells_used": "1201035",
+      "vector_heap_bytes": "9608280",
+      "gc_used_megabytes_rounded": "48"
+    },
+    {
+      "checkpoint": "released_gc_only_6",
+      "n_cells_used": "725406",
+      "v_cells_used": "1201061",
+      "vector_heap_bytes": "9608488",
+      "gc_used_megabytes_rounded": "48"
+    },
+    {
+      "checkpoint": "released_gc_only_7",
+      "n_cells_used": "725418",
+      "v_cells_used": "1201089",
+      "vector_heap_bytes": "9608712",
+      "gc_used_megabytes_rounded": "48"
+    },
+    {
+      "checkpoint": "released_gc_only_8",
+      "n_cells_used": "725430",
+      "v_cells_used": "1201115",
+      "vector_heap_bytes": "9608920",
+      "gc_used_megabytes_rounded": "48"
+    },
+    {
+      "checkpoint": "released_gc_only_9",
+      "n_cells_used": "725442",
+      "v_cells_used": "1201143",
+      "vector_heap_bytes": "9609144",
+      "gc_used_megabytes_rounded": "48"
+    },
+    {
+      "checkpoint": "released_gc_only_10",
+      "n_cells_used": "725454",
+      "v_cells_used": "1201169",
+      "vector_heap_bytes": "9609352",
+      "gc_used_megabytes_rounded": "48"
+    }
+  ],
+  "state_rows": 6261,
+  "state_membership_counts": {
+    "('0', 'source')": 9,
+    "('5', 'source')": 9,
+    "('5', 'result')": 1033,
+    "('50', 'source')": 9,
+    "('50', 'result')": 1033,
+    "('100', 'source')": 9,
+    "('100', 'result')": 1033,
+    "('250', 'source')": 9,
+    "('250', 'result')": 1033,
+    "('500', 'source')": 9,
+    "('500', 'result')": 1033,
+    "('after_validation', 'source')": 9,
+    "('after_validation', 'result')": 1033
+  },
+  "assessment": [
+    "500 calls completed with unchanged-source and final value/schema/group checks.",
+    "Ncells5 697266,50 710119,100 718042,250 728866,500 733652; finalrelease725332 vs warmed684751.",
+    "Ten double-full-GC checkpoints with live result and ten after release do not reverse growth; GC-only recorder increments mostly12Ncells.",
+    "All6261 recorded state rows remain unexposed, owned depth1 and length-scaled bytes; source fields unchanged.",
+    "Simple deferred reclamation across these extra GCs is not observed. Address-name interning versus other operation/recorder growth remains a copied-control hypothesis."
+  ],
+  "scope": "One256row128group installed96 group_nest diagnostic, not timing or RSS qualification, no plateau/cause proof. Whole50call baseline records remain untouched. Source header explicitly overrides inherited50call prose; actual loop/validation500."
+}

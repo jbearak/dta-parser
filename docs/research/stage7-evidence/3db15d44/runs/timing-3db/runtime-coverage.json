@@ -1,0 +1,11 @@
+{
+  "namespaces": 26,
+  "file_dlls": 16,
+  "non_file": [
+    {
+      "name": "base",
+      "path": "base"
+    }
+  ],
+  "scope": "Selected parent R namespace and DLL files, not full process/image closure"
+}

@@ -1,0 +1,11 @@
+{
+  "status": "complete",
+  "error": null,
+  "input_binding_complete": true,
+  "inputs_unchanged": true,
+  "performance_acceptance": false,
+  "source_sha": "4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c",
+  "runner_sha": "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+  "installation": "/private/tmp/dta-direct-stage7-validation/implementation/predecessor-4d07d656-01",
+  "scope": "Selected Stage7 workload execution; overall performance acceptance and full subprocess closure are separate"
+}

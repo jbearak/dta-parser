@@ -1,0 +1,433 @@
+    rows columns groups      workload                      route median_ms
+1 100000       8     16 summarise_one predecessor_safe_reference  7.672904
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                16044592               13705824
+    rows columns groups      workload  route median_ms first_r_allocated_bytes
+1 100000       8     16 summarise_one public  7.955271                13756256
+  warm_r_allocated_bytes
+1               13706016
+     rows columns groups      workload  route median_ms first_r_allocated_bytes
+1 1000000       8     16 summarise_one public  25.17986               136106016
+  warm_r_allocated_bytes
+1              136106016
+     rows columns groups      workload                      route median_ms
+1 1000000       8     16 summarise_one predecessor_safe_reference  24.71706
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               136105824              136105824
+    rows columns groups      workload                      route median_ms
+1 100000      16     16 summarise_one predecessor_safe_reference  7.693978
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                13711224               13711224
+    rows columns groups      workload  route median_ms first_r_allocated_bytes
+1 100000      16     16 summarise_one public  7.727188                13711416
+  warm_r_allocated_bytes
+1               13711416
+     rows columns groups      workload  route median_ms first_r_allocated_bytes
+1 1000000      16     16 summarise_one public  24.43616               136111416
+  warm_r_allocated_bytes
+1              136111416
+     rows columns groups      workload                      route median_ms
+1 1000000      16     16 summarise_one predecessor_safe_reference  24.42153
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               136111224              136111224
+    rows columns groups      workload                      route median_ms
+1 100000       8    128 summarise_one predecessor_safe_reference  43.82646
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                13874960               13874960
+    rows columns groups      workload  route median_ms first_r_allocated_bytes
+1 100000       8    128 summarise_one public  43.82031                13875152
+  warm_r_allocated_bytes
+1               13875152
+     rows columns groups      workload  route median_ms first_r_allocated_bytes
+1 1000000       8    128 summarise_one public   62.0779               136272592
+  warm_r_allocated_bytes
+1              136272592
+     rows columns groups      workload                      route median_ms
+1 1000000       8    128 summarise_one predecessor_safe_reference  62.15711
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               136272400              136272400
+    rows columns groups      workload                      route median_ms
+1 100000      16    128 summarise_one predecessor_safe_reference  44.34388
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                13880360               13880360
+    rows columns groups      workload  route median_ms first_r_allocated_bytes
+1 100000      16    128 summarise_one public  44.43662                13880552
+  warm_r_allocated_bytes
+1               13880552
+     rows columns groups      workload  route median_ms first_r_allocated_bytes
+1 1000000      16    128 summarise_one public  60.96458               136277992
+  warm_r_allocated_bytes
+1              136277992
+     rows columns groups      workload                      route median_ms
+1 1000000      16    128 summarise_one predecessor_safe_reference  61.51074
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               136277800              136277800
+    rows columns groups        workload                      route median_ms
+1 100000       8     16 summarise_width predecessor_safe_reference  50.26174
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                35985136               32971328
+    rows columns groups        workload  route median_ms
+1 100000       8     16 summarise_width public  51.37271
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                34171472               32971328
+     rows columns groups        workload  route median_ms
+1 1000000       8     16 summarise_width public  132.7033
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               340171472              328171328
+     rows columns groups        workload                      route median_ms
+1 1000000       8     16 summarise_width predecessor_safe_reference  133.2713
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               340171472              328171328
+    rows columns groups        workload                      route median_ms
+1 100000      16     16 summarise_width predecessor_safe_reference  97.51231
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                68262576               65862288
+    rows columns groups        workload  route median_ms
+1 100000      16     16 summarise_width public  96.33454
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                68262576               65862288
+     rows columns groups        workload  route median_ms
+1 1000000      16     16 summarise_width public  241.7727
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               680262576              656262288
+     rows columns groups        workload                      route median_ms
+1 1000000      16     16 summarise_width predecessor_safe_reference  242.6843
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               680262576              656262288
+    rows columns groups        workload                      route median_ms
+1 100000       8    128 summarise_width predecessor_safe_reference  359.9818
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                34858720               33658576
+    rows columns groups        workload  route median_ms
+1 100000       8    128 summarise_width public  371.1431
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                34858720               33658576
+     rows columns groups        workload  route median_ms
+1 1000000       8    128 summarise_width public  431.0503
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               340853088              328852944
+     rows columns groups        workload                      route median_ms
+1 1000000       8    128 summarise_width predecessor_safe_reference  430.7861
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               340853088              328852944
+    rows columns groups        workload                      route median_ms
+1 100000      16    128 summarise_width predecessor_safe_reference  712.2098
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                69597120               67196832
+    rows columns groups        workload  route median_ms
+1 100000      16    128 summarise_width public  704.9015
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                69597120               67196832
+     rows columns groups        workload  route median_ms
+1 1000000      16    128 summarise_width public  821.7057
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               681585856              657585568
+     rows columns groups        workload                      route median_ms
+1 1000000      16    128 summarise_width predecessor_safe_reference  819.2728
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               681585856              657585568
+    rows columns groups     workload                      route median_ms
+1 100000       8     16 reframe_half predecessor_safe_reference  9.651892
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                16349824               16306576
+    rows columns groups     workload  route median_ms first_r_allocated_bytes
+1 100000       8     16 reframe_half public  9.565505                16306576
+  warm_r_allocated_bytes
+1               16306576
+     rows columns groups     workload  route median_ms first_r_allocated_bytes
+1 1000000       8     16 reframe_half public  39.03507               162106512
+  warm_r_allocated_bytes
+1              162106512
+     rows columns groups     workload                      route median_ms
+1 1000000       8     16 reframe_half predecessor_safe_reference  39.22716
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               162106512              162106512
+    rows columns groups     workload                      route median_ms
+1 100000      16     16 reframe_half predecessor_safe_reference  9.392362
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                16311976               16311976
+    rows columns groups     workload  route median_ms first_r_allocated_bytes
+1 100000      16     16 reframe_half public  9.524095                16311976
+  warm_r_allocated_bytes
+1               16311976
+     rows columns groups     workload  route median_ms first_r_allocated_bytes
+1 1000000      16     16 reframe_half public  37.59917               162111912
+  warm_r_allocated_bytes
+1              162111912
+     rows columns groups     workload                      route median_ms
+1 1000000      16     16 reframe_half predecessor_safe_reference  38.13062
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               162111912              162111912
+    rows columns groups     workload                      route median_ms
+1 100000       8    128 reframe_half predecessor_safe_reference  49.92127
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                16480816               16480816
+    rows columns groups     workload  route median_ms first_r_allocated_bytes
+1 100000       8    128 reframe_half public   50.1815                16480816
+  warm_r_allocated_bytes
+1               16480816
+     rows columns groups     workload  route median_ms first_r_allocated_bytes
+1 1000000       8    128 reframe_half public  78.25781               162278960
+  warm_r_allocated_bytes
+1              162278960
+     rows columns groups     workload                      route median_ms
+1 1000000       8    128 reframe_half predecessor_safe_reference  79.84484
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               162278960              162278960
+    rows columns groups     workload                      route median_ms
+1 100000      16    128 reframe_half predecessor_safe_reference  49.97416
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                16486216               16486216
+    rows columns groups     workload  route median_ms first_r_allocated_bytes
+1 100000      16    128 reframe_half public  49.84501                16486216
+  warm_r_allocated_bytes
+1               16486216
+     rows columns groups     workload  route median_ms first_r_allocated_bytes
+1 1000000      16    128 reframe_half public   78.7676               162284360
+  warm_r_allocated_bytes
+1              162284360
+     rows columns groups     workload                      route median_ms
+1 1000000      16    128 reframe_half predecessor_safe_reference  79.24451
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               162284360              162284360
+    rows columns groups              workload                      route
+1 100000       8     16 group_modify_identity predecessor_safe_reference
+  median_ms first_r_allocated_bytes warm_r_allocated_bytes
+1  49.61775                44593240               42917008
+    rows columns groups              workload  route median_ms
+1 100000       8     16 group_modify_identity public  49.02792
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                43333312               42916728
+     rows columns groups              workload  route median_ms
+1 1000000       8     16 group_modify_identity public  352.1659
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               421316776              417316728
+     rows columns groups              workload                      route
+1 1000000       8     16 group_modify_identity predecessor_safe_reference
+  median_ms first_r_allocated_bytes warm_r_allocated_bytes
+1  354.2844               421317056              417317008
+    rows columns groups              workload                      route
+1 100000      16     16 group_modify_identity predecessor_safe_reference
+  median_ms first_r_allocated_bytes warm_r_allocated_bytes
+1  86.63345                66569776               65769680
+    rows columns groups              workload  route median_ms
+1 100000      16     16 group_modify_identity public  89.01859
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                66569496               65769400
+     rows columns groups              workload  route median_ms
+1 1000000      16     16 group_modify_identity public   592.736
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               649769496              641769400
+     rows columns groups              workload                      route
+1 1000000      16     16 group_modify_identity predecessor_safe_reference
+  median_ms first_r_allocated_bytes warm_r_allocated_bytes
+1  594.2859               649769776              641769680
+    rows columns groups              workload                      route
+1 100000       8    128 group_modify_identity predecessor_safe_reference
+  median_ms first_r_allocated_bytes warm_r_allocated_bytes
+1  167.8354                43573592               43173544
+    rows columns groups              workload  route median_ms
+1 100000       8    128 group_modify_identity public  169.5865
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                43573312               43173264
+     rows columns groups              workload  route median_ms
+1 1000000       8    128 group_modify_identity public  479.6511
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               421571904              417571856
+     rows columns groups              workload                      route
+1 1000000       8    128 group_modify_identity predecessor_safe_reference
+  median_ms first_r_allocated_bytes warm_r_allocated_bytes
+1  479.7004               421572184              417572136
+    rows columns groups              workload                      route
+1 100000      16    128 group_modify_identity predecessor_safe_reference
+  median_ms first_r_allocated_bytes warm_r_allocated_bytes
+1  318.6784                67054984               66254888
+    rows columns groups              workload  route median_ms
+1 100000      16    128 group_modify_identity public  314.3089
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                67054704               66254608
+     rows columns groups              workload  route median_ms
+1 1000000      16    128 group_modify_identity public   829.602
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               650252528              642252432
+     rows columns groups              workload                      route
+1 1000000      16    128 group_modify_identity predecessor_safe_reference
+  median_ms first_r_allocated_bytes warm_r_allocated_bytes
+1  841.2123               650252808              642252712
+    rows columns groups   workload                      route median_ms
+1 100000       8     16 group_nest predecessor_safe_reference  9.121639
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                 7431880                6657800
+    rows columns groups   workload  route median_ms first_r_allocated_bytes
+1 100000       8     16 group_nest public  6.502149                 5288512
+  warm_r_allocated_bytes
+1                4888464
+     rows columns groups   workload  route median_ms first_r_allocated_bytes
+1 1000000       8     16 group_nest public  41.09889                52088512
+  warm_r_allocated_bytes
+1               48088464
+     rows columns groups   workload                      route median_ms
+1 1000000       8     16 group_nest predecessor_safe_reference  44.78036
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                57457848               53457800
+    rows columns groups   workload                      route median_ms
+1 100000      16     16 group_nest predecessor_safe_reference  16.16843
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                12669920               11869824
+    rows columns groups   workload  route median_ms first_r_allocated_bytes
+1 100000      16     16 group_nest public  11.98139                10497640
+  warm_r_allocated_bytes
+1                9697544
+     rows columns groups   workload  route median_ms first_r_allocated_bytes
+1 1000000      16     16 group_nest public  94.78675               104097640
+  warm_r_allocated_bytes
+1               96097544
+     rows columns groups   workload                      route median_ms
+1 1000000      16     16 group_nest predecessor_safe_reference  100.9672
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               113469920              105469824
+    rows columns groups   workload                      route median_ms
+1 100000       8    128 group_nest predecessor_safe_reference  43.88706
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                16126744               15726696
+    rows columns groups   workload  route median_ms first_r_allocated_bytes
+1 100000       8    128 group_nest public  22.43647                 5334128
+  warm_r_allocated_bytes
+1                4934080
+     rows columns groups   workload  route median_ms first_r_allocated_bytes
+1 1000000       8    128 group_nest public  65.82009                52133616
+  warm_r_allocated_bytes
+1               48133568
+     rows columns groups   workload                      route median_ms
+1 1000000       8    128 group_nest predecessor_safe_reference  89.39287
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                66526104               62526056
+    rows columns groups   workload                      route median_ms
+1 100000      16    128 group_nest predecessor_safe_reference  72.98127
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                21803456               21003360
+    rows columns groups   workload  route median_ms first_r_allocated_bytes
+1 100000      16    128 group_nest public  46.58318                10587800
+  warm_r_allocated_bytes
+1                9787704
+     rows columns groups   workload  route median_ms first_r_allocated_bytes
+1 1000000      16    128 group_nest public  131.0328               104186776
+  warm_r_allocated_bytes
+1               96186680
+     rows columns groups   workload                      route median_ms
+1 1000000      16    128 group_nest predecessor_safe_reference  182.8606
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               122602176              114602080
+    rows columns groups workload                      route median_ms
+1 100000       8     16  nest_by predecessor_safe_reference  9.633893
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                 7391616                6661288
+    rows columns groups workload  route median_ms first_r_allocated_bytes
+1 100000       8     16  nest_by public  7.090622                 5292000
+  warm_r_allocated_bytes
+1                4891952
+     rows columns groups workload  route median_ms first_r_allocated_bytes
+1 1000000       8     16  nest_by public  41.65153                52092000
+  warm_r_allocated_bytes
+1               48091952
+     rows columns groups workload                      route median_ms
+1 1000000       8     16  nest_by predecessor_safe_reference  45.26736
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                57461336               53461288
+    rows columns groups workload                      route median_ms
+1 100000      16     16  nest_by predecessor_safe_reference  16.55703
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                12673408               11873312
+    rows columns groups workload  route median_ms first_r_allocated_bytes
+1 100000      16     16  nest_by public  12.70172                10501128
+  warm_r_allocated_bytes
+1                9701032
+     rows columns groups workload  route median_ms first_r_allocated_bytes
+1 1000000      16     16  nest_by public  97.38271               104101128
+  warm_r_allocated_bytes
+1               96101032
+     rows columns groups workload                      route median_ms
+1 1000000      16     16  nest_by predecessor_safe_reference  97.91427
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               113473408              105473312
+    rows columns groups workload                      route median_ms
+1 100000       8    128  nest_by predecessor_safe_reference  45.70877
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                16159032               15758984
+    rows columns groups workload  route median_ms first_r_allocated_bytes
+1 100000       8    128  nest_by public  23.41588                 5366416
+  warm_r_allocated_bytes
+1                4966368
+     rows columns groups workload  route median_ms first_r_allocated_bytes
+1 1000000       8    128  nest_by public  66.45009                52165904
+  warm_r_allocated_bytes
+1               48165856
+     rows columns groups workload                      route median_ms
+1 1000000       8    128  nest_by predecessor_safe_reference  89.32674
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                66558392               62558344
+    rows columns groups workload                      route median_ms
+1 100000      16    128  nest_by predecessor_safe_reference  73.94985
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                21835744               21035648
+    rows columns groups workload  route median_ms first_r_allocated_bytes
+1 100000      16    128  nest_by public  44.91009                10620088
+  warm_r_allocated_bytes
+1                9819992
+     rows columns groups workload  route median_ms first_r_allocated_bytes
+1 1000000      16    128  nest_by public  134.0891               104219064
+  warm_r_allocated_bytes
+1               96218968
+     rows columns groups workload                      route median_ms
+1 1000000      16    128  nest_by predecessor_safe_reference  181.9325
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               122634464              114634368
+     rows columns groups      workload                      route median_ms
+1 1000000       8      1 summarise_one predecessor_safe_reference  18.50666
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               136084288              136084288
+     rows columns groups      workload  route median_ms first_r_allocated_bytes
+1 1000000       8      1 summarise_one public   19.0053               136084288
+  warm_r_allocated_bytes
+1              136084288
+     rows columns groups        workload  route median_ms
+1 1000000       8      1 summarise_width public   89.8916
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               340088792              328088648
+     rows columns groups        workload                      route median_ms
+1 1000000       8      1 summarise_width predecessor_safe_reference  86.96625
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               340088792              328088648
+     rows columns groups     workload                      route median_ms
+1 1000000       8      1 reframe_half predecessor_safe_reference  52.33933
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               162084672              162084672
+     rows columns groups     workload  route median_ms first_r_allocated_bytes
+1 1000000       8      1 reframe_half public   32.1643               162084672
+  warm_r_allocated_bytes
+1              162084672
+     rows columns groups              workload  route median_ms
+1 1000000       8      1 group_modify_identity public  299.9398
+  first_r_allocated_bytes warm_r_allocated_bytes
+1               332486728              328486680
+     rows columns groups              workload                      route
+1 1000000       8      1 group_modify_identity predecessor_safe_reference
+  median_ms first_r_allocated_bytes warm_r_allocated_bytes
+1   297.513               332487008              328486960
+     rows columns groups   workload                      route median_ms
+1 1000000       8      1 group_nest predecessor_safe_reference  33.96051
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                56243808               52243760
+     rows columns groups   workload  route median_ms first_r_allocated_bytes
+1 1000000       8      1 group_nest public  33.23624                52082752
+  warm_r_allocated_bytes
+1               48082704
+     rows columns groups workload  route median_ms first_r_allocated_bytes
+1 1000000       8      1  nest_by public  36.25987                52086240
+  warm_r_allocated_bytes
+1               48086192
+     rows columns groups workload                      route median_ms
+1 1000000       8      1  nest_by predecessor_safe_reference   36.5784
+  first_r_allocated_bytes warm_r_allocated_bytes
+1                56247296               52247248
+All measured outputs passed independent values, metadata, groups, prototypes and source-preservation checks.

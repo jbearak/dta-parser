@@ -1,0 +1,11 @@
+{
+  "status": "complete",
+  "error": null,
+  "input_binding_complete": true,
+  "inputs_unchanged": true,
+  "performance_acceptance": false,
+  "source_sha": "3db15d44f2b557f5282fb7a30fd59c7980a4484c",
+  "runner_sha": "f3b8b984c6a9ea5a0f062eee70e392bb567e5042",
+  "installation": "/private/tmp/dta-direct-stage7-validation/implementation/candidate-3db15d44-01",
+  "scope": "Selected Stage7 retained-memory workload execution; overall performance acceptance and full subprocess closure are separate"
+}

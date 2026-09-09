@@ -1,0 +1,36 @@
+{
+  "predecessor": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-performance-predecessor-4d07-v2-01-assessment.json",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/root-performance-predecessor-4d07-v2-01-assessment.json",
+    "bytes": 339744,
+    "mode": "0o644",
+    "sha256": "76e61af9baaa6a11e694bd63889c98978db516f6b2a1741050c846bab73b2a64"
+  },
+  "candidate": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-performance-a0485ac7-v2-01-assessment.json",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/root-performance-a0485ac7-v2-01-assessment.json",
+    "bytes": 161701,
+    "mode": "0o644",
+    "sha256": "eab5191b7fe6232017b964629620f06ce02a5c08d11ca52269d6ac8875e8ee82"
+  },
+  "predecessor_source": "4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c",
+  "candidate_source": "a0485ac739d5c87dcd1a81c5a0b09e9dcafdf9d4",
+  "comparison_source": {
+    "path": "/private/tmp/dta-direct-stage7-performance-preparation-01/compare-performance-v1.py",
+    "resolved": "/private/tmp/dta-direct-stage7-performance-preparation-01/compare-performance-v1.py",
+    "bytes": 4632,
+    "mode": "0o644",
+    "sha256": "d952f80d925bef0db0826e9c0220e6190524b340e5a28be40fb43eabd487b134"
+  },
+  "comparisons": {
+    "path": "/private/tmp/dta-direct-stage7-validation/root-performance-comparison-a0485ac7-01/comparisons.csv",
+    "resolved": "/private/tmp/dta-direct-stage7-validation/root-performance-comparison-a0485ac7-01/comparisons.csv",
+    "bytes": 60679,
+    "mode": "0o644",
+    "sha256": "1c2477a80addffbab805e83466a5fdf11efa9ad3306346509fbb71ac3c90052f"
+  },
+  "pairs": 108,
+  "raw_samples": 1134,
+  "flags": [],
+  "scope": "Candidate public versus predecessor public and fixed safe-reference routes. Single quiet grids with seven GC-inclusive samples per series; flags above 10% and 1ms require investigation of repeatability. Legacy public nesting lacks the foreign-write guarantee. First/warm R and native observations overlap and are not summed. No independent nested-memory or stage-wide acceptance from this comparison."
+}
