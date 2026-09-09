@@ -1,7 +1,7 @@
 #' Dibbles: Stata datasets with by-reference mutation
 #'
 #' A dibble is a tibble that is a Stata dataset. It is the default
-#' container of [read_dta()], [read_arrow()], and [dta_append()], and the
+#' container of [`read_dta()`][dtatools::read_dta], [read_arrow()], and [dta_append()], and the
 #' container [dta_merge()] returns for a dibble `x`. `dibble()` builds one
 #' from columns with the argument semantics of [tibble::tibble()];
 #' `as_dibble()` converts a data frame, tibble, or data table; `is_dibble()`

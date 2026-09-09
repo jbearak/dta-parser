@@ -73,7 +73,7 @@
 #'   `"default"` follows the container the first source resolves to: a
 #'   file's recorded container, else the `dtatools.output` option.
 #' @param .name_repair Name repair applied to the result, as in
-#'   [read_dta()].
+#'   [`read_dta()`][dtatools::read_dta].
 #' @return The stacked observations in the requested container,
 #'   carrying the reconciled Stata metadata.
 #' @export

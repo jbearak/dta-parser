@@ -2,7 +2,7 @@
 #'
 #' Provides the familiar `dplyr::recode()` interface while retaining the exact
 #' payload of every unmatched Stata system or extended missing value. It also
-#' supports the numeric classes returned by [read_dta()], including
+#' supports the numeric classes returned by [`read_dta()`][dtatools::read_dta], including
 #' `haven_labelled`, `Date`, and `POSIXct`.
 #'
 #' @param .x A numeric, character, or factor vector. Numeric storage may carry

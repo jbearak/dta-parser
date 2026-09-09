@@ -96,6 +96,29 @@ jobs:
             exit 1
           fi
 
+      - name: Install native Linux build dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libuv1-dev pkg-config
+      - name: Install CRAN macOS gettext build dependencies
+        if: runner.os == 'macOS' && runner.arch == 'ARM64'
+        shell: bash
+        run: |
+          base=https://mac.r-project.org/bin/darwin23/arm64
+          cache="$RUNNER_TEMP/cran-gettext"
+          mkdir -p "$cache"
+          curl --fail --show-error --location --retry 3 "$base/texinfo-7.3-darwin.23-arm64.tar.xz" -o "$cache/texinfo.tar.xz"
+          curl --fail --show-error --location --retry 3 "$base/gettext-0.22.5-darwin.23-arm64.tar.xz" -o "$cache/gettext.tar.xz"
+          printf '%s  %s\n' \
+            '78b7af1aea3fd725a77c6cc7295a717bdc94e1d534c5acb3801646d72c4515dd' "$cache/texinfo.tar.xz" \
+            'bdc3356cfb2c8dd69618fd76975474f4ec793cbe8f4894389d0426da8f4facc3' "$cache/gettext.tar.xz" | shasum -a 256 -c -
+          sudo tar -xf "$cache/texinfo.tar.xz" -C /
+          sudo tar -xf "$cache/gettext.tar.xz" -C /
+          test -s /opt/R/arm64/include/libintl.h
+          test -s /opt/R/arm64/lib/libintl.a
+
       - name: Install runtime and present test dependencies
         shell: Rscript {0}
         run: |
@@ -199,6 +222,9 @@ jobs:
           expected <- normalizePath(file.path("release-build", "library", "dtatools"))
           actual <- normalizePath(getNamespaceInfo(loadNamespace("dtatools"), "path"))
           stopifnot(identical(actual, expected))
+          test_root <- system.file("tests", package = "dtatools", mustWork = TRUE)
+          stopifnot(dir.exists(file.path(test_root, "testthat")))
+          setwd(test_root)
           testthat::test_check("dtatools")
 
       - name: Qualify source and fresh binary installations without optional packages

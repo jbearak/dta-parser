@@ -1,7 +1,7 @@
 #' Tabulate vectors using Stata value labels
 #'
 #' Creates one-way or multidimensional frequency tables while using the value
-#' labels and extended missing codes carried by vectors returned by [read_dta()].
+#' labels and extended missing codes carried by vectors returned by [`read_dta()`][dtatools::read_dta].
 #' Ordinary unlabelled vectors retain the familiar behavior of [base::table()].
 #'
 #' @param x A vector, or a data frame whose columns should be tabulated. When
@@ -39,7 +39,7 @@
 #' payloads into one category.
 #'
 #' Numeric factorization is shared with [factor_from_labels()] and does not
-#' materialize compact numeric columns returned by [read_dta()].
+#' materialize compact numeric columns returned by [`read_dta()`][dtatools::read_dta].
 #'
 #' @return A standard `table` object.
 #' @export

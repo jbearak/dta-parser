@@ -25,7 +25,7 @@
 #' @section Container independence:
 #' The signature is a function of the logical dataset, not the container it
 #' came from. The same data signs identically whether passed as the in-memory
-#' [read_dta()] result, as a `.dta` path, or as an `.arrow` path (with any
+#' [`read_dta()`][dtatools::read_dta] result, as a `.dta` path, or as an `.arrow` path (with any
 #' compression), because both readers return the same read model. A frame
 #' that was never saved can sign differently from its own `.dta` file,
 #' because [save_dta()] attaches display formats the constructed frame may
@@ -42,10 +42,10 @@
 #' checksum time — well under a second per gigabyte.
 #'
 #' To record the disk signature at load time instead of recomputing later,
-#' pass `datasig = TRUE` to [read_dta()] or [read_arrow()]: the reader
+#' pass `datasig = TRUE` to [`read_dta()`][dtatools::read_dta] or [read_arrow()]: the reader
 #' attaches the file's signature as the result's `datasig` attribute.
 #' [read_arrow()] derives it from the file's stored footer checksums for
-#' almost nothing, even under projection; [read_dta()] hashes the decoded
+#' almost nothing, even under projection; [`read_dta()`][dtatools::read_dta] hashes the decoded
 #' columns, so it requires a full read.
 #'
 #' The payload definition is versioned internally (currently version 2, which
