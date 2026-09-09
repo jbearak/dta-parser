@@ -23,8 +23,8 @@ conformance, interoperability and native gates. Rust evidence was reused only
 for identical Rust inputs. Local package check retains three warnings and two
 notes; macOS and Windows CI retain their observed predecessor warning counts.
 
-The final original atomic comparison has only the twelve pre-existing base-R
-read flags reserved for final epic assessment. Fresh row grids have no direct
+The final original atomic comparison has only the twelve base-R read regressions
+from earlier stages reserved for final epic assessment. Fresh row grids have no direct
 public-operation flags against the predecessor or safe control under the joint
 >10% and >1 ms threshold. One safe-control slice_head comparison remains flagged;
 it does not enter the new public row planner. Arrange's public rank planning
@@ -67,13 +67,36 @@ The candidate retained all 126 edge observations. A safe predecessor comparison
 executed 93 common records and excluded the foreign-write families before their
 thunks. It confirmed existing zero-group size errors and arbitrary callback
 return limits, while identifying extra `.drop` metadata on current group keys
-and lost summary error ancestry/named-group details. The working correction
-repairs those two boundaries and adds explicit tagged-missing, empty-context,
-helper-lifetime, nesting-key/prototype and changed-target assertions. Fresh
-installed qualification remains required. The edge collector's caught errors
-and interrupts are observations, and its completion is not whole-suite
-acceptance. Current package, native, scaling, memory and external PR gates
-remain open.
+and lost summary error ancestry/named-group details. Source `408ea41d` repairs
+those boundaries and adds explicit tagged-missing, empty-context, helper-lifetime,
+nesting-key/prototype and changed-target assertions. Its fresh host installation
+passed all 34 new blocks with 400 assertions and the full suite with 18,058
+assertions and four established warnings. The selected R 4.6.0 lane passed
+6,383 assertions, with four established warnings and five capability skips.
+The 126-record collector retained its expected caught errors and interrupts;
+its completion is not 126 passing tests. The isolated repeated-output witnesses
+also passed their declared source/first/latest write checks.
+
+The first full 408 timing grid has 33 investigation flags across 108 comparisons,
+each exceeding both a 10% median increase and 1 ms: eight one-column summaries,
+seventeen reframe cases and eight nesting comparisons. These are single-grid
+observations, not a repeatability claim. Allocation profiles identify about
+48 MB of group-validation allocation in the one-million-row character-key
+cases. Nesting's one-group median also reflects different GC frequencies;
+it is not a pure CPU-cost estimate. That candidate is not performance accepted.
+
+A bounded copied-function control halves the 100,000-row validator allocation
+from 4,801,312 to 2,402,288 bytes, with matching tested error/value behavior and
+unchanged recorded source state. Its first run retained a test-instrumentation
+error; the corrected run passed all 241 expectations. The proposed package
+regression fails on 408 only at the allocation budget. The current R-only
+correction reduces partition temporaries and compares eligible character keys
+through public match codes. It preserves custom/foreign fallbacks, validation
+order and nested capture. Fresh installed qualification and whole-operation
+measurements remain required; this allocation control does not resolve the
+timing flags. Package, native, final-candidate memory and external PR gates
+remain open. The twelve earlier-stage read regressions, Stages 8–9 and final
+actual fertility validation remain required.
 
 ## Historical Stage 6 implementation checkpoints
 

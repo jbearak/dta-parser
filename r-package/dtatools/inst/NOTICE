@@ -37,6 +37,12 @@ Adapted from dplyr 1.2.1:
     dplyr internals. Validation additionally requires a complete partition and
     matching keys before expressions run. Partition counts are linear, and
     compatible equality proxies are expanded after casting observed keys.
+    Stage 7 reduces temporary allocations for ordinary integer partitions and
+    uses public character match codes for classless ordinary or known-owned
+    character keys. Custom classes, foreign storage and inputs with a non-NULL
+    stata.storage attribute retain the general path and per-key error order.
+    These are package-specific validation changes; nested capture and
+    mutable-metadata checks remain.
     These use public vctrs APIs; no additional upstream source is incorporated.
     Native gathering uses the existing
     dtatools kernel. Missing strings are normalized before groups are rebuilt;
@@ -48,6 +54,8 @@ Adapted from dplyr 1.2.1:
     rowwise identifier and reconstruction cases from test-group-by.R,
     test-grouped-df.R, test-generics.R and test-rowwise.R, with package-specific
     storage, metadata, indexing and later-write isolation assertions.
+    test-dibble-group-validation.R adds package-specific character equality,
+    source state, foreign-length fallback and allocation regressions.
   Additional Stage 5 sources:
     R/context.R: context_env, public context helpers and restoration contract
     R/conditions.R: warning record fields and signal_warnings integration
