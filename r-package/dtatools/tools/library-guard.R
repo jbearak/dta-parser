@@ -8,7 +8,8 @@
     .native_require(!file.exists(path), paste("Record already exists:", path))
     con <- file(path, open = "wt", encoding = "UTF-8")
     on.exit(close(con), add = TRUE)
-    dput(value, con)
+    # Keep names as quoted attributes so Windows path backslashes round-trip.
+    dput(value, con, control = c("keepNA", "keepInteger", "showAttributes"))
     invisible(value)
 }
 .native_condition <- function(cnd) {
