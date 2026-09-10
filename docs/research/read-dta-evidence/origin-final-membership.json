@@ -1,0 +1,11 @@
+{
+  "complete": true,
+  "selection_sha256": "008e40e55ae29ee49cf11c0dddacbf2186e24280496840da3ea918691f45c1f5",
+  "result_sha256": "41f8a96c453c97076fd552df943df6fd05cc3036dc0d1a94a32d17a972103b64",
+  "members": 30321,
+  "bytes": 1101001132,
+  "every_identity_and_member_row_equals_reviewed_prediction": true,
+  "removed_originals": 7,
+  "duplicates": 0,
+  "scope": "Actual complete combination matches exact reviewed corrected union; archive member-byte verification remains separate. No payload reads or new runtime."
+}

@@ -1,0 +1,539 @@
+{
+  "scope": "Exact82-sidecar content/identity and final union/removal source review. Prior30,241-file content pass reused; no live base sweep.",
+  "config_sha256": "428844c7a1486e6e267c406b2e5675b888c1b98a2846cf762c32b996bee61118",
+  "combiner": {
+    "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/combine-selection-01.py",
+    "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/combine-selection-01.py",
+    "bytes": 5405,
+    "mode": "0o644",
+    "sha256": "46144e84733043a7d26c897bc45c490c61ca78977f3f22b598c096d92109d73b"
+  },
+  "sidecar_map": {
+    "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-sidecars-01.json",
+    "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-sidecars-01.json",
+    "bytes": 52512,
+    "mode": "0o644",
+    "sha256": "a019246748964d0cf86f4cd0215e42996ccde68158731d0b5cb4dab1454cad6d"
+  },
+  "sidecars_read": 82,
+  "sidecar_bytes": 831478,
+  "equal_duplicates": [],
+  "removed_originals": [
+    "/private/tmp/dta-direct-issue216-preparation-01/controller-controls-01/assessment.json",
+    "/private/tmp/dta-direct-issue216-preparation-01/controller-controls-01/timeout/result.json",
+    "/private/tmp/dta-direct-issue216-preparation-01/matrix-cancellation-control-01/matrix/inert--dibble--pilot--1/result.json",
+    "/private/tmp/dta-direct-issue216-preparation-01/matrix-cancellation-control-01/outer/result.json",
+    "/private/tmp/dta-direct-issue216-validation/baseline-01/installed-identity.R",
+    "/private/tmp/dta-direct-issue216-validation/eager-install-01/installed-identity.R",
+    "/private/tmp/dta-direct-issue216-validation/prototype-install-04/installed-identity.R"
+  ],
+  "required_cleared_replacements": [
+    "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/baseline-installed-identity.R",
+    "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/eager-installed-identity.R",
+    "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/prototype-installed-identity.R",
+    "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/01-assessment.json",
+    "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/02-result.json",
+    "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/03-result.json",
+    "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/04-result.json"
+  ],
+  "predicted_members": 30321,
+  "predicted_bytes": 1101001132,
+  "predicted_identity_rows_canonical_sha256": "6422acf351f06768abdad152182ec1aa88bba705f5f6c040bd6c6662b720e5af",
+  "origins_clear": true,
+  "source_clear_for_combination": true,
+  "sidecar_identities": [
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/REVIEW-01.md",
+      "sha256": "535ca8a21f86ceccedc4b3c93684007ac040ecb106d4c37c91a82309c70da3e6",
+      "bytes": 4756,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/REVIEW-02.md",
+      "sha256": "e6e155c377379f84133c5bbd5770f834572241daac33698c26788cf525484bb8",
+      "bytes": 1587,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/final-note-table-review-01.json",
+      "sha256": "aa071a9ad579abc4cbfab1ccef9a555e66493d2c49469fa57f6b74e6390f3866",
+      "bytes": 10215,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/installed-identity-origin-findings.json",
+      "sha256": "7e92632e09e6dd8968e729f22e91dfb912bc9f9f847b299573cef347ab8fbcad",
+      "bytes": 2368,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/installed-metadata-result-review.json",
+      "sha256": "82eb9fd52854ee09fda17b4bca352ffa925f9702951d1b5cdc4e4cca5946a0ca",
+      "bytes": 3418,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/installed-metadata-source-review-02.json",
+      "sha256": "75246cdc619d123053315818775b1814cdfae284d2fdb4f20bc986eac6721227",
+      "bytes": 815,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/installed-metadata-source-review.json",
+      "sha256": "c46ca5f97268403d481103903c51d967893056ba04e306163b85cdd89ce0faac",
+      "bytes": 972,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/origin-findings-closure-02.json",
+      "sha256": "e9517dda8ea966cbbd214c01dcca404f18b9b830d018fd5f923bdfdc9c2da133",
+      "bytes": 809,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/origin-review-result-01.json",
+      "sha256": "758875e0bfde001f71a1ffe11394fd702c29d41f193be9223a4052d8925526f8",
+      "bytes": 3272,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/public-table-replay-review.json",
+      "sha256": "957916d47bfc949c7d8010d6b263f80fe69f357543eb7f0fd332cc2ad6fd3ecf",
+      "bytes": 1355,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/traceback-derivative-review.json",
+      "sha256": "119b6d1dbecca21254e3211f3c013ff0459a207222b24677d86ad57e68aa6f7c",
+      "bytes": 3147,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/traceback-origin-findings.json",
+      "sha256": "3176c2a27ae1e21a3a260e745965101efdf3b0fd88672b830a85257f288f5a88",
+      "bytes": 2216,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/README-final.md",
+      "sha256": "5daab76280e821968578c6a7a4ccda390c7ee38ee4a37729884bc1108fb8ccb8",
+      "bytes": 4990,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/REPLAY-final.md",
+      "sha256": "caf781b858b3bd5f0e515292dc4c55cacb580427bdef3f56a457f2966df1c690",
+      "bytes": 6614,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/build-evidence-01.py",
+      "sha256": "e0f8b82bdade02bc28213c0bcfd2cd96bd1d1eeb33f97ae4e84f0f024a858159",
+      "bytes": 5266,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/derive-traceback-metadata-01.py",
+      "sha256": "f831278696d0fe03bb94e3e3defff52a9410eb6b700844c9b514a65240fe8d17",
+      "bytes": 4482,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/freeze-result.json",
+      "sha256": "22a206ca29d118f0f871cbefbc5539456db0fa1bba9b0fb5d9bfc526c072bff7",
+      "bytes": 34242,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-construction-and-deferred-decoding.md",
+      "sha256": "43e0a22ca5fb79874ab9fe9622816f13ee525a886c724d089afcdfe1d1c78049",
+      "bytes": 35297,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/gc-release-diagnostic.csv",
+      "sha256": "f2ad3ab9e6d8c3b0a6e837d5b34ed8f665cbc8b87bb12d149021a2ab0d09fc9a",
+      "bytes": 377,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/load-comparison.csv",
+      "sha256": "b3f8e13d692029574ff5077d1bbf3fe051cc70ba23c534cb7cc6842556746153",
+      "bytes": 6679,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/load-summary.csv",
+      "sha256": "be0e4a2d2068172b9cb35eeb986f5189eda27974d902439f0939b5625466dea3",
+      "bytes": 32090,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/memory-observations.csv",
+      "sha256": "ca5588dd4e58070fcbc376d9a70c300374722ada1443c34d220254c65ec4667b",
+      "bytes": 31416,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/memory-summary.csv",
+      "sha256": "53f01a29bf192ccbb6cb989131d7f963f93dfbec4f7cadb1708410cb05098c29",
+      "bytes": 8328,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/numeric-comparison.csv",
+      "sha256": "d360164adabf1b2dce0f75623a7abacc9cab180d0fa6e858d8688fb72f36ca83",
+      "bytes": 38067,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/numeric-counters-allocation-after.csv",
+      "sha256": "eadf87a65d091c32fee43a34253d341805ae37814368932bbea5c67688600611",
+      "bytes": 9376,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/numeric-counters-matrix-final-call.csv",
+      "sha256": "ec0dc5dc9216ffff9dc6da9d7785ec32b38f3ed14f5cc35f3722305ead61288c",
+      "bytes": 14806,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/numeric-counters-retained-checkpoints.csv",
+      "sha256": "87b2bbd04aa99b8d343a92f7e0c5bf91a73693c28e8f7b8ca20d6b2011c4c3b4",
+      "bytes": 27065,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/numeric-counters-sequence-after.csv",
+      "sha256": "1653eda36aef74f5c75204ff2f70ef880e70986748fb8e4f940f48120ed67c09",
+      "bytes": 15542,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/numeric-memory-observations.csv",
+      "sha256": "58a634991063c1b118f233ab7324c0cb89a153b587f19423514b2351d554b469",
+      "bytes": 40689,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/numeric-memory-signed-comparisons.csv",
+      "sha256": "5fd851e993884be0df902be3717a166d6b5f7210a1f2dcf1c0c67563e1ec2baa",
+      "bytes": 7786,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/numeric-memory-summary.csv",
+      "sha256": "5dd61bf40cbf8bfe1ffec70236d29eed3025e70dd440a3a434059c452a162263",
+      "bytes": 22019,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/numeric-sequence-summary.csv",
+      "sha256": "e4d9c385c341eb68aa764be502588135f18de86397384fac9a70ce9373ec0f92",
+      "bytes": 23010,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/numeric-summary.csv",
+      "sha256": "ed8fcd353c78754adecd4df649f50ae9cf1cc49b8b876c15e84c204e5c182a12",
+      "bytes": 22732,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/phase-method-distributions.csv",
+      "sha256": "90bce2f0c7aa7d2818411204d5fbea6e4083285d80e579904017b8614c9ea414",
+      "bytes": 9514,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/phase-signed-method-comparisons.csv",
+      "sha256": "91553381f45f0a368d49b4198968e69d13804fef9ebd5f30343c450e6c30b373",
+      "bytes": 1876,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/r-phase-summary.csv",
+      "sha256": "d4cebdcff28f61825e922cda45278219069dc2068e2f767d3093f42e1c34d9dd",
+      "bytes": 13680,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/sequence-summary.csv",
+      "sha256": "530b1488f58572e6133b56268bd4e6cb888350536c5f55b8b31ee476699ef72b",
+      "bytes": 18185,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/workflow-comparison.csv",
+      "sha256": "6a400fc67277dcadfcb5a58c44125fb8610ebeb163cb280ca751bc5acbc4477c",
+      "bytes": 2835,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/final-publication-source-01/read-dta-evidence/workflow-summary.csv",
+      "sha256": "a62a5adc649167e1bb40ae60113855090ddf1b0d0470986c071c08dde897d30f",
+      "bytes": 6187,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/freeze-publication-source-01.py",
+      "sha256": "dec4e9ff15fbaafef8789839cdc28666e84534f9e7140af590f8d53753308eb8",
+      "bytes": 3262,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-01/launch.json",
+      "sha256": "eade0cd574530fd2e2a68d9b6af4afbd8d93ad9341a239d6d203262311900fb9",
+      "bytes": 8723,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-01/pid.json",
+      "sha256": "8b95509285a0b1ce809e4928652c6075471c53121e95846573b5593c8e0f2757",
+      "bytes": 72,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-01/records/result.R",
+      "sha256": "d4a3491a6c58866f8badf78b725f3c21929d05657581d7e08b75ac914eac7deb",
+      "bytes": 428,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-01/result.json",
+      "sha256": "3a305847e4d5d1ba213869059bc5029d5c6ba74d7cc214957381ae49e5c410a1",
+      "bytes": 8298,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/launch.json",
+      "sha256": "ac924af1aa14b8fae71ef7b3e935466eca898d5e11c5fa164a2e8a4e4bcbf8f0",
+      "bytes": 9740,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/pid.json",
+      "sha256": "fa1835fdae78f6290ca2f19b813af29e2c5c034564780bf1ce6fc99038dfddd3",
+      "bytes": 72,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/baseline-derivation.R",
+      "sha256": "a16c0cbfa2dec085991542504b7961329721c917726df7fa050e1b6814dcc67b",
+      "bytes": 53164,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/baseline-installed-identity.R",
+      "sha256": "a4adac3ae99402dcc1ced3805ffeedbd9db2d60a131a501cf890d66be37a5255",
+      "bytes": 9589,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/completed.txt",
+      "sha256": "37a40f08d8548dba289b9b0bb35bcf63b359f6d37ee86044ebc6b6da080b9ec1",
+      "bytes": 9,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/eager-derivation.R",
+      "sha256": "1fb8d29c079ef660d2cf80c683d4ef7fc151deea1504f801596b3e8d7b12466d",
+      "bytes": 53163,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/eager-installed-identity.R",
+      "sha256": "9533972fb7de67aae8a0a9435d1bfedc72aea39f33b99e4ceac7ee2c43f97cc1",
+      "bytes": 9609,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/prototype-derivation.R",
+      "sha256": "c7bf8c6fa6f61eef860461d906401d04adddc8126d7942a36ccc256741c095dc",
+      "bytes": 38614,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/prototype-installed-identity.R",
+      "sha256": "07c7e12233e7112d3b4e3ffc1449a3f712c4ecfc786619796997cc05944c252f",
+      "bytes": 7485,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/result.R",
+      "sha256": "833907b0a0c634764c0191828b230cab2cb8b3bebd3f9206ac997e05176589e0",
+      "bytes": 969,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/result.json",
+      "sha256": "9902b51adc213f23b43635be687d0675fd42006f9d3b9e2115bfdbd40160ac4e",
+      "bytes": 8888,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/README.md",
+      "sha256": "9ab35520accac98e2ea75422f528fd6786dfd0cf2b1172285f3bbfbf56b74052",
+      "bytes": 1835,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/REVIEW.md",
+      "sha256": "ac98ef07e9bf860eee99b7138275d5b284810377f10532d4017585854b23ed20",
+      "bytes": 2029,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/config-02.json",
+      "sha256": "21daf811ae0d1b834469e9ca0dbd73c4f3e69b8e31a45ed10c4575f56a20cf9c",
+      "bytes": 9252,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/config.json",
+      "sha256": "ef24a4d3c0a7058262da19d04c4331ed6a2e586cd7628212399a2e7901cd40c6",
+      "bytes": 8241,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/derive-installed-metadata-01.R",
+      "sha256": "b72576c18b5067482f4260b8700ab3f0c466cbeea42ec56f5e8d9a00b0d2932c",
+      "bytes": 7700,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/derive-installed-metadata-02.R",
+      "sha256": "c6397d5c5dd37521519d4be3a2ccd222d53ab460965359ee29e6e9ef747b4846",
+      "bytes": 7830,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/replacement-map.json",
+      "sha256": "8121dc6119c3957e5ba13e000160682f6f554d9ab5aa9da95b6e2af705ff2e3c",
+      "bytes": 7619,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/selected-records.csv",
+      "sha256": "5da14f82a658640e4cacadb3f5a8589d3f87746f2917678d303072cd9e1f93ea",
+      "bytes": 611,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/source-freeze-01.json",
+      "sha256": "cc7cb553be32868fea3a7e72f3bad850d479f6c5c4fa47df5c33baf577c1c536",
+      "bytes": 2789,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/source-freeze-02.json",
+      "sha256": "878295412317c398d83bb6863b9563b4088aa2246347a19e02e691122c11cb33",
+      "bytes": 2394,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-preparation-01/source01-to-source02.patch",
+      "sha256": "1ecd7088c70bd32baecda67f77a10f6b44e3299686830a4cb5602ce0efed3372",
+      "bytes": 599,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/prepare-final-selection-01.py",
+      "sha256": "180c8e001168bae695fcf0850ad6170929e8af4876ac1b1058cacd34aed90a23",
+      "bytes": 5093,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/publication-replacements.json",
+      "sha256": "1880230da15f3f45afacbaa0d2988e9bbf9ab7779115c51a8952d647a5552ff3",
+      "bytes": 7858,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/01-assessment.json",
+      "sha256": "65f742fddb4ac6114d007876eb94bd1769a8c0f233cd032706cb6bb069d49122",
+      "bytes": 13422,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/02-result.json",
+      "sha256": "1c4554a1251c5b4bd5546ce0f232664dd3384ea4341b11ee6286888b0dd726cf",
+      "bytes": 3135,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/03-result.json",
+      "sha256": "08ed60fd26f6d83c2f288f9a820831c61de4707b163cec2e5446d525ee474fd6",
+      "bytes": 4278,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/04-result.json",
+      "sha256": "f0afa4161d6e2d62f093be7cbde6832d3207f4366b81ed440a31b4c7df306562",
+      "bytes": 4175,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/derivation-result.json",
+      "sha256": "abf9f1124a9103c9ab45ab883ffcd635f10c612c4b249822f6a599ebf213bdc7",
+      "bytes": 8781,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/verify-archive-01.py",
+      "sha256": "74f5fffd432889b167541a984e74cfecbbebd692e047506492cb08a57f617f29",
+      "bytes": 2838,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/numeric-memory-signed-check-01.csv",
+      "sha256": "5fd851e993884be0df902be3717a166d6b5f7210a1f2dcf1c0c67563e1ec2baa",
+      "bytes": 7786,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/public-table-reconstruction-01/gc-release-diagnostic.csv",
+      "sha256": "f2ad3ab9e6d8c3b0a6e837d5b34ed8f665cbc8b87bb12d149021a2ab0d09fc9a",
+      "bytes": 377,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/public-table-reconstruction-01/memory-summary.csv",
+      "sha256": "53f01a29bf192ccbb6cb989131d7f963f93dfbec4f7cadb1708410cb05098c29",
+      "bytes": 8328,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/public-table-reconstruction-01/r-phase-summary.csv",
+      "sha256": "d4cebdcff28f61825e922cda45278219069dc2068e2f767d3093f42e1c34d9dd",
+      "bytes": 13680,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/public-table-reconstruction-01/result.json",
+      "sha256": "9706455f8bce9dca556c182553a95342256223d5938e99b727d5e19a43c3b8ff",
+      "bytes": 2473,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/reconstruct-public-tables-01.py",
+      "sha256": "4ab99b81117ac577b6fdd6a0825aba107f2299633eb5472842c21e11d6f79d9d",
+      "bytes": 4293,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/research-prose-review-01.md",
+      "sha256": "dc6668a72ac7250d30c28b894e8c9752d10afcd4affebd623fca8c84c88fcd58",
+      "bytes": 2839,
+      "content_read": true
+    },
+    {
+      "path": "/private/tmp/dta-direct-issue216-preparation-01/research-prose-review-02.md",
+      "sha256": "2ffc823ccce7c8816b9c23974b5d7a52055f958e999763cc89c4d8fec2da7ad6",
+      "bytes": 1058,
+      "content_read": true
+    }
+  ],
+  "limits": "Input maps/source/config add only reviewed metadata. Combiner joins identity records; the archive builder must verify actual member bytes. Final guides describe publication checks that must complete before publishing. No combination, archive or workload executed in this review."
+}

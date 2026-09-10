@@ -1,0 +1,11 @@
+variant,checkpoint,vector_delta_bytes,header_delta_cells
+current,prior,0,0
+current,retained,108206792,75371
+current,released,108124816,75064
+current,released_second,603432,42942
+current,released_third,603584,42948
+direct,prior,0,0
+direct,retained,108098008,69470
+direct,released,108016024,69162
+direct,released_second,494640,37040
+direct,released_third,494792,37046
