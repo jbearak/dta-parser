@@ -1,0 +1,295 @@
+{
+  "status": "complete",
+  "disposition": "clear for the 19 copied artifacts and completed part representation",
+  "inputs": [
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/archive-parts.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/archive-parts.json",
+      "bytes": 2990,
+      "mode": "0o644",
+      "sha256": "acec9a73629c62c56995c98451acf21ce45aba8b8c4d11836fce599057f6ca92"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01-split-attempt.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01-split-attempt.json",
+      "bytes": 2579,
+      "mode": "0o644",
+      "sha256": "8f7e82e022de103cc53eae2e2adc6d8ead5b26239606697bbe380f6dd568fb2c"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/reassembly-verification-01.json",
+      "resolved": "/private/tmp/dta-direct-final-publication-review-01/reassembly-verification-01.json",
+      "bytes": 222,
+      "mode": "0o644",
+      "sha256": "05c6df90a34b049dea0f0d776ea0afa4624fcf0d9ae38cc4c6fccbce56e5ce19"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/publication-copy-01.json",
+      "resolved": "/private/tmp/dta-direct-final-publication-review-01/publication-copy-01.json",
+      "bytes": 7306,
+      "mode": "0o644",
+      "sha256": "34a5cba024a9e012d15e98a7fc76e788ce34a7ec8db5e1169392c95454b90a30"
+    }
+  ],
+  "inputs_unchanged": true,
+  "archive": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/records.tar.gz",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/records.tar.gz",
+    "bytes": 178620522,
+    "mode": "0o644",
+    "sha256": "c03edfc4a2013737b6fd36b5e0d859ba6a82b53513c50208960ccf02eaa7e66e"
+  },
+  "parts": [
+    {
+      "name": "records.tar.gz.part001",
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/records.tar.gz.part001",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/records.tar.gz.part001",
+      "bytes": 82837504,
+      "mode": "0o644",
+      "sha256": "33cccd30d64305f9d50339dc45eca769bef4a263a3b001a39cdbf8efe19110a3"
+    },
+    {
+      "name": "records.tar.gz.part002",
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/records.tar.gz.part002",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/records.tar.gz.part002",
+      "bytes": 82837504,
+      "mode": "0o644",
+      "sha256": "0a7dab2ab26fb1306a175640cfde74fe87df25683bdfefac27a496a6a213e535"
+    },
+    {
+      "name": "records.tar.gz.part003",
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/records.tar.gz.part003",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/records.tar.gz.part003",
+      "bytes": 12945514,
+      "mode": "0o644",
+      "sha256": "fbcb6971bb4f200abeab9843dea9f1a71d463d80f58b9c1ff5c969b1d30f83e1"
+    }
+  ],
+  "split_reassembly_chain_equal": true,
+  "copied_files": 19,
+  "copied_bytes": 188637231,
+  "copy_observations": [
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/selection.json",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/selection.json",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/selection.json",
+        "bytes": 9885226,
+        "mode": "0o644",
+        "sha256": "863e78d3bf0bad61b11ee68e98215a10e882b9be93bc609bfd8cc138d9337df2"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/transport-result.json",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/transport-result.json",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/transport-result.json",
+        "bytes": 1026,
+        "mode": "0o644",
+        "sha256": "ac5878eed442d90875f72be2ab9f7d2fcd24935c586bab6ea89dbf89ea6ce8bb"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/archive-parts.json",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/archive-parts.json",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/archive-parts.json",
+        "bytes": 2990,
+        "mode": "0o644",
+        "sha256": "acec9a73629c62c56995c98451acf21ce45aba8b8c4d11836fce599057f6ca92"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/verify-archive-01.py",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/verify-archive-01.py",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/verify-archive-01.py",
+        "bytes": 2838,
+        "mode": "0o644",
+        "sha256": "74f5fffd432889b167541a984e74cfecbbebd692e047506492cb08a57f617f29"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/reassemble-publication-archive-01.py",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/reassemble-publication-archive-01.py",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/reassemble-publication-archive-01.py",
+        "bytes": 1895,
+        "mode": "0o644",
+        "sha256": "04f2530606241955c986eb5d92577f959f16bead58cd1f8d3ce692ce81473b1d"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/split-publication-archive-01.py",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/split-publication-archive-01.py",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/split-publication-archive-01.py",
+        "bytes": 6307,
+        "mode": "0o644",
+        "sha256": "17a69dcc2adae44a454f75cbeb161eff00d8565675db374ab28c42f948026eb7"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final-build-attempt.json",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/build-attempt.json",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/build-attempt.json",
+        "bytes": 878,
+        "mode": "0o644",
+        "sha256": "e673ab57a24d220a5e9df48b9b021b9128d04b95742e4008baf640ede49b0424"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01-split-attempt.json",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/split-attempt.json",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/split-attempt.json",
+        "bytes": 2579,
+        "mode": "0o644",
+        "sha256": "8f7e82e022de103cc53eae2e2adc6d8ead5b26239606697bbe380f6dd568fb2c"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-publication-review-01/independent-archive-verification-01.json",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/independent-archive-verification.json",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/independent-archive-verification.json",
+        "bytes": 508,
+        "mode": "0o644",
+        "sha256": "4f14f1991b4e45fd0ab1edeebbfd84780e35b4fae9622ae55dfb723d910e0e38"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-publication-review-01/reassembly-verification-01.json",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/reassembly-verification.json",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/reassembly-verification.json",
+        "bytes": 222,
+        "mode": "0o644",
+        "sha256": "05c6df90a34b049dea0f0d776ea0afa4624fcf0d9ae38cc4c6fccbce56e5ce19"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolution-result-03.json",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/resolution-result.json",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/resolution-result.json",
+        "bytes": 12681,
+        "mode": "0o644",
+        "sha256": "f7ea5ca0d207bc4eb22660bfdf9dd5630e371d23c8e072e353e4537dbaf3c557"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance/LICENSE",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/LICENSE",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/LICENSE",
+        "bytes": 35149,
+        "mode": "0o644",
+        "sha256": "3fb86ad2fc6f9ee1bada36000b8a6905b492caab81e3601c2592a3d6504d803a"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance/r-package/dtatools/inst/NOTICE",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/NOTICE",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/NOTICE",
+        "bytes": 46665,
+        "mode": "0o644",
+        "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/root-local-integrated-disposition-01.json",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/local-disposition.json",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/local-disposition.json",
+        "bytes": 5904,
+        "mode": "0o644",
+        "sha256": "2ca8ffbaff2ed6c68258c3c6c29596ed80df7f9665a0cd3a7e2674619c84d814"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/REVIEW-final-01.md",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/functional-origin-review.md",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/functional-origin-review.md",
+        "bytes": 5418,
+        "mode": "0o644",
+        "sha256": "b15056797b2e47f408fe4511aaa50b826ea97cd0195f031f3c6ce46a446c64fc"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-inspection-01/REVIEW.md",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/performance-origin-review.md",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/performance-origin-review.md",
+        "bytes": 6423,
+        "mode": "0o644",
+        "sha256": "5a86b5d3993d8d89ddc95efc4487813b733ed44eddb2d33bdf61759a5f5e5c63"
+      },
+      "source_check": "Both source and destination SHA/size/mode checked"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/records.tar.gz.part001",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/records.tar.gz.part001",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/records.tar.gz.part001",
+        "bytes": 82837504,
+        "mode": "0o644",
+        "sha256": "33cccd30d64305f9d50339dc45eca769bef4a263a3b001a39cdbf8efe19110a3"
+      },
+      "source_check": "Accepted split identity plus current source mode; copied part SHA independently recomputed"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/records.tar.gz.part002",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/records.tar.gz.part002",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/records.tar.gz.part002",
+        "bytes": 82837504,
+        "mode": "0o644",
+        "sha256": "0a7dab2ab26fb1306a175640cfde74fe87df25683bdfefac27a496a6a213e535"
+      },
+      "source_check": "Accepted split identity plus current source mode; copied part SHA independently recomputed"
+    },
+    {
+      "source": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/records.tar.gz.part003",
+      "destination": {
+        "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/records.tar.gz.part003",
+        "resolved": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/records.tar.gz.part003",
+        "bytes": 12945514,
+        "mode": "0o644",
+        "sha256": "fbcb6971bb4f200abeab9843dea9f1a71d463d80f58b9c1ff5c969b1d30f83e1"
+      },
+      "source_check": "Accepted split identity plus current source mode; copied part SHA independently recomputed"
+    }
+  ],
+  "reassembly_source": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/reassemble-publication-archive-01.py",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/reassemble-publication-archive-01.py",
+    "bytes": 1895,
+    "mode": "0o644",
+    "sha256": "04f2530606241955c986eb5d92577f959f16bead58cd1f8d3ce692ce81473b1d"
+  },
+  "content_origin": "Parts are the independently verified canonical archive representation; selection/transport/source/notice/review copies are exact reviewed bytes. The root local disposition contains own aggregate facts only; no detailed downstream source/data/test strings.",
+  "pending": [
+    "Separately authored public prose review",
+    "Exact staged Git tree/blob verification"
+  ],
+  "limits": "No tar stream, canonical archive hash or payload origin scan repeated. Published part destinations were SHA-checked directly; accepted split and separate full reassembly results reused."
+}

@@ -1,0 +1,183 @@
+{
+  "status": "complete",
+  "disposition": "clear within completed canonical transport and source scope",
+  "inputs": [
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/build-evidence-01.py",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/build-evidence-01.py",
+      "bytes": 5277,
+      "mode": "0o644",
+      "sha256": "293f2f9846fadf3339e8a21014ef39a077f2f8688173332b39f18f51093038d2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/verify-archive-01.py",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/verify-archive-01.py",
+      "bytes": 2838,
+      "mode": "0o644",
+      "sha256": "74f5fffd432889b167541a984e74cfecbbebd692e047506492cb08a57f617f29"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/split-publication-archive-01.py",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/split-publication-archive-01.py",
+      "bytes": 6307,
+      "mode": "0o644",
+      "sha256": "17a69dcc2adae44a454f75cbeb161eff00d8565675db374ab28c42f948026eb7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/reassemble-publication-archive-01.py",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/reassemble-publication-archive-01.py",
+      "bytes": 1895,
+      "mode": "0o644",
+      "sha256": "04f2530606241955c986eb5d92577f959f16bead58cd1f8d3ce692ce81473b1d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/OPTIONAL-PARTS-01.md",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/OPTIONAL-PARTS-01.md",
+      "bytes": 2459,
+      "mode": "0o644",
+      "sha256": "42847595587d251a30cd8400ccebbea7b7c58fab1b8487f0ff665b43ed749f76"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/build-evidence-01.py.patch",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/build-evidence-01.py.patch",
+      "bytes": 782,
+      "mode": "0o644",
+      "sha256": "f9c01d07fafff118158c9ca12d3c295d8428006b941310906aad6d9c7dace607"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/verify-archive-01.py.patch",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/verify-archive-01.py.patch",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/transport-result.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/transport-result.json",
+      "bytes": 1026,
+      "mode": "0o644",
+      "sha256": "ac5878eed442d90875f72be2ab9f7d2fcd24935c586bab6ea89dbf89ea6ce8bb"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final-build-attempt.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final-build-attempt.json",
+      "bytes": 878,
+      "mode": "0o644",
+      "sha256": "e673ab57a24d220a5e9df48b9b021b9128d04b95742e4008baf640ede49b0424"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/combined-selection-final.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/combined-selection-final.json",
+      "bytes": 9885226,
+      "mode": "0o644",
+      "sha256": "863e78d3bf0bad61b11ee68e98215a10e882b9be93bc609bfd8cc138d9337df2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/selection.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/selection.json",
+      "bytes": 9885226,
+      "mode": "0o644",
+      "sha256": "863e78d3bf0bad61b11ee68e98215a10e882b9be93bc609bfd8cc138d9337df2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolution-result-03.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolution-result-03.json",
+      "bytes": 12681,
+      "mode": "0o644",
+      "sha256": "f7ea5ca0d207bc4eb22660bfdf9dd5630e371d23c8e072e353e4537dbaf3c557"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolution-config-final.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolution-config-final.json",
+      "bytes": 106572,
+      "mode": "0o644",
+      "sha256": "8b1357910abfd5bee9841d80272add36e59e5f341531860930b11602571e6446"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/independent-archive-verification-01.json",
+      "resolved": "/private/tmp/dta-direct-final-publication-review-01/independent-archive-verification-01.json",
+      "bytes": 508,
+      "mode": "0o644",
+      "sha256": "4f14f1991b4e45fd0ab1edeebbfd84780e35b4fae9622ae55dfb723d910e0e38"
+    }
+  ],
+  "inputs_unchanged": true,
+  "old_builder": {
+    "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/build-evidence-01.py",
+    "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/build-evidence-01.py",
+    "bytes": 5266,
+    "mode": "0o644",
+    "sha256": "e0f8b82bdade02bc28213c0bcfd2cd96bd1d1eeb33f97ae4e84f0f024a858159"
+  },
+  "old_verifier": {
+    "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/verify-archive-01.py",
+    "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/verify-archive-01.py",
+    "bytes": 2838,
+    "mode": "0o644",
+    "sha256": "74f5fffd432889b167541a984e74cfecbbebd692e047506492cb08a57f617f29"
+  },
+  "builder_delta": "Only first-line scope text and fixed preparation directory",
+  "verifier_unchanged": true,
+  "reviewed_map_subsets": [
+    {
+      "map": {
+        "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/resolved-selection-final.json",
+        "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/resolved-selection-final.json",
+        "bytes": 616734,
+        "mode": "0o644",
+        "sha256": "1c46e1c1ce6934ecdf603a76e2db0229b7ac9730bbf3551377072f7bf052a389"
+      },
+      "equal_records": 606
+    },
+    {
+      "map": {
+        "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-resolved-01/selection.json",
+        "resolved": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-resolved-01/selection.json",
+        "bytes": 5325252,
+        "mode": "0o644",
+        "sha256": "8d43edcec5d0edaed5ea994761b416578c57b32ba9419a56b29f5803364156ce"
+      },
+      "equal_records": 4985
+    },
+    {
+      "map": {
+        "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/publication-sidecars-final-01.json",
+        "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/publication-sidecars-final-01.json",
+        "bytes": 14070,
+        "mode": "0o644",
+        "sha256": "db8e3c42757e35f28bd2992c53f720e7f04c80f78c9a7d182ae639e05d244118"
+      },
+      "equal_records": 16
+    }
+  ],
+  "archive": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/records.tar.gz",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/records.tar.gz",
+    "bytes": 178620522,
+    "mode": "0o644",
+    "sha256": "c03edfc4a2013737b6fd36b5e0d859ba6a82b53513c50208960ccf02eaa7e66e"
+  },
+  "selection": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/selection.json",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/selection.json",
+    "bytes": 9885226,
+    "mode": "0o644",
+    "sha256": "863e78d3bf0bad61b11ee68e98215a10e882b9be93bc609bfd8cc138d9337df2"
+  },
+  "members": 8409,
+  "uncompressed_bytes": 2007394542,
+  "independent_stream_verification": {
+    "path": "/private/tmp/dta-direct-final-publication-review-01/independent-archive-verification-01.json",
+    "resolved": "/private/tmp/dta-direct-final-publication-review-01/independent-archive-verification-01.json",
+    "bytes": 508,
+    "mode": "0o644",
+    "sha256": "4f14f1991b4e45fd0ab1edeebbfd84780e35b4fae9622ae55dfb723d910e0e38"
+  },
+  "split_source_clear": true,
+  "reassembly_source_clear": true,
+  "pending": [
+    "Actual split/reassembly records",
+    "Exact publication copy and staged Git identities"
+  ],
+  "limits": "Saved-record and source review only; independent completed full archive stream result reused. No second payload origin scan, tar stream, extraction, or workload. Archive SHA is established by transport/verifier, not rehashed in this review."
+}

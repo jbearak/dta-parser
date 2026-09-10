@@ -1,0 +1,19 @@
+{
+  "status": "complete",
+  "source": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/build-evidence-01.py",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/build-evidence-01.py",
+    "bytes": 5277,
+    "mode": "0o644",
+    "sha256": "293f2f9846fadf3339e8a21014ef39a077f2f8688173332b39f18f51093038d2"
+  },
+  "selection_path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/combined-selection-final.json",
+  "output": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final",
+  "started_utc": "2026-09-10T10:15:02.712339+00:00",
+  "completed_utc": "2026-09-10T10:15:16.734870+00:00",
+  "retained_output_names": [
+    "records.tar.gz",
+    "selection.json",
+    "transport-result.json"
+  ]
+}

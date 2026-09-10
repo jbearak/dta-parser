@@ -1,0 +1,136 @@
+{
+  "status": "clear",
+  "scope": "Additive source/config/resolution metadata review only. No selected payloads, archive bytes, R, compiler, workloads or installation trees reread. Existing complete content-origin reviews and actual workload assessments remain the authority for their scopes.",
+  "preparer_delta": "Actual schema adaptation consumes dictionary records and optional nested identity, explicitly includes both governing sidecar maps, and checks every supplied standard identity field. No recursive payload selection. Resolver03 is unchanged.",
+  "source_sha": "4c2d1f9c2683c15345bb06294ff5fe2d55980f51",
+  "map_counts": [
+    {
+      "role": "functional",
+      "count": 606,
+      "sha256": "1c46e1c1ce6934ecdf603a76e2db0229b7ac9730bbf3551377072f7bf052a389"
+    },
+    {
+      "role": "performance",
+      "count": 4985,
+      "sha256": "8d43edcec5d0edaed5ea994761b416578c57b32ba9419a56b29f5803364156ce"
+    },
+    {
+      "role": "bracket_all_pairs_and_metadata_reader",
+      "count": 2690,
+      "sha256": "3d2aa6fc49bcf0de9c9a1f297fb5c9d69cd8f5316fa254602c0b1cb557895b81"
+    },
+    {
+      "role": "pipeline_repeats_audit_and_disposition",
+      "count": 84,
+      "sha256": "484caf6c2c8044b76299356dd6a758be7e29524092f504bca694fd0b00a47c0a"
+    },
+    {
+      "role": "final_prose_reviews_and_transport_sources",
+      "count": 44,
+      "sha256": "babe9f4fa1a2ffd25a0fb0dbaf383ed5d89bd732904c622b92db244b56181d02"
+    }
+  ],
+  "completion_bindings": 18,
+  "approved_rds": 684,
+  "explicit_map_union": 8403,
+  "duplicate_map_entries": 6,
+  "automatic_additions": [
+    "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/final-record-additions-final.json",
+    "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/final-record-origin-01.json",
+    "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/pipeline-additions-proposal-01.json",
+    "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolution-config-final.json",
+    "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/resolved-selection-final.json",
+    "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-resolved-01/selection.json"
+  ],
+  "resolved_count": 8409,
+  "resolved_bytes": 2007394542,
+  "sidecars": [
+    {
+      "identity": {
+        "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/publication-sidecars-final-01.json",
+        "bytes": 14070,
+        "sha256": "db8e3c42757e35f28bd2992c53f720e7f04c80f78c9a7d182ae639e05d244118"
+      },
+      "declared_count": 16,
+      "all_selected_identities_match": true
+    },
+    {
+      "identity": {
+        "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-inspection-01/publication-sidecars.json",
+        "bytes": 1706,
+        "sha256": "9b9106b2671d6367ca147874d616b29e84bf925d2092e6a4ba11b305319b3d0a"
+      },
+      "declared_count": 7,
+      "all_selected_identities_match": true
+    }
+  ],
+  "input_identities": [
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolution-config-final.json",
+      "bytes": 106572,
+      "sha256": "8b1357910abfd5bee9841d80272add36e59e5f341531860930b11602571e6446"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolution-result-03.json",
+      "bytes": 12681,
+      "sha256": "f7ea5ca0d207bc4eb22660bfdf9dd5630e371d23c8e072e353e4537dbaf3c557"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/combined-selection-final.json",
+      "bytes": 9885226,
+      "sha256": "863e78d3bf0bad61b11ee68e98215a10e882b9be93bc609bfd8cc138d9337df2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/resolved-selection-final.json",
+      "bytes": 616734,
+      "sha256": "1c46e1c1ce6934ecdf603a76e2db0229b7ac9730bbf3551377072f7bf052a389"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-resolved-01/selection.json",
+      "bytes": 5325252,
+      "sha256": "8d43edcec5d0edaed5ea994761b416578c57b32ba9419a56b29f5803364156ce"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/semantics-review/bracket-origin-proposal-01/proposed-paths.csv",
+      "bytes": 1172767,
+      "sha256": "3d2aa6fc49bcf0de9c9a1f297fb5c9d69cd8f5316fa254602c0b1cb557895b81"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/pipeline-additions-proposal-01.json",
+      "bytes": 64950,
+      "sha256": "484caf6c2c8044b76299356dd6a758be7e29524092f504bca694fd0b00a47c0a"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/final-record-additions-final.json",
+      "bytes": 32849,
+      "sha256": "babe9f4fa1a2ffd25a0fb0dbaf383ed5d89bd732904c622b92db244b56181d02"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/publication-sidecars-final-01.json",
+      "bytes": 14070,
+      "sha256": "db8e3c42757e35f28bd2992c53f720e7f04c80f78c9a7d182ae639e05d244118"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-inspection-01/publication-sidecars.json",
+      "bytes": 1706,
+      "sha256": "9b9106b2671d6367ca147874d616b29e84bf925d2092e6a4ba11b305319b3d0a"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/prepare-final-config-01.py",
+      "bytes": 7021,
+      "sha256": "d4dd4e7169db2c330d0d7701a28d4030265e42fa74ec8d69e4020df7cbeff005"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolve-selection-03.py",
+      "bytes": 10834,
+      "sha256": "eda91e853054e2fdebc3b041c63e91dee25c3fb3add072387a16dc00980759f0"
+    }
+  ],
+  "limits": [
+    "Metadata arithmetic does not requalify package tests or timing observations.",
+    "The exact 684 RDS exceptions do not authorize other RDS files.",
+    "Archive transport and final publication prose are separate reviews."
+  ],
+  "observer_note": "One preliminary metadata display used records instead of the actual files key and exited with KeyError; it altered no source or evidence. This corrected bounded metadata reader completed.",
+  "selected_metadata_unchanged": true
+}

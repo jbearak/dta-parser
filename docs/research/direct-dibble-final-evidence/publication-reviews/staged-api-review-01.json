@@ -1,0 +1,192 @@
+{
+  "status": "complete",
+  "disposition": "clear for exact staged documentation/evidence identity and transport scope",
+  "staged_record_sha256": "6b65b0b2b67576a3efa24556990d9288698f237a70f933f6160e60aecbcf91d2",
+  "head": "4c2d1f9c2683c15345bb06294ff5fe2d55980f51",
+  "package_tree": "abc1117250e874353d3cc4fe90f2d8e770b25558",
+  "count": 22,
+  "bytes": 188788920,
+  "copied_bindings": 19,
+  "independently_read_small_git_blobs": 19,
+  "part_git_objects": 3,
+  "files": [
+    {
+      "path": "docs/plans/dibble-result-performance-progress.md",
+      "git_blob": "8d0253309f1b450db4f36943c5f569e28bffcbd1",
+      "mode": "100644",
+      "bytes": 115167,
+      "sha256": "584e19a6fa565cda1c2db07fe895b4b9d5bcedfa8412b5d78eda885462f834ee",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-acceptance.md",
+      "git_blob": "d3cd2b6387366cff2a7714dad61957445d7d0848",
+      "mode": "100644",
+      "bytes": 29550,
+      "sha256": "cfbb5a846eee7ba4188de3c97b8138df97f13204f10d05a74123dfac589d585d",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/LICENSE",
+      "git_blob": "3e2cf8b6bff010af1d4aa3e37fd6f9b3d466f003",
+      "mode": "100644",
+      "bytes": 35149,
+      "sha256": "3fb86ad2fc6f9ee1bada36000b8a6905b492caab81e3601c2592a3d6504d803a",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/NOTICE",
+      "git_blob": "5b93efb0799a8c05cf4de73a04aff48d5984379d",
+      "mode": "100644",
+      "bytes": 46665,
+      "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/README.md",
+      "git_blob": "a64d9a2ef6664cea85ed401b9c62bf7b9ad604e7",
+      "mode": "100644",
+      "bytes": 6972,
+      "sha256": "9e6f64f646ef7be2f7288de469cabe02118605dfdb717095368d4ace35e56922",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/archive-parts.json",
+      "git_blob": "93f9d68794c3d629d43ac712892050ddebc50a5d",
+      "mode": "100644",
+      "bytes": 2990,
+      "sha256": "acec9a73629c62c56995c98451acf21ce45aba8b8c4d11836fce599057f6ca92",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/build-attempt.json",
+      "git_blob": "6cdf0cc4091843499902844293c67d1f4b638c6d",
+      "mode": "100644",
+      "bytes": 878,
+      "sha256": "e673ab57a24d220a5e9df48b9b021b9128d04b95742e4008baf640ede49b0424",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/functional-origin-review.md",
+      "git_blob": "33757f460eb6d17587eabdce22ec5e2724217777",
+      "mode": "100644",
+      "bytes": 5418,
+      "sha256": "b15056797b2e47f408fe4511aaa50b826ea97cd0195f031f3c6ce46a446c64fc",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/independent-archive-verification.json",
+      "git_blob": "249327a9a228b4341bb89f86eb730b04c286dd54",
+      "mode": "100644",
+      "bytes": 508,
+      "sha256": "4f14f1991b4e45fd0ab1edeebbfd84780e35b4fae9622ae55dfb723d910e0e38",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/local-disposition.json",
+      "git_blob": "38c5b56b3425d4fd56e5acf26a521e953257dda5",
+      "mode": "100644",
+      "bytes": 5904,
+      "sha256": "2ca8ffbaff2ed6c68258c3c6c29596ed80df7f9665a0cd3a7e2674619c84d814",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/performance-origin-review.md",
+      "git_blob": "4cd98be499feee5f358b7f86fd1f1aa890e98132",
+      "mode": "100644",
+      "bytes": 6423,
+      "sha256": "5a86b5d3993d8d89ddc95efc4487813b733ed44eddb2d33bdf61759a5f5e5c63",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/reassemble-publication-archive-01.py",
+      "git_blob": "08579822fe6f5f72a239ceeb50e86d4c47e2417c",
+      "mode": "100644",
+      "bytes": 1895,
+      "sha256": "04f2530606241955c986eb5d92577f959f16bead58cd1f8d3ce692ce81473b1d",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/reassembly-verification.json",
+      "git_blob": "4b0e5bbdcc7a63bb6c8b480842735cc8aec59551",
+      "mode": "100644",
+      "bytes": 222,
+      "sha256": "05c6df90a34b049dea0f0d776ea0afa4624fcf0d9ae38cc4c6fccbce56e5ce19",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/records.tar.gz.part001",
+      "git_blob": "2f58a0d80bf2659d4053015dac58ccf3a8248b04",
+      "mode": "100644",
+      "bytes": 82837504,
+      "sha256": "33cccd30d64305f9d50339dc45eca769bef4a263a3b001a39cdbf8efe19110a3",
+      "scope": "Actual staged object ID/type/size/mode checked; root full staged byte comparison reused, destination SHA checked in parts-copy review"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/records.tar.gz.part002",
+      "git_blob": "896c9d1f649c5652b2fe882ec680ec4414d12ab1",
+      "mode": "100644",
+      "bytes": 82837504,
+      "sha256": "0a7dab2ab26fb1306a175640cfde74fe87df25683bdfefac27a496a6a213e535",
+      "scope": "Actual staged object ID/type/size/mode checked; root full staged byte comparison reused, destination SHA checked in parts-copy review"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/records.tar.gz.part003",
+      "git_blob": "f47415eb7b8a9ba4d5cf74b3446fdb94bc4d097e",
+      "mode": "100644",
+      "bytes": 12945514,
+      "sha256": "fbcb6971bb4f200abeab9843dea9f1a71d463d80f58b9c1ff5c969b1d30f83e1",
+      "scope": "Actual staged object ID/type/size/mode checked; root full staged byte comparison reused, destination SHA checked in parts-copy review"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/resolution-result.json",
+      "git_blob": "22a92813e639154e646fc01375bbb40f7a99f52a",
+      "mode": "100644",
+      "bytes": 12681,
+      "sha256": "f7ea5ca0d207bc4eb22660bfdf9dd5630e371d23c8e072e353e4537dbaf3c557",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/selection.json",
+      "git_blob": "f7e89a7a11edfedab52604c79d15763bf8fb49a8",
+      "mode": "100644",
+      "bytes": 9885226,
+      "sha256": "863e78d3bf0bad61b11ee68e98215a10e882b9be93bc609bfd8cc138d9337df2",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/split-attempt.json",
+      "git_blob": "9a8eb75557d2024f93c79120265f1199aa74f5e8",
+      "mode": "100644",
+      "bytes": 2579,
+      "sha256": "8f7e82e022de103cc53eae2e2adc6d8ead5b26239606697bbe380f6dd568fb2c",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/split-publication-archive-01.py",
+      "git_blob": "1f58b5f03873a99b13ccf369b80f9c45480cb8fb",
+      "mode": "100644",
+      "bytes": 6307,
+      "sha256": "17a69dcc2adae44a454f75cbeb161eff00d8565675db374ab28c42f948026eb7",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/transport-result.json",
+      "git_blob": "b38f04831c077855d2d321cc2e712cbb109f5851",
+      "mode": "100644",
+      "bytes": 1026,
+      "sha256": "ac5878eed442d90875f72be2ab9f7d2fcd24935c586bab6ea89dbf89ea6ce8bb",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    },
+    {
+      "path": "docs/research/direct-dibble-final-evidence/verify-archive-01.py",
+      "git_blob": "9d4b4017bab70d15b4eb66eb8db5819858f5f517",
+      "mode": "100644",
+      "bytes": 2838,
+      "sha256": "74f5fffd432889b167541a984e74cfecbbebd692e047506492cb08a57f617f29",
+      "scope": "Independent staged blob bytes/hash/current file comparison"
+    }
+  ],
+  "source_scope": "Documentation-only staged path set; HEAD package tree verified by Git object identity. No package tree content scan.",
+  "limits": "Root full part-blob byte comparisons reused. Public prose semantic review is separate; no commit/push/merge acceptance inferred."
+}

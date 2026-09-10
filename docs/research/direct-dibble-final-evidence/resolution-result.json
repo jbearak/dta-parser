@@ -1,0 +1,235 @@
+{
+  "status": "complete",
+  "source": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolve-selection-03.py",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolve-selection-03.py",
+    "bytes": 10834,
+    "mode": "0o644",
+    "sha256": "eda91e853054e2fdebc3b041c63e91dee25c3fb3add072387a16dc00980759f0"
+  },
+  "configuration": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolution-config-final.json",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/resolution-config-final.json",
+    "bytes": 106572,
+    "mode": "0o644",
+    "sha256": "8b1357910abfd5bee9841d80272add36e59e5f341531860930b11602571e6446"
+  },
+  "inputs": [
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/REVIEW-final-01.md",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/REVIEW-final-01.md",
+      "bytes": 5418,
+      "mode": "0o644",
+      "sha256": "b15056797b2e47f408fe4511aaa50b826ea97cd0195f031f3c6ce46a446c64fc"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-inspection-01/REVIEW.md",
+      "resolved": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-inspection-01/REVIEW.md",
+      "bytes": 6423,
+      "mode": "0o644",
+      "sha256": "5a86b5d3993d8d89ddc95efc4487813b733ed44eddb2d33bdf61759a5f5e5c63"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/semantics-review/bracket-pipeline-content-origin-01/CLEARANCE-01.md",
+      "resolved": "/private/tmp/dta-direct-final-performance-preparation-01/semantics-review/bracket-pipeline-content-origin-01/CLEARANCE-01.md",
+      "bytes": 3704,
+      "mode": "0o644",
+      "sha256": "39f2746db34ecee69315c745f6325ce3f4abde79d28484908d3c41015105cced"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/semantics-review/pipeline-origin-supplement-01/CLEARANCE-01.md",
+      "resolved": "/private/tmp/dta-direct-final-performance-preparation-01/semantics-review/pipeline-origin-supplement-01/CLEARANCE-01.md",
+      "bytes": 2218,
+      "mode": "0o644",
+      "sha256": "b73fd6bc7c0833151110306d94bb715c888353c20ad8302b43ef03ef39d46879"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/final-record-origin-01.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/final-record-origin-01.json",
+      "bytes": 1105,
+      "mode": "0o644",
+      "sha256": "67558bfc8930aefe8cde1336fbf211c3c9d01cd6335c2b44c597c1a9f3ddd0b4"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-bracket-validation-01/full-baseline/result.json",
+      "resolved": "/private/tmp/dta-direct-final-bracket-validation-01/full-baseline/result.json",
+      "bytes": 15654951,
+      "mode": "0o644",
+      "sha256": "b8b24536780593944ba29a4c685dc264570132b35b8719853087bdeaed702403"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-bracket-validation-01/full-candidate/result.json",
+      "resolved": "/private/tmp/dta-direct-final-bracket-validation-01/full-candidate/result.json",
+      "bytes": 15654953,
+      "mode": "0o644",
+      "sha256": "e4267c9736e6a62d9b39b1733d12bfc04a4c687bcf1cb7e78297bb1475dc0b82"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-bracket-validation-02/full-baseline/result.json",
+      "resolved": "/private/tmp/dta-direct-final-bracket-validation-02/full-baseline/result.json",
+      "bytes": 15655032,
+      "mode": "0o644",
+      "sha256": "23cc57f47153ae6e0916426c3bae060ae38ac2eda4fd029b6ef90ca9e7e9d982"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-bracket-validation-02/full-candidate/result.json",
+      "resolved": "/private/tmp/dta-direct-final-bracket-validation-02/full-candidate/result.json",
+      "bytes": 15655033,
+      "mode": "0o644",
+      "sha256": "15d67dae6d02dc7adacd2fb5d5fe669bec7d3ce1c579af58b076a3e649bf4b19"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-bracket-validation-03/full-baseline/result.json",
+      "resolved": "/private/tmp/dta-direct-final-bracket-validation-03/full-baseline/result.json",
+      "bytes": 15655031,
+      "mode": "0o644",
+      "sha256": "e60e37dda5975e8e35a04a387ccd06eb6cb09f36e6bb559dd5766f82f06e8b89"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-bracket-validation-03/full-candidate/result.json",
+      "resolved": "/private/tmp/dta-direct-final-bracket-validation-03/full-candidate/result.json",
+      "bytes": 15655034,
+      "mode": "0o644",
+      "sha256": "30189a708a1785dc3e703f5cc81a5cdb4f7af2106faa74ff5fc7967d8d77a4c5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/safe-pipeline-repeat-preparation-01/final-selector-pipeline-repeat-v2-01-receipt.json",
+      "resolved": "/private/tmp/dta-direct-final-performance-preparation-01/safe-pipeline-repeat-preparation-01/final-selector-pipeline-repeat-v2-01-receipt.json",
+      "bytes": 587,
+      "mode": "0o644",
+      "sha256": "484307ec885844758572eae07c1a6677bf32a15eb7d0b26178f5c5f815f1975f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/safe-pipeline-repeat-preparation-01/final-selector-pipeline-repeat-v2-02-receipt.json",
+      "resolved": "/private/tmp/dta-direct-final-performance-preparation-01/safe-pipeline-repeat-preparation-01/final-selector-pipeline-repeat-v2-02-receipt.json",
+      "bytes": 587,
+      "mode": "0o644",
+      "sha256": "8ccaa30ab56535b2dadfe371f0953289812dfb9ffb3eaf92d128c27f44233515"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/safe-pipeline-repeat-preparation-01/final-selector-pipeline-repeat-v2-03-receipt.json",
+      "resolved": "/private/tmp/dta-direct-final-performance-preparation-01/safe-pipeline-repeat-preparation-01/final-selector-pipeline-repeat-v2-03-receipt.json",
+      "bytes": 587,
+      "mode": "0o644",
+      "sha256": "774e6a22dfaef7289dda5474d4b229a8b030d5c6c76ccbfca33cd8bc25b7d9b9"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/safe-pipeline-repeat-preparation-01/final-selector-pipeline-audit-v1-01-receipt.json",
+      "resolved": "/private/tmp/dta-direct-final-performance-preparation-01/safe-pipeline-repeat-preparation-01/final-selector-pipeline-audit-v1-01-receipt.json",
+      "bytes": 485,
+      "mode": "0o644",
+      "sha256": "cb3a4aaa46138947eab192fe182063760a4880bc3050612a5fb92df56928bac8"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-later-workloads-01/joins-baseline-refresh-01/result.json",
+      "resolved": "/private/tmp/dta-direct-final-later-workloads-01/joins-baseline-refresh-01/result.json",
+      "bytes": 549,
+      "mode": "0o644",
+      "sha256": "c5da6bd3ba0642dd90020f30db683000446ee77cd1a182c7ce2c9f8c9f99ea3b"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-later-workloads-01/joins-candidate-01/result.json",
+      "resolved": "/private/tmp/dta-direct-final-later-workloads-01/joins-candidate-01/result.json",
+      "bytes": 519,
+      "mode": "0o644",
+      "sha256": "e51e425204d6582689bb5b010d7f800b430c518a4fe71724ba199e21b8328e05"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair1-baseline/result.json",
+      "resolved": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair1-baseline/result.json",
+      "bytes": 549,
+      "mode": "0o644",
+      "sha256": "c5da6bd3ba0642dd90020f30db683000446ee77cd1a182c7ce2c9f8c9f99ea3b"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair1-candidate/result.json",
+      "resolved": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair1-candidate/result.json",
+      "bytes": 519,
+      "mode": "0o644",
+      "sha256": "e51e425204d6582689bb5b010d7f800b430c518a4fe71724ba199e21b8328e05"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair2-baseline/result.json",
+      "resolved": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair2-baseline/result.json",
+      "bytes": 549,
+      "mode": "0o644",
+      "sha256": "c5da6bd3ba0642dd90020f30db683000446ee77cd1a182c7ce2c9f8c9f99ea3b"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair2-candidate/result.json",
+      "resolved": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair2-candidate/result.json",
+      "bytes": 519,
+      "mode": "0o644",
+      "sha256": "e51e425204d6582689bb5b010d7f800b430c518a4fe71724ba199e21b8328e05"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair3-baseline/result.json",
+      "resolved": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair3-baseline/result.json",
+      "bytes": 549,
+      "mode": "0o644",
+      "sha256": "c5da6bd3ba0642dd90020f30db683000446ee77cd1a182c7ce2c9f8c9f99ea3b"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair3-candidate/result.json",
+      "resolved": "/private/tmp/dta-direct-final-joins-repeat-validation-02/pair3-candidate/result.json",
+      "bytes": 519,
+      "mode": "0o644",
+      "sha256": "e51e425204d6582689bb5b010d7f800b430c518a4fe71724ba199e21b8328e05"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/resolved-selection-final.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/functional-origin-01/resolved-selection-final.json",
+      "bytes": 616734,
+      "mode": "0o644",
+      "sha256": "1c46e1c1ce6934ecdf603a76e2db0229b7ac9730bbf3551377072f7bf052a389"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-resolved-01/selection.json",
+      "resolved": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/performance-origin-resolved-01/selection.json",
+      "bytes": 5325252,
+      "mode": "0o644",
+      "sha256": "8d43edcec5d0edaed5ea994761b416578c57b32ba9419a56b29f5803364156ce"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/semantics-review/bracket-origin-proposal-01/proposed-paths.csv",
+      "resolved": "/private/tmp/dta-direct-final-performance-preparation-01/semantics-review/bracket-origin-proposal-01/proposed-paths.csv",
+      "bytes": 1172767,
+      "mode": "0o644",
+      "sha256": "3d2aa6fc49bcf0de9c9a1f297fb5c9d69cd8f5316fa254602c0b1cb557895b81"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/pipeline-additions-proposal-01.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/pipeline-additions-proposal-01.json",
+      "bytes": 64950,
+      "mode": "0o644",
+      "sha256": "484caf6c2c8044b76299356dd6a758be7e29524092f504bca694fd0b00a47c0a"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/final-record-additions-final.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/final-record-additions-final.json",
+      "bytes": 32849,
+      "mode": "0o644",
+      "sha256": "babe9f4fa1a2ffd25a0fb0dbaf383ed5d89bd732904c622b92db244b56181d02"
+    }
+  ],
+  "duplicates": [
+    "/private/tmp/dta-direct-final-acceptance-validation/install-01/completed-receipt.json",
+    "/private/tmp/dta-direct-final-acceptance-validation/install-01/installed-files.json",
+    "/private/tmp/dta-direct-final-acceptance-validation/install-01/output-manifest.json",
+    "/private/tmp/dta-direct-final-acceptance/LICENSE",
+    "/private/tmp/dta-direct-final-acceptance/r-package/dtatools/inst/NOTICE",
+    "/private/tmp/dta-direct-issue216-preparation-01/pr221-monitor-01/verified-merge-01.json"
+  ],
+  "exclusions": [],
+  "started_utc": "2026-09-10T10:14:45.734770+00:00",
+  "output": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/combined-selection-final.json",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/combined-selection-final.json",
+    "bytes": 9885226,
+    "mode": "0o644",
+    "sha256": "863e78d3bf0bad61b11ee68e98215a10e882b9be93bc609bfd8cc138d9337df2"
+  },
+  "count": 8409,
+  "bytes": 2007394542,
+  "completed_utc": "2026-09-10T10:14:47.820522+00:00"
+}
