@@ -67,10 +67,13 @@
 #' and [set_dta_characteristic()], or `gen()`, `repl()`, and dibble `:=`.
 #' Replacement results isolate unchanged columns too, so subsequent explicit
 #' writes cannot reach the input. Compact columns retain compact backing.
-#' A dibble reserves 5,000 spare column slots by default, controlled by
-#' `dtatools.alloccol`. Explicit structural helpers fail when capacity is
-#' insufficient; assign [reserve_columns()] before calling them or passing
-#' the table into a function that adds or drops columns.
+#' A dibble reserves 1,024 spare column slots by default, controlled by
+#' `dtatools.alloccol`. By default, [gen()], [egen()] and `:=` rebuild an
+#' isolated table when additions need more room and warn that aliases retain
+#' the old table. Return the updated table from functions and assign it in
+#' the caller. Set `options(dtatools.auto_grow = FALSE)` to require assigned
+#' [reserve_columns()] before adding columns. Dropping and other nongrowth
+#' structural helpers retain their preparation requirements.
 #' [tibble::as_tibble()] returns a tibble snapshot, and `with()` returns
 #' its expression's value. `as_dibble()` of a grouped tibble keeps its
 #' grouping.
@@ -284,8 +287,22 @@ is_dibble <- function(x) {
 #' selected once for the whole `j`, before any assignment writes: a later
 #' assignment cannot change which rows an earlier one selected, and an
 #' assignment that overwrites the column `i` reads does not move the rows
-#' of the assignments after it. `j` is not a general expression, and
-#' `.SD`, `.GRP`, and `.BY` are not provided; summaries stay with dplyr.
+#' of the assignments after it. `j` is not a general expression.
+#' The data.table special symbols `.SD`, `.GRP`, and `.BY` are not provided.
+#' Use [dplyr::summarise()] for aggregation that returns one row per group;
+#' grouped `gen()` and `:=` instead write results into the existing rows.
+#'
+#' After automatic growth, a bare target such as `data` is rebound in the
+#' calling scope, including when the whole assignment is injected into `j`.
+#' A function must return that updated local table and its caller must assign
+#' it. With an explicit `:=` call, a plain list or environment target such as
+#' `box$data` or `box[["data"]]` is also supported. A base `get()` or `get0()`
+#' target needs a literal name and, when supplied, a named environment object.
+#' These destinations are captured before assignment-name callbacks; a
+#' replaced list or target is not overwritten. Computed extraction indices,
+#' custom getters, and extraction targets with a whole-`j` injection return
+#' the grown table without rebinding the original target. Assign that result
+#' explicitly. Existing aliases retain the old table after growth.
 #'
 #' `by` may also be given positionally, as data.table's third slot:
 #' `data[, total := sum(x), id]` is `data[, total := sum(x), by = id]`.
@@ -361,7 +378,15 @@ NULL
     .validate_mutation_container(x, allow_grouped = TRUE)
     raw_j <- rlang::enquo0(j)
     expression <- if (rlang::quo_is_missing(raw_j)) NULL else rlang::quo_get_expr(raw_j)
+    target_expr <- substitute(x)
+    destination <- if (is.symbol(target_expr)) target_expr else NULL
+    original_x <- x
     if (is.call(expression) && identical(expression[[1L]], quote(`:=`))) {
+        # The primitive has forced x, but no assignment-name, quosure, row or
+        # grouping callback has run. Snapshot a recoverable destination now.
+        destination <- if (is.call(target_expr)) {
+            .capture_mutation_binding(target_expr, parent.frame(), value = x)
+        } else target_expr
         .require_dibble_assignment(x)
         .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE,
                           private_views = TRUE)
@@ -397,10 +422,14 @@ NULL
     .reject_data_table_subclass(x)
     .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE,
                       private_views = TRUE)
+    # A whole-j injection can retain a bare-symbol destination. Extraction
+    # operands were not captured before its callbacks, so those return only.
+    auto_grow <- .mutation_auto_grow()
     new_names <- setdiff(vapply(assignments, `[[`, character(1), "name"),
                          .reference_names(x))
-    .prepare_column_operation(x, length(x) + length(new_names),
-                              names_change = length(new_names) > 0L)
+    if (length(new_names)) {
+        x <- .prepare_column_growth(x, length(x) + length(new_names), auto_grow)
+    } else .prepare_column_operation(x, length(x), names_change = FALSE)
     selection <- .mutation_selection(
         x, where,
         by = by_quo,
@@ -416,6 +445,8 @@ NULL
             assignment$values, where, generate = !exists,
             selection = selection, promote = TRUE
         )
+        destination <- .rebind_mutation(original_x, x, destination, parent.frame())
+        original_x <- x
     }
     # `[` forces its result visible after dispatch, so `invisible()` alone
     # would autoprint the dataset after every assignment. Recorded after

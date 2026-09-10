@@ -65,10 +65,13 @@ the column and so has no prior storage to widen.}
 See \link{mutation-containers} for supported classes, grouping and conversion.
 \code{gen()} and \code{replace_values()} modify a data frame or tibble by reference.
 \code{repl()} is a direct alias for \code{replace_values()}. The return value is the
-updated dataset, invisibly. Aliases observe generation and replacement.
-Assign \code{\link[=reserve_columns]{reserve_columns()}} before passing a table to a function that needs
-more room; helpers never rebuild or rebind their supplied table.
-Aliases to the supplied table observe installed columns. Columns shared
+updated dataset, invisibly. Within spare capacity, aliases observe generation
+and replacement. When generation needs more room, it creates an isolated
+table and warns: existing aliases keep the old table. Return the updated
+table from functions and assign it in the caller, for example \code{x <- f(x)}.
+Ordinary caller symbols and supported plain-list/environment targets are
+rebound after a successful growth commit. Computed or unsafe destinations
+require explicit assignment of the returned result. Columns shared
 with a separate table or standalone vector detach before values change;
 Same-storage patches change all slots that hold the identical vector.
 Promotion replaces only the named column, as do metadata setters.
@@ -80,11 +83,13 @@ update the caller's table inside a function.
 Every generated column is stored in the physical column list, so direct
 consumers such as \code{unclass()}, \code{dplyr::bind_rows()}, \code{purrr::map()}, and
 \code{write.csv()} see the complete dataset. Constructors and readers reserve
-5,000 spare column-pointer slots by default, controlled by
-\code{options(dtatools.alloccol = 5000L)}. When capacity is exhausted or a
-table needs preparation, generation fails before values, row selection,
-or \code{bysort} run. Assign \code{\link[=reserve_columns]{reserve_columns()}} before calling a function that
-adds columns. Helpers never rebuild or rebind their supplied table.
+1,024 spare column-pointer slots by default, controlled by
+\code{options(dtatools.alloccol = 1024L)}. With the default
+\code{options(dtatools.auto_grow = TRUE)}, generation reserves the requested
+addition plus that many spare slots when needed. Preparation and its warning
+precede values, row selection and \code{bysort}. Set \code{options(dtatools.auto_grow = FALSE)}
+to fail at that boundary instead; assign \code{\link[=reserve_columns]{reserve_columns()}} first in strict
+mode. No-growth helpers retain their separate preparation requirements.
 \code{\link[=copy_data]{copy_data()}} returns an isolated table with default spare capacity.
 See \code{\link[=column_capacity]{column_capacity()}} and \code{\link[=can_add_columns]{can_add_columns()}} for inspection.
 \code{gen()} and \code{replace_values()} accept a grouped tibble and treat its dplyr
@@ -184,7 +189,9 @@ This is Stata's order of operations, not data.table's. data.table's
 so under a non-empty \code{i} its \code{.N} counts selected rows and its groups
 omit any group \code{i} empties. Here \code{.N} counts the group's rows whatever
 \code{where} selects, and \code{where = .n == .N} marks each group's last row.
-\code{.SD}, \code{.GRP}, and \code{.BY} are not provided; summaries stay with dplyr.
+The data.table special symbols \code{.SD}, \code{.GRP}, and \code{.BY} are not provided.
+Use \code{\link[dplyr:summarise]{dplyr::summarise()}} to produce a new aggregated table. Grouped
+\code{gen()} and \code{egen()} write their statistics into the existing rows.
 
 \code{by} groups the dataset in its current row order and never sorts.
 \code{bysort} first sorts the dataset by reference on every listed column,

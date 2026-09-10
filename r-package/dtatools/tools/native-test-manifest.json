@@ -4319,7 +4319,7 @@
         },
         {
           "path": "tests/testthat/test-reserve-columns.R",
-          "sha256": "5f904572e6db65a91973ef8fa87a6864731906b7f4d0942b93dc58c26de312c9"
+          "sha256": "98ebd9fe64839080c039d76a6a8587121d7fcbe909ce17da3150b98e76f5313c"
         },
         {
           "path": "tests/testthat/test-data-table-compatibility.R",
@@ -4336,6 +4336,10 @@
         {
           "path": "tests/testthat/test-raven-nse.R",
           "sha256": "a762cad391dba4a9f0a0dbd0160427f4934400cafa4a96b9d297fe3e2034eeda"
+        },
+        {
+          "path": "tests/testthat/test-auto-grow.R",
+          "sha256": "0bdcec9da303ca99644846eec3171f32a87fffc723a9292b482321e0a4fb90df"
         }
       ],
       "blocks": [
@@ -5841,6 +5845,126 @@
           "skip": "forbid",
           "min_pass": 3,
           "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "automatic growth defaults to 1024 spare slots and isolates old tables",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 54,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "functions return their grown local target while spare capacity shares identity",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "strict and invalid growth options reject callbacks before preparation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "growth respects spare overrides and leaves nongrowth preparation strict",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "captured generation targets and getter arguments run exactly once",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "growth never overwrites a target changed by a callback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "bracket growth preflights every new name and publishes sequential commits",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "egen and grouped generation evaluate on the rebuilt table",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "implicit publication never forces changed lazy or active bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "bracket literals rebind while computed targets return without replay",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "metadata and forwarded functions preserve explicit result assignment",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "automatic growth repairs serialized data.table only for new columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "unsupported lazy target lookups are left to the original call",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "bracket destinations are captured before assignment-name callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 21,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "whole assignment injection retains function-local bare targets",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
         }
       ],
       "children": [
@@ -5908,7 +6032,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "40f46d20c840389f84c342aeb26c754cdca458beb993b3c838b76e9dcbe80838"
+          "sha256": "88018b58b4049fe687d435e8e942fb5856e8a7dc40f6d3e19dfe90b7199a22a5"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",

@@ -4,7 +4,7 @@
 \alias{reserve_columns}
 \title{Reserve spare column slots}
 \usage{
-reserve_columns(data, n = getOption("dtatools.alloccol", 5000L))
+reserve_columns(data, n = getOption("dtatools.alloccol", 1024L))
 }
 \arguments{
 \item{data}{A dibble, tibble, base data frame, or data table. data.table
@@ -25,13 +25,17 @@ columns stored outside their physical list are rebuilt into one complete
 list, and serialized dibbles get fresh current-object bookkeeping.
 }
 \details{
-Constructors, readers, and \code{\link[=copy_data]{copy_data()}} reserve 5,000 spare slots by
-default. Set \code{options(dtatools.alloccol = 5000L)} to change this default.
-Explicit helpers preserve the supplied outer object. If it cannot hold
-the requested column count, they stop before evaluating values or sorting
-rows. Assign preparation before calling a function that adds or drops
-columns. The same rule applies to symbols, function parameters, extracted
-tables, and computed targets; helpers never rebind a caller's variable.
+Package-controlled allocation reserves 1,024 spare slots by default.
+Set \code{options(dtatools.alloccol = 2048L)} to request a different default.
+Paths that delegate allocation to data.table use its own allocation option.
+By default, \code{\link[=gen]{gen()}}, \code{\link[=egen]{egen()}} and dibble \verb{:=} automatically call this
+preparation when adding columns needs more room. They warn when rebuilding,
+and reserve all requested additions plus the configured spare slots. The
+updated result must be returned from a function and assigned by its caller;
+aliases keep the old table after growth. Set \code{options(dtatools.auto_grow = FALSE)}
+to require assigned preparation before values, selection or sorting run.
+Dropping columns and other nongrowth helpers keep their strict preparation
+requirements regardless of the automatic-growth option.
 
 Adding columns consumes spare slots. Dropping columns also requires a
 resizable allocation. \code{keep_vars()} and \code{drop_vars()} validate their column
@@ -44,7 +48,8 @@ Inspect \code{\link[=column_capacity]{column_capacity()}} and \code{\link[=can_a
 
 Base R serialization discards spare capacity. After \code{readRDS()} or
 \code{unserialize()}, assign \code{data <- reserve_columns(data)} before relying on
-explicit structural mutation through aliases. \code{read_dta()} and \code{read_arrow()} return
+explicit structural mutation through existing aliases. Automatic growth
+prepares a separate table and therefore does not preserve those aliases. \code{read_dta()} and \code{read_arrow()} return
 prepared tables.
 }
 \examples{

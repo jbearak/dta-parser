@@ -1367,7 +1367,7 @@ test_that("compact dictionary subsetting through dplyr", {
     expect_identical(names(alias), c("x", "y", "s", "w"))
     expect_identical(as.integer(alias$w), c(1L, 1L))
     # Assigned capacity repair leaves the original complete.
-    withr::local_options(dtatools.alloccol = 2L)
+    withr::local_options(dtatools.alloccol = 2L, dtatools.auto_grow = FALSE)
     wide <- dibble(x = 1L)
     gen(wide, v1 = x)
     gen(wide, v2 = x)

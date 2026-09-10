@@ -23,7 +23,7 @@ legacy_column_table <- function(structural = FALSE) {
 
 test_that("public capacity separates type, preparation, and spare slots", {
     withr::local_options(dtatools.alloccol = NULL)
-    expect_equal(column_capacity(dibble(x = 1:2)), 5001)
+    expect_equal(column_capacity(dibble(x = 1:2)), 1025)
     for (n in c(0, 1, 13)) {
         withr::local_options(dtatools.alloccol = n)
         for (x in list(dibble(x = 1:2), reserve_columns(data.frame(x = 1:2)))) {
@@ -74,6 +74,7 @@ test_that("preparation preserves containers and isolates column values", {
 })
 
 test_that("capacity exhaustion fails before writes and assigned repair isolates aliases", {
+    withr::local_options(dtatools.auto_grow = FALSE)
     x <- reserve_columns(dibble(x = 1:2), 1)
     alias <- x
     address <- rlang::obj_address(x)
@@ -91,8 +92,10 @@ test_that("capacity exhaustion fails before writes and assigned repair isolates 
 })
 
 test_that("capacity contract is identical for all target expressions", {
+    withr::local_options(dtatools.auto_grow = FALSE)
     for (prepared in c(FALSE, TRUE)) {
         make <- function() {
+    withr::local_options(dtatools.auto_grow = FALSE)
             x <- data.frame(x = 1:2)
             if (prepared) reserve_columns(x, 1) else x
         }
@@ -156,6 +159,7 @@ test_that("getters run once and RHS target changes cannot redirect writes", {
 })
 
 test_that("growth rejects row selection and sorting before they run", {
+    withr::local_options(dtatools.auto_grow = FALSE)
     for (make in list(data.frame, tibble::tibble, dibble)) {
         for (operation in c("gen", "egen")) {
             x <- reserve_columns(make(id = c(2L, 1L), x = 3:4), 0)
@@ -186,6 +190,7 @@ test_that("growth rejects row selection and sorting before they run", {
 })
 
 test_that("multi-assignment preflights all new names before its first write", {
+    withr::local_options(dtatools.auto_grow = FALSE)
     x <- reserve_columns(dibble(id = c(2L, 1L), x = 3:4), 1)
     alias <- x
     before <- serialize(x, NULL)
@@ -262,6 +267,7 @@ test_that("copying, subsetting, and serialization have assigned preparation path
 })
 
 test_that("legacy overlays require assigned preparation even for no-op helpers", {
+    withr::local_options(dtatools.auto_grow = FALSE)
     for (structural in c(FALSE, TRUE)) {
         for (op in list(function(x) gen(x, extra = .data$y + 1L),
                         function(x) keep_vars(x, tidyselect::all_of(names(x))),
@@ -296,6 +302,7 @@ test_that("legacy overlays require assigned preparation even for no-op helpers",
 })
 
 test_that("zero-column tables can reserve and consume their first slot", {
+    withr::local_options(dtatools.auto_grow = FALSE)
     for (make in list(data.frame, tibble::tibble, dibble)) {
         x <- reserve_columns(make(), 0)
         expect_identical(column_capacity(x), NA_real_)
@@ -342,6 +349,7 @@ test_that("prepared physical column consumers through dplyr", {
     .check_optional_split_reserve_columns_313(TRUE)
 })
 test_that("data.table readiness requires valid self-reference and preserves lookups on failure", {
+    withr::local_options(dtatools.auto_grow = FALSE)
     .datatable.aware <- TRUE
     skip_if_not_installed("data.table")
     for (damage in list(function(x) unserialize(serialize(x, NULL)),
@@ -402,6 +410,7 @@ test_that("assigned repair preserves identical column slots without sharing anot
 })
 
 test_that("data.table structural commits isolate names shared by ordinary copies", {
+    withr::local_options(dtatools.auto_grow = FALSE)
     .datatable.aware <- TRUE
     skip_if_not_installed("data.table")
     operations <- list(function(x) gen(x, z = 1L),

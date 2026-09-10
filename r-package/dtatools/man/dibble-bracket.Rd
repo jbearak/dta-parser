@@ -74,8 +74,22 @@ column leaves the first written, as two Stata lines would. Rows are
 selected once for the whole \code{j}, before any assignment writes: a later
 assignment cannot change which rows an earlier one selected, and an
 assignment that overwrites the column \code{i} reads does not move the rows
-of the assignments after it. \code{j} is not a general expression, and
-\code{.SD}, \code{.GRP}, and \code{.BY} are not provided; summaries stay with dplyr.
+of the assignments after it. \code{j} is not a general expression.
+The data.table special symbols \code{.SD}, \code{.GRP}, and \code{.BY} are not provided.
+Use \code{\link[dplyr:summarise]{dplyr::summarise()}} for aggregation that returns one row per group;
+grouped \code{gen()} and \verb{:=} instead write results into the existing rows.
+
+After automatic growth, a bare target such as \code{data} is rebound in the
+calling scope, including when the whole assignment is injected into \code{j}.
+A function must return that updated local table and its caller must assign
+it. With an explicit \verb{:=} call, a plain list or environment target such as
+\code{box$data} or \code{box[["data"]]} is also supported. A base \code{get()} or \code{get0()}
+target needs a literal name and, when supplied, a named environment object.
+These destinations are captured before assignment-name callbacks; a
+replaced list or target is not overwritten. Computed extraction indices,
+custom getters, and extraction targets with a whole-\code{j} injection return
+the grown table without rebinding the original target. Assign that result
+explicitly. Existing aliases retain the old table after growth.
 
 \code{by} may also be given positionally, as data.table's third slot:
 \code{data[, total := sum(x), id]} is \code{data[, total := sum(x), by = id]}.

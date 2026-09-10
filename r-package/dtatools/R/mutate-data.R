@@ -3,10 +3,13 @@
 #' See [mutation-containers] for supported classes, grouping and conversion.
 #' `gen()` and `replace_values()` modify a data frame or tibble by reference.
 #' `repl()` is a direct alias for `replace_values()`. The return value is the
-#' updated dataset, invisibly. Aliases observe generation and replacement.
-#' Assign [reserve_columns()] before passing a table to a function that needs
-#' more room; helpers never rebuild or rebind their supplied table.
-#' Aliases to the supplied table observe installed columns. Columns shared
+#' updated dataset, invisibly. Within spare capacity, aliases observe generation
+#' and replacement. When generation needs more room, it creates an isolated
+#' table and warns: existing aliases keep the old table. Return the updated
+#' table from functions and assign it in the caller, for example `x <- f(x)`.
+#' Ordinary caller symbols and supported plain-list/environment targets are
+#' rebound after a successful growth commit. Computed or unsafe destinations
+#' require explicit assignment of the returned result. Columns shared
 #' with a separate table or standalone vector detach before values change;
 #' Same-storage patches change all slots that hold the identical vector.
 #' Promotion replaces only the named column, as do metadata setters.
@@ -18,11 +21,13 @@
 #' Every generated column is stored in the physical column list, so direct
 #' consumers such as `unclass()`, `dplyr::bind_rows()`, `purrr::map()`, and
 #' `write.csv()` see the complete dataset. Constructors and readers reserve
-#' 5,000 spare column-pointer slots by default, controlled by
-#' `options(dtatools.alloccol = 5000L)`. When capacity is exhausted or a
-#' table needs preparation, generation fails before values, row selection,
-#' or `bysort` run. Assign [reserve_columns()] before calling a function that
-#' adds columns. Helpers never rebuild or rebind their supplied table.
+#' 1,024 spare column-pointer slots by default, controlled by
+#' `options(dtatools.alloccol = 1024L)`. With the default
+#' `options(dtatools.auto_grow = TRUE)`, generation reserves the requested
+#' addition plus that many spare slots when needed. Preparation and its warning
+#' precede values, row selection and `bysort`. Set `options(dtatools.auto_grow = FALSE)`
+#' to fail at that boundary instead; assign [reserve_columns()] first in strict
+#' mode. No-growth helpers retain their separate preparation requirements.
 #' [copy_data()] returns an isolated table with default spare capacity.
 #' See [column_capacity()] and [can_add_columns()] for inspection.
 #' `gen()` and `replace_values()` accept a grouped tibble and treat its dplyr
@@ -121,7 +126,9 @@
 #' so under a non-empty `i` its `.N` counts selected rows and its groups
 #' omit any group `i` empties. Here `.N` counts the group's rows whatever
 #' `where` selects, and `where = .n == .N` marks each group's last row.
-#' `.SD`, `.GRP`, and `.BY` are not provided; summaries stay with dplyr.
+#' The data.table special symbols `.SD`, `.GRP`, and `.BY` are not provided.
+#' Use [dplyr::summarise()] to produce a new aggregated table. Grouped
+#' `gen()` and `egen()` write their statistics into the existing rows.
 #'
 #' `by` groups the dataset in its current row order and never sorts.
 #' `bysort` first sorts the dataset by reference on every listed column,
@@ -367,6 +374,10 @@ repl <- replace_values
 #' @rdname replace_values
 #' @export
 gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
+    target_expr <- substitute(data)
+    destination <- if (is.call(target_expr)) .capture_mutation_binding(target_expr, parent.frame()) else NULL
+    if (!is.null(destination)) data <- destination$data
+    auto_grow <- .mutation_auto_grow()
     if (is.null(.mutation_fast_shape(data))) {
         preflight <- .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE,
                                        private_views = TRUE)
@@ -385,9 +396,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         data, arguments$variable, arguments$values, arguments$where,
         generate = TRUE,
         by = if (missing(by)) NULL else rlang::enquo(by),
-        bysort = if (missing(bysort)) NULL else rlang::enquo(bysort)
+        bysort = if (missing(bysort)) NULL else rlang::enquo(bysort),
+        auto_grow = auto_grow
     )
-    invisible(result)
+    .return_mutation(data, result, if (is.null(destination)) target_expr else destination, parent.frame())
 }
 
 .MUTATION_SHAPE_MESSAGE <- paste(
@@ -644,7 +656,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     invisible(NULL)
 }
 
-.reserve_column_capacity <- function(x, n = getOption("dtatools.alloccol", 5000L)) {
+.reserve_column_capacity <- function(x, n = getOption("dtatools.alloccol", 1024L)) {
     n <- .validate_alloccol(n, length(x))
     .Call(C_dtatools_reserve_column_capacity, x, as.double(length(x)) + n)
 }
@@ -785,7 +797,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     list(value = value)
 }
 
-.generate_direct_scalar <- function(data, variable, values, where) {
+.generate_direct_scalar <- function(data, variable, values, where, auto_grow) {
     row_count <- .mutation_fast_shape(data)
     if (is.null(row_count) || rlang::quo_is_missing(where) ||
         !is.null(rlang::quo_get_expr(where)) || rlang::quo_is_missing(values)) return(NULL)
@@ -798,7 +810,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     if (!is.na(location)) stop(sprintf("Column `%s` already exists", name), call. = FALSE)
     scalar <- .mutation_scalar_binding(values, data)
     if (is.null(scalar)) return(NULL)
-    .prepare_column_operation(data, length(data) + 1L)
+    data <- .prepare_column_growth(data, length(data) + 1L, auto_grow)
     column <- .generated_column(scalar$value, NULL, row_count, generate = TRUE)
     .prepare_column_operation(data, length(data) + 1L)
     suspendInterrupts({
@@ -1890,10 +1902,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 .mutate_data <- function(data, variable, values, where, generate,
                          by = NULL, bysort = NULL, selection = NULL,
                          promote = FALSE, report_promotion = FALSE,
-                         entry_shared = NULL) {
+                         entry_shared = NULL, auto_grow = FALSE) {
     .reject_data_table_subclass(data)
     if (generate && is.null(by) && is.null(bysort) && is.null(selection)) {
-        direct <- .generate_direct_scalar(data, variable, values, where)
+        direct <- .generate_direct_scalar(data, variable, values, where, auto_grow)
         if (!is.null(direct)) return(invisible(direct))
     }
     # Inspect before masks and snapshots add temporary column references.
@@ -1904,8 +1916,17 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         data, allow_grouped = TRUE, allow_rowwise = FALSE, private_views = TRUE
     )
     target <- .mutation_name(variable, generate, original)
-    .prepare_column_operation(data, length(data) + as.integer(generate),
-                              names_change = generate)
+    if (generate) {
+        prepared <- .prepare_column_growth(data, length(data) + 1L, auto_grow)
+        if (!.same_mutation_object(data, prepared)) {
+            .Call(C_dtatools_release_mutation_views, original$columns)
+            data <- prepared
+            original <- .as_mutation_data(data, allow_grouped = TRUE,
+                allow_rowwise = FALSE, private_views = TRUE)
+        }
+    } else {
+        .prepare_column_operation(data, length(data), names_change = FALSE)
+    }
     groups <- if (!is.null(selection)) {
         selection$groups
     } else if (grouped_input || !is.null(by) || !is.null(bysort)) {
@@ -2383,7 +2404,7 @@ copy_data <- function(data) {
     )
     attributes(columns) <- copied_attributes
     if (data_table) return(data.table::setalloccol(columns,
-        n = .validate_alloccol(getOption("dtatools.alloccol", 5000L), length(columns))))
+        n = .validate_alloccol(getOption("dtatools.alloccol", 1024L), length(columns))))
     if (is_dibble(data)) return(.as_dibble(columns, "copy_data()"))
     .reserve_column_capacity(columns)
 }

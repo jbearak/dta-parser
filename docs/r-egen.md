@@ -18,12 +18,15 @@ separate function language reserved for `egen()`.
 
 `egen()` follows `gen()` target capture and accepts grouping, filtering,
 storage, and column-placement arguments. It rejects an existing target.
-`:=` creates or replaces its target. Both mutate by reference, so aliases see
-the change; make an explicit copy when you need an independent dataset.
-When spare column capacity is insufficient, dtatools stops before calculations
-or row selection. Assign `data <- reserve_columns(data)` before calling a
-function that adds columns. The same [capacity rules](./r-mutation-by-reference.md)
-apply to `gen()`, `egen()`, and `:=`.
+`:=` creates or replaces its target. Within spare column capacity, both mutate
+the supplied table and its aliases see the change. Additions automatically
+reserve more room when needed, returning a new table and warning that old aliases
+remain on the old table. Functions that may add columns should return their
+updated table, and callers should assign it, for example `data <- add_peak(data)`.
+Alternatively, reserve enough capacity before the call. Set
+`options(dtatools.auto_grow = FALSE)` to require that preparation explicitly.
+The same [capacity rules](./r-mutation-by-reference.md) apply to `gen()`, `egen()`,
+and `:=`.
 
 ## Equivalent forms
 

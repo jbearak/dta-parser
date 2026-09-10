@@ -78,12 +78,21 @@ reach its caller. Return and assign the result, or use explicit helpers such as
 `set_var_format(data, x, "%9.0g")`, `set_var_label()`, `set_dta_metadata()`,
 `gen()`, and `repl()` when caller mutation is intended.
 
-Prepare and assign before passing a table to a function that adds or drops
-columns: `survey <- reserve_columns(survey, n = 10L)`. Explicit helpers preserve
-the supplied table and fail before growth if its allocation is insufficient.
+Fresh dibbles have room for 1,024 additional columns by default, controlled by
+`dtatools.alloccol`. `gen()`, `egen()`, and dibble `:=` automatically reserve
+more room when additions need it. Reallocation creates an isolated table and
+warns that old aliases still refer to the old table. Functions that may add
+columns should return their updated table, and callers should assign it,
+for example `survey <- add_flags(survey)`. Alternatively, prepare before the
+call with `survey <- reserve_columns(survey, n = 10L)` and create aliases
+afterwards when they must see the same changes. Set
+`options(dtatools.auto_grow = FALSE)` to require explicit reservation.
 `column_capacity(survey)` reports total usable slots; `can_add_columns(survey, 10L)`
 checks room for ten additions. Ordinary copies and base serialization can lose
-capacity; `copy_data()` returns a prepared independent table. Data.table
+capacity; `copy_data()` returns a prepared independent table. Dropping columns
+still needs assigned preparation if the allocation is not resizable. See the
+[mutation guide](https://github.com/jbearak/dta-parser/blob/main/docs/r-mutation-by-reference.md)
+for both defensive patterns and their alias behavior. Data.table
 support requires version 1.18.2.1 or newer; update an older installation before
 using that container.
 
@@ -683,7 +692,8 @@ confirm_var(survey, "missing", on_failure = "false")
 `gen()` appends a variable and `repl()` (an alias of `replace_values()`)
 replaces selected values, both by reference. The target and its values are
 one tagged pair, or the positional pair that reads like the Stata line.
-Assign `reserve_columns()` before adding columns to a data frame:
+This example reserves three spare slots before adding columns to a data frame,
+so the additions can keep using the same table:
 
 ```r
 survey <- reserve_columns(data.frame(

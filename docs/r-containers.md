@@ -18,7 +18,7 @@ mutation. The other supported containers do not require data.table.
 
 ## Where the write lands
 
-*Reference* means the operation modifies the dataset itself, so every name bound to it sees the change and no assignment is needed. *Copy* means R's ordinary copy-on-modify: a new object comes back and the input is untouched. See [mutation by reference](./r-mutation-by-reference.md).
+*Reference* means the operation modifies the dataset itself, so every name bound to it sees the change and no assignment is needed. Column additions have an exception when the table runs out of capacity: automatic growth creates a new table, and old aliases retain the old table. Functions that may grow a table should return it for the caller to assign. *Copy* means R's ordinary copy-on-modify: a new object comes back and the input is untouched. See [mutation by reference](./r-mutation-by-reference.md).
 
 | Operation | dibble | tibble | data.frame | data.table |
 | --- | --- | --- | --- | --- |
@@ -117,7 +117,7 @@ tbl <- reserve_columns(tbl)             # assign preparation before growth
 gen(tbl, flag = income > 0)               # by reference — and `tbl` is still a tibble
 ```
 
-Assign `reserve_columns()` before `gen()` when the input is an ordinary unprepared tibble. `tbl` remains a tibble and includes `flag`; existing columns keep their classes and `flag` keeps the logical type of its expression. `is_dibble(tbl)` remains `FALSE`. `tbl <- as_dibble(tbl)` explicitly asks for a Stata-typed dataset. Without preparation, generation stops before evaluating its values or changing the table.
+This example reserves capacity before `gen()`. `tbl` remains a tibble and includes `flag`; existing columns keep their classes and `flag` keeps the logical type of its expression. `is_dibble(tbl)` remains `FALSE`. `tbl <- as_dibble(tbl)` explicitly asks for a Stata-typed dataset. Without prior reservation, generation prepares a new table automatically by default and warns about alias separation. Strict mode requires assigned preparation instead.
 
 One consequence to expect: the expressions `gen()` evaluates on a tibble see the tibble's own columns, so `gen(tbl, n = .N, by = g)` on a bare character `g` treats `NA` and `""` as two groups. In a dibble they are one Stata string value and one group. Stata's collation applies where a Stata dataset is.
 
@@ -150,7 +150,27 @@ Dropping a data.table's last column produces a zero-row, zero-column data.table,
 - [Stata vector operations](./r-stata-vector-operations.md) — the rules columns follow outside a dibble
 - `?dibble`, `?"dibble-bracket"`, `?"dta-storage-defaults"`, `?replace_values` in R
 
-Constructors, readers, and `copy_data()` reserve 5,000 spare column-pointer slots, controlled by `dtatools.alloccol`. Helpers stop when growth cannot fit the supplied table; they never rebind it. Inspect `column_capacity(data)` and `can_add_columns(data, n)`, and assign `data <- reserve_columns(data, n)` before passing a table into a function that needs more slots. Base serialization and ordinary copies can discard capacity. `keep_vars()` and `drop_vars()` also require preparation to shrink. Renaming, ordering, value replacement, and metadata edits need no spare slots. A copied or serialized data.table still needs assigned preparation before column-name edits because its self-reference no longer belongs to the supplied table. See [column capacity and aliases](r-mutation-by-reference.md) for the exact query and preparation contracts.
+Dibble constructors and readers, and `copy_data()`, reserve 1,024 spare column-pointer slots,
+controlled by `dtatools.alloccol`. `gen()`, `egen()`, and dibble `:=` automatically
+reserve more room when additions need it. Reallocation returns an isolated table
+and warns about alias separation. A function that may add columns should return
+its updated table, and its caller should assign the result. Alternatively,
+inspect `can_add_columns(data, n)` and assign `data <- reserve_columns(data, n)`
+before calling it. Set `options(dtatools.auto_grow = FALSE)` to make insufficient
+capacity an error instead. `column_capacity(data)` reports current usable slots;
+base serialization and ordinary copies can discard capacity. `keep_vars()` and
+`drop_vars()` still require a resizable allocation to shrink. Renaming, ordering,
+value replacement, and metadata edits need no spare slots. A copied or serialized
+data.table needs valid self-reference for column-name edits; assigned preparation
+repairs it when the operation does not add columns. See
+[column capacity and aliases](r-mutation-by-reference.md) for the query and
+preparation contracts.
+
+Data.table results from `dta_merge()` and `slice_dta_rows()` use data.table's
+own `datatable.alloccol` setting. Reader results, `copy_data()`,
+`reserve_columns()`, and automatic growth through dtatools use
+`dtatools.alloccol`. Both packages default to 1,024 spare slots; their settings
+can be changed independently.
 
 ## Explicit metadata updates
 
@@ -158,7 +178,8 @@ All table metadata setters edit the supplied table, including through function
 parameters and runtime column names. They need no spare column capacity and
 preserve the existing allocation. They isolate copied reference bookkeeping
 without rebuilding the physical table. A table that already lost capacity
-still needs assigned `reserve_columns()` before later additions or removals of columns.
+can grow automatically when columns are added, but still needs assigned
+`reserve_columns()` before removing columns from an unprepared allocation.
 Vector forms return copies and require assignment.
 
 Use `set_var_format(data, .(my_name), "%9.0g")` for formats,

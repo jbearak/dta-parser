@@ -42,8 +42,11 @@
 #'
 #' Calculation, storage conversion, metadata, and optional row/column
 #' ordering are prepared before one column-set commit. Failed validation
-#' leaves the dataset unchanged. Insufficient capacity fails before calculation
-#' or row selection. Assign [reserve_columns()] before calling `egen()`.
+#' leaves the dataset unchanged. By default, insufficient capacity creates an
+#' isolated prepared table and warns before calculation or row selection.
+#' Return the updated table from functions and assign it in the caller.
+#' `options(dtatools.auto_grow = FALSE)` keeps strict early failure; assign
+#' [reserve_columns()] before calling `egen()` in that mode.
 #'
 #' @param data A data frame, tibble, dibble, or ordinary data table, modified
 #'   by reference under the same capacity rules as `gen()`.
@@ -73,6 +76,11 @@
 #' @export
 egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
                  rows = NULL, type = NULL, before = NULL, after = NULL) {
+    target_expr <- substitute(data)
+    destination <- if (is.call(target_expr)) .capture_mutation_binding(target_expr, parent.frame()) else NULL
+    if (!is.null(destination)) data <- destination$data
+    original_data <- data
+    auto_grow <- .mutation_auto_grow()
     original <- .as_mutation_data(data, allow_grouped = TRUE,
                                   allow_rowwise = FALSE)
     arguments <- .mutation_arguments(
@@ -83,7 +91,12 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         function() rlang::enquos0(...)
     )
     target <- .mutation_name(arguments$variable, TRUE, original)$name
-    .prepare_column_operation(data, length(data) + 1L)
+    prepared <- .prepare_column_growth(data, length(data) + 1L, auto_grow)
+    if (!.same_mutation_object(data, prepared)) {
+        data <- prepared
+        original <- .as_mutation_data(data, allow_grouped = TRUE,
+                                      allow_rowwise = FALSE)
+    }
     storage <- .egen_storage(type)
     placement <- .egen_placement(rlang::enquo(before), rlang::enquo(after),
                                  names(data), target)
@@ -121,7 +134,7 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     result <- .install_column_selection(data, original, columns,
         source_names = if (is.null(group_plan$order)) names(columns) else
             rep(NA_character_, length(columns)))
-    invisible(result)
+    .return_mutation(original_data, result, if (is.null(destination)) target_expr else destination, parent.frame())
 }
 
 .egen_storage <- function(type) {
