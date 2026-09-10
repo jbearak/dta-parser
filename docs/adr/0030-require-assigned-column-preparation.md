@@ -1,8 +1,12 @@
 ---
-status: accepted
+status: superseded by ADR-0035 for column growth
 ---
 
 # Require assigned column preparation
+
+[ADR 0035](0035-grow-column-capacity-automatically.md) replaces this decision's
+default for adding columns. The strict setting and preparation requirements
+for operations that do not add columns remain available as described there.
 
 An automatic rebuild can only rebind a local function parameter, so a successful `gen()` could lose its new column to the caller. Explicit helpers now mutate the supplied physical table or fail before capacity-sensitive evaluation. They never rebuild or rebind it. Callers assign `reserve_columns()` before invoking a function that adds or drops columns. This supersedes ADR 0026's automatic rebinding policy while preserving the complete physical-table requirement.
 

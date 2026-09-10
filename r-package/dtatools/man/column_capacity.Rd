@@ -40,8 +40,9 @@ with columns outside their physical list always return \code{FALSE}.
 
 These queries do not repair a table, test its dibble type, or validate its
 dibble reference-ownership bookkeeping. A copied or serialized dibble can retain
-its type while losing capacity. Assign \code{\link[=reserve_columns]{reserve_columns()}} before passing
-such a table to a function that adds or drops columns. Readers, \code{\link[=dibble]{dibble()}},
+its type while losing capacity. Assign \code{\link[=reserve_columns]{reserve_columns()}} before dropping
+columns or relying on shared aliases. Automatic additions can rebuild the
+table, so functions must return it for assignment by their caller. Readers, \code{\link[=dibble]{dibble()}},
 and \code{\link[=copy_data]{copy_data()}} return prepared tables. \code{\link[=as_dibble]{as_dibble()}} prepares conversions
 from other containers; an ordinary dibble without additional container
 classes is returned as is.

@@ -333,6 +333,7 @@ test_that("native mutation writers reject untrusted row plans", {
 })
 
 test_that("validation errors leave an unmarked dataset unchanged", {
+    withr::local_options(dtatools.auto_grow = TRUE)
     cases <- list(
         quote(replace_values(data, x, 1:2)),
         quote(replace_values(data, x, "bad")),
@@ -346,7 +347,10 @@ test_that("validation errors leave an unmarked dataset unchanged", {
     for (call in cases) {
         data <- data.frame(x = 1:3, text = letters[1:3])
         before <- serialize(data, NULL)
-        expect_error(eval(call))
+        if (identical(call, cases[[length(cases)]])) {
+            expect_warning(expect_error(eval(call)),
+                "Column reallocation created an isolated table")
+        } else expect_error(eval(call))
         expect_identical(serialize(data, NULL), before)
         expect_false(inherits(data, "dtatools_ref_data"))
     }

@@ -41,9 +41,9 @@ names(copy)          # `copy` has the new column too
 copy$adjusted[1]
 ```
 
-This prepared dibble had spare capacity, so the append changed the existing table. `gen()` returns that same table invisibly. If capacity is insufficient, it stops before evaluating values or sorting rows.
+This prepared dibble had spare capacity, so the append changed the existing table. `gen()` returns that same table invisibly. If capacity is insufficient, column additions automatically reserve more room by default. That requires a new table, so other names can still refer to the old table. The patterns below explain how to handle that case.
 
-Prepare and assign before passing a table into a function that adds columns:
+A function can make the same changes to its caller's table:
 
 ```r
 add_flags <- function(data) {
@@ -52,9 +52,15 @@ add_flags <- function(data) {
     invisible(NULL)
 }
 
-survey <- reserve_columns(survey, n = 1L)
 add_flags(survey)             # the caller sees poor
 ```
+
+Fresh dibbles, including those returned by `read_dta()`, have room for 1,024
+additional columns by default. This example therefore needs no extra
+reservation. If a function may receive a table whose spare capacity has been
+used up or lost through copying or serialization, returning and assigning the
+function's result handles automatic growth. Reserving in advance is another
+defensive approach.
 
 ## Which operations write by reference
 
@@ -115,7 +121,61 @@ snapshot <- tibble::as_tibble(survey)   # a plain tibble with R's semantics
 
 `copy_data()` deep-copies the columns, their compact backing, and mutable dataset metadata. It rejects columns or attributes holding environments, functions, bytecode, external pointers, or weak references, because those cannot be isolated by copying.
 
-**Prepare before the function call.** A helper mutates its supplied table in place or fails when that table cannot resize. It never rebinds a parameter or another target. Assign `survey <- reserve_columns(survey, n = 10L)` before invoking a function that may add ten columns. Preparation creates an isolated table, so create aliases afterwards when they should share the changes.
+**Return and assign from functions that may add columns.** A fresh dibble has
+1,024 spare column slots by default, so extra reservation is usually unnecessary.
+When additions outgrow those slots, `gen()`, `egen()`, and dibble bracket `:=`
+automatically reserve more room. They update a directly named target and return
+the resulting table. Inside a function, that target is the local parameter.
+Return it and assign the result at the call site:
+
+```r
+add_flags <- function(data) {
+    gen(data, poor = income < 1000)
+    repl(data, poor = NA, where = is_missing(income))
+    data
+}
+
+survey <- add_flags(survey)
+```
+
+If this function calls another function that may grow the table, assign that
+function's returned table too. Each caller needs the updated result.
+
+If the table's name, or the name of a plain list containing it, comes from an
+enclosing environment, growth creates the replacement binding in the calling
+scope, as `<-` does. The enclosing binding still refers to the old table.
+Return the updated local table to pass it back to the caller.
+
+When capacity is sufficient, this function mutates and returns the same table.
+When growth requires a new table, the assignment updates `survey` to refer to
+that result. Other names that referred to the old table still refer to the old
+table. Automatic growth warns about this separation.
+
+Returning and assigning is defensive here. In this example, it matters when
+the function adds columns by reference and the supplied table has insufficient
+capacity. If the caller then ignores the function's result, it keeps the old
+table without the added column. A function that returns `NULL` cannot be used
+with this pattern. Existing-column replacements need no spare slots.
+
+Alternatively, check and reserve before calling a function that may add ten
+columns:
+
+```r
+if (!can_add_columns(survey, n = 10L)) {
+    survey <- reserve_columns(survey, n = 10L)
+}
+```
+
+The function can then mutate without returning a new table, provided its
+additions fit that reservation. If several names must see the same changes,
+reserve before creating those aliases. Calling `reserve_columns()` itself
+always returns an isolated table, so only call it when needed.
+
+Set `options(dtatools.auto_grow = FALSE)` to require explicit reservation. In
+this strict mode, insufficient capacity causes an error before values, row
+selection, or `bysort` run, both at top level and inside a function. The default
+is `TRUE`. [ADR 0035](adr/0035-grow-column-capacity-automatically.md) records why
+automatic growth replaced the earlier strict default.
 
 **There is no undo after a successful mutation.** Native writes either stage
 validated values before committing or retain rollback data through fallible
@@ -125,13 +185,13 @@ values again.
 
 **A `[` assignment does not print.** `[` always makes its result visible, so a bracket assignment at the console would print the whole dataset. As data.table does, dtatools skips the next top-level print of the mutated dataset, so `survey[income < 0, income := NA]` prints nothing and a bare `survey` on the next line prints as usual. The skip lasts only for the statement that made the assignment.
 
-**Column capacity and aliases.** Constructors, readers, and `copy_data()` reserve 5,000 spare column-pointer slots by default. Set `options(dtatools.alloccol = 5000L)` to change the number. Every column remains in the physical list, so direct consumers and `attributes(data)$names` see the complete table. Explicit helpers never rebuild that list into another object. Insufficient capacity causes an error before values, row selection, or `bysort` run.
+**Column capacity and aliases.** Dibble constructors and readers, and `copy_data()`, reserve 1,024 spare column-pointer slots by default. Control the reserve with `dtatools.alloccol`, for example `options(dtatools.alloccol = 4096L)` to request 4,096 spare slots. Automatic growth allows the requested additions plus the configured reserve. Every column remains in the physical list, so direct consumers and `attributes(data)$names` see the complete table. Reallocation creates an isolated table; old aliases keep a complete table with the values and columns it had when reallocation occurred.
 
 `column_capacity(data)` reports total usable column slots, or `NA_real_` for an unprepared allocation. Subtract `ncol(data)` to find spare slots. `can_add_columns(data, n = 1L)` checks whether `n` additional columns fit. Its `n = 0` case also accepts an unprepared table because no growth is requested; it does not promise that columns can be dropped. A zero-column table reserved with `n = 0` has no resizable allocation and reports `NA_real_`.
 
 `keep_vars()` and `drop_vars()` resolve and validate their column selections before checking capacity for the resulting table. Invalid selections keep their usual diagnostics, and a validated keep-all selection is a no-op even without preparation. A selection that removes columns needs a resizable allocation. Column-selector expressions can therefore run before a capacity error; no table changes have been committed. `rename_vars()`, `order_vars()`, `reorder_dta_rows()`, value replacements, and metadata setters need no spare slots. A bracket call checks all distinct new names before its first write, so insufficient capacity cannot leave an earlier assignment committed. After that check, assignments still run sequentially; an error in a later expression does not roll back earlier successful values.
 
-Assign `data <- reserve_columns(data, n = 10L)` to allow ten extra columns on a base data frame, tibble, dibble, or data table. This preserves container and column classes, isolates columns, rebuilds legacy overlays, and creates fresh dibble bookkeeping without modifying another table's state. A data.table also needs a valid self-reference for column-name edits, even without growth; the same preparation repairs it. Structural commits give that table isolated names and matching bookkeeping so another table created by ordinary R copying remains complete. Base `readRDS()`, `unserialize()`, and ordinary table copies can discard capacity. Assign preparation before passing their results to functions that add or drop columns. The same helper contract applies to a symbol, function parameter, `$` or `[[` extraction, `get()`, `get0()`, and computed targets.
+Assign `data <- reserve_columns(data, n = 10L)` to allow ten extra columns on a base data frame, tibble, dibble, or data table. This preserves container and column classes, isolates columns, rebuilds legacy overlays, and creates fresh dibble bookkeeping without modifying another table's state. It creates an isolated table even when the input already has enough capacity, so use `can_add_columns()` to avoid unnecessary preparation before additions. A data.table also needs a valid self-reference for column-name edits, even without growth; the same preparation repairs it. Structural commits give that table isolated names and matching bookkeeping so another table created by ordinary R copying remains complete. Base `readRDS()`, `unserialize()`, and ordinary table copies can discard capacity. Additions prepare these tables automatically by default. Removing columns still requires assigned preparation when the table lacks a resizable allocation. For computed targets that cannot be rebound, assign the helper's returned table explicitly.
 
 Dropping the last column preserves the row count of a base data frame, tibble, or dibble. A data.table follows its own empty-table convention and becomes a zero-row, zero-column table. Its stored row names are cleared too, so later generation cannot restore rows that its public shape had lost.
 
@@ -141,8 +201,9 @@ Owned doubles still report `typeof(x) == "double"`. Native code that requests a
 writable pointer gets independent backing when needed. Retaining that pointer
 prevents later results from sharing its writable values. R serialization can
 materialize an owned double column; values, classes and metadata survive, while
-live ownership records do not. Continue assigning `reserve_columns()` after
-restoration when subsequent operations need column capacity.
+live ownership records do not. After restoration, additions can prepare the
+table automatically; assign `reserve_columns()` first when using strict mode
+or when subsequent operations need a resizable allocation to remove columns.
 
 ## Compared with data.table
 
@@ -152,7 +213,26 @@ The bracket shape belongs to the dibble. `data[i, y := value]` works on a dibble
 
 The order of operations is Stata's, not data.table's. In `DT[i, j, by]`, data.table applies `i` first and groups only the surviving rows, so `.N` counts selected rows and a group emptied by `i` disappears. Here the groups are formed first, then `where` and the values are evaluated on each group's rows, so `.N` is the group's row count whatever `where` selects, and `where = .n == .N` marks each group's last row — which is what `bysort id: replace last = _n == _N` means in Stata.
 
-`.SD`, `.GRP`, and `.BY` are not provided, and `j` is not a general expression. Summaries stay with dplyr.
+data.table also provides [special symbols](https://rdatatable.gitlab.io/data.table/reference/special-symbols.html)
+inside its brackets: `.SD` contains each group's data excluding grouping
+columns, `.GRP` is the group number, and `.BY` holds the group's key values.
+Dibble brackets do not supply these symbols. Their `j` argument, the part after
+the comma, supports column selection and `:=` assignment, but does not evaluate
+arbitrary expressions such as `survey[, mean(income)]` against the columns.
+
+To aggregate rows into a separate summary table, use `dplyr::summarise()` with
+dplyr installed. For example, this returns one mean income per region:
+
+```r
+income_by_region <- survey |>
+    dplyr::group_by(region) |>
+    dplyr::summarise(mean_income = mean(income), .groups = "drop")
+```
+
+The result is a new dibble; `survey` keeps its original rows and columns.
+This is different from using `egen()` to add a group statistic to every row
+of the existing dataset. dplyr supplies the public summary verb; dtatools
+implements its behavior for dibbles.
 
 ## See also
 
@@ -214,9 +294,9 @@ family has the same table mutation contract.
 Metadata updates preserve compact column backing and existing capacity. They
 repair stale shared bookkeeping on the supplied table without touching another
 table's state. Such repair does not restore capacity lost to copying or base
-serialization. Assign `survey <- reserve_columns(survey)` before subsequent
-structural growth when preparation is needed. Legacy overlay tables must be
-prepared this way before metadata mutation as well.
+serialization. Subsequent additions can reserve capacity automatically; use
+`survey <- reserve_columns(survey)` when explicit preparation is needed.
+Legacy overlay tables must be prepared this way before metadata mutation as well.
 
 Generic metadata cannot edit structural, runtime, or storage attributes. Use
 column/container operations for those changes. Custom metadata stays in R;
@@ -224,16 +304,30 @@ file writers can omit attributes outside their supported metadata profiles.
 Vector setters keep their assigned-copy contract, for example
 `x <- set_var_format(x, "%9.0g")`.
 
-When creating a new column that should have narrower string storage, construct
-that storage explicitly in `gen()` instead of assigning the protected
-`stata.string.storage` attribute later:
+String storage declarations describe the Stata type, such as `str80` for up to
+80 UTF-8 bytes per value. Shortening values with `repl()` or bracket `:=` keeps
+the existing declaration. For example, a `str80` column whose values are now
+only `"yes"` and `"no"` still has type `str80`.
+
+If you want a new column with a narrower declaration, construct it in `gen()`
+instead of assigning the protected `stata.string.storage` attribute later:
 
 ```r
 gen(survey, status_copy = dta_string(as.character(status)))
 set_var_label(survey, status_copy, NULL)
 ```
 
-`dta_string()` chooses the smallest fitting storage for the observed UTF-8 byte
-width unless an explicit storage is supplied. Generation keeps that declaration.
-Promotion of an existing column only widens storage, so construct the new copy
-at the intended width before further mutation.
+`as.character(status)` removes the old storage declaration, and `dta_string()`
+chooses the smallest storage that fits the current UTF-8 byte widths. For the
+`"yes"` and `"no"` example, `status_copy` is `str3`. To request a particular
+declaration, supply it explicitly, for example
+`dta_string(as.character(status), storage = "str20")`; all values must fit.
+`gen()` keeps that declaration on the new column.
+
+With the default promotion behavior, later `repl()` or bracket `:=` updates
+preserve that width when ordinary character values fit and widen it when longer
+values require more room. `repl(..., promote = FALSE)` requires values to fit
+the existing width. Shorter replacement values do not shrink it.
+Choosing a width here controls the new column's declared Stata type and its
+field width in DTA output. It is not a recommendation to reserve longer strings
+for efficiency.

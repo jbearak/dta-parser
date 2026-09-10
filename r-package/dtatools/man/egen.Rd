@@ -41,7 +41,10 @@ to insert the new column. Supply at most one. Uses the target-name
 syntax, including bare names, strings, and tidy injection.}
 }
 \value{
-\code{data}, invisibly. Existing targets are errors; use dibble \verb{:=}
+The updated table, invisibly: \code{data} when existing capacity is
+sufficient, or an isolated table after automatic growth.
+Return the updated table from functions and assign it in the caller.
+Existing targets are errors; use dibble \verb{:=}
 to create or overwrite a column.
 }
 \description{
@@ -88,8 +91,11 @@ the source's labels, date class, or display format.
 
 Calculation, storage conversion, metadata, and optional row/column
 ordering are prepared before one column-set commit. Failed validation
-leaves the dataset unchanged. Insufficient capacity fails before calculation
-or row selection. Assign \code{\link[=reserve_columns]{reserve_columns()}} before calling \code{egen()}.
+leaves the dataset unchanged. By default, insufficient capacity creates an
+isolated prepared table and warns before calculation or row selection.
+Return the updated table from functions and assign it in the caller.
+\code{options(dtatools.auto_grow = FALSE)} keeps strict early failure; assign
+\code{\link[=reserve_columns]{reserve_columns()}} before calling \code{egen()} in that mode.
 }
 \examples{
 d <- dibble(household = c(1, 1, 2), income = c(10, 100, 30),

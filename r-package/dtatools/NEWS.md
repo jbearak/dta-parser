@@ -1,5 +1,14 @@
 # dtatools 0.8.0.9000
 
+* New columns added by `gen()`, `egen()` and dibble `:=` automatically reserve
+  space when needed. Growth warns, returns an isolated table and rebinds safe
+  caller targets; functions must return that table for caller assignment.
+  Existing aliases keep the old table after growth. Set
+  `options(dtatools.auto_grow = FALSE)` to retain strict early failure.
+* The default spare column capacity is now 1,024, configurable with
+  `dtatools.alloccol`. Nongrowth structural helpers keep their existing
+  preparation requirements.
+
 * The Raven sidecar `inst/raven/nse.toml` now declares the captured
   arguments of egen, the dta_* summary and group helpers, set_var_format,
   set_var_formats, set_var_labels, set_val_labels, var_label, val_labels,

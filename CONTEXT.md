@@ -52,6 +52,13 @@ _Avoid_: Reference tibble, dtatools table
 The Stata storage an untyped double result takes through `gen()`, `egen()`, or a new column created by `:=`: `float`, or `double` when the `dtatools.generate_type` option is set, as after Stata's `set type double`. Function-specific declarations, such as byte tags and autotyped group identifiers, take precedence.
 _Avoid_: Default storage, float default
 
+**Column capacity**:
+The number of columns a table can hold while retaining its identity. Adding
+columns within this capacity preserves the shared dataset seen through its
+aliases. Growing beyond it can produce a new table, so a function's caller must
+receive and assign the result.
+_Avoid_: String width, row capacity
+
 **Storage promotion**:
 Widening a typed column to the narrowest Stata storage that holds every new value exactly, and never one that narrows the integers the column can hold, when an operation overwrites it with values its declared storage cannot hold. It matches Stata's `replace` except that precision promotes here, where Stata keeps `float` and rounds. `replace_values()` reports the change as Stata does; the other spellings promote silently.
 _Avoid_: Type widening, upcasting

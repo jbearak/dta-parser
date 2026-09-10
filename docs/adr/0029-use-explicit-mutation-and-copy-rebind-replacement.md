@@ -8,7 +8,7 @@ R can copy a table before replacement dispatch, so an owner back-pointer cannot 
 
 Replacement results isolate all columns for later explicit writes, retaining compact backing through copy-on-write wrappers. Modern bookkeeping does not retain column vectors or an owning table reference, and reads never repair or modify a shared state environment. Explicit writes detach shared column payloads in all supported containers while preserving aliases to the supplied table. Same-storage patches preserve links among its identical column slots; promotion and metadata setters replace only the named column.
 
-Base attribute copies and serialized tables retain their type but may lose ownership identity and spare capacity. Assigned `reserve_columns()` creates isolated columns and fresh bookkeeping; it does not repair another table through a shared state. [ADR 0030](0030-require-assigned-column-preparation.md) completes the capacity policy: helpers fail before capacity-sensitive evaluation and callers assign preparation before invoking them.
+Base attribute copies and serialized tables retain their type but may lose ownership identity and spare capacity. Assigned `reserve_columns()` creates isolated columns and fresh bookkeeping; it does not repair another table through a shared state. [ADR 0030](0030-require-assigned-column-preparation.md) introduced required preparation. [ADR 0035](0035-grow-column-capacity-automatically.md) supersedes that default for adding columns with automatic growth and a strict option.
 
 Function-local ordinary replacement no longer mutates the caller, even after conversion with `as_dibble()`. Return and assign the result, or use explicit metadata setters from [ADR 0028](0028-edit-metadata-on-the-supplied-table.md), `gen()`, `repl()`, and dibble `:=` when caller mutation is intended.
 
@@ -24,4 +24,6 @@ copying, and dataset results produce the current class for supported legacy
 dibbles. They build a fresh object and state instead of upgrading an alias or
 editing a shared state environment. Serialization retains current class identity
 but still loses ownership validity and spare capacity. Use `is_dibble()` for
-recognition across versions, and assigned preparation before structural mutation.
+recognition across versions. Assign preparation before a nongrowth structural
+operation that requires it, or before adding columns in strict mode. Column
+additions otherwise follow the automatic-growth policy in ADR 0035.
