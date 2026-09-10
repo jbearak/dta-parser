@@ -1,0 +1,132 @@
+{
+  "status": "seven reviewed metadata replacements",
+  "pairs": [
+    {
+      "original": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/controller-controls-01/assessment.json",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/controller-controls-01/assessment.json",
+        "bytes": 13548,
+        "mode": "0o644",
+        "sha256": "30575b5b16ab9b837bbb81eb485af14ad8082f0a10dcc2c71ddc1628a70a6df9"
+      },
+      "derivative": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/01-assessment.json",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/01-assessment.json",
+        "bytes": 13422,
+        "mode": "0o644",
+        "sha256": "65f742fddb4ac6114d007876eb94bd1769a8c0f233cd032706cb6bb069d49122"
+      },
+      "reason": "Omit external stdlib source/caret lines while retaining failure metadata.",
+      "review": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/traceback-derivative-review.json"
+    },
+    {
+      "original": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/controller-controls-01/timeout/result.json",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/controller-controls-01/timeout/result.json",
+        "bytes": 3261,
+        "mode": "0o644",
+        "sha256": "d3529e3d7b3495b310cc0d8bd2c832d25aab6d76b9090f06d17d1dffe3601670"
+      },
+      "derivative": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/02-result.json",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/02-result.json",
+        "bytes": 3135,
+        "mode": "0o644",
+        "sha256": "1c4554a1251c5b4bd5546ce0f232664dd3384ea4341b11ee6286888b0dd726cf"
+      },
+      "reason": "Omit external stdlib source/caret lines while retaining failure metadata.",
+      "review": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/traceback-derivative-review.json"
+    },
+    {
+      "original": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/matrix-cancellation-control-01/matrix/inert--dibble--pilot--1/result.json",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/matrix-cancellation-control-01/matrix/inert--dibble--pilot--1/result.json",
+        "bytes": 4404,
+        "mode": "0o644",
+        "sha256": "0eb525022089e090faeb269bc2dae44e00ce268bd9734819ae752f5ae2d62f06"
+      },
+      "derivative": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/03-result.json",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/03-result.json",
+        "bytes": 4278,
+        "mode": "0o644",
+        "sha256": "08ed60fd26f6d83c2f288f9a820831c61de4707b163cec2e5446d525ee474fd6"
+      },
+      "reason": "Omit external stdlib source/caret lines while retaining failure metadata.",
+      "review": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/traceback-derivative-review.json"
+    },
+    {
+      "original": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/matrix-cancellation-control-01/outer/result.json",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/matrix-cancellation-control-01/outer/result.json",
+        "bytes": 4301,
+        "mode": "0o644",
+        "sha256": "c33082d942cc59649db95df3653cc9586760d095903a262aad83b7ecb5ef56dd"
+      },
+      "derivative": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/04-result.json",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/traceback-metadata-01/04-result.json",
+        "bytes": 4175,
+        "mode": "0o644",
+        "sha256": "f0afa4161d6e2d62f093be7cbde6832d3207f4366b81ed440a31b4c7df306562"
+      },
+      "reason": "Omit external stdlib source/caret lines while retaining failure metadata.",
+      "review": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/traceback-derivative-review.json"
+    },
+    {
+      "original": {
+        "path": "/private/tmp/dta-direct-issue216-validation/baseline-01/installed-identity.R",
+        "resolved": "/private/tmp/dta-direct-issue216-validation/baseline-01/installed-identity.R",
+        "bytes": 32071,
+        "mode": 420,
+        "sha256": "9349e9d42a838b2220e01d65c953b8c162dd94fe6d8fa5bf320851368e205b2b"
+      },
+      "derivative": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/baseline-installed-identity.R",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/baseline-installed-identity.R",
+        "bytes": 9589,
+        "mode": 420,
+        "sha256": "a4adac3ae99402dcc1ced3805ffeedbd9db2d60a131a501cf890d66be37a5255"
+      },
+      "reason": "Retain installed/runtime identity metadata and omit foreign dependency descriptions.",
+      "review": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/installed-metadata-result-review.json"
+    },
+    {
+      "original": {
+        "path": "/private/tmp/dta-direct-issue216-validation/eager-install-01/installed-identity.R",
+        "resolved": "/private/tmp/dta-direct-issue216-validation/eager-install-01/installed-identity.R",
+        "bytes": 32091,
+        "mode": 420,
+        "sha256": "73b30d0e4e492fd01c63d7944dbe53000dd9fde0476095f970fc54f72f06f901"
+      },
+      "derivative": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/eager-installed-identity.R",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/eager-installed-identity.R",
+        "bytes": 9609,
+        "mode": 420,
+        "sha256": "9533972fb7de67aae8a0a9435d1bfedc72aea39f33b99e4ceac7ee2c43f97cc1"
+      },
+      "reason": "Retain installed/runtime identity metadata and omit foreign dependency descriptions.",
+      "review": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/installed-metadata-result-review.json"
+    },
+    {
+      "original": {
+        "path": "/private/tmp/dta-direct-issue216-validation/prototype-install-04/installed-identity.R",
+        "resolved": "/private/tmp/dta-direct-issue216-validation/prototype-install-04/installed-identity.R",
+        "bytes": 25147,
+        "mode": 420,
+        "sha256": "05fb526afde4030b2a037b684d8991aa10881a9b96866e4d03591b539d9fa824"
+      },
+      "derivative": {
+        "path": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/prototype-installed-identity.R",
+        "resolved": "/private/tmp/dta-direct-issue216-preparation-01/evidence-selection-preparation-01/installed-metadata-02/records/prototype-installed-identity.R",
+        "bytes": 7485,
+        "mode": 420,
+        "sha256": "07c7e12233e7112d3b4e3ffc1449a3f712c4ecfc786619796997cc05944c252f"
+      },
+      "reason": "Retain installed/runtime identity metadata and omit foreign dependency descriptions.",
+      "review": "/private/tmp/dta-direct-issue216-preparation-01/evidence-origin-api-review-03/installed-metadata-result-review.json"
+    }
+  ],
+  "scope": "Originals remain unchanged locally and are excluded from the final record union. References to their original hashes remain historical."
+}

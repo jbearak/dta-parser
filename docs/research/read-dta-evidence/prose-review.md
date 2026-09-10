@@ -1,0 +1,5 @@
+# Final combined prose disposition
+
+Clear for the reviewed semantic and recommendation scope at research-note SHA 43e0a22ca5fb79874ab9fe9622816f13ee525a886c724d089afcdfe1d1c78049. The added numeric-method paragraph explicitly states that counter collection and serialization occur outside timers/Rprofmem, may affect later GC/heap/RSS, and receive no observer-cost subtraction; eager unavailable records require less work than full snapshot Stats. This closes the sole remaining finding in research-prose-review-01.md. The completed timing, memory, counter, phase and workflow reviews and display checks remain applicable.
+
+The recommendation is supported within the measured scope: qualify a dedicated reader constructor separately, keep the serial deferred design in research, and preserve the unresolved production mutation, cache-sharing, error-timing, remote and platform limits. This clearance does not stand in for final archive-origin/transport or final integrated epic acceptance. No draft edits, R, compiler or workloads were run by this reviewer.

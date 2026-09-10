@@ -1,0 +1,212 @@
+{
+  "status": "reviewed_and_verified_research_artifact",
+  "created_utc": "2026-09-10T01:45:59.378675+00:00",
+  "issue": "https://github.com/jbearak/dta-parser/issues/216",
+  "production_baseline": {
+    "git": "de83bcbbeca9771dacf6e91fe727d2a228172d64",
+    "package_tree": "a7ca8e846439a44170ccb1023aa73a58818cff73"
+  },
+  "eager_private": {
+    "git": "2fa68af1f1d6efad61c9f5c31c7e104744c020ae",
+    "package_tree": "a1dc20aef347e6fa1e91d09180eac8aefad8b585"
+  },
+  "numeric_private": "issue216-numeric-snapshot-source04-de83-8bc09dba",
+  "research_branch_base": {
+    "git": "e75518730db2d37d41ab8fb5aa44ab5c5c5f025c",
+    "package_tree": "abc1117250e874353d3cc4fe90f2d8e770b25558"
+  },
+  "archive": {
+    "file": "records.tar.gz",
+    "bytes": 80688999,
+    "sha256": "02a988870470163e4b18302b5d4db0abc3fd0cdfeacae1a53668bdbb7ef4d8bc",
+    "members": 30321,
+    "uncompressed_bytes": 1101001132
+  },
+  "selection": {
+    "file": "selection.json",
+    "sha256": "008e40e55ae29ee49cf11c0dddacbf2186e24280496840da3ea918691f45c1f5"
+  },
+  "content_reviews": [
+    "origin-review.md",
+    "origin-replacements-review.md",
+    "origin-final-selection.json",
+    "origin-final-membership.json"
+  ],
+  "member_review": "independent-archive-review.json",
+  "prose_review": "prose-review.md",
+  "publication_scope": "This artifact contains research and evidence only. Private reader changes are reconstruction patches. Other repositories code/data, installed dependencies and generated DTA/broad RDS payloads are excluded; governing project notices are included.",
+  "production_acceptance": "Separate fresh checks must bind the actual normal research merge. These measurements remain bound to their recorded sources; this artifact is not a final production acceptance or merge receipt.",
+  "public_files": [
+    {
+      "file": "read-dta-construction-and-deferred-decoding.md",
+      "bytes": 35297,
+      "sha256": "43e0a22ca5fb79874ab9fe9622816f13ee525a886c724d089afcdfe1d1c78049"
+    },
+    {
+      "file": "read-dta-evidence/gc-release-diagnostic.csv",
+      "bytes": 377,
+      "sha256": "f2ad3ab9e6d8c3b0a6e837d5b34ed8f665cbc8b87bb12d149021a2ab0d09fc9a"
+    },
+    {
+      "file": "read-dta-evidence/load-comparison.csv",
+      "bytes": 6679,
+      "sha256": "b3f8e13d692029574ff5077d1bbf3fe051cc70ba23c534cb7cc6842556746153"
+    },
+    {
+      "file": "read-dta-evidence/load-summary.csv",
+      "bytes": 32090,
+      "sha256": "be0e4a2d2068172b9cb35eeb986f5189eda27974d902439f0939b5625466dea3"
+    },
+    {
+      "file": "read-dta-evidence/memory-observations.csv",
+      "bytes": 31416,
+      "sha256": "ca5588dd4e58070fcbc376d9a70c300374722ada1443c34d220254c65ec4667b"
+    },
+    {
+      "file": "read-dta-evidence/memory-summary.csv",
+      "bytes": 8328,
+      "sha256": "53f01a29bf192ccbb6cb989131d7f963f93dfbec4f7cadb1708410cb05098c29"
+    },
+    {
+      "file": "read-dta-evidence/numeric-comparison.csv",
+      "bytes": 38067,
+      "sha256": "d360164adabf1b2dce0f75623a7abacc9cab180d0fa6e858d8688fb72f36ca83"
+    },
+    {
+      "file": "read-dta-evidence/numeric-counters-allocation-after.csv",
+      "bytes": 9376,
+      "sha256": "eadf87a65d091c32fee43a34253d341805ae37814368932bbea5c67688600611"
+    },
+    {
+      "file": "read-dta-evidence/numeric-counters-matrix-final-call.csv",
+      "bytes": 14806,
+      "sha256": "ec0dc5dc9216ffff9dc6da9d7785ec32b38f3ed14f5cc35f3722305ead61288c"
+    },
+    {
+      "file": "read-dta-evidence/numeric-counters-retained-checkpoints.csv",
+      "bytes": 27065,
+      "sha256": "87b2bbd04aa99b8d343a92f7e0c5bf91a73693c28e8f7b8ca20d6b2011c4c3b4"
+    },
+    {
+      "file": "read-dta-evidence/numeric-counters-sequence-after.csv",
+      "bytes": 15542,
+      "sha256": "1653eda36aef74f5c75204ff2f70ef880e70986748fb8e4f940f48120ed67c09"
+    },
+    {
+      "file": "read-dta-evidence/numeric-memory-observations.csv",
+      "bytes": 40689,
+      "sha256": "58a634991063c1b118f233ab7324c0cb89a153b587f19423514b2351d554b469"
+    },
+    {
+      "file": "read-dta-evidence/numeric-memory-signed-comparisons.csv",
+      "bytes": 7786,
+      "sha256": "5fd851e993884be0df902be3717a166d6b5f7210a1f2dcf1c0c67563e1ec2baa"
+    },
+    {
+      "file": "read-dta-evidence/numeric-memory-summary.csv",
+      "bytes": 22019,
+      "sha256": "5dd61bf40cbf8bfe1ffec70236d29eed3025e70dd440a3a434059c452a162263"
+    },
+    {
+      "file": "read-dta-evidence/numeric-sequence-summary.csv",
+      "bytes": 23010,
+      "sha256": "e4d9c385c341eb68aa764be502588135f18de86397384fac9a70ce9373ec0f92"
+    },
+    {
+      "file": "read-dta-evidence/numeric-summary.csv",
+      "bytes": 22732,
+      "sha256": "ed8fcd353c78754adecd4df649f50ae9cf1cc49b8b876c15e84c204e5c182a12"
+    },
+    {
+      "file": "read-dta-evidence/phase-method-distributions.csv",
+      "bytes": 9514,
+      "sha256": "90bce2f0c7aa7d2818411204d5fbea6e4083285d80e579904017b8614c9ea414"
+    },
+    {
+      "file": "read-dta-evidence/phase-signed-method-comparisons.csv",
+      "bytes": 1876,
+      "sha256": "91553381f45f0a368d49b4198968e69d13804fef9ebd5f30343c450e6c30b373"
+    },
+    {
+      "file": "read-dta-evidence/r-phase-summary.csv",
+      "bytes": 13680,
+      "sha256": "d4cebdcff28f61825e922cda45278219069dc2068e2f767d3093f42e1c34d9dd"
+    },
+    {
+      "file": "read-dta-evidence/sequence-summary.csv",
+      "bytes": 18185,
+      "sha256": "530b1488f58572e6133b56268bd4e6cb888350536c5f55b8b31ee476699ef72b"
+    },
+    {
+      "file": "read-dta-evidence/workflow-comparison.csv",
+      "bytes": 2835,
+      "sha256": "6a400fc67277dcadfcb5a58c44125fb8610ebeb163cb280ca751bc5acbc4477c"
+    },
+    {
+      "file": "read-dta-evidence/workflow-summary.csv",
+      "bytes": 6187,
+      "sha256": "a62a5adc649167e1bb40ae60113855090ddf1b0d0470986c071c08dde897d30f"
+    },
+    {
+      "file": "read-dta-evidence/README.md",
+      "bytes": 4990,
+      "sha256": "5daab76280e821968578c6a7a4ccda390c7ee38ee4a37729884bc1108fb8ccb8"
+    },
+    {
+      "file": "read-dta-evidence/REPLAY.md",
+      "bytes": 6614,
+      "sha256": "caf781b858b3bd5f0e515292dc4c55cacb580427bdef3f56a457f2966df1c690"
+    },
+    {
+      "file": "read-dta-evidence/records.tar.gz",
+      "bytes": 80688999,
+      "sha256": "02a988870470163e4b18302b5d4db0abc3fd0cdfeacae1a53668bdbb7ef4d8bc"
+    },
+    {
+      "file": "read-dta-evidence/selection.json",
+      "bytes": 19526407,
+      "sha256": "008e40e55ae29ee49cf11c0dddacbf2186e24280496840da3ea918691f45c1f5"
+    },
+    {
+      "file": "read-dta-evidence/transport-result.json",
+      "bytes": 1015,
+      "sha256": "42e5fde20de4af1c440bcd8f8014550f30d676ce8d77eb483399cb922cbe2b20"
+    },
+    {
+      "file": "read-dta-evidence/publication-replacements.json",
+      "bytes": 7858,
+      "sha256": "1880230da15f3f45afacbaa0d2988e9bbf9ab7779115c51a8952d647a5552ff3"
+    },
+    {
+      "file": "read-dta-evidence/origin-review.md",
+      "bytes": 4756,
+      "sha256": "535ca8a21f86ceccedc4b3c93684007ac040ecb106d4c37c91a82309c70da3e6"
+    },
+    {
+      "file": "read-dta-evidence/origin-replacements-review.md",
+      "bytes": 1587,
+      "sha256": "e6e155c377379f84133c5bbd5770f834572241daac33698c26788cf525484bb8"
+    },
+    {
+      "file": "read-dta-evidence/origin-final-selection.json",
+      "bytes": 27070,
+      "sha256": "8e8ce66e2962aa64109929908499b2fdc2b20ff444044a52ada4f3f488b441a5"
+    },
+    {
+      "file": "read-dta-evidence/origin-final-membership.json",
+      "bytes": 522,
+      "sha256": "e39ab9b22c06467e894d8f97d72e8657920f46d6afad1c3259443ca5089dfff2"
+    },
+    {
+      "file": "read-dta-evidence/prose-review.md",
+      "bytes": 1058,
+      "sha256": "2ffc823ccce7c8816b9c23974b5d7a52055f958e999763cc89c4d8fec2da7ad6"
+    },
+    {
+      "file": "read-dta-evidence/independent-archive-review.json",
+      "bytes": 508,
+      "sha256": "a8ec1aa7f7a4d64fbcd1e75a80792a6dcbc7f4a1e106b224928e6ab234cece6b"
+    }
+  ],
+  "self_exclusion": "This metadata file does not contain its own digest."
+}
