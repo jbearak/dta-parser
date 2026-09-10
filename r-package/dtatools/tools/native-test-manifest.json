@@ -4311,7 +4311,7 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "1742edfcc337da9b8eae3785f1d3fc1bb560ae50c0b421a192b6c5c7d6f066b4"
+          "sha256": "3ae6832e06dc1a333a192352a8da18e18697a9d0103a3e97784c3e5348bec9e8"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
@@ -4756,7 +4756,7 @@
           "test": "validation errors leave an unmarked dataset unchanged",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 24,
+          "min_pass": 25,
           "warnings": 0
         },
         {
