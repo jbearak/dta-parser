@@ -58,7 +58,10 @@ out-of-range values. It is not a Stata-compatibility mode. Ignored by \code{gen(
 the column and so has no prior storage to widen.}
 }
 \value{
-\code{gen()} and \code{replace_values()} return \code{data} invisibly.
+\code{gen()} returns the updated table invisibly: \code{data} when existing
+capacity is sufficient, or an isolated table after automatic growth.
+Return the updated table from functions and assign it in the caller.
+\code{replace_values()} returns \code{data} invisibly.
 \code{copy_data()} returns an independent data frame or tibble.
 }
 \description{

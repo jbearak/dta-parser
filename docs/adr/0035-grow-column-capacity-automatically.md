@@ -19,7 +19,9 @@ creates an isolated table, warns about alias separation, updates a supported
 mutation target after a successful write, and returns the result. A function
 must return its updated table and its caller must assign it, as in
 `x <- func(x)`. This preserves the caller's result but cannot move other aliases
-to the new table. A function that returns `NULL` can still discard a grown
+to the new table. Symbols and plain-list containers rebind in the calling scope,
+following R's local assignment rule even when the name was inherited from an
+enclosing environment. A function that returns `NULL` can still discard a grown
 result; the warning and documentation make that consequence explicit. Callers
 that need all aliases to see additions must reserve before creating the aliases
 or use strict mode to catch exhausted capacity.

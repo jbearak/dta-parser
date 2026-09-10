@@ -284,7 +284,10 @@
 #'   float targets can round, while integer targets reject fractional or
 #'   out-of-range values. It is not a Stata-compatibility mode. Ignored by `gen()`, which creates
 #'   the column and so has no prior storage to widen.
-#' @return `gen()` and `replace_values()` return `data` invisibly.
+#' @return `gen()` returns the updated table invisibly: `data` when existing
+#'   capacity is sufficient, or an isolated table after automatic growth.
+#'   Return the updated table from functions and assign it in the caller.
+#'   `replace_values()` returns `data` invisibly.
 #'   `copy_data()` returns an independent data frame or tibble.
 #' @references
 #' StataCorp, \href{https://www.stata.com/manuals/dgenerate.pdf}{generate manual}.

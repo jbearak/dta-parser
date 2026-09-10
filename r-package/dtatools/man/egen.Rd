@@ -41,7 +41,10 @@ to insert the new column. Supply at most one. Uses the target-name
 syntax, including bare names, strings, and tidy injection.}
 }
 \value{
-\code{data}, invisibly. Existing targets are errors; use dibble \verb{:=}
+The updated table, invisibly: \code{data} when existing capacity is
+sufficient, or an isolated table after automatic growth.
+Return the updated table from functions and assign it in the caller.
+Existing targets are errors; use dibble \verb{:=}
 to create or overwrite a column.
 }
 \description{

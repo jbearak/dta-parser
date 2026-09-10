@@ -24,4 +24,6 @@ copying, and dataset results produce the current class for supported legacy
 dibbles. They build a fresh object and state instead of upgrading an alias or
 editing a shared state environment. Serialization retains current class identity
 but still loses ownership validity and spare capacity. Use `is_dibble()` for
-recognition across versions, and assigned preparation before structural mutation.
+recognition across versions. Assign preparation before a nongrowth structural
+operation that requires it, or before adding columns in strict mode. Column
+additions otherwise follow the automatic-growth policy in ADR 0035.

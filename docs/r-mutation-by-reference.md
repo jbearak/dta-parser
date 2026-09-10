@@ -141,6 +141,11 @@ survey <- add_flags(survey)
 If this function calls another function that may grow the table, assign that
 function's returned table too. Each caller needs the updated result.
 
+If the table's name, or the name of a plain list containing it, comes from an
+enclosing environment, growth creates the replacement binding in the calling
+scope, as `<-` does. The enclosing binding still refers to the old table.
+Return the updated local table to pass it back to the caller.
+
 When capacity is sufficient, this function mutates and returns the same table.
 When growth requires a new table, the assignment updates `survey` to refer to
 that result. Other names that referred to the old table still refer to the old
