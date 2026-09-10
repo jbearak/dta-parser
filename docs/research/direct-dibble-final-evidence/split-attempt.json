@@ -1,0 +1,52 @@
+{
+  "status": "complete",
+  "inputs": [
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/split-publication-archive-01.py",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/split-publication-archive-01.py",
+      "bytes": 6307,
+      "mode": "0o644",
+      "sha256": "17a69dcc2adae44a454f75cbeb161eff00d8565675db374ab28c42f948026eb7"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/transport-result.json",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/transport-result.json",
+      "bytes": 1026,
+      "mode": "0o644",
+      "sha256": "ac5878eed442d90875f72be2ab9f7d2fcd24935c586bab6ea89dbf89ea6ce8bb"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/independent-archive-verification-01.json",
+      "resolved": "/private/tmp/dta-direct-final-publication-review-01/independent-archive-verification-01.json",
+      "bytes": 508,
+      "mode": "0o644",
+      "sha256": "4f14f1991b4e45fd0ab1edeebbfd84780e35b4fae9622ae55dfb723d910e0e38"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/records.tar.gz",
+      "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/records.tar.gz",
+      "bytes": 178620522,
+      "mode": "0o644",
+      "sha256": "c03edfc4a2013737b6fd36b5e0d859ba6a82b53513c50208960ccf02eaa7e66e"
+    }
+  ],
+  "output": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01",
+  "started_utc": "2026-09-10T10:16:34.166955+00:00",
+  "manifest": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/archive-parts.json",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/publication-parts-01/archive-parts.json",
+    "bytes": 2990,
+    "mode": "0o644",
+    "sha256": "acec9a73629c62c56995c98451acf21ce45aba8b8c4d11836fce599057f6ca92"
+  },
+  "parts": 3,
+  "compressed_bytes": 178620522,
+  "archive_sha256": "c03edfc4a2013737b6fd36b5e0d859ba6a82b53513c50208960ccf02eaa7e66e",
+  "completed_utc": "2026-09-10T10:16:34.510062+00:00",
+  "retained_names": [
+    "archive-parts.json",
+    "records.tar.gz.part001",
+    "records.tar.gz.part002",
+    "records.tar.gz.part003"
+  ]
+}

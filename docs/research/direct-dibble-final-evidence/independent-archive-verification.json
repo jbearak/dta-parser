@@ -1,0 +1,10 @@
+{
+  "accepted": true,
+  "archive_sha256": "c03edfc4a2013737b6fd36b5e0d859ba6a82b53513c50208960ccf02eaa7e66e",
+  "compressed_bytes": 178620522,
+  "selection_sha256": "863e78d3bf0bad61b11ee68e98215a10e882b9be93bc609bfd8cc138d9337df2",
+  "members": 8409,
+  "uncompressed_bytes": 2007394542,
+  "verifier_sha256": "74f5fffd432889b167541a984e74cfecbbebd692e047506492cb08a57f617f29",
+  "scope": "Independent full member order/path/type/mode/size/SHA256 stream comparison. No extraction, source copy or workload."
+}

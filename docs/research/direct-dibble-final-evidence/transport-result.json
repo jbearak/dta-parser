@@ -1,0 +1,20 @@
+{
+  "status": "complete",
+  "archive": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/records.tar.gz",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/records.tar.gz",
+    "bytes": 178620522,
+    "mode": "0o644",
+    "sha256": "c03edfc4a2013737b6fd36b5e0d859ba6a82b53513c50208960ccf02eaa7e66e"
+  },
+  "selection": {
+    "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/selection.json",
+    "resolved": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-archive-preparation-01/bundle-final/selection.json",
+    "bytes": 9885226,
+    "mode": "0o644",
+    "sha256": "863e78d3bf0bad61b11ee68e98215a10e882b9be93bc609bfd8cc138d9337df2"
+  },
+  "members": 8409,
+  "uncompressed_bytes": 2007394542,
+  "scope": "Exact selected archive membership/type/mode/bytes verified. No workload rerun, extraction or dependency-image replay."
+}

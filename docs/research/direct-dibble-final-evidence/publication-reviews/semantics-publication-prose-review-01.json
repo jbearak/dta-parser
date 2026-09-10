@@ -1,0 +1,121 @@
+{
+  "status": "clear",
+  "corrections": [],
+  "scope": "Exact final public prose delta and complete new replay README; no R, compiler, workload, archive rehash or selected-payload sweep.",
+  "review": {
+    "path": "/private/tmp/dta-direct-final-publication-review-01/semantics-publication-prose-review-01.md",
+    "bytes": 2038,
+    "sha256": "fc52f79bfe2ddfb1ca187662a4da82396ea908e461331456f202b5968121734a"
+  },
+  "inputs": [
+    {
+      "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-acceptance.md",
+      "bytes": 29550,
+      "sha256": "cfbb5a846eee7ba4188de3c97b8138df97f13204f10d05a74123dfac589d585d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-evidence/docs/plans/dibble-result-performance-progress.md",
+      "bytes": 115167,
+      "sha256": "584e19a6fa565cda1c2db07fe895b4b9d5bcedfa8412b5d78eda885462f834ee"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/README.md",
+      "bytes": 6972,
+      "sha256": "9e6f64f646ef7be2f7288de469cabe02118605dfdb717095368d4ace35e56922"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-evidence/.github/workflows/ci.yml",
+      "bytes": 17115,
+      "sha256": "834117273f63bfb98b991090c6b9bdf028986e39afee01d39c0cfb03cb14861f"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/archive-parts.json",
+      "bytes": 2990,
+      "sha256": "acec9a73629c62c56995c98451acf21ce45aba8b8c4d11836fce599057f6ca92"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/transport-result.json",
+      "bytes": 1026,
+      "sha256": "ac5878eed442d90875f72be2ab9f7d2fcd24935c586bab6ea89dbf89ea6ce8bb"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/verify-archive-01.py",
+      "bytes": 2838,
+      "sha256": "74f5fffd432889b167541a984e74cfecbbebd692e047506492cb08a57f617f29"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-evidence/docs/research/direct-dibble-final-evidence/reassemble-publication-archive-01.py",
+      "bytes": 1895,
+      "sha256": "04f2530606241955c986eb5d92577f959f16bead58cd1f8d3ce692ce81473b1d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/independent-archive-verification-01.json",
+      "bytes": 508,
+      "sha256": "4f14f1991b4e45fd0ab1edeebbfd84780e35b4fae9622ae55dfb723d910e0e38"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/reassembly-verification-01.json",
+      "bytes": 222,
+      "sha256": "05c6df90a34b049dea0f0d776ea0afa4624fcf0d9ae38cc4c6fccbce56e5ce19"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/publication-copy-01.json",
+      "bytes": 7306,
+      "sha256": "34a5cba024a9e012d15e98a7fc76e788ce34a7ec8db5e1169392c95454b90a30"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/transport-api-review-01.json",
+      "bytes": 9765,
+      "sha256": "6b870c6eeaca36e4c15dadf05ca72257cd1c125a750a14b89f291b3fdb15ea74"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/semantics-config-resolution-review-01.json",
+      "bytes": 6651,
+      "sha256": "8bce4ed6932e5df45617f5e8222414440b8c5debb6681940b336f6554b896d1c"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/semantics-review/final-integrated-prose-review-02/bindings-02.json",
+      "bytes": 3385,
+      "sha256": "99b91dfea47a18220e19edae5e5ac2030f64761ea4fb3370e542f1b5916eb94d"
+    }
+  ],
+  "archive_sha256": "c03edfc4a2013737b6fd36b5e0d859ba6a82b53513c50208960ccf02eaa7e66e",
+  "selection_sha256": "863e78d3bf0bad61b11ee68e98215a10e882b9be93bc609bfd8cc138d9337df2",
+  "members": 8409,
+  "uncompressed_bytes": 2007394542,
+  "compressed_bytes": 178620522,
+  "part_sizes": [
+    82837504,
+    82837504,
+    12945514
+  ],
+  "ci_jobs": 17,
+  "pending": [
+    "Successful final evidence CI",
+    "Verified normal evidence merge with unchanged tested package tree",
+    "Subsequent #172 closure"
+  ],
+  "snapshot_files": [
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/research-publication-reviewed-01.md",
+      "bytes": 29550,
+      "sha256": "cfbb5a846eee7ba4188de3c97b8138df97f13204f10d05a74123dfac589d585d"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/progress-top-publication-reviewed-01.md",
+      "bytes": 5812,
+      "sha256": "03e847a14fb81fe95df7b43c29532fb970910fef0f19e8c132c674807915aea8"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/evidence-readme-reviewed-01.md",
+      "bytes": 6972,
+      "sha256": "9e6f64f646ef7be2f7288de469cabe02118605dfdb717095368d4ace35e56922"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-publication-review-01/publication-prose-delta-01.patch",
+      "bytes": 9620,
+      "sha256": "02846cdb5151b56cd1819f17c4ba27af428002431be9c5687e8f48f4e49e984c"
+    }
+  ],
+  "selected_inputs_unchanged": true
+}

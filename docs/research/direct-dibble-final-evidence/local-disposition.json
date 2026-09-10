@@ -1,0 +1,89 @@
+{
+  "status": "local integrated assessment complete; final publication and issue closure pending",
+  "observed_utc": "2026-09-10T05:14:08.919185+00:00",
+  "source_sha": "4c2d1f9c2683c15345bb06294ff5fe2d55980f51",
+  "package_tree": "abc1117250e874353d3cc4fe90f2d8e770b25558",
+  "completed_reviews": [
+    {
+      "path": "/private/tmp/dta-direct-final-acceptance-preparation-01/final-functional-disposition-01.json",
+      "bytes": 5209,
+      "sha256": "d2d1fa365c8329b7c84421a95044c81ecf57b29ee80e7dab8562db5d63e08f1a"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/broad-actual-results-01/REVIEW.md",
+      "bytes": 7059,
+      "sha256": "7aaa343c1d60ea395b5fb6b96768f7d4a29ec0c971ab65b1c46465d7ff8887d2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/rows-actual-results-01/REVIEW.md",
+      "bytes": 5617,
+      "sha256": "e56ca6499444045958b4cd8cfda36042b791f8a689e5926a650e217e52f4edd2"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/groups-highcard-actual-results-01/REVIEW.md",
+      "bytes": 6959,
+      "sha256": "aef860f8bee141286286bbe84602a11118fb5f3992d4ba9ababb76b3697dd4d4"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-bracket-recurrence-assessment-01/REVIEW-01.md",
+      "bytes": 3780,
+      "sha256": "43b593755881f473f7f3345a18621bcc6f0172dfb12997c41329dd0d55405181"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/semantics-review/pipeline-repeat-review-01/REVIEW-01.md",
+      "bytes": 3987,
+      "sha256": "d599a6f421c6b5f172743c444ac4197c24716a7935b5a3f1842696c8e2e5e371"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/joins-actual-results-01/REVIEW.md",
+      "bytes": 5994,
+      "sha256": "4dab011206a1ecc4053b4e49bcca24aafb305152774e7c9c9bde83234e4999a5"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/api-review/joins-repeat-actual-results-01/REVIEW.md",
+      "bytes": 2992,
+      "sha256": "39ccc8022992a71790e8117cd2e0231e136a0d6c79c4902ab7e6cbf9dfd36839"
+    },
+    {
+      "path": "/private/tmp/dta-direct-final-performance-preparation-01/root-binding-cost-investigation-01/api-review-01.json",
+      "bytes": 2777,
+      "sha256": "59adf56874ceef38c5cb00fe4d5177670ea6eae07182143e5220ad85f4e07e8f"
+    }
+  ],
+  "functional_scope": "Fresh present/native/source/package gates complete under their exact review scopes and known warning/skip/diagnostic limits. Final source has20555 present and15335 native passing assertions; zero failed expectations/errors.201 exact optional-dplyr native skips remain explicit.",
+  "performance_decision": {
+    "allocation_scaling": "Existing selector/copy/scan, bounded depth and retained/released memory budgets pass. Three historical filter regressions are resolved in final fresh paired whole-row measurements. This is not a universal allocation decrease.",
+    "timing_investigations": "All final flagged workloads have completed applicable saved-data/source investigation and required bounded repeats. Joint threshold remains >10% and >1ms; all signed differences are retained.",
+    "remaining_costs": [
+      "Twelve previously repeated million-row base-R read flags recur; known access-path effects and unproved optimization opportunities remain, with no irreducibility claim.",
+      "Four high-cardinality nesting flags against the old weaker-contract public route remain; final improves against the fixed safe reference.",
+      "All twelve same-install selector-pipeline repeated comparisons flag, adding1.107\u20131.256ms; direct publication/planning differs from one-snapshot/one-close reference.",
+      "Initial sixteen bracket cross-build flags do not recur in two complete later pairs; allocation increases recur, and positive literal-index costs persist.",
+      "Four bind_cols safe-reference flags recur in all three final pairs, adding1.231\u20131.358ms. Selected final profile reservations explain560672of580272R allocation bytes, not all elapsed time.",
+      "Wide row-binding repeats remain1.862\u20132.720ms slower than safe, below the ratio threshold; original full-grid flag remains.",
+      "Row, grouping and join allocation increases and all observed finite scaling limits remain in complete signed tables."
+    ],
+    "claim_limit": "Accurately reported residual costs satisfy the handoff investigation/reporting requirement; no blanket no-regression, universal direct-speedup, causal attribution to a single stage or irreducible-cost claim."
+  },
+  "downstream_public_aggregate": {
+    "blocks_per_run": 507,
+    "unchanged_failing_blocks": 6,
+    "unchanged_failed_expectations": 10,
+    "skipped_blocks_per_run": 2,
+    "no_column_reallocation_warning": true,
+    "original_installation_restored_and_verified": true,
+    "checkout_and_data_unchanged": true,
+    "scope": "No-new-regression comparison; not all-tests-passed. Detailed foreign repository records remain local."
+  },
+  "retained_failures": [
+    "Original broad coordinator failed only at final heap-comparator configuration schema; all preceding measurement phases completed and separate one-literal corrected comparator succeeded against unchanged observations.",
+    "First restricted binding repeat failed its retained terminal full-grid count after selected cases; fresh corrected six-job repeats are separate and complete. Failed-run samples are excluded from accepted repeats."
+  ],
+  "still_required": [
+    "Final selected-content origin and exact archive transport/publication checks",
+    "Final integrated prose and required evidence PR CI",
+    "Normal evidence merge, unchanged package identity verification, then #172 closure",
+    "Resolve queued jbearak/raven#758 afterward"
+  ],
+  "no_production_change_for_this_disposition": true
+}

@@ -12,6 +12,28 @@ decisions are recorded in that plan.
 
 ## Stages 1 through 9 implemented; final acceptance active
 
+### Final merged-source acceptance and evidence
+
+All nine implementation stages have merged. Stage 9 evidence PR [#218](https://github.com/jbearak/dta-parser/pull/218), bracket feature PR [#220](https://github.com/jbearak/dta-parser/pull/220) for #213, and reader research PR [#221](https://github.com/jbearak/dta-parser/pull/221) for #216 have also merged normally. The resulting source is `4c2d1f9c2683c15345bb06294ff5fe2d55980f51`, package tree `abc1117250e874353d3cc4fe90f2d8e770b25558`, including the independently merged Raven update in PR #219. The research prototypes remain private experiments.
+
+Fresh checks of that exact merge passed the full present suite (1,166 blocks, 20,555 assertions, six established warnings, no failures/errors/skips) and the full host native-only source gate (1,166 blocks, 15,335 assertions, three established warnings, 201 exact optional-dplyr skips, no failures/errors). All 27 executable help topics, eleven declared children, two actual forks and 150 native/example library guards completed. All 16 package commands returned zero, with independent chain and warning/conformance reviews clear. The three package-check warnings, two notes, nested symbol-inspection failure and separate loopback capability skip retain their established scopes. Source, installed and packaged NOTICE bytes match.
+
+The actual fertility baseline/candidate comparison completed 507 test blocks in each, with the same six failing blocks and ten failed expectations, two skips, no new failure conditions, and verified restoration. Foreign source, data, test names and detailed reports remain local.
+
+The independently reviewed final broad matrix has 252 cross-build operation pairs: the twelve known million-row read flags remain, and four within-current direct-versus-safe pipeline comparisons are covered by the completed repeat disposition. Existing selector and memory budgets pass. The original final heap comparator's schema failure and the separate successful corrected comparison are both retained. Broad files contain aggregate medians and iteration/GC counts, not raw timing vectors.
+
+The fresh row comparison against predecessor `235b6354` has 396 relations and 3,696 retained raw samples, with no joint timing flags. All 132 final public medians are lower than predecessor public medians; warmed allocation nevertheless increases in 20 cases, by up to 8,402,200 bytes.
+
+Reviewed groups comparisons against predecessor `4d07d656` have no joint flags in 108 relations, while eight medians exceed each reference and nesting allocation increases remain. The four high-cardinality cases still flag against old public, whose foreign-write contract is weaker; final medians are 68.953–318.376 ms. For those four high-cardinality cases, final nesting is faster and allocates less than the fixed safe reference. The 3.630/3.681 allocation ratios describe fourfold group-count scaling, not final-versus-predecessor allocation.
+
+Three complete bracket pairs retain 4,536 raw timings. Neither additional pair reproduces the original sixteen cross-build or one within-final joint flags. Positive route costs and allocation differences nevertheless recur, including the original string literal penalty in all three pairs. The full signed comparisons and build orders remain separate; this does not isolate #213's effect or imply zero overhead.
+
+All twelve targeted pipeline comparisons reproduce the same-install direct-versus-safe cost (+1.107–1.256 ms). Source review identifies repeated result-context/publication work as an investigation, not an isolated cause or irreducible overhead. The primary joins/binding grid has 120 comparisons, 1,260 raw timings and five safe-reference flags, with no old-public timing flags and substantial signed allocation increases. Three restricted pairs reproduce all four bind_cols flags, adding 1.231–1.358 ms, while positive row-bind costs remain below the ratio threshold. The original full-grid flag and failed terminal-count attempt remain separate. The selected one-million-row, eight-column profile attributes 560,672 of the 580,272-byte allocation gap to intermediate reservations, without claiming this explains all latency. Local allocation/scaling assessment and timing investigations are complete with these residual costs. Final evidence origin, dedicated prose review, archive transport and exact reassembly are complete. The evidence PR runs the full 17-job absence/compatibility and package CI matrix; #172 closure follows successful CI and verification of the normal merge with unchanged package identity.
+
+The [final acceptance record](../research/direct-dibble-final-acceptance.md) carries the exact sources, receipts and known limits. Its [evidence bundle](../research/direct-dibble-final-evidence/README.md) records the reviewed selection, exact archive and replay limits. The evidence PR carries the final CI and merge disposition for #172. Earlier sections below retain the stage-specific checkpoints and their original measurement identities; their historical pending statements are not current task status.
+
+### Earlier Stage 6–9 checkpoints
+
 Stage 6 [PR #209](https://github.com/jbearak/dta-parser/pull/209) merged normally
 on September 8, 2026 at 20:33:25 UTC as
 `4d07d656dc95cd2cf5fae12c1dc08d6fae4f8d2c`, with reviewed head
