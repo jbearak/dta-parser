@@ -1,6 +1,6 @@
 Package: dtatools
 Title: Fast Reader and Writer for Stata DTA Files
-Version: 0.8.0
+Version: 0.9.0
 Authors@R: c(
     person("Jonathan", "Bearak", role = c("aut", "cre"),
         email = "jonathan@bearak.net"),
