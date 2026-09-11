@@ -1,0 +1,5 @@
+"file","test","warning"
+"test-dibble.R","gen and := accept factors as mutate does",1
+"test-dibble.R","logical replacement storage through dplyr",1
+"test-dibble.R","copying replacement isolates vectors and preserves grouping",2
+"test-dibble.R","copying replacement and regrouping through dplyr",2

@@ -1,0 +1,24 @@
+{
+  "r_cmd_check": {
+    "errors": 0,
+    "warnings": 3,
+    "notes": 2
+  },
+  "full_suite": {
+    "passed": 21092,
+    "failed": 0,
+    "warnings": 6,
+    "skipped": 0
+  },
+  "new_tests": {
+    "passed": 318,
+    "failed": 0,
+    "warnings": 0,
+    "skipped": 0
+  },
+  "benchmark_jobs": 211,
+  "timing_samples": 630,
+  "memory_samples": 90,
+  "package_source_matches_measured_R_files": true,
+  "test_source_sha256": "f071dbea70357b7c01abfc7453793fe75ec031fff0293c0dc126942c5012e170"
+}

@@ -1,0 +1,3167 @@
+[
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "generate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures",
+      "/private/tmp/direct-dibble-readers/run-01/generate.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 529170432,
+    "start": 1789155020.9067771,
+    "duration": 1.4662389755249023
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-double-small.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 117276672,
+    "start": 1789155022.557448,
+    "duration": 0.21735906600952148
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-double-small.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 116555776,
+    "start": 1789155022.775032,
+    "duration": 0.2165999412536621
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-double-small.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 99467264,
+    "start": 1789155023.0681212,
+    "duration": 0.20340871810913086
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-double-small.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 99368960,
+    "start": 1789155023.271774,
+    "duration": 0.2023940086364746
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-double-wide.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 156516352,
+    "start": 1789155023.550591,
+    "duration": 0.2844228744506836
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-double-wide.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 156368896,
+    "start": 1789155023.835288,
+    "duration": 0.27577710151672363
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-double-wide.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 137920512,
+    "start": 1789155024.201482,
+    "duration": 0.27513694763183594
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-double-wide.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 118521856,
+    "start": 1789155024.476912,
+    "duration": 0.2660861015319824
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-double-tall.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 198246400,
+    "start": 1789155024.834023,
+    "duration": 1.8549160957336426
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-double-tall.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 197427200,
+    "start": 1789155026.6892002,
+    "duration": 1.8640928268432617
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-double-tall.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 176144384,
+    "start": 1789155028.713774,
+    "duration": 1.8451130390167236
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-double-tall.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 163250176,
+    "start": 1789155030.55917,
+    "duration": 1.8288991451263428
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-mixed.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134955008,
+    "start": 1789155032.539264,
+    "duration": 0.4245278835296631
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-mixed.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 132890624,
+    "start": 1789155032.964122,
+    "duration": 0.42728400230407715
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-mixed.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 113410048,
+    "start": 1789155033.593803,
+    "duration": 0.4263639450073242
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-mixed.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 112787456,
+    "start": 1789155034.0204859,
+    "duration": 0.42033910751342773
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-string-low.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 130727936,
+    "start": 1789155034.644771,
+    "duration": 0.33510613441467285
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-string-low.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 129073152,
+    "start": 1789155034.9801679,
+    "duration": 0.3359260559082031
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-string-low.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 115884032,
+    "start": 1789155035.572822,
+    "duration": 0.3342618942260742
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-string-low.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 115490816,
+    "start": 1789155035.907394,
+    "duration": 0.33089208602905273
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-string-high.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 283000832,
+    "start": 1789155036.486971,
+    "duration": 0.43796491622924805
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-string-high.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 282050560,
+    "start": 1789155036.925257,
+    "duration": 0.44303107261657715
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-string-high.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 264863744,
+    "start": 1789155037.682827,
+    "duration": 0.444782018661499
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-string-high.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 263602176,
+    "start": 1789155038.1279528,
+    "duration": 0.44303107261657715
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-strL.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 137117696,
+    "start": 1789155038.882468,
+    "duration": 0.365023136138916
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-strL.dta.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 136478720,
+    "start": 1789155039.247802,
+    "duration": 0.36389803886413574
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-strL.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 172818432,
+    "start": 1789155039.875833,
+    "duration": 0.3593611717224121
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-strL.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 172834816,
+    "start": 1789155040.235528,
+    "duration": 0.3454151153564453
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-baseline-ordinary-arrow.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 117473280,
+    "start": 1789155040.845053,
+    "duration": 0.4296748638153076
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "validate",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/validate-candidate-ordinary-arrow.arrow.rds"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 118407168,
+    "start": 1789155041.2750459,
+    "duration": 0.4251723289489746
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 137183232,
+    "start": 1789155041.91245,
+    "duration": 2.5374999046325684
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 140541952,
+    "start": 1789155044.45038,
+    "duration": 1.9343507289886475
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125009920,
+    "start": 1789155046.385094,
+    "duration": 0.2088942527770996
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125042688,
+    "start": 1789155046.5943449,
+    "duration": 0.20856404304504395
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 145326080,
+    "start": 1789155046.803293,
+    "duration": 2.534379005432129
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 140394496,
+    "start": 1789155049.338034,
+    "duration": 2.0816121101379395
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125517824,
+    "start": 1789155051.419989,
+    "duration": 0.20597290992736816
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125583360,
+    "start": 1789155051.626335,
+    "duration": 0.20382308959960938
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 201719808,
+    "start": 1789155051.830536,
+    "duration": 2.577301025390625
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 202014720,
+    "start": 1789155054.408227,
+    "duration": 3.2313570976257324
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143802368,
+    "start": 1789155057.6399748,
+    "duration": 0.22475314140319824
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 142245888,
+    "start": 1789155057.865083,
+    "duration": 0.2174220085144043
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 206340096,
+    "start": 1789155058.082881,
+    "duration": 2.5385780334472656
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 206798848,
+    "start": 1789155060.621849,
+    "duration": 2.263529062271118
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143917056,
+    "start": 1789155062.885773,
+    "duration": 0.2131340503692627
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 144162816,
+    "start": 1789155063.0992901,
+    "duration": 0.21649694442749023
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 342016000,
+    "start": 1789155063.31615,
+    "duration": 3.1138229370117188
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 353452032,
+    "start": 1789155066.430349,
+    "duration": 3.0412328243255615
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 173506560,
+    "start": 1789155069.471993,
+    "duration": 0.21382784843444824
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 174850048,
+    "start": 1789155069.686184,
+    "duration": 0.2119770050048828
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 332398592,
+    "start": 1789155069.898556,
+    "duration": 2.5784358978271484
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 399474688,
+    "start": 1789155072.477397,
+    "duration": 2.6663689613342285
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 189251584,
+    "start": 1789155075.144171,
+    "duration": 0.20695090293884277
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 189464576,
+    "start": 1789155075.351496,
+    "duration": 0.20721721649169922
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 310263808,
+    "start": 1789155075.55911,
+    "duration": 2.5240302085876465
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 270008320,
+    "start": 1789155078.083584,
+    "duration": 2.074838876724243
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134643712,
+    "start": 1789155080.158839,
+    "duration": 0.21311688423156738
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134479872,
+    "start": 1789155080.372364,
+    "duration": 0.21123981475830078
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 300580864,
+    "start": 1789155080.583974,
+    "duration": 2.836333990097046
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 315621376,
+    "start": 1789155083.420722,
+    "duration": 2.0216329097747803
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 136511488,
+    "start": 1789155085.442778,
+    "duration": 0.20577287673950195
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 136462336,
+    "start": 1789155085.648947,
+    "duration": 0.20624089241027832
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 393068544,
+    "start": 1789155085.8555799,
+    "duration": 2.9086599349975586
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 393232384,
+    "start": 1789155088.7646852,
+    "duration": 2.4753777980804443
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134742016,
+    "start": 1789155091.2404742,
+    "duration": 0.2139289379119873
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134610944,
+    "start": 1789155091.4547782,
+    "duration": 0.2118668556213379
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 374489088,
+    "start": 1789155091.6670442,
+    "duration": 2.302623987197876
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 370049024,
+    "start": 1789155093.9701061,
+    "duration": 2.679473876953125
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141574144,
+    "start": 1789155096.650017,
+    "duration": 0.20639896392822266
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141361152,
+    "start": 1789155096.8568199,
+    "duration": 0.20958590507507324
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1766064128,
+    "start": 1789155097.066802,
+    "duration": 2.3560690879821777
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1801568256,
+    "start": 1789155099.423351,
+    "duration": 2.2936577796936035
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 287375360,
+    "start": 1789155101.7174988,
+    "duration": 0.23784708976745605
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 286834688,
+    "start": 1789155101.95578,
+    "duration": 0.23673391342163086
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1850114048,
+    "start": 1789155102.192956,
+    "duration": 2.0343379974365234
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1397948416,
+    "start": 1789155104.2278001,
+    "duration": 2.130643844604492
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 289636352,
+    "start": 1789155106.358923,
+    "duration": 0.22843694686889648
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 289734656,
+    "start": 1789155106.5878131,
+    "duration": 0.231475830078125
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 275890176,
+    "start": 1789155106.8197272,
+    "duration": 1.9056918621063232
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 274628608,
+    "start": 1789155108.725837,
+    "duration": 1.8800320625305176
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143966208,
+    "start": 1789155110.606308,
+    "duration": 0.22115397453308105
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143671296,
+    "start": 1789155110.828119,
+    "duration": 0.22044706344604492
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 472956928,
+    "start": 1789155111.048987,
+    "duration": 1.8314521312713623
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 488603648,
+    "start": 1789155112.880894,
+    "duration": 1.93227219581604
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 200572928,
+    "start": 1789155114.813597,
+    "duration": 0.211137056350708
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 198819840,
+    "start": 1789155115.025219,
+    "duration": 0.2106029987335205
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-baseline-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 231276544,
+    "start": 1789155115.236246,
+    "duration": 1.792064905166626
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-1-candidate-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 285163520,
+    "start": 1789155117.028757,
+    "duration": 2.699718713760376
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-baseline-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141639680,
+    "start": 1789155119.728928,
+    "duration": 0.21531009674072266
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-1-candidate-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141754368,
+    "start": 1789155119.94464,
+    "duration": 0.21255087852478027
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 140509184,
+    "start": 1789155120.157632,
+    "duration": 1.940321922302246
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 137166848,
+    "start": 1789155122.098409,
+    "duration": 2.5728981494903564
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125059072,
+    "start": 1789155124.671747,
+    "duration": 0.21212506294250488
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125124608,
+    "start": 1789155124.884319,
+    "duration": 0.2097768783569336
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141049856,
+    "start": 1789155125.094552,
+    "duration": 2.078845977783203
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 144850944,
+    "start": 1789155127.173853,
+    "duration": 2.536684989929199
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125485056,
+    "start": 1789155129.7110121,
+    "duration": 0.20865988731384277
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125648896,
+    "start": 1789155129.920125,
+    "duration": 0.2043309211730957
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 202260480,
+    "start": 1789155130.124922,
+    "duration": 3.2209949493408203
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 201572352,
+    "start": 1789155133.3463838,
+    "duration": 2.58144211769104
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 142622720,
+    "start": 1789155135.928311,
+    "duration": 0.21913480758666992
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143736832,
+    "start": 1789155136.1479151,
+    "duration": 0.22442007064819336
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 205996032,
+    "start": 1789155136.372821,
+    "duration": 2.2365989685058594
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 206716928,
+    "start": 1789155138.609905,
+    "duration": 2.538900852203369
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 144146432,
+    "start": 1789155141.14929,
+    "duration": 0.2178969383239746
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143867904,
+    "start": 1789155141.367666,
+    "duration": 0.2143840789794922
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 345374720,
+    "start": 1789155141.582535,
+    "duration": 3.0669069290161133
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 338116608,
+    "start": 1789155144.64993,
+    "duration": 3.124582052230835
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 173424640,
+    "start": 1789155147.775,
+    "duration": 0.21382784843444824
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 173588480,
+    "start": 1789155147.9893272,
+    "duration": 0.21360468864440918
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 380796928,
+    "start": 1789155148.203412,
+    "duration": 2.6964588165283203
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 299892736,
+    "start": 1789155150.900384,
+    "duration": 2.5746569633483887
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 189300736,
+    "start": 1789155153.47552,
+    "duration": 0.20786428451538086
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 189153280,
+    "start": 1789155153.6838531,
+    "duration": 0.20663881301879883
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 290324480,
+    "start": 1789155153.890961,
+    "duration": 2.0747251510620117
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 297091072,
+    "start": 1789155155.966173,
+    "duration": 2.543314218521118
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134610944,
+    "start": 1789155158.5099788,
+    "duration": 0.2117922306060791
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134627328,
+    "start": 1789155158.722243,
+    "duration": 0.2136530876159668
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 264880128,
+    "start": 1789155158.936367,
+    "duration": 2.006359815597534
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 301907968,
+    "start": 1789155160.943212,
+    "duration": 2.8310189247131348
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 136560640,
+    "start": 1789155163.774732,
+    "duration": 0.20908904075622559
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 136544256,
+    "start": 1789155163.984328,
+    "duration": 0.20946288108825684
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 384466944,
+    "start": 1789155164.194279,
+    "duration": 2.47343111038208
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 384499712,
+    "start": 1789155166.6682198,
+    "duration": 2.9174611568450928
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134496256,
+    "start": 1789155169.586189,
+    "duration": 0.2138509750366211
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134709248,
+    "start": 1789155169.80055,
+    "duration": 0.21428203582763672
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 365740032,
+    "start": 1789155170.015349,
+    "duration": 2.7138822078704834
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 378175488,
+    "start": 1789155172.7297878,
+    "duration": 2.2674062252044678
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141574144,
+    "start": 1789155174.997725,
+    "duration": 0.21349287033081055
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141918208,
+    "start": 1789155175.211732,
+    "duration": 0.20756816864013672
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1568112640,
+    "start": 1789155175.4198332,
+    "duration": 2.315513849258423
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1539407872,
+    "start": 1789155177.735902,
+    "duration": 2.3415048122406006
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 290308096,
+    "start": 1789155180.077965,
+    "duration": 0.24149394035339355
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 289669120,
+    "start": 1789155180.3199732,
+    "duration": 0.24637794494628906
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1717452800,
+    "start": 1789155180.566889,
+    "duration": 2.1130809783935547
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1845723136,
+    "start": 1789155182.680553,
+    "duration": 2.078778028488159
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 289636352,
+    "start": 1789155184.7599611,
+    "duration": 0.2394099235534668
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 290258944,
+    "start": 1789155184.999894,
+    "duration": 0.23700904846191406
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 274612224,
+    "start": 1789155185.237488,
+    "duration": 1.9025061130523682
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 277266432,
+    "start": 1789155187.140533,
+    "duration": 1.926063060760498
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 144031744,
+    "start": 1789155189.067124,
+    "duration": 0.22046327590942383
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 144048128,
+    "start": 1789155189.2880929,
+    "duration": 0.22142314910888672
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 488456192,
+    "start": 1789155189.510031,
+    "duration": 1.930624008178711
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 473055232,
+    "start": 1789155191.441195,
+    "duration": 1.8441028594970703
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 198836224,
+    "start": 1789155193.285832,
+    "duration": 0.21119904518127441
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 198901760,
+    "start": 1789155193.497566,
+    "duration": 0.2098090648651123
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-candidate-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 252788736,
+    "start": 1789155193.707895,
+    "duration": 2.7044479846954346
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-2-baseline-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 235913216,
+    "start": 1789155196.412871,
+    "duration": 1.7833170890808105
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-candidate-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141737984,
+    "start": 1789155198.1967082,
+    "duration": 0.21207380294799805
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-2-baseline-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141950976,
+    "start": 1789155198.4092748,
+    "duration": 0.21475625038146973
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 137183232,
+    "start": 1789155198.6245341,
+    "duration": 2.5387938022613525
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 140804096,
+    "start": 1789155201.163834,
+    "duration": 1.9295079708099365
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125042688,
+    "start": 1789155203.09389,
+    "duration": 0.21237421035766602
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-double-small.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125009920,
+    "start": 1789155203.306814,
+    "duration": 0.20976901054382324
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 144883712,
+    "start": 1789155203.517141,
+    "duration": 2.54730486869812
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 140787712,
+    "start": 1789155206.065001,
+    "duration": 2.0859129428863525
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125517824,
+    "start": 1789155208.151457,
+    "duration": 0.20372700691223145
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-small.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-double-small.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 125566976,
+    "start": 1789155208.3556921,
+    "duration": 0.20473885536193848
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 200916992,
+    "start": 1789155208.5609548,
+    "duration": 2.580756187438965
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 202260480,
+    "start": 1789155211.1422641,
+    "duration": 3.224587917327881
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143458304,
+    "start": 1789155214.367438,
+    "duration": 0.22492194175720215
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-double-wide.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 142557184,
+    "start": 1789155214.5929,
+    "duration": 0.21752309799194336
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 207044608,
+    "start": 1789155214.8109708,
+    "duration": 2.5366742610931396
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 205733888,
+    "start": 1789155217.348223,
+    "duration": 2.227227210998535
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143769600,
+    "start": 1789155219.576007,
+    "duration": 0.211259126663208
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-wide.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-double-wide.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143966208,
+    "start": 1789155219.7878258,
+    "duration": 0.21655035018920898
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 350273536,
+    "start": 1789155220.0049138,
+    "duration": 3.1232073307037354
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 365625344,
+    "start": 1789155223.128704,
+    "duration": 3.0423920154571533
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 173359104,
+    "start": 1789155226.17167,
+    "duration": 0.21376800537109375
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-double-tall.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 173473792,
+    "start": 1789155226.385995,
+    "duration": 0.2130260467529297
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 391823360,
+    "start": 1789155226.5995991,
+    "duration": 2.5841500759124756
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 381059072,
+    "start": 1789155229.1843278,
+    "duration": 2.665800094604492
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 189104128,
+    "start": 1789155231.850708,
+    "duration": 0.20769500732421875
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/double-tall.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-double-tall.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 189530112,
+    "start": 1789155232.058997,
+    "duration": 0.2079601287841797
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 256147456,
+    "start": 1789155232.26752,
+    "duration": 2.5346519947052
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 294125568,
+    "start": 1789155234.802746,
+    "duration": 2.0805158615112305
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134692864,
+    "start": 1789155236.883822,
+    "duration": 0.2122941017150879
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-mixed.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134578176,
+    "start": 1789155237.096693,
+    "duration": 0.2113499641418457
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 301056000,
+    "start": 1789155237.3086238,
+    "duration": 2.8476102352142334
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 264994816,
+    "start": 1789155240.157071,
+    "duration": 2.010126829147339
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 136298496,
+    "start": 1789155242.1681669,
+    "duration": 0.20595622062683105
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/mixed.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-mixed.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 136626176,
+    "start": 1789155242.375045,
+    "duration": 0.20678400993347168
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 281772032,
+    "start": 1789155242.5824,
+    "duration": 2.8917129039764404
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 287637504,
+    "start": 1789155245.474724,
+    "duration": 2.4980170726776123
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134610944,
+    "start": 1789155247.9733381,
+    "duration": 0.21464991569519043
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-string-low.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 134463488,
+    "start": 1789155248.1885571,
+    "duration": 0.21130585670471191
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 298565632,
+    "start": 1789155248.400439,
+    "duration": 2.260056734085083
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 366198784,
+    "start": 1789155250.661087,
+    "duration": 2.7039520740509033
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141590528,
+    "start": 1789155253.3660202,
+    "duration": 0.20795392990112305
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-low.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-string-low.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141574144,
+    "start": 1789155253.574563,
+    "duration": 0.20845794677734375
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1565622272,
+    "start": 1789155253.783587,
+    "duration": 2.344388961791992
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1588805632,
+    "start": 1789155256.1286132,
+    "duration": 2.289334774017334
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 288292864,
+    "start": 1789155258.418578,
+    "duration": 0.2381119728088379
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-string-high.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 284655616,
+    "start": 1789155258.657334,
+    "duration": 0.23882079124450684
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1385742336,
+    "start": 1789155258.896787,
+    "duration": 2.0343000888824463
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 1412415488,
+    "start": 1789155260.931756,
+    "duration": 2.1227660179138184
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 289226752,
+    "start": 1789155263.0551932,
+    "duration": 0.22884583473205566
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/string-high.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-string-high.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 289538048,
+    "start": 1789155263.284647,
+    "duration": 0.23148679733276367
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 277266432,
+    "start": 1789155263.516757,
+    "duration": 1.9265878200531006
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 274644992,
+    "start": 1789155265.443966,
+    "duration": 1.8845722675323486
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143966208,
+    "start": 1789155267.329161,
+    "duration": 0.2207951545715332
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.dta",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-strL.dta.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 143720448,
+    "start": 1789155267.55056,
+    "duration": 0.2199850082397461
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 473104384,
+    "start": 1789155267.771134,
+    "duration": 1.8270909786224365
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 488439808,
+    "start": 1789155269.598848,
+    "duration": 1.9137358665466309
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 198901760,
+    "start": 1789155271.513217,
+    "duration": 0.21037912368774414
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/strL.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-strL.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 198950912,
+    "start": 1789155271.7242088,
+    "duration": 0.21042299270629883
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-baseline-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 311721984,
+    "start": 1789155271.9352572,
+    "duration": 1.7910137176513672
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "time",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/time-3-candidate-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 223248384,
+    "start": 1789155273.726911,
+    "duration": 2.7367680072784424
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/baseline-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-baseline-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141918208,
+    "start": 1789155276.464288,
+    "duration": 0.21584200859069824
+  },
+  {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "/Users/jmb/repos/dta-parser/benchmarks/r-reader-dibble/worker.R",
+      "memory",
+      "/private/tmp/direct-dibble-readers/candidate-lib",
+      "/private/tmp/direct-dibble-readers/run-01/fixtures/ordinary-arrow.arrow",
+      "/private/tmp/direct-dibble-readers/run-01/memory-3-candidate-ordinary-arrow.arrow.csv"
+    ],
+    "exit_code": 0,
+    "peak_rss_bytes": 141819904,
+    "start": 1789155276.6807191,
+    "duration": 0.2114858627319336
+  }
+]

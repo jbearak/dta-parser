@@ -1,0 +1,16 @@
+"case","format","rows","columns","file","file_bytes"
+"double-small","dta",1000,8,"double-small.dta",69675
+"double-small","arrow",1000,8,"double-small.arrow",69218
+"double-wide","dta",1000,1024,"double-wide.dta",8847915
+"double-wide","arrow",1000,1024,"double-wide.arrow",8738746
+"double-tall","dta",250000,16,"double-tall.dta",32010795
+"double-tall","arrow",250000,16,"double-tall.arrow",32511978
+"mixed","dta",10000,128,"mixed.dta",4972475
+"mixed","arrow",10000,128,"mixed.arrow",5949938
+"string-low","dta",10000,128,"string-low.dta",3922475
+"string-low","arrow",10000,128,"string-low.arrow",9186146
+"string-high","dta",10000,128,"string-high.dta",14162475
+"string-high","arrow",10000,128,"string-high.arrow",19426146
+"strL","dta",1000,32,"strL.dta",7077035
+"strL","arrow",1000,32,"strL.arrow",67474786
+"ordinary-arrow","arrow",10000,128,"ordinary-arrow.arrow",6194786

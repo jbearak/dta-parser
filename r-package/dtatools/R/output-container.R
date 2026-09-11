@@ -43,7 +43,8 @@
 }
 
 .finalize_output_container <- function(native, output, .name_repair,
-                                       stored = NULL, profiled = TRUE) {
+                                       stored = NULL, profiled = TRUE,
+                                       reader = FALSE) {
     output <- .normalize_output_container(output, stored, profiled)
     source_names <- names(native)
     if (is.null(source_names)) source_names <- rep("", length(native))
@@ -51,6 +52,9 @@
         source_names, repair = .name_repair, repair_arg = ".name_repair"
     )
     names(native) <- repaired
+    # Native readers already return a rectangular tibble. Keep its shell
+    # until metadata is attached, then publish through the reader constructor.
+    if (reader && identical(output, "dibble")) return(native)
     if (output %in% c("tibble", "dibble")) {
         # A dibble starts as this tibble and is marked by
         # `.complete_output_container()` once the caller has attached
@@ -68,9 +72,12 @@
 # `output` is the caller's request, resolved again here so the reader does
 # not have to thread the normalized value through.
 .complete_output_container <- function(result, output, stored = NULL,
-                                       profiled = TRUE) {
+                                       profiled = TRUE, reader = FALSE) {
     resolved <- .normalize_output_container(output, stored, profiled)
-    if (identical(resolved, "dibble")) return(.as_dibble(result))
+    if (identical(resolved, "dibble")) {
+        if (reader) return(.new_reader_dibble(result))
+        return(.as_dibble(result))
+    }
     if (identical(resolved, "data.table")) return(reserve_columns(result))
     .reserve_column_capacity(result)
 }

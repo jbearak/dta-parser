@@ -335,7 +335,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     }
 
     dataset_label <- attr(native, "label", exact = TRUE)
-    result <- .finalize_output_container(native, output, .name_repair)
+    result <- .finalize_output_container(native, output, .name_repair, reader = TRUE)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     result <- .copy_dta_metadata_attributes(native, result)
     if (record_datasig) attr(result, "datasig") <- disk_signature
@@ -343,7 +343,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     if (keep_source_rows) {
         attr(result, "dtatools.source.rows") <- source_rows
     }
-    .complete_output_container(result, output)
+    .complete_output_container(result, output, reader = TRUE)
 }
 
 .normalize_use_numeric_altrep <- function(value) {

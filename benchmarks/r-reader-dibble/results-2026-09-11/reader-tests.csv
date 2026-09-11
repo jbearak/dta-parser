@@ -1,0 +1,7 @@
+"file","test","passed","failed","error","warning","skipped"
+"test-reader-dibble.R","direct reader dibbles preserve the general constructor's semantics",256,0,FALSE,0,FALSE
+"test-reader-dibble.R","direct readers retain name repair and empty projection rules",16,0,FALSE,0,FALSE
+"test-reader-dibble.R","direct reader ownership survives exports writes and file removal",20,0,FALSE,0,FALSE
+"test-reader-dibble.R","direct Arrow dibbles normalize ordinary R columns and retain metadata",16,0,FALSE,0,FALSE
+"test-reader-dibble.R","direct Arrow dibbles repair declarations that do not fit the values",6,0,FALSE,0,FALSE
+"test-reader-dibble.R","direct DTA dibbles widen strings expanded by decoding",4,0,FALSE,0,FALSE

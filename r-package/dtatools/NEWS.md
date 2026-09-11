@@ -1,5 +1,10 @@
 # dtatools 0.8.0.9000
 
+* `read_dta()` and `read_arrow()` construct dibbles directly from the native
+  reader's fresh columns, avoiding repeated table validation and column
+  capture. String declarations and ordinary Arrow columns still follow the
+  general dibble typing rules.
+
 * New columns added by `gen()`, `egen()` and dibble `:=` automatically reserve
   space when needed. Growth warns, returns an isolated table and rebinds safe
   caller targets; functions must return that table for caller assignment.

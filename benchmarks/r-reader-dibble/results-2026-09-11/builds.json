@@ -1,0 +1,29 @@
+{
+  "baseline_commit": "5024813cfb8523363eae46543d6e1fb24dcf6fd0",
+  "candidate_source": {
+    "R/dibble.R": "ee46009516307607d8a1683fc3e4d770a17693b08c0f608796d2ea727e98f1f3",
+    "R/output-container.R": "12acc9fb1269b2d5ee5a5aa65346e76909161aff2f3c2c2a5a0706b35052df38",
+    "R/read-dta.R": "352969b408f8d4ae936d97dc7af92770867079113a06583b4a0d394a8deec396",
+    "R/read-arrow.R": "dc4251e698a28d8937cb824a71db60c249ca69bd33a854558f7d9ccfeb62cc94"
+  },
+  "baseline_source": {
+    "R/dibble.R": "5ac6d7267540a65f5e0f7fca01a3ce64fb71fbff880fdc26beb0641c36b118ad",
+    "R/output-container.R": "b84d0c3a9db5079c49ec0582b8010740c0ead96da0fe1397a840101d493bdefc",
+    "R/read-dta.R": "5e36dbd0a22afe767427c50dc22b255fc5d6e63f5c8c825bbd475767e34c7fc0",
+    "R/read-arrow.R": "9cd6da8cae05ec6fef85cb1755f5798150ae4e38ebddfbeed2f7ac3501475d88"
+  },
+  "installed": {
+    "baseline": {
+      "DESCRIPTION": "915030c3a38b7d2b91c7eec928dbfe456c4d3b4bbd60499c6202a9ae7b4d494d",
+      "R/dtatools.rdb": "9b985bc2310290efbdc7d439897db5d43251c32850db576cd43eb6f4446672cd",
+      "R/dtatools.rdx": "185e63748d8a2971ee2cbf702901a2bf09c4bb1c8568de30e996e77550344082",
+      "libs/dtatools.so": "9d23586db7912f659a4ec76262720a846b0e835ca2dae61f5cf9838e6b1b7d51"
+    },
+    "candidate": {
+      "DESCRIPTION": "afda0cf08bf9c4a98a4deedde649ed12d6c65a559a6e09dc4c062ac4ffcf55fe",
+      "R/dtatools.rdb": "7cb7073086cc24e87898477e7b34aa4638135b78a7fc04923ebe1b9abfcdce87",
+      "R/dtatools.rdx": "1ec8017223dbef817f86a92983029028c77981aabc627e8519d40900c639b6bc",
+      "libs/dtatools.so": "9d23586db7912f659a4ec76262720a846b0e835ca2dae61f5cf9838e6b1b7d51"
+    }
+  }
+}
