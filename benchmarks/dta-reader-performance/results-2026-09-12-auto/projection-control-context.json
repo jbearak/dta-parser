@@ -1,0 +1,18 @@
+{
+  "source_commit": "92020d4d3d0457ac7191e929a6b1736e3571b884",
+  "installed": {
+    "DESCRIPTION": "6dfa48d1b9d1bb0036cbc343498a490678082ff4df8f59422647fc6d7d48e69b",
+    "R/dtatools.rdb": "511f30c2e217db935a45ba55f4e365ed3cab2bb0769f86b420425f38a297d182",
+    "R/dtatools.rdx": "bba0dfdc75140a7a0649ba91ed09e12bc1fbb10ed2ee5b223a69b8a5ee7b506a",
+    "libs/dtatools.so": "7763d8d40ed4951c2441d490f83b1c7bbbfec81b2d8ebb8a7396970fa42d32ba"
+  },
+  "installed_files_matched_original_read_phase": true,
+  "hardware": {
+    "machine": "Apple M4 Max",
+    "performance_cores": 12,
+    "efficiency_cores": 4,
+    "source": "local sysctl hw.perflevel{0,1}.{physicalcpu,name}"
+  },
+  "original_control_worker": "projection-threads-worker.R preserves the exact worker for the first 8/automatic control; the current driver adds optional thread counts for the subsequent sweep.",
+  "full_signatures_match": "all configurations in both projection controls"
+}

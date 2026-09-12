@@ -1,5 +1,90 @@
 # Applying Arrow's batch filling to the DTA reader
 
+## Current automatic-thread results
+
+The final reader changes also remove the fixed eight-worker cap from
+`threads = 0` in `read_dta()` and `read_arrow()`. Automatic mode uses CPUs
+available to the process, limited by useful work. Small selections remain
+serial. Explicit positive limits and the `dtatools.threads` option continue
+to override automatic mode. The 8 MiB buffer is unchanged.
+
+A full dtatools-only rerun measured commit
+`92020d4d3d0457ac7191e929a6b1736e3571b884` on the same machine and inputs.
+The India results below use the original four-tool worker protocol, with ten
+fresh reads per dtatools reader. Haven and Stata retain their existing ten-run
+observations; their benchmarks were not rerun.
+
+| Reader | Earlier median | Current median | Current median peak RSS |
+| --- | ---: | ---: | ---: |
+| `read_dta()` | 1.8465 s | 0.821 s | 5.236 GB |
+| `read_arrow()` | 0.6945 s | 0.5995 s | 10.280 GB |
+| haven, retained | 488.204 s | 488.204 s | 35.107 GB |
+| Stata native `use`, retained | 0.5015 s | 0.5015 s | 5.256 GB |
+
+DTA read time fell 55.5% and Arrow 13.7%, with peak RSS effectively unchanged.
+DTA's new range was 0.816 to 0.829 seconds; Arrow's was 0.595 to 0.605.
+Stata remains the fastest full reader in these comparisons. The full corpus
+rerun completed all 1,812 comparable files with matching dimensions. DHS total
+time fell from 79.494 to 69.748 seconds, MICS from 62.108 to 60.532, and NSFG
+from 20.889 to 19.800. The [documentation PR](https://github.com/jbearak/dta-parser/pull/225)
+contains the full corpus, warm-read, memory and projection report.
+
+More workers did not help India's 100-column projection. Its automatic-mode
+median increased from 0.248 to 0.263 seconds. A matched control on the same
+new code measured 0.250 seconds at eight workers and 0.262 in automatic mode.
+A subsequent sweep measured ten reads per selection method at each limit:
+
+| Workers | `any_of()` median | `all_of()` median |
+| ---: | ---: | ---: |
+| 1 | 0.422 s | 0.423 s |
+| 2 | 0.235 s | 0.234 s |
+| 4 | 0.236 s | 0.2355 s |
+| 8 | 0.250 s | 0.2495 s |
+| 12 | 0.258 s | 0.257 s |
+| 16 | 0.262 s | 0.2625 s |
+
+The coordinator still reads full row blocks for this projection. It overlaps
+input reading with decoding, and dispatches each block to every worker and
+collects their acknowledgements. With far fewer selected values, decoding can
+keep up with input reading at a smaller worker count. Further decoding gains
+then need not shorten the read, while coordination increases. Shared cache
+and memory traffic may contribute too. This machine has 12 performance cores
+and four efficiency cores, which may also limit scaling; the sweep does not
+separately measure these causes or pin threads to cores.
+
+Keep automatic use of available CPUs as the default, and document explicit
+limits for workloads that benefit. On this machine, `threads = 2L` was best
+for the narrow projection. The full-file tuning below benefited through
+twelve workers, with little further gain at sixteen. Automatic mode exposes
+available CPU capacity; it does not predict the fastest count for every read.
+
+All requested conformance suites were rerun. All 280 Rust core tests and 21
+R bridge tests passed, as did clippy, 22 immutable TypeScript fixtures with
+32,085 cell comparisons, ten deterministic native gates, and the full R
+package tests and examples. R CMD check completed with three warnings about
+zstd's macOS target, vendored Makefiles and Rust's `_abort` symbol, plus two
+notes. Haven conformance passed with no skips, including the URL input test;
+labelled and haven-helper interoperability also passed. All GitHub test lanes
+passed at the measured source commit, including the six native R lanes.
+The native test manifest now records the added parallel compact-byte R test
+and the updated test-file hash.
+
+- [India observations](results-2026-09-12-auto/india-10x-observations.csv), [summary](results-2026-09-12-auto/india-10x-summary.csv), [retained comparison](results-2026-09-12-auto/india-comparison.csv) and [provenance](results-2026-09-12-auto/india-10x-provenance.json)
+- [Eight versus automatic summary](results-2026-09-12-auto/projection-threads-summary.csv), [observations](results-2026-09-12-auto/projection-threads-observations.csv) and [provenance](results-2026-09-12-auto/projection-threads-provenance.json)
+- [Projection thread sweep](results-2026-09-12-auto/projection-thread-sweep-summary.csv), [observations](results-2026-09-12-auto/projection-thread-sweep-observations.csv), [provenance](results-2026-09-12-auto/projection-thread-sweep-provenance.json) and [hardware/source context](results-2026-09-12-auto/projection-control-context.json)
+- [Conformance record](results-2026-09-12-auto/validation.json)
+
+The projection controls warm each configuration, reverse order on alternate
+rounds and run GC before timed calls. All configurations produced the same
+full data signature, `724115:100:c26c3f60ffc3eaf0`, outside timing. Input,
+worker and installation hashes matched before and after. The
+[reader-refresh driver in PR #225](https://github.com/jbearak/dta-parser/blob/codex/refresh-reader-benchmarks/benchmarks/reader-refresh/projection-threads.R)
+reproduces both controls. The current India trials exclude startup but include
+first-call setup, without inserting an explicit GC before the timed call.
+They use a different worker protocol from the batching experiment below.
+
+## Batch filling isolated at eight workers
+
 A compact-byte batch fill cut the India survey's median `read_dta()` time
 from **1.826 to 0.895 seconds (51.0%)**, with peak RSS unchanged at about
 **5.23 GB**. This comparison uses ten fresh processes per configuration on
