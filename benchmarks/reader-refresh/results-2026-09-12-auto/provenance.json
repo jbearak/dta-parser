@@ -1,0 +1,143 @@
+{
+  "bindings": {
+    "corpus": {
+      "commit": "92020d4d3d0457ac7191e929a6b1736e3571b884",
+      "source_tree": "ea99e9c1c5f648a298c0a16d89893499e7a49ea9",
+      "archived": {
+        "inventory.tsv": "8f8964891ab2d9429988a8bcddf8ddb3a32338b3a4399ad154dc70df8a370367",
+        "raw.tsv": "7f47e48313d08a64cc4f7f885dd4954d57bf303e8362919d171cbd86d14d396c"
+      },
+      "release_inventory_sha256": "e9ab5b3e98a43e5929aa3f856ff00b2b4491cf6629a349d0dda69fb675bba1da",
+      "installed": {
+        "DESCRIPTION": "6dfa48d1b9d1bb0036cbc343498a490678082ff4df8f59422647fc6d7d48e69b",
+        "R/dtatools.rdb": "511f30c2e217db935a45ba55f4e365ed3cab2bb0769f86b420425f38a297d182",
+        "R/dtatools.rdx": "bba0dfdc75140a7a0649ba91ed09e12bc1fbb10ed2ee5b223a69b8a5ee7b506a",
+        "libs/dtatools.so": "7763d8d40ed4951c2441d490f83b1c7bbbfec81b2d8ebb8a7396970fa42d32ba"
+      },
+      "scripts": {
+        "benchmarks/reader-refresh/refresh.py": "8571acf5c503ab8ece535fadf0fa7ce221ab805419d3c05de82ef8fa5b29ada1",
+        "benchmarks/reader-refresh/compare.R": "736079151b2ae70733bbf5be0d736763c43208219cd8a163295aea7a569aac96",
+        "benchmarks/r-corpus-performance/worker.R": "20e832bb3f615aff114cac3d9644b8fde0d232ea456a48e93ab1eda74cb62e52",
+        "benchmarks/arrow-interchange/worker.R": "ba96caf313dcb6db6de9435a70dd66168e145fbb127126fb9a225dcb1b4dddf8",
+        "benchmarks/projection-introspection/r-worker.R": "feedb00c7602f8fc99844db9b23be0e2230d8cc7f1917528bbd0e2b6facd671c",
+        "benchmarks/benchmark-common.R": "1652c6d1225d8b945b3451df23d703d6710341365cd2b503a66513e917c3c75b"
+      },
+      "read_inputs": {}
+    },
+    "reads": {
+      "commit": "92020d4d3d0457ac7191e929a6b1736e3571b884",
+      "source_tree": "ea99e9c1c5f648a298c0a16d89893499e7a49ea9",
+      "archived": {
+        "inventory.tsv": "8f8964891ab2d9429988a8bcddf8ddb3a32338b3a4399ad154dc70df8a370367",
+        "raw.tsv": "7f47e48313d08a64cc4f7f885dd4954d57bf303e8362919d171cbd86d14d396c"
+      },
+      "release_inventory_sha256": "e9ab5b3e98a43e5929aa3f856ff00b2b4491cf6629a349d0dda69fb675bba1da",
+      "installed": {
+        "DESCRIPTION": "6dfa48d1b9d1bb0036cbc343498a490678082ff4df8f59422647fc6d7d48e69b",
+        "R/dtatools.rdb": "511f30c2e217db935a45ba55f4e365ed3cab2bb0769f86b420425f38a297d182",
+        "R/dtatools.rdx": "bba0dfdc75140a7a0649ba91ed09e12bc1fbb10ed2ee5b223a69b8a5ee7b506a",
+        "libs/dtatools.so": "7763d8d40ed4951c2441d490f83b1c7bbbfec81b2d8ebb8a7396970fa42d32ba"
+      },
+      "scripts": {
+        "benchmarks/reader-refresh/refresh.py": "8571acf5c503ab8ece535fadf0fa7ce221ab805419d3c05de82ef8fa5b29ada1",
+        "benchmarks/reader-refresh/compare.R": "736079151b2ae70733bbf5be0d736763c43208219cd8a163295aea7a569aac96",
+        "benchmarks/r-corpus-performance/worker.R": "20e832bb3f615aff114cac3d9644b8fde0d232ea456a48e93ab1eda74cb62e52",
+        "benchmarks/arrow-interchange/worker.R": "ba96caf313dcb6db6de9435a70dd66168e145fbb127126fb9a225dcb1b4dddf8",
+        "benchmarks/projection-introspection/r-worker.R": "feedb00c7602f8fc99844db9b23be0e2230d8cc7f1917528bbd0e2b6facd671c",
+        "benchmarks/benchmark-common.R": "1652c6d1225d8b945b3451df23d703d6710341365cd2b503a66513e917c3c75b"
+      },
+      "read_inputs": {
+        "100mb-dta": {
+          "bytes": 100000187,
+          "sha256": "fc2cd5376eea3b29b2a989ead21d224351a75ed1a9b75dc5940b80f2c70a63da"
+        },
+        "100mb-arrow": {
+          "bytes": 101573778,
+          "sha256": "36e3bd240872613e7e0563b5c9b2b723bcc69a4220495e43409176eb8bd75fa0"
+        },
+        "1gb-dta": {
+          "bytes": 1000000164,
+          "sha256": "ab08515fbe880e06aeef3f2054ce5b6f1201c3aacfe631e9808e8fb913aa6a24"
+        },
+        "1gb-arrow": {
+          "bytes": 1015793810,
+          "sha256": "1dd7f9048660e8e81853b8de4ec9731c2a2a266981d5da6d9ba9e0908d67fef8"
+        },
+        "india-dta": {
+          "bytes": 5196403097,
+          "sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc"
+        },
+        "india-arrow": {
+          "bytes": 5559803386,
+          "sha256": "62887858c9a8ad7de5dd850c3e5bc0ab1ac535f4345b3e2b79c8de063414fef2"
+        },
+        "nsfg-dta": {
+          "bytes": 20219649,
+          "sha256": "758b79ffbc0bc774090ddc5d42053b704364a5e7255946be96c5238a46a42501"
+        },
+        "projection-tall-dta": {
+          "bytes": 230064555,
+          "sha256": "ec1461c62b456aeb458ad969a90352774090c1c47cb9b8e2d56b3381263c4df2"
+        },
+        "projection-tall-present": {
+          "bytes": 70,
+          "sha256": "780f8c9f4d0f0a650e944eb36acf32c907e89e87bb9e05f2aa66d226970b7a7f"
+        },
+        "projection-tall-union": {
+          "bytes": 1150,
+          "sha256": "508a7ee7fe6becc4524953655d2090d53d5bc54be3e3fc0bca394c02b706604f"
+        },
+        "projection-wide-dta": {
+          "bytes": 230640555,
+          "sha256": "ff247bfa58fa854f5ee55aa266fd91eec0ee95bb2f47d1ce5d4f90757f1f4419"
+        },
+        "projection-wide-present": {
+          "bytes": 70,
+          "sha256": "780f8c9f4d0f0a650e944eb36acf32c907e89e87bb9e05f2aa66d226970b7a7f"
+        },
+        "projection-wide-union": {
+          "bytes": 1150,
+          "sha256": "508a7ee7fe6becc4524953655d2090d53d5bc54be3e3fc0bca394c02b706604f"
+        },
+        "projection-tall-wide-dta": {
+          "bytes": 575320555,
+          "sha256": "42f0131d2ba6d9ddce14a7db468de23972abe5b09d80ab785cd91e656374d937"
+        },
+        "projection-tall-wide-present": {
+          "bytes": 70,
+          "sha256": "780f8c9f4d0f0a650e944eb36acf32c907e89e87bb9e05f2aa66d226970b7a7f"
+        },
+        "projection-tall-wide-union": {
+          "bytes": 1150,
+          "sha256": "508a7ee7fe6becc4524953655d2090d53d5bc54be3e3fc0bca394c02b706604f"
+        },
+        "projection-india-2021-wm-dta": {
+          "bytes": 5196403097,
+          "sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc"
+        },
+        "projection-india-2021-wm-present": {
+          "bytes": 695,
+          "sha256": "278de653ed5029c32346d04ec5f3930511c2201c61f9ff0a60182750b4fe6ae9"
+        },
+        "projection-india-2021-wm-union": {
+          "bytes": 3095,
+          "sha256": "b0fb14e7de0cd0407f32e927b14091baafb2dad761413e6121baa03cdba0313e"
+        }
+      }
+    }
+  },
+  "corpus_inventory_entries": 1823,
+  "common_files": 1812,
+  "included_successful_children": 1842,
+  "included_failed_qualification_children": 0,
+  "haven_invocations": 0,
+  "stata_invocations": 0,
+  "input_identity": "original relative paths, byte sizes and modification times match before/after corpus run",
+  "private_results": {
+    "corpus.tsv": "54d67aa610767d7448c273e687275eae71d24451af9ffef3da5acf55bf55f9cd",
+    "combined.tsv": "d3eaa6e59b0563714df7b413cc6178647011fc6bbf9f80cd51555e551cf22c5a",
+    "jobs.jsonl": "6d6d743682462843b46fb0fc87ce2caa5dcc26b6cb2ea393da25c77b42dd48fa"
+  },
+  "private_read_jobs_sha256": "9a760c5049433bf18231ffd6d914036f38adb62554fdd22f0f68031645fa069d",
+  "summarizer_sha256": "05133f964621fa531e33647445262af1423e5c27ea0acf08c113e11b416a9541"
+}
