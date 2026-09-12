@@ -3555,9 +3555,12 @@ unsafe fn read_impl(
         column_indices: columns,
     };
     let result = if config.direct_to_r {
-        let threads = file
-            .parallel_thread_count(&options, config.requested_threads)
-            .map_err(|error| error.to_string())?;
+        let threads = if config.numeric_altrep {
+            file.parallel_thread_count_for_compact_output(&options, config.requested_threads)
+        } else {
+            file.parallel_thread_count(&options, config.requested_threads)
+        }
+        .map_err(|error| error.to_string())?;
         let columnar = file
             .supports_columnar_sink(&options)
             .map_err(|error| error.to_string())?;

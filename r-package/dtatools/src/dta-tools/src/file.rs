@@ -696,6 +696,86 @@ impl ObservationPlan {
     }
 }
 
+// Heuristic decode-work units for compact R output. A compact byte costs
+// one unit, wider numerics twice their width and fixed strings four times
+// their width. The limits avoid dispatching narrow blocks to every CPU;
+// they are not hardware-specific cycle or throughput measurements.
+const AUTOMATIC_WORK_PER_DECODER_BLOCK: u64 = 256 * 1024;
+const AUTOMATIC_WORK_PER_DECODER_READ: u64 = 1024 * 1024;
+
+#[derive(Debug)]
+struct AutomaticObservationWork {
+    block_units: u64,
+    total_units: u64,
+}
+
+impl AutomaticObservationWork {
+    fn new(plan: &ObservationPlan, row_count: u64, buffer_bytes: usize) -> Option<Self> {
+        if plan.row_width == 0 || plan.row_width > buffer_bytes || plan.has_strls() {
+            return None;
+        }
+        let block_rows = row_count.min((buffer_bytes / plan.row_width) as u64);
+        let row_units = plan.columns.iter().fold(0_u64, |units, column| {
+            let weight = match column.kind {
+                ObservationKind::Byte => 1,
+                ObservationKind::Int
+                | ObservationKind::Long
+                | ObservationKind::Float
+                | ObservationKind::Double => (column.byte_width as u64).saturating_mul(2),
+                ObservationKind::FixedString => (column.byte_width as u64).saturating_mul(4),
+                ObservationKind::StrL => unreachable!("strL plans use the default policy"),
+            };
+            units.saturating_add(weight)
+        });
+        Some(Self {
+            block_units: block_rows.saturating_mul(row_units),
+            total_units: row_count.saturating_mul(row_units),
+        })
+    }
+
+    fn worker_limit(&self) -> usize {
+        // Keep two decoding workers for an eligible pipelined read. This
+        // policy limits parallel width after the existing small-read eligibility
+        // check, retaining overlap between reading and decoding blocks.
+        let block_limit = (self.block_units / AUTOMATIC_WORK_PER_DECODER_BLOCK).max(2);
+        let read_limit = (self.total_units / AUTOMATIC_WORK_PER_DECODER_READ).max(2);
+        usize::try_from(block_limit.min(read_limit)).unwrap_or(usize::MAX)
+    }
+}
+
+fn observation_worker_count(
+    plan: &ObservationPlan,
+    row_count: u64,
+    buffer_bytes: usize,
+    requested: usize,
+    available: usize,
+    compact_output: bool,
+) -> usize {
+    if requested == 1
+        || plan.columns.len() < 2
+        || plan.row_width == 0
+        || plan.row_width > buffer_bytes
+    {
+        return 1;
+    }
+    let data_bytes = plan.selected_data_bytes(row_count);
+    let cells = row_count.saturating_mul(plan.columns.len() as u64);
+    if requested == 0 && !automatic_parallel_workload(data_bytes, cells) {
+        return 1;
+    }
+    let mut threads = if requested == 0 {
+        available
+    } else {
+        requested.min(available)
+    };
+    if requested == 0 && compact_output {
+        if let Some(work) = AutomaticObservationWork::new(plan, row_count, buffer_bytes) {
+            threads = threads.min(work.worker_limit());
+        }
+    }
+    threads.min(plan.columns.len()).max(1)
+}
+
 enum ColumnBuilder {
     Byte {
         index: u32,
@@ -1577,6 +1657,41 @@ fn decode_worker_block<C: DtaColumnSink>(
             .checked_add(block.row_count)
             .ok_or(DtaError::ArithmeticOverflow("parallel output row"))?;
 
+        if should_interrupt.is_some() && matches!(column.plan.kind, ObservationKind::Byte) {
+            // Keep cancellation on the calling thread and bound the interval
+            // between polls, even when the sink supports a bulk byte gather.
+            for start in (0..block.row_count).step_by(COLUMNAR_CANCEL_CHECK_INTERVAL) {
+                if should_interrupt.as_deref_mut().is_some_and(|poll| poll()) {
+                    return Err(DtaError::Cancelled);
+                }
+                let count = (block.row_count - start).min(COLUMNAR_CANCEL_CHECK_INTERVAL);
+                // The complete strided source and output ranges were checked
+                // above; every run is a subrange of those validated ranges.
+                let input_start = column.plan.byte_offset + start * row_width;
+                let input_end = input_start + (count - 1) * row_width + 1;
+                let output_start = block.output_row_start + start;
+                if !column.sink.try_push_byte_rows(
+                    output_start,
+                    count,
+                    &block.bytes[input_start..input_end],
+                    row_width,
+                    metadata.format_version,
+                )? {
+                    // A sink may decline an individual run. Fall back only for
+                    // that run so earlier accepted runs are never replayed.
+                    for row in 0..count {
+                        let value = block.bytes[input_start + row * row_width] as i8;
+                        column.sink.push_byte(
+                            output_start + row,
+                            value,
+                            classify_byte_missing_for_version(value, metadata.format_version),
+                        )?;
+                    }
+                }
+            }
+            continue;
+        }
+
         if should_interrupt.is_none()
             && matches!(column.plan.kind, ObservationKind::Byte)
             && column.sink.try_push_byte_rows(
@@ -1918,27 +2033,42 @@ impl<R: Read + Seek> DtaFile<R> {
         options: &ReadOptions,
         requested: usize,
     ) -> Result<usize, DtaError> {
+        self.parallel_thread_count_for_sink(options, requested, false)
+    }
+
+    /// Workload-aware planning for the R adapter's known compact numeric sink.
+    /// Generic and eager sinks keep the existing automatic policy.
+    #[cfg(feature = "r-adapter-internal")]
+    #[doc(hidden)]
+    pub fn parallel_thread_count_for_compact_output(
+        &self,
+        options: &ReadOptions,
+        requested: usize,
+    ) -> Result<usize, DtaError> {
+        self.parallel_thread_count_for_sink(options, requested, true)
+    }
+
+    fn parallel_thread_count_for_sink(
+        &self,
+        options: &ReadOptions,
+        requested: usize,
+        compact_output: bool,
+    ) -> Result<usize, DtaError> {
         if requested == 1 {
             return Ok(1);
         }
         let indices = resolve_columns(&self.metadata, options)?;
         let plan = ObservationPlan::new(&self.metadata, &indices)?;
         let (_, row_count) = row_window(&self.metadata, options);
-        if plan.columns.len() < 2 || plan.row_width == 0 || plan.row_width > self.scratch.limit {
-            return Ok(1);
-        }
-        let data_bytes = plan.selected_data_bytes(row_count);
-        let cells = row_count.saturating_mul(plan.columns.len() as u64);
-        if requested == 0 && !automatic_parallel_workload(data_bytes, cells) {
-            return Ok(1);
-        }
         let available = thread::available_parallelism().map_or(1, usize::from);
-        let threads = if requested == 0 {
-            available
-        } else {
-            requested.min(available)
-        };
-        Ok(threads.min(plan.columns.len()).max(1))
+        Ok(observation_worker_count(
+            &plan,
+            row_count,
+            self.scratch.limit,
+            requested,
+            available,
+            compact_output,
+        ))
     }
 
     /// Return whether the selected observations can use the column-oriented
@@ -7511,6 +7641,264 @@ mod tests {
         );
     }
 
+    #[derive(Default)]
+    struct ByteBatchRecorder {
+        values: Vec<(usize, i8, Option<crate::MissingTag>)>,
+        batch_lengths: Vec<usize>,
+        scalar_count: usize,
+        decline_second: bool,
+        decline_all: bool,
+    }
+
+    impl DtaColumnSink for ByteBatchRecorder {
+        fn try_push_byte_rows(
+            &mut self,
+            output_start: usize,
+            row_count: usize,
+            source: &[u8],
+            stride: usize,
+            version: FormatVersion,
+        ) -> Result<bool, DtaError> {
+            self.batch_lengths.push(row_count);
+            if self.decline_all || (self.decline_second && self.batch_lengths.len() == 2) {
+                return Ok(false);
+            }
+            for row in 0..row_count {
+                let value = source[row * stride] as i8;
+                self.values.push((
+                    output_start + row,
+                    value,
+                    classify_byte_missing_for_version(value, version),
+                ));
+            }
+            Ok(true)
+        }
+
+        fn push_byte(
+            &mut self,
+            row: usize,
+            value: i8,
+            missing: Option<crate::MissingTag>,
+        ) -> Result<(), DtaError> {
+            self.scalar_count += 1;
+            self.values.push((row, value, missing));
+            Ok(())
+        }
+        fn push_int(
+            &mut self,
+            _row: usize,
+            _value: i16,
+            _missing: Option<crate::MissingTag>,
+        ) -> Result<(), DtaError> {
+            unreachable!()
+        }
+        fn push_long(
+            &mut self,
+            _row: usize,
+            _value: i32,
+            _missing: Option<crate::MissingTag>,
+        ) -> Result<(), DtaError> {
+            unreachable!()
+        }
+        fn push_float(
+            &mut self,
+            _row: usize,
+            _value: f32,
+            _missing: Option<crate::MissingTag>,
+        ) -> Result<(), DtaError> {
+            unreachable!()
+        }
+        fn push_double(
+            &mut self,
+            _row: usize,
+            _value: f64,
+            _missing: Option<crate::MissingTag>,
+        ) -> Result<(), DtaError> {
+            unreachable!()
+        }
+        fn push_fixed_string(&mut self, _row: usize, _value: &str) -> Result<(), DtaError> {
+            unreachable!()
+        }
+    }
+
+    fn byte_batch_column(decline_second: bool) -> ParallelColumn<ByteBatchRecorder> {
+        ParallelColumn {
+            plan: kernel_column(ObservationKind::Byte, 2, 1).plan,
+            sink: ByteBatchRecorder {
+                decline_second,
+                ..Default::default()
+            },
+            strl_pointers: None,
+        }
+    }
+
+    #[test]
+    fn serial_batches_preserve_strided_rows_and_declined_runs() {
+        let row_count = COLUMNAR_CANCEL_CHECK_INTERVAL * 2 + 3;
+        let bytes = (0..row_count).flat_map(|row| [0, 0, row as u8]).collect();
+        let block = ObservationBlock {
+            bytes,
+            source_offset: 512,
+            output_row_start: 7,
+            row_count,
+        };
+        let metadata = kernel_metadata(ByteOrder::Lsf);
+        let mut columns = vec![byte_batch_column(true)];
+        let mut polls = 0;
+        decode_worker_block(
+            &mut columns,
+            &block,
+            3,
+            &metadata,
+            TextEncoding::Utf8,
+            Some(&mut || {
+                polls += 1;
+                false
+            }),
+        )
+        .unwrap();
+        let expected = (0..row_count)
+            .map(|row| {
+                let value = row as u8 as i8;
+                (
+                    row + 7,
+                    value,
+                    classify_byte_missing_for_version(value, metadata.format_version),
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(columns[0].sink.values, expected);
+        assert_eq!(
+            columns[0].sink.batch_lengths,
+            [
+                COLUMNAR_CANCEL_CHECK_INTERVAL,
+                COLUMNAR_CANCEL_CHECK_INTERVAL,
+                3
+            ]
+        );
+        assert_eq!(columns[0].sink.scalar_count, COLUMNAR_CANCEL_CHECK_INTERVAL);
+        assert_eq!(polls, 3);
+    }
+
+    #[test]
+    fn serial_batches_cancel_before_next_bounded_run() {
+        let row_count = COLUMNAR_CANCEL_CHECK_INTERVAL * 3;
+        let block = ObservationBlock {
+            bytes: vec![101; row_count * 3],
+            source_offset: 0,
+            output_row_start: 0,
+            row_count,
+        };
+        let mut columns = vec![byte_batch_column(false)];
+        let mut polls = 0;
+        let result = decode_worker_block(
+            &mut columns,
+            &block,
+            3,
+            &kernel_metadata(ByteOrder::Lsf),
+            TextEncoding::Utf8,
+            Some(&mut || {
+                polls += 1;
+                polls == 2
+            }),
+        );
+        assert_eq!(result, Err(DtaError::Cancelled));
+        assert_eq!(columns[0].sink.values.len(), COLUMNAR_CANCEL_CHECK_INTERVAL);
+        assert_eq!(
+            columns[0].sink.batch_lengths,
+            [COLUMNAR_CANCEL_CHECK_INTERVAL]
+        );
+        assert_eq!(columns[0].sink.scalar_count, 0);
+    }
+
+    #[test]
+    fn serial_byte_batches_are_used_without_configuration() {
+        let block = ObservationBlock {
+            bytes: vec![101; 9],
+            source_offset: 0,
+            output_row_start: 0,
+            row_count: 3,
+        };
+        let mut columns = vec![byte_batch_column(false)];
+        decode_worker_block(
+            &mut columns,
+            &block,
+            3,
+            &kernel_metadata(ByteOrder::Lsf),
+            TextEncoding::Utf8,
+            Some(&mut || false),
+        )
+        .unwrap();
+        assert_eq!(columns[0].sink.values.len(), 3);
+        assert_eq!(columns[0].sink.scalar_count, 0);
+        assert_eq!(columns[0].sink.batch_lengths, [3]);
+    }
+
+    #[test]
+    fn serial_batches_declined_by_sink_keep_values_missingness_and_bounded_polling() {
+        let row_count = COLUMNAR_CANCEL_CHECK_INTERVAL * 2 + 3;
+        let block = ObservationBlock {
+            bytes: (0..row_count).flat_map(|row| [0, 0, row as u8]).collect(),
+            source_offset: 512,
+            output_row_start: 7,
+            row_count,
+        };
+        for version in [FormatVersion::V115, FormatVersion::V118] {
+            let mut metadata = kernel_metadata(ByteOrder::Lsf);
+            metadata.format_version = version;
+            for cancel_at in [None, Some(2)] {
+                let mut column = byte_batch_column(false);
+                column.sink.decline_all = true;
+                let mut columns = vec![column];
+                let mut polls = 0;
+                let result = decode_worker_block(
+                    &mut columns,
+                    &block,
+                    3,
+                    &metadata,
+                    TextEncoding::Utf8,
+                    Some(&mut || {
+                        polls += 1;
+                        cancel_at == Some(polls)
+                    }),
+                );
+                let completed_rows = if cancel_at.is_some() {
+                    assert_eq!(result, Err(DtaError::Cancelled));
+                    assert_eq!(polls, 2);
+                    assert_eq!(
+                        columns[0].sink.batch_lengths,
+                        [COLUMNAR_CANCEL_CHECK_INTERVAL]
+                    );
+                    COLUMNAR_CANCEL_CHECK_INTERVAL
+                } else {
+                    result.unwrap();
+                    assert_eq!(polls, 3);
+                    assert_eq!(
+                        columns[0].sink.batch_lengths,
+                        [
+                            COLUMNAR_CANCEL_CHECK_INTERVAL,
+                            COLUMNAR_CANCEL_CHECK_INTERVAL,
+                            3
+                        ]
+                    );
+                    row_count
+                };
+                let expected = (0..completed_rows)
+                    .map(|row| {
+                        let value = row as u8 as i8;
+                        (
+                            row + 7,
+                            value,
+                            classify_byte_missing_for_version(value, version),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                assert_eq!(columns[0].sink.values, expected);
+                assert_eq!(columns[0].sink.scalar_count, completed_rows);
+            }
+        }
+    }
+
     #[test]
     fn synchronous_column_kernel_polls_between_long_row_runs() {
         let row_count = COLUMNAR_CANCEL_CHECK_INTERVAL * 3;
@@ -7541,6 +7929,91 @@ mod tests {
             unreachable!()
         };
         assert_eq!(values.len(), COLUMNAR_CANCEL_CHECK_INTERVAL);
+    }
+
+    fn policy_plan(
+        row_width: usize,
+        columns: usize,
+        kind: ObservationKind,
+        width: usize,
+    ) -> ObservationPlan {
+        ObservationPlan {
+            row_width,
+            columns: (0..columns)
+                .map(|index| ObservationColumnPlan {
+                    output_index: index,
+                    source_index: index as u32,
+                    byte_offset: index * width,
+                    byte_width: width,
+                    kind,
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn compact_output_policy_accounts_for_full_row_scanning_and_explicit_limits() {
+        let dense = policy_plan(100, 100, ObservationKind::Byte, 1);
+        let projected = policy_plan(10_000, 100, ObservationKind::Byte, 1);
+        let choose = |plan: &ObservationPlan, requested, available, enabled| {
+            observation_worker_count(
+                plan,
+                1_000_000,
+                DEFAULT_MAX_BUFFER_BYTES,
+                requested,
+                available,
+                enabled,
+            )
+        };
+        assert_eq!(choose(&dense, 0, 16, true), 16);
+        assert_eq!(choose(&projected, 0, 16, true), 2);
+        assert_eq!(choose(&projected, 0, 16, false), 16);
+        for requested in [1, 2, 4, 8, 32] {
+            assert_eq!(choose(&projected, requested, 16, true), requested.min(16));
+        }
+        assert_eq!(choose(&projected, 0, 1, true), 1);
+        assert_eq!(choose(&projected, 0, 2, true), 2);
+    }
+
+    #[test]
+    fn compact_output_policy_preserves_small_and_unsupported_fallbacks() {
+        let mut plan = policy_plan(10_000, 100, ObservationKind::Byte, 1);
+        assert_eq!(
+            observation_worker_count(&plan, 1, DEFAULT_MAX_BUFFER_BYTES, 0, 16, true),
+            1
+        );
+        plan.columns[0].kind = ObservationKind::StrL;
+        assert_eq!(
+            observation_worker_count(&plan, 1_000_000, DEFAULT_MAX_BUFFER_BYTES, 0, 16, true),
+            16
+        );
+        plan.row_width = DEFAULT_MAX_BUFFER_BYTES + 1;
+        assert_eq!(
+            observation_worker_count(&plan, 1_000_000, DEFAULT_MAX_BUFFER_BYTES, 8, 16, true),
+            1
+        );
+        plan.row_width = 0;
+        assert_eq!(
+            observation_worker_count(&plan, 1_000_000, DEFAULT_MAX_BUFFER_BYTES, 0, 16, true),
+            1
+        );
+    }
+
+    #[test]
+    fn compact_output_policy_weights_decoding_and_limits_short_wide_reads() {
+        let bytes = policy_plan(10_000, 100, ObservationKind::Byte, 1);
+        let strings = policy_plan(10_000, 100, ObservationKind::FixedString, 32);
+        let choose = |plan: &ObservationPlan, rows| {
+            observation_worker_count(plan, rows, DEFAULT_MAX_BUFFER_BYTES, 0, 16, true)
+        };
+        assert!(choose(&strings, 1_000_000) > choose(&bytes, 1_000_000));
+        let short_wide = policy_plan(16_384, 16_384, ObservationKind::Byte, 1);
+        assert_eq!(choose(&short_wide, 64), 2);
+        assert_eq!(choose(&short_wide, 1_000_000), 16);
+        assert_eq!(choose(&bytes, u64::MAX), 2);
+        let work =
+            AutomaticObservationWork::new(&strings, u64::MAX, DEFAULT_MAX_BUFFER_BYTES).unwrap();
+        assert_eq!(work.total_units, u64::MAX);
     }
 
     #[test]
@@ -7588,6 +8061,101 @@ mod tests {
             file.parallel_thread_count(&projected, 0).unwrap(),
             available.min(2)
         );
+    }
+
+    #[cfg(feature = "r-adapter-internal")]
+    #[test]
+    fn compact_planner_defaults_follow_projection_windows_and_buffer_eligibility() {
+        let mut metadata = kernel_metadata(ByteOrder::Lsf);
+        metadata.nobs = 1_000_000;
+        metadata.variables = (0..100)
+            .map(|index| {
+                let mut variable = value_label_variable(&format!("v{index}"), "");
+                variable.dta_type = DtaType::Byte;
+                variable.type_code = 65_530;
+                variable.byte_width = 1;
+                variable.byte_offset = index;
+                variable
+            })
+            .chain((0..5).map(|index| {
+                let mut variable = value_label_variable(&format!("padding{index}"), "");
+                variable.dta_type = DtaType::FixedString(2_000);
+                variable.type_code = 2_000;
+                variable.byte_width = 2_000;
+                variable.byte_offset = 100 + index * 2_000;
+                variable
+            }))
+            .collect();
+        metadata.nvar = 105;
+        metadata.obs_length = 10_100;
+        let mut file = DtaFile {
+            reader: Cursor::new(Vec::<u8>::new()),
+            metadata,
+            file_length: 0,
+            scratch: Scratch::new(DEFAULT_MAX_BUFFER_BYTES),
+            value_labels: ValueLabelCache::Empty,
+            text_encoding: TextEncoding::Utf8,
+        };
+        let available = thread::available_parallelism().map_or(1, usize::from);
+        let projected = ReadOptions {
+            column_indices: Some((0..100).rev().collect()),
+            ..ReadOptions::default()
+        };
+        assert_eq!(
+            file.parallel_thread_count_for_compact_output(&ReadOptions::default(), 0)
+                .unwrap(),
+            available.min(105)
+        );
+        assert_eq!(
+            file.parallel_thread_count_for_compact_output(&projected, 0)
+                .unwrap(),
+            available.min(2)
+        );
+        assert_eq!(
+            file.parallel_thread_count(&projected, 0).unwrap(),
+            available.min(100)
+        );
+        for requested in [1, 3, usize::MAX] {
+            assert_eq!(
+                file.parallel_thread_count_for_compact_output(&projected, requested)
+                    .unwrap(),
+                requested.min(available).min(100)
+            );
+        }
+        for (row_start, row_count, expected) in [
+            (123, Some(10_000), available.min(2)),
+            (123, Some(9_999), 1),
+            (999_999, Some(10_000), 1),
+            (1_000_000, None, 1),
+            (0, Some(0), 1),
+        ] {
+            let window = ReadOptions {
+                row_start,
+                row_count,
+                column_indices: projected.column_indices.clone(),
+            };
+            assert_eq!(
+                file.parallel_thread_count_for_compact_output(&window, 0)
+                    .unwrap(),
+                expected
+            );
+        }
+        file.scratch = Scratch::new(10_100);
+        assert!(file.supports_columnar_sink(&projected).unwrap());
+        assert_eq!(
+            file.parallel_thread_count_for_compact_output(&ReadOptions::default(), 0)
+                .unwrap(),
+            available.min(2)
+        );
+        file.scratch = Scratch::new(10_099);
+        assert!(!file.supports_columnar_sink(&projected).unwrap());
+        for requested in [0, 1, 8] {
+            assert_eq!(
+                file.parallel_thread_count_for_compact_output(&projected, requested)
+                    .unwrap(),
+                1
+            );
+        }
     }
 
     #[test]

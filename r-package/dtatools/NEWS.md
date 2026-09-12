@@ -1,3 +1,14 @@
+# dtatools (development version)
+
+* `read_dta(threads = 0)` now limits automatic workers according to selected
+  decode work per input block and the requested row count for compact output.
+  Narrow projections can use fewer workers without changing explicit thread
+  limits or the `dtatools.threads` option. Eager output and strL retain their
+  existing automatic policy.
+* Single-thread `read_dta()` reads now use compact-byte batches with bounded
+  interruption checks. Byte-heavy inputs benefit without requiring tiling or
+  parallel workers. Both changes apply without experimental switches.
+
 # dtatools 0.8.0.9000
 
 * `read_dta()` and `read_arrow()` construct dibbles directly from the native
