@@ -1,0 +1,389 @@
+{
+  "core-validation": {
+    "source_commit": "03e054daac82806f01429c816fbb674b3b631d89",
+    "environment": {
+      "CARGO_TARGET_DIR": "$CORE_TARGET",
+      "CARGO_NET_OFFLINE": "true",
+      "CARGO_TERM_COLOR": "never"
+    },
+    "compiler_versions": {
+      "homebrew_default": "rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew)\nbinary: rustc\ncommit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea\ncommit-date: 2026-08-18\nhost: aarch64-apple-darwin\nrelease: 1.98.0\nLLVM version: 22.1.8\n",
+      "rustup_1.98.0": "rustc 1.98.0 (88d9e12ae 2026-08-18)\nbinary: rustc\ncommit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea\ncommit-date: 2026-08-18\nhost: aarch64-apple-darwin\nrelease: 1.98.0\nLLVM version: 22.1.8\n"
+    },
+    "note": "Homebrew default and installed rustup 1.98.0 have the same compiler commit. A separate rustup stable alias is not installed. One compiler lane was run. Homebrew cargo rejected initial +toolchain command syntax before checks started; those logs are preserved in core-startup-attempt.",
+    "checks": [
+      {
+        "name": "core-fmt",
+        "command": [
+          "rustup",
+          "run",
+          "1.98.0",
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "extra_environment": {},
+        "started_utc": "2026-09-12T20:13:17.198278+00:00",
+        "duration_seconds": 0.184,
+        "exit_code": 0,
+        "log": "$VALIDATION_ROOT/core-fmt.log",
+        "log_sha256": "6017267152b6ad3bdc5f68e61605c558af88cbf2234f96fb83234057bd77e3df"
+      },
+      {
+        "name": "core-clippy",
+        "command": [
+          "rustup",
+          "run",
+          "1.98.0",
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--features",
+          "r-adapter-internal",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "extra_environment": {},
+        "started_utc": "2026-09-12T20:13:17.382744+00:00",
+        "duration_seconds": 7.437,
+        "exit_code": 0,
+        "log": "$VALIDATION_ROOT/core-clippy.log",
+        "log_sha256": "d6a14107ea0aadb6f0bfb91aa6a225fb97a1cce7c790186b57ee00fc9684571b"
+      },
+      {
+        "name": "core-tests",
+        "command": [
+          "rustup",
+          "run",
+          "1.98.0",
+          "cargo",
+          "test",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--features",
+          "r-adapter-internal"
+        ],
+        "extra_environment": {},
+        "started_utc": "2026-09-12T20:13:24.819460+00:00",
+        "duration_seconds": 23.716,
+        "exit_code": 0,
+        "log": "$VALIDATION_ROOT/core-tests.log",
+        "log_sha256": "90442fe5cc420e86755c1f892a4d0e2d6106fe28d62c323e2fc2d2452c487c1b",
+        "tests": {
+          "passed": 291,
+          "failed": 0,
+          "ignored": 0,
+          "test_binaries": 14
+        }
+      },
+      {
+        "name": "core-rustdoc",
+        "command": [
+          "rustup",
+          "run",
+          "1.98.0",
+          "cargo",
+          "doc",
+          "--workspace",
+          "--locked",
+          "--no-deps",
+          "--features",
+          "r-adapter-internal"
+        ],
+        "extra_environment": {
+          "RUSTDOCFLAGS": "-D warnings"
+        },
+        "started_utc": "2026-09-12T20:13:48.535844+00:00",
+        "duration_seconds": 0.611,
+        "exit_code": 0,
+        "log": "$VALIDATION_ROOT/core-rustdoc.log",
+        "log_sha256": "56ddac9c80eaf27952b091f4dae76bc67e4cb0493b81070142d05b3ed2d0f56c"
+      },
+      {
+        "name": "core-package",
+        "command": [
+          "rustup",
+          "run",
+          "1.98.0",
+          "cargo",
+          "package",
+          "-p",
+          "dta-tools",
+          "--locked"
+        ],
+        "extra_environment": {},
+        "started_utc": "2026-09-12T20:13:49.147178+00:00",
+        "duration_seconds": 2.17,
+        "exit_code": 0,
+        "log": "$VALIDATION_ROOT/core-package.log",
+        "log_sha256": "0d9ff01677d9332b1fee5564806d332161303a0c2c575869854d55e36dffb7c3"
+      },
+      {
+        "name": "core-fuzz16",
+        "command": [
+          "rustup",
+          "run",
+          "1.98.0",
+          "cargo",
+          "test",
+          "-p",
+          "dta-tools",
+          "--locked",
+          "--features",
+          "r-adapter-internal",
+          "--test",
+          "fuzz_smoke",
+          "--",
+          "--nocapture"
+        ],
+        "extra_environment": {
+          "DTA_FUZZ_CASES": "16"
+        },
+        "started_utc": "2026-09-12T20:13:51.317765+00:00",
+        "duration_seconds": 0.136,
+        "exit_code": 0,
+        "log": "$VALIDATION_ROOT/core-fuzz16.log",
+        "log_sha256": "dfdd11921c129288c3b0742d86a367ed1e7c5874b52730fa17636157254285f9",
+        "tests": {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "test_binaries": 1
+        }
+      }
+    ],
+    "completed_utc": "2026-09-12T20:13:51.454451+00:00",
+    "all_passed": true
+  },
+  "additional-validation": [
+    {
+      "name": "typescript-typecheck",
+      "command": [
+        "bun",
+        "run",
+        "typecheck"
+      ],
+      "cwd": "$SOURCE_ROOT/typescript/dta-parser",
+      "status": 0,
+      "seconds": 0.7720329761505127
+    },
+    {
+      "name": "typescript-tests",
+      "command": [
+        "bun",
+        "run",
+        "test"
+      ],
+      "cwd": "$SOURCE_ROOT/typescript/dta-parser",
+      "status": 0,
+      "seconds": 1.8461649417877197
+    },
+    {
+      "name": "typescript-build",
+      "command": [
+        "bun",
+        "run",
+        "build"
+      ],
+      "cwd": "$SOURCE_ROOT/typescript/dta-parser",
+      "status": 0,
+      "seconds": 0.4695606231689453
+    },
+    {
+      "name": "python-tests",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts",
+        "-p",
+        "test_*.py"
+      ],
+      "cwd": "$SOURCE_ROOT",
+      "status": 0,
+      "seconds": 0.13208317756652832
+    },
+    {
+      "name": "cargo-vendor",
+      "command": [
+        "scripts/check-r-cargo-vendor.sh"
+      ],
+      "cwd": "$SOURCE_ROOT",
+      "status": 0,
+      "seconds": 0.3957490921020508
+    },
+    {
+      "name": "rust-source-hash",
+      "command": [
+        "scripts/test-rust-source-hash.sh"
+      ],
+      "cwd": "$SOURCE_ROOT",
+      "status": 0,
+      "seconds": 2.0345358848571777
+    },
+    {
+      "name": "roxygen",
+      "command": [
+        "scripts/check-r-roxygen.sh"
+      ],
+      "cwd": "$SOURCE_ROOT",
+      "status": 0,
+      "seconds": 1.4158072471618652
+    },
+    {
+      "name": "corpus-framework",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "benchmarks/r-corpus-performance/test-framework.R"
+      ],
+      "cwd": "$SOURCE_ROOT",
+      "status": 0,
+      "seconds": 0.12444806098937988
+    },
+    {
+      "name": "bridge-vendor",
+      "command": [
+        "tar",
+        "-xzf",
+        "rust/vendor.tar.gz",
+        "-C",
+        "rust"
+      ],
+      "cwd": "$SOURCE_ROOT/r-package/dtatools/src",
+      "status": 0,
+      "seconds": 0.5712971687316895
+    },
+    {
+      "name": "bridge-tests",
+      "command": [
+        "cargo",
+        "+1.98.0",
+        "test",
+        "--manifest-path",
+        "rust/Cargo.toml",
+        "--config",
+        "rust/cargo-config.toml",
+        "--all-targets",
+        "--locked",
+        "--offline"
+      ],
+      "cwd": "$SOURCE_ROOT/r-package/dtatools/src",
+      "status": 101,
+      "seconds": 0.01034092903137207
+    },
+    {
+      "name": "haven-conformance",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "-e",
+        ".libPaths(c(\"$LIBRARY\", .libPaths())); stopifnot(normalizePath(find.package(\"dtatools\")) == \"$LIBRARY/dtatools\"); source(commandArgs(TRUE)[[1]])",
+        "scripts/test-haven-conformance.R"
+      ],
+      "cwd": "$SOURCE_ROOT",
+      "status": 0,
+      "seconds": 3.726193904876709
+    },
+    {
+      "name": "labelled-interop",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "-e",
+        ".libPaths(c(\"$LIBRARY\", .libPaths())); stopifnot(normalizePath(find.package(\"dtatools\")) == \"$LIBRARY/dtatools\"); source(commandArgs(TRUE)[[1]])",
+        "scripts/test-labelled-interop.R"
+      ],
+      "cwd": "$SOURCE_ROOT",
+      "status": 0,
+      "seconds": 1.60526704788208
+    },
+    {
+      "name": "haven-helper-interop",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "-e",
+        ".libPaths(c(\"$LIBRARY\", .libPaths())); stopifnot(normalizePath(find.package(\"dtatools\")) == \"$LIBRARY/dtatools\"); source(commandArgs(TRUE)[[1]])",
+        "scripts/test-haven-helper-interop.R"
+      ],
+      "cwd": "$SOURCE_ROOT",
+      "status": 0,
+      "seconds": 0.24352312088012695
+    }
+  ],
+  "bridge-correction": {
+    "command": [
+      "rustup",
+      "run",
+      "1.98.0",
+      "cargo",
+      "test",
+      "--manifest-path",
+      "rust/Cargo.toml",
+      "--config",
+      "rust/cargo-config.toml",
+      "--all-targets",
+      "--locked",
+      "--offline"
+    ],
+    "cwd": "$SOURCE_ROOT/r-package/dtatools/src",
+    "environment": {
+      "CARGO_TARGET_DIR": "$BRIDGE_TARGET"
+    },
+    "exit_code": 0,
+    "passed": 21,
+    "failed": 0,
+    "reason": "Homebrew cargo rejects +toolchain syntax; use the installed rustup toolchain through rustup run.",
+    "log_sha256": "b58040bb97ff3b743bd8100f785a52a3c43befdf52bd9bbd29572e03dae7e932"
+  },
+  "conformance-status": {
+    "source_commit": "03e054daac82806f01429c816fbb674b3b631d89",
+    "command": [
+      "scripts/conformance.sh"
+    ],
+    "environment": {
+      "NOT_CRAN": "true",
+      "DTA_REQUIRE_R_CONFORMANCE": "1"
+    },
+    "exit_code": 0,
+    "native_cases": 10,
+    "fixture_oracles": 1,
+    "r_check_warnings": 3,
+    "r_check_notes": 2,
+    "log_sha256": "14538f8f63259bf809b734b3cc3328a98dbb0c57dc0a493e3dc6574f036a193b"
+  },
+  "logs_sha256": {
+    "core-rustdoc.log": "56ddac9c80eaf27952b091f4dae76bc67e4cb0493b81070142d05b3ed2d0f56c",
+    "core-fuzz16.log": "dfdd11921c129288c3b0742d86a367ed1e7c5874b52730fa17636157254285f9",
+    "bridge-tests.log": "fc3cb0514031ccc4b90dae3c5909a131758a9ec9325870e9ce12041fc2e857dc",
+    "core-clippy.log": "d6a14107ea0aadb6f0bfb91aa6a225fb97a1cce7c790186b57ee00fc9684571b",
+    "core-fmt.log": "6017267152b6ad3bdc5f68e61605c558af88cbf2234f96fb83234057bd77e3df",
+    "roxygen.log": "8e6e1b42053722b4673911acaea5a1b6cd86d42c4c5a156bc5775c20a579f13f",
+    "core-package.log": "0d9ff01677d9332b1fee5564806d332161303a0c2c575869854d55e36dffb7c3",
+    "bridge-tests-rustup.log": "b58040bb97ff3b743bd8100f785a52a3c43befdf52bd9bbd29572e03dae7e932",
+    "rust-source-hash.log": "64412b90a734c68397b590ede544730f4b115e07f82cedc84ae791452eab888c",
+    "corpus-framework.log": "a499c3b4bd2e3d8b7bc2046a17390505991ee20afbc91aac5d96864fde7c028b",
+    "typescript-tests.log": "aedd824f0e7a7a354c116b44be53deb8d70d1ad7aefdfe5cf5d08a0db32f16e0",
+    "python-tests.log": "ee83fc2b92f9f44484087b5328a0139af3ab64193720349a71d03bd20a4d49cd",
+    "bridge-vendor.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "haven-conformance.log": "9f2478e81235409b338fe7248baec50fcdc565af8cba9938996a0f15528c5465",
+    "labelled-interop.log": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81",
+    "typescript-typecheck.log": "fcc066b8674bbb304c55d2bd5f881f0a18e748c4f097a41f8776f9487653575a",
+    "conformance.log": "14538f8f63259bf809b734b3cc3328a98dbb0c57dc0a493e3dc6574f036a193b",
+    "haven-helper-interop.log": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264",
+    "cargo-vendor.log": "d2f91f77d5bdd8552331c0b457f2d0aab6c9eccb0a00d29a47f6c7294216720b",
+    "typescript-build.log": "6560d5e52ed6caeb6a962f2aecc5c203f4aa9ade433533399fc312db5dc89154",
+    "core-tests.log": "90442fe5cc420e86755c1f892a4d0e2d6106fe28d62c323e2fc2d2452c487c1b"
+  },
+  "qualification": "22 fixtures and 32085 TypeScript decoded-cell comparisons; ten deterministic native gates plus fixture oracle; complete R package check; 291 Rust core tests; 21 isolated bridge tests; 386 TypeScript tests; 32 Python tests; Haven, labelled and Haven-helper interoperability.",
+  "runtime_source": "projection-worker-provenance.json contains the new R session; machine and comparator installations unchanged per user.",
+  "public_path_placeholders": "SOURCE_ROOT is the measured checkout; LIBRARY its isolated installation; VALIDATION_ROOT contains the original logs; CORE_TARGET and BRIDGE_TARGET are separate Cargo build directories. Private records retain absolute paths."
+}

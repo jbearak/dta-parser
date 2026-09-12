@@ -1,0 +1,41 @@
+{
+  "measured_source_commit": "03e054daac82806f01429c816fbb674b3b631d89",
+  "measurement_checkout": "81e961010e18d6b4215f9867c9fdcb292fa25dcd",
+  "package_changes_after_measurement": [
+    "r-package/dtatools/README.md"
+  ],
+  "reader_and_driver_sources_unchanged": true,
+  "phases": [
+    {
+      "phase": "reads",
+      "exit_code": 0,
+      "seconds": 53.85644578933716
+    },
+    {
+      "phase": "india-10x",
+      "exit_code": 0,
+      "seconds": 25.60231900215149
+    },
+    {
+      "phase": "projection-control",
+      "exit_code": 0,
+      "seconds": 71.41301393508911
+    },
+    {
+      "phase": "coverage",
+      "exit_code": 0,
+      "seconds": 156.92509508132935
+    },
+    {
+      "phase": "fresh",
+      "exit_code": 0,
+      "seconds": 27.6581871509552
+    },
+    {
+      "phase": "corpus",
+      "exit_code": 0,
+      "seconds": 441.8598439693451
+    }
+  ],
+  "build_record_sha256": "2ae5fbf51e94e5f608b5183bc2b0423d832b0f5dc678b4cc3fd0c33f2dc22016"
+}

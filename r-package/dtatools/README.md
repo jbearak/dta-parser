@@ -178,16 +178,62 @@ grouping is rebuilt.
 
 ## Why use dtatools?
 
-Repository benchmarks compare `dtatools` with haven across a large survey corpus and one especially wide file:
+Repository benchmarks compare `dtatools` with haven across three survey corpora.
+The September 12 update measures dtatools 0.9.0 with compact-byte batching,
+default dibble output and workload-aware automatic thread selection. It reuses the
+August 24 haven and Stata corpus measurements on the same files and computer.
+Haven and Stata were not rerun for these corpus totals.
 
 | Workload | dtatools | haven | Difference |
 | --- | ---: | ---: | ---: |
-| 641 DHS files, 46.9 GB total | 93 seconds | 2,727 seconds | 17.6 times faster per file on average; 29.3 times faster for the complete batch |
-| India 2021 DHS women, 5.2 GB and 5,972 columns | 1.9 seconds; 5.2 GB memory | 437 seconds; 35.1 GB memory | 230.5 times faster; about 30 GB less memory |
+| 641 DHS files, 46.9 GB total | 69.3 seconds | 2,727 seconds | 39.4 times faster for the complete batch |
+| 949 MICS files, 3.7 GB total | 60.1 seconds | 216.7 seconds | 3.6 times faster for the complete batch |
+| 222 NSFG files, 5.8 GB total | 19.9 seconds | 234.6 seconds | 11.8 times faster for the complete batch |
 
-Across the full DHS, MICS, and NSFG comparison, `dtatools` was faster on 1,803 of 1,812 files and tied on five. `haven` led on four files between 31 and 66 KB, each by 1 millisecond. `dtatools` was faster on all 1,534 files larger than 1 MB.
+Across the 1,812 comparable files, `dtatools` was faster than haven on 1,459,
+tied on ten, and slower on 343. It was faster on all 641 DHS files and on 1,435
+of the 1,534 files larger than 1 MB. Changes from the preceding automatic-thread
+run were small: DHS decreased from 69.748 to 69.286 seconds and MICS from
+60.532 to 60.056; NSFG increased from 19.800 to 19.880. Against the older August
+results, MICS remains slower than its 29.3 seconds and NSFG slower than its
+19.1 seconds.
 
-These are warm-cache measurements from an Apple M4 Max, not performance guarantees. The multicore corpus refresh reused haven measurements made earlier on the same machine and files; the later India check likewise reran dtatools only. See the [dated corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-corpus-performance/results-2026-08-24.md) for the full results and methodology.
+These are warm-cache measurements from an Apple M4 Max. See the
+[dated reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
+for the full corpus results, wall time, CPU time, peak memory, and methodology.
+
+For the 5.2 GB India 2021 DHS women's file, with 724,115 rows and 5,972 columns,
+the current dtatools readers were each rerun ten times. Haven and Stata retain
+their ten-run September 12 measurements:
+
+| Reader | Median wall time | Range | Median CPU time | Median peak RSS |
+| --- | ---: | ---: | ---: | ---: |
+| `dtatools::read_dta()` | 0.8195 seconds | 0.816–0.826 seconds | 5.4335 seconds | 5.236 GB |
+| `dtatools::read_arrow()` | 0.5980 seconds | 0.596–0.603 seconds | 4.5705 seconds | 10.279 GB |
+| `haven::read_dta()`, retained | 488.204 seconds | 413.645–529.616 seconds | Unavailable | 35.107 GB |
+| Stata native `use`, retained | 0.5015 seconds | 0.468–0.503 seconds | Unavailable | 5.256 GB |
+
+Each read used a fresh process with a warm filesystem cache, without a warmup
+or added pre-read garbage collection. The dtatools readers alternated order;
+the retained four-tool baseline rotated order. Wall and CPU clocks cover the
+read call and exclude startup. CPU time sums user and system time across
+threads, so it can exceed wall time. Peak RSS includes the runtime and loaded
+result. `read_arrow()` reads the retained 5.6 GB Arrow conversion with checksum
+verification enabled.
+
+The full-read medians are effectively unchanged from the preceding 0.8210 and
+0.5995 seconds. Arrow takes 27.0% less wall time than DTA here, using roughly
+twice the peak memory. Stata remains faster than both. See the
+[ten-run report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
+for every observation, provenance and the distinction from older single reads.
+
+Both readers default to `threads = getOption("dtatools.threads", 0L)`.
+Zero chooses automatically from the CPUs available to the process. For compact
+DTA output, the policy also considers selected types and widths, rows per
+buffer, and the requested row window. Narrow projections can use fewer workers;
+small selections stay serial. Set `threads = 1` for serial reading, pass another
+positive number to limit one call, or set `options(dtatools.threads = 4L)` to
+change the session default. A per-call `threads` argument overrides that option.
 
 ### Using `.arrow` dataset files
 
@@ -208,18 +254,30 @@ stability promise yet.
 
 Warm-cache read medians on the same files:
 
-| Input | `read_dta()` on `.dta` | `read_arrow()` on `.arrow` |
-| --- | ---: | ---: |
-| Synthetic 100 MB, 40 columns | 0.048 seconds | 0.028 seconds |
-| Synthetic 1 GB, 40 columns | 0.184 seconds | 0.097 seconds |
-| India 2021 DHS women, 5.2 GB, 5,972 columns | 1.608 seconds | 0.416 seconds |
+| Input | DTA wall time | DTA CPU time | Arrow wall time | Arrow CPU time |
+| --- | ---: | ---: | ---: | ---: |
+| Synthetic 100 MB, 40 columns | 0.041 s | 0.132 s | 0.023 s | 0.075 s |
+| Synthetic 1 GB, 40 columns | 0.160 s | 0.778 s | 0.073 s | 0.429 s |
+| India 2021 DHS women, 5.2 GB, 5,972 columns | 0.540 s | 4.761 s | 0.302 s | 3.182 s |
 
 Both readers decode with automatic multicore workers and defer numeric and
 character materialization through ALTREP. `read_arrow()` is faster because the
 `.arrow` file already stores each column contiguously in its Stata storage width,
 so reading is mostly parallel column copies rather than row-major decoding.
-Checksum verification is on by default and accounts for only a few percent;
-converting the India file with `save_arrow()` took 1.4 seconds once. See the
+These September 12 medians use 11 timed reads for each synthetic file and five
+for India, after an untimed warmup in each process. Checksum verification is
+enabled. Disabling it changed the India median from 0.302 to 0.301 seconds,
+with overlapping ranges. Keep verification enabled; these small differences
+do not justify changing its default. The retained Arrow
+files predate support for some metadata, including variable notes, so the
+refresh verifies matching values and common metadata. See the
+[reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
+for ranges and the metadata differences.
+
+Use `read_arrow()` for repeated full reads when its extra memory fits your
+workload. Use `read_dta()` when reading the original file or minimizing peak
+memory. Converting the India file with `save_arrow()` took 1.4 seconds in the
+retained August 29 measurement. See the
 [dated Arrow report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
 for conversion times, file sizes, and methodology.
 
@@ -246,15 +304,29 @@ A warm-cache benchmark selected 100 variables spread across the 5.2 GB,
 
 | Method | Median read time |
 | --- | ---: |
-| `read_dta(any_of(union))` | 0.301 seconds |
+| `read_dta(any_of(union))` | 0.235 seconds |
 | Stata direct projected `use` with known-present names | 0.482 seconds |
 | Stata full `use`, inspect union, then `keep` | 0.552 seconds |
 
 All methods returned the same 724,115-row, 100-column result. These are medians
-from 11 runs on an Apple M4 Max. The direct Stata command is not union-safe;
+from 11 runs on an Apple M4 Max. The dtatools reads were refreshed on September
+12; Stata retains its August 28 measurements. The direct Stata command is not union-safe;
 Stata errors if its varlist contains an absent name. See the
-[dated projection report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/projection-introspection/results-2026-08-28.md)
+[dated reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
 for the synthetic comparisons, per-method bounds, and limitations.
+
+The adaptive policy reduced the India projection median from 0.263 to 0.235
+seconds. A separate ten-read control found 0.236 seconds of wall time and 0.345
+seconds of CPU time in automatic mode, compared with 0.2645 and 0.5185 seconds
+with sixteen workers: 10.8% less wall time and 33.5% less CPU time. Automatic
+mode matched two workers on this workload.
+
+The reader still scans full row blocks while decoding only the selected
+columns. Once scanning limits throughput, extra workers add coordination
+without speeding up the read. The automatic policy reduces workers for this
+narrow selection while retaining more workers for a large full read. Explicit
+limits remain available; serial mode uses less CPU but takes more wall time
+on this projection.
 
 ### Synthetic write benchmarks
 
@@ -874,7 +946,7 @@ Use the installed help for exact behavior and examples:
 
 ## Performance controls
 
-`threads = 0` chooses an automatic worker count for sufficiently large reads; `threads = 1` forces serial decoding. `use_numeric_altrep = FALSE` disables the compact numeric representation and creates R double vectors during the read.
+`threads = 0` chooses an automatic worker count. For compact DTA reads it accounts for selected decode work, rows per input block and the row window; small reads remain serial. `threads = 1` forces serial decoding. `use_numeric_altrep = FALSE` disables the compact numeric representation and creates R double vectors during the read.
 
 Additional measurements and their provenance live in the repository's [dated benchmark reports](https://github.com/jbearak/dta-parser/tree/main/benchmarks).
 

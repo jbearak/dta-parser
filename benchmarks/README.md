@@ -59,7 +59,10 @@ dta-tools, haven, and Stata in fresh processes. It aggregates elapsed time and
 maximum per-file peak RSS by corpus and stored DTA release while keeping paths
 and raw results private.
 Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
-aggregate results used in the R package README.
+original comparator results. The [adaptive-default reader refresh](reader-refresh/results-2026-09-12-defaults/README.md)
+updates the dtatools corpus, DTA/Arrow, India, projection and fixture measurements,
+including read-call CPU time and fresh-process peak RSS. Haven and Stata timings
+are retained unchanged. These refreshed results are used in the R package README.
 
 The synthetic [`projection-introspection/`](projection-introspection/) suite
 compares a union-safe `any_of()` projection with Stata's full-load-then-keep
@@ -91,7 +94,9 @@ reused Stata medians on the deterministic 100 MB and 1 GB fixtures and the
 India 2021 DHS women's file, including the additive impact of each write
 optimization and the checksums flag. Its
 [2026-08-29 report](arrow-interchange/results-2026-08-29.md) records the
-medians used in the R package README.
+original read and conversion results. Current reader medians are in the
+[adaptive-default refresh](reader-refresh/results-2026-09-12-defaults/README.md);
+write and conversion measurements retain their original dates.
 
 The report-only [`dta-merge/`](dta-merge/) benchmark times one `dta_merge()`
 across every x/y input-source combination — preloaded frames and `.dta` and
