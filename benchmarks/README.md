@@ -60,8 +60,12 @@ maximum per-file peak RSS by corpus and stored DTA release while keeping paths
 and raw results private.
 The [2026-09-12 reader refresh](reader-refresh/results-2026-09-12/README.md)
 records the current aggregate results used in the R package README. It reruns
-only dtatools, retaining the haven and Stata observations from the original
+only dtatools for the corpus totals, retaining the haven and Stata observations from the original
 [2026-08-24 report](r-corpus-performance/results-2026-08-24.md).
+
+The [India ten-run follow-up](reader-refresh/results-2026-09-12/india-10x.md)
+reruns `read_dta()`, `read_arrow()`, haven and native Stata on the same India
+file, replacing the earlier single-read comparison with medians and ranges.
 
 The synthetic [`projection-introspection/`](projection-introspection/) suite
 compares a union-safe `any_of()` projection with Stata's full-load-then-keep

@@ -2,7 +2,7 @@
 
 This refresh measures the current `dtatools::read_dta()` and
 `dtatools::read_arrow()` on the inputs behind the published comparisons. It
-reuses the archived haven and Stata observations. Neither comparator is run.
+reuses the archived haven and Stata observations. Neither comparator is run by `refresh.py`.
 Writes and Arrow conversion costs retain their original dates and measurements.
 
 Install the desired dtatools revision into an isolated library, then run these
@@ -56,3 +56,7 @@ synthetic/projection observations and provenance hashes. The summarizer checks
 that all 1,812 previously common-readable files still load with the same
 dimensions before calculating comparisons, so reused comparator totals retain
 the same file population.
+
+The subsequent [India ten-run follow-up](results-2026-09-12/india-10x.md) uses
+`repeat-india.py` to rerun all four tools, including haven and native Stata,
+in rotated order. It supersedes only the initial single-read India comparison.

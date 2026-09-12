@@ -1,5 +1,11 @@
 # Reader benchmark refresh, 2026-09-12
 
+The India single-read comparison below is superseded by the
+[ten-run follow-up](india-10x.md), which reran all four tools and found Stata
+faster than Arrow. The original corpus refresh and its retained comparators
+remain as recorded below.
+
+
 Only `dtatools::read_dta()` and `dtatools::read_arrow()` were rerun. Haven and
 Stata were not invoked. Their recorded times and peak memory are reused on the
 same computer and inputs. The refresh covers the full survey corpus, the DTA

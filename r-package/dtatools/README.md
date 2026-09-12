@@ -181,7 +181,7 @@ grouping is rebuilt.
 Repository benchmarks compare `dtatools` with haven across three survey corpora.
 The September 12 refresh measures dtatools 0.9.0 with its default dibble output
 and reuses the August 24 haven and Stata measurements on the same files and
-computer. Haven and Stata were not rerun.
+computer. Haven and Stata were not rerun for these corpus totals.
 
 | Workload | dtatools | haven | Difference |
 | --- | ---: | ---: | ---: |
@@ -199,19 +199,23 @@ These are warm-cache measurements from an Apple M4 Max. See the
 [dated reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12/README.md)
 for the full corpus results, read-time and peak-memory comparisons, and methodology.
 
-For the 5.2 GB India 2021 DHS women's file, with 724,115 rows and 5,972 columns:
+For the 5.2 GB India 2021 DHS women's file, with 724,115 rows and 5,972 columns,
+a follow-up reran all four tools ten times:
 
-| Reader | Read time | Peak RSS |
-| --- | ---: | ---: |
-| `dtatools::read_dta()` | 1.928 seconds | 5.235 GB |
-| `dtatools::read_arrow()` | 0.696 seconds | 10.278 GB |
-| `haven::read_dta()`, retained August 24 | 437.088 seconds | 35.103 GB |
-| Stata native `use`, retained August 24 | 0.718 seconds | 5.256 GB |
+| Reader | Median read time | Range | Median peak RSS |
+| --- | ---: | ---: | ---: |
+| `dtatools::read_dta()` | 1.847 seconds | 1.814–1.927 seconds | 5.235 GB |
+| `dtatools::read_arrow()` | 0.695 seconds | 0.690–0.703 seconds | 10.278 GB |
+| `haven::read_dta()` | 488.204 seconds | 413.645–529.616 seconds | 35.107 GB |
+| Stata native `use` | 0.502 seconds | 0.468–0.503 seconds | 5.256 GB |
 
-Each cell comes from one read in a fresh process, with a warm filesystem cache.
-The timer excludes startup; peak RSS includes the runtime and loaded result.
-`read_arrow()` reads the retained 5.6 GB Arrow conversion with checksum
-verification enabled. It uses more peak memory than `read_dta()` here.
+Each read used a fresh process with a warm filesystem cache, and tool order
+rotated between rounds. The timer excludes startup; peak RSS includes the
+runtime and loaded result. `read_arrow()` reads the retained 5.6 GB Arrow
+conversion with checksum verification enabled. It takes 62.4% less read time
+than `read_dta()` here, using roughly twice the peak memory. Stata is faster
+than both. See the [ten-run report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12/india-10x.md)
+for every observation, provenance and the distinction from older single reads.
 
 ### Using `.arrow` dataset files
 
