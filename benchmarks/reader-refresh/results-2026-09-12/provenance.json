@@ -1,0 +1,64 @@
+{
+  "bindings": {
+    "corpus": {
+      "commit": "cf0c80d72191491d42db51d5882a9d7f9d16194e",
+      "source_tree": "9ad5f6ba91cff98651643d49fcb35082f49aab8a",
+      "archived": {
+        "inventory.tsv": "8f8964891ab2d9429988a8bcddf8ddb3a32338b3a4399ad154dc70df8a370367",
+        "raw.tsv": "7f47e48313d08a64cc4f7f885dd4954d57bf303e8362919d171cbd86d14d396c"
+      },
+      "release_inventory_sha256": "e9ab5b3e98a43e5929aa3f856ff00b2b4491cf6629a349d0dda69fb675bba1da",
+      "installed": {
+        "DESCRIPTION": "55cae837fc016c23f9dd3fdb674f31e43c41b0eb0010933d91821bb590b965e5",
+        "R/dtatools.rdb": "43cbc4c92f19dfdef35d9ea950ad0402b659ef63a4c6094dd1239fc34fdd10e4",
+        "R/dtatools.rdx": "bb9a2e48c57412b49f37d9d274cb83ef7833d6462f1384137f4a2542064d052d",
+        "libs/dtatools.so": "9d23586db7912f659a4ec76262720a846b0e835ca2dae61f5cf9838e6b1b7d51"
+      },
+      "scripts": {
+        "benchmarks/reader-refresh/refresh.py": "5f0c4d5c52866630cadbd562512de9a733288b96e36ee5015f500393b6c5b5ba",
+        "benchmarks/reader-refresh/compare.R": "364ce728827349cdb6691e21e562adccd76a4a784789eb27dbdc26c2b947cc15",
+        "benchmarks/r-corpus-performance/worker.R": "20e832bb3f615aff114cac3d9644b8fde0d232ea456a48e93ab1eda74cb62e52",
+        "benchmarks/arrow-interchange/worker.R": "ba96caf313dcb6db6de9435a70dd66168e145fbb127126fb9a225dcb1b4dddf8",
+        "benchmarks/projection-introspection/r-worker.R": "feedb00c7602f8fc99844db9b23be0e2230d8cc7f1917528bbd0e2b6facd671c",
+        "benchmarks/benchmark-common.R": "1652c6d1225d8b945b3451df23d703d6710341365cd2b503a66513e917c3c75b"
+      }
+    },
+    "reads": {
+      "commit": "cf0c80d72191491d42db51d5882a9d7f9d16194e",
+      "source_tree": "9ad5f6ba91cff98651643d49fcb35082f49aab8a",
+      "archived": {
+        "inventory.tsv": "8f8964891ab2d9429988a8bcddf8ddb3a32338b3a4399ad154dc70df8a370367",
+        "raw.tsv": "7f47e48313d08a64cc4f7f885dd4954d57bf303e8362919d171cbd86d14d396c"
+      },
+      "release_inventory_sha256": "e9ab5b3e98a43e5929aa3f856ff00b2b4491cf6629a349d0dda69fb675bba1da",
+      "installed": {
+        "DESCRIPTION": "55cae837fc016c23f9dd3fdb674f31e43c41b0eb0010933d91821bb590b965e5",
+        "R/dtatools.rdb": "43cbc4c92f19dfdef35d9ea950ad0402b659ef63a4c6094dd1239fc34fdd10e4",
+        "R/dtatools.rdx": "bb9a2e48c57412b49f37d9d274cb83ef7833d6462f1384137f4a2542064d052d",
+        "libs/dtatools.so": "9d23586db7912f659a4ec76262720a846b0e835ca2dae61f5cf9838e6b1b7d51"
+      },
+      "scripts": {
+        "benchmarks/reader-refresh/refresh.py": "5f0c4d5c52866630cadbd562512de9a733288b96e36ee5015f500393b6c5b5ba",
+        "benchmarks/reader-refresh/compare.R": "736079151b2ae70733bbf5be0d736763c43208219cd8a163295aea7a569aac96",
+        "benchmarks/r-corpus-performance/worker.R": "20e832bb3f615aff114cac3d9644b8fde0d232ea456a48e93ab1eda74cb62e52",
+        "benchmarks/arrow-interchange/worker.R": "ba96caf313dcb6db6de9435a70dd66168e145fbb127126fb9a225dcb1b4dddf8",
+        "benchmarks/projection-introspection/r-worker.R": "feedb00c7602f8fc99844db9b23be0e2230d8cc7f1917528bbd0e2b6facd671c",
+        "benchmarks/benchmark-common.R": "1652c6d1225d8b945b3451df23d703d6710341365cd2b503a66513e917c3c75b"
+      }
+    }
+  },
+  "corpus_inventory_entries": 1823,
+  "common_files": 1812,
+  "included_successful_children": 1842,
+  "included_failed_qualification_children": 1,
+  "haven_invocations": 0,
+  "stata_invocations": 0,
+  "input_identity": "original relative paths, byte sizes and modification times match before/after corpus run",
+  "private_results": {
+    "corpus.tsv": "a45a8941019497fcc6fb2226a9c0c3ada1bb18906e99dab2f04c95369b8aef69",
+    "combined.tsv": "8c2b3c6a59466e7d9e1ff59dacf41adbdd3dac52d0eb7305f4e3c9461936389a",
+    "jobs.jsonl": "6730a5f561264e89065f85a008973b79b6c8257c2fa915022c0fb1d24e290c17"
+  },
+  "private_read_jobs_sha256": "e81cda58df56de2211aaa18a7c14f056eac840d173e18dd9f937c22f4c529c90",
+  "summarizer_sha256": "05133f964621fa531e33647445262af1423e5c27ea0acf08c113e11b416a9541"
+}

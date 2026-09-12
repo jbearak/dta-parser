@@ -58,8 +58,10 @@ common-readable DHS, MICS, and NSFG DTA file beneath `/opt/aww_cache` through
 dta-tools, haven, and Stata in fresh processes. It aggregates elapsed time and
 maximum per-file peak RSS by corpus and stored DTA release while keeping paths
 and raw results private.
-Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
-aggregate results used in the R package README.
+The [2026-09-12 reader refresh](reader-refresh/results-2026-09-12/README.md)
+records the current aggregate results used in the R package README. It reruns
+only dtatools, retaining the haven and Stata observations from the original
+[2026-08-24 report](r-corpus-performance/results-2026-08-24.md).
 
 The synthetic [`projection-introspection/`](projection-introspection/) suite
 compares a union-safe `any_of()` projection with Stata's full-load-then-keep
@@ -90,8 +92,10 @@ The report-only [`arrow-interchange/`](arrow-interchange/) benchmark compares
 reused Stata medians on the deterministic 100 MB and 1 GB fixtures and the
 India 2021 DHS women's file, including the additive impact of each write
 optimization and the checksums flag. Its
-[2026-08-29 report](arrow-interchange/results-2026-08-29.md) records the
-medians used in the R package README.
+[2026-08-29 report](arrow-interchange/results-2026-08-29.md) retains the write
+and conversion measurements. The
+[2026-09-12 refresh](reader-refresh/results-2026-09-12/README.md) updates the
+read medians used in the R package README and the projection comparisons.
 
 The report-only [`dta-merge/`](dta-merge/) benchmark times one `dta_merge()`
 across every x/y input-source combination — preloaded frames and `.dta` and

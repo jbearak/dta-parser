@@ -20,9 +20,10 @@ per-file peak RSS observed for each reader. Unrecognized or
 unreadable signatures remain accounted for as `unknown` inventory groups. The
 report never publishes private paths or data values.
 
-See the [detailed corpus report](results-2026-08-24.md) for the complete
-1,823-file run and the current numeric ALTREP spot check used in the R package
-README.
+The [2026-09-12 reader refresh](../reader-refresh/results-2026-09-12/README.md)
+contains the current dtatools results used in the R package README. It reruns
+dtatools alone and reuses the haven and Stata observations from the original
+[1,823-file corpus run](results-2026-08-24.md).
 
 On macOS, run the complete suite from the checkout root:
 
