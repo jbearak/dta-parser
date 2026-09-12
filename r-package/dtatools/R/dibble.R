@@ -191,6 +191,12 @@ is_dibble <- function(x) {
     } else {
         tibble::as_tibble(x, .name_repair = "minimal")
     }
+    .validate_dibble_names(x)
+    .as_mutation_data(x, allow_grouped = TRUE)
+    x
+}
+
+.validate_dibble_names <- function(x) {
     names <- attr(x, "names", exact = TRUE)
     if (is.null(names) || anyNA(names) || any(names == "") ||
         anyDuplicated(names) > 0L) {
@@ -202,13 +208,36 @@ is_dibble <- function(x) {
             call. = FALSE
         )
     }
-    .as_mutation_data(x, allow_grouped = TRUE)
-    x
+    invisible(NULL)
 }
 
 .as_dibble <- function(x, caller = "as_dibble()") {
     x <- .prepare_dibble_frame(x)
     .new_validated_dibble(.type_dibble_columns(x, caller))
+}
+
+# Reader-only constructor, after name repair and dataset metadata attachment.
+# Native readers supply a rectangular tibble with fresh, privately owned
+# column handles. They need neither arbitrary-frame preparation nor capture
+# of those handles. Arrow can also supply untyped R columns. Strings still
+# need declaration checks: decoding can expand UTF-8 widths, and an Arrow
+# declaration need not fit its values. Normalize these through the same
+# policy as as_dibble(), capturing only replacement columns.
+.new_reader_dibble <- function(x) {
+    .validate_dibble_names(x)
+    row_count <- nrow(x)
+    column_names <- names(x)
+    for (index in seq_along(column_names)) {
+        column <- .subset2(x, index)
+        typed <- .typed_column_named(
+            column, row_count, "as_dibble()", column_names[[index]]
+        )
+        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
+            captured <- .Call(C_dtatools_capture_column, typed)
+            .Call(C_dtatools_set_data_column, x, as.integer(index), captured)
+        }
+    }
+    .new_validated_dibble(x)
 }
 
 # Private constructor. Its caller has checked table shape and normalized every

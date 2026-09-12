@@ -6057,6 +6057,10 @@
         {
           "path": "tests/testthat/test-dplyr-optional.R",
           "sha256": "ec21934e3403c4e021696ef3a81b94bab57c40c0eb1baaec7d30c1b2303a5b16"
+        },
+        {
+          "path": "tests/testthat/test-reader-dibble.R",
+          "sha256": "f071dbea70357b7c01abfc7453793fe75ec031fff0293c0dc126942c5012e170"
         }
       ],
       "blocks": [
@@ -7165,6 +7169,54 @@
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-reader-dibble.R",
+          "test": "direct reader dibbles preserve the general constructor's semantics",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 256,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dibble.R",
+          "test": "direct readers retain name repair and empty projection rules",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dibble.R",
+          "test": "direct reader ownership survives exports writes and file removal",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dibble.R",
+          "test": "direct Arrow dibbles normalize ordinary R columns and retain metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dibble.R",
+          "test": "direct Arrow dibbles repair declarations that do not fit the values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dibble.R",
+          "test": "direct DTA dibbles widen strings expanded by decoding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
         }
       ],
       "children": [
@@ -10776,6 +10828,16 @@
         {
           "file": "test-dibble.R",
           "test": "Arrow strings enter a dibble compact with an inferred width",
+          "occurrence": 1,
+          "skip": "require",
+          "reason": "external Arrow physically absent",
+          "min_pass_before_skip": 0,
+          "skip_message": "Reason: {arrow} is not installed",
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dibble.R",
+          "test": "direct Arrow dibbles repair declarations that do not fit the values",
           "occurrence": 1,
           "skip": "require",
           "reason": "external Arrow physically absent",
