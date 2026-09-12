@@ -1,0 +1,26 @@
+{
+  "all": {
+    "files": 1812,
+    "faster": 1458,
+    "tied": 5,
+    "slower": 349,
+    "mean_file_speedup": 11.341841010472491,
+    "median_file_speedup": 4.909786510485548
+  },
+  "over_1mb": {
+    "files": 1534,
+    "faster": 1434,
+    "tied": 5,
+    "slower": 95,
+    "mean_file_speedup": 13.29141191796838,
+    "median_file_speedup": 7.606038647342995
+  },
+  "DHS": {
+    "files": 641,
+    "faster": 641,
+    "tied": 0,
+    "slower": 0,
+    "mean_file_speedup": 24.188481400976425,
+    "median_file_speedup": 19.634146341463413
+  }
+}

@@ -60,3 +60,33 @@ the same file population.
 The subsequent [India ten-run follow-up](results-2026-09-12/india-10x.md) uses
 `repeat-india.py` to rerun all four tools, including haven and native Stata,
 in rotated order. It supersedes only the initial single-read India comparison.
+
+For a package built in a separate checkout, pass `--source-root /path/to/checkout`
+to either driver. The source checkout must have no uncommitted package changes;
+its commit and package tree are recorded alongside the installed library hashes.
+To repeat only the two dtatools readers after a code change, use:
+
+```sh
+python3 benchmarks/reader-refresh/repeat-india.py /tmp/reader-library target/india-dtatools --dtatools-only --source-root /path/to/checkout --dta "$INDIA_DTA" --arrow "$INDIA_ARROW"
+```
+
+This mode retains the original input identities while accepting the new
+installation. It alternates DTA/Arrow order across ten rounds and never invokes
+haven or Stata. Their existing observations can be carried forward with their
+original measurement provenance.
+
+The [post-batching and automatic-thread report](results-2026-09-12-auto/README.md)
+contains the latest dtatools measurements and full conformance rerun. To run
+the matched projection control, using retained present/union name lists:
+
+```sh
+DTATOOLS_BENCH_LIB=/tmp/reader-library Rscript --vanilla benchmarks/reader-refresh/projection-threads.R "$INDIA_DTA" "$PRESENT_NAMES" "$UNION_NAMES" 10 target/projection-control
+```
+
+The default compares eight workers with automatic mode. An optional sixth
+argument such as `1,2,4,8,12,16` selects explicit limits for a sweep. It warms
+each configuration, verifies matching full data signatures outside timing,
+alternates configuration order, and binds inputs, workers and installation
+before and after. It writes observations and provenance beside the output
+prefix. The report also retains the exact worker used before the optional
+thread-list argument was added.

@@ -1,5 +1,10 @@
 # India: ten fresh-process reads per tool
 
+The [subsequent dtatools-only rerun](../results-2026-09-12-auto/README.md)
+supersedes the two dtatools rows below. Its comparison retains the haven and
+Stata observations recorded here without running those tools again.
+
+
 This follow-up reran all four tools ten times on the same India 2021 DHS
 women's dataset (724,115 rows, 5,972 columns). It supersedes the single-read
 India comparison in the initial September 12 refresh. The corpus aggregates

@@ -1,0 +1,63 @@
+{
+  "source_commit": "92020d4d3d0457ac7191e929a6b1736e3571b884",
+  "rust_core_tests_passed": 280,
+  "rust_bridge_tests_passed": 21,
+  "rust_tests_failed": 0,
+  "clippy": "pass, workspace/all targets with warnings denied",
+  "typescript_fixture_conformance": {
+    "immutable_fixtures": 22,
+    "decoded_cell_comparisons": 32085,
+    "result": "pass"
+  },
+  "deterministic_native_gates": {
+    "gates": 10,
+    "result": "pass"
+  },
+  "r_package_conformance": {
+    "command": "NOT_CRAN=true DTA_REQUIRE_R_CONFORMANCE=1 scripts/conformance.sh",
+    "result": "completed with no test failures",
+    "r_cmd_check_warnings": 3,
+    "r_cmd_check_notes": 2,
+    "warnings": [
+      "zstd objects target macOS 26.5 while the linker target is 26.0",
+      "GNU make extensions in vendored Makefiles",
+      "Rust static library contains the _abort symbol"
+    ],
+    "notes": [
+      "vendored CITATION file",
+      "generated zstd flag_check.c lacks a final newline"
+    ]
+  },
+  "additional_r_conformance": {
+    "environment": "NOT_CRAN=true; installed candidate library; loopback server permitted",
+    "scripts": {
+      "scripts/test-haven-conformance.R": "pass, including URL input test; no skips",
+      "scripts/test-labelled-interop.R": "pass with labelled 2.16.0 and haven 2.5.5",
+      "scripts/test-haven-helper-interop.R": "pass with haven 2.5.5"
+    }
+  },
+  "benchmark_separation": "All timed benchmark phases completed before the unrestricted conformance rerun. Thread projection controls ran after conformance completed. Haven was used for correctness tests only; haven and Stata benchmarks were not rerun.",
+  "log_sha256": {
+    "rust-core.log": "d129c4245ef9703d20893a184aa6545a935124d3ddb316ce1dc63c0f71654ac6",
+    "rust-bridge.log": "e7cad684fa6543fc50085f69e4a5d8010baa2bb47bc783568c4e68019769b314",
+    "clippy.log": "c3dfdf90aef2a29f09f2bb7938e89de8f3eedaca636c5db692da3a93aa1457d1",
+    "roxygen.log": "b9424b18c117b3dd15e400f1d1e02cb06eac1f7f90af810287bb03b79f605030",
+    "install.log": "567002bfd67e6e07d18b366bbfb731a195e0eda58005140c7ad8a72350ccf33f",
+    "conformance.log": "a3179c2bb148cfcd7f2ef606323527b55267bb4b43f1c145de3e4ca4ddb1921c",
+    "haven-conformance.log": "9f2478e81235409b338fe7248baec50fcdc565af8cba9938996a0f15528c5465",
+    "labelled-interop.log": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81",
+    "haven-helper-interop.log": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264"
+  },
+  "github_ci": {
+    "source_commit": "92020d4d3d0457ac7191e929a6b1736e3571b884",
+    "workflow_url": "https://github.com/jbearak/dta-parser/actions/runs/34706671824",
+    "result": "all test lanes passed",
+    "r_native_lanes_passed": 6,
+    "r_package_platforms": [
+      "Linux",
+      "macOS",
+      "Windows"
+    ],
+    "codeql": "passed"
+  }
+}

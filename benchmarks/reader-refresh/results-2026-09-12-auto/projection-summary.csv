@@ -1,0 +1,17 @@
+case,method,median_seconds,min_seconds,max_seconds,date
+tall,dtatools-any-of,0.014,0.013,0.014,2026-09-12
+tall,dtatools-all-of,0.014,0.013,0.014,2026-09-12
+tall,stata-load-inspect-keep,0.016,0.016,0.023,2026-08-28
+tall,stata-use-present,0.028,0.028,0.029,2026-08-28
+wide,dtatools-any-of,0.013,0.0129999999999999,0.014,2026-09-12
+wide,dtatools-all-of,0.013,0.013,0.014,2026-09-12
+wide,stata-use-present,0.015,0.014,0.015,2026-08-28
+wide,stata-load-inspect-keep,0.017,0.017,0.024,2026-08-28
+tall-wide,dtatools-any-of,0.025,0.0249999999999999,0.026,2026-09-12
+tall-wide,dtatools-all-of,0.025,0.0249999999999999,0.026,2026-09-12
+tall-wide,stata-load-inspect-keep,0.039,0.038,0.057,2026-08-28
+tall-wide,stata-use-present,0.041,0.041,0.042,2026-08-28
+india-2021-wm,dtatools-any-of,0.263,0.262,0.282,2026-09-12
+india-2021-wm,dtatools-all-of,0.263,0.261,0.267,2026-09-12
+india-2021-wm,stata-use-present,0.482,0.444,0.515,2026-08-28
+india-2021-wm,stata-load-inspect-keep,0.552,0.531,0.63,2026-08-28

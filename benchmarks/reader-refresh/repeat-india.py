@@ -19,8 +19,13 @@ parser.add_argument("--dta", type=Path, required=True)
 parser.add_argument("--arrow", type=Path, required=True)
 parser.add_argument("--stata", type=Path, default=Path(
     "/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp"))
+parser.add_argument("--dtatools-only", action="store_true", help="rerun only the two dtatools readers")
+parser.add_argument("--source-root", type=Path, help="checkout used to build the isolated package")
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[2]
+source_root = args.source_root.resolve() if args.source_root else root
+subprocess.run(["git", "diff", "--exit-code", "HEAD", "--", "r-package/dtatools"],
+               cwd=source_root, check=True)
 for name in ("library", "output", "dta", "arrow", "stata"):
     setattr(args, name, getattr(args, name).resolve())
 args.output.mkdir(parents=True, exist_ok=True)
@@ -64,8 +69,8 @@ scripts = [Path(__file__), root / "benchmarks/r-corpus-performance/worker.R",
 
 def binding():
     return dict(
-        source_commit=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
-        package_tree=subprocess.check_output(["git", "rev-parse", "HEAD:r-package/dtatools"], cwd=root, text=True).strip(),
+        source_commit=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source_root, text=True).strip(),
+        package_tree=subprocess.check_output(["git", "rev-parse", "HEAD:r-package/dtatools"], cwd=source_root, text=True).strip(),
         dtatools=tree_sha(args.library / "dtatools"), haven=tree_sha(haven_path),
         stata={p.name: sha(p) for p in (args.stata, args.stata.parent / "libstata-mp.dylib")},
         rscript_sha256=sha(Path(rscript)),
@@ -76,11 +81,12 @@ def binding():
 
 initial = binding()
 previous = json.loads((root / "benchmarks/reader-refresh/results-2026-09-12/provenance.json").read_text())
-subprocess.run(["git", "diff", "--exit-code", previous["bindings"]["reads"]["commit"], "HEAD", "--",
-                "r-package/dtatools/R", "r-package/dtatools/src",
-                "r-package/dtatools/DESCRIPTION", "r-package/dtatools/NAMESPACE"], cwd=root, check=True)
-assert all(initial["dtatools"][name] == digest
-           for name, digest in previous["bindings"]["reads"]["installed"].items())
+if not args.dtatools_only:
+    subprocess.run(["git", "diff", "--exit-code", previous["bindings"]["reads"]["commit"], "HEAD", "--",
+                    "r-package/dtatools/R", "r-package/dtatools/src",
+                    "r-package/dtatools/DESCRIPTION", "r-package/dtatools/NAMESPACE"], cwd=source_root, check=True)
+    assert all(initial["dtatools"][name] == digest
+               for name, digest in previous["bindings"]["reads"]["installed"].items())
 with (root / "benchmarks/reader-refresh/results-2026-09-12/read-inputs.csv").open() as stream:
     india = next(r for r in csv.DictReader(stream) if r["case"] == "india")
 for name in ("dta", "arrow"):
@@ -99,7 +105,9 @@ else:
     observations = []
 completed = {(int(r["iteration"]), r["method"]) for r in observations}
 assert len(completed) == len(observations)
-methods = ["read_dta", "read_arrow", "haven", "stata"]
+methods = ["read_dta", "read_arrow"] if args.dtatools_only else ["read_dta", "read_arrow", "haven", "stata"]
+expected_count = 10 * len(methods)
+assert all(method in methods for _, method in completed)
 
 for iteration in range(1, 11):
     shift = (iteration - 1) % len(methods)
@@ -122,7 +130,7 @@ for iteration in range(1, 11):
         else:
             command = [rscript, "--vanilla", str(root / "benchmarks/r-corpus-performance/worker.R"),
                        "dtatools" if method == "read_dta" else "haven", str(args.dta)]
-        print(f"START {key}, position {position}/4", flush=True)
+        print(f"START {key}, position {position}/{len(methods)}", flush=True)
         log = work / "process.log"
         started = time.time()
         with log.open("wb") as stream:
@@ -157,9 +165,9 @@ for iteration in range(1, 11):
             rows=int(rows), columns=int(columns)))
         publish(raw_file, observations)
         print(f"DONE {key}: {float(elapsed):.3f} s, {job['peak_rss_bytes']/1e9:.3f} GB peak RSS; "
-              f"{len(observations)}/40 reads", flush=True)
+              f"{len(observations)}/{expected_count} reads", flush=True)
 
-assert len(observations) == 40
+assert len(observations) == expected_count
 assert binding() == initial, "inputs, library or runtime changed during measurements"
 summary = []
 for method in methods:
@@ -173,4 +181,4 @@ for method in methods:
         median_peak_rss_gb=statistics.median(memory), min_peak_rss_gb=min(memory), max_peak_rss_gb=max(memory)))
 publish(args.output / "summary.csv", summary)
 (args.output / "active.json").unlink()
-print("COMPLETE: 10 successful reads per tool; final input and installation hashes match.", flush=True)
+print("COMPLETE: 10 successful reads per selected tool; final input and installation hashes match.", flush=True)

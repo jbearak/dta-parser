@@ -16,9 +16,13 @@ parser.add_argument("library", type=Path)
 parser.add_argument("output", type=Path)
 parser.add_argument("--cache", type=Path, default=Path("/opt/aww_cache"))
 parser.add_argument("--phase", choices=["corpus", "reads"], required=True)
+parser.add_argument("--source-root", type=Path, help="checkout used to build the isolated package")
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[2]
 os.chdir(root)
+source_root = args.source_root.resolve() if args.source_root else root
+subprocess.run(["git", "diff", "--exit-code", "HEAD", "--", "r-package/dtatools"],
+               cwd=source_root, check=True)
 args.output = args.output.resolve()
 args.library = args.library.resolve()
 args.output.mkdir(parents=True, exist_ok=True)
@@ -82,8 +86,26 @@ for row in inventory:
     assert path.is_file() and not path.is_symlink()
     assert stat.st_size == int(row["bytes"]) and abs(stat.st_mtime - float(row["mtime"])) < 1e-5
 
-binding = dict(commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
-    source_tree=subprocess.check_output(["git", "rev-parse", "HEAD:r-package/dtatools"], text=True).strip(),
+# Bind every retained read/projection input before any timed child starts.
+phase_inputs = {}
+if args.phase == "reads":
+    for row in table(root / "target/large-scale/datasets.tsv"):
+        phase_inputs[f"{row['dataset']}-dta"] = Path(row["path"])
+        phase_inputs[f"{row['dataset']}-arrow"] = root / f"target/arrow-interchange/synthetic-{row['dataset']}.arrow"
+    phase_inputs["india-dta"] = args.cache / next(r["relative_path"] for r in inventory if r["id"] == "DHS-0259")
+    phase_inputs["india-arrow"] = root / "target/arrow-interchange/india-2021-wm.arrow"
+    phase_inputs["nsfg-dta"] = args.cache / next(r["relative_path"] for r in inventory if r["id"] == "NSFG-0206")
+    for run, names in [("run-full-20260828T202309Z", ["tall", "wide", "tall-wide"]),
+                       ("run-india-20260828T203157Z", ["india-2021-wm"])]:
+        directory = root / "target/projection-introspection" / run
+        for name in names:
+            names_dir = directory / name if name == "india-2021-wm" else directory
+            phase_inputs[f"projection-{name}-dta"] = directory / name / "input.dta"
+            for kind in ("present", "union"):
+                phase_inputs[f"projection-{name}-{kind}"] = names_dir / f"{kind}.txt"
+
+binding = dict(commit=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source_root, text=True).strip(),
+    source_tree=subprocess.check_output(["git", "rev-parse", "HEAD:r-package/dtatools"], cwd=source_root, text=True).strip(),
     library=str(args.library), archived={p.name: sha(p) for p in
         [archive / "inventory.tsv", archive / "raw.tsv"]},
     release_inventory_sha256=sha(release_inventory),
@@ -95,6 +117,7 @@ binding = dict(commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text
         root / "benchmarks/arrow-interchange/worker.R",
         root / "benchmarks/projection-introspection/r-worker.R",
         root / "benchmarks/benchmark-common.R"]})
+binding["read_inputs"] = {name: dict(bytes=p.stat().st_size, sha256=sha(p)) for name, p in phase_inputs.items()}
 binding_path = args.output / "binding.json"
 if binding_path.exists():
     assert json.loads(binding_path.read_text()) == binding, "run binding changed"
@@ -168,3 +191,9 @@ else:
             print(f"projection: {name}", flush=True)
 
 assert binding["installed"] == {s: sha(args.library / "dtatools" / s) for s in binding["installed"]}
+
+assert binding["read_inputs"] == {name: dict(bytes=p.stat().st_size, sha256=sha(p)) for name, p in phase_inputs.items()}
+assert binding["scripts"] == {p: sha(Path(p)) for p in binding["scripts"]}
+assert binding["commit"] == subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source_root, text=True).strip()
+subprocess.run(["git", "diff", "--exit-code", "HEAD", "--", "r-package/dtatools"], cwd=source_root, check=True)
+print("Final source, input and installation checks passed.", flush=True)

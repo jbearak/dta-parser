@@ -1,5 +1,10 @@
 # Reader benchmark refresh, 2026-09-12
 
+The [automatic-thread and byte-batch rerun](../results-2026-09-12-auto/README.md)
+supersedes the dtatools measurements below. This report retains the earlier
+reader build and protocol as historical evidence.
+
+
 The India single-read comparison below is superseded by the
 [ten-run follow-up](india-10x.md), which reran all four tools and found Stata
 faster than Arrow. The original corpus refresh and its retained comparators

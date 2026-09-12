@@ -58,7 +58,7 @@ common-readable DHS, MICS, and NSFG DTA file beneath `/opt/aww_cache` through
 dta-tools, haven, and Stata in fresh processes. It aggregates elapsed time and
 maximum per-file peak RSS by corpus and stored DTA release while keeping paths
 and raw results private.
-The [2026-09-12 reader refresh](reader-refresh/results-2026-09-12/README.md)
+The [2026-09-12 automatic-thread reader refresh](reader-refresh/results-2026-09-12-auto/README.md)
 records the current aggregate results used in the R package README. It reruns
 only dtatools for the corpus totals, retaining the haven and Stata observations from the original
 [2026-08-24 report](r-corpus-performance/results-2026-08-24.md).
