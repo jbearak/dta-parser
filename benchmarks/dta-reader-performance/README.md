@@ -15,15 +15,16 @@ experimental environment switches.
 All entries are medians; percentages use unrounded times. India's ranges were
 1.790–1.849 seconds before and 0.888–0.899 after. With an explicit
 `threads = 16`, the candidate's India median was 0.800 seconds
-(0.797–0.812). The default remains automatic, capped at eight workers.
+(0.797–0.812). These measurements used the original automatic limit of eight workers.
+The subsequent automatic-thread update removes that limit from both readers;
+`threads = 0` uses available CPUs, subject to selection size and useful work.
 
-Recommend shipping the batch fill while retaining the current thread and
-buffer defaults. The main gain transfers from Arrow's conversion loop and
-does not require additional resident memory. The synthetic results show why
-this is a workload-dependent improvement, not a general twofold speed claim.
-On this machine, users prioritizing India read time can also request 16
-threads. That setting needs broader hardware evidence before becoming a
-global default.
+Recommend shipping the batch fill with the 8 MiB buffer and automatic use of
+available CPUs. Users can limit workers through the `threads` argument or the
+`dtatools.threads` option. The synthetic results show why the batch change is a
+workload-dependent improvement, not a general twofold speed claim. The tables
+above isolate batching at the old eight-worker default; the 16-worker results
+showed further gains on all three inputs on this machine.
 
 ## What transfers from Arrow
 
@@ -119,7 +120,10 @@ The experimental worker explicitly runs a full GC before timing each read.
 Measurements were made on September 12, 2026, on the same Apple M4 Max
 (16 cores, 128 GB), macOS 26.6.2 and R 4.6.1 installation. Stock dtatools
 0.9.0 was built from `cf0c80d72191491d42db51d5882a9d7f9d16194e`, the
-direct-dibble merge. The candidate changes only the compact-byte read path.
+direct-dibble merge. The candidate measured in the tables above changed only the compact-byte read
+path. Its measured source is retained in commit
+`53e388f19707620ad24ce215b3862da7c07c9c47`; subsequent automatic-thread
+measurements are recorded separately.
 Input data and dependency libraries were retained; Arrow files were not
 regenerated. Haven and Stata were each run exactly ten times in the separate
 baseline and were not run again for these experiments.

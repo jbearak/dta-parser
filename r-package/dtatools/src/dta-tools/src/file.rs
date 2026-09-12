@@ -397,7 +397,6 @@ const STRL_CANCEL_CHECK_INTERVAL: usize = 1024;
 const COLUMNAR_CANCEL_CHECK_INTERVAL: usize = 16_384;
 const MIN_PARALLEL_DATA_BYTES: u64 = 16 * 1024 * 1024;
 const MIN_PARALLEL_CELLS: u64 = 1_000_000;
-const MAX_AUTOMATIC_THREADS: usize = 8;
 const MODERN_SIGNATURE: &[u8] = b"<stata_dta><header><release>";
 
 fn automatic_parallel_workload(selected_bytes: u64, cells: u64) -> bool {
@@ -1935,7 +1934,7 @@ impl<R: Read + Seek> DtaFile<R> {
         }
         let available = thread::available_parallelism().map_or(1, usize::from);
         let threads = if requested == 0 {
-            available.min(MAX_AUTOMATIC_THREADS)
+            available
         } else {
             requested.min(available)
         };
@@ -7542,6 +7541,53 @@ mod tests {
             unreachable!()
         };
         assert_eq!(values.len(), COLUMNAR_CANCEL_CHECK_INTERVAL);
+    }
+
+    #[test]
+    fn automatic_reader_threads_use_available_cpus_and_honor_explicit_limits() {
+        let mut metadata = kernel_metadata(ByteOrder::Lsf);
+        metadata.nvar = 64;
+        metadata.nobs = 1_000_000;
+        metadata.obs_length = 64 * 4;
+        metadata.variables = (0..64)
+            .map(|index| {
+                let mut variable = value_label_variable(&format!("v{index}"), "");
+                variable.byte_offset = index * 4;
+                variable
+            })
+            .collect();
+        let file = DtaFile {
+            reader: Cursor::new(Vec::<u8>::new()),
+            metadata,
+            file_length: 0,
+            scratch: Scratch::new(DEFAULT_MAX_BUFFER_BYTES),
+            value_labels: ValueLabelCache::Empty,
+            text_encoding: TextEncoding::Utf8,
+        };
+        let available = thread::available_parallelism().map_or(1, usize::from);
+        let options = ReadOptions::default();
+        assert_eq!(
+            file.parallel_thread_count(&options, 0).unwrap(),
+            available.min(64)
+        );
+        assert_eq!(file.parallel_thread_count(&options, 1).unwrap(), 1);
+        assert_eq!(
+            file.parallel_thread_count(&options, 3).unwrap(),
+            available.min(3)
+        );
+        let small = ReadOptions {
+            row_count: Some(1),
+            ..ReadOptions::default()
+        };
+        assert_eq!(file.parallel_thread_count(&small, 0).unwrap(), 1);
+        let projected = ReadOptions {
+            column_indices: Some(vec![0, 1]),
+            ..ReadOptions::default()
+        };
+        assert_eq!(
+            file.parallel_thread_count(&projected, 0).unwrap(),
+            available.min(2)
+        );
     }
 
     #[test]

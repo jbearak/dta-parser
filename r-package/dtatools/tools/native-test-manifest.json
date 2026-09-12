@@ -150,7 +150,7 @@
         },
         {
           "path": "tests/testthat/test-read-dta.R",
-          "sha256": "3290d0833679cc64bc3664b44133d3d3a5ca8ed54536c0b0d6228b4d60866945"
+          "sha256": "db19282b0f3c6e54b873c59e62cf9d79d6e0a9823b5f7126d410c1ac1c957401"
         },
         {
           "path": "tests/testthat/test-save-dta.R",
@@ -1177,6 +1177,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-read-dta.R",
+          "test": "parallel compact byte batches preserve serial values and missingness",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
           "warnings": 0
         }
       ],
