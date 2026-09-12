@@ -1,0 +1,43 @@
+{
+  "repetitions": 10,
+  "cases": [
+    {
+      "name": "india",
+      "path": "${INDIA_DTA}",
+      "rows": 724115,
+      "columns": 5972
+    },
+    {
+      "name": "100mb",
+      "path": "${100MB_DTA}",
+      "rows": 231956,
+      "columns": 40
+    },
+    {
+      "name": "1gb",
+      "path": "${1GB_DTA}",
+      "rows": 2320123,
+      "columns": 40
+    }
+  ],
+  "variants": [
+    {
+      "name": "stock",
+      "library": "${STOCK_LIBRARY}"
+    },
+    {
+      "name": "batch-default",
+      "library": "${BATCH_LIBRARY}"
+    },
+    {
+      "name": "batch-16-threads",
+      "library": "${BATCH_LIBRARY}",
+      "threads": 16
+    }
+  ],
+  "order": "alternate",
+  "candidate_source": {
+    "base_commit": "cf0c80d72191491d42db51d5882a9d7f9d16194e",
+    "patch_sha256": "62608ee0f6c8b6b93e2cbdae213fe9369e7719e9773c5ab22f3ecaa65ec00687"
+  }
+}

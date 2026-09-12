@@ -914,6 +914,18 @@ impl ExactSizeIterator for ValueLabelTableIter<'_> {}
 /// written by exactly one worker; deferred `strL` values are written by the
 /// coordinator after workers join. Rows ascend within every column.
 pub trait DtaColumnSink: Send {
+    /// Optional compact-byte gather. The default retains per-value callbacks.
+    #[doc(hidden)]
+    fn try_push_byte_rows(
+        &mut self,
+        _output_start: usize,
+        _row_count: usize,
+        _source: &[u8],
+        _stride: usize,
+        _version: FormatVersion,
+    ) -> Result<bool, DtaError> {
+        Ok(false)
+    }
     fn push_byte(
         &mut self,
         row: usize,
@@ -1565,6 +1577,19 @@ fn decode_worker_block<C: DtaColumnSink>(
             .output_row_start
             .checked_add(block.row_count)
             .ok_or(DtaError::ArithmeticOverflow("parallel output row"))?;
+
+        if should_interrupt.is_none()
+            && matches!(column.plan.kind, ObservationKind::Byte)
+            && column.sink.try_push_byte_rows(
+                block.output_row_start,
+                block.row_count,
+                &block.bytes[column.plan.byte_offset..input_end],
+                row_width,
+                metadata.format_version,
+            )?
+        {
+            continue;
+        }
 
         let mut input_at = column.plan.byte_offset;
         let mut output_row = block.output_row_start;

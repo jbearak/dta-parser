@@ -1,0 +1,48 @@
+[DEBUG-dta-read-perf] open_metadata 0.001184
+[DEBUG-dta-read-perf] layout_and_selection 0.000058
+[DEBUG-dta-read-perf] allocate_output 0.199178
+[DEBUG-dta-read-perf] worker_plan 0.000235
+[DEBUG-dta-read-perf] worker 0 columns 744 decode_seconds 1.509227
+[DEBUG-dta-read-perf] worker 1 columns 755 decode_seconds 1.501119
+[DEBUG-dta-read-perf] worker 2 columns 755 decode_seconds 1.479869
+[DEBUG-dta-read-perf] worker 3 columns 755 decode_seconds 1.493454
+[DEBUG-dta-read-perf] worker 4 columns 746 decode_seconds 1.520137
+[DEBUG-dta-read-perf] worker 5 columns 746 decode_seconds 1.450697
+[DEBUG-dta-read-perf] worker 6 columns 735 decode_seconds 1.484935
+[DEBUG-dta-read-perf] worker 7 columns 736 decode_seconds 1.494058
+[DEBUG-dta-read-perf] read_and_decode 1.601321
+[DEBUG-dta-read-perf] order_and_strls 0.000154
+[DEBUG-dta-read-perf] labels_and_finish 0.032785
+READ	1	1.945000000	724115	5972
+[DEBUG-dta-read-perf] open_metadata 0.000916
+[DEBUG-dta-read-perf] layout_and_selection 0.000052
+[DEBUG-dta-read-perf] allocate_output 0.025578
+[DEBUG-dta-read-perf] worker_plan 0.000198
+[DEBUG-dta-read-perf] worker 0 columns 744 decode_seconds 1.501671
+[DEBUG-dta-read-perf] worker 3 columns 755 decode_seconds 1.485624
+[DEBUG-dta-read-perf] worker 1 columns 755 decode_seconds 1.492943
+[DEBUG-dta-read-perf] worker 2 columns 755 decode_seconds 1.471411
+[DEBUG-dta-read-perf] worker 4 columns 746 decode_seconds 1.512864
+[DEBUG-dta-read-perf] worker 5 columns 746 decode_seconds 1.457721
+[DEBUG-dta-read-perf] worker 7 columns 736 decode_seconds 1.474751
+[DEBUG-dta-read-perf] worker 6 columns 735 decode_seconds 1.488179
+[DEBUG-dta-read-perf] read_and_decode 1.586865
+[DEBUG-dta-read-perf] order_and_strls 0.000152
+[DEBUG-dta-read-perf] labels_and_finish 0.032340
+READ	2	1.694000000	724115	5972
+[DEBUG-dta-read-perf] open_metadata 0.000939
+[DEBUG-dta-read-perf] layout_and_selection 0.000051
+[DEBUG-dta-read-perf] allocate_output 0.024097
+[DEBUG-dta-read-perf] worker_plan 0.000203
+[DEBUG-dta-read-perf] worker 0 columns 744 decode_seconds 1.488705
+[DEBUG-dta-read-perf] worker 1 columns 755 decode_seconds 1.481758
+[DEBUG-dta-read-perf] worker 2 columns 755 decode_seconds 1.458744
+[DEBUG-dta-read-perf] worker 4 columns 746 decode_seconds 1.501357
+[DEBUG-dta-read-perf] worker 3 columns 755 decode_seconds 1.473641
+[DEBUG-dta-read-perf] worker 5 columns 746 decode_seconds 1.447032
+[DEBUG-dta-read-perf] worker 7 columns 736 decode_seconds 1.468940
+[DEBUG-dta-read-perf] worker 6 columns 735 decode_seconds 1.481474
+[DEBUG-dta-read-perf] read_and_decode 1.572810
+[DEBUG-dta-read-perf] order_and_strls 0.000150
+[DEBUG-dta-read-perf] labels_and_finish 0.032034
+READ	3	1.677000000	724115	5972

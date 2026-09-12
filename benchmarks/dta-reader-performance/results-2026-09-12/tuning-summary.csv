@@ -1,0 +1,11 @@
+case,variant,count,median_seconds,min_seconds,max_seconds,median_peak_rss_gb
+india,threads-2,3,1.654,1.653,1.657,5.235851264
+india,threads-4,3,1.151,1.149,1.157,5.229379584
+india,threads-8,3,0.894,0.891,0.896,5.230526464
+india,threads-12,3,0.818,0.818,0.819,5.230886912
+india,threads-16,3,0.813,0.809,0.815,5.23165696
+india,buffer-1,3,0.991,0.987,1.001,5.214715904
+india,buffer-2,3,0.916,0.911,0.922,5.217746944
+india,buffer-4,3,0.902,0.894,0.906,5.221285888
+india,buffer-16,3,0.963,0.962,0.977,5.248024576
+india,buffer-32,3,1.045,1.044,1.057,5.280759808

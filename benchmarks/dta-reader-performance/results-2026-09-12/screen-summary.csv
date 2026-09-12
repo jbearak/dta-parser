@@ -1,0 +1,6 @@
+case,variant,count,median_seconds,min_seconds,max_seconds,median_peak_rss_gb
+india,stock,3,1.809,1.792,1.824,5.229592576
+india,instrumented,3,1.785,1.774,1.785,5.231869952
+india,bulk-byte,3,0.894,0.888,0.895,5.230149632
+india,contiguous,3,1.87,1.867,1.881,5.229953024
+india,bulk-contiguous,3,0.895,0.893,0.9,5.231771648

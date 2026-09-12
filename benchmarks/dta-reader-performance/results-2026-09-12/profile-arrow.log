@@ -1,0 +1,15 @@
+[DEBUG-dta-read-perf] arrow read_arrow_buffers 0.166959
+[DEBUG-dta-read-perf] arrow allocate_output_and_labels 0.196980
+[DEBUG-dta-read-perf] arrow fill_output 0.238647
+[DEBUG-dta-read-perf] arrow finalize 0.007532
+READ	1	0.696000000	724115	5972
+[DEBUG-dta-read-perf] arrow read_arrow_buffers 0.122490
+[DEBUG-dta-read-perf] arrow allocate_output_and_labels 0.040485
+[DEBUG-dta-read-perf] arrow fill_output 0.202738
+[DEBUG-dta-read-perf] arrow finalize 0.007436
+READ	2	0.435000000	724115	5972
+[DEBUG-dta-read-perf] arrow read_arrow_buffers 0.128589
+[DEBUG-dta-read-perf] arrow allocate_output_and_labels 0.026798
+[DEBUG-dta-read-perf] arrow fill_output 0.235998
+[DEBUG-dta-read-perf] arrow finalize 0.007385
+READ	3	0.441000000	724115	5972

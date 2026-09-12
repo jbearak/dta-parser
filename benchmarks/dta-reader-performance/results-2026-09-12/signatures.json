@@ -1,0 +1,47 @@
+[
+  {
+    "case": "india",
+    "variant": "stock",
+    "signature": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "case": "india",
+    "variant": "batch-default",
+    "signature": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "case": "india",
+    "variant": "batch-16-threads",
+    "signature": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "case": "100mb",
+    "variant": "stock",
+    "signature": "231956:40:bab4b8dee5b66170"
+  },
+  {
+    "case": "100mb",
+    "variant": "batch-default",
+    "signature": "231956:40:bab4b8dee5b66170"
+  },
+  {
+    "case": "100mb",
+    "variant": "batch-16-threads",
+    "signature": "231956:40:bab4b8dee5b66170"
+  },
+  {
+    "case": "1gb",
+    "variant": "stock",
+    "signature": "2320123:40:7cb9bebf47711cf7"
+  },
+  {
+    "case": "1gb",
+    "variant": "batch-default",
+    "signature": "2320123:40:7cb9bebf47711cf7"
+  },
+  {
+    "case": "1gb",
+    "variant": "batch-16-threads",
+    "signature": "2320123:40:7cb9bebf47711cf7"
+  }
+]
