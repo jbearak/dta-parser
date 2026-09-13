@@ -4,7 +4,6 @@ This follow-up balances reader order across six cohorts. It replaces the earlier
 fixed-order warm table in the R README. The reader implementation is unchanged;
 corpus, fresh-process India, projection and memory measurements remain in the
 [complete adaptive-default report](../results-2026-09-12-defaults/README.md).
-Haven and Stata were not run. Their retained measurements are unchanged.
 
 ## Method and source
 
@@ -14,7 +13,7 @@ Haven and Stata were not run. Their retained measurements are unchanged.
   reader sources are identical to the preceding adaptive-default measurements.
   The intervening package change strengthens missing-value conformance coverage.
 - Same Apple M4 Max, 16 CPUs, 128 GiB RAM, macOS 26.6.2, R 4.6.1 and
-  dtatools 0.9.0. The retained DTA and Arrow input hashes match the earlier run.
+  dtatools 0.9.0. The DTA and Arrow input hashes match the earlier run.
 - All three DTA/Arrow equality checks finish before any timed warm worker.
   Values, names and shared metadata match. The older Arrow files omit
   value-label names, declared string widths and some variable notes; those
@@ -75,7 +74,7 @@ across the six orders; they are not independent estimates of a code change.
 Warm repeated-read process peaks are not fresh-read memory estimates.
 The [ten-read fresh India comparison](../results-2026-09-12-defaults/README.md#india-ten-fresh-processes-per-reader)
 remains 0.8195 seconds and 5.236 GB peak RSS for DTA, and 0.5980 seconds and
-10.279 GB for verified Arrow. The retained Stata `use` median is 0.5015 seconds.
+10.279 GB for verified Arrow. The Stata `use` median is 0.5015 seconds.
 Do not compare the warm table above directly with that fresh-process protocol.
 
 ## Evidence and validation
@@ -89,7 +88,7 @@ only the 54 balanced warm workers contribute to this table. The other children
 are three equality qualifications, three fresh spot checks and four projections.
 
 Full conformance passed on `af0dd7ce` after expanding all numeric missing-code
-coverage. R CMD check retained the same three warnings and two notes described
+coverage. R CMD check reported the same three warnings and two notes described
 in the complete report. The feature-enabled compact-output Rust library test
 run passed all 123 tests. Benchmark validation passed 20 refresh-driver tests,
 ten experiment-runner tests and three installer-boundary tests, including

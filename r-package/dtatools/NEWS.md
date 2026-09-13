@@ -1,5 +1,10 @@
 # dtatools (development version)
 
+* `read_dta()` and `read_arrow()` avoid loading source-adapter dependencies
+  for ordinary local datasets. This removes most first-read overhead on
+  small DTA files and reduces repeated-read overhead. Compressed files,
+  URLs, raw inputs, connections, and caller-supplied source objects retain
+  their existing handling.
 * `read_dta(threads = 0)` now limits automatic workers according to selected
   decode work per input block and the requested row count for compact output.
   Narrow projections can use fewer workers without changing explicit thread

@@ -8,16 +8,13 @@ missing values. Numeric columns also retain their declared Stata storage type.
 
 Dplyr is optional. Reading, writing, recoding, base operations, metadata helpers,
 and explicit mutation work without loading it. Install dplyr 1.2.1 or newer to
-use its verbs with dibbles. The methods register whenever both supported namespaces
-are loaded, in either order. An older loaded dplyr triggers one warning per
-dtatools namespace load and leaves its dplyr methods unregistered; native
-dtatools operations remain available.
+use its verbs with dibbles.
 
 ## Functions
 
 | Function | Purpose |
 | --- | --- |
-| `dibble()`, `as_dibble()`, `is_dibble()` | Build, convert, or test a dibble: a tibble that is a Stata dataset, carrying reference state and Stata storage on every numeric and string column. |
+| `dibble()`, `as_dibble()`, `is_dibble()` | Build, convert, or identify a tibble that preserves Stata storage and metadata. |
 | `read_dta()` | Read a DTA file into a dibble, tibble, or data table with labels, display formats, notes, tagged missing values, and compact numeric columns. |
 | `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
 | `save_arrow()` | Write a standalone `.arrow` dataset, preserving supported Stata and ordinary R column classes and metadata. |
@@ -38,7 +35,7 @@ dtatools operations remain available.
 | `order_vars()`, `rename_vars()` | Move variables to the front, or rename them, by reference, as Stata's `order` and `rename` do. |
 | `slice_dta_rows()`, `reorder_dta_rows()` | Select rows into a new table, or permute a table's rows in place, gathering compact Stata columns in native code. |
 | `resolve_var_name()`, `confirm_var()` | Resolve or check an exact variable name or unique abbreviation, with configurable failure behavior. |
-| `copy_data()` | Make an isolated copy, including compact column backing and mutable dataset metadata. |
+| `copy_data()` | Make an independent copy of a dataset and its metadata. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
 | `labelbook()` | Structured reports on named value-label tables, assignments, mappings, and problems. |
 | `codebook()` | Structured variable metadata, observed-data summaries, missingness relationships, and problems. |
@@ -47,7 +44,7 @@ dtatools operations remain available.
 | `dta_string()` | Construct an owned Stata string vector with validated fixed-width or `strL` storage and preserved variable metadata. |
 | `dta_storage_type()` | Report a column's declared numeric or string storage type without materializing its compact backing. |
 | `.a` through `.z`, `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values. |
-| `is_missing()`, `is_mi()` | Classify Stata system and extended numeric missing values and empty strings; `is_mi()` is an alias for `is_missing()` that matches Stata's `mi()` shorthand. Use either in `where` expressions for `gen()` and `replace_values()`. |
+| `is_missing()`, `is_mi()` | Identify Stata missing values and empty strings. Both names perform the same check. |
 | `dta_notes()`, `dta_note()`, `set_dta_note()`, `add_dta_note()`, `drop_dta_notes()`, `renumber_dta_notes()` | Read and edit numbered Stata notes at dataset or variable scope. |
 | `dta_characteristics()`, `dta_characteristic()`, `set_dta_characteristic()`, `drop_dta_characteristics()` | Read and edit arbitrary Stata characteristics at dataset or variable scope. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
@@ -57,108 +54,26 @@ See the [naming migration](../../docs/dta-naming.md) for class checks and saved 
 
 ## Dibbles, tibbles, and data tables
 
-Readers return dibbles by default: a dibble is a Stata dataset held in a
-tibble. It carries dtatools reference state from creation, so `gen()` and the
-other by-reference operations find it ready, and two invariants follow. Every
-numeric and string column carries Stata storage: `dibble()`, `as_dibble()`,
-and every operation that adds or changes a column give a bare column the
-storage that `?"dta-storage-defaults"` maps its R type to. Logical columns
-stay logical and factors stay factors. And every dataset operation on a dibble
-returns a dibble: the dplyr verbs, joins and `bind_rows()` with a dibble first, base
-`subset()`, `transform()`, `within()`, `head()`, `rbind()`, `cbind()`, and `[`
-subsetting. Each result is a fresh object following copy-on-modify, so a
-by-reference `:=` or `replace_values()` on the input or the result leaves the
-other as it was; untouched columns are shared copy-on-write, so compact
-columns stay compact. `tibble::as_tibble()` returns a tibble snapshot.
+Readers return dibbles by default. A dibble is a tibble that preserves Stata
+storage types and metadata as you work with the data. Use `dibble()` to create
+one, `as_dibble()` to convert a data frame, and `is_dibble()` to check its type.
+Use dplyr verbs and ordinary R table operations with dibbles.
 
-Ordinary `$<-`, `[[<-`, `[<-`, names, row-name, and nested attribute
-replacement use R copy-and-rebind semantics. Existing aliases stay unchanged.
-Converting a table with `as_dibble()` does not make function-local replacement
-reach its caller. Return and assign the result, or use explicit helpers such as
-`set_var_format(data, x, "%9.0g")`, `set_var_label()`, `set_dta_metadata()`,
-`gen()`, and `repl()` when caller mutation is intended.
-
-Fresh dibbles have room for 1,024 additional columns by default, controlled by
-`dtatools.alloccol`. `gen()`, `egen()`, and dibble `:=` automatically reserve
-more room when additions need it. Reallocation creates an isolated table and
-warns that old aliases still refer to the old table. Functions that may add
-columns should return their updated table, and callers should assign it,
-for example `survey <- add_flags(survey)`. Alternatively, prepare before the
-call with `survey <- reserve_columns(survey, n = 10L)` and create aliases
-afterwards when they must see the same changes. Set
-`options(dtatools.auto_grow = FALSE)` to require explicit reservation.
-`column_capacity(survey)` reports total usable slots; `can_add_columns(survey, 10L)`
-checks room for ten additions. Ordinary copies and base serialization can lose
-capacity; `copy_data()` returns a prepared independent table. Dropping columns
-still needs assigned preparation if the allocation is not resizable. See the
-[mutation guide](https://github.com/jbearak/dta-parser/blob/main/docs/r-mutation-by-reference.md)
-for both defensive patterns and their alias behavior. Data.table
-support requires version 1.18.2.1 or newer; update an older installation before
-using that container.
-
-`dibble()` builds one like `tibble::tibble()`, `as_dibble()` converts a data
-frame, tibble, or data table (a data table is copied, since a dibble cannot
-share its self-reference), and `is_dibble()` tests for one. `as_dibble()` of a
-grouped tibble keeps its grouping. Set one session-wide default container or
-override it for one read:
+Choose a different container for one read or for the session:
 
 ```r
+survey <- read_dta("survey.dta", output = "tibble")
 options(dtatools.output = "data.table")
 survey <- read_dta("survey.dta")
-survey_tbl <- read_dta("survey.dta", output = "tibble")
 ```
 
-The data.table package remains optional. Requesting data-table output without
-it installed is an error. Direct reader construction retains compact numeric
-and dictionary-string columns; it does not build a tibble and convert it.
+Data-table output requires the optional data.table package, version 1.18.2.1
+or newer. `save_arrow()` records the container, and `read_arrow()` restores it
+unless you supply an `output` argument.
 
-`save_arrow()` records whether its input is an ordinary dibble, tibble, or data
-table. `read_arrow()` restores that container by default. An explicit `output`
-argument overrides the stored choice. Older Arrow files and files saved from a
-plain data frame use `dtatools.output`, then fall back to a dibble; a recorded
-container this release does not know reads as a tibble.
-
-Exported whole-table operations support ordinary data tables. `gen()` installs
-a physical column, and `repl()` invalidates keys or secondary indexes that use
-the changed column while preserving unrelated lookup state. Keys, indexes,
-allocation capacity, and `.internal.selfref` are runtime state and are not
-stored in Arrow files. Explicit mutators reject additional data-frame, tibble
-and data.table subclasses whose invariants dtatools cannot preserve. Assign
-`data <- as_dibble(data)` to request conversion, removing those classes and
-applying Stata column typing. See the
-[supported helper and grouping matrix](https://github.com/jbearak/dta-parser/blob/main/docs/r-containers.md#restrictions).
-Other table-producing operations retain their documented subclass restrictions.
-
-`gen()`, `replace_values()`, `keep_vars()`, and `drop_vars()` mutate the supplied data frame or tibble. Dataset
-aliases observe the change. Separate tables sharing a column remain isolated. Call `copy_data()`
-first when the original dataset, its compact storage, and its metadata must
-remain independent. See `?replace_values` for selection, evaluation, formula,
-grouping, and Stata compatibility details, and
-[mutation by reference](../../docs/r-mutation-by-reference.md) for what writing
-by reference means and how it changes a workflow.
-[Containers](../../docs/r-containers.md) tabulates what `gen()`, `repl()`,
-`:=`, `mutate()`, and the replacement operators do on a dibble, tibble, data
-frame, and data table, and the column types each produces.
-
-The [egen guide](https://github.com/jbearak/dta-parser/blob/main/docs/r-egen.md)
-compares `gen()`, `egen()`, and `:=` for all eight calculations. All three
-can use the same value functions; `egen()` differs by calculating over the
-selected sample when a row filter is supplied.
-
-`order_vars()` and `rename_vars()` mutate by reference too, as Stata's `order`
-and `rename` do: `order_vars()` moves the selected columns to the front and
-leaves the rest in their existing relative order, and `rename_vars()` takes
-`new_name = old_name` pairs, or a complete `.names` vector. Both leave the
-column vectors, their storage declarations, and their metadata untouched, and
-both reach columns created by `gen()`.
-
-`slice_dta_rows()` returns the selected rows in the input's container, and
-`reorder_dta_rows()` applies a permutation to a table in place, so every
-reference to it sees the new order. Both gather compact Stata numeric columns
-through the native kernel rather than dispatching `[` once per column, which
-matters for wide data, and leave compact columns unmaterialized. For a data
-table they drop the `sorted` marker and secondary indexes, which a row
-selection or permutation invalidates.
+Helpers such as `gen()`, `repl()`, and `rename_vars()` update the supplied dataset
+in place. Use `copy_data()` when you need an independent copy. Functions that
+add columns should return the updated dataset for their caller to assign.
 
 ```r
 order_vars(survey, region)
@@ -167,65 +82,53 @@ reorder_dta_rows(survey, order(survey$id))
 first_ten <- slice_dta_rows(survey, 1:10)
 ```
 
-For a dibble with at least ten rows, `slice_dta_rows(survey, 1:10)` and
-`survey[1:10, ]` both return the first ten rows with all columns, preserving
-Stata metadata and leaving `survey` unchanged. Both share batch row gathering.
-Brackets retain tibble indexing rules; `slice_dta_rows()` uses vctrs location
-rules and rejects unknown row names or out-of-range positive locations. Grouped
-results rebuild their groups and retain `.drop`; rowwise results retain their
-identifier variables. Missing string rows become Stata's empty string before
-grouping is rebuilt.
+The [dataset behavior guide](../../docs/r-dataset-behavior.md) covers copying,
+column capacity, grouping and other advanced details. The
+[container guide](../../docs/r-containers.md) compares supported operations,
+and the [egen guide](../../docs/r-egen.md) explains grouped calculations.
 
 ## Why use dtatools?
 
 Repository benchmarks compare `dtatools` with haven across three survey corpora.
-The September 12 update measures dtatools 0.9.0 with compact-byte batching,
-default dibble output and workload-aware automatic thread selection. It reuses the
-August 24 haven and Stata corpus measurements on the same files and computer.
-Haven and Stata were not rerun for these corpus totals.
+The measurements use the same files and computer, with dtatools 0.9.0,
+default dibble output and automatic thread selection.
 
 | Workload | dtatools | haven | Difference |
 | --- | ---: | ---: | ---: |
-| 641 DHS files, 46.9 GB total | 69.3 seconds | 2,727 seconds | 39.4 times faster for the complete batch |
-| 949 MICS files, 3.7 GB total | 60.1 seconds | 216.7 seconds | 3.6 times faster for the complete batch |
-| 222 NSFG files, 5.8 GB total | 19.9 seconds | 234.6 seconds | 11.8 times faster for the complete batch |
+| 641 DHS files, 46.9 GB total | 39.4 seconds | 2,727 seconds | 69.1 times faster for the complete batch |
+| 949 MICS files, 3.7 GB total | 6.7 seconds | 216.7 seconds | 32.6 times faster for the complete batch |
+| 222 NSFG files, 5.8 GB total | 9.0 seconds | 234.6 seconds | 26.2 times faster for the complete batch |
 
-Across the 1,812 comparable files, `dtatools` was faster than haven on 1,459,
-tied on ten, and slower on 343. It was faster on all 641 DHS files and on 1,435
-of the 1,534 files larger than 1 MB. Changes from the preceding automatic-thread
-run were small: DHS decreased from 69.748 to 69.286 seconds and MICS from
-60.532 to 60.056; NSFG increased from 19.800 to 19.880. Against the older August
-results, MICS remains slower than its 29.3 seconds and NSFG slower than its
-19.1 seconds.
+`dtatools` was faster on all 1,812 comparable files. Small files benefit too:
+a 350-byte dataset took 2 milliseconds, compared with haven's 15 milliseconds.
+These comparisons describe this host and cache state; they do not guarantee
+a win on every input.
 
 These are warm-cache measurements from an Apple M4 Max. See the
-[dated reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
+[local-reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-startup/results-2026-09-13/README.md)
 for the full corpus results, wall time, CPU time, peak memory, and methodology.
 
 For the 5.2 GB India 2021 DHS women's file, with 724,115 rows and 5,972 columns,
-the current dtatools readers were each rerun ten times. Haven and Stata retain
-their ten-run September 12 measurements:
+the benchmark compares ten reads per tool:
 
 | Reader | Median wall time | Range | Median CPU time | Median peak RSS |
 | --- | ---: | ---: | ---: | ---: |
-| `dtatools::read_dta()` | 0.8195 seconds | 0.816–0.826 seconds | 5.4335 seconds | 5.236 GB |
-| `dtatools::read_arrow()` | 0.5980 seconds | 0.596–0.603 seconds | 4.5705 seconds | 10.279 GB |
-| `haven::read_dta()`, retained | 488.204 seconds | 413.645–529.616 seconds | Unavailable | 35.107 GB |
-| Stata native `use`, retained | 0.5015 seconds | 0.468–0.503 seconds | Unavailable | 5.256 GB |
+| `dtatools::read_dta()` | 0.7520 seconds | 0.748–0.764 seconds | 5.3480 seconds | 5.231 GB |
+| `dtatools::read_arrow()` | 0.5580 seconds | 0.554–0.562 seconds | 4.5260 seconds | 10.275 GB |
+| `haven::read_dta()` | 488.204 seconds | 413.645–529.616 seconds | Unavailable | 35.107 GB |
+| Stata native `use` | 0.5015 seconds | 0.468–0.503 seconds | Unavailable | 5.256 GB |
 
 Each read used a fresh process with a warm filesystem cache, without a warmup
-or added pre-read garbage collection. The dtatools readers alternated order;
-the retained four-tool baseline rotated order. Wall and CPU clocks cover the
+or added pre-read garbage collection. Wall and CPU clocks cover the
 read call and exclude startup. CPU time sums user and system time across
 threads, so it can exceed wall time. Peak RSS includes the runtime and loaded
-result. `read_arrow()` reads the retained 5.6 GB Arrow conversion with checksum
+result. `read_arrow()` reads the 5.6 GB Arrow conversion with checksum
 verification enabled.
 
-The full-read medians are effectively unchanged from the preceding 0.8210 and
-0.5995 seconds. Arrow takes 27.0% less wall time than DTA here, using roughly
-twice the peak memory. Stata remains faster than both. See the
-[ten-run report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
-for every observation, provenance and the distinction from older single reads.
+Arrow takes 25.8% less wall time than DTA here, using roughly twice the peak
+memory. Stata remains faster than both. See the
+[ten-run report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-startup/results-2026-09-13/README.md)
+for individual observations and methodology.
 
 Both readers default to `threads = getOption("dtatools.threads", 0L)`.
 Zero chooses automatically from the CPUs available to the process. For compact
@@ -264,11 +167,11 @@ Both readers decode with automatic multicore workers and defer numeric and
 character materialization through ALTREP. `read_arrow()` is faster because the
 `.arrow` file already stores each column contiguously in its Stata storage width,
 so reading is mostly parallel column copies rather than row-major decoding.
-These September 12 medians pool six cohorts covering every reader order, with
+These medians pool six cohorts covering every reader order, with
 66 timed reads per synthetic file and 30 per India reader. Each process starts
 with an untimed warmup. Checksum verification is enabled. Disabling it lowered
 the India median from 0.312 to 0.302 seconds (3.2%). Keep verification enabled
-by default to retain corruption detection. The retained Arrow files predate
+by default to retain corruption detection. The Arrow files predate
 support for some metadata, including variable notes, so the refresh verifies
 matching values and common metadata. See the
 [balanced reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-balanced/README.md)
@@ -276,9 +179,8 @@ for ranges, every cohort and the metadata differences.
 
 Use `read_arrow()` for repeated full reads when its extra memory fits your
 workload. Use `read_dta()` when reading the original file or minimizing peak
-memory. Converting the India file with `save_arrow()` took 1.4 seconds in the
-retained August 29 measurement. See the
-[dated Arrow report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
+memory. Converting the India file with `save_arrow()` took 1.4 seconds. See the
+[Arrow report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
 for conversion times, file sizes, and methodology.
 
 ### Projected reads across surveys
@@ -309,10 +211,9 @@ A warm-cache benchmark selected 100 variables spread across the 5.2 GB,
 | Stata full `use`, inspect union, then `keep` | 0.552 seconds |
 
 All methods returned the same 724,115-row, 100-column result. These are medians
-from 11 runs on an Apple M4 Max. The dtatools reads were refreshed on September
-12; Stata retains its August 28 measurements. The direct Stata command is not union-safe;
+from 11 runs on an Apple M4 Max. The direct Stata command is not union-safe;
 Stata errors if its varlist contains an absent name. See the
-[dated reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
+[reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
 for the synthetic comparisons, per-method bounds, and limitations.
 
 The adaptive policy reduced the India projection median from 0.263 to 0.235
@@ -370,12 +271,11 @@ fast path to exploit, and the Arrow writer skips DTA-specific work such as
 fixed-width string planning.
 
 These are medians from seven fresh-process runs on the same Apple M4 Max, not
-performance guarantees. The Stata median in the primary table is reused from
-the [dated write report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/large-scale/results-2026-08-28.md),
-which also covers percentiles, memory and output sizes, and provenance for the
-DTA writers; the refreshed R-writer medians and the `save_arrow()` rows come
-from the
-[dated Arrow report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md).
+performance guarantees. The
+[write report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/large-scale/results-2026-08-28.md)
+and the
+[Arrow report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
+provide percentiles, memory use, output sizes and methodology.
 
 ### Synthetic merge benchmarks
 
@@ -408,7 +308,7 @@ The R figures are `bench::mark()` medians on the same Apple M4 Max. Allocated
 memory is cumulative R allocation, not peak RSS. The Stata median includes
 reading the using file, while the R operation timers start with both inputs
 loaded. These are not performance guarantees. See the
-[dated merge report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-merge-performance/results-2026-08-28.md)
+[merge report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-merge-performance/results-2026-08-28.md)
 for versions, iteration counts, correctness checks, and reproduction commands.
 
 Keep using haven when you need to write older DTA releases or work with SAS and
@@ -511,7 +411,7 @@ variables (with a warning naming them, where Stata is silent), and generates
 the value-labelled `_merge` indicator. `keep` and
 `assert` mirror Stata's options, and either input may be a `.dta` or `.arrow` file
 path so only the merged result occupies memory; the
-[dated input-source report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/dta-merge/results-2026-08-29.md)
+[input-source report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/dta-merge/results-2026-08-29.md)
 shows a from-file merge costs its read plus the merge itself. See
 [the joins note](../../docs/r-joins-with-stata-columns.md) for the evidence
 behind these differences.
@@ -584,7 +484,7 @@ re-baselining until the profile freezes.
 ## Data returned to R
 
 Dataset and variable labels, numbered notes, arbitrary characteristics,
-display formats, and resolved value-label mappings are retained as attributes. Use
+display formats, and resolved value-label mappings are included as attributes. Use
 `dta_notes()` and `dta_characteristics()` to inspect them, and pass a
 column name as `variable` for variable scope. `dta_note()` and
 `dta_characteristic()` read one entry; `set_dta_note()`, `add_dta_note()`,
@@ -761,7 +661,7 @@ confirm_var(survey, "missing", on_failure = "false")
 
 ### Generate and replace
 
-`gen()` appends a variable and `repl()` (an alias of `replace_values()`)
+`gen()` appends a variable and `repl()`
 replaces selected values, both by reference. The target and its values are
 one tagged pair, or the positional pair that reads like the Stata line.
 This example reserves three spare slots before adding columns to a data frame,
@@ -948,7 +848,7 @@ Use the installed help for exact behavior and examples:
 
 `threads = 0` chooses an automatic worker count. For compact DTA reads it accounts for selected decode work, rows per input block and the row window; small reads remain serial. `threads = 1` forces serial decoding. `use_numeric_altrep = FALSE` disables the compact numeric representation and creates R double vectors during the read.
 
-Additional measurements and their provenance live in the repository's [dated benchmark reports](https://github.com/jbearak/dta-parser/tree/main/benchmarks).
+Additional measurements and their provenance live in the repository's [benchmark reports](https://github.com/jbearak/dta-parser/tree/main/benchmarks).
 
 ## Compatibility
 
@@ -971,67 +871,7 @@ GPL-3.0. See the repository's [LICENSE](https://github.com/jbearak/dta-parser/bl
 
 ## Acknowledgements
 
-The direct dibble selectors, grouping metadata and row/reconstruction hooks
-adapt dplyr's selector, grouping and reconstruction rules. Character/factor
-recoding kernels and their tests also adapt dplyr's legacy replacement rules.
-Its implementation and tests are credited in the [installed source notice](inst/NOTICE),
-which includes the upstream MIT copyright and license. The dtplyr implementation
-and tests were studied for operation planning and copying behavior; no dtplyr
-implementation is incorporated. The notice records the exact source revisions
-and local adaptations. Plain data-frame row subsetting adapts base R rules
-credited to the R Core Team and John Chambers. The same notice preserves the
-upstream GPL version 2 or later license; this package uses GPL-3. R 4.6.1 native
-attribute and resizing code was also studied for the append journal; that
-implementation uses public APIs and incorporates no source from those files.
-R's read, coercion and concatenation code informed owned read paths. Range
-receives an independent ordinary snapshot, and integer/logical exports call
-R's native coercion API. No R implementation or tests were copied for these
-paths; the notice lists the studied files.
-R's interrupt implementation was studied for portable native fault injection;
-tests call its documented interrupt entry and retain transaction rollback checks.
-
-R's ALTSTRING, subset and serialization code informed the extension to owned
-ordinary strings, logicals and integer/factor backing. The same notice records
-that study; no implementation from those files was copied. String width and
-missingness facts belong to backing, while declarations remain column metadata.
-
-The direct expression and grouping implementation also adapts dplyr 1.2.1 mask
-and evaluation policies. The optional helper adapter uses the installed context
-and across/pick expansion functions. See [NOTICE](inst/NOTICE) for exact source
-and license records. dplyr 1.2.1 is the supported minimum on R 4.6.0 or newer;
-[the compatibility study](https://github.com/jbearak/dta-parser/blob/main/docs/research/dplyr-r46-minimum.md)
-records the source-build evidence and limits of the older-binary investigation.
-
-The direct filter, arrange, distinct and slice family also adapts dplyr 1.2.1
-row policies and tests. Shared evaluation and row gathering preserve Stata
-columns and metadata. Ordering uses public vctrs ranks; explicit non-C locales use
-stringi, and lifecycle supplies the upstream deprecation notifications. The
-installed notice identifies the source functions, test adaptations and license.
-
-Direct summary, reframe, callback and nesting methods also adapt dplyr 1.2.1
-chunk-sizing, grouping and callback policies. They use the shared expression
-mask, row gatherer and result finalizer; nested publication captures frame
-storage while retaining ordinary nested classes and intentional reference
-objects. Cyclic nested lists and data frames produce an explicit error before
-vector assembly. The installed notice identifies the source functions and test policies.
-
-Direct dibble joins adapt the pinned dplyr 1.2.1 key, naming, match-policy and
-coalescing rules. Package-owned planning calls public vctrs matching, then
-uses shared batched gathering and result finalization; nested outputs pass
-through the same capture boundary. The [installed notice](inst/NOTICE) records
-the exact source functions and license. Stata-specific `dta_merge()` matching
-and output policy remain separate.
-
-Base binding also adapts R 4.6.1's data-frame construction, row binding and
-column binding, preserving its factor, recycling and naming rules. Its full
-GPL notice and John Chambers/R Core attribution are in the installed notice.
-Direct rows methods and column modification adapt pinned dplyr policies while
-retaining public vector casting, matching and reconstruction extensions.
-Package-specific result caches use actual object keys or prepared result slots;
-atomic nested capture retains metadata-copy and opaque-reference behavior.
-
-Grouped display and replacement fallbacks adapt dplyr 1.2.1 policies. Grouped
-and rowwise vector restoration also adapts the conditional compatibility
-methods in vctrs 0.7.3. These fallbacks support grouped objects when dplyr is
-absent while retaining supplied grouping methods. Source details and both MIT
-notices are preserved in [NOTICE](inst/NOTICE).
+Dtatools builds on work by the R Core Team and the dplyr and vctrs authors.
+See the [source and license notice](inst/NOTICE) and
+[implementation credits](../../docs/r-implementation-credits.md) for attribution
+and details of the adapted code.

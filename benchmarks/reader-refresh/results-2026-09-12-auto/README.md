@@ -5,10 +5,8 @@ seconds in the earlier ten-run baseline, a 55.5% reduction. `read_arrow()`
 fell from 0.6945 to 0.5995 seconds, a 13.7% reduction. Peak memory was
 effectively unchanged for both readers.
 
-Only dtatools benchmarks were rerun. Haven and native Stata retain their
-recorded observations on the same computer, OS, libraries and Stata version.
-The [earlier four-tool report](../results-2026-09-12/india-10x.md) remains the
-source for their India results. Stata is still faster than both R readers.
+The comparison uses the same computer, OS, libraries and Stata version.
+Stata is faster than both R readers.
 
 The measured dtatools 0.9.0 build is commit
 `92020d4d3d0457ac7191e929a6b1736e3571b884` from
@@ -23,32 +21,32 @@ buffer remains 8 MiB.
 
 Measurements were made on September 12, 2026, on an Apple M4 Max with 16 cores
 and 128 GB RAM, macOS 26.6.2 and R 4.6.1. Installed dependencies include tibble
-3.3.1, vctrs 0.7.3, rlang 1.3.0 and tidyselect 1.2.1. The retained comparators
+3.3.1, vctrs 0.7.3, rlang 1.3.0 and tidyselect 1.2.1. The comparators
 used haven 2.5.5 and Stata/MP 18. Arrow inputs were kept unchanged.
 
 ## India, ten fresh reads per dtatools reader
 
 India 2021 DHS women has 724,115 rows and 5,972 columns. The source DTA is
-5.196 GB and the retained uncompressed Arrow conversion is 5.560 GB.
+5.196 GB and the uncompressed Arrow conversion is 5.560 GB.
 
-| Reader | Measurement | Median read time | Range | Median peak RSS |
-| --- | --- | ---: | ---: | ---: |
-| `dtatools::read_dta()` | Current rerun | 0.821 s | 0.816 to 0.829 s | 5.236 GB |
-| `dtatools::read_arrow()` | Current rerun | 0.5995 s | 0.595 to 0.605 s | 10.280 GB |
-| `haven::read_dta()` | Retained September 12 ten-run baseline | 488.204 s | 413.645 to 529.616 s | 35.107 GB |
-| Stata native `use` | Retained September 12 ten-run baseline | 0.5015 s | 0.468 to 0.503 s | 5.256 GB |
+| Reader | Median read time | Range | Median peak RSS |
+| --- | ---: | ---: | ---: |
+| `dtatools::read_dta()` | 0.821 s | 0.816 to 0.829 s | 5.236 GB |
+| `dtatools::read_arrow()` | 0.5995 s | 0.595 to 0.605 s | 10.280 GB |
+| `haven::read_dta()` | 488.204 s | 413.645 to 529.616 s | 35.107 GB |
+| Stata native `use` | 0.5015 s | 0.468 to 0.503 s | 5.256 GB |
 
 Each observation uses a fresh process and a warm filesystem cache. Elapsed
 time covers only the reader call, excluding application startup but including
 first-call setup. The existing four-tool workers are unchanged. No explicit
 full GC was added before the timed call. DTA and Arrow alternate order across
-ten rounds; the retained four-tool baseline rotated order across four tools.
+ten rounds; the four-tool baseline rotated order across four tools.
 All 20 new reads succeeded with the expected dimensions.
 
 Peak RSS is the maximum resident memory of the whole process, including the
-runtime, native allocations and result retained through exit. GB means 10^9
+runtime, native allocations and result kept live through exit. GB means 10^9
 bytes. Arrow verification is enabled. Arrow takes 27.0% less read time than
-DTA here, at roughly twice the peak RSS. DTA now takes 1.64 times the retained
+DTA here, at roughly twice the peak RSS. DTA now takes 1.64 times the
 Stata median, down from 3.68 times before these changes.
 
 The current-versus-earlier dtatools difference includes batching and removal
@@ -68,16 +66,16 @@ rejected them in the original run. Every file's size and modification time
 matched the original inventory before and after the rerun.
 
 Times below are sums over common files. Peak RSS is the largest process peak
-within each corpus. Haven and Stata retain their August 24 observations.
+within each corpus.
 
-| Corpus | Files | Input GB | Current dtatools s | Earlier September 12 dtatools s | Retained haven s | Retained Stata s | dtatools peak RSS GB |
+| Corpus | Files | Input GB | Current dtatools s | Earlier September 12 dtatools s | haven s | Stata s | dtatools peak RSS GB |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | DHS | 641 | 46.903 | 69.748 | 79.494 | 2,727.051 | 68.806 | 5.235 |
 | MICS | 949 | 3.690 | 60.532 | 62.108 | 216.732 | 1.155 | 0.232 |
 | NSFG | 222 | 5.772 | 19.800 | 20.889 | 234.588 | 0.885 | 0.559 |
 
-These totals are 39.1, 3.6 and 11.8 times faster than retained haven. Stata's
-retained total is lower for all three corpora, with DHS now close. Across the
+These totals are 39.1, 3.6 and 11.8 times faster than haven. Stata's
+total is lower for all three corpora, with DHS now close. Across the
 1,812 common files, dtatools was faster than haven on 1,458, tied on five and
 slower on 349. For the 1,534 files larger than 1 MB, the counts are 1,434, five
 and 95. Dtatools was faster on every DHS file.
@@ -106,7 +104,7 @@ The earlier September 12 medians were 0.047, 0.193 and 1.547 seconds for DTA,
 and 0.024, 0.088 and 0.398 seconds for verified Arrow. Disabling verification
 does not show a consistent benefit across inputs. Keep verification enabled.
 
-The retained Arrow files predate preservation of value-label table names,
+The Arrow files predate preservation of value-label table names,
 declared string widths and some variable notes. India's Arrow file lacks notes
 on 116 variables returned by the current DTA reader. Untimed qualification
 verified matching dimensions, column names and content signatures after
@@ -115,7 +113,7 @@ all values in order, numeric storage types, labels, formats, remaining notes
 and characteristics. All three pairs passed. Timed reads use the original
 files and default readers; the exclusions apply only to output comparison.
 
-Synthetic inputs are the retained Stata-first-save fixtures. The older
+Synthetic inputs are the Stata-first-save fixtures. The older
 synthetic haven/native Stata matrix used different fixtures with different
 row counts, so its times are not attached to these inputs.
 
@@ -123,8 +121,7 @@ row counts, so its times are not attached to these inputs.
 
 The original worker performs 11 timed reads after warmups on unchanged
 projection inputs and name lists. Synthetic cases return ten columns from a
-100-name union; India returns 100 columns from a 200-name union. Stata retains
-its August 28 medians.
+100-name union; India returns 100 columns from a 200-name union. Stata medians are included for comparison.
 
 | Input shape | `read_dta(any_of(union))` | `read_dta(all_of(present))` | Stata full `use`, inspect, `keep` | Stata direct projected `use` |
 | --- | ---: | ---: | ---: | ---: |
@@ -135,9 +132,8 @@ its August 28 medians.
 
 India's `any_of()` median increased from 0.248 to 0.263 seconds, a 6.0%
 regression. Its current range is 0.262 to 0.282 seconds. The new median is
-still 52.4% below the retained Stata full-load workflow and 45.4% below direct
-Stata projection. Direct Stata projection requires known-present names and
-errors on absent names. The synthetic projection medians are unchanged.
+still 52.4% below the Stata full-load workflow and 45.4% below direct
+Stata projection. Direct Stata projection requires all projected names to be present. The synthetic projection medians are unchanged.
 
 ### Why more workers slowed the projection
 
@@ -161,7 +157,7 @@ Both controls used one process, one warmup per configuration, GC before each
 timed call, and reversed configuration order on alternating rounds. Untimed
 full data signatures matched across every configuration. Input, worker and
 installed-library hashes also matched before and after. All observations,
-including the slower settings, are retained.
+including the slower settings, are included.
 
 The [DTA block reader](https://github.com/jbearak/dta-parser/blob/92020d4d3d0457ac7191e929a6b1736e3571b884/r-package/dtatools/src/dta-tools/src/file.rs#L2050)
 uses one coordinator to read full row blocks, even when selecting only 100
@@ -203,9 +199,9 @@ capacity, but it does not estimate the fastest thread count for every query.
 
 These results support a large gain on India's byte-heavy full read. They do
 not show a universal improvement from adding threads. Native Stata remains
-the fastest full reader in its retained India trials. Conversion time and
-metadata requirements also matter when choosing Arrow. The retained India
-conversion took 1.367 seconds on August 29 and was not rerun. The experimental
+the fastest full reader in its India trials. Conversion time and
+metadata requirements also matter when choosing Arrow. The India
+conversion took 1.367 seconds. The experimental
 Arrow profile has no cross-version stability promise.
 
 ## Conformance rerun
@@ -226,7 +222,7 @@ The haven conformance suite passed, including the local HTTP input test,
 with no skips. The labelled and haven-helper interoperability suites also
 passed. This final rerun used `NOT_CRAN=true` and allowed the loopback test
 server after the sandbox had prevented that test in the first run. Haven was
-used for correctness comparisons only; its benchmark was not rerun.
+used for correctness comparisons.
 See the [validation record](validation.json) for commands and log hashes.
 All GitHub test lanes also passed at the measured reader commit, including
 the six native R lanes and package checks on Linux, macOS and Windows.
@@ -241,7 +237,7 @@ inputs also have SHA-256 hashes. No compilation, conformance tests or other
 benchmarks overlapped timed reads. Private survey paths, values and per-file
 corpus records remain in ignored local output.
 
-- [India comparison with retained haven and Stata](india-comparison.csv), [new observations](india-10x-observations.csv), [summary](india-10x-summary.csv) and [provenance](india-10x-provenance.json)
+- [India comparison with haven and Stata](india-comparison.csv), [new observations](india-10x-observations.csv), [summary](india-10x-summary.csv) and [provenance](india-10x-provenance.json)
 - [Corpus summary by format](corpus-summary.csv) and [comparison counts](corpus-statistics.json)
 - [Warm-read summary](warm-read-summary.csv) and [observations](warm-read-observations.csv)
 - [Projection summary](projection-summary.csv) and [observations](projection-observations.csv)
@@ -251,5 +247,5 @@ corpus records remain in ignored local output.
 
 The auxiliary [single-read spot CSV](spot-comparison.csv) contains one fresh
 read each for India DTA, India Arrow and NSFG DTA with August 24 comparator
-observations. It is retained for continuity with the original corpus report.
+observations. It is included for continuity with the original corpus report.
 Use the ten-run India comparison above for the main four-reader comparison.

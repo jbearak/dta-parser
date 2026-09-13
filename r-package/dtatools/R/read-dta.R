@@ -372,6 +372,16 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 .resolve_dta_source <- function(file, fileext = ".dta",
                                 implicit_extension = TRUE) {
     if (implicit_extension) file <- .resolve_implicit_dta_read_path(file)
+    # Ordinary local datasets need neither readr's source adapters nor their
+    # first-call namespace loading. Recognize content, not the suffix: readr
+    # also decompresses archives that have been renamed to .dta or .arrow.
+    if (.is_plain_local_dataset(file)) {
+        return(list(
+            path = enc2utf8(normalizePath(file, winslash = "/", mustWork = TRUE)),
+            temporary = FALSE,
+            datasource = NULL
+        ))
+    }
     caller_supplied_source <- inherits(file, "source")
     caller_path <- .caller_dta_source_path(file)
     datasource <- readr::datasource(file)
@@ -415,10 +425,32 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     stop("This kind of input is not handled.", call. = FALSE)
 }
 
+.is_plain_local_dataset <- function(file) {
+    if (!is.character(file) || is.object(file) || length(file) != 1L ||
+        is.na(file) || grepl("\n", file, fixed = TRUE) ||
+        grepl("^[[:alpha:]][[:alnum:]+.-]*://", file) ||
+        !utils::file_test("-f", file)) return(FALSE)
+
+    header <- tryCatch(
+        suppressWarnings(readBin(file, "raw", n = 6L)),
+        error = function(error) raw()
+    )
+    identical(header, charToRaw("<stata")) ||
+        identical(header, charToRaw("ARROW1")) ||
+        (length(header) == 6L &&
+         as.integer(header[[1L]]) %in% c(105L, 108L, 110L, 111L, 113L, 114L, 115L) &&
+         as.integer(header[[2L]]) %in% c(1L, 2L) &&
+         identical(header[[3L]], as.raw(1L)))
+}
+
 .resolve_implicit_dta_read_path <- function(file) {
     local_scalar <- is.character(file) && length(file) == 1L && !is.na(file) &&
         !grepl("^[[:alpha:]][[:alnum:]+.-]*://", file)
-    if (!local_scalar || nzchar(tools::file_ext(basename(file)))) return(file)
+    # Match tools::file_ext's alphanumeric suffix and non-dot stem without
+    # loading the tools namespace for every session's first local read.
+    if (!local_scalar || grepl("[^.].*[.][[:alnum:]]+$", basename(file))) {
+        return(file)
+    }
     paste0(file, ".dta")
 }
 

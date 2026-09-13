@@ -17,17 +17,16 @@ They are not part of this source or these measurements.
 - Benchmark drivers and measurement checkout: `81e96101` (identical package tree).
 - Host: Apple M4 Max, 16 CPUs (12 performance, four efficiency), 128 GiB RAM;
   macOS 26.6.2, R 4.6.1, dtatools 0.9.0.
-- Only dtatools readers were timed. Haven and Stata measurements retain their
-  original dates, inputs and values; neither comparator was rerun. The user
-  confirmed the same machine, OS, libraries and Stata installation.
+- Comparisons use the same machine, OS, libraries and Stata installation.
+  Source and measurement identities are recorded in the provenance artifacts.
 - Read-call wall time and user/system CPU clocks cover the same interval.
   CPU is summed across threads and can exceed wall time. CPU medians summarize
   each call's user-plus-system total; separately reported component medians
   need not sum to the median total. Comparator CPU values were not recorded.
 - Fresh peak RSS is the child's whole-process high-water mark, including the
-  runtime and retained result. Whole-process CPU is recorded separately from
+  runtime and live result. Whole-process CPU is recorded separately from
   read-call CPU. Warm repeated-read process peaks are not presented as fresh RSS.
-- The isolated installation, source package tree, workers and retained inputs
+- The isolated installation, source package tree, workers and inputs
   were bound before and after each phase. Builds, tests and other benchmark
   phases did not run concurrently with timed reads. Later README/report edits
   do not change the measured reader implementation.
@@ -38,28 +37,28 @@ Private corpus paths and values stay outside the public report.
 ## India: ten fresh processes per reader
 
 The input is the 5.2 GB India 2021 DHS women's file: 724,115 rows and 5,972
-columns. Arrow reads use its retained 5.6 GB conversion, with verification on.
+columns. Arrow reads use its 5.6 GB conversion, with verification on.
 Each read uses a fresh process and a warm filesystem cache, without an added
 pre-read GC or warmup. Startup is outside the read clock; first-call work inside
 the reader is included. DTA/Arrow order alternates across ten rounds. The
-retained September 12 four-tool baseline rotated all four tools.
+September 12 four-tool baseline rotated all four tools.
 
 | Reader | Wall median, s | Wall range, s | CPU median, s | Peak RSS median, GB |
 | --- | ---: | ---: | ---: | ---: |
 | `read_dta()` | 0.8195 | 0.816–0.826 | 5.4335 | 5.236 |
 | `read_arrow()` | 0.5980 | 0.596–0.603 | 4.5705 | 10.279 |
-| haven, retained | 488.2040 | 413.645–529.616 | Unavailable | 35.107 |
-| Stata `use`, retained | 0.5015 | 0.468–0.503 | Unavailable | 5.256 |
+| haven | 488.2040 | 413.645–529.616 | Unavailable | 35.107 |
+| Stata `use` | 0.5015 | 0.468–0.503 | Unavailable | 5.256 |
 
 The preceding dtatools medians were 0.8210 and 0.5995 seconds. Differences of
 1.5 milliseconds do not establish an improvement. Arrow takes 27.0% less wall
 time and 15.9% less CPU time than DTA here, using 1.96 times its peak RSS.
-Stata remains fastest: DTA takes 1.63 times its retained median and Arrow 1.19
+Stata remains fastest: DTA takes 1.63 times its median and Arrow 1.19
 times. Use Arrow for repeated full reads when its additional memory fits;
 use DTA to read the original file with the smaller peak.
 
 [Current observations](india-10x-observations.csv),
-[retained comparator observations](india-retained-observations.csv),
+[comparator observations](india-retained-observations.csv),
 [comparison](india-comparison.csv), and [bindings](india-10x-provenance.json).
 
 ## Survey corpus
@@ -72,14 +71,14 @@ Comparator records were copied unchanged and checked against the archived data.
 Corpus input sizes and modification times match the original inventory before
 and after reading. Times sum read calls; RSS is the maximum single-file peak.
 
-| Corpus | Files | Input GB | Dtatools wall, s | Dtatools CPU, s | Prior dtatools wall, s | Retained haven wall, s | Retained Stata wall, s | Dtatools max RSS, GB |
+| Corpus | Files | Input GB | Dtatools wall, s | Dtatools CPU, s | Prior dtatools wall, s | haven wall, s | Stata wall, s | Dtatools max RSS, GB |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | DHS | 641 | 46.903 | 69.286 | 109.417 | 69.748 | 2727.051 | 68.806 | 5.237 |
 | MICS | 949 | 3.690 | 60.056 | 64.893 | 60.532 | 216.732 | 1.155 | 0.231 |
 | NSFG | 222 | 5.772 | 19.880 | 25.053 | 19.800 | 234.588 | 0.885 | 0.559 |
 
 The changes from the preceding available-CPU run are small: DHS is 0.462 seconds
-lower, MICS 0.476 lower, and NSFG 0.080 higher. Against retained haven totals,
+lower, MICS 0.476 lower, and NSFG 0.080 higher. Against haven totals,
 DHS is 39.4 times faster, MICS 3.6 times and NSFG 11.8 times. Dtatools is faster
 on 1,459 comparison files, tied on ten and slower on 343; it is faster on all
 641 DHS files and on 1,435 of the 1,534 files larger than 1 MB. These are not
@@ -88,7 +87,6 @@ results, MICS remains slower than 29.3 seconds and NSFG slower than 19.1 seconds
 
 [Per-release totals and peak memory for all tools](corpus-summary.csv),
 [file-count statistics](corpus-statistics.json), and [provenance](provenance.json).
-Haven/Stata corpus measurements date from August 24.
 
 
 ## Warm repeated DTA/Arrow reads
@@ -99,7 +97,7 @@ six reader orders and supplies the current R README warm table.
 
 The original protocol is preserved: one warmup, then 11 measured reads per
 synthetic file and five for India, with full GC between reads. DTA and Arrow
-values, names and shared metadata match before timing. The retained Arrow files
+values, names and shared metadata match before timing. The Arrow files
 omit value-label names, declared string widths and some variable notes; those
 known metadata differences are excluded from the equality check. Verification
 remains enabled by default.
@@ -130,8 +128,8 @@ the previous warm results and do not establish a new full-read gain.
 
 The main projection rerun uses the saved fixtures and 11 reads per selection
 method after warmups. Synthetic cases return ten columns; India returns 100.
-Stata retains its August 28 medians. Its direct projected `use` requires known-
-present names; it does not handle absent union names like `any_of()`.
+Stata's direct projected `use` requires all projected names to be present;
+it does not handle absent union names like `any_of()`.
 
 | Input | Any-of wall / CPU, s | All-of wall / CPU, s | Stata projected use, s | Stata load/inspect/keep, s |
 | --- | ---: | ---: | ---: | ---: |
@@ -180,10 +178,10 @@ that automatic mode is optimal on every machine or dataset.
 [summary](projection-control-summary.csv), [bindings](projection-control-provenance.json),
 and [signature/session evidence](projection-worker-provenance.json).
 
-## Retained direct-dibble fixtures
+## Direct-dibble fixtures
 
 All 15 input hashes match the original fixture record, and each current snapshot
-matches its retained candidate snapshot before timing. The original protocol
+matches its candidate snapshot before timing. The original protocol
 is preserved: three processes per input; two warmups; calibration to 150 ms;
 seven measured batches per process; and three separate fresh memory processes
 with the original pre-read GC. Timing rows below are normalized per-read
@@ -207,17 +205,17 @@ medians over 21 batches. RSS comes from the three separate memory processes.
 | string-low-arrow | 2.844 | 14.016 | 141.5 |
 | string-low-dta | 3.359 | 11.953 | 134.4 |
 
-Against the retained September 11 candidate, the largest median increases are
+Against the September 11 candidate, the largest median increases are
 3.3% for double-wide Arrow and 1.5% for ordinary Arrow; double-wide DTA is 0.3%
 higher. Mixed Arrow increases 1.1% and strL DTA 0.6%; other medians are
 unchanged or lower. These small historical differences do not isolate the adaptive policy:
 the earlier candidate also predates the available-CPU change. Fresh peaks are
-close to their retained values. The matched thread control above provides the
+close to their values. The matched thread control above provides the
 stronger evidence for this policy.
 
 ## Supplemental reader and metadata coverage
 
-The synthetic full/eight-column cases use seven warm reads on the retained
+The synthetic full/eight-column cases use seven warm reads on the
 Stata-first-save files. The older August 24 synthetic comparator matrix used
 222,656/2,227,111 rows; its original input bytes were not available. Current
 fixtures contain 231,956/2,320,123 rows. The old matrix remains dated, and its

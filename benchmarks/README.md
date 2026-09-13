@@ -47,7 +47,7 @@ does not expose stable internal timers, so a finer native R split would require
 instrumenting production code and is deliberately not claimed here.
 
 The [`large-scale/`](large-scale/) harness separately compares the public
-dta-tools reader, the retained internal Rust-vector collector, and haven on
+dta-tools reader, the internal Rust-vector collector, and haven on
 deterministic 100 MB and 1 GB files. It runs full and projected-eight-column
 workloads for 101 iterations by default and writes all generated artifacts below
 ignored `target/large-scale/`. See its README for the checkout-local package
@@ -61,8 +61,11 @@ and raw results private.
 Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
 original comparator results. The [adaptive-default reader refresh](reader-refresh/results-2026-09-12-defaults/README.md)
 updates the dtatools corpus, DTA/Arrow, India, projection and fixture measurements,
-including read-call CPU time and fresh-process peak RSS. Haven and Stata timings
-are retained unchanged. These refreshed results are used in the R package README.
+including read-call CPU time and fresh-process peak RSS. The subsequent
+[local-reader startup investigation](reader-startup/results-2026-09-13/README.md)
+supplies the current corpus and fresh-process India comparisons, plus alternating
+old/new dtatools measurements on small files. It removes unnecessary dependency
+loading and reports read-call CPU time, whole-process CPU, and peak RSS.
 
 The synthetic [`projection-introspection/`](projection-introspection/) suite
 compares a union-safe `any_of()` projection with Stata's full-load-then-keep
@@ -90,13 +93,14 @@ reports cumulative R allocation so materialization costs remain visible.
 
 The report-only [`arrow-interchange/`](arrow-interchange/) benchmark compares
 `save_arrow()` and `read_arrow()` with the DTA reader/writer, haven, and
-reused Stata medians on the deterministic 100 MB and 1 GB fixtures and the
+Stata medians on the deterministic 100 MB and 1 GB fixtures and the
 India 2021 DHS women's file, including the additive impact of each write
 optimization and the checksums flag. Its
 [2026-08-29 report](arrow-interchange/results-2026-08-29.md) records the
-original read and conversion results. Current reader medians are in the
-[adaptive-default refresh](reader-refresh/results-2026-09-12-defaults/README.md);
-write and conversion measurements retain their original dates.
+original read and conversion results. Current fresh-process India medians are in
+the [local-reader report](reader-startup/results-2026-09-13/README.md), and the
+[adaptive-default refresh](reader-refresh/results-2026-09-12-defaults/README.md)
+reports synthetic reader measurements.
 
 The report-only [`dta-merge/`](dta-merge/) benchmark times one `dta_merge()`
 across every x/y input-source combination — preloaded frames and `.dta` and

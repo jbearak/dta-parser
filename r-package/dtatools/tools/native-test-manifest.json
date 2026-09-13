@@ -158,7 +158,7 @@
         },
         {
           "path": "tests/testthat/test-input-sources.R",
-          "sha256": "7e3fc78036593f5aa8019bc3adc09184e75d1e1da6c2dc6b8043408b4c824d6a"
+          "sha256": "0c4027a61f44249a1e2205a48ef1ff872109801e1d5ab3100892c24cc25a3644"
         }
       ],
       "blocks": [
@@ -1186,9 +1186,58 @@
           "skip": "forbid",
           "min_pass": 18,
           "warnings": 0
+        },
+        {
+          "file": "test-input-sources.R",
+          "test": "first local reads avoid source-adapter dependency loading",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-input-sources.R",
+          "test": "local source detection preserves content and caller ownership",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 21,
+          "warnings": 0
+        },
+        {
+          "file": "test-input-sources.R",
+          "test": "implicit read extensions retain file_ext semantics",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-input-sources.R",
+          "test": "compressed Arrow content retains source-adapter handling",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-input-sources.R",
+          "test": "local readers ignore global filesystem helpers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
         }
       ],
-      "children": [],
+      "children": [
+        {
+          "id": "local-source-startup",
+          "kind": "r",
+          "minimum": 4,
+          "maximum": 4,
+          "completion": "complete",
+          "allow_error": false
+        }
+      ],
       "forks": [
         {
           "id": "arrow-write-signal",

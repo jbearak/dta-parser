@@ -4,7 +4,7 @@ This report-only benchmark compares three readers in the same R process:
 
 - `dta-tools`: the public `dtatools::read_dta()` path (recorded as `direct-r`
   in raw machine-readable output);
-- `rust-vectors`: the retained internal `dtatools:::.read_dta_rust_vectors()` baseline;
+- `rust-vectors`: the internal `dtatools:::.read_dta_rust_vectors()` baseline;
 - `haven`: `haven::read_dta()`.
 
 It measures full reads and a fixed eight-column projection on Stata-authored,
@@ -48,12 +48,12 @@ preserve its read model and each declared numeric storage type. Haven must
 preserve the values and metadata in its own read model, and its expected
 widening of all numeric storage to `double` is recorded separately. Exact
 fixed-string widths are not exposed by either read model and are not part of
-this validation. Those rows are retained in `write-validation.tsv`. The default
+this validation. Those rows are included in `write-validation.tsv`. The default
 is seven iterations per writer and size.
 
 The [2026-08-28 write report](results-2026-08-28.md) records the latest complete
 seven-iteration comparison. The [2026-08-27 report](results-2026-08-27.md) is
-retained as the historical baseline.
+the historical baseline.
 
 Before timing, the runner requires exact identity between the dta-tools and
 Rust-vector collectors for both workloads. It also compares 32-row projected

@@ -1,0 +1,6 @@
+size,files,prior_slower_than_haven,current_slower_than_haven,prior_dtatools_median_seconds,current_dtatools_median_seconds,retained_haven_median_seconds
+<100 KB,28,28,0,0.058,0.002,0.017
+100 KB to 1 MB,250,225,0,0.06,0.004,0.034
+1 to 10 MB,755,90,0,0.064,0.007,0.148
+10 to 100 MB,695,0,0,0.091,0.047,1.531
+100 MB and above,84,0,0,0.1755,0.117,7.513999999999999
