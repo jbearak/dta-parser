@@ -108,6 +108,67 @@ test_that("plain local paths retain the direct path fast path", {
     expect_false(source$temporary)
 })
 
+test_that("first local reads avoid source-adapter dependency loading", {
+    arrow_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(arrow_path), add = TRUE)
+    expected <- read_dta(input_fixture(), n_max = 2)
+    save_arrow(expected, arrow_path)
+    paths <- c(input_fixture(), fixture("auto_v115.dta"), arrow_path)
+    for (index in seq_along(paths)) {
+        reader <- if (index == 3L) "read_arrow" else "read_dta"
+        path <- paths[[index]]
+        result <- .dtatools_child_r("local-source-startup", function(reader, path) {
+            read <- getExportedValue("dtatools", reader)
+            before <- loadedNamespaces()
+            data <- read(path, n_max = 2)
+            list(loaded = setdiff(loadedNamespaces(), before),
+                 dimensions = dim(data), names = names(data),
+                 mpg = as.double(data$mpg))
+        }, args = list(reader, path))
+        expect_false(any(c("readr", "tools") %in% result$loaded))
+        expect_identical(result$dimensions, dim(expected))
+        expect_identical(result$names, names(expected))
+        expect_identical(result$mpg, as.double(expected$mpg))
+    }
+})
+
+test_that("local source detection preserves content and caller ownership", {
+    directory <- tempfile(pattern = "dtatools-local-source-")
+    dir.create(directory)
+    on.exit(unlink(directory, recursive = TRUE), add = TRUE)
+    expected <- read_dta(input_fixture())
+    for (name in c("plain.gz", "survey data.dta", "\u00e9tude.dta")) {
+        path <- file.path(directory, name)
+        expect_true(file.copy(input_fixture(), path))
+        expect_identical_table(read_dta(path), expected)
+        expect_true(file.exists(path))
+    }
+    for (kind in c("gz", "bz2", "xz")) {
+        compressed <- write_compressed_fixture(kind)
+        on.exit(unlink(compressed), add = TRUE)
+        path <- file.path(directory, paste0(kind, ".dta"))
+        expect_true(file.copy(compressed, path))
+        expect_identical_table(read_dta(path), expected)
+        expect_true(file.exists(path))
+    }
+    expect_error(read_dta(I(input_fixture())), "not handled")
+    malformed <- file.path(directory, "malformed.dta")
+    writeBin(charToRaw("<stata_dta>"), malformed)
+    expect_error(read_dta(malformed))
+    expect_true(file.exists(malformed))
+})
+
+test_that("implicit read extensions retain file_ext semantics", {
+    paths <- c("survey", ".hidden", "..hidden", "survey.", "survey.dta",
+               "survey.dta.gz", "survey.a-b", "survey.a_b", "survey.123",
+               "directory.with.dots/survey", "survey.\u00e9", "...")
+    for (path in paths) {
+        expected <- if (nzchar(tools::file_ext(basename(path)))) path else
+            paste0(path, ".dta")
+        expect_identical(dtatools:::.resolve_implicit_dta_read_path(path), expected)
+    }
+})
+
 test_that("extensionless local reads resolve to the matching .dta file", {
     base <- tempfile(pattern = "dtatools-extensionless-")
     dta <- paste0(base, ".dta")

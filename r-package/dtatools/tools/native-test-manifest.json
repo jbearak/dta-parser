@@ -158,7 +158,7 @@
         },
         {
           "path": "tests/testthat/test-input-sources.R",
-          "sha256": "7e3fc78036593f5aa8019bc3adc09184e75d1e1da6c2dc6b8043408b4c824d6a"
+          "sha256": "2568e15c92f4d7bcc1111340a783bb527ab50fa34d4d18a72fc566a2a356ab73"
         }
       ],
       "blocks": [
@@ -1186,9 +1186,42 @@
           "skip": "forbid",
           "min_pass": 18,
           "warnings": 0
+        },
+        {
+          "file": "test-input-sources.R",
+          "test": "first local reads avoid source-adapter dependency loading",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-input-sources.R",
+          "test": "local source detection preserves content and caller ownership",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 21,
+          "warnings": 0
+        },
+        {
+          "file": "test-input-sources.R",
+          "test": "implicit read extensions retain file_ext semantics",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
         }
       ],
-      "children": [],
+      "children": [
+        {
+          "id": "local-source-startup",
+          "kind": "r",
+          "minimum": 3,
+          "maximum": 3,
+          "completion": "complete",
+          "allow_error": false
+        }
+      ],
       "forks": [
         {
           "id": "arrow-write-signal",
