@@ -70,9 +70,12 @@ without rerunning an older corpus, use:
 python3 benchmarks/reader-refresh/summarize.py "$OLD_CORPUS" "$OUT/reads" "$BALANCED_PUBLIC_OUT" --data-root "$DATA_ROOT" --warm-only
 ```
 
-The corpus argument is ignored in this mode. A reads-phase retry repeats all
+The corpus argument is ignored in this mode. The public output directory must
+be empty, so a new warm cohort cannot mix with an older report. A reads-phase retry repeats all
 equality checks and the complete balanced schedule. Each child attempt keeps
 its own immutable log, and `jobs.jsonl` retains successful and failed attempts.
+If the controller is interrupted, it stops and reaps its active worker and
+records the failed attempt before propagating the interruption.
 Publication requires the latest attempt of every required key to succeed;
 an earlier failed qualification does not invalidate a later successful retry.
 Malformed histories, incomplete cohorts, changed order records, changed logs

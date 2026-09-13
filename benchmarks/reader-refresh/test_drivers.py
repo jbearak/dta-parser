@@ -202,6 +202,65 @@ class DriverTests(unittest.TestCase):
         self.assertEqual((self.directory / "compare-india.log").read_text(), "succeeded")
         self.assertEqual(common.latest_job_attempts(jobs)["compare-india"]["attempt"], 2)
 
+    def test_interrupted_runner_reaps_child_and_records_failure_before_retry(self):
+        """An interrupted attempt cannot survive or disappear from a resumed run."""
+        real_spawn, real_wait = os.posix_spawn, os.wait4
+        children = []
+        programs = iter(["import time; time.sleep(30)", "print('retry succeeded')"])
+        interruptions = 2
+
+        def cleanup():
+            """Reap test children even if the regression under test returns."""
+            for pid in children:
+                try:
+                    waited, _, _ = real_wait(pid, os.WNOHANG)
+                    if not waited:
+                        os.kill(pid, 9)
+                        real_wait(pid, 0)
+                except ChildProcessError:
+                    pass
+
+        self.addCleanup(cleanup)
+
+        def spawn(_binary, _arguments, environment, file_actions):
+            """Use a disposable Python child without invoking an R reader."""
+            pid = real_spawn(sys.executable, [sys.executable, "-c", next(programs)],
+                             environment, file_actions=file_actions)
+            children.append(pid)
+            return pid
+
+        def wait(pid, options):
+            """Interrupt the initial wait and the first cleanup attempt."""
+            nonlocal interruptions
+            if interruptions:
+                interruptions -= 1
+                raise KeyboardInterrupt()
+            return real_wait(pid, options)
+
+        previous = Path.cwd()
+        with patch.object(common.shutil, "which", return_value="/test/Rscript"), \
+                patch.object(common.os, "posix_spawn", side_effect=spawn), \
+                patch.object(common.os, "wait4", side_effect=wait):
+            with self.assertRaises(KeyboardInterrupt):
+                common.run_child(self.directory, "compare-india", BASE / "compare.R",
+                                 ["a", "b"], os.environ.copy(), cwd=self.directory)
+            self.assertEqual(Path.cwd(), previous)
+            with self.assertRaises(ChildProcessError):
+                real_wait(children[0], os.WNOHANG)
+            first = common.load_jobs(self.directory / "jobs.jsonl")
+            self.assertEqual(first[0]["exit_code"], 130)
+            self.assertEqual(first[0]["controller_error"], "KeyboardInterrupt")
+            self.assertEqual(first[0]["child_exit_code"], -9)
+            self.assertEqual(common.sha(self.directory / first[0]["log_file"]), first[0]["log_sha256"])
+            with self.assertRaisesRegex(ValueError, "latest job attempts failed"):
+                common.latest_job_attempts(first)
+            common.run_child(self.directory, "compare-india", BASE / "compare.R",
+                             ["a", "b"], os.environ.copy())
+        jobs = common.load_jobs(self.directory / "jobs.jsonl")
+        self.assertEqual([row["exit_code"] for row in jobs], [130, 0])
+        self.assertNotEqual(jobs[0]["log_file"], jobs[1]["log_file"])
+        self.assertEqual(common.latest_job_attempts(jobs)["compare-india"]["exit_code"], 0)
+
     def test_untracked_package_source_is_rejected_before_installation_lookup(self):
         with patch.object(common.subprocess, "run"), patch.object(common.subprocess, "check_output", return_value="r-package/dtatools/src/new.rs\n"):
             with self.assertRaisesRegex(RuntimeError, "untracked package source"):
@@ -288,6 +347,20 @@ class DriverTests(unittest.TestCase):
         result = subprocess.run(command, text=True, capture_output=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(list((self.directory / "rejected").glob("*.csv")))
+
+    def test_warm_only_cli_rejects_existing_report_without_modifying_it(self):
+        """A new warm cohort must not overwrite or mix with a previous report."""
+        output = self.directory / "public"
+        output.mkdir()
+        for name in ("corpus-summary.csv", "warm-read-summary.csv", "provenance.json"):
+            (output / name).write_text("retained " + name)
+        before = {path.name: path.read_bytes() for path in output.iterdir()}
+        command = [sys.executable, "-O", str(BASE / "summarize.py"), "unused-corpus",
+                   str(self.directory), str(output), "--data-root", str(self.directory), "--warm-only"]
+        result = subprocess.run(command, text=True, capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("warm-only output must be an empty directory", result.stderr)
+        self.assertEqual({path.name: path.read_bytes() for path in output.iterdir()}, before)
 
     def test_reads_driver_qualifies_every_pair_then_executes_its_bound_schedule(self):
         """Run the real Python entry point with inert files and mocked reader children."""

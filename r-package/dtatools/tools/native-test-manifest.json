@@ -150,7 +150,7 @@
         },
         {
           "path": "tests/testthat/test-read-dta.R",
-          "sha256": "214b9cac11dd913483fbe2b17fa959d6a40cefa78a049750e63994dae2ec4ad4"
+          "sha256": "f8e80aa6aee04e9080446c37eaf365067ffeb29e76009603204749091beea5de"
         },
         {
           "path": "tests/testthat/test-save-dta.R",

@@ -75,15 +75,17 @@ after this final verification.
 - [All 40 observations](india-10x-observations.csv)
 - [Summary, including means, standard deviations and RSS ranges](india-10x-summary.csv)
 - [Source, input, runtime and installation hashes](india-10x-provenance.json)
-- [Driver](../repeat-india.py)
+- [Historical four-tool driver at `4c0d49e1`](https://github.com/jbearak/dta-parser/blob/4c0d49e14782b3c33c7c50ee2dddfe4eedd0c463/benchmarks/reader-refresh/repeat-india.py)
 
-With the original private inputs and isolated library available, run from the
-repository root:
+The driver linked above matches the SHA-256 in this run's provenance. The
+following is the historical invocation from that checkout, using its original
+private inputs, retained artifacts and isolated library:
 
 ```sh
 python3 benchmarks/reader-refresh/repeat-india.py /tmp/reader-library target/india-10x --dta "$INDIA_DTA" --arrow "$INDIA_ARROW"
 ```
 
-The driver verifies that the inputs and installed dtatools match the original
-refresh's recorded hashes. It can resume completed observations only while
-that binding remains unchanged.
+It runs all four tools and verifies the original input and installation hashes.
+The current driver supports only dtatools and has additional required binding
+arguments. Use the [current reader-only instructions](../README.md#running-the-refresh)
+for a new refresh that retains haven and Stata measurements.

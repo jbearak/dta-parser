@@ -22,6 +22,9 @@ parser.add_argument("--warm-only", action="store_true",
                     help="publish the balanced warm cohort independently of older corpus results")
 args = parser.parse_args()
 private, reads, public = args.private, args.reads, args.public
+if args.warm_only and public.exists():
+    require(public.is_dir() and not any(public.iterdir()),
+            "warm-only output must be an empty directory")
 public.mkdir(parents=True, exist_ok=True)
 root = Path(__file__).resolve().parents[2]
 data_root = args.data_root.resolve()

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -264,6 +265,28 @@ def source_binding(source_root, library, build_record, scripts):
                 scripts={str(Path(p).resolve()): sha(p) for p in scripts})
 
 
+def reap_interrupted_child(pid):
+    """Stop and reap an owned benchmark child before allowing the run to resume."""
+    while True:
+        try:
+            # If the child already exited, retain its status and usage. A live
+            # child remains ours until wait4 reaps it, so its PID cannot be reused.
+            waited, status, usage = os.wait4(pid, os.WNOHANG)
+            if waited:
+                return status, usage
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            _, status, usage = os.wait4(pid, 0)
+            return status, usage
+        except (InterruptedError, KeyboardInterrupt):
+            continue
+        except ChildProcessError:
+            # A signal may arrive after the original wait reaped the child.
+            return None, None
+
+
 def run_child(output, key, script, arguments, environment, cwd=None, warm=None):
     """Record one isolated reader attempt without overwriting its historical log."""
     output = Path(output)
@@ -277,29 +300,41 @@ def run_child(output, key, script, arguments, environment, cwd=None, warm=None):
     require(rscript, "Rscript was not found")
     command = [rscript, "--vanilla", str(script), *map(str, arguments)]
     started = time.time()
-    with log.open("wb") as stream:
-        actions = [(os.POSIX_SPAWN_DUP2, stream.fileno(), 1),
-                   (os.POSIX_SPAWN_DUP2, stream.fileno(), 2)]
-        previous = Path.cwd()
-        try:
-            if cwd is not None:
-                os.chdir(cwd)
-            pid = os.posix_spawn(rscript, command, environment, file_actions=actions)
-        finally:
-            os.chdir(previous)
-        _, status, usage = os.wait4(pid, 0)
-    result = dict(key=key, command=command, exit_code=os.waitstatus_to_exitcode(status),
-                  peak_rss_bytes=usage.ru_maxrss * (1 if sys.platform == "darwin" else 1024),
-                  process_user_cpu_seconds=usage.ru_utime,
-                  process_system_cpu_seconds=usage.ru_stime,
+    pid = status = usage = failure = None
+    try:
+        with log.open("wb") as stream:
+            actions = [(os.POSIX_SPAWN_DUP2, stream.fileno(), 1),
+                       (os.POSIX_SPAWN_DUP2, stream.fileno(), 2)]
+            previous = Path.cwd()
+            try:
+                if cwd is not None:
+                    os.chdir(cwd)
+                pid = os.posix_spawn(rscript, command, environment, file_actions=actions)
+            finally:
+                os.chdir(previous)
+            _, status, usage = os.wait4(pid, 0)
+    except BaseException as error:
+        failure = error
+        if pid is not None and status is None:
+            status, usage = reap_interrupted_child(pid)
+    child_exit_code = os.waitstatus_to_exitcode(status) if status is not None else None
+    exit_code = (130 if isinstance(failure, KeyboardInterrupt) else 1) if failure else child_exit_code
+    result = dict(key=key, command=command, exit_code=exit_code,
+                  peak_rss_bytes=usage.ru_maxrss * (1 if sys.platform == "darwin" else 1024) if usage else None,
+                  process_user_cpu_seconds=usage.ru_utime if usage else None,
+                  process_system_cpu_seconds=usage.ru_stime if usage else None,
                   start=started, duration=time.time() - started,
                   attempt=attempt, log_file=log.name, log_sha256=sha(log))
+    if failure:
+        result.update(controller_error=type(failure).__name__, child_exit_code=child_exit_code)
     if warm is not None:
         result["warm"] = dict(warm)
     with (output / "jobs.jsonl").open("a") as stream:
         stream.write(json.dumps(result) + "\n")
     # Preserve the existing latest-log filename for other driver consumers.
     shutil.copyfile(log, output / (key + ".log"))
+    if failure:
+        raise failure
     if result["exit_code"]:
         raise RuntimeError(f"{key} failed; inspect {log}")
     return result, log.read_text()
