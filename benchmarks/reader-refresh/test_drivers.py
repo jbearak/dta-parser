@@ -72,6 +72,7 @@ class DriverTests(unittest.TestCase):
         return dict(warm_schedule=schedule), jobs
 
     def test_positions_and_every_pairwise_order_are_balanced_for_each_case(self):
+        """Every input must exercise all six orders with equal method positions."""
         schedule = common.warm_read_schedule()
         self.assertEqual(len(schedule), 54)
         self.assertEqual(sum(row["iterations"] for row in schedule), 486)
@@ -90,21 +91,25 @@ class DriverTests(unittest.TestCase):
             self.assertEqual([positions.count(i) for i in range(1, 4)], [2, 2, 2])
 
     def test_failure_then_success_keeps_history_and_selects_final_attempt(self):
+        """A successful retry supersedes failure without erasing the original attempt."""
         jobs = [job("compare-india", 1), job("compare-india", 0)]
         original = copy.deepcopy(jobs)
         self.assertIs(common.latest_job_attempts(jobs)["compare-india"], jobs[-1])
         self.assertEqual(jobs, original)
 
     def test_success_then_final_failure_is_rejected(self):
+        """An earlier success cannot hide the final failed attempt."""
         with self.assertRaisesRegex(ValueError, "latest job attempts failed"):
             common.latest_job_attempts([job("compare-india"), job("compare-india", 1)])
 
     def test_missing_or_unexpected_final_keys_are_rejected(self):
+        """Publication requires exactly the planned set of completed jobs."""
         for keys in [set(), {"compare-india", "compare-1gb"}]:
             with self.subTest(keys=keys), self.assertRaisesRegex(ValueError, "job keys differ"):
                 common.latest_job_attempts([job("compare-india")], keys)
 
     def test_malformed_job_records_are_rejected(self):
+        """Reject damaged histories and unsafe attempt-log paths."""
         path = self.directory / "jobs.jsonl"
         values = ["{", "", "[]", json.dumps(dict(job("x"), exit_code=True)),
                   json.dumps(dict(job("x"), exit_code=-256)), json.dumps(dict(job("x"), command="Rscript")),
@@ -116,6 +121,7 @@ class DriverTests(unittest.TestCase):
                     common.load_jobs(path)
 
     def test_signaled_attempt_is_retained_before_success(self):
+        """Preserve a child signal exit while allowing a later successful retry."""
         path = self.directory / "jobs.jsonl"
         path.write_text("".join(json.dumps(row) + "\n" for row in [job("x", -9), job("x")]))
         attempts = common.load_jobs(path)
@@ -123,6 +129,7 @@ class DriverTests(unittest.TestCase):
         self.assertEqual(common.latest_job_attempts(attempts)["x"]["exit_code"], 0)
 
     def test_disallowed_worker_or_comparator_command_is_rejected(self):
+        """A reader-only publication must reject haven or Stata commands."""
         command = ["/test/Rscript", "--vanilla", str(BASE / "workers/corpus.R"), "haven", "input.dta"]
         with self.assertRaises(ValueError):
             common.validate_read_commands([dict(job("x"), command=command)], ROOT)
@@ -130,6 +137,7 @@ class DriverTests(unittest.TestCase):
             common.validate_read_commands([dict(job("x"), command=["stata", "--vanilla", "file.do"])], ROOT)
 
     def test_warm_parser_preserves_order_fields_and_matches_cpu_by_iteration(self):
+        """Clock markers match iteration IDs while execution positions remain intact."""
         planned = common.warm_read_schedule()[0]
         text = "\n".join(reversed(worker_text(planned["case"]).splitlines()))
         rows = common.parse_warm_output(text, planned, 91)
@@ -140,6 +148,7 @@ class DriverTests(unittest.TestCase):
             self.assertEqual((row["elapsed_seconds"], row["cpu_seconds"]), (.125, .375))
 
     def test_warm_parser_rejects_missing_duplicate_nonfinite_negative_and_wrong_dimensions(self):
+        """Incomplete or invalid observations must never reach a published summary."""
         planned = common.warm_read_schedule()[0]
         text = worker_text(planned["case"])
         bad = [text.replace("cpu\t11\t.25\t.125\n", ""), text + "cpu\t1\t.25\t.125\n",
@@ -152,12 +161,14 @@ class DriverTests(unittest.TestCase):
                 common.parse_warm_output(value, planned, 1)
 
     def test_complete_cohort_recovers_from_failed_qualification(self):
+        """A complete qualified retry remains publishable after an earlier failure."""
         binding, jobs = self.cohort(failed_qualification=True)
         rows = common.collect_warm_observations(self.directory, binding, jobs)
         self.assertEqual(len(rows), 486)
         self.assertEqual({r["execution_position"] for r in rows}, set(range(1, 55)))
 
     def test_retry_uses_final_attempt_logs_and_actual_execution_positions(self):
+        """Use successful retry logs and retain their actual position in the history."""
         schedule = common.warm_read_schedule()
         jobs = [job("compare-" + case) for case in common.WARM_CASES]
         jobs += [self.append_warm(schedule[0], 1), self.append_warm(schedule[1], 2, code=1)]
@@ -168,6 +179,7 @@ class DriverTests(unittest.TestCase):
         self.assertTrue(all(row["elapsed_seconds"] == .5 for row in rows))
 
     def test_unqualified_or_changed_order_or_changed_method_is_rejected(self):
+        """Reject timing before qualification or inconsistent method and order records."""
         binding, original = self.cohort()
         broken = []
         broken.append(original[1:])
@@ -180,6 +192,7 @@ class DriverTests(unittest.TestCase):
                 common.collect_warm_observations(self.directory, binding, jobs)
 
     def test_changed_log_or_schedule_is_rejected(self):
+        """Recorded hashes and schedules must still match at publication time."""
         binding, jobs = self.cohort()
         changed = copy.deepcopy(binding);changed["warm_schedule"][0]["method_position"] = 2
         with self.assertRaises(ValueError):common.collect_warm_observations(self.directory, changed, jobs)
@@ -188,9 +201,11 @@ class DriverTests(unittest.TestCase):
             common.collect_warm_observations(self.directory, binding, jobs)
 
     def test_runner_preserves_failed_and_successful_attempt_logs(self):
+        """Each real child attempt keeps its own log and latest-attempt alias."""
         real_spawn = os.posix_spawn
         commands = iter(["printf failed; exit 1", "printf succeeded; exit 0"])
         def spawn(_binary, _arguments, environment, file_actions):
+            """Run the test-owned shell program using the real process launcher."""
             return real_spawn("/bin/sh", ["sh", "-c", next(commands)], environment, file_actions=file_actions)
         with patch.object(common.shutil, "which", return_value="/test/Rscript"), patch.object(common.os, "posix_spawn", side_effect=spawn):
             with self.assertRaises(RuntimeError):
@@ -262,11 +277,13 @@ class DriverTests(unittest.TestCase):
         self.assertEqual(common.latest_job_attempts(jobs)["compare-india"]["exit_code"], 0)
 
     def test_untracked_package_source_is_rejected_before_installation_lookup(self):
+        """Untracked package code must fail before a build record can be trusted."""
         with patch.object(common.subprocess, "run"), patch.object(common.subprocess, "check_output", return_value="r-package/dtatools/src/new.rs\n"):
             with self.assertRaisesRegex(RuntimeError, "untracked package source"):
                 common.source_binding(self.directory, self.directory, self.directory / "absent.json", [])
 
     def test_cpu_validation_rejects_malformed_markers(self):
+        """CPU markers must be unique, complete, finite and nonnegative."""
         self.assertEqual(common.read_cpu("DTATOOLS_CPU\t.25\t.125\n")["cpu_seconds"], .375)
         for text in ("", "DTATOOLS_CPU\t1\n", "DTATOOLS_CPU\t1\t2\t3\n",
                      "DTATOOLS_CPU\t1\t2\nDTATOOLS_CPU\t1\t2\n",
@@ -276,6 +293,7 @@ class DriverTests(unittest.TestCase):
                 common.read_cpu(text)
 
     def test_source_and_installation_guards_remain_mandatory(self):
+        """Validate source and installation identity with Python optimization enabled."""
         with self.assertRaises(RuntimeError):
             common.require(False)
         package = self.directory / "dtatools"
@@ -319,6 +337,7 @@ class DriverTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_warm_only_cli_publishes_recovered_cohort_and_rejects_final_failure(self):
+        """Exercise the actual publisher on recovered and finally failed histories."""
         binding, jobs = self.cohort(failed_qualification=True)
         for key in ["spot-india", "spot-nsfg", "spot-india-arrow"]:
             jobs.append(job(key))
@@ -367,11 +386,13 @@ class DriverTests(unittest.TestCase):
         data, cache, output = [self.directory / name for name in ("data", "cache", "output")]
 
         def file(path, text="fixture"):
+            """Create one inert fixture at the path expected by the driver."""
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text)
             return path
 
         def table(path, rows):
+            """Write a small inventory in the format consumed by the driver."""
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("w") as stream:
                 writer = csv.DictWriter(stream, fieldnames=list(rows[0]), delimiter="\t")
@@ -406,6 +427,7 @@ class DriverTests(unittest.TestCase):
         jobs = []
 
         def child(directory, key, script, arguments, environment, warm=None):
+            """Record a synthetic worker attempt without invoking an R reader."""
             record = dict(key=key, exit_code=0, command=["/test/Rscript", "--vanilla", str(script), *map(str, arguments)])
             text = worker_text(warm["case"]) if warm else "qualified\n"
             if warm is not None:record["warm"] = dict(warm)
