@@ -2952,7 +2952,6 @@ unsafe fn fill_read_column(
 // Automatic-parallelism thresholds for the fill phase, matching the DTA
 // reader's policy.
 const MIN_PARALLEL_FILL_CELLS: u64 = 1_000_000;
-const MAX_AUTOMATIC_FILL_THREADS: usize = 8;
 
 fn fill_thread_count(requested: usize, task_count: usize, row_count: usize) -> usize {
     if requested == 1 || task_count < 2 {
@@ -2964,7 +2963,7 @@ fn fill_thread_count(requested: usize, task_count: usize, row_count: usize) -> u
     }
     let available = thread::available_parallelism().map_or(1, usize::from);
     let threads = if requested == 0 {
-        available.min(MAX_AUTOMATIC_FILL_THREADS)
+        available
     } else {
         requested.min(available)
     };
@@ -3632,6 +3631,16 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn automatic_reader_threads_use_available_cpus_and_honor_explicit_limits() {
+        let available = thread::available_parallelism().map_or(1, usize::from);
+        assert_eq!(fill_thread_count(0, 64, 1_000_000), available.min(64));
+        assert_eq!(fill_thread_count(1, 64, 1_000_000), 1);
+        assert_eq!(fill_thread_count(3, 64, 1_000_000), available.min(3));
+        assert_eq!(fill_thread_count(0, 64, 1), 1);
+        assert_eq!(fill_thread_count(0, 2, 1_000_000), available.min(2));
+    }
 
     #[test]
     fn empty_zero_copy_arrays_ignore_ffi_sentinel_alignment() {

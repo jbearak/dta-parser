@@ -1116,3 +1116,28 @@ test_that("unsafe row-window coercions fail before parsing", {
         }
     }
 })
+
+
+test_that("parallel compact byte batches preserve serial values and missingness", {
+    paths <- character()
+    on.exit(unlink(paths), add = TRUE)
+    for (name in c("all_types_v118.dta", "missing_values_v115.dta",
+                   "missing_values_v118.dta")) {
+        path <- if (startsWith(name, "missing_values_")) {
+            fixture_with_all_numeric_missing_codes(name)
+        } else fixture(name)
+        if (startsWith(name, "missing_values_")) paths <- c(paths, path)
+        for (window in list(list(), list(skip = 1, n_max = 2), list(n_max = 0))) {
+            args <- c(list(file = path), window)
+            serial <- do.call(read_dta, c(args, list(threads = 1)))
+            parallel <- do.call(read_dta, c(args, list(threads = 2)))
+            eager <- do.call(read_dta, c(args, list(threads = 2,
+                                                  use_numeric_altrep = FALSE)))
+            expect_identical(datasig(parallel), datasig(serial))
+            expect_identical(datasig(parallel), datasig(eager))
+            for (column in names(serial)) {
+                expect_identical(anyNA(parallel[[column]]), anyNA(serial[[column]]))
+            }
+        }
+    }
+})

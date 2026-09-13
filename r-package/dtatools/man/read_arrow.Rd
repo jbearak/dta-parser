@@ -59,9 +59,11 @@ columns should retain their compact Stata storage through ALTREP. Set to
 \code{FALSE} to create eager R double vectors while reading.}
 
 \item{threads}{Number of threads for record-batch decoding, checksum
-verification, and column conversion. \code{0} (the default) chooses
-automatically based on the input size and machine; \code{1} disables
-parallelism.}
+verification, and column conversion. Zero uses the CPUs available to the
+process for sufficiently large selections, limited by available work.
+Small selections stay serial. One disables parallelism; larger values
+limit the worker count. Defaults to the \code{dtatools.threads} option, or zero
+when unset.}
 
 \item{datasig}{Whether to record the file's \code{\link[=datasig]{datasig()}} signature in the
 result's \code{datasig} attribute. The signature is derived from the file's

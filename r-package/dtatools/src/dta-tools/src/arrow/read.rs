@@ -1298,11 +1298,9 @@ fn read_dictionaries<R: Read + Seek>(
 }
 
 // Automatic-parallelism thresholds, matching the DTA reader's policy: small
-// selections stay serial, and automatic counts leave headroom on very wide
-// machines.
+// selections stay serial; larger selections use the available CPUs.
 const MIN_PARALLEL_DECODE_BYTES: u64 = 16 * 1024 * 1024;
 const MIN_PARALLEL_DECODE_CELLS: u64 = 1_000_000;
-const MAX_AUTOMATIC_DECODE_THREADS: usize = 8;
 
 /// One record batch that overlaps the requested row window: its parsed
 /// header plus the slice of its rows to return.
@@ -1642,7 +1640,7 @@ fn decode_thread_count(
     }
     let available = thread::available_parallelism().map_or(1, usize::from);
     let threads = if requested == 0 {
-        available.min(MAX_AUTOMATIC_DECODE_THREADS)
+        available
     } else {
         requested.min(available)
     };
@@ -2463,6 +2461,68 @@ mod tests {
 
     use super::*;
     use crate::arrow::{save_arrow_file, ArrowCompression, ArrowWriteColumn, ArrowWriteDataset};
+
+    #[test]
+    fn automatic_reader_threads_use_available_cpus_and_honor_explicit_limits() {
+        let footer = Footer {
+            schema: Schema::empty(),
+            layouts: (0..64)
+                .map(|_| FieldLayout {
+                    node: 0,
+                    buffer: 0,
+                    buffer_count: 1,
+                    dictionary_id: None,
+                    dictionary_ordered: false,
+                })
+                .collect(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::new(),
+        };
+        let selected = (0..64).collect::<Vec<_>>();
+        let dictionaries = HashMap::new();
+        let context = DecodeContext {
+            footer: &footer,
+            profile: None,
+            selected: &selected,
+            dictionaries: &dictionaries,
+        };
+        let plans = vec![BlockPlan {
+            batch_index: 0,
+            block: BlockInfo {
+                offset: 0,
+                metadata_length: 0,
+                body_length: 0,
+            },
+            header: BatchHeader {
+                rows: 1_000_000,
+                compression: None,
+                nodes: Vec::new(),
+                buffers: vec![(0, 0)],
+            },
+            slice_offset: 0,
+            slice_length: 1_000_000,
+        }];
+        let available = thread::available_parallelism().map_or(1, usize::from);
+        assert_eq!(
+            decode_thread_count(0, &context, &plans, 1_000_000),
+            available.min(64)
+        );
+        assert_eq!(decode_thread_count(1, &context, &plans, 1_000_000), 1);
+        assert_eq!(
+            decode_thread_count(3, &context, &plans, 1_000_000),
+            available.min(3)
+        );
+        assert_eq!(decode_thread_count(0, &context, &plans, 1), 1);
+        let projected = DecodeContext {
+            selected: &selected[..2],
+            ..context
+        };
+        assert_eq!(
+            decode_thread_count(0, &projected, &plans, 1_000_000),
+            available.min(2)
+        );
+    }
 
     #[cfg(unix)]
     #[test]

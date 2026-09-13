@@ -38,10 +38,16 @@ convention. Non-negative values must be whole numbers no larger than
 \code{dtatools.output} option, falling back to \code{"dibble"}. Supply
 \code{"dibble"}, \code{"tibble"}, or \code{"data.table"} to override the
 option. Data-table output requires the suggested data.table package.}
-\item{threads}{Number of decoder threads. Zero selects an automatic count for
-sufficiently large files in any supported Stata release. One always uses the
-serial decoder. For selected \code{strL} columns, workers decode observation
-references before the coordinator resolves their payloads.}
+\item{threads}{Number of decoder threads. Zero chooses an automatic count
+within the CPUs available to the process. With compact numeric output,
+selected storage types, column widths, and the requested rows may reduce
+that count, so narrow projections can use fewer workers than full reads.
+Small selections stay serial. One always uses the serial decoder; larger
+values explicitly limit the worker count. Defaults to the
+\code{dtatools.threads} option, or zero when unset. Eager numeric output and
+selections containing \code{strL} retain automatic selection by available CPUs
+and selection size. For \code{strL}, workers decode observation references
+before the coordinator resolves their payloads.}
 \item{use_numeric_altrep}{Whether byte, int, long, and float columns should retain
 their compact Stata storage through ALTREP. Set to \code{FALSE} to create eager
 R double vectors during decoding, which uses more memory but avoids later

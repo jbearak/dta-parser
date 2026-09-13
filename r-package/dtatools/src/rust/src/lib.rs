@@ -2997,6 +2997,58 @@ impl RColumn {
 }
 
 impl DtaColumnSink for RColumn {
+    fn try_push_byte_rows(
+        &mut self,
+        output_start: usize,
+        row_count: usize,
+        source: &[u8],
+        stride: usize,
+        version: FormatVersion,
+    ) -> Result<bool, DtaError> {
+        let Self::NumericAltRep { data, .. } = self else {
+            return Ok(false);
+        };
+        if data.kind != NumericKind::Byte {
+            return Ok(false);
+        }
+        if data.format_version != version {
+            return Err(DtaError::Output(
+                "byte batch format version mismatch".to_owned(),
+            ));
+        }
+        let output_end = output_start
+            .checked_add(row_count)
+            .ok_or(DtaError::ArithmeticOverflow("byte batch output range"))?;
+        if output_end > data.length {
+            return Err(RNumericData::row_error(output_end, data.length));
+        }
+        if row_count == 0 {
+            return Ok(true);
+        }
+        let input_end = (row_count - 1)
+            .checked_mul(stride)
+            .and_then(|last| last.checked_add(1))
+            .ok_or(DtaError::ArithmeticOverflow("byte batch input range"))?;
+        if stride == 0 || input_end > source.len() {
+            return Err(DtaError::Output(
+                "byte batch input range is out of bounds".to_owned(),
+            ));
+        }
+        // SAFETY: RColumn owns this live compact byte allocation, and the
+        // complete destination and strided source ranges were checked above.
+        let output =
+            unsafe { std::slice::from_raw_parts_mut(data.values.add(output_start), row_count) };
+        let mut missing_count = 0;
+        for (row, target) in output.iter_mut().enumerate() {
+            let value = unsafe { *source.get_unchecked(row * stride) };
+            *target = value;
+            missing_count +=
+                usize::from(classify_byte_missing_for_version(value as i8, version).is_some());
+        }
+        data.missing_count += missing_count;
+        Ok(true)
+    }
+
     fn push_byte(
         &mut self,
         row: usize,
@@ -3503,9 +3555,12 @@ unsafe fn read_impl(
         column_indices: columns,
     };
     let result = if config.direct_to_r {
-        let threads = file
-            .parallel_thread_count(&options, config.requested_threads)
-            .map_err(|error| error.to_string())?;
+        let threads = if config.numeric_altrep {
+            file.parallel_thread_count_for_compact_output(&options, config.requested_threads)
+        } else {
+            file.parallel_thread_count(&options, config.requested_threads)
+        }
+        .map_err(|error| error.to_string())?;
         let columnar = file
             .supports_columnar_sink(&options)
             .map_err(|error| error.to_string())?;
@@ -5387,6 +5442,106 @@ mod tests {
             let observed = observed_value(raw, TemporalKind::Datetime);
             assert_eq!(write_numeric_value(observed, 315_619_200.0, 1_000.0), raw);
         }
+    }
+
+    #[test]
+    fn compact_byte_batch_matches_scalar_values_and_missing_counts() {
+        use crate::{
+            classify_byte_missing_for_version, DtaColumnSink, FormatVersion, NumericKind, RColumn,
+            RNumericData,
+        };
+        for version in [
+            FormatVersion::V105,
+            FormatVersion::V111,
+            FormatVersion::V113,
+            FormatVersion::V118,
+            FormatVersion::V119,
+        ] {
+            for stride in [1, 3, 17, 7176] {
+                let mut source = vec![0_u8; 255 * stride + 1];
+                for value in 0..256 {
+                    source[value * stride] = value as u8;
+                }
+                let mut output = vec![42_u8; 258];
+                let mut column = RColumn::NumericAltRep {
+                    vector: ptr::null_mut(),
+                    data: RNumericData {
+                        backing: ptr::null_mut(),
+                        values: output.as_mut_ptr(),
+                        length: output.len(),
+                        kind: NumericKind::Byte,
+                        temporal: TemporalKind::None,
+                        format_version: version,
+                        missing_count: 0,
+                    },
+                };
+                assert!(column
+                    .try_push_byte_rows(1, 256, &source, stride, version)
+                    .unwrap());
+                assert_eq!(output[0], 42);
+                assert_eq!(output[257], 42);
+                assert_eq!(
+                    &output[1..257],
+                    &(0..256).map(|v| v as u8).collect::<Vec<_>>()
+                );
+                let expected = (0..256)
+                    .filter(|&v| classify_byte_missing_for_version(v as i8, version).is_some())
+                    .count();
+                let RColumn::NumericAltRep { data, .. } = column else {
+                    unreachable!()
+                };
+                assert_eq!(data.missing_count, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn compact_byte_batch_validates_ranges_before_writing() {
+        use crate::{DtaColumnSink, FormatVersion, NumericKind, RColumn, RNumericData};
+        let mut output = vec![42_u8; 4];
+        let mut column = RColumn::NumericAltRep {
+            vector: ptr::null_mut(),
+            data: RNumericData {
+                backing: ptr::null_mut(),
+                values: output.as_mut_ptr(),
+                length: output.len(),
+                kind: NumericKind::Byte,
+                temporal: TemporalKind::None,
+                format_version: FormatVersion::V118,
+                missing_count: 0,
+            },
+        };
+        for (start, count, source, stride, version) in [
+            (3, 2, &[101, 127][..], 1, FormatVersion::V118),
+            (usize::MAX, 2, &[101, 127][..], 1, FormatVersion::V118),
+            (0, 2, &[101][..], 1, FormatVersion::V118),
+            (0, 2, &[101, 127][..], 0, FormatVersion::V118),
+            (0, 3, &[101, 127][..], usize::MAX, FormatVersion::V118),
+            (0, 2, &[101, 127][..], 1, FormatVersion::V111),
+        ] {
+            assert!(column
+                .try_push_byte_rows(start, count, source, stride, version)
+                .is_err());
+            assert_eq!(output, vec![42_u8; 4]);
+            let RColumn::NumericAltRep { data, .. } = &column else {
+                unreachable!()
+            };
+            assert_eq!(data.missing_count, 0);
+        }
+        assert!(column
+            .try_push_byte_rows(4, 0, &[], 0, FormatVersion::V118)
+            .unwrap());
+        assert!(column
+            .try_push_byte_rows(0, 2, &[101, 0], 1, FormatVersion::V118)
+            .unwrap());
+        assert!(column
+            .try_push_byte_rows(2, 2, &[127, 100], 1, FormatVersion::V118)
+            .unwrap());
+        assert_eq!(output, vec![101, 0, 127, 100]);
+        let RColumn::NumericAltRep { data, .. } = column else {
+            unreachable!()
+        };
+        assert_eq!(data.missing_count, 2);
     }
 
     #[test]

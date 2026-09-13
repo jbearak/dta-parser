@@ -66,9 +66,11 @@
 #'   columns should retain their compact Stata storage through ALTREP. Set to
 #'   `FALSE` to create eager R double vectors while reading.
 #' @param threads Number of threads for record-batch decoding, checksum
-#'   verification, and column conversion. `0` (the default) chooses
-#'   automatically based on the input size and machine; `1` disables
-#'   parallelism.
+#'   verification, and column conversion. Zero uses the CPUs available to the
+#'   process for sufficiently large selections, limited by available work.
+#'   Small selections stay serial. One disables parallelism; larger values
+#'   limit the worker count. Defaults to the `dtatools.threads` option, or zero
+#'   when unset.
 #' @param datasig Whether to record the file's [datasig()] signature in the
 #'   result's `datasig` attribute. The signature is derived from the file's
 #'   stored footer checksums and schema documents without rehashing any data,

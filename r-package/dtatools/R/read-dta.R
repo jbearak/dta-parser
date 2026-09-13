@@ -154,10 +154,16 @@
 #'   negative finite values read all remaining rows, following haven's
 #'   unlimited-row convention. Non-negative values must be whole numbers no
 #'   larger than `2^53`.
-#' @param threads Number of decoder threads. Zero selects an automatic count
-#'   for sufficiently large files in any supported Stata release. One always
-#'   uses the serial decoder. For selected `strL` columns, workers decode
-#'   observation references before the coordinator resolves their payloads.
+#' @param threads Number of decoder threads. Zero chooses an automatic count
+#'   within the CPUs available to the process. With compact numeric output,
+#'   selected storage types, column widths, and the requested rows may reduce
+#'   that count, so narrow projections can use fewer workers than full reads.
+#'   Small selections stay serial. One always uses the serial decoder; larger
+#'   values explicitly limit the worker count. Defaults to the
+#'   `dtatools.threads` option, or zero when unset. Eager numeric output and
+#'   selections containing `strL` retain automatic selection by available CPUs
+#'   and selection size. For `strL`, workers decode observation references
+#'   before the coordinator resolves their payloads.
 #' @param use_numeric_altrep Whether byte, int, long, and float columns should retain
 #'   their compact Stata storage through ALTREP. Set to `FALSE` to create eager
 #'   R double vectors during decoding, which uses more memory but avoids later

@@ -1,0 +1,10 @@
+case,method,iterations,median_seconds,min_seconds,max_seconds,rows,columns
+100mb,read_dta,11,0.047,0.046,0.05,231956,40
+100mb,read_arrow_verify,11,0.024,0.023,0.028,231956,40
+100mb,read_arrow_noverify,11,0.024,0.022,0.026,231956,40
+1gb,read_dta,11,0.193,0.182,0.202,2320123,40
+1gb,read_arrow_verify,11,0.088,0.087,0.098,2320123,40
+1gb,read_arrow_noverify,11,0.091,0.083,0.103,2320123,40
+india,read_dta,5,1.547,1.527,1.578,724115,5972
+india,read_arrow_verify,5,0.398,0.389,0.437,724115,5972
+india,read_arrow_noverify,5,0.383,0.351,0.479,724115,5972

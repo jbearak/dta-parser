@@ -1,0 +1,83 @@
+{
+  "before": {
+    "input_sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc",
+    "present_sha256": "278de653ed5029c32346d04ec5f3930511c2201c61f9ff0a60182750b4fe6ae9",
+    "union_sha256": "b0fb14e7de0cd0407f32e927b14091baafb2dad761413e6121baa03cdba0313e",
+    "worker_sha256": "d9a105a225a00cb7cdab8c31f755e92d140d678ee07133ef5676b1e83bd9ca32",
+    "shared_worker_sha256": "1652c6d1225d8b945b3451df23d703d6710341365cd2b503a66513e917c3c75b",
+    "installed_tree_sha256": "bd6608af808ab52b8519ad573c9bddfa14ff9e748855a82da2ca904711e3fdb2"
+  },
+  "after": {
+    "input_sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc",
+    "present_sha256": "278de653ed5029c32346d04ec5f3930511c2201c61f9ff0a60182750b4fe6ae9",
+    "union_sha256": "b0fb14e7de0cd0407f32e927b14091baafb2dad761413e6121baa03cdba0313e",
+    "worker_sha256": "d9a105a225a00cb7cdab8c31f755e92d140d678ee07133ef5676b1e83bd9ca32",
+    "shared_worker_sha256": "1652c6d1225d8b945b3451df23d703d6710341365cd2b503a66513e917c3c75b",
+    "installed_tree_sha256": "bd6608af808ab52b8519ad573c9bddfa14ff9e748855a82da2ca904711e3fdb2"
+  },
+  "configs": [
+    {
+      "threads": 8,
+      "method": "any_of"
+    },
+    {
+      "threads": 0,
+      "method": "any_of"
+    },
+    {
+      "threads": 8,
+      "method": "all_of"
+    },
+    {
+      "threads": 0,
+      "method": "all_of"
+    }
+  ],
+  "signatures": [
+    "724115:100:c26c3f60ffc3eaf0",
+    "724115:100:c26c3f60ffc3eaf0",
+    "724115:100:c26c3f60ffc3eaf0",
+    "724115:100:c26c3f60ffc3eaf0"
+  ],
+  "repetitions": 10,
+  "protocol": "One process; one warmup and untimed signature per configuration; alternate configuration order each round; GC before each timed call; retain result until next read.",
+  "r_version": "R version 4.6.1 (2026-06-24)",
+  "session": [
+    "R version 4.6.1 (2026-06-24)",
+    "Platform: aarch64-apple-darwin25.4.0",
+    "Running under: macOS Tahoe 26.6.2",
+    "",
+    "Matrix products: default",
+    "BLAS:   /opt/homebrew/Cellar/openblas/0.3.34/lib/libopenblasp-r0.3.34.dylib ",
+    "LAPACK: /opt/homebrew/Cellar/r/4.6.1/lib/R/lib/libRlapack.dylib;  LAPACK version 3.12.1",
+    "",
+    "locale:",
+    "[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8",
+    "",
+    "time zone: America/New_York",
+    "tzcode source: internal",
+    "",
+    "attached base packages:",
+    "[1] stats     graphics  grDevices utils     datasets  methods   base     ",
+    "",
+    "loaded via a namespace (and not attached):",
+    " [1] dtatools_0.9.0   R6_2.6.1         tidyselect_1.2.1 tzdb_0.5.0      ",
+    " [5] magrittr_2.0.5   glue_1.8.1       tibble_3.3.1     pkgconfig_2.0.3 ",
+    " [9] lifecycle_1.0.5  readr_2.2.0      cli_3.6.6        vctrs_0.7.3     ",
+    "[13] withr_3.0.3      compiler_4.6.1   tools_4.6.1      hms_1.1.4       ",
+    "[17] pillar_1.11.1    rlang_1.3.0      jsonlite_2.0.0  "
+  ],
+  "published_artifacts": [
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/projection-threads-observations.csv",
+      "bytes": 1585,
+      "sha256": "0bd1051f8aa74f6ee1a759d44c4789c9cc7eeabdad08aad72a7748318f1e473c"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/projection-threads-summary.csv",
+      "bytes": 357,
+      "sha256": "871834876a19bbdc6beaaba44dcaa50892fa81b6cbf026115fb3b50a1cc1e49d"
+    }
+  ],
+  "published_artifact_note": "Publication bindings added during PR review. The recorded observations and original measurement bindings are unchanged."
+}
