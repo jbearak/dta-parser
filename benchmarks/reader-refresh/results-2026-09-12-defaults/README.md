@@ -93,6 +93,10 @@ Haven/Stata corpus measurements date from August 24.
 
 ## Warm repeated DTA/Arrow reads
 
+The table below retains this run's original fixed reader order. The later
+[balanced-order follow-up](../results-2026-09-12-balanced/README.md) covers all
+six reader orders and supplies the current R README warm table.
+
 The original protocol is preserved: one warmup, then 11 measured reads per
 synthetic file and five for India, with full GC between reads. DTA and Arrow
 values, names and shared metadata match before timing. The retained Arrow files

@@ -6,6 +6,9 @@ benchmark inputs. Haven and Stata results keep their original measurement
 provenance. These drivers never run either comparator or regenerate inputs.
 Write and conversion benchmarks also retain their original dates.
 
+A [balanced-order follow-up](results-2026-09-12-balanced/README.md) supplies the
+current warm DTA/Arrow table, with all six reader orders and 486 observations.
+
 Earlier results remain available in the [initial refresh](results-2026-09-12/README.md),
 [ten-run four-tool India comparison](results-2026-09-12/india-10x.md), and
 [available-CPU refresh](results-2026-09-12-auto/README.md).

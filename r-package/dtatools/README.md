@@ -256,23 +256,23 @@ Warm-cache read medians on the same files:
 
 | Input | DTA wall time | DTA CPU time | Arrow wall time | Arrow CPU time |
 | --- | ---: | ---: | ---: | ---: |
-| Synthetic 100 MB, 40 columns | 0.041 s | 0.132 s | 0.023 s | 0.075 s |
-| Synthetic 1 GB, 40 columns | 0.160 s | 0.778 s | 0.073 s | 0.429 s |
-| India 2021 DHS women, 5.2 GB, 5,972 columns | 0.540 s | 4.761 s | 0.302 s | 3.182 s |
+| Synthetic 100 MB, 40 columns | 0.041 s | 0.131 s | 0.023 s | 0.074 s |
+| Synthetic 1 GB, 40 columns | 0.159 s | 0.775 s | 0.073 s | 0.429 s |
+| India 2021 DHS women, 5.2 GB, 5,972 columns | 0.5435 s | 4.803 s | 0.312 s | 3.213 s |
 
 Both readers decode with automatic multicore workers and defer numeric and
 character materialization through ALTREP. `read_arrow()` is faster because the
 `.arrow` file already stores each column contiguously in its Stata storage width,
 so reading is mostly parallel column copies rather than row-major decoding.
-These September 12 medians use 11 timed reads for each synthetic file and five
-for India, after an untimed warmup in each process. Checksum verification is
-enabled. Disabling it changed the India median from 0.302 to 0.301 seconds,
-with overlapping ranges. Keep verification enabled; these small differences
-do not justify changing its default. The retained Arrow
-files predate support for some metadata, including variable notes, so the
-refresh verifies matching values and common metadata. See the
-[reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
-for ranges and the metadata differences.
+These September 12 medians pool six cohorts covering every reader order, with
+66 timed reads per synthetic file and 30 per India reader. Each process starts
+with an untimed warmup. Checksum verification is enabled. Disabling it lowered
+the India median from 0.312 to 0.302 seconds (3.2%). Keep verification enabled
+by default to retain corruption detection. The retained Arrow files predate
+support for some metadata, including variable notes, so the refresh verifies
+matching values and common metadata. See the
+[balanced reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-balanced/README.md)
+for ranges, every cohort and the metadata differences.
 
 Use `read_arrow()` for repeated full reads when its extra memory fits your
 workload. Use `read_dta()` when reading the original file or minimizing peak
