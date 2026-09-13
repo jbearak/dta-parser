@@ -416,5 +416,53 @@
     "jobs.jsonl": "2682e6077b68483ec416cc8b113dcb911bd2e7cc3a3b0fc9acbf628464dd3518"
   },
   "private_read_jobs_sha256": "8f137ff690c6aa603fcd24b316b34ab58a6c03eda01c1f38b62caa9e262a7b30",
-  "summarizer_sha256": "b4fb982faa453161cee9d31a45c571e79eac2a0c357112dfc6ed3ae953b69ce6"
+  "summarizer_sha256": "b4fb982faa453161cee9d31a45c571e79eac2a0c357112dfc6ed3ae953b69ce6",
+  "published_artifacts": [
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/corpus-summary.csv",
+      "bytes": 2902,
+      "sha256": "421b73c612cff62589302adcdc0ef96b02839f27b4c27ad5c22e199d03d75a49"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/projection-control-observations.csv",
+      "bytes": 12106,
+      "sha256": "74e06d21bb0d929e15162869ba49a36a1ef28ed85c56a081507a28570e645263"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/projection-control-summary.csv",
+      "bytes": 3070,
+      "sha256": "efaf185364df0b493e9f90aebe1c5d1fd4afdfab9ff2be451561a6c08df30023"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/projection-observations.csv",
+      "bytes": 6890,
+      "sha256": "b07d5cac9bf761a54d2703e6d071fbe8ff74626431d159d5badcad9dee355f17"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/projection-summary.csv",
+      "bytes": 1816,
+      "sha256": "cbe1033d4860564ae2d5484876c26c96f8f87ec44ff62c89fb456c9ed08afb91"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/read-inputs.csv",
+      "bytes": 521,
+      "sha256": "0cf7b2119a725376058e85bf2c0eac9efc5443a9df8c278f5c82642c96473a81"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/spot-comparison.csv",
+      "bytes": 435,
+      "sha256": "ba01491b57aa1a55a2130ab3eda0e10e2bc704859325e18a5b784611990805b5"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/warm-read-observations.csv",
+      "bytes": 5170,
+      "sha256": "eec3ac9d8b6478faa6d4872b4a8300a65363e2c982aebff12551ce9e0f296580"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/warm-read-summary.csv",
+      "bytes": 1354,
+      "sha256": "3b9ab58cf9c0cb308bc393d3a3cc3b15a26fddc5f36f688398fb7320bc9fcb27"
+    }
+  ],
+  "published_artifact_note": "Publication bindings added during PR review. The recorded observations and original measurement bindings are unchanged."
 }

@@ -198,5 +198,18 @@
       "bytes": 5559803386,
       "sha256": "62887858c9a8ad7de5dd850c3e5bc0ab1ac535f4345b3e2b79c8de063414fef2"
     }
-  }
+  },
+  "published_artifacts": [
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/india-10x-observations.csv",
+      "bytes": 937,
+      "sha256": "1fa457058195f74e4dc23a859f563024608045269e83b0e8de9c26a1385f167b"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/india-10x-summary.csv",
+      "bytes": 349,
+      "sha256": "9dcff292b81512ba4ea44927645718bf006bbb0d44eae013e17e6e0d9a74a76c"
+    }
+  ],
+  "published_artifact_note": "Publication bindings added during PR review. The recorded observations and original measurement bindings are unchanged."
 }

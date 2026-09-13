@@ -166,5 +166,18 @@
     "jobs.jsonl": "0261e64666151665d4b9bc6115abbe388f865a664c96e1f40c39c7727cef802a"
   },
   "haven_invocations": 0,
-  "stata_invocations": 0
+  "stata_invocations": 0,
+  "published_artifacts": [
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/projection-control-observations.csv",
+      "bytes": 12106,
+      "sha256": "74e06d21bb0d929e15162869ba49a36a1ef28ed85c56a081507a28570e645263"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/projection-control-summary.csv",
+      "bytes": 3070,
+      "sha256": "efaf185364df0b493e9f90aebe1c5d1fd4afdfab9ff2be451561a6c08df30023"
+    }
+  ],
+  "published_artifact_note": "Publication bindings added during PR review. The recorded observations and original measurement bindings are unchanged."
 }

@@ -308,5 +308,18 @@
     "observations.csv": "577e2926ace6ce6ae1a210f009d108952697a509a6e3508e901875d1a133656e"
   },
   "haven_invocations": 0,
-  "stata_invocations": 0
+  "stata_invocations": 0,
+  "published_artifacts": [
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/fresh-observations.csv",
+      "bytes": 3651,
+      "sha256": "3779c9335d0b21b57454cad0fdce99b5505eecf0e09a241b6153343600cf8e2a"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/fresh-summary.csv",
+      "bytes": 1853,
+      "sha256": "ba9063b1fb83de08ef524001dda3f7a33be9fbe2b6ba65721ddc8f2486bd469b"
+    }
+  ],
+  "published_artifact_note": "Publication bindings added during PR review. The recorded observations and original measurement bindings are unchanged."
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install an experimental reader and bind its source tree to installed files."""
+"""Install a reader and bind its source tree to installed files."""
 import hashlib
 import json
 import os
@@ -12,11 +12,15 @@ library.mkdir(parents=True, exist_ok=False)
 record.parent.mkdir(parents=True, exist_ok=True)
 
 def git(*args):
+    """Read source-control state from the installation checkout."""
     return subprocess.check_output(['git', *args], cwd=source, text=True).strip()
 
 def clean():
+    """Reject tracked modifications and untracked package source files."""
     subprocess.run(['git', 'diff', '--exit-code', 'HEAD', '--', 'r-package/dtatools'],
                    cwd=source, check=True, stdout=subprocess.DEVNULL)
+    if git('ls-files', '--others', '--exclude-standard', '--', 'r-package/dtatools'):
+        raise RuntimeError('untracked package source')
 
 clean()
 commit = git('rev-parse', 'HEAD')
@@ -30,7 +34,8 @@ with log.open('w') as stream:
     subprocess.run(command, env=env, cwd=source, stdout=stream,
                    stderr=subprocess.STDOUT, check=True)
 clean()
-assert git('rev-parse', 'HEAD') == commit, 'source commit changed during installation'
+if git('rev-parse', 'HEAD') != commit:
+    raise RuntimeError('source commit changed during installation')
 package = library / 'dtatools'
 installed = {}
 for path in sorted(package.rglob('*')):

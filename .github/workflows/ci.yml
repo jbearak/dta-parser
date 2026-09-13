@@ -50,6 +50,8 @@ jobs:
       - run: cargo +${{ matrix.toolchain }} fmt --all --check
       - run: cargo +${{ matrix.toolchain }} clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo +${{ matrix.toolchain }} test --workspace --all-targets --locked
+      - name: Test compact R output planner
+        run: cargo +${{ matrix.toolchain }} test -p dta-tools --features r-adapter-internal --lib --locked
       - run: RUSTDOCFLAGS="-D warnings" cargo +${{ matrix.toolchain }} doc --workspace --locked --no-deps
       - run: cargo +${{ matrix.toolchain }} package -p dta-tools --locked
       - name: Check and test isolated R bridge offline
@@ -88,6 +90,10 @@ jobs:
         with:
           bun-version: 1.3.14
       - run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - name: Test reader benchmark verification
+        run: |
+          python3 -m unittest discover -s benchmarks/reader-refresh -p 'test_*.py'
+          python3 -m unittest discover -s benchmarks/dta-reader-performance -p 'test_*.py'
       - run: scripts/check-r-cargo-vendor.sh
       - run: scripts/rebuild-r-vendor.sh
       - run: git diff --exit-code -- r-package/dtatools/src/rust/vendor.tar.gz

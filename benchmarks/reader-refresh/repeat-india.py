@@ -7,7 +7,7 @@ from pathlib import Path
 import statistics
 
 from driver_common import (add_binding_arguments, child_environment, read_cpu,
-                           run_child, sha, source_binding)
+                           require, run_child, sha, source_binding)
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("library", type=Path)
@@ -31,6 +31,7 @@ scripts = [Path(__file__), root / "benchmarks/reader-refresh/driver_common.py",
 
 
 def binding():
+    """Bind source, installation and both unchanged India inputs."""
     value = source_binding(source_root, args.library, args.build_record, scripts)
     value["inputs"] = {name: dict(bytes=path.stat().st_size, sha256=sha(path))
                        for name, path in [("dta", args.dta), ("arrow", args.arrow)]}
@@ -40,6 +41,7 @@ def binding():
 
 
 def publish(path, rows):
+    """Atomically publish completed observations or their summary."""
     temporary = path.with_suffix(".tmp")
     with temporary.open("w") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]), lineterminator="\n")
@@ -52,18 +54,18 @@ initial = binding()
 with (root / "benchmarks/reader-refresh/results-2026-09-12/read-inputs.csv").open() as stream:
     india = next(r for r in csv.DictReader(stream) if r["case"] == "india")
 for name in ("dta", "arrow"):
-    assert initial["inputs"][name] == dict(bytes=int(india[f"{name}_bytes"]), sha256=india[f"{name}_sha256"])
+    require(initial["inputs"][name] == dict(bytes=int(india[f"{name}_bytes"]), sha256=india[f"{name}_sha256"]), 'repeat-india.py: initial["inputs"][name] == dict(bytes=int(india[f"{name}_bytes"]), sha256=india[f"{name}_sha256"])')
 binding_file = args.output / "binding.json"
 if binding_file.exists():
-    assert json.loads(binding_file.read_text()) == initial, "resume binding changed"
+    require(json.loads(binding_file.read_text()) == initial, "resume binding changed")
 else:
     binding_file.write_text(json.dumps(initial, indent=2) + "\n")
 raw_file = args.output / "observations.csv"
 observations = list(csv.DictReader(raw_file.open())) if raw_file.exists() else []
 completed = {(int(r["iteration"]), r["method"]) for r in observations}
-assert len(completed) == len(observations)
+require(len(completed) == len(observations), "duplicate completed India reads")
 methods = ["read_dta", "read_arrow"]
-assert all(1 <= i <= 10 and method in methods for i, method in completed)
+require(all(1 <= i <= 10 and method in methods for i, method in completed), "invalid completed India read key")
 for iteration in range(1, 11):
     order = methods if iteration % 2 else list(reversed(methods))
     for position, method in enumerate(order, 1):
@@ -78,9 +80,9 @@ for iteration in range(1, 11):
                               arguments, environment)
         fields = [line.split("\t")[1:] for line in text.splitlines()
                   if line.startswith("DTATOOLS_BENCH\t")]
-        assert len(fields) == 1 and len(fields[0]) == 4 and fields[0][0] == "ok"
+        require(len(fields) == 1 and len(fields[0]) == 4 and fields[0][0] == "ok", 'repeat-india.py: len(fields) == 1 and len(fields[0]) == 4 and fields[0][0] == "ok"')
         _, elapsed, rows, columns = fields[0]
-        assert (int(rows), int(columns)) == (724115, 5972)
+        require((int(rows), int(columns)) == (724115, 5972), 'repeat-india.py: (int(rows), int(columns)) == (724115, 5972)')
         observations.append(dict(iteration=iteration, position=position, method=method,
             elapsed_seconds=float(elapsed), peak_rss_bytes=job["peak_rss_bytes"],
             rows=int(rows), columns=int(columns), **read_cpu(text),
@@ -88,8 +90,8 @@ for iteration in range(1, 11):
             process_system_cpu_seconds=job["process_system_cpu_seconds"]))
         publish(raw_file, observations)
         print(f"DONE {key}: {float(elapsed):.3f} s, {job['peak_rss_bytes']/1e9:.3f} GB peak RSS; {len(observations)}/20 reads", flush=True)
-assert len(observations) == 20
-assert binding() == initial, "bindings changed during measurement"
+require(len(observations) == 20, 'repeat-india.py: len(observations) == 20')
+require(binding() == initial, "bindings changed during measurement")
 summary = []
 for method in methods:
     selected = [r for r in observations if r["method"] == method]

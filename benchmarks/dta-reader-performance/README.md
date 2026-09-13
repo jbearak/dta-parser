@@ -1,6 +1,10 @@
 # Applying Arrow's batch filling to the DTA reader
 
-## Current automatic-thread results
+This report retains the original batching and automatic-thread experiments.
+The later [adaptive-default results](../reader-refresh/results-2026-09-12-defaults/README.md)
+record the production policy and its latest benchmark refresh.
+
+## Original automatic-thread results
 
 The final reader changes also remove the fixed eight-worker cap from
 `threads = 0` in `read_dta()` and `read_arrow()`. Automatic mode uses CPUs
@@ -98,9 +102,12 @@ experimental environment switches.
 | Synthetic 1 GB, 40 columns | 0.260 s | 0.251 s | 3.5% | 0.706 / 0.706 GB |
 
 All entries are medians; percentages use unrounded times. India's ranges were
-1.790–1.849 seconds before and 0.888–0.899 after. With an explicit
-`threads = 16`, the candidate's India median was 0.800 seconds
-(0.797–0.812). These measurements used the original automatic limit of eight workers.
+1.790 to 1.849 seconds before and 0.888 to 0.899 after. Both columns in the
+table use `threads = 0`, which then selected eight workers. The separate
+explicit `threads = 16` trials measured the batch candidate at 0.800 seconds
+for India, with a range of 0.797 to 0.812, 0.082 seconds for synthetic 100 MB
+and 0.2405 seconds for synthetic 1 GB. All three explicit-16 configurations
+have ten observations in the [final summary](results-2026-09-12/final-summary.csv).
 The subsequent automatic-thread update removes that limit from both readers;
 `threads = 0` uses available CPUs, subject to selection size and useful work.
 
@@ -228,7 +235,10 @@ The final runner also bound its own source and plan. Separate untimed
 qualification processes produced identical full data signatures for stock,
 batch-default and batch-16 on all three inputs. India's signature was
 `724115:5972:e404e6f1cf51f55a`. Signature computation is excluded from the
-reported timing and RSS measurements.
+reported timing and RSS measurements. The historical runner did not enforce
+qualification before timing, and the retained records do not establish that
+order. The current reproduction runner requires it. Complete separate
+signature records for every screening and tuning variant were not retained.
 
 The batch kernel passes exhaustive byte-pattern checks across legacy and
 modern missing layouts, strided source ranges, output guard bytes, invalid
@@ -241,6 +251,7 @@ windows. Rust clippy and formatting checks pass.
 - [Screening observations](results-2026-09-12/screen-observations.csv) and [summary](results-2026-09-12/screen-summary.csv)
 - [Tuning observations](results-2026-09-12/tuning-observations.csv) and [summary](results-2026-09-12/tuning-summary.csv)
 - [Input, source and installation provenance](results-2026-09-12/provenance.json)
+- [Historical baseline metadata](results-2026-09-12/baseline.md) and [execution manifest](results-2026-09-12/execution-manifest.json), recovered from retained records without rerunning measurements
 - [Full data signatures](results-2026-09-12/signatures.json)
 - Diagnostic phase logs: [scalar DTA](results-2026-09-12/profile-dta.log), [batch DTA](results-2026-09-12/profile-bulk.log), [Arrow](results-2026-09-12/profile-arrow.log)
 - [Initial hypotheses](INVESTIGATION.md) and [isolated debug patch](debug/README.md)
@@ -252,6 +263,30 @@ does not expand environment variables. Then run from the repository root:
 
 ```sh
 python3 benchmarks/dta-reader-performance/run.py /tmp/reader-plan.json /tmp/reader-results
+```
+
+The current runner requires a variant named `stock`. It first reads every
+case with every variant in separate qualification processes and compares full
+data signatures to stock. Only after all signatures and file bindings match
+does it start timed processes. Qualification clocks and RSS never enter the
+observation table. Timed calls still check dimensions and reject signature
+output. The runner clears inherited `DTA_READ_PERF_*` and
+`DTATOOLS_EXPERIMENT_*` flags, then applies explicit variant flags; it reserves
+the library path and signature switch for its own controls.
+
+Each new output directory contains `baseline.md`, `run-metadata.json`, the
+plan, before/after file bindings, child logs and `jobs.jsonl` with execution
+order, exact child commands and exit codes. A failed qualification leaves a
+failure record and starts no timed processes. The historical tuning plan did
+not contain stock; add a stock control when reproducing it with this runner.
+The historical runner remains available at the measured source commit above.
+Its hash in the historical provenance describes those old measurements and
+has not been replaced with the current runner's hash.
+
+The runner's sequencing and failure checks use a small fake executable:
+
+```sh
+python3 -m unittest discover -s benchmarks/dta-reader-performance -p 'test_*.py' -v
 ```
 
 The original India input is private. The synthetic inputs are the existing

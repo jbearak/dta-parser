@@ -566,5 +566,18 @@
     "observations.csv": "4d2635d7a30ebe4896a9d03b403ee114a1647d99e637e944ef8981af29ef4b40"
   },
   "haven_invocations": 0,
-  "stata_invocations": 0
+  "stata_invocations": 0,
+  "published_artifacts": [
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/coverage-observations.csv",
+      "bytes": 46384,
+      "sha256": "6c57867df41fa779aa2639b02c79142f14ffd411a126832c68e21be793219c1b"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/coverage-summary.csv",
+      "bytes": 8019,
+      "sha256": "268436d96aed10a7ee94126638cfb641fdb0d9a84e2d78fafedd998a04bb46ba"
+    }
+  ],
+  "published_artifact_note": "Publication bindings added during PR review. The recorded observations and original measurement bindings are unchanged."
 }

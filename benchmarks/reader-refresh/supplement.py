@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import statistics
 
-from driver_common import add_binding_arguments, child_environment, run_child, sha, source_binding
+from driver_common import add_binding_arguments, child_environment, require, run_child, sha, source_binding
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("library", type=Path)
@@ -28,15 +28,17 @@ scripts = [Path(__file__), base / "driver_common.py", *sorted((base / "workers")
 cases = []
 
 def table(path, delimiter="\t"):
+    """Read a retained input inventory or child observation table."""
     with path.open() as stream:
         return list(csv.DictReader(stream, delimiter=delimiter))
 
 def add(name, path, **fields):
+    """Append a named workload with its absolute input location."""
     cases.append(dict(name=name, path=str(Path(path).resolve()), **fields))
 
 synthetic = table(data / "large-scale/datasets.tsv")
 for row in synthetic:
-    assert sha(row["path"]) == row["sha256"]
+    require(sha(row["path"]) == row["sha256"], 'supplement.py: sha(row["path"]) == row["sha256"]')
     name = "synthetic-" + row["dataset"]
     if args.phase == "fresh":
         add(name + "-dta", row["path"], format="dta", rows=int(row["rows"]), columns=40)
@@ -69,7 +71,7 @@ else:
     reference = json.loads((root / "benchmarks/r-reader-dibble/results-2026-09-11/environment.json").read_text())
     for row in table(args.dibble_fixtures / "fixtures.csv", ","):
         path = args.dibble_fixtures / row["file"]
-        assert sha(path) == reference["fixtures"][row["file"]], row["file"]
+        require(sha(path) == reference["fixtures"][row["file"]], row["file"])
         add("dibble-" + row["case"] + "-" + row["format"], path, format=row["format"],
             rows=int(row["rows"]), columns=int(row["columns"]), mode="dibble", repeats=3,
             oracle=str(args.dibble_fixtures.parent / ("validate-candidate-" + row["file"] + ".rds")))
@@ -87,6 +89,7 @@ else:
 
 
 def binding():
+    """Bind every workload, input, oracle and installed package file."""
     result = source_binding(source, args.library, args.build_record, scripts)
     result["inputs"] = {case["name"]: dict(bytes=Path(case["path"]).stat().st_size,
                                          sha256=sha(case["path"])) for case in cases}
@@ -146,7 +149,7 @@ for case in cases:
                     record[field] = float(row[field]) / count if field in row else ""
                 observations.append(record)
             print("completed", job_key, flush=True)
-assert binding() == initial, "final bindings changed"
+require(binding() == initial, "final bindings changed")
 with (args.output / "observations.csv").open("w") as stream:
     writer = csv.DictWriter(stream, fieldnames=list(observations[0]));writer.writeheader();writer.writerows(observations)
 summary = []

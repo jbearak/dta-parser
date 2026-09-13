@@ -162,5 +162,18 @@
     "observations.csv": "bb5b75e84cbdaeebcb4e5690b8dcac65025f1905004c0eebd78e1a41b584a114"
   },
   "haven_invocations": 0,
-  "stata_invocations": 0
+  "stata_invocations": 0,
+  "published_artifacts": [
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/india-10x-observations.csv",
+      "bytes": 1827,
+      "sha256": "bb5b75e84cbdaeebcb4e5690b8dcac65025f1905004c0eebd78e1a41b584a114"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-defaults/india-10x-summary.csv",
+      "bytes": 661,
+      "sha256": "3fe22980e92a041904a7d09ac30a54005514077a5414d6fc55fd526afa1b2e44"
+    }
+  ],
+  "published_artifact_note": "Publication bindings added during PR review. The recorded observations and original measurement bindings are unchanged."
 }

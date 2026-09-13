@@ -1,0 +1,5088 @@
+{
+  "record_type": "retrospective export of retained historical records",
+  "measurement_date": "2026-09-12",
+  "export_note": "No reader or benchmark was rerun to create this manifest. Published measurement CSVs and provenance hashes are unchanged.",
+  "path_note": "Commands and recorded binding keys retain their original arguments except for the documented path tokens. Original unredacted record hashes identify the retained private files. The top-level Python invocation and full inherited environment were not recorded.",
+  "path_tokens": {
+    "${INDIA_DTA}": "Private India 2021 women DTA input, identified in provenance.json",
+    "${100MB_DTA}": "Retained synthetic 100 MB DTA input, identified in provenance.json",
+    "${1GB_DTA}": "Retained synthetic 1 GB DTA input, identified in provenance.json",
+    "${STOCK_LIBRARY}": "Isolated direct-dibble baseline R library",
+    "${INSTRUMENTED_LIBRARY}": "Isolated screening/tuning R library",
+    "${BATCH_LIBRARY}": "Isolated final compact-byte batch R library",
+    "${SOURCE_WORKTREE}": "Historical dta-reader-performance source checkout",
+    "${PLAN_DIRECTORY}": "Historical private plan directory"
+  },
+  "host_report": {
+    "source": "README.md at 53e388f19707620ad24ce215b3862da7c07c9c47, Method, validation and reproduction",
+    "hardware": "Apple M4 Max, 16 cores, 128 GB",
+    "os": "macOS 26.6.2",
+    "R": "4.6.1",
+    "note": "These are the contemporaneous report fields, not a newly queried host snapshot. No separate machine-readable host capture was retained for these phases."
+  },
+  "measured_source": {
+    "commit": "53e388f19707620ad24ce215b3862da7c07c9c47",
+    "base_commit": "cf0c80d72191491d42db51d5882a9d7f9d16194e",
+    "patch_sha256": "62608ee0f6c8b6b93e2cbdae213fe9369e7719e9773c5ab22f3ecaa65ec00687",
+    "source_hashes": {
+      "r-package/dtatools/src/dta-tools/src/file.rs": "b8c122570caf7b02ab80d2d2e7331d187c8b9e7eb0374b52c44e27cab0f19da9",
+      "r-package/dtatools/src/rust/src/lib.rs": "842e02517cef754effaf46aebff6ce18abc6b1933e8b1afe97a49e4a776f4feb",
+      "r-package/dtatools/tests/testthat/test-read-dta.R": "db19282b0f3c6e54b873c59e62cf9d79d6e0a9823b5f7126d410c1ac1c957401"
+    }
+  },
+  "clocks": {
+    "read_elapsed": "R proc.time elapsed delta around one read, after full GC; excludes process startup and signature computation",
+    "process_wall": "Historical time.time delta around the spawned process, including startup and teardown; distinct from read elapsed",
+    "peak_rss": "wait4 ru_maxrss for the full child lifetime; macOS bytes, divided by 1e9 for decimal GB",
+    "cpu_time": "Not recorded",
+    "cache": "Contemporaneous report states filesystem caches were warm; no cold-cache claim"
+  },
+  "correctness": {
+    "final_signatures": "signatures.json",
+    "final_cases": 3,
+    "final_variants_per_case": 3,
+    "all_final_signatures_match_stock": true,
+    "qualification_order": "Not recorded. The historical runner did not enforce qualification before timing.",
+    "screen_and_tuning": "Timed dimensions are recorded. Complete separate signature records for every screen/tuning variant are not retained.",
+    "bindings": "The historical report states input/library/worker hashes matched before and after each phase. Original binding.json snapshots are exported here. Separate after snapshots were not retained; the final runner checks equality before writing its summary."
+  },
+  "phases": {
+    "screen": {
+      "plan": {
+        "repetitions": 3,
+        "cases": [
+          {
+            "name": "india",
+            "path": "${INDIA_DTA}",
+            "rows": 724115,
+            "columns": 5972
+          }
+        ],
+        "variants": [
+          {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          {
+            "name": "instrumented",
+            "library": "${INSTRUMENTED_LIBRARY}"
+          },
+          {
+            "name": "bulk-byte",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          {
+            "name": "contiguous",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_CONTIGUOUS": "1"
+            }
+          },
+          {
+            "name": "bulk-contiguous",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_CONTIGUOUS": "1"
+            }
+          }
+        ]
+      },
+      "job_count": 15,
+      "jobs": [
+        {
+          "key": "01-india-instrumented",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "instrumented",
+            "library": "${INSTRUMENTED_LIBRARY}"
+          },
+          "started": 1789219484.12643,
+          "wall_seconds": 1.9946401119232178,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231869952,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "d204c172d9cc1925fd5ec4b08d131292e8a04ed0ba3c7a2dab15146668c4b370"
+          }
+        },
+        {
+          "key": "01-india-bulk-byte",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "bulk-byte",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219486.121415,
+          "wall_seconds": 1.1092569828033447,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230149632,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "73d9a823d7f39e816a0e24287f0c5dcd85d1b9a560d371c04d9685efef7ac5ed"
+          }
+        },
+        {
+          "key": "01-india-bulk-contiguous",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "bulk-contiguous",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_CONTIGUOUS": "1"
+            }
+          },
+          "started": 1789219487.2310982,
+          "wall_seconds": 1.1062426567077637,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230493696,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "886caecb52e58e4d804862229d4bc8c4d68745e52385387fe29c4f3eac5783e4"
+          }
+        },
+        {
+          "key": "01-india-contiguous",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "contiguous",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_CONTIGUOUS": "1"
+            }
+          },
+          "started": 1789219488.337764,
+          "wall_seconds": 2.0814239978790283,
+          "exit_code": 0,
+          "peak_rss_bytes": 5228953600,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "82713e608cbe5b4c8e3a4d48d061a54959d23f50e3d36a0e040430cff4844528"
+          }
+        },
+        {
+          "key": "01-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219490.419625,
+          "wall_seconds": 2.0391180515289307,
+          "exit_code": 0,
+          "peak_rss_bytes": 5229592576,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "096aa832f902a54fe86915dd7ef9ec2e2772c7e3aeaace1fad9e8e12a838af40"
+          }
+        },
+        {
+          "key": "02-india-instrumented",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "instrumented",
+            "library": "${INSTRUMENTED_LIBRARY}"
+          },
+          "started": 1789219492.459075,
+          "wall_seconds": 2.0012691020965576,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230542848,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "b027e9a1cc8f448fdee31938043bf287a418db3b58c26d3d6e0e501f5e693f78"
+          }
+        },
+        {
+          "key": "02-india-bulk-byte",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "bulk-byte",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219494.460782,
+          "wall_seconds": 1.1024677753448486,
+          "exit_code": 0,
+          "peak_rss_bytes": 5229543424,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "2bf46aedaf618cab63fa8fe2fa33cc7799b7f1db48063e83e66e18d3d4f23bbf"
+          }
+        },
+        {
+          "key": "02-india-bulk-contiguous",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "bulk-contiguous",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_CONTIGUOUS": "1"
+            }
+          },
+          "started": 1789219495.56368,
+          "wall_seconds": 1.1092958450317383,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231771648,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "73d9a823d7f39e816a0e24287f0c5dcd85d1b9a560d371c04d9685efef7ac5ed"
+          }
+        },
+        {
+          "key": "02-india-contiguous",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "contiguous",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_CONTIGUOUS": "1"
+            }
+          },
+          "started": 1789219496.673408,
+          "wall_seconds": 2.095066785812378,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231149056,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "3fee27c5a97546610754daa399c7653ef648b6060677d98eb1008e6ae5a853a6"
+          }
+        },
+        {
+          "key": "02-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219498.768859,
+          "wall_seconds": 2.0068609714508057,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231001600,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "b7d177b28837966b8e79e14a35fae7112f03f2026157128939831be4a6128461"
+          }
+        },
+        {
+          "key": "03-india-bulk-byte",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "bulk-byte",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219500.776077,
+          "wall_seconds": 1.10996675491333,
+          "exit_code": 0,
+          "peak_rss_bytes": 5232197632,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "9a19c36a16b08a3fa62f56af6161adcfe7faafca242aece454bda8bce111431f"
+          }
+        },
+        {
+          "key": "03-india-bulk-contiguous",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "bulk-contiguous",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_CONTIGUOUS": "1"
+            }
+          },
+          "started": 1789219501.8864782,
+          "wall_seconds": 1.1194608211517334,
+          "exit_code": 0,
+          "peak_rss_bytes": 5234425856,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "89e74f586ee85422bd168a47901d696c0d70e5869db1af8c1564b22d8eeacd8f"
+          }
+        },
+        {
+          "key": "03-india-instrumented",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "instrumented",
+            "library": "${INSTRUMENTED_LIBRARY}"
+          },
+          "started": 1789219503.006324,
+          "wall_seconds": 2.0003459453582764,
+          "exit_code": 0,
+          "peak_rss_bytes": 5232803840,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "b027e9a1cc8f448fdee31938043bf287a418db3b58c26d3d6e0e501f5e693f78"
+          }
+        },
+        {
+          "key": "03-india-contiguous",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "contiguous",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_CONTIGUOUS": "1"
+            }
+          },
+          "started": 1789219505.0071208,
+          "wall_seconds": 2.0891711711883545,
+          "exit_code": 0,
+          "peak_rss_bytes": 5229953024,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "4d46fc06895ab7988c53e138ffd03510000cc024aac67011677e4d7c84ae5f60"
+          }
+        },
+        {
+          "key": "03-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219507.0967,
+          "wall_seconds": 2.024517059326172,
+          "exit_code": 0,
+          "peak_rss_bytes": 5228953600,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "9e0fdacfd3d0aa5f26f68b0f8569553648e315706d50a2e46bd63a22bc6eaf6d"
+          }
+        }
+      ],
+      "binding_snapshot": {
+        "${INDIA_DTA}": {
+          "bytes": 5196403097,
+          "sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc"
+        },
+        "/opt/homebrew/bin/Rscript": {
+          "bytes": 51528,
+          "sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+        },
+        "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R": {
+          "bytes": 1363,
+          "sha256": "486434b828924befac0eb10731a71553e07d0f5ad18c1b83828da834b1d3b62f"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/DESCRIPTION": {
+          "bytes": 2144,
+          "sha256": "13dd4db2c999d94ec4e57b8f959c92cb4ad396599b83a30b9460757b85f4cebe"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/INDEX": {
+          "bytes": 2725,
+          "sha256": "40d3ed83999e2fbd0bc9d65b8346dbc0998df32be1a1d77b5771268dd348768d"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/Rd.rds": {
+          "bytes": 1919,
+          "sha256": "918e609494e3a2f44892257808aca457c42ca0b07d4612f0dc9936f855e5d788"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/features.rds": {
+          "bytes": 123,
+          "sha256": "b4f074bc0f45cfe56d976c0d67a1453067f4b34693828ed02d674a6641b3e332"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/hsearch.rds": {
+          "bytes": 1826,
+          "sha256": "c503dcdb0da4bd4bd15c292cf3ace0cb5806c0279da0ce9fb9ff05469e61adb4"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/links.rds": {
+          "bytes": 1037,
+          "sha256": "aa6d02be5c3c9613b12f20459947425de253eb8ece8d7922d635488860545da7"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/nsInfo.rds": {
+          "bytes": 1916,
+          "sha256": "98a4771d242cc5219bb0bc8aef870c9c53a2d51d83bb315e9020b0a4a65a30a2"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/package.rds": {
+          "bytes": 1760,
+          "sha256": "4e3c23214c58cbbf77ef0ff339a147b30dd05998c17dc0bdba4f104a306c88bf"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/NAMESPACE": {
+          "bytes": 9871,
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/NEWS.md": {
+          "bytes": 3118,
+          "sha256": "7f0d87f1617cdf7ca851d3d041d3c6cd973bfa930c9ac209ed1e027782ecc78b"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/NOTICE": {
+          "bytes": 46665,
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/R/dtatools": {
+          "bytes": 1058,
+          "sha256": "570ca456b280cdeb201ef5ebdf22dc8f80092e2c0c68e33c7f73340e420f3759"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/R/dtatools.rdb": {
+          "bytes": 1093513,
+          "sha256": "c48fcd6c51d04d67f5a88b9975720f416c7997ecb6243c05b54077b1650e333d"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/R/dtatools.rdx": {
+          "bytes": 14091,
+          "sha256": "043fc49ade25859ae2d84ea6e49a8b15e1bddc2ba284d16c30ccfac2cb44ad09"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/README.md": {
+          "bytes": 52034,
+          "sha256": "ea3fa3177fa219c85c562c92ef83e1d75a37f94b74f52e4e704ad436ea84eb4e"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/all_types.dta": {
+          "bytes": 6213,
+          "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/all_types_v115.dta": {
+          "bytes": 1729,
+          "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/all_types_v117.dta": {
+          "bytes": 2668,
+          "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/all_types_v118.dta": {
+          "bytes": 6213,
+          "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/auto_v115.dta": {
+          "bytes": 6107,
+          "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/auto_v117.dta": {
+          "bytes": 6616,
+          "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/auto_v118.dta": {
+          "bytes": 12765,
+          "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_labels_stata18.csv": {
+          "bytes": 181,
+          "sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_number_labels_stata18.csv": {
+          "bytes": 2109,
+          "sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_number_labels_stata18.dta": {
+          "bytes": 5283,
+          "sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_precision_stata18.csv": {
+          "bytes": 2445,
+          "sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_stata18.csv": {
+          "bytes": 782,
+          "sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_unicode_names_stata18.dta": {
+          "bytes": 10273,
+          "sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/empty.dta": {
+          "bytes": 2475,
+          "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/empty_v115.dta": {
+          "bytes": 713,
+          "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/empty_v118.dta": {
+          "bytes": 2475,
+          "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/missing_values.dta": {
+          "bytes": 4325,
+          "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/missing_values_v115.dta": {
+          "bytes": 1681,
+          "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/missing_values_v118.dta": {
+          "bytes": 4325,
+          "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/strl_test.dta": {
+          "bytes": 2804,
+          "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/strl_test_v118.dta": {
+          "bytes": 2804,
+          "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/synthetic_v105.dta": {
+          "bytes": 543,
+          "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/synthetic_v108.dta": {
+          "bytes": 886,
+          "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/synthetic_v110.dta": {
+          "bytes": 1286,
+          "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/synthetic_v111.dta": {
+          "bytes": 1352,
+          "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/value_labels.dta": {
+          "bytes": 3162,
+          "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/value_labels_v115.dta": {
+          "bytes": 1054,
+          "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/value_labels_v117.dta": {
+          "bytes": 1549,
+          "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/value_labels_v118.dta": {
+          "bytes": 3162,
+          "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/wide.dta": {
+          "bytes": 86955,
+          "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/wide_v115.dta": {
+          "bytes": 33596,
+          "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/wide_v118.dta": {
+          "bytes": 86955,
+          "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/help/AnIndex": {
+          "bytes": 2862,
+          "sha256": "bf6dc5d4e2df4dc95032c794015ed10007ba254521b6d07c585e90bff200f2fa"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/help/aliases.rds": {
+          "bytes": 873,
+          "sha256": "e915d37d1575964d6cee1953d2847c4aa836cc6c7039eebd55dea7c1003525a2"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/help/dtatools.rdb": {
+          "bytes": 201306,
+          "sha256": "1104cd9d56fc183c2a9f9b4874fad503bfdf702ffbd112e080fe1a19fd50b70f"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/help/dtatools.rdx": {
+          "bytes": 1052,
+          "sha256": "e7e75f81a214acdc7d4ae89e0d9ab49ddff5eb529f551ae61fb1f44a0851748a"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/help/paths.rds": {
+          "bytes": 494,
+          "sha256": "a9a0c536300acc334098aeab18f2fedb7c302d2fe41e008c080b5c9d304377a5"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/html/00Index.html": {
+          "bytes": 17354,
+          "sha256": "3a2a8910e520d439168e864d5539cfa60ec96b86a023c6e48a2a3d3b33517579"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/html/R.css": {
+          "bytes": 2133,
+          "sha256": "3d290675266eebeba6efff07db879d699843c80bf428f9e71000e2fc6078f5db"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/libs/dtatools.so": {
+          "bytes": 8668424,
+          "sha256": "0b6a0ce425a82103f792e62087655380bd87eaf2e22789ef3d767e3defc5c513"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/raven/nse.toml": {
+          "bytes": 6158,
+          "sha256": "270d6d6f090872c9f9ccf8dac6475e6f6194b4881e3910fc5dd5876509866b02"
+        },
+        "${STOCK_LIBRARY}/dtatools/DESCRIPTION": {
+          "bytes": 2144,
+          "sha256": "55cae837fc016c23f9dd3fdb674f31e43c41b0eb0010933d91821bb590b965e5"
+        },
+        "${STOCK_LIBRARY}/dtatools/INDEX": {
+          "bytes": 2725,
+          "sha256": "40d3ed83999e2fbd0bc9d65b8346dbc0998df32be1a1d77b5771268dd348768d"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/Rd.rds": {
+          "bytes": 1919,
+          "sha256": "918e609494e3a2f44892257808aca457c42ca0b07d4612f0dc9936f855e5d788"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/features.rds": {
+          "bytes": 123,
+          "sha256": "b4f074bc0f45cfe56d976c0d67a1453067f4b34693828ed02d674a6641b3e332"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/hsearch.rds": {
+          "bytes": 1826,
+          "sha256": "c503dcdb0da4bd4bd15c292cf3ace0cb5806c0279da0ce9fb9ff05469e61adb4"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/links.rds": {
+          "bytes": 1037,
+          "sha256": "aa6d02be5c3c9613b12f20459947425de253eb8ece8d7922d635488860545da7"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/nsInfo.rds": {
+          "bytes": 1916,
+          "sha256": "98a4771d242cc5219bb0bc8aef870c9c53a2d51d83bb315e9020b0a4a65a30a2"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/package.rds": {
+          "bytes": 1760,
+          "sha256": "ab8a2abcb39412ee44e4a861c4d6de9ea7e0a1a6f2e234a3125f2ca3ec4e8d6c"
+        },
+        "${STOCK_LIBRARY}/dtatools/NAMESPACE": {
+          "bytes": 9871,
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "${STOCK_LIBRARY}/dtatools/NEWS.md": {
+          "bytes": 3118,
+          "sha256": "7f0d87f1617cdf7ca851d3d041d3c6cd973bfa930c9ac209ed1e027782ecc78b"
+        },
+        "${STOCK_LIBRARY}/dtatools/NOTICE": {
+          "bytes": 46665,
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "${STOCK_LIBRARY}/dtatools/R/dtatools": {
+          "bytes": 1058,
+          "sha256": "570ca456b280cdeb201ef5ebdf22dc8f80092e2c0c68e33c7f73340e420f3759"
+        },
+        "${STOCK_LIBRARY}/dtatools/R/dtatools.rdb": {
+          "bytes": 1093522,
+          "sha256": "43cbc4c92f19dfdef35d9ea950ad0402b659ef63a4c6094dd1239fc34fdd10e4"
+        },
+        "${STOCK_LIBRARY}/dtatools/R/dtatools.rdx": {
+          "bytes": 14087,
+          "sha256": "bb9a2e48c57412b49f37d9d274cb83ef7833d6462f1384137f4a2542064d052d"
+        },
+        "${STOCK_LIBRARY}/dtatools/README.md": {
+          "bytes": 52034,
+          "sha256": "ea3fa3177fa219c85c562c92ef83e1d75a37f94b74f52e4e704ad436ea84eb4e"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/all_types.dta": {
+          "bytes": 6213,
+          "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/all_types_v115.dta": {
+          "bytes": 1729,
+          "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/all_types_v117.dta": {
+          "bytes": 2668,
+          "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/all_types_v118.dta": {
+          "bytes": 6213,
+          "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/auto_v115.dta": {
+          "bytes": 6107,
+          "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/auto_v117.dta": {
+          "bytes": 6616,
+          "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/auto_v118.dta": {
+          "bytes": 12765,
+          "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_labels_stata18.csv": {
+          "bytes": 181,
+          "sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_number_labels_stata18.csv": {
+          "bytes": 2109,
+          "sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_number_labels_stata18.dta": {
+          "bytes": 5283,
+          "sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_precision_stata18.csv": {
+          "bytes": 2445,
+          "sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_stata18.csv": {
+          "bytes": 782,
+          "sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_unicode_names_stata18.dta": {
+          "bytes": 10273,
+          "sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/empty.dta": {
+          "bytes": 2475,
+          "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/empty_v115.dta": {
+          "bytes": 713,
+          "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/empty_v118.dta": {
+          "bytes": 2475,
+          "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/missing_values.dta": {
+          "bytes": 4325,
+          "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/missing_values_v115.dta": {
+          "bytes": 1681,
+          "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/missing_values_v118.dta": {
+          "bytes": 4325,
+          "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/strl_test.dta": {
+          "bytes": 2804,
+          "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/strl_test_v118.dta": {
+          "bytes": 2804,
+          "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/synthetic_v105.dta": {
+          "bytes": 543,
+          "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/synthetic_v108.dta": {
+          "bytes": 886,
+          "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/synthetic_v110.dta": {
+          "bytes": 1286,
+          "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/synthetic_v111.dta": {
+          "bytes": 1352,
+          "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/value_labels.dta": {
+          "bytes": 3162,
+          "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/value_labels_v115.dta": {
+          "bytes": 1054,
+          "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/value_labels_v117.dta": {
+          "bytes": 1549,
+          "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/value_labels_v118.dta": {
+          "bytes": 3162,
+          "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/wide.dta": {
+          "bytes": 86955,
+          "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/wide_v115.dta": {
+          "bytes": 33596,
+          "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/wide_v118.dta": {
+          "bytes": 86955,
+          "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c"
+        },
+        "${STOCK_LIBRARY}/dtatools/help/AnIndex": {
+          "bytes": 2862,
+          "sha256": "bf6dc5d4e2df4dc95032c794015ed10007ba254521b6d07c585e90bff200f2fa"
+        },
+        "${STOCK_LIBRARY}/dtatools/help/aliases.rds": {
+          "bytes": 873,
+          "sha256": "e915d37d1575964d6cee1953d2847c4aa836cc6c7039eebd55dea7c1003525a2"
+        },
+        "${STOCK_LIBRARY}/dtatools/help/dtatools.rdb": {
+          "bytes": 200923,
+          "sha256": "da899abcd6048ffa9c5af3667dc59ce10738cb66941243da0a8dd394e5a3bfdc"
+        },
+        "${STOCK_LIBRARY}/dtatools/help/dtatools.rdx": {
+          "bytes": 1049,
+          "sha256": "5f7f27c28c14ab733da57f74d282b1da488297408d208abbdb5fe1ab4044d44d"
+        },
+        "${STOCK_LIBRARY}/dtatools/help/paths.rds": {
+          "bytes": 492,
+          "sha256": "18a265c59e3791d6a89a2469c06e6a395a47d76f6ac203ca996a9446d3f08018"
+        },
+        "${STOCK_LIBRARY}/dtatools/html/00Index.html": {
+          "bytes": 17354,
+          "sha256": "3a2a8910e520d439168e864d5539cfa60ec96b86a023c6e48a2a3d3b33517579"
+        },
+        "${STOCK_LIBRARY}/dtatools/html/R.css": {
+          "bytes": 2133,
+          "sha256": "3d290675266eebeba6efff07db879d699843c80bf428f9e71000e2fc6078f5db"
+        },
+        "${STOCK_LIBRARY}/dtatools/libs/dtatools.so": {
+          "bytes": 8650120,
+          "sha256": "9d23586db7912f659a4ec76262720a846b0e835ca2dae61f5cf9838e6b1b7d51"
+        },
+        "${STOCK_LIBRARY}/dtatools/raven/nse.toml": {
+          "bytes": 6158,
+          "sha256": "270d6d6f090872c9f9ccf8dac6475e6f6194b4881e3910fc5dd5876509866b02"
+        }
+      },
+      "original_private_records": {
+        "jobs.jsonl": {
+          "bytes": 7153,
+          "sha256": "178274f2a7bb0764f4076e7454525cfe4ba28d38dd15ee552d9f7a2ac65fe2e1"
+        },
+        "binding.json": {
+          "bytes": 21786,
+          "sha256": "473687046643fa2bf026e76bd891a5c926dcbd4e0079fa66947812b4a912202c"
+        },
+        "plan.json": {
+          "bytes": 967,
+          "sha256": "6e1ac199356dc71bf1f269c05b73a4573139ea7c6a905d575188adb93a079f59"
+        }
+      },
+      "published_csvs": {
+        "screen-observations.csv": {
+          "bytes": 868,
+          "sha256": "0304e287bf1478dd4989a233ff90ea8435df91eb58cea9ac4b5ed853f31470e1"
+        },
+        "screen-summary.csv": {
+          "bytes": 320,
+          "sha256": "2ecc279e14e2e812e07fccb51d08365f895017c2698464c6161e675b27600122"
+        }
+      },
+      "effective_defaults": {
+        "reads_per_process": 1,
+        "threads": 0,
+        "seed": 20260912,
+        "order": "shuffle"
+      },
+      "runner_binding": "Runner and plan were not included in this phase binding; their historical exact bytes cannot be verified from it."
+    },
+    "tuning": {
+      "plan": {
+        "repetitions": 3,
+        "cases": [
+          {
+            "name": "india",
+            "path": "${INDIA_DTA}",
+            "rows": 724115,
+            "columns": 5972
+          }
+        ],
+        "variants": [
+          {
+            "name": "threads-2",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 2,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          {
+            "name": "threads-4",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 4,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          {
+            "name": "threads-8",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 8,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          {
+            "name": "threads-12",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 12,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          {
+            "name": "threads-16",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 16,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          {
+            "name": "buffer-1",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "1"
+            }
+          },
+          {
+            "name": "buffer-2",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "2"
+            }
+          },
+          {
+            "name": "buffer-4",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "4"
+            }
+          },
+          {
+            "name": "buffer-16",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "16"
+            }
+          },
+          {
+            "name": "buffer-32",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "32"
+            }
+          }
+        ]
+      },
+      "job_count": 30,
+      "jobs": [
+        {
+          "key": "01-india-threads-4",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "4",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-4",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 4,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219537.4694881,
+          "wall_seconds": 1.3659007549285889,
+          "exit_code": 0,
+          "peak_rss_bytes": 5229379584,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "464ce59f9aa1d8e87c580c34f35106fb58a395dd69682cc9f3d9d205ab5fe9dc"
+          }
+        },
+        {
+          "key": "01-india-threads-8",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "8",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-8",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 8,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219538.835807,
+          "wall_seconds": 1.1099069118499756,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230526464,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "48fe6a1e6caa75e429785ff702b3de958e719bdaa3692d88350ea2c37ce80e3f"
+          }
+        },
+        {
+          "key": "01-india-buffer-1",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-1",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "1"
+            }
+          },
+          "started": 1789219539.9461288,
+          "wall_seconds": 1.205578088760376,
+          "exit_code": 0,
+          "peak_rss_bytes": 5214715904,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "2e637d3a19f347bbd8033e4c11210031d85bc33495af6af6dacfd46b8c371542"
+          }
+        },
+        {
+          "key": "01-india-buffer-4",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-4",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "4"
+            }
+          },
+          "started": 1789219541.152117,
+          "wall_seconds": 1.1186800003051758,
+          "exit_code": 0,
+          "peak_rss_bytes": 5220040704,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "c1082eb4a859de1741e465a078d415f93c13d48fce59881d93e1cd7e2ef78a40"
+          }
+        },
+        {
+          "key": "01-india-threads-16",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-16",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 16,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219542.2712052,
+          "wall_seconds": 1.0298807621002197,
+          "exit_code": 0,
+          "peak_rss_bytes": 5232803840,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "f9c1ffc41086c19edc37ddd534922e01d659479b88befffdbd9522d85a1c3c53"
+          }
+        },
+        {
+          "key": "01-india-buffer-16",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-16",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "16"
+            }
+          },
+          "started": 1789219543.3015318,
+          "wall_seconds": 1.191460132598877,
+          "exit_code": 0,
+          "peak_rss_bytes": 5246943232,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "70a9787d72fac845e12aaa59fba11fbd879562cd1363efff0f7547bf7688a75a"
+          }
+        },
+        {
+          "key": "01-india-buffer-32",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-32",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "32"
+            }
+          },
+          "started": 1789219544.493324,
+          "wall_seconds": 1.2718191146850586,
+          "exit_code": 0,
+          "peak_rss_bytes": 5280759808,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "3370b928d9faa707302e2d7f319414456fea2b9b3d9aed1938dcf8566359d955"
+          }
+        },
+        {
+          "key": "01-india-threads-12",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "12",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-12",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 12,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219545.765551,
+          "wall_seconds": 1.034073829650879,
+          "exit_code": 0,
+          "peak_rss_bytes": 5232115712,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "b305d5bf9c3c10ef9973ec5584f6c93da1a812e8f4a19a905c826518cce8c4c4"
+          }
+        },
+        {
+          "key": "01-india-buffer-2",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-2",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "2"
+            }
+          },
+          "started": 1789219546.800064,
+          "wall_seconds": 1.1289169788360596,
+          "exit_code": 0,
+          "peak_rss_bytes": 5218942976,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "d26686ea3cfab2220b6b922171f9c848679d41b538057efae0b88ea0f6ad3419"
+          }
+        },
+        {
+          "key": "01-india-threads-2",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "2",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-2",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 2,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219547.929394,
+          "wall_seconds": 1.8708651065826416,
+          "exit_code": 0,
+          "peak_rss_bytes": 5235851264,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "4db9e8a556e459f746c69c1f37200fb65b7b72238ef1a3710f0dee7f2e2dbbe0"
+          }
+        },
+        {
+          "key": "02-india-buffer-32",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-32",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "32"
+            }
+          },
+          "started": 1789219549.80069,
+          "wall_seconds": 1.2581040859222412,
+          "exit_code": 0,
+          "peak_rss_bytes": 5278990336,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "03c02fadf373d5ea172619d248eff40e23894c1a1ed9dd9deada83cdd640a53c"
+          }
+        },
+        {
+          "key": "02-india-threads-12",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "12",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-12",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 12,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219551.0592158,
+          "wall_seconds": 1.0334620475769043,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230886912,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "34e86267a259d1532d9f8ebab0eb424ed46fdfb702084a701ad3e3cb2f323171"
+          }
+        },
+        {
+          "key": "02-india-threads-8",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "8",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-8",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 8,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219552.093098,
+          "wall_seconds": 1.104891300201416,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231345664,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "26fc30f315f3b4877863a83d3397943e80f52021997f1fb97016bedbf58d4f89"
+          }
+        },
+        {
+          "key": "02-india-threads-2",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "2",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-2",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 2,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219553.198454,
+          "wall_seconds": 1.8675520420074463,
+          "exit_code": 0,
+          "peak_rss_bytes": 5237276672,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "4f806ef6caf0466fd08ccd6856163614b15f46e0e0b58e9512406a57b9a0f632"
+          }
+        },
+        {
+          "key": "02-india-buffer-2",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-2",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "2"
+            }
+          },
+          "started": 1789219555.066411,
+          "wall_seconds": 1.141942024230957,
+          "exit_code": 0,
+          "peak_rss_bytes": 5216321536,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "1e8e4383c3fd07c425fa370ae65607a786864e8ab4ec841e32e83fcea548169d"
+          }
+        },
+        {
+          "key": "02-india-buffer-1",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-1",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "1"
+            }
+          },
+          "started": 1789219556.208707,
+          "wall_seconds": 1.2235138416290283,
+          "exit_code": 0,
+          "peak_rss_bytes": 5214552064,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "e581a1fadad47de6f3351bcb37909c10097594a8d0a91d024001419a8c620480"
+          }
+        },
+        {
+          "key": "02-india-threads-16",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-16",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 16,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219557.432659,
+          "wall_seconds": 1.0253231525421143,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231656960,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "e5de243a7c779bea00f351f0b29ccc53086842b6d5908166fa15e1ab0998c3e6"
+          }
+        },
+        {
+          "key": "02-india-buffer-16",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-16",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "16"
+            }
+          },
+          "started": 1789219558.4583738,
+          "wall_seconds": 1.1767292022705078,
+          "exit_code": 0,
+          "peak_rss_bytes": 5249056768,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "cf54205ccfb87a59e6afdc8df59abc83897d453da5281d1e58cffdd293b11671"
+          }
+        },
+        {
+          "key": "02-india-buffer-4",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-4",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "4"
+            }
+          },
+          "started": 1789219559.6355572,
+          "wall_seconds": 1.1156580448150635,
+          "exit_code": 0,
+          "peak_rss_bytes": 5221957632,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "d297a9cfe9a9ed98ab1713e85d4e9e7c012519c133ad7cbed0d4bcd3d7b9e2c8"
+          }
+        },
+        {
+          "key": "02-india-threads-4",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "4",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-4",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 4,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219560.751662,
+          "wall_seconds": 1.3706021308898926,
+          "exit_code": 0,
+          "peak_rss_bytes": 5228544000,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "26c967790ba74915b9b088f2b875c1928d8b70958b46b5c248bdf6463e593056"
+          }
+        },
+        {
+          "key": "03-india-threads-16",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-16",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 16,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219562.122733,
+          "wall_seconds": 1.0288798809051514,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231443968,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "f566369fc5b59a89a10611eb05af26f38cdfc5b409a3fde016bf45a7e18291c6"
+          }
+        },
+        {
+          "key": "03-india-threads-8",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "8",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-8",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 8,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219563.1520698,
+          "wall_seconds": 1.1085643768310547,
+          "exit_code": 0,
+          "peak_rss_bytes": 5229166592,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "9a19c36a16b08a3fa62f56af6161adcfe7faafca242aece454bda8bce111431f"
+          }
+        },
+        {
+          "key": "03-india-threads-4",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "4",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-4",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 4,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219564.26109,
+          "wall_seconds": 1.363109827041626,
+          "exit_code": 0,
+          "peak_rss_bytes": 5236965376,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "3a51d5672b6c17255333df272696a75e30003fc2a38d920f2934fc34a0c3b54c"
+          }
+        },
+        {
+          "key": "03-india-buffer-32",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-32",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "32"
+            }
+          },
+          "started": 1789219565.624662,
+          "wall_seconds": 1.2599780559539795,
+          "exit_code": 0,
+          "peak_rss_bytes": 5281595392,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "d20cb8803ea53e8a1241f7a399e16b2a32f9031100d284556a1fa27ce2b48d1f"
+          }
+        },
+        {
+          "key": "03-india-threads-12",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "12",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-12",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 12,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219566.8849988,
+          "wall_seconds": 1.033121109008789,
+          "exit_code": 0,
+          "peak_rss_bytes": 5226594304,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "34e86267a259d1532d9f8ebab0eb424ed46fdfb702084a701ad3e3cb2f323171"
+          }
+        },
+        {
+          "key": "03-india-threads-2",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "2",
+            "1"
+          ],
+          "variant": {
+            "name": "threads-2",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "threads": 2,
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1"
+            }
+          },
+          "started": 1789219567.918554,
+          "wall_seconds": 1.8660519123077393,
+          "exit_code": 0,
+          "peak_rss_bytes": 5235605504,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "4ec2670fe36304dbf19a9f4f31ee67d350a661078c8b02ac8bfc6f1100d24ec3"
+          }
+        },
+        {
+          "key": "03-india-buffer-2",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-2",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "2"
+            }
+          },
+          "started": 1789219569.785067,
+          "wall_seconds": 1.1250507831573486,
+          "exit_code": 0,
+          "peak_rss_bytes": 5217746944,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "1fb910fb2564723202ed1d14a0764b90bebd3428d75a81feffdcaf1502ec39d1"
+          }
+        },
+        {
+          "key": "03-india-buffer-4",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-4",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "4"
+            }
+          },
+          "started": 1789219570.910591,
+          "wall_seconds": 1.1083390712738037,
+          "exit_code": 0,
+          "peak_rss_bytes": 5221285888,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "9a19c36a16b08a3fa62f56af6161adcfe7faafca242aece454bda8bce111431f"
+          }
+        },
+        {
+          "key": "03-india-buffer-16",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-16",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "16"
+            }
+          },
+          "started": 1789219572.019398,
+          "wall_seconds": 1.1777310371398926,
+          "exit_code": 0,
+          "peak_rss_bytes": 5248024576,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "dd1c46eefe020e53f284aae8e5d16b786e15c269cc874266d689d37474e35ec0"
+          }
+        },
+        {
+          "key": "03-india-buffer-1",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "buffer-1",
+            "library": "${INSTRUMENTED_LIBRARY}",
+            "env": {
+              "DTA_READ_PERF_BULK_BYTE": "1",
+              "DTA_READ_PERF_BUFFER_MIB": "1"
+            }
+          },
+          "started": 1789219573.197603,
+          "wall_seconds": 1.2013452053070068,
+          "exit_code": 0,
+          "peak_rss_bytes": 5217124352,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "0368e5ecf50e66d5d93c2d569c86b6a48ff3ec1a8aaa219f47e0b18fb57d9bc6"
+          }
+        }
+      ],
+      "binding_snapshot": {
+        "${INDIA_DTA}": {
+          "bytes": 5196403097,
+          "sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc"
+        },
+        "/opt/homebrew/bin/Rscript": {
+          "bytes": 51528,
+          "sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+        },
+        "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R": {
+          "bytes": 1363,
+          "sha256": "486434b828924befac0eb10731a71553e07d0f5ad18c1b83828da834b1d3b62f"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/DESCRIPTION": {
+          "bytes": 2144,
+          "sha256": "13dd4db2c999d94ec4e57b8f959c92cb4ad396599b83a30b9460757b85f4cebe"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/INDEX": {
+          "bytes": 2725,
+          "sha256": "40d3ed83999e2fbd0bc9d65b8346dbc0998df32be1a1d77b5771268dd348768d"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/Rd.rds": {
+          "bytes": 1919,
+          "sha256": "918e609494e3a2f44892257808aca457c42ca0b07d4612f0dc9936f855e5d788"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/features.rds": {
+          "bytes": 123,
+          "sha256": "b4f074bc0f45cfe56d976c0d67a1453067f4b34693828ed02d674a6641b3e332"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/hsearch.rds": {
+          "bytes": 1826,
+          "sha256": "c503dcdb0da4bd4bd15c292cf3ace0cb5806c0279da0ce9fb9ff05469e61adb4"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/links.rds": {
+          "bytes": 1037,
+          "sha256": "aa6d02be5c3c9613b12f20459947425de253eb8ece8d7922d635488860545da7"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/nsInfo.rds": {
+          "bytes": 1916,
+          "sha256": "98a4771d242cc5219bb0bc8aef870c9c53a2d51d83bb315e9020b0a4a65a30a2"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/Meta/package.rds": {
+          "bytes": 1760,
+          "sha256": "4e3c23214c58cbbf77ef0ff339a147b30dd05998c17dc0bdba4f104a306c88bf"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/NAMESPACE": {
+          "bytes": 9871,
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/NEWS.md": {
+          "bytes": 3118,
+          "sha256": "7f0d87f1617cdf7ca851d3d041d3c6cd973bfa930c9ac209ed1e027782ecc78b"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/NOTICE": {
+          "bytes": 46665,
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/R/dtatools": {
+          "bytes": 1058,
+          "sha256": "570ca456b280cdeb201ef5ebdf22dc8f80092e2c0c68e33c7f73340e420f3759"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/R/dtatools.rdb": {
+          "bytes": 1093513,
+          "sha256": "c48fcd6c51d04d67f5a88b9975720f416c7997ecb6243c05b54077b1650e333d"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/R/dtatools.rdx": {
+          "bytes": 14091,
+          "sha256": "043fc49ade25859ae2d84ea6e49a8b15e1bddc2ba284d16c30ccfac2cb44ad09"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/README.md": {
+          "bytes": 52034,
+          "sha256": "ea3fa3177fa219c85c562c92ef83e1d75a37f94b74f52e4e704ad436ea84eb4e"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/all_types.dta": {
+          "bytes": 6213,
+          "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/all_types_v115.dta": {
+          "bytes": 1729,
+          "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/all_types_v117.dta": {
+          "bytes": 2668,
+          "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/all_types_v118.dta": {
+          "bytes": 6213,
+          "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/auto_v115.dta": {
+          "bytes": 6107,
+          "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/auto_v117.dta": {
+          "bytes": 6616,
+          "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/auto_v118.dta": {
+          "bytes": 12765,
+          "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_labels_stata18.csv": {
+          "bytes": 181,
+          "sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_number_labels_stata18.csv": {
+          "bytes": 2109,
+          "sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_number_labels_stata18.dta": {
+          "bytes": 5283,
+          "sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_precision_stata18.csv": {
+          "bytes": 2445,
+          "sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_stata18.csv": {
+          "bytes": 782,
+          "sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/egen_unicode_names_stata18.dta": {
+          "bytes": 10273,
+          "sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/empty.dta": {
+          "bytes": 2475,
+          "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/empty_v115.dta": {
+          "bytes": 713,
+          "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/empty_v118.dta": {
+          "bytes": 2475,
+          "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/missing_values.dta": {
+          "bytes": 4325,
+          "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/missing_values_v115.dta": {
+          "bytes": 1681,
+          "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/missing_values_v118.dta": {
+          "bytes": 4325,
+          "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/strl_test.dta": {
+          "bytes": 2804,
+          "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/strl_test_v118.dta": {
+          "bytes": 2804,
+          "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/synthetic_v105.dta": {
+          "bytes": 543,
+          "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/synthetic_v108.dta": {
+          "bytes": 886,
+          "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/synthetic_v110.dta": {
+          "bytes": 1286,
+          "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/synthetic_v111.dta": {
+          "bytes": 1352,
+          "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/value_labels.dta": {
+          "bytes": 3162,
+          "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/value_labels_v115.dta": {
+          "bytes": 1054,
+          "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/value_labels_v117.dta": {
+          "bytes": 1549,
+          "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/value_labels_v118.dta": {
+          "bytes": 3162,
+          "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/wide.dta": {
+          "bytes": 86955,
+          "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/wide_v115.dta": {
+          "bytes": 33596,
+          "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/extdata/wide_v118.dta": {
+          "bytes": 86955,
+          "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/help/AnIndex": {
+          "bytes": 2862,
+          "sha256": "bf6dc5d4e2df4dc95032c794015ed10007ba254521b6d07c585e90bff200f2fa"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/help/aliases.rds": {
+          "bytes": 873,
+          "sha256": "e915d37d1575964d6cee1953d2847c4aa836cc6c7039eebd55dea7c1003525a2"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/help/dtatools.rdb": {
+          "bytes": 201306,
+          "sha256": "1104cd9d56fc183c2a9f9b4874fad503bfdf702ffbd112e080fe1a19fd50b70f"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/help/dtatools.rdx": {
+          "bytes": 1052,
+          "sha256": "e7e75f81a214acdc7d4ae89e0d9ab49ddff5eb529f551ae61fb1f44a0851748a"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/help/paths.rds": {
+          "bytes": 494,
+          "sha256": "a9a0c536300acc334098aeab18f2fedb7c302d2fe41e008c080b5c9d304377a5"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/html/00Index.html": {
+          "bytes": 17354,
+          "sha256": "3a2a8910e520d439168e864d5539cfa60ec96b86a023c6e48a2a3d3b33517579"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/html/R.css": {
+          "bytes": 2133,
+          "sha256": "3d290675266eebeba6efff07db879d699843c80bf428f9e71000e2fc6078f5db"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/libs/dtatools.so": {
+          "bytes": 8668424,
+          "sha256": "0b6a0ce425a82103f792e62087655380bd87eaf2e22789ef3d767e3defc5c513"
+        },
+        "${INSTRUMENTED_LIBRARY}/dtatools/raven/nse.toml": {
+          "bytes": 6158,
+          "sha256": "270d6d6f090872c9f9ccf8dac6475e6f6194b4881e3910fc5dd5876509866b02"
+        }
+      },
+      "original_private_records": {
+        "jobs.jsonl": {
+          "bytes": 15207,
+          "sha256": "265b03f0bb603eeeaa62dca49461f3fd07c68a4c1c28469a8d86d5b8541f6ee1"
+        },
+        "binding.json": {
+          "bytes": 10948,
+          "sha256": "e6237273022871f05d536263b1c3bd74a38df15d94be408d1a8fd579dedc089f"
+        },
+        "plan.json": {
+          "bytes": 2176,
+          "sha256": "246b56e30a9d0b056f50db128f615d719fa18d79ec63e4280afe6c39e2f55928"
+        }
+      },
+      "published_csvs": {
+        "tuning-observations.csv": {
+          "bytes": 1618,
+          "sha256": "5cd1c20f11ac94f36ef7345d8bed1c4d85938967a0d8d5c65b8715c46d76abb5"
+        },
+        "tuning-summary.csv": {
+          "bytes": 555,
+          "sha256": "c4499cf525625f84611cca3633cb39feaf4ed518c492a48ad33d5e58bc7c2b74"
+        }
+      },
+      "effective_defaults": {
+        "reads_per_process": 1,
+        "threads": 0,
+        "seed": 20260912,
+        "order": "shuffle"
+      },
+      "runner_binding": "Runner and plan were not included in this phase binding; their historical exact bytes cannot be verified from it."
+    },
+    "final": {
+      "plan": {
+        "repetitions": 10,
+        "cases": [
+          {
+            "name": "india",
+            "path": "${INDIA_DTA}",
+            "rows": 724115,
+            "columns": 5972
+          },
+          {
+            "name": "100mb",
+            "path": "${100MB_DTA}",
+            "rows": 231956,
+            "columns": 40
+          },
+          {
+            "name": "1gb",
+            "path": "${1GB_DTA}",
+            "rows": 2320123,
+            "columns": 40
+          }
+        ],
+        "variants": [
+          {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          }
+        ],
+        "order": "alternate",
+        "candidate_source": {
+          "base_commit": "cf0c80d72191491d42db51d5882a9d7f9d16194e",
+          "patch_sha256": "62608ee0f6c8b6b93e2cbdae213fe9369e7719e9773c5ab22f3ecaa65ec00687"
+        }
+      },
+      "job_count": 90,
+      "jobs": [
+        {
+          "key": "01-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219767.8079581,
+          "wall_seconds": 2.0587849617004395,
+          "exit_code": 0,
+          "peak_rss_bytes": 5228150784,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "1ca949d1a6f61b7407e51d7f03ef1b74ad2d11ec7cd6dd1567b039ea6f253674"
+          }
+        },
+        {
+          "key": "01-india-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219769.867142,
+          "wall_seconds": 1.1118659973144531,
+          "exit_code": 0,
+          "peak_rss_bytes": 5232361472,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "3095cb84897690ea120fe8030821aac981a7b6f5bfc5a9a58c06a8f9be30e3ed"
+          }
+        },
+        {
+          "key": "01-india-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219770.9793909,
+          "wall_seconds": 1.0186083316802979,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230067712,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "96fdb0cd424a0be573948d9374775f043a6aa2445a00dc15aec14de51fce72ad"
+          }
+        },
+        {
+          "key": "01-100mb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219771.998423,
+          "wall_seconds": 0.268064022064209,
+          "exit_code": 0,
+          "peak_rss_bytes": 320192512,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "01-100mb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219772.266925,
+          "wall_seconds": 0.2678558826446533,
+          "exit_code": 0,
+          "peak_rss_bytes": 322961408,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "01-100mb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219772.535201,
+          "wall_seconds": 0.2621297836303711,
+          "exit_code": 0,
+          "peak_rss_bytes": 324943872,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "c954eb5a99c4d483d7b2c5026ab879ede98c658e8f3c3d6ad7767099c644e30a"
+          }
+        },
+        {
+          "key": "01-1gb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219772.79776,
+          "wall_seconds": 0.4481830596923828,
+          "exit_code": 0,
+          "peak_rss_bytes": 706248704,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "6393351f8da9b0afee990f8e65d8fe07108b92fc0518eff69d30839130f8f339"
+          }
+        },
+        {
+          "key": "01-1gb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219773.246346,
+          "wall_seconds": 0.4428238868713379,
+          "exit_code": 0,
+          "peak_rss_bytes": 704135168,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "9ad657ba0920a98707ffd90fc7b779f428c888c0a14d154f9386b4d3d82dfe4b"
+          }
+        },
+        {
+          "key": "01-1gb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219773.689472,
+          "wall_seconds": 0.4269702434539795,
+          "exit_code": 0,
+          "peak_rss_bytes": 704839680,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "1bb8c2ac2c978f8e1e3af94a8a9380c87c811392010b58534db38a494f36f20c"
+          }
+        },
+        {
+          "key": "02-1gb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219774.116836,
+          "wall_seconds": 0.42864108085632324,
+          "exit_code": 0,
+          "peak_rss_bytes": 707788800,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "1bb8c2ac2c978f8e1e3af94a8a9380c87c811392010b58534db38a494f36f20c"
+          }
+        },
+        {
+          "key": "02-1gb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219774.545923,
+          "wall_seconds": 0.4388160705566406,
+          "exit_code": 0,
+          "peak_rss_bytes": 705757184,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "9ad657ba0920a98707ffd90fc7b779f428c888c0a14d154f9386b4d3d82dfe4b"
+          }
+        },
+        {
+          "key": "02-1gb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219774.9851918,
+          "wall_seconds": 0.44789624214172363,
+          "exit_code": 0,
+          "peak_rss_bytes": 707346432,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "23810236a2ad1e0e6f7d671e0db917bc52b2f2b19759d4585e6f739150c5b828"
+          }
+        },
+        {
+          "key": "02-100mb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219775.4335518,
+          "wall_seconds": 0.26247334480285645,
+          "exit_code": 0,
+          "peak_rss_bytes": 324354048,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "c954eb5a99c4d483d7b2c5026ab879ede98c658e8f3c3d6ad7767099c644e30a"
+          }
+        },
+        {
+          "key": "02-100mb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219775.696487,
+          "wall_seconds": 0.2670919895172119,
+          "exit_code": 0,
+          "peak_rss_bytes": 321748992,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "02-100mb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219775.96401,
+          "wall_seconds": 0.26921606063842773,
+          "exit_code": 0,
+          "peak_rss_bytes": 320143360,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d6f9d86523163b2304e2a56c7376d8c431fc820b7ad64465a502169c9b501315"
+          }
+        },
+        {
+          "key": "02-india-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219776.233692,
+          "wall_seconds": 1.012477159500122,
+          "exit_code": 0,
+          "peak_rss_bytes": 5232263168,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "b81de2612cc727b04a03cfd4d9d9e4587f7129988c23453cdf77f05b3b2b9dff"
+          }
+        },
+        {
+          "key": "02-india-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219777.246572,
+          "wall_seconds": 1.1080799102783203,
+          "exit_code": 0,
+          "peak_rss_bytes": 5228544000,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "9a19c36a16b08a3fa62f56af6161adcfe7faafca242aece454bda8bce111431f"
+          }
+        },
+        {
+          "key": "02-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219778.355062,
+          "wall_seconds": 2.0134761333465576,
+          "exit_code": 0,
+          "peak_rss_bytes": 5229264896,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "4ded12d57cbba8d8c7f11a38c75555aff1191ecd18ebc2cdf9e1b6af90e26e11"
+          }
+        },
+        {
+          "key": "03-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219780.369005,
+          "wall_seconds": 2.054680824279785,
+          "exit_code": 0,
+          "peak_rss_bytes": 5229576192,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "1ca949d1a6f61b7407e51d7f03ef1b74ad2d11ec7cd6dd1567b039ea6f253674"
+          }
+        },
+        {
+          "key": "03-india-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219782.424097,
+          "wall_seconds": 1.1096429824829102,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230346240,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "9a19c36a16b08a3fa62f56af6161adcfe7faafca242aece454bda8bce111431f"
+          }
+        },
+        {
+          "key": "03-india-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219783.534164,
+          "wall_seconds": 1.0141911506652832,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230166016,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "2c7fdf9baa38837289640ba62448ecc4cf9482b6d6aca1a6e5f0f40c59f298e1"
+          }
+        },
+        {
+          "key": "03-100mb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219784.548713,
+          "wall_seconds": 0.26852989196777344,
+          "exit_code": 0,
+          "peak_rss_bytes": 323420160,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "03-100mb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219784.817682,
+          "wall_seconds": 0.26760101318359375,
+          "exit_code": 0,
+          "peak_rss_bytes": 320176128,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "03-100mb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219785.0857,
+          "wall_seconds": 0.26218700408935547,
+          "exit_code": 0,
+          "peak_rss_bytes": 319799296,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "c954eb5a99c4d483d7b2c5026ab879ede98c658e8f3c3d6ad7767099c644e30a"
+          }
+        },
+        {
+          "key": "03-1gb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219785.3483489,
+          "wall_seconds": 0.45208024978637695,
+          "exit_code": 0,
+          "peak_rss_bytes": 705691648,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "23810236a2ad1e0e6f7d671e0db917bc52b2f2b19759d4585e6f739150c5b828"
+          }
+        },
+        {
+          "key": "03-1gb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219785.8008971,
+          "wall_seconds": 0.44085192680358887,
+          "exit_code": 0,
+          "peak_rss_bytes": 703463424,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "4c8e6d958322e434cf29991bbabd90b63a30ebe9dae5502daaefe2cdea0fe87d"
+          }
+        },
+        {
+          "key": "03-1gb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219786.2420962,
+          "wall_seconds": 0.42720580101013184,
+          "exit_code": 0,
+          "peak_rss_bytes": 707461120,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "22c3ace000cc6e2d0b29cab73900a6ad0f7d5eecf43db7e5df76f8077238ae6e"
+          }
+        },
+        {
+          "key": "04-1gb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219786.669784,
+          "wall_seconds": 0.42983293533325195,
+          "exit_code": 0,
+          "peak_rss_bytes": 704692224,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "1bb8c2ac2c978f8e1e3af94a8a9380c87c811392010b58534db38a494f36f20c"
+          }
+        },
+        {
+          "key": "04-1gb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219787.100124,
+          "wall_seconds": 0.43930697441101074,
+          "exit_code": 0,
+          "peak_rss_bytes": 705888256,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "36f4cb75a437342f4f433cf34e0deca5c44a49b7168be02cfaa92972dc6c8256"
+          }
+        },
+        {
+          "key": "04-1gb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219787.539766,
+          "wall_seconds": 0.44750213623046875,
+          "exit_code": 0,
+          "peak_rss_bytes": 705626112,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "23810236a2ad1e0e6f7d671e0db917bc52b2f2b19759d4585e6f739150c5b828"
+          }
+        },
+        {
+          "key": "04-100mb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219787.987751,
+          "wall_seconds": 0.2629401683807373,
+          "exit_code": 0,
+          "peak_rss_bytes": 322535424,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "c954eb5a99c4d483d7b2c5026ab879ede98c658e8f3c3d6ad7767099c644e30a"
+          }
+        },
+        {
+          "key": "04-100mb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219788.251165,
+          "wall_seconds": 0.26730799674987793,
+          "exit_code": 0,
+          "peak_rss_bytes": 322928640,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "04-100mb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219788.518962,
+          "wall_seconds": 0.2686350345611572,
+          "exit_code": 0,
+          "peak_rss_bytes": 319815680,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "5d0bf9bd701b1483eb548e68715e3219c3b92de93d579d4e2d99fbb77db561f0"
+          }
+        },
+        {
+          "key": "04-india-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219788.788078,
+          "wall_seconds": 1.015462875366211,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231673344,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "c1af753e5e32c0ffd8e794528689f6f90e3ba9c7fab8dda440541e1d547d8b5c"
+          }
+        },
+        {
+          "key": "04-india-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219789.8040051,
+          "wall_seconds": 1.1016077995300293,
+          "exit_code": 0,
+          "peak_rss_bytes": 5232623616,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "2bf46aedaf618cab63fa8fe2fa33cc7799b7f1db48063e83e66e18d3d4f23bbf"
+          }
+        },
+        {
+          "key": "04-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219790.906063,
+          "wall_seconds": 2.0315029621124268,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230526464,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "9fd31791c9ba65a402563484d906acf2e3c7ee7c98cbe00787385aca89df6d0f"
+          }
+        },
+        {
+          "key": "05-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219792.938035,
+          "wall_seconds": 2.0157370567321777,
+          "exit_code": 0,
+          "peak_rss_bytes": 5229592576,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "6d7b47b46d1ed0e8663453ad5d5068f78668a0125d8cbfc35cf9279521d32d05"
+          }
+        },
+        {
+          "key": "05-india-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219794.954219,
+          "wall_seconds": 1.1135659217834473,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230755840,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "7f795ada684c6ab0c0b1fa35a4b19447e4242ad13434cca69ee08feedae9164d"
+          }
+        },
+        {
+          "key": "05-india-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219796.068258,
+          "wall_seconds": 1.0157980918884277,
+          "exit_code": 0,
+          "peak_rss_bytes": 5232574464,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "c1af753e5e32c0ffd8e794528689f6f90e3ba9c7fab8dda440541e1d547d8b5c"
+          }
+        },
+        {
+          "key": "05-100mb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219797.0844538,
+          "wall_seconds": 0.27033233642578125,
+          "exit_code": 0,
+          "peak_rss_bytes": 322240512,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "5d0bf9bd701b1483eb548e68715e3219c3b92de93d579d4e2d99fbb77db561f0"
+          }
+        },
+        {
+          "key": "05-100mb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219797.3552608,
+          "wall_seconds": 0.2670931816101074,
+          "exit_code": 0,
+          "peak_rss_bytes": 319373312,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "05-100mb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219797.6228118,
+          "wall_seconds": 0.26260828971862793,
+          "exit_code": 0,
+          "peak_rss_bytes": 321650688,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "c954eb5a99c4d483d7b2c5026ab879ede98c658e8f3c3d6ad7767099c644e30a"
+          }
+        },
+        {
+          "key": "05-1gb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219797.885917,
+          "wall_seconds": 0.44578003883361816,
+          "exit_code": 0,
+          "peak_rss_bytes": 704053248,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "a5bd39c9fb1adc332e9504d2e640dd5df414b9f877f93ee5ed2325e9571b0ac4"
+          }
+        },
+        {
+          "key": "05-1gb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219798.332198,
+          "wall_seconds": 0.4400951862335205,
+          "exit_code": 0,
+          "peak_rss_bytes": 705691648,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "b13fd2b93b4d0c1193b4bb8003976729341c9c531a4e33111c149955fe39bbfc"
+          }
+        },
+        {
+          "key": "05-1gb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219798.772795,
+          "wall_seconds": 0.427976131439209,
+          "exit_code": 0,
+          "peak_rss_bytes": 705675264,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "22c3ace000cc6e2d0b29cab73900a6ad0f7d5eecf43db7e5df76f8077238ae6e"
+          }
+        },
+        {
+          "key": "06-1gb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219799.201267,
+          "wall_seconds": 0.4357869625091553,
+          "exit_code": 0,
+          "peak_rss_bytes": 704905216,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "1bb8c2ac2c978f8e1e3af94a8a9380c87c811392010b58534db38a494f36f20c"
+          }
+        },
+        {
+          "key": "06-1gb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219799.637413,
+          "wall_seconds": 0.45380687713623047,
+          "exit_code": 0,
+          "peak_rss_bytes": 707297280,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "a5bd39c9fb1adc332e9504d2e640dd5df414b9f877f93ee5ed2325e9571b0ac4"
+          }
+        },
+        {
+          "key": "06-1gb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219800.091728,
+          "wall_seconds": 0.4629669189453125,
+          "exit_code": 0,
+          "peak_rss_bytes": 705609728,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "0713e6591612a25861a9628e0fd77238b7a4c66e8e311755b8d788423976e39e"
+          }
+        },
+        {
+          "key": "06-100mb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219800.5551949,
+          "wall_seconds": 0.27225327491760254,
+          "exit_code": 0,
+          "peak_rss_bytes": 321536000,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "a35817c0b08900d660211c76aede62279336bf1114ab1ec3d673cf1ac41b70aa"
+          }
+        },
+        {
+          "key": "06-100mb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219800.82792,
+          "wall_seconds": 0.2675290107727051,
+          "exit_code": 0,
+          "peak_rss_bytes": 320028672,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "06-100mb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219801.095956,
+          "wall_seconds": 0.2693469524383545,
+          "exit_code": 0,
+          "peak_rss_bytes": 323190784,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "06-india-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219801.365664,
+          "wall_seconds": 1.0151128768920898,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231362048,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "0ffe84c36969f8c7d59a7d2e4a46e4224da2201eac39943c6b02ab2d08fcef2f"
+          }
+        },
+        {
+          "key": "06-india-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219802.381253,
+          "wall_seconds": 1.1139380931854248,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231542272,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "7f795ada684c6ab0c0b1fa35a4b19447e4242ad13434cca69ee08feedae9164d"
+          }
+        },
+        {
+          "key": "06-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219803.4956899,
+          "wall_seconds": 2.050715923309326,
+          "exit_code": 0,
+          "peak_rss_bytes": 5228511232,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "6933c9813e5d133a6caa8c1da280959968d49d44e8645c3aa632c57802be4ec4"
+          }
+        },
+        {
+          "key": "07-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219805.546889,
+          "wall_seconds": 2.011347770690918,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231034368,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "fc6304dc49f1580ddb27c838fb2ed8182404d7ed3ccfe33bc5728e873470505b"
+          }
+        },
+        {
+          "key": "07-india-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219807.558697,
+          "wall_seconds": 1.1019940376281738,
+          "exit_code": 0,
+          "peak_rss_bytes": 5227872256,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "2bf46aedaf618cab63fa8fe2fa33cc7799b7f1db48063e83e66e18d3d4f23bbf"
+          }
+        },
+        {
+          "key": "07-india-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219808.6611562,
+          "wall_seconds": 1.0188567638397217,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230395392,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "96fdb0cd424a0be573948d9374775f043a6aa2445a00dc15aec14de51fce72ad"
+          }
+        },
+        {
+          "key": "07-100mb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219809.6804821,
+          "wall_seconds": 0.2693498134613037,
+          "exit_code": 0,
+          "peak_rss_bytes": 320012288,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "5d0bf9bd701b1483eb548e68715e3219c3b92de93d579d4e2d99fbb77db561f0"
+          }
+        },
+        {
+          "key": "07-100mb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219809.950294,
+          "wall_seconds": 0.26742982864379883,
+          "exit_code": 0,
+          "peak_rss_bytes": 321503232,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "07-100mb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219810.21825,
+          "wall_seconds": 0.2621910572052002,
+          "exit_code": 0,
+          "peak_rss_bytes": 322912256,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "c954eb5a99c4d483d7b2c5026ab879ede98c658e8f3c3d6ad7767099c644e30a"
+          }
+        },
+        {
+          "key": "07-1gb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219810.480962,
+          "wall_seconds": 0.454240083694458,
+          "exit_code": 0,
+          "peak_rss_bytes": 704036864,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "0713e6591612a25861a9628e0fd77238b7a4c66e8e311755b8d788423976e39e"
+          }
+        },
+        {
+          "key": "07-1gb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219810.935711,
+          "wall_seconds": 0.44261932373046875,
+          "exit_code": 0,
+          "peak_rss_bytes": 705806336,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "dfffde710f8970118a67da3a9462e4e34de226353d53111eadfaa5a8772d8fb6"
+          }
+        },
+        {
+          "key": "07-1gb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219811.378716,
+          "wall_seconds": 0.4266190528869629,
+          "exit_code": 0,
+          "peak_rss_bytes": 706854912,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "22c3ace000cc6e2d0b29cab73900a6ad0f7d5eecf43db7e5df76f8077238ae6e"
+          }
+        },
+        {
+          "key": "08-1gb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219811.805838,
+          "wall_seconds": 0.4269990921020508,
+          "exit_code": 0,
+          "peak_rss_bytes": 705118208,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "1bb8c2ac2c978f8e1e3af94a8a9380c87c811392010b58534db38a494f36f20c"
+          }
+        },
+        {
+          "key": "08-1gb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219812.233383,
+          "wall_seconds": 0.439345121383667,
+          "exit_code": 0,
+          "peak_rss_bytes": 705757184,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "9ad657ba0920a98707ffd90fc7b779f428c888c0a14d154f9386b4d3d82dfe4b"
+          }
+        },
+        {
+          "key": "08-1gb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219812.673297,
+          "wall_seconds": 0.44232916831970215,
+          "exit_code": 0,
+          "peak_rss_bytes": 705478656,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "e5d9848447cadc817d102c61f0f36470c5f5790ccaf18557836dc7127e9d225d"
+          }
+        },
+        {
+          "key": "08-100mb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219813.1161401,
+          "wall_seconds": 0.26347994804382324,
+          "exit_code": 0,
+          "peak_rss_bytes": 319963136,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "a35817c0b08900d660211c76aede62279336bf1114ab1ec3d673cf1ac41b70aa"
+          }
+        },
+        {
+          "key": "08-100mb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219813.3799949,
+          "wall_seconds": 0.26700615882873535,
+          "exit_code": 0,
+          "peak_rss_bytes": 322830336,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "08-100mb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219813.6475232,
+          "wall_seconds": 0.2682979106903076,
+          "exit_code": 0,
+          "peak_rss_bytes": 324042752,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "5d0bf9bd701b1483eb548e68715e3219c3b92de93d579d4e2d99fbb77db561f0"
+          }
+        },
+        {
+          "key": "08-india-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219813.9163342,
+          "wall_seconds": 1.0128328800201416,
+          "exit_code": 0,
+          "peak_rss_bytes": 5229314048,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "0ffe84c36969f8c7d59a7d2e4a46e4224da2201eac39943c6b02ab2d08fcef2f"
+          }
+        },
+        {
+          "key": "08-india-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219814.929712,
+          "wall_seconds": 1.1092908382415771,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230510080,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "73d9a823d7f39e816a0e24287f0c5dcd85d1b9a560d371c04d9685efef7ac5ed"
+          }
+        },
+        {
+          "key": "08-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219816.039503,
+          "wall_seconds": 2.0659399032592773,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230247936,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "68983942c498c81daa0bbb49b2722f7fcfa69b73c60aee91bb17d4c1f4b0e6f9"
+          }
+        },
+        {
+          "key": "09-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219818.105938,
+          "wall_seconds": 2.007707118988037,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231525888,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "b7d177b28837966b8e79e14a35fae7112f03f2026157128939831be4a6128461"
+          }
+        },
+        {
+          "key": "09-india-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219820.114131,
+          "wall_seconds": 1.1046268939971924,
+          "exit_code": 0,
+          "peak_rss_bytes": 5230149632,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "26fc30f315f3b4877863a83d3397943e80f52021997f1fb97016bedbf58d4f89"
+          }
+        },
+        {
+          "key": "09-india-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219821.219243,
+          "wall_seconds": 1.0286448001861572,
+          "exit_code": 0,
+          "peak_rss_bytes": 5234114560,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "cc549d48d71d90368044d55f403691ff7384f37341dc3d9dab5f522065870380"
+          }
+        },
+        {
+          "key": "09-100mb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219822.2483368,
+          "wall_seconds": 0.26848721504211426,
+          "exit_code": 0,
+          "peak_rss_bytes": 321634304,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "5d0bf9bd701b1483eb548e68715e3219c3b92de93d579d4e2d99fbb77db561f0"
+          }
+        },
+        {
+          "key": "09-100mb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219822.517355,
+          "wall_seconds": 0.26807618141174316,
+          "exit_code": 0,
+          "peak_rss_bytes": 323158016,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "09-100mb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219822.78597,
+          "wall_seconds": 0.2615950107574463,
+          "exit_code": 0,
+          "peak_rss_bytes": 319946752,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "66c71c57830b688edefd9529ad29fe59f6fe5120ba2cd5aa8f06afa163785c50"
+          }
+        },
+        {
+          "key": "09-1gb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219823.048096,
+          "wall_seconds": 0.4471161365509033,
+          "exit_code": 0,
+          "peak_rss_bytes": 705216512,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "23810236a2ad1e0e6f7d671e0db917bc52b2f2b19759d4585e6f739150c5b828"
+          }
+        },
+        {
+          "key": "09-1gb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219823.495771,
+          "wall_seconds": 0.43873023986816406,
+          "exit_code": 0,
+          "peak_rss_bytes": 705789952,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "36f4cb75a437342f4f433cf34e0deca5c44a49b7168be02cfaa92972dc6c8256"
+          }
+        },
+        {
+          "key": "09-1gb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219823.9349089,
+          "wall_seconds": 0.4256150722503662,
+          "exit_code": 0,
+          "peak_rss_bytes": 704643072,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "e0e057a6649e43be000723ea04aa64d9607895f3035288bc1258b5b012f73f77"
+          }
+        },
+        {
+          "key": "10-1gb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219824.361077,
+          "wall_seconds": 0.42765212059020996,
+          "exit_code": 0,
+          "peak_rss_bytes": 705642496,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "22c3ace000cc6e2d0b29cab73900a6ad0f7d5eecf43db7e5df76f8077238ae6e"
+          }
+        },
+        {
+          "key": "10-1gb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219824.7892532,
+          "wall_seconds": 0.43936681747436523,
+          "exit_code": 0,
+          "peak_rss_bytes": 705921024,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "9ad657ba0920a98707ffd90fc7b779f428c888c0a14d154f9386b4d3d82dfe4b"
+          }
+        },
+        {
+          "key": "10-1gb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${1GB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219825.229375,
+          "wall_seconds": 0.4461503028869629,
+          "exit_code": 0,
+          "peak_rss_bytes": 705773568,
+          "retained_log_identity": {
+            "bytes": 30,
+            "sha256": "a5bd39c9fb1adc332e9504d2e640dd5df414b9f877f93ee5ed2325e9571b0ac4"
+          }
+        },
+        {
+          "key": "10-100mb-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219825.6760871,
+          "wall_seconds": 0.2684059143066406,
+          "exit_code": 0,
+          "peak_rss_bytes": 319864832,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "c954eb5a99c4d483d7b2c5026ab879ede98c658e8f3c3d6ad7767099c644e30a"
+          }
+        },
+        {
+          "key": "10-100mb-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219825.944905,
+          "wall_seconds": 0.26787590980529785,
+          "exit_code": 0,
+          "peak_rss_bytes": 323059712,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "d8e29a9e6a8e05f432fd37abdecf97dfb5063eed6252935cf87775ba1feb3af0"
+          }
+        },
+        {
+          "key": "10-100mb-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${100MB_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219826.213342,
+          "wall_seconds": 0.26780104637145996,
+          "exit_code": 0,
+          "peak_rss_bytes": 323436544,
+          "retained_log_identity": {
+            "bytes": 29,
+            "sha256": "5d0bf9bd701b1483eb548e68715e3219c3b92de93d579d4e2d99fbb77db561f0"
+          }
+        },
+        {
+          "key": "10-india-batch-16-threads",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "16",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-16-threads",
+            "library": "${BATCH_LIBRARY}",
+            "threads": 16
+          },
+          "started": 1789219826.481691,
+          "wall_seconds": 1.0161051750183105,
+          "exit_code": 0,
+          "peak_rss_bytes": 5232869376,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "c1af753e5e32c0ffd8e794528689f6f90e3ba9c7fab8dda440541e1d547d8b5c"
+          }
+        },
+        {
+          "key": "10-india-batch-default",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "batch-default",
+            "library": "${BATCH_LIBRARY}"
+          },
+          "started": 1789219827.498324,
+          "wall_seconds": 1.111677885055542,
+          "exit_code": 0,
+          "peak_rss_bytes": 5231837184,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "7f795ada684c6ab0c0b1fa35a4b19447e4242ad13434cca69ee08feedae9164d"
+          }
+        },
+        {
+          "key": "10-india-stock",
+          "command": [
+            "/opt/homebrew/bin/Rscript",
+            "--vanilla",
+            "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R",
+            "${INDIA_DTA}",
+            "dta",
+            "0",
+            "1"
+          ],
+          "variant": {
+            "name": "stock",
+            "library": "${STOCK_LIBRARY}"
+          },
+          "started": 1789219828.610534,
+          "wall_seconds": 2.049751043319702,
+          "exit_code": 0,
+          "peak_rss_bytes": 5233065984,
+          "retained_log_identity": {
+            "bytes": 31,
+            "sha256": "f03dbceeb549909e39e2c0d803dc1148e2a6ab9e5989dd4eddc6d7a3e10c7723"
+          }
+        }
+      ],
+      "binding_snapshot": {
+        "${100MB_DTA}": {
+          "bytes": 100000187,
+          "sha256": "fc2cd5376eea3b29b2a989ead21d224351a75ed1a9b75dc5940b80f2c70a63da"
+        },
+        "${1GB_DTA}": {
+          "bytes": 1000000164,
+          "sha256": "ab08515fbe880e06aeef3f2054ce5b6f1201c3aacfe631e9808e8fb913aa6a24"
+        },
+        "${INDIA_DTA}": {
+          "bytes": 5196403097,
+          "sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc"
+        },
+        "/opt/homebrew/bin/Rscript": {
+          "bytes": 51528,
+          "sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+        },
+        "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/run.py": {
+          "bytes": 4903,
+          "sha256": "8e02a6bc2f846e694da6cfab928f5aa59abfbd5d362c11c92da7a290bed71e50"
+        },
+        "${SOURCE_WORKTREE}/benchmarks/dta-reader-performance/worker.R": {
+          "bytes": 1363,
+          "sha256": "486434b828924befac0eb10731a71553e07d0f5ad18c1b83828da834b1d3b62f"
+        },
+        "${BATCH_LIBRARY}/dtatools/DESCRIPTION": {
+          "bytes": 2144,
+          "sha256": "4be370298818cb17b687d364744954fd6dbacdbdf59b2d0005b2a624f4a064e2"
+        },
+        "${BATCH_LIBRARY}/dtatools/INDEX": {
+          "bytes": 2725,
+          "sha256": "40d3ed83999e2fbd0bc9d65b8346dbc0998df32be1a1d77b5771268dd348768d"
+        },
+        "${BATCH_LIBRARY}/dtatools/Meta/Rd.rds": {
+          "bytes": 1919,
+          "sha256": "918e609494e3a2f44892257808aca457c42ca0b07d4612f0dc9936f855e5d788"
+        },
+        "${BATCH_LIBRARY}/dtatools/Meta/features.rds": {
+          "bytes": 123,
+          "sha256": "b4f074bc0f45cfe56d976c0d67a1453067f4b34693828ed02d674a6641b3e332"
+        },
+        "${BATCH_LIBRARY}/dtatools/Meta/hsearch.rds": {
+          "bytes": 1826,
+          "sha256": "c503dcdb0da4bd4bd15c292cf3ace0cb5806c0279da0ce9fb9ff05469e61adb4"
+        },
+        "${BATCH_LIBRARY}/dtatools/Meta/links.rds": {
+          "bytes": 1037,
+          "sha256": "aa6d02be5c3c9613b12f20459947425de253eb8ece8d7922d635488860545da7"
+        },
+        "${BATCH_LIBRARY}/dtatools/Meta/nsInfo.rds": {
+          "bytes": 1916,
+          "sha256": "98a4771d242cc5219bb0bc8aef870c9c53a2d51d83bb315e9020b0a4a65a30a2"
+        },
+        "${BATCH_LIBRARY}/dtatools/Meta/package.rds": {
+          "bytes": 1761,
+          "sha256": "545ad69d74996e5252ab024c39f40cd5f8eac54c73219ed4676b68fce5f18127"
+        },
+        "${BATCH_LIBRARY}/dtatools/NAMESPACE": {
+          "bytes": 9871,
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "${BATCH_LIBRARY}/dtatools/NEWS.md": {
+          "bytes": 3118,
+          "sha256": "7f0d87f1617cdf7ca851d3d041d3c6cd973bfa930c9ac209ed1e027782ecc78b"
+        },
+        "${BATCH_LIBRARY}/dtatools/NOTICE": {
+          "bytes": 46665,
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "${BATCH_LIBRARY}/dtatools/R/dtatools": {
+          "bytes": 1058,
+          "sha256": "570ca456b280cdeb201ef5ebdf22dc8f80092e2c0c68e33c7f73340e420f3759"
+        },
+        "${BATCH_LIBRARY}/dtatools/R/dtatools.rdb": {
+          "bytes": 1093517,
+          "sha256": "2a52ff9b274286d088c340f3c3e98c5bc69f2eef41c93dcd16c733bf1167634d"
+        },
+        "${BATCH_LIBRARY}/dtatools/R/dtatools.rdx": {
+          "bytes": 14101,
+          "sha256": "46dd04cc9a1e0cf1e1f48af75a8794da05070ae04aa1c227bf22caa82f789ec9"
+        },
+        "${BATCH_LIBRARY}/dtatools/README.md": {
+          "bytes": 52034,
+          "sha256": "ea3fa3177fa219c85c562c92ef83e1d75a37f94b74f52e4e704ad436ea84eb4e"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/all_types.dta": {
+          "bytes": 6213,
+          "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/all_types_v115.dta": {
+          "bytes": 1729,
+          "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/all_types_v117.dta": {
+          "bytes": 2668,
+          "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/all_types_v118.dta": {
+          "bytes": 6213,
+          "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/auto_v115.dta": {
+          "bytes": 6107,
+          "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/auto_v117.dta": {
+          "bytes": 6616,
+          "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/auto_v118.dta": {
+          "bytes": 12765,
+          "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/egen_labels_stata18.csv": {
+          "bytes": 181,
+          "sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/egen_number_labels_stata18.csv": {
+          "bytes": 2109,
+          "sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/egen_number_labels_stata18.dta": {
+          "bytes": 5283,
+          "sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/egen_precision_stata18.csv": {
+          "bytes": 2445,
+          "sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/egen_stata18.csv": {
+          "bytes": 782,
+          "sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/egen_unicode_names_stata18.dta": {
+          "bytes": 10273,
+          "sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/empty.dta": {
+          "bytes": 2475,
+          "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/empty_v115.dta": {
+          "bytes": 713,
+          "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/empty_v118.dta": {
+          "bytes": 2475,
+          "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/missing_values.dta": {
+          "bytes": 4325,
+          "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/missing_values_v115.dta": {
+          "bytes": 1681,
+          "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/missing_values_v118.dta": {
+          "bytes": 4325,
+          "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/strl_test.dta": {
+          "bytes": 2804,
+          "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/strl_test_v118.dta": {
+          "bytes": 2804,
+          "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/synthetic_v105.dta": {
+          "bytes": 543,
+          "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/synthetic_v108.dta": {
+          "bytes": 886,
+          "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/synthetic_v110.dta": {
+          "bytes": 1286,
+          "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/synthetic_v111.dta": {
+          "bytes": 1352,
+          "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/value_labels.dta": {
+          "bytes": 3162,
+          "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/value_labels_v115.dta": {
+          "bytes": 1054,
+          "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/value_labels_v117.dta": {
+          "bytes": 1549,
+          "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/value_labels_v118.dta": {
+          "bytes": 3162,
+          "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/wide.dta": {
+          "bytes": 86955,
+          "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/wide_v115.dta": {
+          "bytes": 33596,
+          "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174"
+        },
+        "${BATCH_LIBRARY}/dtatools/extdata/wide_v118.dta": {
+          "bytes": 86955,
+          "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c"
+        },
+        "${BATCH_LIBRARY}/dtatools/help/AnIndex": {
+          "bytes": 2862,
+          "sha256": "bf6dc5d4e2df4dc95032c794015ed10007ba254521b6d07c585e90bff200f2fa"
+        },
+        "${BATCH_LIBRARY}/dtatools/help/aliases.rds": {
+          "bytes": 873,
+          "sha256": "e915d37d1575964d6cee1953d2847c4aa836cc6c7039eebd55dea7c1003525a2"
+        },
+        "${BATCH_LIBRARY}/dtatools/help/dtatools.rdb": {
+          "bytes": 201306,
+          "sha256": "1104cd9d56fc183c2a9f9b4874fad503bfdf702ffbd112e080fe1a19fd50b70f"
+        },
+        "${BATCH_LIBRARY}/dtatools/help/dtatools.rdx": {
+          "bytes": 1052,
+          "sha256": "e7e75f81a214acdc7d4ae89e0d9ab49ddff5eb529f551ae61fb1f44a0851748a"
+        },
+        "${BATCH_LIBRARY}/dtatools/help/paths.rds": {
+          "bytes": 494,
+          "sha256": "a9a0c536300acc334098aeab18f2fedb7c302d2fe41e008c080b5c9d304377a5"
+        },
+        "${BATCH_LIBRARY}/dtatools/html/00Index.html": {
+          "bytes": 17354,
+          "sha256": "3a2a8910e520d439168e864d5539cfa60ec96b86a023c6e48a2a3d3b33517579"
+        },
+        "${BATCH_LIBRARY}/dtatools/html/R.css": {
+          "bytes": 2133,
+          "sha256": "3d290675266eebeba6efff07db879d699843c80bf428f9e71000e2fc6078f5db"
+        },
+        "${BATCH_LIBRARY}/dtatools/libs/dtatools.so": {
+          "bytes": 8647464,
+          "sha256": "32e7bb0c9fb4f9d0027f18bea751389018112da4178e0c12ed4908b414b8f0bb"
+        },
+        "${BATCH_LIBRARY}/dtatools/raven/nse.toml": {
+          "bytes": 6158,
+          "sha256": "270d6d6f090872c9f9ccf8dac6475e6f6194b4881e3910fc5dd5876509866b02"
+        },
+        "${PLAN_DIRECTORY}/final.json": {
+          "bytes": 1195,
+          "sha256": "be26adbebc31130ccd61a87d62b23691289d73a38b9b2e4e9ad67197b0c1196a"
+        },
+        "${STOCK_LIBRARY}/dtatools/DESCRIPTION": {
+          "bytes": 2144,
+          "sha256": "55cae837fc016c23f9dd3fdb674f31e43c41b0eb0010933d91821bb590b965e5"
+        },
+        "${STOCK_LIBRARY}/dtatools/INDEX": {
+          "bytes": 2725,
+          "sha256": "40d3ed83999e2fbd0bc9d65b8346dbc0998df32be1a1d77b5771268dd348768d"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/Rd.rds": {
+          "bytes": 1919,
+          "sha256": "918e609494e3a2f44892257808aca457c42ca0b07d4612f0dc9936f855e5d788"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/features.rds": {
+          "bytes": 123,
+          "sha256": "b4f074bc0f45cfe56d976c0d67a1453067f4b34693828ed02d674a6641b3e332"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/hsearch.rds": {
+          "bytes": 1826,
+          "sha256": "c503dcdb0da4bd4bd15c292cf3ace0cb5806c0279da0ce9fb9ff05469e61adb4"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/links.rds": {
+          "bytes": 1037,
+          "sha256": "aa6d02be5c3c9613b12f20459947425de253eb8ece8d7922d635488860545da7"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/nsInfo.rds": {
+          "bytes": 1916,
+          "sha256": "98a4771d242cc5219bb0bc8aef870c9c53a2d51d83bb315e9020b0a4a65a30a2"
+        },
+        "${STOCK_LIBRARY}/dtatools/Meta/package.rds": {
+          "bytes": 1760,
+          "sha256": "ab8a2abcb39412ee44e4a861c4d6de9ea7e0a1a6f2e234a3125f2ca3ec4e8d6c"
+        },
+        "${STOCK_LIBRARY}/dtatools/NAMESPACE": {
+          "bytes": 9871,
+          "sha256": "396afe2241aee46d3b5f8b0b99587655433f5fd9c1767e1e6d800ab054f77667"
+        },
+        "${STOCK_LIBRARY}/dtatools/NEWS.md": {
+          "bytes": 3118,
+          "sha256": "7f0d87f1617cdf7ca851d3d041d3c6cd973bfa930c9ac209ed1e027782ecc78b"
+        },
+        "${STOCK_LIBRARY}/dtatools/NOTICE": {
+          "bytes": 46665,
+          "sha256": "ac052a64daf4f8373bf4b8a88df50d8d59c42939702f335f5e9e35c98d6854aa"
+        },
+        "${STOCK_LIBRARY}/dtatools/R/dtatools": {
+          "bytes": 1058,
+          "sha256": "570ca456b280cdeb201ef5ebdf22dc8f80092e2c0c68e33c7f73340e420f3759"
+        },
+        "${STOCK_LIBRARY}/dtatools/R/dtatools.rdb": {
+          "bytes": 1093522,
+          "sha256": "43cbc4c92f19dfdef35d9ea950ad0402b659ef63a4c6094dd1239fc34fdd10e4"
+        },
+        "${STOCK_LIBRARY}/dtatools/R/dtatools.rdx": {
+          "bytes": 14087,
+          "sha256": "bb9a2e48c57412b49f37d9d274cb83ef7833d6462f1384137f4a2542064d052d"
+        },
+        "${STOCK_LIBRARY}/dtatools/README.md": {
+          "bytes": 52034,
+          "sha256": "ea3fa3177fa219c85c562c92ef83e1d75a37f94b74f52e4e704ad436ea84eb4e"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/all_types.dta": {
+          "bytes": 6213,
+          "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/all_types_v115.dta": {
+          "bytes": 1729,
+          "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/all_types_v117.dta": {
+          "bytes": 2668,
+          "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/all_types_v118.dta": {
+          "bytes": 6213,
+          "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/auto_v115.dta": {
+          "bytes": 6107,
+          "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/auto_v117.dta": {
+          "bytes": 6616,
+          "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/auto_v118.dta": {
+          "bytes": 12765,
+          "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_labels_stata18.csv": {
+          "bytes": 181,
+          "sha256": "b975014e8781940c3287a3b828ed463f9d72977d698545bd0b9ea210145aae8a"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_number_labels_stata18.csv": {
+          "bytes": 2109,
+          "sha256": "a5e5f84cda2cfbc60f32f8875a7f8c6cc3eac2c8f377fd4a52478eff6171983d"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_number_labels_stata18.dta": {
+          "bytes": 5283,
+          "sha256": "6e371ee3c1776de3a1ea1286ea5a672aad555ed6c558a7a4c327937ab22cb6e3"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_precision_stata18.csv": {
+          "bytes": 2445,
+          "sha256": "b3ca1b3418846a31209c4c23a821a401608cb5b810f28307be6fead317ed1620"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_stata18.csv": {
+          "bytes": 782,
+          "sha256": "d849046e85fb6d89c888a83b4fc9c3b9851b1cb5aa37bdb414f7d30234eb64b6"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/egen_unicode_names_stata18.dta": {
+          "bytes": 10273,
+          "sha256": "39607bab69754acd09625613957e10ea693456e7e4de7e04bdee23c6fcfa7426"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/empty.dta": {
+          "bytes": 2475,
+          "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/empty_v115.dta": {
+          "bytes": 713,
+          "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/empty_v118.dta": {
+          "bytes": 2475,
+          "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/missing_values.dta": {
+          "bytes": 4325,
+          "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/missing_values_v115.dta": {
+          "bytes": 1681,
+          "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/missing_values_v118.dta": {
+          "bytes": 4325,
+          "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/strl_test.dta": {
+          "bytes": 2804,
+          "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/strl_test_v118.dta": {
+          "bytes": 2804,
+          "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/synthetic_v105.dta": {
+          "bytes": 543,
+          "sha256": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/synthetic_v108.dta": {
+          "bytes": 886,
+          "sha256": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/synthetic_v110.dta": {
+          "bytes": 1286,
+          "sha256": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/synthetic_v111.dta": {
+          "bytes": 1352,
+          "sha256": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/value_labels.dta": {
+          "bytes": 3162,
+          "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/value_labels_v115.dta": {
+          "bytes": 1054,
+          "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/value_labels_v117.dta": {
+          "bytes": 1549,
+          "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/value_labels_v118.dta": {
+          "bytes": 3162,
+          "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/wide.dta": {
+          "bytes": 86955,
+          "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/wide_v115.dta": {
+          "bytes": 33596,
+          "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174"
+        },
+        "${STOCK_LIBRARY}/dtatools/extdata/wide_v118.dta": {
+          "bytes": 86955,
+          "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c"
+        },
+        "${STOCK_LIBRARY}/dtatools/help/AnIndex": {
+          "bytes": 2862,
+          "sha256": "bf6dc5d4e2df4dc95032c794015ed10007ba254521b6d07c585e90bff200f2fa"
+        },
+        "${STOCK_LIBRARY}/dtatools/help/aliases.rds": {
+          "bytes": 873,
+          "sha256": "e915d37d1575964d6cee1953d2847c4aa836cc6c7039eebd55dea7c1003525a2"
+        },
+        "${STOCK_LIBRARY}/dtatools/help/dtatools.rdb": {
+          "bytes": 200923,
+          "sha256": "da899abcd6048ffa9c5af3667dc59ce10738cb66941243da0a8dd394e5a3bfdc"
+        },
+        "${STOCK_LIBRARY}/dtatools/help/dtatools.rdx": {
+          "bytes": 1049,
+          "sha256": "5f7f27c28c14ab733da57f74d282b1da488297408d208abbdb5fe1ab4044d44d"
+        },
+        "${STOCK_LIBRARY}/dtatools/help/paths.rds": {
+          "bytes": 492,
+          "sha256": "18a265c59e3791d6a89a2469c06e6a395a47d76f6ac203ca996a9446d3f08018"
+        },
+        "${STOCK_LIBRARY}/dtatools/html/00Index.html": {
+          "bytes": 17354,
+          "sha256": "3a2a8910e520d439168e864d5539cfa60ec96b86a023c6e48a2a3d3b33517579"
+        },
+        "${STOCK_LIBRARY}/dtatools/html/R.css": {
+          "bytes": 2133,
+          "sha256": "3d290675266eebeba6efff07db879d699843c80bf428f9e71000e2fc6078f5db"
+        },
+        "${STOCK_LIBRARY}/dtatools/libs/dtatools.so": {
+          "bytes": 8650120,
+          "sha256": "9d23586db7912f659a4ec76262720a846b0e835ca2dae61f5cf9838e6b1b7d51"
+        },
+        "${STOCK_LIBRARY}/dtatools/raven/nse.toml": {
+          "bytes": 6158,
+          "sha256": "270d6d6f090872c9f9ccf8dac6475e6f6194b4881e3910fc5dd5876509866b02"
+        }
+      },
+      "original_private_records": {
+        "jobs.jsonl": {
+          "bytes": 45245,
+          "sha256": "013d1990abc0cc536d435f8adce3ddd7797de3b2ed849b37aab96c2e1d92a124"
+        },
+        "binding.json": {
+          "bytes": 22949,
+          "sha256": "70f1aa7931e1726f4b9474491219cf836a738237530f1891f54d339e60a087ba"
+        },
+        "plan.json": {
+          "bytes": 1195,
+          "sha256": "be26adbebc31130ccd61a87d62b23691289d73a38b9b2e4e9ad67197b0c1196a"
+        }
+      },
+      "published_csvs": {
+        "final-observations.csv": {
+          "bytes": 4670,
+          "sha256": "a0379e2a5c83558a05ac494367465e2093c6dbf2c1b41a4f9cfbe03731b8249c"
+        },
+        "final-summary.csv": {
+          "bytes": 562,
+          "sha256": "00892a6850691f2afed5d10f3cc4825d5ad3adf803d16e61ed620f2cebd3c4e7"
+        }
+      },
+      "effective_defaults": {
+        "reads_per_process": 1,
+        "threads": 0,
+        "seed": 20260912,
+        "order": "alternate"
+      },
+      "runner_binding": "Runner and plan are included in this phase binding."
+    }
+  },
+  "build_records": {
+    "stock": {
+      "original_private_log_identity": {
+        "bytes": 856,
+        "sha256": "a24eb8d60f54630e16f90608e17375cf3c056fc4714cf4b436c956fee32d35d2"
+      },
+      "excerpt": [
+        {
+          "line_number": 1,
+          "text": "* installing *source* package \u2018dtatools\u2019 ..."
+        },
+        {
+          "line_number": 2,
+          "text": "** this is package \u2018dtatools\u2019 version \u20180.9.0\u2019"
+        },
+        {
+          "line_number": 3,
+          "text": "** using staged installation"
+        },
+        {
+          "line_number": 4,
+          "text": "rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew)"
+        },
+        {
+          "line_number": 5,
+          "text": "** libs"
+        },
+        {
+          "line_number": 6,
+          "text": "using C compiler: \u2018Apple clang version 21.0.0 (clang-2100.1.1.101)\u2019"
+        },
+        {
+          "line_number": 7,
+          "text": "using SDK: \u2018MacOSX26.5.sdk\u2019"
+        },
+        {
+          "line_number": 8,
+          "text": "make: `dtatools.so' is up to date."
+        },
+        {
+          "line_number": 9,
+          "text": "installing to ${STOCK_LIBRARY}/00LOCK-dtatools/00new/dtatools/libs"
+        }
+      ],
+      "interpretation": "The installation reused an up-to-date native library; these log compiler labels do not prove which compiler built that binary."
+    },
+    "instrumented": {
+      "original_private_log_identity": {
+        "bytes": 11108,
+        "sha256": "4339fe8280cf2959c6031a95c7cf0f4244ad55c08f0f9ce1e351285237399839"
+      },
+      "excerpt": [
+        {
+          "line_number": 1,
+          "text": "* installing *source* package \u2018dtatools\u2019 ..."
+        },
+        {
+          "line_number": 2,
+          "text": "** this is package \u2018dtatools\u2019 version \u20180.9.0\u2019"
+        },
+        {
+          "line_number": 3,
+          "text": "** using staged installation"
+        },
+        {
+          "line_number": 4,
+          "text": "rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew)"
+        },
+        {
+          "line_number": 5,
+          "text": "** libs"
+        },
+        {
+          "line_number": 6,
+          "text": "using C compiler: \u2018Apple clang version 21.0.0 (clang-2100.1.1.101)\u2019"
+        },
+        {
+          "line_number": 7,
+          "text": "using SDK: \u2018MacOSX26.5.sdk\u2019"
+        },
+        {
+          "line_number": 8,
+          "text": "clang -std=gnu23 -I\"/opt/homebrew/Cellar/r/4.6.1/lib/R/include\" -DNDEBUG   -I/opt/homebrew/opt/gettext/include -I/opt/homebrew/opt/readline/include -I/opt/homebrew/opt/xz/include -I/opt/homebrew/include -I/opt/homebrew/include -DTBB_INTERFACE_NEW=1    -fPIC  -g -O2  -c init.c -o init.o"
+        },
+        {
+          "line_number": 9,
+          "text": "CARGO_TARGET_DIR=rust/target/f562ce3ca56e57f9a196acf2f6e9cb55 cargo build --manifest-path rust/Cargo.toml --config rust/cargo-config.toml  --release --locked --offline"
+        }
+      ],
+      "interpretation": "The log records Rust 1.98.0, Apple clang 21.0.0, SDK 26.5 and the release locked offline cargo build command."
+    },
+    "batch": {
+      "original_private_log_identity": {
+        "bytes": 10827,
+        "sha256": "a60ae99051db507a4b00fd4ede5d6fbfb8c1cad425e78d94edff69722f482cea"
+      },
+      "excerpt": [
+        {
+          "line_number": 1,
+          "text": "* installing *source* package \u2018dtatools\u2019 ..."
+        },
+        {
+          "line_number": 2,
+          "text": "** this is package \u2018dtatools\u2019 version \u20180.9.0\u2019"
+        },
+        {
+          "line_number": 3,
+          "text": "** using staged installation"
+        },
+        {
+          "line_number": 4,
+          "text": "rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew)"
+        },
+        {
+          "line_number": 5,
+          "text": "** libs"
+        },
+        {
+          "line_number": 6,
+          "text": "using C compiler: \u2018Apple clang version 21.0.0 (clang-2100.1.1.101)\u2019"
+        },
+        {
+          "line_number": 7,
+          "text": "using SDK: \u2018MacOSX26.5.sdk\u2019"
+        },
+        {
+          "line_number": 8,
+          "text": "CARGO_TARGET_DIR=rust/target/424394863cac992a0d40ba0f5e7d13a2 cargo build --manifest-path rust/Cargo.toml --config rust/cargo-config.toml  --release --locked --offline"
+        },
+        {
+          "line_number": 9,
+          "text": "   Compiling proc-macro2 v1.0.107"
+        }
+      ],
+      "interpretation": "The log records Rust 1.98.0, Apple clang 21.0.0, SDK 26.5 and the release locked offline cargo build command."
+    }
+  },
+  "published_provenance_identity": {
+    "bytes": 26664,
+    "sha256": "4a6fab37584daa1f0b6995be3e0bb96267a91ccb7264bc074de1972ba9788ff2"
+  },
+  "published_signatures_identity": {
+    "bytes": 963,
+    "sha256": "ee468d64379d75f0e3c6c297955a9ca5ea4025ec4cf789f5414b978ec2f9366c"
+  },
+  "historical_runner": {
+    "commit": "53e388f19707620ad24ce215b3862da7c07c9c47",
+    "path": "benchmarks/dta-reader-performance/run.py",
+    "bytes": 4903,
+    "sha256": "8e02a6bc2f846e694da6cfab928f5aa59abfbd5d362c11c92da7a290bed71e50",
+    "note": "The current runner adds mandatory separate qualification and is not the runner that produced these historical observations."
+  }
+}

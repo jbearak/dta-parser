@@ -38,18 +38,43 @@ elapsed clock. The jobs also retain whole-process CPU time and peak RSS.
 Startup, qualification, warmups and GC outside the read call belong only to
 those process measurements. Retained comparator CPU values are unavailable.
 
-The main phases preserve the prior corpus, warm DTA/Arrow, projection and
-India protocols. The warm reads use one warmup, then 11 measured reads for each
-synthetic input and five for India, with full GC between reads. Both Arrow
-verification settings run. Before timing, DTA/Arrow values and shared metadata
-must match after excluding value-label names, declared string widths and notes
-absent from the retained August Arrow files. Projection uses 11 `any_of()` and
+The corpus, projection and fresh India protocols are unchanged. New warm-read
+runs use six cohorts, covering all six orders of DTA, verified Arrow and
+unverified Arrow for every input. Case order rotates across cohorts. Each reader
+therefore occupies each position twice per case, and each pair runs in either
+order equally often. Every worker still performs one warmup, then 11 measured
+reads for a synthetic input or five for India, with full GC between reads.
+The complete warm phase has 54 worker processes and 486 timed observations.
+All three DTA/Arrow equality checks finish before any warm worker starts;
+qualification I/O does not occur between timed warm cases. Those checks exclude
+value-label names, declared string widths and notes absent from the retained
+August Arrow files. Projection uses 11 `any_of()` and
 11 `all_of()` reads after warmups. The corpus attempts all 1,823 inputs and requires the same
 1,812 comparison files to succeed with matching dimensions. Its comparator
 rows are copied unchanged. Input sizes and modification times must match the
 original corpus inventory before and after the run. The fresh India timer still has no added pre-read
 GC. The projection control keeps ten reads per configuration and both selection
 methods, now combining automatic mode and all six explicit limits in one run.
+
+Warm observations retain the cohort, case position, method position, scheduled
+position and actual timed execution position. The latter comes from the attempt
+history, including retries. Pooled summaries and separate per-cohort summaries
+are both written. Dated reports retain their original fixed-order observations;
+the new balanced cohort is separate evidence. To publish just that cohort
+without rerunning an older corpus, use:
+
+```sh
+python3 benchmarks/reader-refresh/summarize.py "$OLD_CORPUS" "$OUT/reads" "$BALANCED_PUBLIC_OUT" --data-root "$DATA_ROOT" --warm-only
+```
+
+The corpus argument is ignored in this mode. A reads-phase retry repeats all
+equality checks and the complete balanced schedule. Each child attempt keeps
+its own immutable log, and `jobs.jsonl` retains successful and failed attempts.
+Publication requires the latest attempt of every required key to succeed;
+an earlier failed qualification does not invalidate a later successful retry.
+Malformed histories, incomplete cohorts, changed order records, changed logs
+and final failed attempts are rejected. Run the focused driver tests without
+loading readers using `python3 benchmarks/reader-refresh/test_drivers.py`.
 
 Supplemental coverage reuses all 15 direct-dibble fixtures and compares current
 snapshots with the retained candidate snapshots before timing. It preserves

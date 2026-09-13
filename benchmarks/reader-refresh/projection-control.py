@@ -5,7 +5,7 @@ import csv
 import json
 from pathlib import Path
 import statistics
-from driver_common import add_binding_arguments, child_environment, run_child, sha, source_binding
+from driver_common import add_binding_arguments, child_environment, require, run_child, sha, source_binding
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument("library",type=Path)
 parser.add_argument("output",type=Path)
@@ -22,6 +22,7 @@ directory=args.data_root.resolve()/"projection-introspection/run-india-20260828T
 paths=[directory/"input.dta",directory/"present.txt",directory/"union.txt"]
 scripts=[Path(__file__),base/"driver_common.py",base/"projection-threads.R",base/"workers/benchmark-common.R"]
 def binding():
+    """Bind the projection input, selection lists, workers and installation."""
     value=source_binding(source,args.library,args.build_record,scripts)
     value["inputs"]={p.name:dict(bytes=p.stat().st_size,sha256=sha(p)) for p in paths}
     value["threads"]=args.threads;value["repetitions"]=args.repetitions
@@ -30,12 +31,12 @@ before=binding()
 (args.output/"binding.json").write_text(json.dumps(before,indent=2)+"\n")
 run_child(args.output,"control",base/"projection-threads.R",
           [*paths,args.repetitions,args.output/"projection",args.threads],child_environment(args.library))
-assert binding()==before
+require(binding() == before, "projection bindings changed during measurement")
 with (args.output/"projection-observations.csv").open() as stream: observations=list(csv.DictReader(stream))
 summary=[]
 for threads,method in sorted(set((int(r["threads"]),r["method"]) for r in observations)):
     rows=[r for r in observations if int(r["threads"])==threads and r["method"]==method]
-    assert len(rows)==args.repetitions
+    require(len(rows) == args.repetitions, "projection repetition count differs")
     result=dict(threads=threads,method=method,iterations=len(rows))
     for field in ("elapsed_seconds","user_cpu_seconds","system_cpu_seconds","cpu_seconds"):
         values=[float(r[field]) for r in rows]

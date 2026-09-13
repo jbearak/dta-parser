@@ -3,7 +3,13 @@
 The target is the India 2021 women's file, 724,115 rows and 5,972 columns.
 The preceding refresh measured fresh-process read_dta at 1.928 seconds and
 read_arrow at 0.696 seconds. Its warm medians were 1.547 and 0.398 seconds.
-The new four-tool baseline is ten fresh processes per tool with rotated order.
+The separate four-tool baseline is ten fresh processes per tool with rotated
+order: `read_dta()`, `read_arrow()`, haven and Stata `use`. Its results are
+described in [the four-tool comparison](README.md#relation-to-the-four-tool-comparison).
+The later [final experiment plan](results-2026-09-12/final-plan-template.json)
+compares three `read_dta()` variants: stock, batch fill at the old automatic
+eight-worker limit, and batch fill with an explicit 16-worker request. That
+plan does not repeat the four-tool baseline.
 
 This is a performance investigation, not a correctness failure with an existing
 latency bound. The feedback loop is the same-file before/after timing worker,

@@ -139,5 +139,63 @@
     "jobs.jsonl": "6d6d743682462843b46fb0fc87ce2caa5dcc26b6cb2ea393da25c77b42dd48fa"
   },
   "private_read_jobs_sha256": "9a760c5049433bf18231ffd6d914036f38adb62554fdd22f0f68031645fa069d",
-  "summarizer_sha256": "05133f964621fa531e33647445262af1423e5c27ea0acf08c113e11b416a9541"
+  "summarizer_sha256": "05133f964621fa531e33647445262af1423e5c27ea0acf08c113e11b416a9541",
+  "published_artifacts": [
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/corpus-summary.csv",
+      "bytes": 2408,
+      "sha256": "e7d575304cd3ae1a035702cebbc8c2d480234dac39fc80effd721b0ce36be588"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/projection-observations.csv",
+      "bytes": 4923,
+      "sha256": "57fab0afbf78f1fd9c263066466326a9f3ef5181c0b1df56960d1d3082394d83"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/projection-summary.csv",
+      "bytes": 990,
+      "sha256": "d5ddbd09c3dfd7a4624b427af1eacc9ceb99c4bcaab9c51ebf0700e2e5e192d9"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/projection-thread-sweep-observations.csv",
+      "bytes": 5280,
+      "sha256": "44ebdb8f2f2d45b6ed4723ea4589e02b3b8483114f9dd6809cbaf2c56b60d4b4"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/projection-thread-sweep-summary.csv",
+      "bytes": 1061,
+      "sha256": "de4349a43492fc2f43e8caf3f8ec3fda2fb516a441794a9842cf5b1490ed1917"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/projection-threads-observations.csv",
+      "bytes": 1585,
+      "sha256": "0bd1051f8aa74f6ee1a759d44c4789c9cc7eeabdad08aad72a7748318f1e473c"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/projection-threads-summary.csv",
+      "bytes": 357,
+      "sha256": "871834876a19bbdc6beaaba44dcaa50892fa81b6cbf026115fb3b50a1cc1e49d"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/read-inputs.csv",
+      "bytes": 521,
+      "sha256": "0cf7b2119a725376058e85bf2c0eac9efc5443a9df8c278f5c82642c96473a81"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/spot-comparison.csv",
+      "bytes": 433,
+      "sha256": "a5c58a8598ac4d7a9b692391c9ca4ef2ad688abf8c123c85cb806484b54902cf"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/warm-read-observations.csv",
+      "bytes": 3264,
+      "sha256": "3bef2df39e6d22ee57533a5beb344fcb7674dfbff7a84b5b7a22dd60097f6e42"
+    },
+    {
+      "path": "benchmarks/reader-refresh/results-2026-09-12-auto/warm-read-summary.csv",
+      "bytes": 544,
+      "sha256": "1026dd4b7072ee395c1d61d4a8c8e3a9ace9d17aa1e3aaceb4703b7a915aade1"
+    }
+  ],
+  "published_artifact_note": "Publication bindings added during PR review. The recorded observations and original measurement bindings are unchanged."
 }
