@@ -100,7 +100,7 @@ optimization and the checksums flag. Its
 original read and conversion results. Current fresh-process India medians are in
 the [local-reader report](reader-startup/results-2026-09-13/README.md), and the
 [adaptive-default refresh](reader-refresh/results-2026-09-12-defaults/README.md)
-reports synthetic measurements alongside write and conversion benchmarks.
+reports synthetic reader measurements.
 
 The report-only [`dta-merge/`](dta-merge/) benchmark times one `dta_merge()`
 across every x/y input-source combination — preloaded frames and `.dta` and

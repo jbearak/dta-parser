@@ -38,7 +38,7 @@ No driver invokes haven or Stata. The India driver now requires
 Read-call CPU clocks are user plus system time over the same interval as the
 elapsed clock. The jobs also retain whole-process CPU time and peak RSS.
 Startup, qualification, warmups and GC outside the read call belong only to
-those process measurements. comparator CPU values are unavailable.
+those process measurements. Comparator CPU values are unavailable.
 
 The corpus, projection and fresh India protocols are unchanged. New warm-read
 runs use six cohorts, covering all six orders of DTA, verified Arrow and

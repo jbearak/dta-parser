@@ -177,7 +177,7 @@ column assignment remains. The instrumented baseline differs slightly from
 stock; the final ten-run comparison above uses a clean candidate and a fresh
 stock control to avoid attributing that difference to batching.
 
-A second three-run sweep batching and changed one setting at a time:
+A second three-run sweep used batching and changed one setting at a time:
 
 | Worker count, 8 MiB buffer | 2 | 4 | 8 | 12 | 16 |
 | --- | ---: | ---: | ---: | ---: | ---: |

@@ -88,7 +88,7 @@ only the 54 balanced warm workers contribute to this table. The other children
 are three equality qualifications, three fresh spot checks and four projections.
 
 Full conformance passed on `af0dd7ce` after expanding all numeric missing-code
-coverage. R CMD check the same three warnings and two notes described
+coverage. R CMD check reported the same three warnings and two notes described
 in the complete report. The feature-enabled compact-output Rust library test
 run passed all 123 tests. Benchmark validation passed 20 refresh-driver tests,
 ten experiment-runner tests and three installer-boundary tests, including

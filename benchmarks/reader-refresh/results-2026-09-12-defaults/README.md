@@ -178,7 +178,7 @@ that automatic mode is optimal on every machine or dataset.
 [summary](projection-control-summary.csv), [bindings](projection-control-provenance.json),
 and [signature/session evidence](projection-worker-provenance.json).
 
-## direct-dibble fixtures
+## Direct-dibble fixtures
 
 All 15 input hashes match the original fixture record, and each current snapshot
 matches its candidate snapshot before timing. The original protocol

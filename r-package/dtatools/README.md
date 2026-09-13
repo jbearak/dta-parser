@@ -57,7 +57,7 @@ See the [naming migration](../../docs/dta-naming.md) for class checks and saved 
 Readers return dibbles by default. A dibble is a tibble that preserves Stata
 storage types and metadata as you work with the data. Use `dibble()` to create
 one, `as_dibble()` to convert a data frame, and `is_dibble()` to check its type.
-Dplyr verbs and ordinary table operations return dibbles when given a dibble.
+Use dplyr verbs and ordinary R table operations with dibbles.
 
 Choose a different container for one read or for the session:
 
@@ -95,9 +95,9 @@ default dibble output and automatic thread selection.
 
 | Workload | dtatools | haven | Difference |
 | --- | ---: | ---: | ---: |
-| 641 DHS files, 46.9 GB total | 39.5 seconds | 2,727 seconds | 69.0 times faster for the complete batch |
-| 949 MICS files, 3.7 GB total | 6.6 seconds | 216.7 seconds | 32.6 times faster for the complete batch |
-| 222 NSFG files, 5.8 GB total | 8.9 seconds | 234.6 seconds | 26.3 times faster for the complete batch |
+| 641 DHS files, 46.9 GB total | 39.4 seconds | 2,727 seconds | 69.1 times faster for the complete batch |
+| 949 MICS files, 3.7 GB total | 6.7 seconds | 216.7 seconds | 32.6 times faster for the complete batch |
+| 222 NSFG files, 5.8 GB total | 9.0 seconds | 234.6 seconds | 26.2 times faster for the complete batch |
 
 `dtatools` was faster on all 1,812 comparable files. Small files benefit too:
 a 350-byte dataset took 2 milliseconds, compared with haven's 15 milliseconds.
@@ -113,8 +113,8 @@ the benchmark compares ten reads per tool:
 
 | Reader | Median wall time | Range | Median CPU time | Median peak RSS |
 | --- | ---: | ---: | ---: | ---: |
-| `dtatools::read_dta()` | 0.7560 seconds | 0.754–0.771 seconds | 5.4230 seconds | 5.231 GB |
-| `dtatools::read_arrow()` | 0.5610 seconds | 0.557–0.585 seconds | 4.5850 seconds | 10.274 GB |
+| `dtatools::read_dta()` | 0.7520 seconds | 0.748–0.764 seconds | 5.3480 seconds | 5.231 GB |
+| `dtatools::read_arrow()` | 0.5580 seconds | 0.554–0.562 seconds | 4.5260 seconds | 10.275 GB |
 | `haven::read_dta()` | 488.204 seconds | 413.645–529.616 seconds | Unavailable | 35.107 GB |
 | Stata native `use` | 0.5015 seconds | 0.468–0.503 seconds | Unavailable | 5.256 GB |
 
