@@ -23,7 +23,7 @@ options(repos = c(
 
 ## Available packages
 
-The package requires R >= 4.6.0. v0.8.0 includes source and binaries built with
+The package requires R >= 4.6.0. v0.9.0 includes source and binaries built with
 R 4.6.1. R selects Windows x86_64 and Apple Silicon macOS 14 or later binaries from the
 repository's R 4.6 directories. Intel Macs and Linux use source by default.
 Source installation needs Cargo and Rust >= 1.98.0, plus the platform's R build
@@ -72,6 +72,6 @@ access token or separate hosting repository. The npm workflow remains separate.
 To generate the repository locally with downloaded release assets:
 
 ```sh
-gh release download v0.8.0 --pattern 'dtatools_*' --dir release-assets
-Rscript --vanilla scripts/build-r-repository.R release-assets public 0.8.0
+gh release download v0.9.0 --pattern 'dtatools_*' --dir release-assets
+Rscript --vanilla scripts/build-r-repository.R release-assets public 0.9.0
 ```

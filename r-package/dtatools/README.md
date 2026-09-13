@@ -18,9 +18,7 @@ Stata storage explicitly, and also use ordinary R columns such as logicals
 and factors.
 
 Dibbles support base R and dplyr syntax, plus mutation by reference through
-`:=` and helpers such as `gen()` and `repl()`. Ordinary base R assignment and
-dplyr operations return updated objects; the explicit mutation operations
-update the supplied dataset in place.
+`:=` and helpers such as `gen()` and `repl()`.
 
 ## Installation
 
@@ -36,11 +34,19 @@ install.packages("dtatools", repos = c(
 Dplyr is optional. Install dplyr 1.2.1 or newer to use its verbs with dibbles.
 Data-table output requires data.table 1.18.2.1 or newer.
 
-Requires R 4.6 or later. Windows x86_64 and Apple Silicon macOS 14 or later
-have R 4.6 binaries. Other systems install from source and need Rust.
-See [repository details](../../docs/r-package-repository.md) for setup and updates.
+Requires R 4.6 or later. The `install.packages()` command above selects R 4.6
+binaries on Windows x86_64 and Apple Silicon macOS 14 or later. On Linux and
+Intel Macs, that command installs from source and requires Rust.
 
-Published GitHub Releases contain compiled packages for Windows x86_64, Linux x86_64, and macOS ARM64. Open the [latest release](https://github.com/jbearak/dta-parser/releases/latest), choose the asset matching the R version, operating system, and architecture, and copy its URL:
+Precompiled Linux x86_64 packages are available as direct downloads from
+[GitHub Releases](https://github.com/jbearak/dta-parser/releases/latest), alongside
+the Windows x86_64 and macOS ARM64 packages. The Linux archive is built on
+Ubuntu and requires compatible R and system libraries. See
+[repository details](../../docs/r-package-repository.md#available-packages)
+for installation guidance.
+
+To install a release archive directly, choose the asset matching your R
+version, operating system, and architecture, and copy its URL:
 
 ```r
 pak::pkg_install("url::<asset-url>")
@@ -655,8 +661,15 @@ confirm_var(survey, "missing", on_failure = "false")
 `gen()` appends a variable and `repl()`
 replaces selected values, both by reference. The target and its values are
 one tagged pair, or the positional pair that reads like the Stata line.
+
+For ordinary data frames and tibbles, we recommend base R assignment or dplyr
+verbs, assigning the updated result. Choose a dibble or data.table when you
+want to work primarily by reference.
+
 This example reserves three spare slots before adding columns to a data frame,
-so the additions can keep using the same table:
+so the additions can keep using the same table. Fresh dibbles are prepared
+automatically with default settings and do not need this `reserve_columns()`
+step:
 
 ```r
 survey <- reserve_columns(data.frame(

@@ -92,8 +92,9 @@ for Stata probes and identifier migration guidance. A value
 that already carries storage, from a \verb{dta_*()} call or Stata-typed
 arithmetic, keeps that storage. Ordinary replacement operators on a dibble
 return a changed copy for assignment; other bindings keep the original.
-Explicit mutation through \verb{:=} or \code{\link[=replace_values]{replace_values()}} updates the supplied
-dataset in place. Row or cell assignment, as in
+Explicit mutation through \verb{:=} or
+\code{\link[=replace_values]{replace_values()}} updates the supplied dataset
+in place. Row or cell assignment, as in
 \code{data[1, "x"] <- 1000L}, promotes the same way, and a \verb{:=} whose value
 declares wider storage than the column widens the column to it, as
 \code{data[1, x := dta_double(1)]} makes \code{x} a \code{double}.
