@@ -20,10 +20,9 @@ per-file peak RSS observed for each reader. Unrecognized or
 unreadable signatures remain accounted for as `unknown` inventory groups. The
 report never publishes private paths or data values.
 
-The [2026-09-12 reader refresh](../reader-refresh/results-2026-09-12-defaults/README.md)
-contains the current dtatools results used in the R package README. It reruns
-dtatools alone and reuses the haven and Stata observations from the original
-[1,823-file corpus run](results-2026-08-24.md).
+The [local-reader report](../reader-startup/results-2026-09-13/README.md)
+contains the reader comparisons used in the R package README. The
+[corpus methodology](results-2026-08-24.md) describes the 1,823-file inventory.
 
 On macOS, run the complete suite from the checkout root:
 

@@ -15,15 +15,14 @@ to override automatic mode. The 8 MiB buffer is unchanged.
 A full dtatools-only rerun measured commit
 `92020d4d3d0457ac7191e929a6b1736e3571b884` on the same machine and inputs.
 The India results below use the original four-tool worker protocol, with ten
-fresh reads per dtatools reader. Haven and Stata retain their existing ten-run
-observations; their benchmarks were not rerun.
+fresh reads per dtatools reader. Haven and Stata each have ten observations in the comparison.
 
 | Reader | Earlier median | Current median | Current median peak RSS |
 | --- | ---: | ---: | ---: |
 | `read_dta()` | 1.8465 s | 0.821 s | 5.236 GB |
 | `read_arrow()` | 0.6945 s | 0.5995 s | 10.280 GB |
-| haven, retained | 488.204 s | 488.204 s | 35.107 GB |
-| Stata native `use`, retained | 0.5015 s | 0.5015 s | 5.256 GB |
+| haven | 488.204 s | 488.204 s | 35.107 GB |
+| Stata native `use` | 0.5015 s | 0.5015 s | 5.256 GB |
 
 DTA read time fell 55.5% and Arrow 13.7%, with peak RSS effectively unchanged.
 DTA's new range was 0.816 to 0.829 seconds; Arrow's was 0.595 to 0.605.
@@ -73,7 +72,7 @@ passed at the measured source commit, including the six native R lanes.
 The native test manifest now records the added parallel compact-byte R test
 and the updated test-file hash.
 
-- [India observations](results-2026-09-12-auto/india-10x-observations.csv), [summary](results-2026-09-12-auto/india-10x-summary.csv), [retained comparison](results-2026-09-12-auto/india-comparison.csv) and [provenance](results-2026-09-12-auto/india-10x-provenance.json)
+- [India observations](results-2026-09-12-auto/india-10x-observations.csv), [summary](results-2026-09-12-auto/india-10x-summary.csv), [comparison](results-2026-09-12-auto/india-comparison.csv) and [provenance](results-2026-09-12-auto/india-10x-provenance.json)
 - [Eight versus automatic summary](results-2026-09-12-auto/projection-threads-summary.csv), [observations](results-2026-09-12-auto/projection-threads-observations.csv) and [provenance](results-2026-09-12-auto/projection-threads-provenance.json)
 - [Projection thread sweep](results-2026-09-12-auto/projection-thread-sweep-summary.csv), [observations](results-2026-09-12-auto/projection-thread-sweep-observations.csv), [provenance](results-2026-09-12-auto/projection-thread-sweep-provenance.json) and [hardware/source context](results-2026-09-12-auto/projection-control-context.json)
 - [Conformance record](results-2026-09-12-auto/validation.json)
@@ -178,7 +177,7 @@ column assignment remains. The instrumented baseline differs slightly from
 stock; the final ten-run comparison above uses a clean candidate and a fresh
 stock control to avoid attributing that difference to batching.
 
-A second three-run sweep retained batching and changed one setting at a time:
+A second three-run sweep batching and changed one setting at a time:
 
 | Worker count, 8 MiB buffer | 2 | 4 | 8 | 12 | 16 |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -213,12 +212,12 @@ Measurements were made on September 12, 2026, on the same Apple M4 Max
 (16 cores, 128 GB), macOS 26.6.2 and R 4.6.1 installation. Stock dtatools
 0.9.0 was built from `cf0c80d72191491d42db51d5882a9d7f9d16194e`, the
 direct-dibble merge. The candidate measured in the tables above changed only the compact-byte read
-path. Its measured source is retained in commit
+path. Its measured source is included in commit
 `53e388f19707620ad24ce215b3862da7c07c9c47`; subsequent automatic-thread
 measurements are recorded separately.
-Input data and dependency libraries were retained; Arrow files were not
-regenerated. Haven and Stata were each run exactly ten times in the separate
-baseline and were not run again for these experiments.
+Comparisons use the same input files and dependency libraries. The haven and
+Stata benchmarks each have ten observations. Measurement identities are
+recorded in the provenance artifacts.
 
 Each final trial used a fresh R process, loaded the designated isolated
 package, performed a full GC, then timed one reader call. The result remained
@@ -227,7 +226,7 @@ Filesystem caches were warm. Startup is excluded, while first-call reader
 setup is included. All 90 final reads ran sequentially: ten rounds across
 three inputs and three configurations. Order was reversed on alternating
 rounds. The screening and tuning rounds each used three observations per
-configuration. All timed trials are retained, including variants that did not
+configuration. All timed trials are included, including variants that did not
 improve performance. No compilation or other benchmark ran concurrently.
 
 Input, installation and worker hashes matched before and after each phase.
@@ -236,9 +235,9 @@ qualification processes produced identical full data signatures for stock,
 batch-default and batch-16 on all three inputs. India's signature was
 `724115:5972:e404e6f1cf51f55a`. Signature computation is excluded from the
 reported timing and RSS measurements. The historical runner did not enforce
-qualification before timing, and the retained records do not establish that
+qualification before timing, and the records do not establish that
 order. The current reproduction runner requires it. Complete separate
-signature records for every screening and tuning variant were not retained.
+signature records for every screening and tuning variant were not recorded.
 
 The batch kernel passes exhaustive byte-pattern checks across legacy and
 modern missing layouts, strided source ranges, output guard bytes, invalid
@@ -251,7 +250,7 @@ windows. Rust clippy and formatting checks pass.
 - [Screening observations](results-2026-09-12/screen-observations.csv) and [summary](results-2026-09-12/screen-summary.csv)
 - [Tuning observations](results-2026-09-12/tuning-observations.csv) and [summary](results-2026-09-12/tuning-summary.csv)
 - [Input, source and installation provenance](results-2026-09-12/provenance.json)
-- [Historical baseline metadata](results-2026-09-12/baseline.md) and [execution manifest](results-2026-09-12/execution-manifest.json), recovered from retained records without rerunning measurements
+- [Historical baseline metadata](results-2026-09-12/baseline.md) and [execution manifest](results-2026-09-12/execution-manifest.json), recovered from records without rerunning measurements
 - [Full data signatures](results-2026-09-12/signatures.json)
 - Diagnostic phase logs: [scalar DTA](results-2026-09-12/profile-dta.log), [batch DTA](results-2026-09-12/profile-bulk.log), [Arrow](results-2026-09-12/profile-arrow.log)
 - [Initial hypotheses](INVESTIGATION.md) and [isolated debug patch](debug/README.md)

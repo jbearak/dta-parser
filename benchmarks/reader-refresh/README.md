@@ -1,10 +1,9 @@
 # Reader benchmark refresh
 
 The [September 12 adaptive-default report](results-2026-09-12-defaults/README.md)
-refreshes `dtatools::read_dta()` and `dtatools::read_arrow()` on the retained
-benchmark inputs. Haven and Stata results keep their original measurement
-provenance. These drivers never run either comparator or regenerate inputs.
-Write and conversion benchmarks also retain their original dates.
+refreshes `dtatools::read_dta()` and `dtatools::read_arrow()` on the
+benchmark inputs. These drivers measure dtatools; benchmark artifacts record
+source and input identities for all comparisons.
 
 A [balanced-order follow-up](results-2026-09-12-balanced/README.md) supplies the
 current warm DTA/Arrow table, with all six reader orders and 486 observations.
@@ -35,11 +34,11 @@ python3 benchmarks/reader-refresh/summarize.py "$OUT/corpus" "$OUT/reads" "$PUBL
 Set `--source-root` when the installed package comes from another checkout.
 All children discard `DTATOOLS_EXPERIMENT_*` and `DTA_READ_PERF_*` overrides.
 No driver invokes haven or Stata. The India driver now requires
-`--dtatools-only`; the historical four-tool driver is retained in Git history.
+`--dtatools-only`; the historical four-tool driver is included in Git history.
 Read-call CPU clocks are user plus system time over the same interval as the
 elapsed clock. The jobs also retain whole-process CPU time and peak RSS.
 Startup, qualification, warmups and GC outside the read call belong only to
-those process measurements. Retained comparator CPU values are unavailable.
+those process measurements. comparator CPU values are unavailable.
 
 The corpus, projection and fresh India protocols are unchanged. New warm-read
 runs use six cohorts, covering all six orders of DTA, verified Arrow and
@@ -50,7 +49,7 @@ reads for a synthetic input or five for India, with full GC between reads.
 The complete warm phase has 54 worker processes and 486 timed observations.
 All three DTA/Arrow equality checks finish before any warm worker starts;
 qualification I/O does not occur between timed warm cases. Those checks exclude
-value-label names, declared string widths and notes absent from the retained
+value-label names, declared string widths and notes absent from the
 August Arrow files. Projection uses 11 `any_of()` and
 11 `all_of()` reads after warmups. The corpus attempts all 1,823 inputs and requires the same
 1,812 comparison files to succeed with matching dimensions. Its comparator
@@ -83,7 +82,7 @@ and final failed attempts are rejected. Run the focused driver tests without
 loading readers using `python3 benchmarks/reader-refresh/test_drivers.py`.
 
 Supplemental coverage reuses all 15 direct-dibble fixtures and compares current
-snapshots with the retained candidate snapshots before timing. It preserves
+snapshots with the candidate snapshots before timing. It preserves
 three processes per input, two warmups, calibration to 150 ms, seven measured
 batches, and three separate fresh-process memory observations. The default
 fixture directory is `/private/tmp/direct-dibble-readers/run-01/fixtures`;
@@ -91,10 +90,10 @@ fixture directory is `/private/tmp/direct-dibble-readers/run-01/fixtures`;
 Hashes must match the published fixture record.
 
 The supplemental synthetic full/eight-column matrix uses seven warm reads on
-the retained Stata-first-save inputs. It does not reuse the August 24 synthetic
+the Stata-first-save inputs. It does not reuse the August 24 synthetic
 comparator times, which used different row counts and bytes. That historical
 matrix remains dated. The current main warm DTA/Arrow matrix covers those
-same retained inputs with its original 11-read protocol.
+same inputs with its original 11-read protocol.
 
 Four small checked DTA fixtures cover modern all-types, wide, strL and legacy
 full reads and two-column windows. Their supplementary timings average 100

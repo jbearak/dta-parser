@@ -203,6 +203,19 @@ test_that("implicit read extensions retain file_ext semantics", {
     }
 })
 
+test_that("local readers ignore global filesystem helpers", {
+    expected <- read_dta(input_fixture(), n_max = 2)
+    arrow_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(arrow_path), add = TRUE)
+    save_arrow(expected, arrow_path)
+    rlang::local_bindings(
+        file_test = function(...) stop("global file_test must not be called"),
+        .env = globalenv()
+    )
+    expect_identical_table(read_dta(input_fixture(), n_max = 2), expected)
+    expect_identical_table(read_arrow(arrow_path), expected)
+})
+
 test_that("extensionless local reads resolve to the matching .dta file", {
     base <- tempfile(pattern = "dtatools-extensionless-")
     dta <- paste0(base, ".dta")

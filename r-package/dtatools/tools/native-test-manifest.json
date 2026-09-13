@@ -158,7 +158,7 @@
         },
         {
           "path": "tests/testthat/test-input-sources.R",
-          "sha256": "2ebedbf941e4241dce461f49b200ffb67a337f6fafd698e364e60de582a52cdb"
+          "sha256": "0c4027a61f44249a1e2205a48ef1ff872109801e1d5ab3100892c24cc25a3644"
         }
       ],
       "blocks": [
@@ -1214,6 +1214,14 @@
         {
           "file": "test-input-sources.R",
           "test": "compressed Arrow content retains source-adapter handling",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-input-sources.R",
+          "test": "local readers ignore global filesystem helpers",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,

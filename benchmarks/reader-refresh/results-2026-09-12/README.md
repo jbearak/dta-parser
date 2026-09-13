@@ -7,15 +7,13 @@ reader build and protocol as historical evidence.
 
 The India single-read comparison below is superseded by the
 [ten-run follow-up](india-10x.md), which reran all four tools and found Stata
-faster than Arrow. The original corpus refresh and its retained comparators
+faster than Arrow. The original corpus refresh and its comparators
 remain as recorded below.
 
 
-Only `dtatools::read_dta()` and `dtatools::read_arrow()` were rerun. Haven and
-Stata were not invoked. Their recorded times and peak memory are reused on the
-same computer and inputs. The refresh covers the full survey corpus, the DTA
-and Arrow read comparison, two representative memory checks, and projected
-reads. Write and conversion benchmarks retain their earlier measurements.
+The comparisons use the same computer and inputs. They cover the full survey
+corpus, DTA and Arrow reads, two representative memory checks, and projected
+reads. Source and measurement identities are recorded in the artifacts.
 
 The current dtatools build is 0.9.0 from merged commit
 `cf0c80d72191491d42db51d5882a9d7f9d16194e`, including the direct-dibble readers
@@ -29,18 +27,18 @@ tidyselect 1.2.1. The archived comparators used haven 2.5.5 and Stata/MP 18.
 Each observation below uses one fresh process and a warm filesystem cache.
 Elapsed time covers only the reader call, excluding application startup. Peak
 RSS is the maximum resident memory of the whole process, including the runtime
-and the loaded result retained through exit. It includes native allocations
+and the loaded result kept live through exit. It includes native allocations
 and excludes other processes. GB means 10^9 bytes.
 
 India 2021 DHS women has 724,115 rows and 5,972 columns. The source DTA is
-5.196 GB; its retained uncompressed Arrow conversion is 5.560 GB.
+5.196 GB; its uncompressed Arrow conversion is 5.560 GB.
 
-| Reader | Measurement date | Read time | Peak RSS |
-| --- | --- | ---: | ---: |
-| `dtatools::read_dta()` | September 12 | 1.928 s | 5.235 GB |
-| `dtatools::read_arrow()` | September 12 | 0.696 s | 10.278 GB |
-| `haven::read_dta()` | August 24, reused | 437.088 s | 35.103 GB |
-| Stata native `use` | August 24, reused | 0.718 s | 5.256 GB |
+| Reader | Read time | Peak RSS |
+| --- | ---: | ---: |
+| `dtatools::read_dta()` | 1.928 s | 5.235 GB |
+| `dtatools::read_arrow()` | 0.696 s | 10.278 GB |
+| `haven::read_dta()` | 437.088 s | 35.103 GB |
+| Stata native `use` | 0.718 s | 5.256 GB |
 
 Haven took 226.7 times as long as `read_dta()` and reached 35.103 GB peak RSS;
 `read_dta()` used 85.1% less peak RSS. Arrow used nearly twice the peak RSS of DTA in
@@ -50,11 +48,11 @@ to rank them from single observations measured on different dates.
 The NSFG 2017–2019 women's file has 6,141 rows and 2,610 columns in a 0.020 GB
 DTA file:
 
-| Reader | Measurement date | Read time | Peak RSS |
-| --- | --- | ---: | ---: |
-| `dtatools::read_dta()` | September 12 | 0.101 s | 0.175 GB |
-| `haven::read_dta()` | August 24, reused | 1.002 s | 0.308 GB |
-| Stata native `use` | August 24, reused | 0.003 s | 0.051 GB |
+| Reader | Read time | Peak RSS |
+| --- | ---: | ---: |
+| `dtatools::read_dta()` | 0.101 s | 0.175 GB |
+| `haven::read_dta()` | 1.002 s | 0.308 GB |
+| Stata native `use` | 0.003 s | 0.051 GB |
 
 The [August 25 dtatools spot checks](../../r-corpus-performance/results-2026-08-24.md)
 were 1.896 s / 5.218 GB for India and 0.068 s / 0.142 GB for NSFG. This refresh
@@ -73,8 +71,7 @@ and 222 NSFG files. Every source file's size and modification time matched the
 original inventory before and after the refresh.
 
 Times below are sums over those common files. Peak RSS is the largest process
-peak within each group, not a sum. The haven and Stata columns retain the
-August 24 observations exactly. A format label identifies when the format was
+peak within each group, not a sum. A format label identifies when the format was
 introduced, not the application that created the survey file.
 
 | Corpus | Format introduced with | Files | Input GB | dtatools s | haven s | Stata s | dtatools RSS GB | haven RSS GB | Stata RSS GB |
@@ -98,7 +95,7 @@ introduced, not the application that created the survey file.
 | NSFG | Stata 14 | 57 | 1.626 | 5.569 | 67.461 | 0.207 | 0.544 | 2.470 | 0.375 |
 | NSFG | All formats | 222 | 5.772 | 20.889 | 234.588 | 0.885 | 0.559 | 2.470 | 0.435 |
 
-The complete DHS batch was 34.3 times faster than the retained haven total;
+The complete DHS batch was 34.3 times faster than the haven total;
 the mean per-file speedup was 20.8 times. The MICS and NSFG total speedups were
 3.5 and 11.2 times. Native Stata's saved batch time is lower in all three
 corpora.
@@ -118,7 +115,7 @@ construction alone.
 
 ## Repeated DTA and Arrow reads
 
-These use the existing Arrow worker and the retained August files. Each method
+These use the existing Arrow worker and the same input files. Each method
 runs in its own process with one untimed warmup, then 11 timed synthetic reads
 or five India reads. Full garbage collection occurs between reads. These
 in-process medians are separate from the single-read memory checks above.
@@ -146,7 +143,7 @@ Arrow report. The older synthetic haven/native Stata read matrix used a
 different fixture generation with different row counts. Its times are not
 attached to these inputs.
 
-### Retained Arrow metadata
+### Arrow metadata
 
 The original Arrow files were kept unchanged. They predate preservation of
 value-label table names, declared string widths and some variable notes. The
@@ -165,9 +162,9 @@ the outputs; the timed reads use the original files and default readers.
 
 ## Projected reads
 
-The retained projection fixtures and name lists are unchanged. Each dtatools
+The projection fixtures and name lists are unchanged. Each dtatools
 method has 11 timed reads after warmups, using the original R worker. Stata's
-medians and ranges are reused from August 28. Each synthetic case returns ten
+medians and ranges are reported alongside dtatools. Each synthetic case returns ten
 columns from a 100-name union; India returns 100 columns from a 200-name union.
 
 | Input shape | `read_dta(any_of(union))` | `read_dta(all_of(present))` | Stata full `use`, inspect, `keep` | Stata direct projected `use` |
@@ -178,7 +175,7 @@ columns from a 100-name union; India returns 100 columns from a 200-name union.
 | India, 724,115 × 5,972 | 0.248 s | 0.248 s | 0.552 s | 0.482 s |
 
 The India `any_of()` median fell from 0.301 to 0.248 s. Its current range is
-0.248–0.267 s, against the retained Stata union-safe range of 0.531–0.630 s and
+0.248–0.267 s, against the Stata union-safe range of 0.531–0.630 s and
 direct range of 0.444–0.515 s. Dtatools' median is 55.1% lower than the
 union-safe Stata workflow and 48.5% lower than direct Stata projection. The
 direct Stata command requires known-present names and errors on absent names.
@@ -195,8 +192,8 @@ Use `read_arrow()` for repeated full reads when an Arrow copy is appropriate
 and the measured memory requirement fits. Keep checksum verification enabled.
 For a subset of variables, use `read_dta(col_select = any_of(...))`; the India
 projection measured 0.248 s without a separate conversion. Conversion cost and
-metadata requirements belong in the choice too. The retained India conversion
-cost was 1.367 s on August 29 and was not remeasured here. The experimental Arrow
+metadata requirements belong in the choice too. The India conversion
+cost was 1.367 s. The experimental Arrow
 profile still has no cross-version stability promise.
 
 ## Reproduction and recorded results

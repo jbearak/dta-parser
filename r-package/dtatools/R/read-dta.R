@@ -429,7 +429,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     if (!is.character(file) || is.object(file) || length(file) != 1L ||
         is.na(file) || grepl("\n", file, fixed = TRUE) ||
         grepl("^[[:alpha:]][[:alnum:]+.-]*://", file) ||
-        !file_test("-f", file)) return(FALSE)
+        !utils::file_test("-f", file)) return(FALSE)
 
     header <- tryCatch(
         suppressWarnings(readBin(file, "raw", n = 6L)),

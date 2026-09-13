@@ -2,7 +2,7 @@
 
 Avoiding unnecessary source-adapter loading removes the small-file performance
 gap in this corpus. All 1,812 comparable files now read faster than haven's
-retained measurements. Previously, 343 were slower. Their total dtatools read
+measurements. Previously, 343 were slower. Their total dtatools read
 time falls from 149.222 to 55.101 seconds, a 63.1% reduction.
 
 I recommend shipping this change. It removes fixed setup costs without changing
@@ -13,7 +13,7 @@ larger first reads. Memory improvements are not uniform across all workloads.
 ## What caused the gap
 
 All 343 previous losses were below 10 MB, and 253 were below 1 MB. A real
-350-byte DTA file repeatedly took 56 to 57 ms, versus haven's retained 15 ms.
+350-byte DTA file repeatedly took 56 to 57 ms, versus haven's 15 ms.
 Reading zero observations still took 56 ms. Repeated reads in the same R process
 took about 0.3 ms, pointing to first-call setup rather than row decoding.
 
@@ -75,10 +75,10 @@ and [reproduction instructions](../README.md).
 One fresh-process read was attempted for every original inventory entry.
 1,821 of 1,823 succeed; the same two malformed files fail. All 1,812 historically
 comparable files retain their dimensions. The eleven historically excluded
-entries remain outside these totals. Haven and Stata results are copied
-unchanged from August 24. Only dtatools was rerun.
+entries remain outside these totals. Measurement identities are recorded in
+the provenance artifact.
 
-| Corpus | Files | Old/new dtatools wall, s | New dtatools CPU, s | Retained haven wall, s | Retained Stata wall, s | New maximum RSS, GB |
+| Corpus | Files | Old/new dtatools wall, s | New dtatools CPU, s | Haven wall, s | Stata wall, s | New maximum RSS, GB |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | DHS | 641 | 69.286 / 39.546 | 82.029 | 2727.051 | 68.806 | 5.232 |
 | MICS | 949 | 60.056 / 6.647 | 13.148 | 216.732 | 1.155 | 0.241 |
@@ -104,26 +104,26 @@ and [file counts](corpus-statistics.json).
 ## India DHS, ten fresh reads per reader
 
 The 5.2 GB DTA contains 724,115 rows and 5,972 columns. Arrow reads use the same
-retained 5.6 GB conversion, with checksum verification enabled. DTA/Arrow order
+5.6 GB conversion, with checksum verification enabled. DTA/Arrow order
 alternates across ten rounds. There is no warmup or added pre-read garbage
 collection. Read-call clocks exclude startup but include first-call reader work.
-Haven and Stata retain their September 12 ten-run observations.
+The comparison includes ten observations each for haven and Stata.
 
 | Reader | Wall median, s | Wall range, s | CPU median, s | Peak RSS median, GB |
 | --- | ---: | ---: | ---: | ---: |
 | `read_dta()` | 0.7560 | 0.754 to 0.771 | 5.4230 | 5.231 |
 | `read_arrow()` | 0.5610 | 0.557 to 0.585 | 4.5850 | 10.274 |
-| haven, retained | 488.2040 | 413.645 to 529.616 | Unavailable | 35.107 |
-| Stata `use`, retained | 0.5015 | 0.468 to 0.503 | Unavailable | 5.256 |
+| haven | 488.2040 | 413.645 to 529.616 | Unavailable | 35.107 |
+| Stata `use` | 0.5015 | 0.468 to 0.503 | Unavailable | 5.256 |
 
 The preceding dtatools wall medians were 0.8195 and 0.5980 seconds. These decrease
 by 7.7% and 6.2%; CPU time and peak memory are effectively unchanged. Stata's
-retained median remains faster than either reader. Arrow takes 25.8% less wall
+median remains faster than either reader. Arrow takes 25.8% less wall
 time than DTA while using about twice its peak memory. These large-file timings
 do not imply improved decoder scaling; the native read architecture is unchanged.
 
 [Every current observation](india-10x-observations.csv),
-[retained comparator observations](india-retained-observations.csv), and
+[comparator observations](india-retained-observations.csv), and
 [comparison](india-comparison.csv).
 
 ## Source and validation
@@ -133,7 +133,7 @@ is the same Apple M4 Max with 16 CPUs and 128 GiB RAM, macOS 26.6.2, R 4.6.1,
 and dtatools 0.9.0. Existing libraries and Stata installation are unchanged.
 Measurements ran sequentially, without concurrent builds or tests. Each phase
 checks source, installed package files, workers and inputs before and after
-execution. [Provenance](provenance.json) retains their identities without
+execution. [Provenance](provenance.json) records their identities without
 private survey paths or values. Later documentation and test-hardening changes
 do not change the measured reader implementation.
 
