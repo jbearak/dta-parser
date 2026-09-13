@@ -158,7 +158,7 @@
         },
         {
           "path": "tests/testthat/test-input-sources.R",
-          "sha256": "2568e15c92f4d7bcc1111340a783bb527ab50fa34d4d18a72fc566a2a356ab73"
+          "sha256": "739725cabb7595ed1d5cf17576f37145f48550fec6aa8c8a9778b7524b24fc17"
         }
       ],
       "blocks": [
@@ -1192,7 +1192,7 @@
           "test": "first local reads avoid source-adapter dependency loading",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 12,
+          "min_pass": 16,
           "warnings": 0
         },
         {
@@ -1210,14 +1210,22 @@
           "skip": "forbid",
           "min_pass": 12,
           "warnings": 0
+        },
+        {
+          "file": "test-input-sources.R",
+          "test": "compressed Arrow content retains source-adapter handling",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
         }
       ],
       "children": [
         {
           "id": "local-source-startup",
           "kind": "r",
-          "minimum": 3,
-          "maximum": 3,
+          "minimum": 4,
+          "maximum": 4,
           "completion": "complete",
           "allow_error": false
         }

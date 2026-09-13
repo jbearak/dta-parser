@@ -113,10 +113,17 @@ test_that("first local reads avoid source-adapter dependency loading", {
     on.exit(unlink(arrow_path), add = TRUE)
     expected <- read_dta(input_fixture(), n_max = 2)
     save_arrow(expected, arrow_path)
-    paths <- c(input_fixture(), fixture("auto_v115.dta"), arrow_path)
+    legacy_path <- tempfile(fileext = ".dta")
+    on.exit(unlink(legacy_path), add = TRUE)
+    legacy <- fixture("auto_v115.dta")
+    bytes <- readBin(legacy, "raw", n = file.info(legacy)$size)
+    # Real legacy survey files have nonzero values in this unused byte.
+    bytes[[4L]] <- as.raw(255L)
+    writeBin(bytes, legacy_path)
+    paths <- c(input_fixture(), legacy, legacy_path, arrow_path)
     for (index in seq_along(paths)) {
-        reader <- if (index == 3L) "read_arrow" else "read_dta"
         path <- paths[[index]]
+        reader <- if (identical(path, arrow_path)) "read_arrow" else "read_dta"
         result <- .dtatools_child_r("local-source-startup", function(reader, path) {
             read <- getExportedValue("dtatools", reader)
             before <- loadedNamespaces()
@@ -152,10 +159,37 @@ test_that("local source detection preserves content and caller ownership", {
         expect_true(file.exists(path))
     }
     expect_error(read_dta(I(input_fixture())), "not handled")
+    expect_error(read_dta(c(input_fixture(), input_fixture())), "not handled")
+    if (.Platform$OS.type == "unix") {
+        path <- file.path(directory, "line\nbreak.dta")
+        expect_true(file.copy(input_fixture(), path))
+        expect_error(read_dta(path), "not handled")
+        expect_true(file.exists(path))
+        link <- file.path(directory, "linked.dta")
+        expect_true(file.symlink(input_fixture(), link))
+        expect_identical_table(read_dta(link), expected)
+        expect_true(file.exists(link))
+    }
     malformed <- file.path(directory, "malformed.dta")
     writeBin(charToRaw("<stata_dta>"), malformed)
     expect_error(read_dta(malformed))
     expect_true(file.exists(malformed))
+})
+
+test_that("compressed Arrow content retains source-adapter handling", {
+    paths <- vapply(seq_len(4L), function(i) tempfile(fileext = ".arrow"), "")
+    on.exit(unlink(paths), add = TRUE)
+    expected <- read_dta(input_fixture(), n_max = 2)
+    save_arrow(expected, paths[[1L]])
+    bytes <- readBin(paths[[1L]], "raw", n = file.info(paths[[1L]])$size)
+    writers <- list(gzfile, bzfile, xzfile)
+    for (index in seq_along(writers)) {
+        path <- paths[[index + 1L]]
+        connection <- writers[[index]](path, "wb")
+        tryCatch(writeBin(bytes, connection), finally = close(connection))
+        expect_identical_table(read_arrow(path), expected)
+        expect_true(file.exists(path))
+    }
 })
 
 test_that("implicit read extensions retain file_ext semantics", {

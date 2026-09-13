@@ -440,7 +440,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         (length(header) == 6L &&
          as.integer(header[[1L]]) %in% c(105L, 108L, 110L, 111L, 113L, 114L, 115L) &&
          as.integer(header[[2L]]) %in% c(1L, 2L) &&
-         identical(header[3:4], as.raw(c(1L, 0L))))
+         identical(header[[3L]], as.raw(1L)))
 }
 
 .resolve_implicit_dta_read_path <- function(file) {

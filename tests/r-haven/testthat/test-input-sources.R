@@ -43,6 +43,13 @@ test_that("local compressed sources match haven", {
             path, col_select = c(make, price), skip = 3, n_max = 5
         )
         expect_source_parity(actual, expected)
+        renamed <- tempfile(fileext = ".dta")
+        on.exit(unlink(renamed), add = TRUE)
+        expect_true(file.copy(path, renamed))
+        expect_source_parity(read_dta(
+            renamed, col_select = c(make, price), skip = 3, n_max = 5
+        ), expected)
+        expect_true(file.exists(renamed))
     }
 })
 
