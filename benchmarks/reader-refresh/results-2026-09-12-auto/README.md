@@ -133,8 +133,7 @@ projection inputs and name lists. Synthetic cases return ten columns from a
 India's `any_of()` median increased from 0.248 to 0.263 seconds, a 6.0%
 regression. Its current range is 0.262 to 0.282 seconds. The new median is
 still 52.4% below the Stata full-load workflow and 45.4% below direct
-Stata projection. Direct Stata projection requires known-present names and
-errors on absent names. The synthetic projection medians are unchanged.
+Stata projection. Direct Stata projection requires all projected names to be present. The synthetic projection medians are unchanged.
 
 ### Why more workers slowed the projection
 

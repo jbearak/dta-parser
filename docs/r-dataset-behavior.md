@@ -122,4 +122,3 @@ rules and rejects unknown row names or out-of-range positive locations. Grouped
 results rebuild their groups and retain `.drop`; rowwise results retain their
 identifier variables. Missing string rows become Stata's empty string before
 grouping is rebuilt.
-

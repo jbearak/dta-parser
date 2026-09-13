@@ -128,8 +128,8 @@ the previous warm results and do not establish a new full-read gain.
 
 The main projection rerun uses the saved fixtures and 11 reads per selection
 method after warmups. Synthetic cases return ten columns; India returns 100.
-Stata's direct projected `use` requires known-
-present names; it does not handle absent union names like `any_of()`.
+Stata's direct projected `use` requires all projected names to be present;
+it does not handle absent union names like `any_of()`.
 
 | Input | Any-of wall / CPU, s | All-of wall / CPU, s | Stata projected use, s | Stata load/inspect/keep, s |
 | --- | ---: | ---: | ---: | ---: |

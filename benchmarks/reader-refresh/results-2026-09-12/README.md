@@ -164,7 +164,7 @@ the outputs; the timed reads use the original files and default readers.
 
 The projection fixtures and name lists are unchanged. Each dtatools
 method has 11 timed reads after warmups, using the original R worker. Stata's
-medians and ranges are reported alongside dtatools. Each synthetic case returns ten
+medians are reported alongside dtatools. Each synthetic case returns ten
 columns from a 100-name union; India returns 100 columns from a 200-name union.
 
 | Input shape | `read_dta(any_of(union))` | `read_dta(all_of(present))` | Stata full `use`, inspect, `keep` | Stata direct projected `use` |
@@ -178,7 +178,7 @@ The India `any_of()` median fell from 0.301 to 0.248 s. Its current range is
 0.248–0.267 s, against the Stata union-safe range of 0.531–0.630 s and
 direct range of 0.444–0.515 s. Dtatools' median is 55.1% lower than the
 union-safe Stata workflow and 48.5% lower than direct Stata projection. The
-direct Stata command requires known-present names and errors on absent names.
+direct Stata command requires all projected names to be present.
 `any_of()` and `all_of()` have the same median in each refreshed case.
 
 ## Recommendation
