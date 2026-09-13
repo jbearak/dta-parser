@@ -41,11 +41,15 @@ A DTA read that accepts haven's common read arguments and returns equivalent val
 _Avoid_: Drop-in replacement
 
 **Output container**:
-The table class a dataset operation returns, independently of the column representations and Stata metadata it contains. Readers produce tibbles or data tables; operations that follow an input may also preserve a base data frame.
+The table class that holds a dataset, independently of its column types and Stata metadata. Supported containers are dibbles, tibbles, data tables, and base data frames.
 _Avoid_: Output format, dataset type
 
+**Stata column**:
+An R column with a declared Stata type and any associated variable metadata, independently of the table that holds it.
+_Avoid_: Stata frame, R storage type
+
 **Dibble**:
-A tibble representing a Stata dataset, with Stata storage on its numeric and string columns and dibble results from dataset operations. Explicit mutation helpers update the supplied dataset; ordinary R replacement returns a changed copy.
+A tibble subclass that assigns Stata types to its supported numeric and character columns while also allowing supported ordinary R columns, such as logicals and factors. It supports explicit mutation by reference alongside ordinary base R and dplyr operations that return updated objects.
 _Avoid_: Reference tibble, dtatools table
 
 **Generate default**:

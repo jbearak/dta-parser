@@ -1,56 +1,63 @@
 # dtatools
 
-`dtatools` reads Stata `.dta` files into R dibbles, tibbles, or data tables
-and writes standalone Stata 18/19 datasets. Use it instead of
-`haven::read_dta()` for Stata imports. The read interface accepts haven's
-common arguments and returns compatible values, labels, dates, and tagged
-missing values. Numeric columns also retain their declared Stata storage type.
+`dtatools` reads Stata data quickly and brings Stata column types and
+data-management tools to R. Create and recode variables, manage labels and
+missing values, merge and append datasets, and save Stata or Arrow files.
 
-Dplyr is optional. Reading, writing, recoding, base operations, metadata helpers,
-and explicit mutation work without loading it. Install dplyr 1.2.1 or newer to
-use its verbs with dibbles.
+Across 641 DHS survey files totaling 46.9 GB, `read_dta()` took 39.4 seconds
+versus haven's 2,727 seconds, about **69 times faster**. For the 5.2 GB India
+DHS file, median read time across ten reads was **0.752 seconds versus 488
+seconds**. That is less than a second compared with more than eight minutes.
+See the [benchmark results and methods](#why-use-dtatools).
 
-## Functions
+Stata columns can live in ordinary data frames, tibbles, data.tables, or
+dtatools' own table class, the dibble. They carry Stata storage types, labels,
+display formats, and missing codes. A dibble extends a tibble and applies Stata
+typing to supported numeric and character columns as you add them. You can choose their
+Stata storage explicitly, and also use ordinary R columns such as logicals
+and factors.
 
-| Function | Purpose |
-| --- | --- |
-| `dibble()`, `as_dibble()`, `is_dibble()` | Build, convert, or identify a tibble that preserves Stata storage and metadata. |
-| `read_dta()` | Read a DTA file into a dibble, tibble, or data table with labels, display formats, notes, tagged missing values, and compact numeric columns. |
-| `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
-| `save_arrow()` | Write a standalone `.arrow` dataset, preserving supported Stata and ordinary R column classes and metadata. |
-| `read_arrow()` | Read a `.arrow` dataset and check it for accidental file corruption by default. |
-| `dta_merge()` | Merge two datasets, or `.dta`/`.arrow` files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
-| `dta_append()` | Stack data frames, `.dta`, and `.arrow` sources with Stata `append` semantics: the union of variables, missing values for absent ones, widening string storage, and lossless numeric promotion. |
-| `dta_identical()` | Compare equal-length vectors in order using Stata value identity while ignoring storage, class, names, and metadata. |
-| `dta_match()`, `dta_in()` | Match bare or Stata-backed values while keeping `.`, `.a` through `.z`, and finite values distinct. |
-| `dta_union()`, `dta_intersect()`, `dta_setdiff()`, `dta_setequal()` | Apply Stata identity to stable set operations with symmetric bare-vector support and package-owned metadata handling. |
-| `datasig()` | Order-sensitive content signature of a data frame or a `.dta` or `.arrow` file, for verifying that source data has not changed. |
-| `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
-| `gen()` | Append a variable by reference from a data-mask expression or formula, optionally for selected rows. |
-| `egen()` | Generate a column by reference from a selected calculation sample, with optional grouping. |
-| `dta_mean()`, `dta_min()`, `dta_max()`, `dta_total()` | Calculate Stata summaries as ordinary functions usable in `gen()`, `egen()`, or `:=`. |
-| `dta_row_max()`, `dta_row_total()`, `dta_group_id()`, `dta_group_tag()` | Calculate across columns, assign sorted group codes, or mark each group's first row. |
-| `replace_values()`, `repl()` | Replace selected values by reference without widening declared Stata storage. |
-| `keep_vars()`, `drop_vars()` | Keep or drop variables by reference, including variables created by `gen()`. |
-| `order_vars()`, `rename_vars()` | Move variables to the front, or rename them, by reference, as Stata's `order` and `rename` do. |
-| `slice_dta_rows()`, `reorder_dta_rows()` | Select rows into a new table, or permute a table's rows in place, gathering compact Stata columns in native code. |
-| `resolve_var_name()`, `confirm_var()` | Resolve or check an exact variable name or unique abbreviation, with configurable failure behavior. |
-| `copy_data()` | Make an independent copy of a dataset and its metadata. |
-| `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
-| `labelbook()` | Structured reports on named value-label tables, assignments, mappings, and problems. |
-| `codebook()` | Structured variable metadata, observed-data summaries, missingness relationships, and problems. |
-| `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
-| `dta_byte()`, `dta_int()`, `dta_long()`, `dta_float()`, `dta_double()` | Declare a vector's Stata storage type with validation; byte, int, long, and float use compact backing. |
-| `dta_string()` | Construct an owned Stata string vector with validated fixed-width or `strL` storage and preserved variable metadata. |
-| `dta_storage_type()` | Report a column's declared numeric or string storage type without materializing its compact backing. |
-| `.a` through `.z`, `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values. |
-| `is_missing()`, `is_mi()` | Identify Stata missing values and empty strings. Both names perform the same check. |
-| `dta_notes()`, `dta_note()`, `set_dta_note()`, `add_dta_note()`, `drop_dta_notes()`, `renumber_dta_notes()` | Read and edit numbered Stata notes at dataset or variable scope. |
-| `dta_characteristics()`, `dta_characteristic()`, `set_dta_characteristic()`, `drop_dta_characteristics()` | Read and edit arbitrary Stata characteristics at dataset or variable scope. |
-| `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
+Dibbles support base R and dplyr syntax, plus mutation by reference through
+`:=` and helpers such as `gen()` and `repl()`. Ordinary base R assignment and
+dplyr operations return updated objects; the explicit mutation operations
+update the supplied dataset in place.
 
-Package-owned classes now use `dta_`, including `dta_numeric` and `dta_string`.
-See the [naming migration](../../docs/dta-naming.md) for class checks and saved objects.
+## Installation
+
+Install from the [dtatools R package repository](https://jbearak.github.io/dta-parser/):
+
+```r
+install.packages("dtatools", repos = c(
+  dtatools = "https://jbearak.github.io/dta-parser",
+  CRAN = "https://cloud.r-project.org"
+))
+```
+
+Dplyr is optional. Install dplyr 1.2.1 or newer to use its verbs with dibbles.
+Data-table output requires data.table 1.18.2.1 or newer.
+
+Requires R 4.6 or later. Windows x86_64 and Apple Silicon macOS 14 or later
+have R 4.6 binaries. Other systems install from source and need Rust.
+See [repository details](../../docs/r-package-repository.md) for setup and updates.
+
+Published GitHub Releases contain compiled packages for Windows x86_64, Linux x86_64, and macOS ARM64. Open the [latest release](https://github.com/jbearak/dta-parser/releases/latest), choose the asset matching the R version, operating system, and architecture, and copy its URL:
+
+```r
+pak::pkg_install("url::<asset-url>")
+```
+
+Base R can install the same URL after the package's imported dependencies are installed:
+
+```r
+install.packages("<asset-url>", repos = NULL)
+```
+
+Source installation requires Cargo and Rust 1.98.0 or newer:
+
+```sh
+git clone --depth 1 https://github.com/jbearak/dta-parser.git
+R CMD INSTALL dta-parser/r-package/dtatools
+```
 
 ## Dibbles, tibbles, and data tables
 
@@ -58,6 +65,25 @@ Readers return dibbles by default. A dibble is a tibble that preserves Stata
 storage types and metadata as you work with the data. Use `dibble()` to create
 one, `as_dibble()` to convert a data frame, and `is_dibble()` to check its type.
 Use dplyr verbs and ordinary R table operations with dibbles.
+
+Choose Stata storage when creating columns, or let the dibble assign it:
+
+```r
+library(dtatools)
+
+survey <- dibble(
+  age = dta_byte(c(20, 30)),
+  weight = dta_double(c(0.8, 1.2)),
+  eligible = c(TRUE, FALSE),
+  group = factor(c("A", "B"))
+)
+```
+
+The numeric columns carry their declared Stata types. `eligible` stays an R
+logical and `group` stays an R factor. Automatic typing gives supported new numeric
+columns the same Stata missing-value comparisons as imported columns. See
+[column types and missing values](../../docs/r-dataset-behavior.md#column-types-and-missing-values)
+for examples.
 
 Choose a different container for one read or for the session:
 
@@ -67,9 +93,8 @@ options(dtatools.output = "data.table")
 survey <- read_dta("survey.dta")
 ```
 
-Data-table output requires the optional data.table package, version 1.18.2.1
-or newer. `save_arrow()` records the container, and `read_arrow()` restores it
-unless you supply an `output` argument.
+`save_arrow()` records the container, and `read_arrow()` restores it unless
+you supply an `output` argument.
 
 Helpers such as `gen()`, `repl()`, and `rename_vars()` update the supplied dataset
 in place. Use `copy_data()` when you need an independent copy. Functions that
@@ -313,40 +338,6 @@ for versions, iteration counts, correctness checks, and reproduction commands.
 
 Keep using haven when you need to write older DTA releases or work with SAS and
 SPSS formats.
-
-## Installation
-
-Install from the [dtatools R package repository](https://jbearak.github.io/dta-parser/):
-
-```r
-install.packages("dtatools", repos = c(
-  dtatools = "https://jbearak.github.io/dta-parser",
-  CRAN = "https://cloud.r-project.org"
-))
-```
-
-Requires R 4.6 or later. Windows x86_64 and Apple Silicon macOS 14 or later
-have R 4.6 binaries. Other systems install from source and need Rust.
-See [repository details](../../docs/r-package-repository.md) for setup and updates.
-
-Published GitHub Releases contain compiled packages for Windows x86_64, Linux x86_64, and macOS ARM64. Open the [latest release](https://github.com/jbearak/dta-parser/releases/latest), choose the asset matching the R version, operating system, and architecture, and copy its URL:
-
-```r
-pak::pkg_install("url::<asset-url>")
-```
-
-Base R can install the same URL after the package's imported dependencies are installed:
-
-```r
-install.packages("<asset-url>", repos = NULL)
-```
-
-Source installation requires Cargo and Rust 1.98.0 or newer:
-
-```sh
-git clone --depth 1 https://github.com/jbearak/dta-parser.git
-R CMD INSTALL dta-parser/r-package/dtatools
-```
 
 ## Read a file
 
@@ -843,6 +834,48 @@ Use the installed help for exact behavior and examples:
 ?reorder_dta_rows    # permute a table's rows in place
 ?dta_notes           # read and edit notes and characteristics
 ```
+
+## Functions
+
+| Function | Purpose |
+| --- | --- |
+| `dibble()`, `as_dibble()`, `is_dibble()` | Build, convert, or identify a tibble that preserves Stata storage and metadata. |
+| `read_dta()` | Read a DTA file into a dibble, tibble, or data table with labels, display formats, notes, tagged missing values, and compact numeric columns. |
+| `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
+| `save_arrow()` | Write a standalone `.arrow` dataset, preserving supported Stata and ordinary R column classes and metadata. |
+| `read_arrow()` | Read a `.arrow` dataset and check it for accidental file corruption by default. |
+| `dta_merge()` | Merge two datasets, or `.dta`/`.arrow` files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
+| `dta_append()` | Stack data frames, `.dta`, and `.arrow` sources with Stata `append` semantics: the union of variables, missing values for absent ones, widening string storage, and lossless numeric promotion. |
+| `dta_identical()` | Compare equal-length vectors in order using Stata value identity while ignoring storage, class, names, and metadata. |
+| `dta_match()`, `dta_in()` | Match bare or Stata-backed values while keeping `.`, `.a` through `.z`, and finite values distinct. |
+| `dta_union()`, `dta_intersect()`, `dta_setdiff()`, `dta_setequal()` | Apply Stata identity to stable set operations with symmetric bare-vector support and package-owned metadata handling. |
+| `datasig()` | Order-sensitive content signature of a data frame or a `.dta` or `.arrow` file, for verifying that source data has not changed. |
+| `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
+| `gen()` | Append a variable by reference from a data-mask expression or formula, optionally for selected rows. |
+| `egen()` | Generate a column by reference from a selected calculation sample, with optional grouping. |
+| `dta_mean()`, `dta_min()`, `dta_max()`, `dta_total()` | Calculate Stata summaries as ordinary functions usable in `gen()`, `egen()`, or `:=`. |
+| `dta_row_max()`, `dta_row_total()`, `dta_group_id()`, `dta_group_tag()` | Calculate across columns, assign sorted group codes, or mark each group's first row. |
+| `replace_values()`, `repl()` | Replace selected values by reference, preserving or widening Stata storage as needed. |
+| `keep_vars()`, `drop_vars()` | Keep or drop variables by reference, including variables created by `gen()`. |
+| `order_vars()`, `rename_vars()` | Move variables to the front, or rename them, by reference, as Stata's `order` and `rename` do. |
+| `slice_dta_rows()`, `reorder_dta_rows()` | Select rows into a new table, or permute a table's rows in place, gathering compact Stata columns in native code. |
+| `resolve_var_name()`, `confirm_var()` | Resolve or check an exact variable name or unique abbreviation, with configurable failure behavior. |
+| `copy_data()` | Make an independent copy of a dataset and its metadata. |
+| `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
+| `labelbook()` | Structured reports on named value-label tables, assignments, mappings, and problems. |
+| `codebook()` | Structured variable metadata, observed-data summaries, missingness relationships, and problems. |
+| `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
+| `dta_byte()`, `dta_int()`, `dta_long()`, `dta_float()`, `dta_double()` | Declare a vector's Stata storage type with validation; byte, int, long, and float use compact backing. |
+| `dta_string()` | Construct an owned Stata string vector with validated fixed-width or `strL` storage and preserved variable metadata. |
+| `dta_storage_type()` | Report a column's declared numeric or string storage type without materializing its compact backing. |
+| `.a` through `.z`, `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values. |
+| `is_missing()`, `is_mi()` | Identify Stata missing values and empty strings. Both names perform the same check. |
+| `dta_notes()`, `dta_note()`, `set_dta_note()`, `add_dta_note()`, `drop_dta_notes()`, `renumber_dta_notes()` | Read and edit numbered Stata notes at dataset or variable scope. |
+| `dta_characteristics()`, `dta_characteristic()`, `set_dta_characteristic()`, `drop_dta_characteristics()` | Read and edit arbitrary Stata characteristics at dataset or variable scope. |
+| `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
+
+Package-owned classes now use `dta_`, including `dta_numeric` and `dta_string`.
+See the [naming migration](../../docs/dta-naming.md) for class checks and saved objects.
 
 ## Performance controls
 

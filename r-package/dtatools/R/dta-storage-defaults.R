@@ -82,9 +82,10 @@
 #' [intentional differences guide](https://github.com/jbearak/dta-parser/blob/main/docs/r-stata-divergences.md#numeric-replacement)
 #' for Stata probes and identifier migration guidance. A value
 #' that already carries storage, from a `dta_*()` call or Stata-typed
-#' arithmetic, keeps that storage. On a dibble the replacement operators
-#' write by reference, so the promoted column is what every binding
-#' holds. Row or cell assignment, as in
+#' arithmetic, keeps that storage. Ordinary replacement operators on a dibble
+#' return a changed copy for assignment; other bindings keep the original.
+#' Explicit mutation through `:=` or [replace_values()] updates the supplied
+#' dataset in place. Row or cell assignment, as in
 #' `data[1, "x"] <- 1000L`, promotes the same way, and a `:=` whose value
 #' declares wider storage than the column widens the column to it, as
 #' `data[1, x := dta_double(1)]` makes `x` a `double`.
