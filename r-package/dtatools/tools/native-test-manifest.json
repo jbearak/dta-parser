@@ -158,7 +158,7 @@
         },
         {
           "path": "tests/testthat/test-input-sources.R",
-          "sha256": "739725cabb7595ed1d5cf17576f37145f48550fec6aa8c8a9778b7524b24fc17"
+          "sha256": "2ebedbf941e4241dce461f49b200ffb67a337f6fafd698e364e60de582a52cdb"
         }
       ],
       "blocks": [

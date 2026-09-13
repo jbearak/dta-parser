@@ -179,27 +179,28 @@ grouping is rebuilt.
 ## Why use dtatools?
 
 Repository benchmarks compare `dtatools` with haven across three survey corpora.
-The September 12 update measures dtatools 0.9.0 with compact-byte batching,
-default dibble output and workload-aware automatic thread selection. It reuses the
+The September 13 update measures dtatools 0.9.0 with local-reader startup
+overhead removed, compact-byte batching, default dibble output and
+workload-aware automatic thread selection. It reuses the
 August 24 haven and Stata corpus measurements on the same files and computer.
 Haven and Stata were not rerun for these corpus totals.
 
 | Workload | dtatools | haven | Difference |
 | --- | ---: | ---: | ---: |
-| 641 DHS files, 46.9 GB total | 69.3 seconds | 2,727 seconds | 39.4 times faster for the complete batch |
-| 949 MICS files, 3.7 GB total | 60.1 seconds | 216.7 seconds | 3.6 times faster for the complete batch |
-| 222 NSFG files, 5.8 GB total | 19.9 seconds | 234.6 seconds | 11.8 times faster for the complete batch |
+| 641 DHS files, 46.9 GB total | 39.5 seconds | 2,727 seconds | 69.0 times faster for the complete batch |
+| 949 MICS files, 3.7 GB total | 6.6 seconds | 216.7 seconds | 32.6 times faster for the complete batch |
+| 222 NSFG files, 5.8 GB total | 8.9 seconds | 234.6 seconds | 26.3 times faster for the complete batch |
 
-Across the 1,812 comparable files, `dtatools` was faster than haven on 1,459,
-tied on ten, and slower on 343. It was faster on all 641 DHS files and on 1,435
-of the 1,534 files larger than 1 MB. Changes from the preceding automatic-thread
-run were small: DHS decreased from 69.748 to 69.286 seconds and MICS from
-60.532 to 60.056; NSFG increased from 19.800 to 19.880. Against the older August
-results, MICS remains slower than its 29.3 seconds and NSFG slower than its
-19.1 seconds.
+`dtatools` was faster on all 1,812 comparable files in this run. The preceding
+run had 343 files where haven was faster, all smaller than 10 MB. Ordinary local
+reads were loading `readr` and `tools` on the first call, even for a 350-byte
+dataset. Removing that work reduced its ten-run median from 57 to 2 milliseconds
+and process peak memory from 117.4 to 97.9 MB. Total corpus read time fell from
+149.2 to 55.1 seconds. These single-read corpus comparisons describe this host
+and cache state; they do not guarantee a win on every future input.
 
 These are warm-cache measurements from an Apple M4 Max. See the
-[dated reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
+[local-reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-startup/results-2026-09-13/README.md)
 for the full corpus results, wall time, CPU time, peak memory, and methodology.
 
 For the 5.2 GB India 2021 DHS women's file, with 724,115 rows and 5,972 columns,
@@ -208,8 +209,8 @@ their ten-run September 12 measurements:
 
 | Reader | Median wall time | Range | Median CPU time | Median peak RSS |
 | --- | ---: | ---: | ---: | ---: |
-| `dtatools::read_dta()` | 0.8195 seconds | 0.816–0.826 seconds | 5.4335 seconds | 5.236 GB |
-| `dtatools::read_arrow()` | 0.5980 seconds | 0.596–0.603 seconds | 4.5705 seconds | 10.279 GB |
+| `dtatools::read_dta()` | 0.7560 seconds | 0.754–0.771 seconds | 5.4230 seconds | 5.231 GB |
+| `dtatools::read_arrow()` | 0.5610 seconds | 0.557–0.585 seconds | 4.5850 seconds | 10.274 GB |
 | `haven::read_dta()`, retained | 488.204 seconds | 413.645–529.616 seconds | Unavailable | 35.107 GB |
 | Stata native `use`, retained | 0.5015 seconds | 0.468–0.503 seconds | Unavailable | 5.256 GB |
 
@@ -221,10 +222,11 @@ threads, so it can exceed wall time. Peak RSS includes the runtime and loaded
 result. `read_arrow()` reads the retained 5.6 GB Arrow conversion with checksum
 verification enabled.
 
-The full-read medians are effectively unchanged from the preceding 0.8210 and
-0.5995 seconds. Arrow takes 27.0% less wall time than DTA here, using roughly
-twice the peak memory. Stata remains faster than both. See the
-[ten-run report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
+The preceding dtatools medians were 0.8195 and 0.5980 seconds. The new medians
+are 7.7% and 6.2% lower, while CPU time and peak memory are effectively unchanged.
+Arrow takes 25.8% less wall time than DTA here, using roughly twice the peak
+memory. Stata remains faster than both. See the
+[ten-run report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-startup/results-2026-09-13/README.md)
 for every observation, provenance and the distinction from older single reads.
 
 Both readers default to `threads = getOption("dtatools.threads", 0L)`.
@@ -251,6 +253,10 @@ semantics plus a small fingerprint for each data buffer. `read_arrow()` checks
 those fingerprints by default to detect accidental file corruption. The
 dtatools profile is experimental (version `"0"`) and carries no cross-version
 stability promise yet.
+
+The following warm-session and projection results retain their September 12
+measurements, before the local-reader startup fix. The September 13 report
+above supplies the current fresh-process and small-file comparisons.
 
 Warm-cache read medians on the same files:
 

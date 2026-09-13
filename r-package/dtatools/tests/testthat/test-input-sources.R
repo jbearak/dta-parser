@@ -125,8 +125,8 @@ test_that("first local reads avoid source-adapter dependency loading", {
         path <- paths[[index]]
         reader <- if (identical(path, arrow_path)) "read_arrow" else "read_dta"
         result <- .dtatools_child_r("local-source-startup", function(reader, path) {
-            read <- getExportedValue("dtatools", reader)
             before <- loadedNamespaces()
+            read <- getExportedValue("dtatools", reader)
             data <- read(path, n_max = 2)
             list(loaded = setdiff(loadedNamespaces(), before),
                  dimensions = dim(data), names = names(data),
