@@ -23,8 +23,9 @@ options(repos = c(
 
 ## Available packages
 
-The package requires R >= 4.6.0. v0.9.0 includes source and binaries built with
-R 4.6.1. R selects Windows x86_64 and Apple Silicon macOS 14 or later binaries from the
+The package requires R >= 4.6.0. Releases include source and compiled packages.
+Binary filenames identify the R version used to build them.
+R selects Windows x86_64 and Apple Silicon macOS 14 or later binaries from the
 repository's R 4.6 directories. Intel Macs and Linux use source by default.
 Source installation needs Cargo and Rust >= 1.98.0, plus the platform's R build
 tools. Use `type = "source"` to request source explicitly.
@@ -69,9 +70,13 @@ GitHub Pages must use GitHub Actions as its build source. Deployment uses the
 repository's `GITHUB_TOKEN` and the `github-pages` environment, with no personal
 access token or separate hosting repository. The npm workflow remains separate.
 
-To generate the repository locally with downloaded release assets:
+To generate the repository locally from the latest stable release, run these
+commands from the repository root with `release-assets` and `public` paths
+that do not already exist:
 
 ```sh
-gh release download v0.9.0 --pattern 'dtatools_*' --dir release-assets
-Rscript --vanilla scripts/build-r-repository.R release-assets public 0.9.0
+dtatools_release_tag=$(gh release view --repo jbearak/dta-parser --json tagName --jq .tagName)
+gh release download "$dtatools_release_tag" --repo jbearak/dta-parser \
+  --pattern 'dtatools_*' --dir release-assets
+Rscript --vanilla scripts/build-r-repository.R release-assets public "${dtatools_release_tag#v}"
 ```

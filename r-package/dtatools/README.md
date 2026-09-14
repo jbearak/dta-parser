@@ -114,7 +114,7 @@ first_ten <- slice_dta_rows(survey, 1:10)
 ```
 
 The [dataset behavior guide](../../docs/r-dataset-behavior.md) covers copying,
-column capacity, grouping and other advanced details. The
+grouping and other advanced details. The
 [container guide](../../docs/r-containers.md) compares supported operations,
 and the [egen guide](../../docs/r-egen.md) explains grouped calculations.
 
@@ -662,21 +662,12 @@ confirm_var(survey, "missing", on_failure = "false")
 replaces selected values, both by reference. The target and its values are
 one tagged pair, or the positional pair that reads like the Stata line.
 
-For ordinary data frames and tibbles, we recommend base R assignment or dplyr
-verbs, assigning the updated result. Choose a dibble or data.table when you
-want to work primarily by reference.
-
-This example reserves three spare slots before adding columns to a data frame,
-so the additions can keep using the same table. Fresh dibbles are prepared
-automatically with default settings and do not need this `reserve_columns()`
-step:
-
 ```r
-survey <- reserve_columns(data.frame(
+survey <- dibble(
   identifier = 1:3,
   id = c(2, 1, 2), region = c("west", "east", "west"), year = 2024L,
   income = c(10, 20, 30), eligible = c(TRUE, FALSE, TRUE)
-), n = 3L)
+)
 gen(survey, adjusted = income + 5)
 # Alternatively: gen(survey, adjusted, income + 5)
 repl(survey, adjusted = 0, where = !eligible)
@@ -735,7 +726,6 @@ existing one; several assignments apply left to right, and rows are
 selected once for the whole call.
 
 ```r
-survey <- as_dibble(survey)
 survey[income < 0, income := NA]
 survey[, `:=`(adjusted = income + 5, flag = income > 0)]
 survey[, last := .n == .N, bysort = id]
