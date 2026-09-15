@@ -27,6 +27,7 @@ use dta_tools::{
 };
 
 mod arrow_ffi;
+mod owned_numeric;
 
 type Sexp = *mut c_void;
 type RLen = isize;
@@ -59,6 +60,7 @@ extern "C" {
     static mut R_RowNamesSymbol: Sexp;
     static mut R_NaReal: f64;
     static mut R_NaInt: c_int;
+    static mut R_NilValue: Sexp;
 
     fn dtatools_check_interrupt() -> c_int;
     fn dtatools_alloc_vector(kind: c_int, length: RLen, result: *mut Sexp) -> c_int;
@@ -235,6 +237,14 @@ struct NumericData {
     temporal: c_int,
     format_version: c_int,
     missing_count: usize,
+    // Opaque immutable owner, or null for the legacy R-rooted writable bytes.
+    native_owner: *const c_void,
+}
+
+impl Drop for NumericData {
+    fn drop(&mut self) {
+        unsafe { owned_numeric::release(self.native_owner) };
+    }
 }
 
 impl NumericData {
@@ -246,6 +256,7 @@ impl NumericData {
             temporal: data.temporal as c_int,
             format_version: c_int::from(data.format_version.as_u16()),
             missing_count: data.missing_count,
+            native_owner: ptr::null(),
         }
     }
 }
@@ -334,6 +345,7 @@ pub unsafe extern "C" fn dtatools_numeric_alloc(
         temporal: temporal as c_int,
         format_version: 119,
         missing_count,
+        native_owner: ptr::null(),
     }))
     .cast::<c_void>()
 }
@@ -1727,6 +1739,31 @@ struct ProtectGuard {
 }
 
 impl ProtectGuard {
+    /// Attach checked immutable Arrow chunks without copying their payload.
+    /// Call only after the reader's normal layout/profile/checksum validation.
+    unsafe fn owned_numeric(
+        &mut self,
+        chunks: &[arrow_array::ArrayRef],
+        kind: NumericKind,
+        temporal: TemporalKind,
+        version: FormatVersion,
+        expected_rows: usize,
+    ) -> Result<Sexp, String> {
+        self.objects.try_reserve(1)
+            .map_err(|_| "R could not track an owned numeric vector".to_owned())?;
+        let data = owned_numeric::from_arrow(chunks, kind, temporal, version, expected_rows)?;
+        let storage = Box::into_raw(Box::new(data)).cast::<c_void>();
+        let mut transferred = 0;
+        let mut result = ptr::null_mut();
+        let ok = dtatools_make_numeric(storage, R_NilValue, &mut transferred, &mut result);
+        if ok == 0 || result.is_null() {
+            if transferred == 0 { dtatools_numeric_free(storage); }
+            return Err("R could not allocate an owned compact numeric vector".to_owned());
+        }
+        self.objects.push(result);
+        Ok(result)
+    }
+
     fn new() -> Self {
         Self {
             objects: Vec::new(),
@@ -2997,6 +3034,71 @@ impl RColumn {
 }
 
 impl DtaColumnSink for RColumn {
+    fn try_push_numeric_rows(
+        &mut self,
+        output_start: usize,
+        row_count: usize,
+        source: &[u8],
+        stride: usize,
+        dta_type: DtaType,
+        byte_order: dta_tools::ByteOrder,
+        version: FormatVersion,
+    ) -> Result<bool, DtaError> {
+        let Self::NumericAltRep { data, .. } = self else { return Ok(false); };
+        let (kind, width) = match dta_type {
+            DtaType::Int => (NumericKind::Int, 2),
+            DtaType::Long => (NumericKind::Long, 4),
+            DtaType::Float => (NumericKind::Float, 4),
+            _ => return Ok(false),
+        };
+        if data.kind != kind { return Ok(false); }
+        if data.format_version != version {
+            return Err(DtaError::Output("numeric batch format version mismatch".to_owned()));
+        }
+        let output_end = output_start.checked_add(row_count)
+            .ok_or(DtaError::ArithmeticOverflow("numeric batch output range"))?;
+        if output_end > data.length { return Err(RNumericData::row_error(output_end, data.length)); }
+        if row_count == 0 { return Ok(true); }
+        let input_end = (row_count - 1).checked_mul(stride)
+            .and_then(|last| last.checked_add(width))
+            .ok_or(DtaError::ArithmeticOverflow("numeric batch input range"))?;
+        if stride < width || input_end > source.len() {
+            return Err(DtaError::Output("numeric batch input range is out of bounds".to_owned()));
+        }
+        let output_bytes = data.length.checked_mul(width)
+            .ok_or(DtaError::ArithmeticOverflow("numeric batch output bytes"))?;
+        if output_bytes > isize::MAX as usize {
+            return Err(DtaError::ArithmeticOverflow("numeric batch output bytes"));
+        }
+        let little = byte_order == dta_tools::ByteOrder::Lsf;
+        let mut missing_count = 0;
+        // The complete input and output ranges are checked above. Dispatch
+        // once per storage kind; preserve raw float bits and native byte order.
+        match kind {
+            NumericKind::Int => for row in 0..row_count {
+                let bytes = unsafe { ptr::read_unaligned(source.as_ptr().add(row * stride).cast::<[u8; 2]>()) };
+                let value = if little { i16::from_le_bytes(bytes) } else { i16::from_be_bytes(bytes) };
+                unsafe { data.values.add((output_start + row) * 2).cast::<i16>().write_unaligned(value); }
+                missing_count += usize::from(classify_int_missing_for_version(value, version).is_some());
+            },
+            NumericKind::Long => for row in 0..row_count {
+                let bytes = unsafe { ptr::read_unaligned(source.as_ptr().add(row * stride).cast::<[u8; 4]>()) };
+                let value = if little { i32::from_le_bytes(bytes) } else { i32::from_be_bytes(bytes) };
+                unsafe { data.values.add((output_start + row) * 4).cast::<i32>().write_unaligned(value); }
+                missing_count += usize::from(classify_long_missing_for_version(value, version).is_some());
+            },
+            NumericKind::Float => for row in 0..row_count {
+                let bytes = unsafe { ptr::read_unaligned(source.as_ptr().add(row * stride).cast::<[u8; 4]>()) };
+                let bits = if little { u32::from_le_bytes(bytes) } else { u32::from_be_bytes(bytes) };
+                unsafe { data.values.add((output_start + row) * 4).cast::<u32>().write_unaligned(bits); }
+                missing_count += usize::from(f32::from_bits(bits).is_nan() || classify_float_missing_bits_for_version(bits, version).is_some());
+            },
+            NumericKind::Byte => unreachable!(),
+        }
+        data.missing_count += missing_count;
+        Ok(true)
+    }
+
     fn try_push_byte_rows(
         &mut self,
         output_start: usize,
