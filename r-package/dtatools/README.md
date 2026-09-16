@@ -3,6 +3,8 @@
 `dtatools` reads Stata data quickly and brings Stata column types and
 data-management tools to R. Create and recode variables, manage labels and
 missing values, merge and append datasets, and save Stata or Arrow files.
+Read original datasets directly or keep an Arrow copy for repeated analysis,
+loading only the variables each analysis needs.
 
 Across 641 DHS survey files totaling 46.9 GB, `read_dta()` took 39.4 seconds
 versus haven's 2,727 seconds, about **69 times faster**. For the 5.2 GB India
@@ -13,9 +15,9 @@ See the [benchmark results and methods](#why-use-dtatools).
 Stata columns can live in ordinary data frames, tibbles, data.tables, or
 dtatools' own table class, the dibble. They carry Stata storage types, labels,
 display formats, and missing codes. A dibble extends a tibble and applies Stata
-typing to supported numeric and character columns as you add them. You can choose their
-Stata storage explicitly, and also use ordinary R columns such as logicals
-and factors.
+typing to supported numeric and character columns as you add them. Choose
+their Stata storage explicitly, or use the defaults. Logicals and factors
+can remain ordinary R columns.
 
 Dibbles support base R and dplyr syntax, plus mutation by reference through
 `:=` and helpers such as `gen()` and `repl()`.
@@ -118,7 +120,41 @@ grouping and other advanced details. The
 [container guide](../../docs/r-containers.md) compares supported operations,
 and the [egen guide](../../docs/r-egen.md) explains grouped calculations.
 
+## Reuse survey files across analyses
+
+Read an original `.dta` file directly, or prepare an Arrow copy when you will
+return to the same dataset across analyses. Convert the complete source once
+per source-file version:
+
+```r
+library(dtatools)
+
+save_arrow(read_dta("survey.dta"), "survey.arrow")
+```
+
+Then load the variables each analysis needs:
+
+```r
+needed_variables <- c("caseid", "v005", "v012", "survey_specific_variable")
+survey <- read_arrow(
+  "survey.arrow",
+  col_select = tidyselect::any_of(needed_variables)
+)
+```
+
+`any_of()` omits requested names absent from a particular survey. Leave out
+`col_select` to load every column. Both readers resolve selection before
+decoding values, and the Arrow copy retains supported Stata storage and
+metadata. Conversion is an upfront cost shared across later reads; it is
+excluded from the read timings below.
+
+Keep the original `.dta` files and rebuild the analysis copies when sources
+change. The dtatools Arrow profile is experimental, version `"0"`, and does
+not yet promise cross-version stability.
+
 ## Why use dtatools?
+
+### Fast imports from existing Stata files
 
 Repository benchmarks compare `dtatools` with haven across three survey corpora.
 The measurements use the same files and computer, with dtatools 0.9.0,
@@ -130,94 +166,18 @@ default dibble output and automatic thread selection.
 | 949 MICS files, 3.7 GB total | 6.7 seconds | 216.7 seconds | 32.6 times faster for the complete batch |
 | 222 NSFG files, 5.8 GB total | 9.0 seconds | 234.6 seconds | 26.2 times faster for the complete batch |
 
-`dtatools` was faster on all 1,812 comparable files. Small files benefit too:
-a 350-byte dataset took 2 milliseconds, compared with haven's 15 milliseconds.
-These comparisons describe this host and cache state; they do not guarantee
-a win on every input.
-
-These are warm-cache measurements from an Apple M4 Max. See the
-[local-reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-startup/results-2026-09-13/README.md)
-for the full corpus results, wall time, CPU time, peak memory, and methodology.
-
-For the 5.2 GB India 2021 DHS women's file, with 724,115 rows and 5,972 columns,
-the benchmark compares ten reads per tool:
-
-| Reader | Median wall time | Range | Median CPU time | Median peak RSS |
-| --- | ---: | ---: | ---: | ---: |
-| `dtatools::read_dta()` | 0.7520 seconds | 0.748–0.764 seconds | 5.3480 seconds | 5.231 GB |
-| `dtatools::read_arrow()` | 0.5580 seconds | 0.554–0.562 seconds | 4.5260 seconds | 10.275 GB |
-| `haven::read_dta()` | 488.204 seconds | 413.645–529.616 seconds | Unavailable | 35.107 GB |
-| Stata native `use` | 0.5015 seconds | 0.468–0.503 seconds | Unavailable | 5.256 GB |
-
-Each read used a fresh process with a warm filesystem cache, without a warmup
-or added pre-read garbage collection. Wall and CPU clocks cover the
-read call and exclude startup. CPU time sums user and system time across
-threads, so it can exceed wall time. Peak RSS includes the runtime and loaded
-result. `read_arrow()` reads the 5.6 GB Arrow conversion with checksum
-verification enabled.
-
-Arrow takes 25.8% less wall time than DTA here, using roughly twice the peak
-memory. Stata remains faster than both. See the
-[ten-run report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-startup/results-2026-09-13/README.md)
-for individual observations and methodology.
-
-Both readers default to `threads = getOption("dtatools.threads", 0L)`.
-Zero chooses automatically from the CPUs available to the process. For compact
-DTA output, the policy also considers selected types and widths, rows per
-buffer, and the requested row window. Narrow projections can use fewer workers;
-small selections stay serial. Set `threads = 1` for serial reading, pass another
-positive number to limit one call, or set `options(dtatools.threads = 4L)` to
-change the session default. A per-call `threads` argument overrides that option.
-
-### Using `.arrow` dataset files
-
-Call `save_dta()` to write one `.dta` file or `save_arrow()` to write one
-`.arrow` file. Each call writes only the selected format. A `.arrow` dataset
-can mix Stata-specific columns with supported ordinary R `logical`, `integer`,
-`double`, `character`, `raw`, `factor`, `Date`, `POSIXct`, and `difftime`
-columns. dtatools preserves the class-specific details and profile metadata
-documented by `save_arrow()`.
-
-Apache Arrow stores tabular data by column in a standard binary layout. A
-`.arrow` dataset uses Arrow's IPC (interprocess communication) file format to
-exchange that data between programs. dtatools adds metadata for Stata and R
-semantics plus a small fingerprint for each data buffer. `read_arrow()` checks
-those fingerprints by default to detect accidental file corruption. The
-dtatools profile is experimental (version `"0"`) and carries no cross-version
-stability promise yet.
-
-Warm-cache read medians on the same files:
-
-| Input | DTA wall time | DTA CPU time | Arrow wall time | Arrow CPU time |
-| --- | ---: | ---: | ---: | ---: |
-| Synthetic 100 MB, 40 columns | 0.041 s | 0.131 s | 0.023 s | 0.074 s |
-| Synthetic 1 GB, 40 columns | 0.159 s | 0.775 s | 0.073 s | 0.429 s |
-| India 2021 DHS women, 5.2 GB, 5,972 columns | 0.5435 s | 4.803 s | 0.312 s | 3.213 s |
-
-Both readers decode with automatic multicore workers and defer numeric and
-character materialization through ALTREP. `read_arrow()` is faster because the
-`.arrow` file already stores each column contiguously in its Stata storage width,
-so reading is mostly parallel column copies rather than row-major decoding.
-These medians pool six cohorts covering every reader order, with
-66 timed reads per synthetic file and 30 per India reader. Each process starts
-with an untimed warmup. Checksum verification is enabled. Disabling it lowered
-the India median from 0.312 to 0.302 seconds (3.2%). Keep verification enabled
-by default to retain corruption detection. The Arrow files predate
-support for some metadata, including variable notes, so the refresh verifies
-matching values and common metadata. See the
-[balanced reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-balanced/README.md)
-for ranges, every cohort and the metadata differences.
-
-Use `read_arrow()` for repeated full reads when its extra memory fits your
-workload. Use `read_dta()` when reading the original file or minimizing peak
-memory. Converting the India file with `save_arrow()` took 1.4 seconds. See the
-[Arrow report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
-for conversion times, file sizes, and methodology.
+`dtatools` was faster on all 1,812 comparable files. These are warm-cache
+measurements from an Apple M4 Max. The
+[default-reader report](../../benchmarks/reader-startup/results-2026-09-13/README.md)
+includes the full corpus results, the ten-read India comparison quoted above,
+CPU time, peak memory and methodology.
 
 ### Projected reads across surveys
 
-Pipelines that process many surveys can pass the union of every raw variable
-they use without first loading or special-casing each file:
+Survey analyses often use only a few dozen variables from files with hundreds
+or thousands of columns.
+Pass their names when reading an original DTA file, using the same selection
+syntax as the Arrow example:
 
 ```r
 raw_variables <- c("caseid", "v005", "v012", "survey_specific_variable")
@@ -227,120 +187,102 @@ data <- read_dta(
 )
 ```
 
-`any_of()` keeps requested variables that exist and silently omits those that
-do not. `read_dta()` resolves the selection from DTA metadata before reading
-observations, so it does not decode unselected columns.
+The DTA reader still scans full row blocks while decoding only selected
+columns. Arrow stores columns separately, so projected reads can also avoid
+loading unselected column payloads. Use `all_of()` when every requested name
+must exist, or `any_of()` for a union of variables across surveys.
 
-A warm-cache benchmark selected 100 variables spread across the 5.2 GB,
-5,972-column India 2021 DHS women's file. The `any_of()` union also contained
-100 absent names:
+In a published default-reader benchmark, selecting 100 variables spread across
+the 5.2 GB, 5,972-column India 2021 DHS women's file took **0.235 seconds** with
+`read_dta()`, versus **0.482 seconds** for Stata's direct projected `use`.
+The R selection also included 100 absent names, which `any_of()` omitted;
+Stata received only the known-present names. Both returned the same
+724,115-row, 100-column result. These are medians from 11 warm-cache runs.
+See the [projection report](../../benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
+for the complete comparisons and worker-count controls.
 
-| Method | Median read time |
-| --- | ---: |
-| `read_dta(any_of(union))` | 0.235 seconds |
-| Stata direct projected `use` with known-present names | 0.482 seconds |
-| Stata full `use`, inspect union, then `keep` | 0.552 seconds |
+### Full and projected reads in the development build
 
-All methods returned the same 724,115-row, 100-column result. These are medians
-from 11 runs on an Apple M4 Max. The direct Stata command is not union-safe;
-Stata errors if its varlist contains an absent name. See the
-[reader report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)
-for the synthetic comparisons, per-method bounds, and limitations.
+A newer screen on the same India dataset tests opt-in reader implementations
+on this branch. **These paths remain disabled by default.** The
+[implementation report](../../docs/research/reader-parity-implementation-status.md)
+links the controls, exact tested source, observations and validation results.
 
-The adaptive policy reduced the India projection median from 0.263 to 0.235
-seconds. A separate ten-read control found 0.236 seconds of wall time and 0.345
-seconds of CPU time in automatic mode, compared with 0.2645 and 0.5185 seconds
-with sixteen workers: 10.8% less wall time and 33.5% less CPU time. Automatic
-mode matched two workers on this workload.
+| India dataset read | `read_dta()` | Verified `read_arrow()` | Stata 18 MP `use` |
+| --- | ---: | ---: | ---: |
+| All 5,972 columns | 0.616 s | 0.287 s | 0.471 s |
+| 30 scattered, known-present columns | 0.272 s | 0.072 s | 0.316 s |
 
-The reader still scans full row blocks while decoding only the selected
-columns. Once scanning limits throughput, extra workers add coordination
-without speeding up the read. The automatic policy reduces workers for this
-narrow selection while retaining more workers for a large full read. Explicit
-limits remain available; serial mode uses less CPU but takes more wall time
-on this projection.
+Each figure is a median of six fresh-process reads with warm filesystem cache
+on an Apple M4 Max. Timers include reader initialization and exclude process
+startup. Arrow uses a preconverted file with checksum verification enabled;
+Stata reads the original DTA. The 30-column selection and protocol differ from
+the earlier 100-column benchmark above.
 
-### Synthetic write benchmarks
+In this screen, Arrow takes about 39% less time than Stata for the full read
+and 77% less for the 30-column projection. Its owned-buffer implementation
+reduces full-read time from 0.569 to 0.287 seconds and peak resident memory
+from **10.28 to 5.40 GB**
+compared with its matched baseline. Stata uses 5.26 GB. The load-and-summarize
+workflow also improves, from 0.592 to 0.310 seconds for summaries of 30 numeric
+columns after loading the complete dataset.
 
-The primary synthetic benchmark gives dtatools and haven the exact output from
-Stata's first save of an in-memory fixture covering every numeric Stata storage
-type:
+These results show where the new paths help. Other full-read cases remained
+slower than Stata, and some projected workflows were slightly slower than the
+previous dtatools implementation. The linked report covers those cases and
+the limits of this six-observation screen.
 
-| Writer | 100 MB | 1 GB |
-| --- | ---: | ---: |
-| Stata `save` | 0.013 seconds | 0.130 seconds |
-| `save_dta()` | 0.023 seconds | 0.152 seconds |
-| `save_arrow()` | 0.037 seconds | 0.254 seconds |
-| `save_arrow(checksums = FALSE)` | 0.031 seconds | 0.235 seconds |
-| `haven::write_dta()` | 1.238 seconds | 9.048 seconds |
+### Using `.arrow` dataset files
 
-Haven took 53.8 times as long as dtatools at 100 MB and 59.5 times as long at
-1 GB on these Stata-class inputs. dtatools took 1.77 times Stata's median at
-100 MB and 1.17 times at 1 GB.
-dtatools preserved the declared numeric storage types. Haven preserved values
-and the metadata represented by its read model but widened all 30 numeric
-columns to `double`. `save_arrow()` received the identical input but writes
-Arrow IPC rather than DTA; it exports compact columns and dictionary strings
-without copying or materializing them. Checksums cost only the step between
-the two `save_arrow()` rows — the hashing runs on worker threads that overlap
-the write — so the small remaining gap to `save_dta()` is mostly the larger
-Arrow output.
+Call `save_dta()` to write a standalone Stata 18/19 dataset or `save_arrow()`
+to write a standalone Arrow dataset. An Arrow dataset can mix Stata-specific
+columns with supported ordinary R `logical`, `integer`, `double`, `character`,
+`raw`, `factor`, `Date`, `POSIXct`, and `difftime` columns. See `?save_arrow`
+for the preserved class details and metadata.
 
-The secondary benchmark gives dtatools and haven the same ordinary R data
-frame, without Stata storage or labelling metadata:
+The files use Apache Arrow's column-oriented IPC format. dtatools adds
+metadata for Stata and R semantics and a fingerprint for each data buffer.
+`read_arrow()` checks those fingerprints by default to detect accidental
+file corruption. Keep verification enabled for normal use.
 
-| Writer | 100 MB | 1 GB |
-| --- | ---: | ---: |
-| `save_dta()` | 0.193 seconds | 1.927 seconds |
-| `save_arrow()` | 0.105 seconds | 0.897 seconds |
-| `haven::write_dta()` | 0.495 seconds | 4.195 seconds |
-
-`save_dta()` was 61.0% faster than haven at 100 MB and 54.1% faster at 1 GB.
-On ordinary R columns `save_arrow()` is the fastest writer of the three:
-without Stata storage declarations there are no compact columns for the DTA
-fast path to exploit, and the Arrow writer skips DTA-specific work such as
-fixed-width string planning.
-
-These are medians from seven fresh-process runs on the same Apple M4 Max, not
-performance guarantees. The
-[write report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/large-scale/results-2026-08-28.md)
-and the
-[Arrow report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
-provide percentiles, memory use, output sizes and methodology.
+The [Arrow format report](../../benchmarks/arrow-interchange/results-2026-08-29.md)
+records conversion costs, file sizes and interoperability details. Older warm
+reader comparisons are retained in the
+[balanced reader report](../../benchmarks/reader-refresh/results-2026-09-12-balanced/README.md).
 
 ### Synthetic merge benchmarks
 
-The merge benchmark joins a 200,000-row, 151-column master to a 360,044-row,
-110-column using dataset on a character key. Sixty non-key variables occur in
-both inputs, and the result has 440,044 rows.
+`dta_merge()` implements Stata key identity, relationship checks, shared-variable
+coalescing and the `_merge` indicator. In a synthetic benchmark, a 200,000-row,
+151-column master joins a 360,044-row, 110-column using dataset on a character
+key. Both dtatools and Stata return 440,044 rows and 201 columns.
 
-These are default-workflow timings, not identical output construction.
+| Relationship | `dta_merge()` on Stata columns | Stata 18 MP `merge` |
+| --- | ---: | ---: |
+| `1:m` | 0.101 s | 0.257 s |
+| `m:1` | 0.097 s | 0.329 s |
 
-| Method | Input columns | 1:m median | m:1 median | 1:m allocated | m:1 allocated |
-| --- | --- | ---: | ---: | ---: | ---: |
-| `dta_merge()` | Stata classes | 0.101 s | 0.097 s | 0.61 GB | 0.62 GB |
-| dplyr `full_join()` | Stata classes | 1.716 s | 1.411 s | 9.27 GB | 9.43 GB |
-| base `merge()` | Stata classes | 5.125 s | 7.433 s | 23.26 GB | 31.23 GB |
-| `dta_merge()` | Standard R | 0.107 s | 0.108 s | 0.66 GB | 0.79 GB |
-| dplyr `full_join()` | Standard R | 0.115 s | 0.108 s | 0.74 GB | 0.76 GB |
-| base `merge()` | Standard R | 1.576 s | 1.855 s | 2.06 GB | 2.06 GB |
-| Stata 18 MP `merge` | Native DTA | 0.257 s | 0.329 s | Not measured | Not measured |
+These compare default workflows with different timing boundaries: R starts
+with both inputs loaded, while Stata's timer includes reading the using file.
+Stata also sorts by the key; `dta_merge()` retains input order. The figures
+therefore describe these workflows and do not isolate merge-engine speed.
+They are warm-cache medians on the same Apple M4 Max, from nine R iterations
+and seven Stata iterations. The
+[merge report](../../benchmarks/r-merge-performance/results-2026-08-28.md)
+contains the source version, correctness checks, allocation measurements,
+dplyr and base R comparisons, and reproduction commands.
 
-The Stata-class inputs come from `read_dta()`. The standard controls contain
-the same values in base character, integer, and double columns. dplyr and base
-R materialize intermediate values or reconstruct classed outputs, and their
-wider results also increase allocation. They leave the compact source columns
-untouched. `dta_merge()` and Stata coalesce the 60 shared variables and return
-201 columns including `_merge`; dplyr and base R retain suffixed copies and
-return 260 columns. Base R and Stata sort by the key; `dta_merge()` and dplyr
-retain input order.
+### Synthetic write benchmarks
 
-The R figures are `bench::mark()` medians on the same Apple M4 Max. Allocated
-memory is cumulative R allocation, not peak RSS. The Stata median includes
-reading the using file, while the R operation timers start with both inputs
-loaded. These are not performance guarantees. See the
-[merge report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-merge-performance/results-2026-08-28.md)
-for versions, iteration counts, correctness checks, and reproduction commands.
+On a 1 GB synthetic Stata-class fixture, `save_dta()` took 0.152 seconds,
+Stata `save` took 0.130 seconds, and `haven::write_dta()` took 9.048 seconds.
+These are medians from seven fresh-process runs on the same Apple M4 Max.
+dtatools retained declared numeric storage; haven widened the 30 numeric
+columns to double. The
+[write report](../../benchmarks/large-scale/results-2026-08-28.md) and
+[Arrow report](../../benchmarks/arrow-interchange/results-2026-08-29.md)
+include the ordinary-R-column controls, Arrow comparisons, output sizes and
+memory measurements.
 
 Keep using haven when you need to write older DTA releases or work with SAS and
 SPSS formats.
@@ -882,7 +824,16 @@ See the [naming migration](../../docs/dta-naming.md) for class checks and saved 
 
 ## Performance controls
 
-`threads = 0` chooses an automatic worker count. For compact DTA reads it accounts for selected decode work, rows per input block and the row window; small reads remain serial. `threads = 1` forces serial decoding. `use_numeric_altrep = FALSE` disables the compact numeric representation and creates R double vectors during the read.
+Both readers default to `threads = getOption("dtatools.threads", 0L)`. Zero
+chooses automatically from the CPUs available to the process. For compact DTA
+reads, the policy also accounts for selected types and widths, rows per input
+block and the row window. Narrow projections can use fewer workers; small
+reads remain serial.
+
+Set `threads = 1` for serial reading, pass another positive number to limit one
+call, or set `options(dtatools.threads = 4L)` for the session. A per-call
+argument overrides the option. `use_numeric_altrep = FALSE` disables compact
+numeric storage and creates R double vectors during the read.
 
 Additional measurements and their provenance live in the repository's [benchmark reports](https://github.com/jbearak/dta-parser/tree/main/benchmarks).
 

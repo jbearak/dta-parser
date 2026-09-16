@@ -17,7 +17,22 @@ merge, and data-signature operations.
 | TypeScript | [`@jbearak/dta-parser`](typescript/dta-parser), DTA and Arrow IPC readers | [npm package README](typescript/dta-parser/README.md) |
 | R | [`dtatools`](r-package/dtatools) | [R package README](r-package/dtatools/README.md) |
 
-The TypeScript package has its own parser and works with either an `ArrayBuffer` or a Node filesystem-backed reader. For Stata imports in R, use `dtatools::read_dta()` instead of `haven::read_dta()`. It follows haven's common read interface and returns dibbles, tibbles, or data tables with haven-compatible labels and tagged missing values. In the repository's 46.9 GB DHS benchmark, its multicore reader completed the 641-file batch 69.1 times faster than the haven measurement. It can also project a cross-survey union with `col_select = any_of(raw_variables)`, omitting names absent from a particular file without decoding unselected columns. See the [R package README](r-package/dtatools/README.md#why-use-dtatools) for the comparisons and their limitations.
+The TypeScript package has its own parser and works with either an `ArrayBuffer`
+or a Node filesystem-backed reader.
+
+For Stata imports in R, `dtatools::read_dta()` follows haven's common read
+interface and returns dibbles, tibbles, or data tables with haven-compatible
+labels and tagged missing values. Its multicore reader completed the
+repository's 641-file, 46.9 GB DHS benchmark 69.1 times faster than haven.
+
+For repeated analysis, save an Arrow copy once per source-file version and
+read only the variables each analysis needs. Both readers accept
+`col_select = any_of(raw_variables)`, omitting names absent from a particular
+survey. Dibbles retain Stata column types and metadata through supported
+operations, including Stata-aware merges. See the R package README for the
+[reusable-file workflow](r-package/dtatools/README.md#reuse-survey-files-across-analyses)
+and [benchmarks](r-package/dtatools/README.md#why-use-dtatools), including the
+opt-in development reader results and their limitations.
 
 The Rust crate is the internal read/write core used by the R package. It is not published to crates.io. Its interface is documented with Rustdoc:
 
