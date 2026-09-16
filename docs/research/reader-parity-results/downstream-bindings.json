@@ -1,0 +1,110 @@
+{
+  "downstream-v2": {
+    "experiments": {
+      "DTATOOLS_EXPERIMENT_ARROW_OWNED": "1",
+      "DTATOOLS_EXPERIMENT_DTA_PREPARED": "1",
+      "DTATOOLS_EXPERIMENT_DTA_WIDE_BATCH": "1",
+      "DTATOOLS_EXPERIMENT_DTA_RING": "4",
+      "DTATOOLS_EXPERIMENT_DTA_RING_BLOCK_BYTES": "4194304",
+      "DTATOOLS_EXPERIMENT_DTA_RING_BUDGET_BYTES": "16777216"
+    },
+    "manifest_sha256": "0973afedfe50c22104c27dfe97dc78113a53f448489e029d8fc55b2999e90a34",
+    "workers": {
+      "downstream.py": "e332b1f59ac0252c2c3230c33b31cf043bb69f8ec797cf914d9333da39873820",
+      "downstream.R": "7a052434307cbc59c1f884456e0e6481922bbc486fff5971cba0e102cb861528",
+      "run.py": "12e2bfde07d7d56cec390ba1ae0c78d8af869683ccd147141683e5e31030ebc6"
+    },
+    "inputs": [
+      {
+        "sha256": "fc2cd5376eea3b29b2a989ead21d224351a75ed1a9b75dc5940b80f2c70a63da",
+        "bytes": 100000187
+      },
+      {
+        "sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc",
+        "bytes": 5196403097
+      },
+      {
+        "sha256": "5478fb9193898ac12b296c02e9f5438a37e809588ed7523e76d26dc1ae44cf88",
+        "bytes": 4972475
+      },
+      {
+        "sha256": "7ba6b22c454b8f94adcd45fc1c2af6bac736f05f4c28d4b37249cbec5f151665",
+        "bytes": 101574402
+      },
+      {
+        "sha256": "f1449a871b3fabbeed303b04a2dc0b884e4a76c7f213d7f095e0b25acd76dfcc",
+        "bytes": 5559834970
+      },
+      {
+        "sha256": "89b1a316d23b15f4542dcc326a3ee2f12ce1baa1fa09c154607b57e00eafc480",
+        "bytes": 5949938
+      }
+    ],
+    "builds": {
+      "baseline": {
+        "commit": "b41d8f9d8dba260b8c93d5c7d83cb12ee8102600",
+        "tree": "b2f27249477db7cb27607f6c6e2a5f978e3c196c",
+        "installed_manifest_sha256": "d42aa5c6ad90bf383cca2b63665d35224a7fcf87d32f92975bdffdd5d3be5c59"
+      },
+      "candidate": {
+        "commit": "534ede17a89c66075d41b3ee900b892163495d21",
+        "tree": "235e9f8cae611eafbd54a45e92aac5daa4ec853e",
+        "installed_manifest_sha256": "b524c4da22546d177be13f6e13857e6e1205938ff6f7744429469c1e8fbe58da"
+      }
+    }
+  },
+  "downstream-v3": {
+    "experiments": {
+      "DTATOOLS_EXPERIMENT_DTA_PREPARED": "1",
+      "DTATOOLS_EXPERIMENT_DTA_WIDE_BATCH": "1",
+      "DTATOOLS_EXPERIMENT_DTA_RING": "4",
+      "DTATOOLS_EXPERIMENT_DTA_RING_BLOCK_BYTES": "4194304",
+      "DTATOOLS_EXPERIMENT_DTA_RING_BUDGET_BYTES": "16777216",
+      "DTATOOLS_EXPERIMENT_ARROW_OWNED": "1"
+    },
+    "manifest_sha256": "0973afedfe50c22104c27dfe97dc78113a53f448489e029d8fc55b2999e90a34",
+    "workers": {
+      "downstream.py": "e332b1f59ac0252c2c3230c33b31cf043bb69f8ec797cf914d9333da39873820",
+      "downstream.R": "7a052434307cbc59c1f884456e0e6481922bbc486fff5971cba0e102cb861528",
+      "run.py": "12e2bfde07d7d56cec390ba1ae0c78d8af869683ccd147141683e5e31030ebc6"
+    },
+    "inputs": [
+      {
+        "sha256": "fc2cd5376eea3b29b2a989ead21d224351a75ed1a9b75dc5940b80f2c70a63da",
+        "bytes": 100000187
+      },
+      {
+        "sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc",
+        "bytes": 5196403097
+      },
+      {
+        "sha256": "5478fb9193898ac12b296c02e9f5438a37e809588ed7523e76d26dc1ae44cf88",
+        "bytes": 4972475
+      },
+      {
+        "sha256": "7ba6b22c454b8f94adcd45fc1c2af6bac736f05f4c28d4b37249cbec5f151665",
+        "bytes": 101574402
+      },
+      {
+        "sha256": "f1449a871b3fabbeed303b04a2dc0b884e4a76c7f213d7f095e0b25acd76dfcc",
+        "bytes": 5559834970
+      },
+      {
+        "sha256": "89b1a316d23b15f4542dcc326a3ee2f12ce1baa1fa09c154607b57e00eafc480",
+        "bytes": 5949938
+      }
+    ],
+    "builds": {
+      "baseline": {
+        "commit": "b41d8f9d8dba260b8c93d5c7d83cb12ee8102600",
+        "tree": "b2f27249477db7cb27607f6c6e2a5f978e3c196c",
+        "installed_manifest_sha256": "d42aa5c6ad90bf383cca2b63665d35224a7fcf87d32f92975bdffdd5d3be5c59"
+      },
+      "candidate": {
+        "commit": "9ac470bb07029db52e02b02780999cf8bec75291",
+        "tree": "12f5143920555cdd7d11f805dd336e67a083bc8e",
+        "installed_manifest_sha256": "0ff242c9e1b44d83c29c80dd345cd6ef6ccd7717e92b77f536a0b7c0e87cc364"
+      }
+    }
+  }
+}

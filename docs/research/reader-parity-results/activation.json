@@ -1,0 +1,51 @@
+{
+  "candidate_source": "9ac470bb07029db52e02b02780999cf8bec75291",
+  "timed": false,
+  "local_log_sha256": "fda16dcda0d690c6aa8de10e1268bcbe2320c2736d79f0a4b6745e09a45425af",
+  "records": [
+    {
+      "case": "double-tall-all",
+      "diagnostic": "dtatools experiment: Arrow bounded=active owned=false"
+    },
+    {
+      "case": "double-tall-all",
+      "diagnostic": "dtatools experiment: Arrow owned_columns=0 fill_tasks=16 fill_threads=16"
+    },
+    {
+      "case": "double-tall-all",
+      "diagnostic": "dtatools experiment: Arrow completion=ArrowCompletionReport { target_bytes: 67108864, dictionary_capacity_bytes: 0, reader_capacity_bytes: 131072, task_capacity_bytes: 2048, peak_accounted_bytes: 6170624, oversized_tasks: 0, maximum_observed_chunk_capacity: 524288, uses_compressed_capacity_estimates: false, has_unmeasured_zstd_workspace: false }"
+    },
+    {
+      "case": "mixed-all",
+      "diagnostic": "dtatools experiment: Arrow bounded=fallback owned=false unsupported_types_present=true"
+    },
+    {
+      "case": "mixed-all",
+      "diagnostic": "dtatools experiment: Arrow owned_columns=0 fill_tasks=128 fill_threads=16"
+    },
+    {
+      "case": "india-30-scattered-known",
+      "diagnostic": "dtatools experiment: Arrow bounded=fallback owned=false unsupported_types_present=true"
+    },
+    {
+      "case": "india-30-scattered-known",
+      "diagnostic": "dtatools experiment: Arrow owned_columns=0 fill_tasks=30 fill_threads=16"
+    },
+    {
+      "case": "india-all",
+      "diagnostic": "DTATOOLS_EXPERIMENT dta_wide_batch=true dta_ring_slots=4 dta_ring_block_bytes=4189616 workers=16 rows=724115 columns=5972"
+    },
+    {
+      "case": "india-all",
+      "diagnostic": "DTATOOLS_EXPERIMENT dta_ring_peak_vec_capacity_bytes=16758464 dta_ring_requested_buffer_bytes=16758464"
+    },
+    {
+      "case": "india-30-scattered-known",
+      "diagnostic": "DTATOOLS_EXPERIMENT dta_wide_batch=true dta_ring_slots=4 dta_ring_block_bytes=4189616 workers=2 rows=724115 columns=30"
+    },
+    {
+      "case": "india-30-scattered-known",
+      "diagnostic": "DTATOOLS_EXPERIMENT dta_ring_peak_vec_capacity_bytes=16758464 dta_ring_requested_buffer_bytes=16758464"
+    }
+  ]
+}

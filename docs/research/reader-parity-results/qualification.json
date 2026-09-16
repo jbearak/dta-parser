@@ -1,0 +1,4594 @@
+{
+  "qualify-v3-combined": {
+    "binding": {
+      "manifest_sha256": "0973afedfe50c22104c27dfe97dc78113a53f448489e029d8fc55b2999e90a34",
+      "inputs": [
+        {
+          "sha256": "fc2cd5376eea3b29b2a989ead21d224351a75ed1a9b75dc5940b80f2c70a63da",
+          "bytes": 100000187
+        },
+        {
+          "sha256": "ab08515fbe880e06aeef3f2054ce5b6f1201c3aacfe631e9808e8fb913aa6a24",
+          "bytes": 1000000164
+        },
+        {
+          "sha256": "42f0131d2ba6d9ddce14a7db468de23972abe5b09d80ab785cd91e656374d937",
+          "bytes": 575320555
+        },
+        {
+          "sha256": "ec1461c62b456aeb458ad969a90352774090c1c47cb9b8e2d56b3381263c4df2",
+          "bytes": 230064555
+        },
+        {
+          "sha256": "ff247bfa58fa854f5ee55aa266fd91eec0ee95bb2f47d1ce5d4f90757f1f4419",
+          "bytes": 230640555
+        },
+        {
+          "sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc",
+          "bytes": 5196403097
+        },
+        {
+          "sha256": "ae0d864204a28e9159062daa101b5fb7e606326a7835bcd5d3f36ada19745393",
+          "bytes": 69675
+        },
+        {
+          "sha256": "5a000df6f2a24a5891063ffb4f234b3c1a994d110bc737cd9530b810340bee7e",
+          "bytes": 32010795
+        },
+        {
+          "sha256": "f7fd9ee6616c7c667173d5890c82688f54a0cbdf21b2b4b3ba251a09cbbad129",
+          "bytes": 8847915
+        },
+        {
+          "sha256": "5478fb9193898ac12b296c02e9f5438a37e809588ed7523e76d26dc1ae44cf88",
+          "bytes": 4972475
+        },
+        {
+          "sha256": "78ac10698e0ded0810e6b61a919aec4072476318b4e1925f4c2dbb095e915219",
+          "bytes": 7077035
+        },
+        {
+          "sha256": "875c6cb3fd9b2a45c2b9245fed75a7195f2669198feb4586b50be4ffc0c220da",
+          "bytes": 14162475
+        },
+        {
+          "sha256": "81b77f6d7c956c65b107203cbe75e7813a2c29d769562f50a1f4651281ec252e",
+          "bytes": 3922475
+        },
+        {
+          "sha256": "7ba6b22c454b8f94adcd45fc1c2af6bac736f05f4c28d4b37249cbec5f151665",
+          "bytes": 101574402
+        },
+        {
+          "sha256": "d80dbd7f8595da90182cf3fa10e8c067a08ee93d32a036fe83edf0a6e248ba32",
+          "bytes": 1015794434
+        },
+        {
+          "sha256": "4f7cd56d6a799f56a5d7646be563bcaa510f4b1ce9217f887ad8d2cd28a20266",
+          "bytes": 5426
+        },
+        {
+          "sha256": "702a982d41373624d141659f059d24339ff81c9fbe34866b3bb7e578ab70640a",
+          "bytes": 6146
+        },
+        {
+          "sha256": "702a982d41373624d141659f059d24339ff81c9fbe34866b3bb7e578ab70640a",
+          "bytes": 6146
+        },
+        {
+          "sha256": "7b9a6f423601848aa3799c0ba8f54b2de1f8e5ad06572933cbcfbc3963d17401",
+          "bytes": 11218
+        },
+        {
+          "sha256": "d9b09544a8af3423a801e5894bfded31203e9df609b6c98531cc9779482265da",
+          "bytes": 69218
+        },
+        {
+          "sha256": "2bb877e3800c58a54566b2bb3c276132353f81e98aa7eaaa0c862d5788706965",
+          "bytes": 32511978
+        },
+        {
+          "sha256": "252589825e5dd070099c0f1bd16e90c897d7a5be71d2f1cef3048693d1986187",
+          "bytes": 8738746
+        },
+        {
+          "sha256": "f1449a871b3fabbeed303b04a2dc0b884e4a76c7f213d7f095e0b25acd76dfcc",
+          "bytes": 5559834970
+        },
+        {
+          "sha256": "89b1a316d23b15f4542dcc326a3ee2f12ce1baa1fa09c154607b57e00eafc480",
+          "bytes": 5949938
+        },
+        {
+          "sha256": "359631bd77cf270ac0167efee0350959f6c37c9aad4a1fc0ffff9ce1803a8550",
+          "bytes": 67474786
+        },
+        {
+          "sha256": "c9d44b47e8a81f5a67def9dcd7b1b55b0890101d4e7ca25820e31c0419e0b10a",
+          "bytes": 19426146
+        },
+        {
+          "sha256": "10dc2a401f1800eca8a73871ee3938802c69d06a5554a33d2a62443526f01482",
+          "bytes": 9186146
+        },
+        {
+          "sha256": "af3e5e52c80d3da089b7257884859168a3e1a67352bcb074910979bfb3a4f18b",
+          "bytes": 628482746
+        },
+        {
+          "sha256": "c3954c55016407676652a20add7ae95157575e92c911a0c5b6acdfaefbde356e",
+          "bytes": 251352154
+        },
+        {
+          "sha256": "3e1806e693cdd64736132bbc49ee176a829618e6d407af4c537c89ca30af8ca4",
+          "bytes": 251703066
+        },
+        {
+          "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7",
+          "bytes": 1729
+        },
+        {
+          "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2",
+          "bytes": 2668
+        },
+        {
+          "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c",
+          "bytes": 6213
+        },
+        {
+          "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693",
+          "bytes": 6107
+        }
+      ],
+      "workers": {
+        "worker.R": "23b3804c15cdf403137da2669dbe533a1b2ac77afb95b8fd2b507261584bb19f",
+        "run.py": "12e2bfde07d7d56cec390ba1ae0c78d8af869683ccd147141683e5e31030ebc6"
+      },
+      "stata_sha256": "15470e7eeec2fb8870af39aa38318f1c3b0c9fbb109f319d783a67a6b428eee7",
+      "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "cpu_count": 16,
+      "cache": "warm filesystem",
+      "experiments": {
+        "DTATOOLS_EXPERIMENT_DTA_PREPARED": "1",
+        "DTATOOLS_EXPERIMENT_DTA_WIDE_BATCH": "1",
+        "DTATOOLS_EXPERIMENT_DTA_RING": "4",
+        "DTATOOLS_EXPERIMENT_DTA_RING_BLOCK_BYTES": "4194304",
+        "DTATOOLS_EXPERIMENT_DTA_RING_BUDGET_BYTES": "16777216",
+        "DTATOOLS_EXPERIMENT_ARROW_OWNED": "1"
+      },
+      "eligible": false,
+      "cohorts": 2,
+      "repetitions": 20,
+      "Rscript_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f",
+      "runtimes": {
+        "baseline": {
+          "R": "R version 4.6.1 (2026-06-24)",
+          "platform": "aarch64-apple-darwin25.4.0",
+          "packages": {
+            "dtatools": "0.9.0",
+            "rlang": "1.3.0",
+            "tibble": "3.3.1",
+            "tidyselect": "1.2.1",
+            "vctrs": "0.7.3"
+          }
+        },
+        "candidate": {
+          "R": "R version 4.6.1 (2026-06-24)",
+          "platform": "aarch64-apple-darwin25.4.0",
+          "packages": {
+            "dtatools": "0.9.0",
+            "rlang": "1.3.0",
+            "tibble": "3.3.1",
+            "tidyselect": "1.2.1",
+            "vctrs": "0.7.3"
+          }
+        }
+      },
+      "threads": {
+        "R_reader": "default adaptive policy, threads=0",
+        "stata": "recorded from creturn in each Stata worker",
+        "environment": {}
+      },
+      "builds": {
+        "baseline": {
+          "commit": "b41d8f9d8dba260b8c93d5c7d83cb12ee8102600",
+          "tree": "b2f27249477db7cb27607f6c6e2a5f978e3c196c",
+          "installed_manifest_sha256": "d42aa5c6ad90bf383cca2b63665d35224a7fcf87d32f92975bdffdd5d3be5c59"
+        },
+        "candidate": {
+          "commit": "9ac470bb07029db52e02b02780999cf8bec75291",
+          "tree": "12f5143920555cdd7d11f805dd336e67a083bc8e",
+          "installed_manifest_sha256": "0ff242c9e1b44d83c29c80dd345cd6ef6ccd7717e92b77f536a0b7c0e87cc364"
+        }
+      }
+    },
+    "cases": [
+      {
+        "case": "100mb-all",
+        "signature": "231956:40:bab4b8dee5b66170",
+        "rows": 231956,
+        "columns": 40
+      },
+      {
+        "case": "100mb-10-clustered-known",
+        "signature": "231956:10:d57ffe15092b4136",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-10-clustered-any_of",
+        "signature": "231956:10:d57ffe15092b4136",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-10-clustered-discover",
+        "signature": "231956:10:d57ffe15092b4136",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-10-scattered-known",
+        "signature": "231956:10:2421485cca9201dc",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-10-scattered-any_of",
+        "signature": "231956:10:2421485cca9201dc",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-10-scattered-discover",
+        "signature": "231956:10:2421485cca9201dc",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-30-clustered-known",
+        "signature": "231956:30:fb07bbdf0137d973",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "100mb-30-clustered-any_of",
+        "signature": "231956:30:fb07bbdf0137d973",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "100mb-30-clustered-discover",
+        "signature": "231956:30:fb07bbdf0137d973",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "100mb-30-scattered-known",
+        "signature": "231956:30:4108b9fdd83f5fe5",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "100mb-30-scattered-any_of",
+        "signature": "231956:30:4108b9fdd83f5fe5",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "100mb-30-scattered-discover",
+        "signature": "231956:30:4108b9fdd83f5fe5",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "1gb-all",
+        "signature": "2320123:40:7cb9bebf47711cf7",
+        "rows": 2320123,
+        "columns": 40
+      },
+      {
+        "case": "1gb-10-clustered-known",
+        "signature": "2320123:10:fb8935ac00515c87",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-10-clustered-any_of",
+        "signature": "2320123:10:fb8935ac00515c87",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-10-clustered-discover",
+        "signature": "2320123:10:fb8935ac00515c87",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-10-scattered-known",
+        "signature": "2320123:10:80dd95add2ecb1eb",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-10-scattered-any_of",
+        "signature": "2320123:10:80dd95add2ecb1eb",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-10-scattered-discover",
+        "signature": "2320123:10:80dd95add2ecb1eb",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-30-clustered-known",
+        "signature": "2320123:30:b3f320f6104314f2",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "1gb-30-clustered-any_of",
+        "signature": "2320123:30:b3f320f6104314f2",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "1gb-30-clustered-discover",
+        "signature": "2320123:30:b3f320f6104314f2",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "1gb-30-scattered-known",
+        "signature": "2320123:30:81ab1e7a040dbe9f",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "1gb-30-scattered-any_of",
+        "signature": "2320123:30:81ab1e7a040dbe9f",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "1gb-30-scattered-discover",
+        "signature": "2320123:30:81ab1e7a040dbe9f",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "india-all",
+        "signature": "724115:5972:e404e6f1cf51f55a",
+        "rows": 724115,
+        "columns": 5972
+      },
+      {
+        "case": "india-10-clustered-known",
+        "signature": "724115:10:9004cebf646519d6",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-10-clustered-any_of",
+        "signature": "724115:10:9004cebf646519d6",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-10-clustered-discover",
+        "signature": "724115:10:9004cebf646519d6",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-10-scattered-known",
+        "signature": "724115:10:441ec7e4c69eb624",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-10-scattered-any_of",
+        "signature": "724115:10:441ec7e4c69eb624",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-10-scattered-discover",
+        "signature": "724115:10:441ec7e4c69eb624",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-30-clustered-known",
+        "signature": "724115:30:6859c27a0ef939bf",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-30-clustered-any_of",
+        "signature": "724115:30:6859c27a0ef939bf",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-30-clustered-discover",
+        "signature": "724115:30:6859c27a0ef939bf",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-30-scattered-known",
+        "signature": "724115:30:253eec387c206488",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-30-scattered-any_of",
+        "signature": "724115:30:253eec387c206488",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-30-scattered-discover",
+        "signature": "724115:30:253eec387c206488",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-60-clustered-known",
+        "signature": "724115:60:fe168ded86b90d9b",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "india-60-clustered-any_of",
+        "signature": "724115:60:fe168ded86b90d9b",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "india-60-clustered-discover",
+        "signature": "724115:60:fe168ded86b90d9b",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "india-60-scattered-known",
+        "signature": "724115:60:fee4c46eaa2b91d6",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "india-60-scattered-any_of",
+        "signature": "724115:60:fee4c46eaa2b91d6",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "india-60-scattered-discover",
+        "signature": "724115:60:fee4c46eaa2b91d6",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "tall-all",
+        "signature": "500000:100:c0bf28ce75ea2248",
+        "rows": 500000,
+        "columns": 100
+      },
+      {
+        "case": "tall-10-clustered-known",
+        "signature": "500000:10:e9df33f321c54c5b",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-10-clustered-any_of",
+        "signature": "500000:10:e9df33f321c54c5b",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-10-clustered-discover",
+        "signature": "500000:10:e9df33f321c54c5b",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-10-scattered-known",
+        "signature": "500000:10:93bc823f4cf63a57",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-10-scattered-any_of",
+        "signature": "500000:10:93bc823f4cf63a57",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-10-scattered-discover",
+        "signature": "500000:10:93bc823f4cf63a57",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-30-clustered-known",
+        "signature": "500000:30:55b2dc0ffd502ac0",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-30-clustered-any_of",
+        "signature": "500000:30:55b2dc0ffd502ac0",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-30-clustered-discover",
+        "signature": "500000:30:55b2dc0ffd502ac0",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-30-scattered-known",
+        "signature": "500000:30:4b05019971d8da20",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-30-scattered-any_of",
+        "signature": "500000:30:4b05019971d8da20",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-30-scattered-discover",
+        "signature": "500000:30:4b05019971d8da20",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-60-clustered-known",
+        "signature": "500000:60:4b1d49b86284e7e5",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "tall-60-clustered-any_of",
+        "signature": "500000:60:4b1d49b86284e7e5",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "tall-60-clustered-discover",
+        "signature": "500000:60:4b1d49b86284e7e5",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "tall-60-scattered-known",
+        "signature": "500000:60:133106522bb870e9",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "tall-60-scattered-any_of",
+        "signature": "500000:60:133106522bb870e9",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "tall-60-scattered-discover",
+        "signature": "500000:60:133106522bb870e9",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "wide-all",
+        "signature": "50000:1000:b2203e203fc71d91",
+        "rows": 50000,
+        "columns": 1000
+      },
+      {
+        "case": "wide-10-clustered-known",
+        "signature": "50000:10:3071f3a98e10d190",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-10-clustered-any_of",
+        "signature": "50000:10:3071f3a98e10d190",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-10-clustered-discover",
+        "signature": "50000:10:3071f3a98e10d190",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-10-scattered-known",
+        "signature": "50000:10:a4694d39bbbcbd95",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-10-scattered-any_of",
+        "signature": "50000:10:a4694d39bbbcbd95",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-10-scattered-discover",
+        "signature": "50000:10:a4694d39bbbcbd95",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-30-clustered-known",
+        "signature": "50000:30:8f3e9c0d5ca0b853",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-30-clustered-any_of",
+        "signature": "50000:30:8f3e9c0d5ca0b853",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-30-clustered-discover",
+        "signature": "50000:30:8f3e9c0d5ca0b853",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-30-scattered-known",
+        "signature": "50000:30:7b2e43565931da6e",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-30-scattered-any_of",
+        "signature": "50000:30:7b2e43565931da6e",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-30-scattered-discover",
+        "signature": "50000:30:7b2e43565931da6e",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-60-clustered-known",
+        "signature": "50000:60:4c9a2e7c54becbc6",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "wide-60-clustered-any_of",
+        "signature": "50000:60:4c9a2e7c54becbc6",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "wide-60-clustered-discover",
+        "signature": "50000:60:4c9a2e7c54becbc6",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "wide-60-scattered-known",
+        "signature": "50000:60:aab509ec27977b4e",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "wide-60-scattered-any_of",
+        "signature": "50000:60:aab509ec27977b4e",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "wide-60-scattered-discover",
+        "signature": "50000:60:aab509ec27977b4e",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-all",
+        "signature": "250000:500:1a95067662efcbea",
+        "rows": 250000,
+        "columns": 500
+      },
+      {
+        "case": "tall-wide-10-clustered-known",
+        "signature": "250000:10:096cf478d51f6510",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-10-clustered-any_of",
+        "signature": "250000:10:096cf478d51f6510",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-10-clustered-discover",
+        "signature": "250000:10:096cf478d51f6510",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-10-scattered-known",
+        "signature": "250000:10:e298cbbcc23674fb",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-10-scattered-any_of",
+        "signature": "250000:10:e298cbbcc23674fb",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-10-scattered-discover",
+        "signature": "250000:10:e298cbbcc23674fb",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-30-clustered-known",
+        "signature": "250000:30:be0c8a601e0ee0ac",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-30-clustered-any_of",
+        "signature": "250000:30:be0c8a601e0ee0ac",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-30-clustered-discover",
+        "signature": "250000:30:be0c8a601e0ee0ac",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-30-scattered-known",
+        "signature": "250000:30:cb70b51115705170",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-30-scattered-any_of",
+        "signature": "250000:30:cb70b51115705170",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-30-scattered-discover",
+        "signature": "250000:30:cb70b51115705170",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-60-clustered-known",
+        "signature": "250000:60:9606e33fc10959f4",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-60-clustered-any_of",
+        "signature": "250000:60:9606e33fc10959f4",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-60-clustered-discover",
+        "signature": "250000:60:9606e33fc10959f4",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-60-scattered-known",
+        "signature": "250000:60:bf0f2efae34ba92a",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-60-scattered-any_of",
+        "signature": "250000:60:bf0f2efae34ba92a",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-60-scattered-discover",
+        "signature": "250000:60:bf0f2efae34ba92a",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "double-small-all",
+        "signature": "1000:8:0f5c91890748f2a3",
+        "rows": 1000,
+        "columns": 8
+      },
+      {
+        "case": "double-tall-all",
+        "signature": "250000:16:1217a92bf5e49ea4",
+        "rows": 250000,
+        "columns": 16
+      },
+      {
+        "case": "double-tall-10-clustered-known",
+        "signature": "250000:10:ee864e3c6003160b",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-tall-10-clustered-any_of",
+        "signature": "250000:10:ee864e3c6003160b",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-tall-10-clustered-discover",
+        "signature": "250000:10:ee864e3c6003160b",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-tall-10-scattered-known",
+        "signature": "250000:10:9f4b44f704d116ef",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-tall-10-scattered-any_of",
+        "signature": "250000:10:9f4b44f704d116ef",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-tall-10-scattered-discover",
+        "signature": "250000:10:9f4b44f704d116ef",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-all",
+        "signature": "1000:1024:6fb4ca178370557e",
+        "rows": 1000,
+        "columns": 1024
+      },
+      {
+        "case": "double-wide-10-clustered-known",
+        "signature": "1000:10:22dab961a382b40a",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-10-clustered-any_of",
+        "signature": "1000:10:22dab961a382b40a",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-10-clustered-discover",
+        "signature": "1000:10:22dab961a382b40a",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-10-scattered-known",
+        "signature": "1000:10:b15fc219e2568e20",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-10-scattered-any_of",
+        "signature": "1000:10:b15fc219e2568e20",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-10-scattered-discover",
+        "signature": "1000:10:b15fc219e2568e20",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-30-clustered-known",
+        "signature": "1000:30:1bd903c0edafd558",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-30-clustered-any_of",
+        "signature": "1000:30:1bd903c0edafd558",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-30-clustered-discover",
+        "signature": "1000:30:1bd903c0edafd558",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-30-scattered-known",
+        "signature": "1000:30:109aa0606acb55b3",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-30-scattered-any_of",
+        "signature": "1000:30:109aa0606acb55b3",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-30-scattered-discover",
+        "signature": "1000:30:109aa0606acb55b3",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-60-clustered-known",
+        "signature": "1000:60:9dca97a97ecf676f",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "double-wide-60-clustered-any_of",
+        "signature": "1000:60:9dca97a97ecf676f",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "double-wide-60-clustered-discover",
+        "signature": "1000:60:9dca97a97ecf676f",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "double-wide-60-scattered-known",
+        "signature": "1000:60:e23c4715cd081132",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "double-wide-60-scattered-any_of",
+        "signature": "1000:60:e23c4715cd081132",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "double-wide-60-scattered-discover",
+        "signature": "1000:60:e23c4715cd081132",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-all",
+        "signature": "10000:128:59722adac3cdeb7d",
+        "rows": 10000,
+        "columns": 128
+      },
+      {
+        "case": "mixed-10-clustered-known",
+        "signature": "10000:10:9e45e4572fb4d9c6",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-10-clustered-any_of",
+        "signature": "10000:10:9e45e4572fb4d9c6",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-10-clustered-discover",
+        "signature": "10000:10:9e45e4572fb4d9c6",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-10-scattered-known",
+        "signature": "10000:10:adacc289ce46a4ce",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-10-scattered-any_of",
+        "signature": "10000:10:adacc289ce46a4ce",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-10-scattered-discover",
+        "signature": "10000:10:adacc289ce46a4ce",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-30-clustered-known",
+        "signature": "10000:30:5561b75434c7bdc6",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-30-clustered-any_of",
+        "signature": "10000:30:5561b75434c7bdc6",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-30-clustered-discover",
+        "signature": "10000:30:5561b75434c7bdc6",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-30-scattered-known",
+        "signature": "10000:30:18cdbd3cd0c32cbb",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-30-scattered-any_of",
+        "signature": "10000:30:18cdbd3cd0c32cbb",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-30-scattered-discover",
+        "signature": "10000:30:18cdbd3cd0c32cbb",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-60-clustered-known",
+        "signature": "10000:60:4a41fa26847cba87",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-60-clustered-any_of",
+        "signature": "10000:60:4a41fa26847cba87",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-60-clustered-discover",
+        "signature": "10000:60:4a41fa26847cba87",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-60-scattered-known",
+        "signature": "10000:60:f03a6fa66bf5aa79",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-60-scattered-any_of",
+        "signature": "10000:60:f03a6fa66bf5aa79",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-60-scattered-discover",
+        "signature": "10000:60:f03a6fa66bf5aa79",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-all",
+        "signature": "10000:128:0d20cb6d51861867",
+        "rows": 10000,
+        "columns": 128
+      },
+      {
+        "case": "string-low-10-clustered-known",
+        "signature": "10000:10:1244781addb1266f",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-10-clustered-any_of",
+        "signature": "10000:10:1244781addb1266f",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-10-clustered-discover",
+        "signature": "10000:10:1244781addb1266f",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-10-scattered-known",
+        "signature": "10000:10:ca0b25ed672ba7bf",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-10-scattered-any_of",
+        "signature": "10000:10:ca0b25ed672ba7bf",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-10-scattered-discover",
+        "signature": "10000:10:ca0b25ed672ba7bf",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-30-clustered-known",
+        "signature": "10000:30:768897b5d54abccf",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-30-clustered-any_of",
+        "signature": "10000:30:768897b5d54abccf",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-30-clustered-discover",
+        "signature": "10000:30:768897b5d54abccf",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-30-scattered-known",
+        "signature": "10000:30:380a61a96c1277c1",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-30-scattered-any_of",
+        "signature": "10000:30:380a61a96c1277c1",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-30-scattered-discover",
+        "signature": "10000:30:380a61a96c1277c1",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-60-clustered-known",
+        "signature": "10000:60:34999b9ae8e69e00",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-60-clustered-any_of",
+        "signature": "10000:60:34999b9ae8e69e00",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-60-clustered-discover",
+        "signature": "10000:60:34999b9ae8e69e00",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-60-scattered-known",
+        "signature": "10000:60:b02b2e91b3bb2a07",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-60-scattered-any_of",
+        "signature": "10000:60:b02b2e91b3bb2a07",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-60-scattered-discover",
+        "signature": "10000:60:b02b2e91b3bb2a07",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-all",
+        "signature": "10000:128:6f28854f194d5609",
+        "rows": 10000,
+        "columns": 128
+      },
+      {
+        "case": "string-high-10-clustered-known",
+        "signature": "10000:10:eb0af301ba278dd1",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-10-clustered-any_of",
+        "signature": "10000:10:eb0af301ba278dd1",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-10-clustered-discover",
+        "signature": "10000:10:eb0af301ba278dd1",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-10-scattered-known",
+        "signature": "10000:10:f7ced7040290284e",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-10-scattered-any_of",
+        "signature": "10000:10:f7ced7040290284e",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-10-scattered-discover",
+        "signature": "10000:10:f7ced7040290284e",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-30-clustered-known",
+        "signature": "10000:30:adbffbae3ab760f2",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-30-clustered-any_of",
+        "signature": "10000:30:adbffbae3ab760f2",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-30-clustered-discover",
+        "signature": "10000:30:adbffbae3ab760f2",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-30-scattered-known",
+        "signature": "10000:30:546439c64b2e6cd4",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-30-scattered-any_of",
+        "signature": "10000:30:546439c64b2e6cd4",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-30-scattered-discover",
+        "signature": "10000:30:546439c64b2e6cd4",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-60-clustered-known",
+        "signature": "10000:60:1fab09d47045745c",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-60-clustered-any_of",
+        "signature": "10000:60:1fab09d47045745c",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-60-clustered-discover",
+        "signature": "10000:60:1fab09d47045745c",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-60-scattered-known",
+        "signature": "10000:60:4d73cc156b35cd5d",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-60-scattered-any_of",
+        "signature": "10000:60:4d73cc156b35cd5d",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-60-scattered-discover",
+        "signature": "10000:60:4d73cc156b35cd5d",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "strL-all",
+        "signature": "1000:32:bd5aac4fd261fa36",
+        "rows": 1000,
+        "columns": 32
+      },
+      {
+        "case": "strL-10-clustered-known",
+        "signature": "1000:10:6e8ffaea47b842fd",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-10-clustered-any_of",
+        "signature": "1000:10:6e8ffaea47b842fd",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-10-clustered-discover",
+        "signature": "1000:10:6e8ffaea47b842fd",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-10-scattered-known",
+        "signature": "1000:10:626a100bec572aaa",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-10-scattered-any_of",
+        "signature": "1000:10:626a100bec572aaa",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-10-scattered-discover",
+        "signature": "1000:10:626a100bec572aaa",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-30-clustered-known",
+        "signature": "1000:30:65727646c19cb0f6",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "strL-30-clustered-any_of",
+        "signature": "1000:30:65727646c19cb0f6",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "strL-30-clustered-discover",
+        "signature": "1000:30:65727646c19cb0f6",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "strL-30-scattered-known",
+        "signature": "1000:30:cb0a4eb702dd1574",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "strL-30-scattered-any_of",
+        "signature": "1000:30:cb0a4eb702dd1574",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "strL-30-scattered-discover",
+        "signature": "1000:30:cb0a4eb702dd1574",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "all_types_v115-all",
+        "signature": "5:7:f2f8c93a4e4e25bd",
+        "rows": 5,
+        "columns": 7
+      },
+      {
+        "case": "all_types_v117-all",
+        "signature": "5:8:4db4fc37fcd50752",
+        "rows": 5,
+        "columns": 8
+      },
+      {
+        "case": "all_types_v118-all",
+        "signature": "5:8:4db4fc37fcd50752",
+        "rows": 5,
+        "columns": 8
+      },
+      {
+        "case": "auto_v115-all",
+        "signature": "74:12:4e6572df60c7c23e",
+        "rows": 74,
+        "columns": 12
+      },
+      {
+        "case": "auto_v115-10-clustered-known",
+        "signature": "74:10:941baeeabdeada28",
+        "rows": 74,
+        "columns": 10
+      },
+      {
+        "case": "auto_v115-10-clustered-any_of",
+        "signature": "74:10:941baeeabdeada28",
+        "rows": 74,
+        "columns": 10
+      },
+      {
+        "case": "auto_v115-10-clustered-discover",
+        "signature": "74:10:941baeeabdeada28",
+        "rows": 74,
+        "columns": 10
+      },
+      {
+        "case": "auto_v115-10-scattered-known",
+        "signature": "74:10:7b010d455f418b6f",
+        "rows": 74,
+        "columns": 10
+      },
+      {
+        "case": "auto_v115-10-scattered-any_of",
+        "signature": "74:10:7b010d455f418b6f",
+        "rows": 74,
+        "columns": 10
+      },
+      {
+        "case": "auto_v115-10-scattered-discover",
+        "signature": "74:10:7b010d455f418b6f",
+        "rows": 74,
+        "columns": 10
+      }
+    ],
+    "warning_counts": {
+      "100mb-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-small-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "all_types_v115-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "all_types_v117-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "all_types_v118-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      }
+    }
+  },
+  "qualify-v3-bounded-copy": {
+    "binding": {
+      "manifest_sha256": "0973afedfe50c22104c27dfe97dc78113a53f448489e029d8fc55b2999e90a34",
+      "inputs": [
+        {
+          "sha256": "fc2cd5376eea3b29b2a989ead21d224351a75ed1a9b75dc5940b80f2c70a63da",
+          "bytes": 100000187
+        },
+        {
+          "sha256": "ab08515fbe880e06aeef3f2054ce5b6f1201c3aacfe631e9808e8fb913aa6a24",
+          "bytes": 1000000164
+        },
+        {
+          "sha256": "42f0131d2ba6d9ddce14a7db468de23972abe5b09d80ab785cd91e656374d937",
+          "bytes": 575320555
+        },
+        {
+          "sha256": "ec1461c62b456aeb458ad969a90352774090c1c47cb9b8e2d56b3381263c4df2",
+          "bytes": 230064555
+        },
+        {
+          "sha256": "ff247bfa58fa854f5ee55aa266fd91eec0ee95bb2f47d1ce5d4f90757f1f4419",
+          "bytes": 230640555
+        },
+        {
+          "sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc",
+          "bytes": 5196403097
+        },
+        {
+          "sha256": "ae0d864204a28e9159062daa101b5fb7e606326a7835bcd5d3f36ada19745393",
+          "bytes": 69675
+        },
+        {
+          "sha256": "5a000df6f2a24a5891063ffb4f234b3c1a994d110bc737cd9530b810340bee7e",
+          "bytes": 32010795
+        },
+        {
+          "sha256": "f7fd9ee6616c7c667173d5890c82688f54a0cbdf21b2b4b3ba251a09cbbad129",
+          "bytes": 8847915
+        },
+        {
+          "sha256": "5478fb9193898ac12b296c02e9f5438a37e809588ed7523e76d26dc1ae44cf88",
+          "bytes": 4972475
+        },
+        {
+          "sha256": "78ac10698e0ded0810e6b61a919aec4072476318b4e1925f4c2dbb095e915219",
+          "bytes": 7077035
+        },
+        {
+          "sha256": "875c6cb3fd9b2a45c2b9245fed75a7195f2669198feb4586b50be4ffc0c220da",
+          "bytes": 14162475
+        },
+        {
+          "sha256": "81b77f6d7c956c65b107203cbe75e7813a2c29d769562f50a1f4651281ec252e",
+          "bytes": 3922475
+        },
+        {
+          "sha256": "7ba6b22c454b8f94adcd45fc1c2af6bac736f05f4c28d4b37249cbec5f151665",
+          "bytes": 101574402
+        },
+        {
+          "sha256": "d80dbd7f8595da90182cf3fa10e8c067a08ee93d32a036fe83edf0a6e248ba32",
+          "bytes": 1015794434
+        },
+        {
+          "sha256": "4f7cd56d6a799f56a5d7646be563bcaa510f4b1ce9217f887ad8d2cd28a20266",
+          "bytes": 5426
+        },
+        {
+          "sha256": "702a982d41373624d141659f059d24339ff81c9fbe34866b3bb7e578ab70640a",
+          "bytes": 6146
+        },
+        {
+          "sha256": "702a982d41373624d141659f059d24339ff81c9fbe34866b3bb7e578ab70640a",
+          "bytes": 6146
+        },
+        {
+          "sha256": "7b9a6f423601848aa3799c0ba8f54b2de1f8e5ad06572933cbcfbc3963d17401",
+          "bytes": 11218
+        },
+        {
+          "sha256": "d9b09544a8af3423a801e5894bfded31203e9df609b6c98531cc9779482265da",
+          "bytes": 69218
+        },
+        {
+          "sha256": "2bb877e3800c58a54566b2bb3c276132353f81e98aa7eaaa0c862d5788706965",
+          "bytes": 32511978
+        },
+        {
+          "sha256": "252589825e5dd070099c0f1bd16e90c897d7a5be71d2f1cef3048693d1986187",
+          "bytes": 8738746
+        },
+        {
+          "sha256": "f1449a871b3fabbeed303b04a2dc0b884e4a76c7f213d7f095e0b25acd76dfcc",
+          "bytes": 5559834970
+        },
+        {
+          "sha256": "89b1a316d23b15f4542dcc326a3ee2f12ce1baa1fa09c154607b57e00eafc480",
+          "bytes": 5949938
+        },
+        {
+          "sha256": "359631bd77cf270ac0167efee0350959f6c37c9aad4a1fc0ffff9ce1803a8550",
+          "bytes": 67474786
+        },
+        {
+          "sha256": "c9d44b47e8a81f5a67def9dcd7b1b55b0890101d4e7ca25820e31c0419e0b10a",
+          "bytes": 19426146
+        },
+        {
+          "sha256": "10dc2a401f1800eca8a73871ee3938802c69d06a5554a33d2a62443526f01482",
+          "bytes": 9186146
+        },
+        {
+          "sha256": "af3e5e52c80d3da089b7257884859168a3e1a67352bcb074910979bfb3a4f18b",
+          "bytes": 628482746
+        },
+        {
+          "sha256": "c3954c55016407676652a20add7ae95157575e92c911a0c5b6acdfaefbde356e",
+          "bytes": 251352154
+        },
+        {
+          "sha256": "3e1806e693cdd64736132bbc49ee176a829618e6d407af4c537c89ca30af8ca4",
+          "bytes": 251703066
+        },
+        {
+          "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7",
+          "bytes": 1729
+        },
+        {
+          "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2",
+          "bytes": 2668
+        },
+        {
+          "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c",
+          "bytes": 6213
+        },
+        {
+          "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693",
+          "bytes": 6107
+        }
+      ],
+      "workers": {
+        "worker.R": "23b3804c15cdf403137da2669dbe533a1b2ac77afb95b8fd2b507261584bb19f",
+        "run.py": "12e2bfde07d7d56cec390ba1ae0c78d8af869683ccd147141683e5e31030ebc6"
+      },
+      "stata_sha256": "15470e7eeec2fb8870af39aa38318f1c3b0c9fbb109f319d783a67a6b428eee7",
+      "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "cpu_count": 16,
+      "cache": "warm filesystem",
+      "experiments": {
+        "DTATOOLS_EXPERIMENT_ARROW_BOUNDED": "1",
+        "DTATOOLS_EXPERIMENT_ARROW_BULK_COPY": "1"
+      },
+      "eligible": false,
+      "cohorts": 2,
+      "repetitions": 20,
+      "Rscript_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f",
+      "runtimes": {
+        "baseline": {
+          "R": "R version 4.6.1 (2026-06-24)",
+          "platform": "aarch64-apple-darwin25.4.0",
+          "packages": {
+            "dtatools": "0.9.0",
+            "rlang": "1.3.0",
+            "tibble": "3.3.1",
+            "tidyselect": "1.2.1",
+            "vctrs": "0.7.3"
+          }
+        },
+        "candidate": {
+          "R": "R version 4.6.1 (2026-06-24)",
+          "platform": "aarch64-apple-darwin25.4.0",
+          "packages": {
+            "dtatools": "0.9.0",
+            "rlang": "1.3.0",
+            "tibble": "3.3.1",
+            "tidyselect": "1.2.1",
+            "vctrs": "0.7.3"
+          }
+        }
+      },
+      "threads": {
+        "R_reader": "default adaptive policy, threads=0",
+        "stata": "recorded from creturn in each Stata worker",
+        "environment": {}
+      },
+      "builds": {
+        "baseline": {
+          "commit": "b41d8f9d8dba260b8c93d5c7d83cb12ee8102600",
+          "tree": "b2f27249477db7cb27607f6c6e2a5f978e3c196c",
+          "installed_manifest_sha256": "d42aa5c6ad90bf383cca2b63665d35224a7fcf87d32f92975bdffdd5d3be5c59"
+        },
+        "candidate": {
+          "commit": "9ac470bb07029db52e02b02780999cf8bec75291",
+          "tree": "12f5143920555cdd7d11f805dd336e67a083bc8e",
+          "installed_manifest_sha256": "0ff242c9e1b44d83c29c80dd345cd6ef6ccd7717e92b77f536a0b7c0e87cc364"
+        }
+      }
+    },
+    "cases": [
+      {
+        "case": "100mb-all",
+        "signature": "231956:40:bab4b8dee5b66170",
+        "rows": 231956,
+        "columns": 40
+      },
+      {
+        "case": "100mb-10-clustered-known",
+        "signature": "231956:10:d57ffe15092b4136",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-10-clustered-any_of",
+        "signature": "231956:10:d57ffe15092b4136",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-10-clustered-discover",
+        "signature": "231956:10:d57ffe15092b4136",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-10-scattered-known",
+        "signature": "231956:10:2421485cca9201dc",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-10-scattered-any_of",
+        "signature": "231956:10:2421485cca9201dc",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-10-scattered-discover",
+        "signature": "231956:10:2421485cca9201dc",
+        "rows": 231956,
+        "columns": 10
+      },
+      {
+        "case": "100mb-30-clustered-known",
+        "signature": "231956:30:fb07bbdf0137d973",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "100mb-30-clustered-any_of",
+        "signature": "231956:30:fb07bbdf0137d973",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "100mb-30-clustered-discover",
+        "signature": "231956:30:fb07bbdf0137d973",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "100mb-30-scattered-known",
+        "signature": "231956:30:4108b9fdd83f5fe5",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "100mb-30-scattered-any_of",
+        "signature": "231956:30:4108b9fdd83f5fe5",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "100mb-30-scattered-discover",
+        "signature": "231956:30:4108b9fdd83f5fe5",
+        "rows": 231956,
+        "columns": 30
+      },
+      {
+        "case": "1gb-all",
+        "signature": "2320123:40:7cb9bebf47711cf7",
+        "rows": 2320123,
+        "columns": 40
+      },
+      {
+        "case": "1gb-10-clustered-known",
+        "signature": "2320123:10:fb8935ac00515c87",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-10-clustered-any_of",
+        "signature": "2320123:10:fb8935ac00515c87",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-10-clustered-discover",
+        "signature": "2320123:10:fb8935ac00515c87",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-10-scattered-known",
+        "signature": "2320123:10:80dd95add2ecb1eb",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-10-scattered-any_of",
+        "signature": "2320123:10:80dd95add2ecb1eb",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-10-scattered-discover",
+        "signature": "2320123:10:80dd95add2ecb1eb",
+        "rows": 2320123,
+        "columns": 10
+      },
+      {
+        "case": "1gb-30-clustered-known",
+        "signature": "2320123:30:b3f320f6104314f2",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "1gb-30-clustered-any_of",
+        "signature": "2320123:30:b3f320f6104314f2",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "1gb-30-clustered-discover",
+        "signature": "2320123:30:b3f320f6104314f2",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "1gb-30-scattered-known",
+        "signature": "2320123:30:81ab1e7a040dbe9f",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "1gb-30-scattered-any_of",
+        "signature": "2320123:30:81ab1e7a040dbe9f",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "1gb-30-scattered-discover",
+        "signature": "2320123:30:81ab1e7a040dbe9f",
+        "rows": 2320123,
+        "columns": 30
+      },
+      {
+        "case": "india-all",
+        "signature": "724115:5972:e404e6f1cf51f55a",
+        "rows": 724115,
+        "columns": 5972
+      },
+      {
+        "case": "india-10-clustered-known",
+        "signature": "724115:10:9004cebf646519d6",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-10-clustered-any_of",
+        "signature": "724115:10:9004cebf646519d6",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-10-clustered-discover",
+        "signature": "724115:10:9004cebf646519d6",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-10-scattered-known",
+        "signature": "724115:10:441ec7e4c69eb624",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-10-scattered-any_of",
+        "signature": "724115:10:441ec7e4c69eb624",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-10-scattered-discover",
+        "signature": "724115:10:441ec7e4c69eb624",
+        "rows": 724115,
+        "columns": 10
+      },
+      {
+        "case": "india-30-clustered-known",
+        "signature": "724115:30:6859c27a0ef939bf",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-30-clustered-any_of",
+        "signature": "724115:30:6859c27a0ef939bf",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-30-clustered-discover",
+        "signature": "724115:30:6859c27a0ef939bf",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-30-scattered-known",
+        "signature": "724115:30:253eec387c206488",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-30-scattered-any_of",
+        "signature": "724115:30:253eec387c206488",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-30-scattered-discover",
+        "signature": "724115:30:253eec387c206488",
+        "rows": 724115,
+        "columns": 30
+      },
+      {
+        "case": "india-60-clustered-known",
+        "signature": "724115:60:fe168ded86b90d9b",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "india-60-clustered-any_of",
+        "signature": "724115:60:fe168ded86b90d9b",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "india-60-clustered-discover",
+        "signature": "724115:60:fe168ded86b90d9b",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "india-60-scattered-known",
+        "signature": "724115:60:fee4c46eaa2b91d6",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "india-60-scattered-any_of",
+        "signature": "724115:60:fee4c46eaa2b91d6",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "india-60-scattered-discover",
+        "signature": "724115:60:fee4c46eaa2b91d6",
+        "rows": 724115,
+        "columns": 60
+      },
+      {
+        "case": "tall-all",
+        "signature": "500000:100:c0bf28ce75ea2248",
+        "rows": 500000,
+        "columns": 100
+      },
+      {
+        "case": "tall-10-clustered-known",
+        "signature": "500000:10:e9df33f321c54c5b",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-10-clustered-any_of",
+        "signature": "500000:10:e9df33f321c54c5b",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-10-clustered-discover",
+        "signature": "500000:10:e9df33f321c54c5b",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-10-scattered-known",
+        "signature": "500000:10:93bc823f4cf63a57",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-10-scattered-any_of",
+        "signature": "500000:10:93bc823f4cf63a57",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-10-scattered-discover",
+        "signature": "500000:10:93bc823f4cf63a57",
+        "rows": 500000,
+        "columns": 10
+      },
+      {
+        "case": "tall-30-clustered-known",
+        "signature": "500000:30:55b2dc0ffd502ac0",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-30-clustered-any_of",
+        "signature": "500000:30:55b2dc0ffd502ac0",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-30-clustered-discover",
+        "signature": "500000:30:55b2dc0ffd502ac0",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-30-scattered-known",
+        "signature": "500000:30:4b05019971d8da20",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-30-scattered-any_of",
+        "signature": "500000:30:4b05019971d8da20",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-30-scattered-discover",
+        "signature": "500000:30:4b05019971d8da20",
+        "rows": 500000,
+        "columns": 30
+      },
+      {
+        "case": "tall-60-clustered-known",
+        "signature": "500000:60:4b1d49b86284e7e5",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "tall-60-clustered-any_of",
+        "signature": "500000:60:4b1d49b86284e7e5",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "tall-60-clustered-discover",
+        "signature": "500000:60:4b1d49b86284e7e5",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "tall-60-scattered-known",
+        "signature": "500000:60:133106522bb870e9",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "tall-60-scattered-any_of",
+        "signature": "500000:60:133106522bb870e9",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "tall-60-scattered-discover",
+        "signature": "500000:60:133106522bb870e9",
+        "rows": 500000,
+        "columns": 60
+      },
+      {
+        "case": "wide-all",
+        "signature": "50000:1000:b2203e203fc71d91",
+        "rows": 50000,
+        "columns": 1000
+      },
+      {
+        "case": "wide-10-clustered-known",
+        "signature": "50000:10:3071f3a98e10d190",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-10-clustered-any_of",
+        "signature": "50000:10:3071f3a98e10d190",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-10-clustered-discover",
+        "signature": "50000:10:3071f3a98e10d190",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-10-scattered-known",
+        "signature": "50000:10:a4694d39bbbcbd95",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-10-scattered-any_of",
+        "signature": "50000:10:a4694d39bbbcbd95",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-10-scattered-discover",
+        "signature": "50000:10:a4694d39bbbcbd95",
+        "rows": 50000,
+        "columns": 10
+      },
+      {
+        "case": "wide-30-clustered-known",
+        "signature": "50000:30:8f3e9c0d5ca0b853",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-30-clustered-any_of",
+        "signature": "50000:30:8f3e9c0d5ca0b853",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-30-clustered-discover",
+        "signature": "50000:30:8f3e9c0d5ca0b853",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-30-scattered-known",
+        "signature": "50000:30:7b2e43565931da6e",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-30-scattered-any_of",
+        "signature": "50000:30:7b2e43565931da6e",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-30-scattered-discover",
+        "signature": "50000:30:7b2e43565931da6e",
+        "rows": 50000,
+        "columns": 30
+      },
+      {
+        "case": "wide-60-clustered-known",
+        "signature": "50000:60:4c9a2e7c54becbc6",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "wide-60-clustered-any_of",
+        "signature": "50000:60:4c9a2e7c54becbc6",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "wide-60-clustered-discover",
+        "signature": "50000:60:4c9a2e7c54becbc6",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "wide-60-scattered-known",
+        "signature": "50000:60:aab509ec27977b4e",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "wide-60-scattered-any_of",
+        "signature": "50000:60:aab509ec27977b4e",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "wide-60-scattered-discover",
+        "signature": "50000:60:aab509ec27977b4e",
+        "rows": 50000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-all",
+        "signature": "250000:500:1a95067662efcbea",
+        "rows": 250000,
+        "columns": 500
+      },
+      {
+        "case": "tall-wide-10-clustered-known",
+        "signature": "250000:10:096cf478d51f6510",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-10-clustered-any_of",
+        "signature": "250000:10:096cf478d51f6510",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-10-clustered-discover",
+        "signature": "250000:10:096cf478d51f6510",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-10-scattered-known",
+        "signature": "250000:10:e298cbbcc23674fb",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-10-scattered-any_of",
+        "signature": "250000:10:e298cbbcc23674fb",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-10-scattered-discover",
+        "signature": "250000:10:e298cbbcc23674fb",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "tall-wide-30-clustered-known",
+        "signature": "250000:30:be0c8a601e0ee0ac",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-30-clustered-any_of",
+        "signature": "250000:30:be0c8a601e0ee0ac",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-30-clustered-discover",
+        "signature": "250000:30:be0c8a601e0ee0ac",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-30-scattered-known",
+        "signature": "250000:30:cb70b51115705170",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-30-scattered-any_of",
+        "signature": "250000:30:cb70b51115705170",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-30-scattered-discover",
+        "signature": "250000:30:cb70b51115705170",
+        "rows": 250000,
+        "columns": 30
+      },
+      {
+        "case": "tall-wide-60-clustered-known",
+        "signature": "250000:60:9606e33fc10959f4",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-60-clustered-any_of",
+        "signature": "250000:60:9606e33fc10959f4",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-60-clustered-discover",
+        "signature": "250000:60:9606e33fc10959f4",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-60-scattered-known",
+        "signature": "250000:60:bf0f2efae34ba92a",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-60-scattered-any_of",
+        "signature": "250000:60:bf0f2efae34ba92a",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "tall-wide-60-scattered-discover",
+        "signature": "250000:60:bf0f2efae34ba92a",
+        "rows": 250000,
+        "columns": 60
+      },
+      {
+        "case": "double-small-all",
+        "signature": "1000:8:0f5c91890748f2a3",
+        "rows": 1000,
+        "columns": 8
+      },
+      {
+        "case": "double-tall-all",
+        "signature": "250000:16:1217a92bf5e49ea4",
+        "rows": 250000,
+        "columns": 16
+      },
+      {
+        "case": "double-tall-10-clustered-known",
+        "signature": "250000:10:ee864e3c6003160b",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-tall-10-clustered-any_of",
+        "signature": "250000:10:ee864e3c6003160b",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-tall-10-clustered-discover",
+        "signature": "250000:10:ee864e3c6003160b",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-tall-10-scattered-known",
+        "signature": "250000:10:9f4b44f704d116ef",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-tall-10-scattered-any_of",
+        "signature": "250000:10:9f4b44f704d116ef",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-tall-10-scattered-discover",
+        "signature": "250000:10:9f4b44f704d116ef",
+        "rows": 250000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-all",
+        "signature": "1000:1024:6fb4ca178370557e",
+        "rows": 1000,
+        "columns": 1024
+      },
+      {
+        "case": "double-wide-10-clustered-known",
+        "signature": "1000:10:22dab961a382b40a",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-10-clustered-any_of",
+        "signature": "1000:10:22dab961a382b40a",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-10-clustered-discover",
+        "signature": "1000:10:22dab961a382b40a",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-10-scattered-known",
+        "signature": "1000:10:b15fc219e2568e20",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-10-scattered-any_of",
+        "signature": "1000:10:b15fc219e2568e20",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-10-scattered-discover",
+        "signature": "1000:10:b15fc219e2568e20",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "double-wide-30-clustered-known",
+        "signature": "1000:30:1bd903c0edafd558",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-30-clustered-any_of",
+        "signature": "1000:30:1bd903c0edafd558",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-30-clustered-discover",
+        "signature": "1000:30:1bd903c0edafd558",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-30-scattered-known",
+        "signature": "1000:30:109aa0606acb55b3",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-30-scattered-any_of",
+        "signature": "1000:30:109aa0606acb55b3",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-30-scattered-discover",
+        "signature": "1000:30:109aa0606acb55b3",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "double-wide-60-clustered-known",
+        "signature": "1000:60:9dca97a97ecf676f",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "double-wide-60-clustered-any_of",
+        "signature": "1000:60:9dca97a97ecf676f",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "double-wide-60-clustered-discover",
+        "signature": "1000:60:9dca97a97ecf676f",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "double-wide-60-scattered-known",
+        "signature": "1000:60:e23c4715cd081132",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "double-wide-60-scattered-any_of",
+        "signature": "1000:60:e23c4715cd081132",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "double-wide-60-scattered-discover",
+        "signature": "1000:60:e23c4715cd081132",
+        "rows": 1000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-all",
+        "signature": "10000:128:59722adac3cdeb7d",
+        "rows": 10000,
+        "columns": 128
+      },
+      {
+        "case": "mixed-10-clustered-known",
+        "signature": "10000:10:9e45e4572fb4d9c6",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-10-clustered-any_of",
+        "signature": "10000:10:9e45e4572fb4d9c6",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-10-clustered-discover",
+        "signature": "10000:10:9e45e4572fb4d9c6",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-10-scattered-known",
+        "signature": "10000:10:adacc289ce46a4ce",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-10-scattered-any_of",
+        "signature": "10000:10:adacc289ce46a4ce",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-10-scattered-discover",
+        "signature": "10000:10:adacc289ce46a4ce",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "mixed-30-clustered-known",
+        "signature": "10000:30:5561b75434c7bdc6",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-30-clustered-any_of",
+        "signature": "10000:30:5561b75434c7bdc6",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-30-clustered-discover",
+        "signature": "10000:30:5561b75434c7bdc6",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-30-scattered-known",
+        "signature": "10000:30:18cdbd3cd0c32cbb",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-30-scattered-any_of",
+        "signature": "10000:30:18cdbd3cd0c32cbb",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-30-scattered-discover",
+        "signature": "10000:30:18cdbd3cd0c32cbb",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "mixed-60-clustered-known",
+        "signature": "10000:60:4a41fa26847cba87",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-60-clustered-any_of",
+        "signature": "10000:60:4a41fa26847cba87",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-60-clustered-discover",
+        "signature": "10000:60:4a41fa26847cba87",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-60-scattered-known",
+        "signature": "10000:60:f03a6fa66bf5aa79",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-60-scattered-any_of",
+        "signature": "10000:60:f03a6fa66bf5aa79",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "mixed-60-scattered-discover",
+        "signature": "10000:60:f03a6fa66bf5aa79",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-all",
+        "signature": "10000:128:0d20cb6d51861867",
+        "rows": 10000,
+        "columns": 128
+      },
+      {
+        "case": "string-low-10-clustered-known",
+        "signature": "10000:10:1244781addb1266f",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-10-clustered-any_of",
+        "signature": "10000:10:1244781addb1266f",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-10-clustered-discover",
+        "signature": "10000:10:1244781addb1266f",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-10-scattered-known",
+        "signature": "10000:10:ca0b25ed672ba7bf",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-10-scattered-any_of",
+        "signature": "10000:10:ca0b25ed672ba7bf",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-10-scattered-discover",
+        "signature": "10000:10:ca0b25ed672ba7bf",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-low-30-clustered-known",
+        "signature": "10000:30:768897b5d54abccf",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-30-clustered-any_of",
+        "signature": "10000:30:768897b5d54abccf",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-30-clustered-discover",
+        "signature": "10000:30:768897b5d54abccf",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-30-scattered-known",
+        "signature": "10000:30:380a61a96c1277c1",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-30-scattered-any_of",
+        "signature": "10000:30:380a61a96c1277c1",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-30-scattered-discover",
+        "signature": "10000:30:380a61a96c1277c1",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-low-60-clustered-known",
+        "signature": "10000:60:34999b9ae8e69e00",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-60-clustered-any_of",
+        "signature": "10000:60:34999b9ae8e69e00",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-60-clustered-discover",
+        "signature": "10000:60:34999b9ae8e69e00",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-60-scattered-known",
+        "signature": "10000:60:b02b2e91b3bb2a07",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-60-scattered-any_of",
+        "signature": "10000:60:b02b2e91b3bb2a07",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-low-60-scattered-discover",
+        "signature": "10000:60:b02b2e91b3bb2a07",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-all",
+        "signature": "10000:128:6f28854f194d5609",
+        "rows": 10000,
+        "columns": 128
+      },
+      {
+        "case": "string-high-10-clustered-known",
+        "signature": "10000:10:eb0af301ba278dd1",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-10-clustered-any_of",
+        "signature": "10000:10:eb0af301ba278dd1",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-10-clustered-discover",
+        "signature": "10000:10:eb0af301ba278dd1",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-10-scattered-known",
+        "signature": "10000:10:f7ced7040290284e",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-10-scattered-any_of",
+        "signature": "10000:10:f7ced7040290284e",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-10-scattered-discover",
+        "signature": "10000:10:f7ced7040290284e",
+        "rows": 10000,
+        "columns": 10
+      },
+      {
+        "case": "string-high-30-clustered-known",
+        "signature": "10000:30:adbffbae3ab760f2",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-30-clustered-any_of",
+        "signature": "10000:30:adbffbae3ab760f2",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-30-clustered-discover",
+        "signature": "10000:30:adbffbae3ab760f2",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-30-scattered-known",
+        "signature": "10000:30:546439c64b2e6cd4",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-30-scattered-any_of",
+        "signature": "10000:30:546439c64b2e6cd4",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-30-scattered-discover",
+        "signature": "10000:30:546439c64b2e6cd4",
+        "rows": 10000,
+        "columns": 30
+      },
+      {
+        "case": "string-high-60-clustered-known",
+        "signature": "10000:60:1fab09d47045745c",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-60-clustered-any_of",
+        "signature": "10000:60:1fab09d47045745c",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-60-clustered-discover",
+        "signature": "10000:60:1fab09d47045745c",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-60-scattered-known",
+        "signature": "10000:60:4d73cc156b35cd5d",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-60-scattered-any_of",
+        "signature": "10000:60:4d73cc156b35cd5d",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "string-high-60-scattered-discover",
+        "signature": "10000:60:4d73cc156b35cd5d",
+        "rows": 10000,
+        "columns": 60
+      },
+      {
+        "case": "strL-all",
+        "signature": "1000:32:bd5aac4fd261fa36",
+        "rows": 1000,
+        "columns": 32
+      },
+      {
+        "case": "strL-10-clustered-known",
+        "signature": "1000:10:6e8ffaea47b842fd",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-10-clustered-any_of",
+        "signature": "1000:10:6e8ffaea47b842fd",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-10-clustered-discover",
+        "signature": "1000:10:6e8ffaea47b842fd",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-10-scattered-known",
+        "signature": "1000:10:626a100bec572aaa",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-10-scattered-any_of",
+        "signature": "1000:10:626a100bec572aaa",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-10-scattered-discover",
+        "signature": "1000:10:626a100bec572aaa",
+        "rows": 1000,
+        "columns": 10
+      },
+      {
+        "case": "strL-30-clustered-known",
+        "signature": "1000:30:65727646c19cb0f6",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "strL-30-clustered-any_of",
+        "signature": "1000:30:65727646c19cb0f6",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "strL-30-clustered-discover",
+        "signature": "1000:30:65727646c19cb0f6",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "strL-30-scattered-known",
+        "signature": "1000:30:cb0a4eb702dd1574",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "strL-30-scattered-any_of",
+        "signature": "1000:30:cb0a4eb702dd1574",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "strL-30-scattered-discover",
+        "signature": "1000:30:cb0a4eb702dd1574",
+        "rows": 1000,
+        "columns": 30
+      },
+      {
+        "case": "all_types_v115-all",
+        "signature": "5:7:f2f8c93a4e4e25bd",
+        "rows": 5,
+        "columns": 7
+      },
+      {
+        "case": "all_types_v117-all",
+        "signature": "5:8:4db4fc37fcd50752",
+        "rows": 5,
+        "columns": 8
+      },
+      {
+        "case": "all_types_v118-all",
+        "signature": "5:8:4db4fc37fcd50752",
+        "rows": 5,
+        "columns": 8
+      },
+      {
+        "case": "auto_v115-all",
+        "signature": "74:12:4e6572df60c7c23e",
+        "rows": 74,
+        "columns": 12
+      },
+      {
+        "case": "auto_v115-10-clustered-known",
+        "signature": "74:10:941baeeabdeada28",
+        "rows": 74,
+        "columns": 10
+      },
+      {
+        "case": "auto_v115-10-clustered-any_of",
+        "signature": "74:10:941baeeabdeada28",
+        "rows": 74,
+        "columns": 10
+      },
+      {
+        "case": "auto_v115-10-clustered-discover",
+        "signature": "74:10:941baeeabdeada28",
+        "rows": 74,
+        "columns": 10
+      },
+      {
+        "case": "auto_v115-10-scattered-known",
+        "signature": "74:10:7b010d455f418b6f",
+        "rows": 74,
+        "columns": 10
+      },
+      {
+        "case": "auto_v115-10-scattered-any_of",
+        "signature": "74:10:7b010d455f418b6f",
+        "rows": 74,
+        "columns": 10
+      },
+      {
+        "case": "auto_v115-10-scattered-discover",
+        "signature": "74:10:7b010d455f418b6f",
+        "rows": 74,
+        "columns": 10
+      }
+    ],
+    "warning_counts": {
+      "100mb-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "100mb-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "1gb-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "india-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "wide-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "tall-wide-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-small-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-tall-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "double-wide-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "mixed-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-low-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "string-high-60-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "strL-30-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "all_types_v115-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "all_types_v117-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "all_types_v118-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-all": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-clustered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-clustered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-clustered-discover": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-scattered-known": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-scattered-any_of": {
+        "dta": 0,
+        "arrow": 0
+      },
+      "auto_v115-10-scattered-discover": {
+        "dta": 0,
+        "arrow": 0
+      }
+    }
+  }
+}

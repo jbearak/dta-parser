@@ -1,0 +1,82 @@
+{
+  "candidate_source": "9ac470bb07029db52e02b02780999cf8bec75291",
+  "core_tree": "6dad7ae651a713dc5a817add3aefddee2787171f",
+  "bridge_rust_tree": "6fc80a0a0ad9d4b9dc755ac5f7c1b0776948f738",
+  "rust": {
+    "passed": 314,
+    "failed": 0,
+    "targets": 13,
+    "log_sha256": "b239fb8612dc85b36a901d43c4317a09e5c96b2f81c3ebfaf24d00172ae863e4"
+  },
+  "development_R_before_final_summary": {
+    "blocks": 1222,
+    "passed": 23033,
+    "failed": 0,
+    "errors": 0,
+    "warnings": 6,
+    "skipped": 0,
+    "record_sha256": "5a058918820daa5050f86d13d557f442d9b180b2f2e8920c68ee274c583af2e5"
+  },
+  "baseline_warning_comparison": {
+    "blocks": 64,
+    "passed": 937,
+    "failed": 0,
+    "errors": 0,
+    "warnings": 6,
+    "skipped": 0,
+    "record_sha256": "0c09d6d35bf835f5a47869154de49625564e2a0b86568fbd8d607a8636e3f598"
+  },
+  "focused_final_summary": {
+    "blocks": 73,
+    "passed": 1433,
+    "failed": 0,
+    "errors": 0,
+    "warnings": 0,
+    "skipped": 0,
+    "record_sha256": "9063dc3ed395ce59c98c8c69aa89d2a017a77f2189b17bc4d2011c2de9609c50"
+  },
+  "package_checks": {
+    "candidate": {
+      "commit": "9ac470bb07029db52e02b02780999cf8bec75291",
+      "package_tree": "12f5143920555cdd7d11f805dd336e67a083bc8e",
+      "tarball_sha256": "cc6f1eb7a9007cbad679ef51d2a8f3b1a6f4103c0fb1ac0e8128bace0dd93688",
+      "status": "3 WARNINGs, 2 NOTEs",
+      "tests_included": true,
+      "archive_check_exit": 0,
+      "build_log_sha256": "d87e385dce8497558fc0278457d634a3f18ed5b4def6658717228472a8346b04",
+      "archive_check_log_sha256": "4c3587b6438c2471618364e967342b11f88e0d0484fb6f8f64e2ce8a0b3b1351",
+      "check_log_sha256": "8afc868d7cc1aa981f410449bdefd80dfd97124f786d45eafa511ff77ea7b279",
+      "test_output_sha256": "65b6650d9b04043f483e2cc64992e06217e28d89d04c8cf5343c72b00aaf2f94",
+      "test_summary": "[ FAIL 0 | WARN 6 | SKIP 0 | PASS 23202 ]"
+    },
+    "baseline": {
+      "commit": "b41d8f9d8dba260b8c93d5c7d83cb12ee8102600",
+      "package_tree": "b2f27249477db7cb27607f6c6e2a5f978e3c196c",
+      "tarball_sha256": "a15f75f960fc479e19eda9cbcfde0aa249298afafdd9c902a91dc5e68b2be63d",
+      "status": "3 WARNINGs, 2 NOTEs",
+      "tests_included": false,
+      "archive_check_exit": 0,
+      "build_log_sha256": "d87e385dce8497558fc0278457d634a3f18ed5b4def6658717228472a8346b04",
+      "archive_check_log_sha256": "4c3587b6438c2471618364e967342b11f88e0d0484fb6f8f64e2ce8a0b3b1351",
+      "check_log_sha256": "ee298e97e22a2660383dedeb3cfbb0965b97c522374758ed306bf473b3bb2cd8"
+    }
+  },
+  "conformance": {
+    "typescript_fixtures": 22,
+    "decoded_cells": 32085,
+    "deterministic_native_gates": 10,
+    "canonical_fixture_oracle": 1,
+    "typescript_log_sha256": "68b6162d3647c8976e70c659f25eefb5b12910466d5febd0d140cf2569443794",
+    "native_log_sha256": "0cca2daee533d4d2324fe0f8c0a156a770a1825127516eb580dd8c042d0d066e"
+  },
+  "other_checks": {
+    "core_clippy": "passed with warnings denied",
+    "bridge_clippy": "passed with warnings denied",
+    "core_feature_disabled": "passed",
+    "rust_format": "passed",
+    "benchmark_driver_tests": 3,
+    "native_manifest_file_hashes": "all match",
+    "strict_isolated_native_runner": "not run"
+  },
+  "scope": "Development R runs were not independently source-bound installations. Final package checks use a clean archive from the recorded commit; final reader/corpus/workflow records bind immutable installed files. Core and bridge Rust trees were unchanged after their respective checks."
+}
