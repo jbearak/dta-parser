@@ -48,10 +48,10 @@
 #'   vectors. Singular getters return one string or `NULL`. Mutation helpers
 #'   return the changed object, invisibly for data frames.
 #' @examples
-#' survey <- data.frame(age = c(20, 30))
-#' survey <- set_dta_note(survey, 2, "Cleaned after interview")
-#' survey <- add_dta_note(survey, "Checked by supervisor", variable = "age")
-#' survey <- set_dta_characteristic(survey, "source", "baseline")
+#' survey <- dibble(age = c(20, 30))
+#' set_dta_note(survey, 2, "Cleaned after interview")
+#' add_dta_note(survey, "Checked by supervisor", variable = "age")
+#' set_dta_characteristic(survey, "source", "baseline")
 #' dta_notes(survey)
 #' dta_characteristics(survey)
 #' @export

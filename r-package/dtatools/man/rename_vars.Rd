@@ -36,7 +36,7 @@ Pass \code{.names} instead of \code{...} to replace every name at once, as
 visible column, in order.
 }
 \examples{
-survey <- data.frame(id = 1:2, v1 = c(20, 30))
+survey <- dibble(id = 1:2, v1 = c(20, 30))
 rename_vars(survey, age_years = v1)
 names(survey)
 rename_vars(survey, .names = toupper(names(survey)))

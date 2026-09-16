@@ -30,7 +30,7 @@ values, labels, and compact representations all survive the move.
 Columns created by \code{gen()} may be reordered alongside physical ones.
 }
 \examples{
-survey <- data.frame(id = 1:2, age = c(20, 30), region = c("n", "s"))
+survey <- dibble(id = 1:2, age = c(20, 30), region = c("n", "s"))
 order_vars(survey, region)
 names(survey)
 }

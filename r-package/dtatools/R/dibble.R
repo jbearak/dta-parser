@@ -148,7 +148,7 @@ as_dibble <- function(x) {
 # A dibble whose class vector carries nothing beyond the package, grouping
 # and tibble classes. Custom subclasses convert again so the result is closed.
 .plain_dibble_classes <- function(x) {
-    classes <- .reference_base_classes(class(x))
+    classes <- setdiff(.reference_base_classes(class(x)), "dtatools_dta_metadata")
     identical(classes, c("tbl_df", "tbl", "data.frame")) ||
         identical(classes, c("grouped_df", "tbl_df", "tbl", "data.frame")) ||
         identical(classes, c("rowwise_df", "tbl_df", "tbl", "data.frame"))

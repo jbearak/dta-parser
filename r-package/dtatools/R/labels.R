@@ -135,9 +135,9 @@
 #' var_label(status) <- "Interview status"
 #' val_labels(status) <- c(Complete = 1, Refused = 2)
 #'
-#' survey <- data.frame(status = status, stratum = c(1, 1, 2))
+#' survey <- dibble(status = status, stratum = c(1, 1, 2))
 #' dataset_label(survey) <- "Baseline survey"
-#' survey <- set_var_labels(
+#' set_var_labels(
 #'     survey,
 #'     status = "Interview status",
 #'     .labels = list(stratum = "Sampling stratum")

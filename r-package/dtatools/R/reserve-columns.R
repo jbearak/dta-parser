@@ -41,7 +41,7 @@
 #' @return A rebuilt table with the same container and `n` spare slots.
 #' @export
 #' @examples
-#' data <- reserve_columns(data.frame(x = 1:3))
+#' data <- reserve_columns(dibble(x = 1:3))
 #' gen(data, y = x + 1)
 reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
     .require_mutation_target(data)
@@ -284,7 +284,7 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
 #'   for spare slots. `can_add_columns()` returns one logical value.
 #' @export
 #' @examples
-#' data <- reserve_columns(data.frame(x = 1:3), n = 2)
+#' data <- reserve_columns(dibble(x = 1:3), n = 2)
 #' column_capacity(data) # three total slots
 #' can_add_columns(data, 2) # TRUE
 #' gen(data, y = x + 1)

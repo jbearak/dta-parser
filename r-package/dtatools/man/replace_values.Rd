@@ -337,7 +337,7 @@ repl(fraction, x = 0.1)
 dta_storage_type(fraction$x)  # "double"
 identical(as.double(fraction$x), 0.1)  # TRUE
 
-survey <- reserve_columns(data.frame(income = c(10, 20), eligible = c(TRUE, FALSE)))
+survey <- dibble(income = c(10, 20), eligible = c(TRUE, FALSE))
 gen(survey, adjusted = income + 5)
 replace_values(survey, income = income * 2, where = eligible)
 # The positional, Stata-shaped spelling means the same thing
@@ -356,7 +356,7 @@ gen(survey, doubled = .data[[source_name]] * 2)
 repl(survey, doubled = 0, where = .data[[source_name]] > 15)
 
 # Group-wise assignment in Stata's `by varlist:` order
-panel <- reserve_columns(data.frame(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4))
+panel <- dibble(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4)
 gen(panel, rows = .N, by = id)               # each group's row count
 gen(panel, last = .n == .N, by = id)         # each group's last row
 gen(panel, above = x - mean(x), by = id)     # centred within group

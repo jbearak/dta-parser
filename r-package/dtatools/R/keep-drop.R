@@ -28,7 +28,7 @@
 #'   `tidyselect::all_of()` character vectors to keep or drop.
 #' @return `data`, invisibly.
 #' @examples
-#' survey <- reserve_columns(data.frame(id = 1:2, age = c(20, 30), temporary = 0))
+#' survey <- dibble(id = 1:2, age = c(20, 30), temporary = 0)
 #' gen(survey, age_next_year, age + 1)
 #' drop_vars(survey, temporary)
 #' keep_vars(survey, age_next_year, id)
@@ -73,7 +73,7 @@ drop_vars <- function(data, ...) {
 #'   `tidyselect::all_of()` character vectors to move to the front.
 #' @return `data`, invisibly.
 #' @examples
-#' survey <- data.frame(id = 1:2, age = c(20, 30), region = c("n", "s"))
+#' survey <- dibble(id = 1:2, age = c(20, 30), region = c("n", "s"))
 #' order_vars(survey, region)
 #' names(survey)
 #' @export
@@ -110,7 +110,7 @@ order_vars <- function(data, ...) {
 #'   used instead of `...`.
 #' @return `data`, invisibly.
 #' @examples
-#' survey <- data.frame(id = 1:2, v1 = c(20, 30))
+#' survey <- dibble(id = 1:2, v1 = c(20, 30))
 #' rename_vars(survey, age_years = v1)
 #' names(survey)
 #' rename_vars(survey, .names = toupper(names(survey)))

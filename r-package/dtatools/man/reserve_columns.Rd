@@ -53,6 +53,6 @@ prepares a separate table and therefore does not preserve those aliases. \code{r
 prepared tables.
 }
 \examples{
-data <- reserve_columns(data.frame(x = 1:3))
+data <- reserve_columns(dibble(x = 1:3))
 gen(data, y = x + 1)
 }
