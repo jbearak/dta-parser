@@ -122,3 +122,32 @@ rules and rejects unknown row names or out-of-range positive locations. Grouped
 results rebuild their groups and retain `.drop`; rowwise results retain their
 identifier variables. Missing string rows become Stata's empty string before
 grouping is rebuilt.
+
+## Column types and missing values
+
+A dibble gives bare numeric and character columns Stata storage when they enter
+the table. Constructors such as `dta_byte()`, `dta_double()`, and `dta_string()`
+let you choose that storage explicitly. Logicals and factors remain ordinary
+R columns. A dibble does not offer a switch to keep bare numeric or character
+columns without Stata storage.
+
+Automatic typing keeps Stata missing-value comparisons consistent across
+supported numeric columns. For example, Stata's numeric missing values compare
+above finite numbers and system missing equals itself:
+
+```r
+d <- dibble(x = c(1, NA_real_))
+r <- as.double(d$x)
+
+d$x > 0       # TRUE TRUE
+r > 0         # TRUE NA
+d$x == d$x    # TRUE TRUE
+r == r        # TRUE NA
+is.na(d$x)    # FALSE TRUE
+```
+
+`as.double()` removes Stata typing from the extracted values, so comparisons on
+`r` use ordinary R missing-value rules. Supported numeric results acquire Stata
+storage again when added to a dibble. Ordinary data frames, tibbles, and data
+tables can contain both Stata columns and bare R numeric columns, so the
+comparison behavior depends on the columns involved.
