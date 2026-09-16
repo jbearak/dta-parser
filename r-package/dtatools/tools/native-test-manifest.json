@@ -3525,7 +3525,7 @@
         },
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
-          "sha256": "a33efce247451fba606bdc5414e3c4004d0ebc165e0d00013fdfa5b4974d7b8e"
+          "sha256": "485146369e2a53be8f75579b285dc0bba2856f0f0d68746b8a7e1454506384b2"
         }
       ],
       "blocks": [
@@ -4517,6 +4517,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "patch alias checks preserve owned row selector backing",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact self-selection and independent selector copies patch correctly",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "owned row selectors survive replacement callbacks and collection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         },
         {

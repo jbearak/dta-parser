@@ -105,6 +105,49 @@ test_that("direct owned compact patches commit only after successful completion"
     }
 })
 
+test_that("patch alias checks preserve owned row selector backing", {
+    for (proxy in c(FALSE, TRUE)) {
+        rows <- freeze_numeric(dta_int(c(3, 1)), 1)
+        if (proxy) rows <- .Call(C_dtatools_metadata_copy, rows)
+        target <- dta_int(c(10, 20, 30, 40))
+        before <- owned_numeric_info(rows)[["compatibility_bytes"]]
+        .Call(C_dtatools_patch_vector, target, rows, 9)
+        expect_identical(as.double(target), c(9, 20, 9, 40))
+        expect_identical(as.double(rows), c(3, 1))
+        expect_equal(owned_numeric_info(rows)[["owned"]], 1)
+        expect_equal(owned_numeric_info(rows)[["compatibility_bytes"]], before)
+    }
+})
+
+test_that("compact self-selection and independent selector copies patch correctly", {
+    for (owned in c(FALSE, TRUE)) {
+        for (copied in c(FALSE, TRUE)) {
+            target <- dta_int(c(3, 1, 2))
+            if (owned) target <- freeze_numeric(target, 1)
+            rows <- if (copied) .Call(C_dtatools_metadata_copy, target) else target
+            .Call(C_dtatools_patch_vector, target, rows, 9)
+            expect_identical(as.double(target), c(9, 9, 9))
+            if (copied) expect_identical(as.double(rows), c(3, 1, 2))
+            if (owned && copied) expect_equal(owned_numeric_info(rows)[["owned"]], 1)
+        }
+    }
+})
+
+test_that("owned row selectors survive replacement callbacks and collection", {
+    rows <- freeze_numeric(dta_int(c(3, 1)), 1)
+    target <- dta_int(c(10, 20, 30, 40))
+    calls <- 0L
+    replacement <- .Call(C_dtatools_callback_double, c(99, 88), function() {
+        calls <<- calls + 1L
+        .force_altrep_materialization(rows)
+        gc()
+    }, TRUE)
+    .Call(C_dtatools_patch_vector, target, rows, replacement)
+    expect_identical(as.double(target), c(88, 20, 99, 40))
+    expect_identical(as.double(rows), c(3, 1))
+    expect_identical(calls, 1L)
+})
+
 test_that("owned Arrow experiment retains buffers independently of its source", {
     withr::local_envvar(DTATOOLS_EXPERIMENT_ARROW_OWNED = "1")
     data <- dibble(

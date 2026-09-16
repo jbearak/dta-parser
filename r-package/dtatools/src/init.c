@@ -5694,8 +5694,8 @@ static int reference_rows_alias_target(SEXP rows, SEXP target) {
     if (rows == R_NilValue) return 0;
     if (rows == target) return 1;
 
-    numeric_data *row_storage = unmaterialized_numeric_storage(rows);
-    numeric_data *target_storage = unmaterialized_numeric_storage(target);
+    numeric_data *row_storage = unmaterialized_numeric_read_storage(rows);
+    numeric_data *target_storage = unmaterialized_numeric_read_storage(target);
     if (row_storage != NULL && row_storage == target_storage) return 1;
 
     const void *row_values = DATAPTR_OR_NULL(rows);
