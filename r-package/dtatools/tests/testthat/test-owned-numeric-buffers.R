@@ -148,8 +148,7 @@ test_that("owned row selectors survive replacement callbacks and collection", {
     expect_identical(calls, 1L)
 })
 
-test_that("owned Arrow experiment retains buffers independently of its source", {
-    withr::local_envvar(DTATOOLS_EXPERIMENT_ARROW_OWNED = "1")
+test_that("Arrow reads retain owned buffers independently of their source", {
     data <- dibble(
         b = dta_byte(c(1, NA_real_, tagged_missing("a"), 4)),
         i = dta_int(c(1, NA_real_, tagged_missing("z"), 4)),
@@ -183,7 +182,6 @@ test_that("owned Arrow experiment retains buffers independently of its source", 
 })
 
 test_that("owned allocation charges are released after final handles disappear", {
-    withr::local_envvar(DTATOOLS_EXPERIMENT_ARROW_OWNED = "1")
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(dibble(x = dta_int(rep(1, 1000))), path)
@@ -204,7 +202,6 @@ test_that("owned allocation charges are released after final handles disappear",
 })
 
 test_that("parallel owned fills finish exact counts before publishing chunked columns", {
-    withr::local_envvar(DTATOOLS_EXPERIMENT_ARROW_OWNED = "1")
     values <- rep(c(-1, 0, 1, NA_real_, tagged_missing("a"), tagged_missing("z")), 25001)
     data <- dibble(b = dta_byte(values), i = dta_int(values),
                    l = dta_long(values), f = dta_float(values))
@@ -227,7 +224,6 @@ test_that("parallel owned fills finish exact counts before publishing chunked co
 })
 
 test_that("repeated owned reads collect unreachable native allocations", {
-    withr::local_envvar(DTATOOLS_EXPERIMENT_ARROW_OWNED = "1")
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(dibble(x = dta_int(rep(1, 10000000))), path)
@@ -405,7 +401,6 @@ test_that("parallel comparison workers split mismatched owned chunk boundaries",
 })
 
 test_that("writers and signatures retain modern and legacy compact sources", {
-    withr::local_envvar(DTATOOLS_EXPERIMENT_ARROW_OWNED = "1")
     paths <- c(tempfile(fileext = ".arrow"), tempfile(fileext = ".arrow"), tempfile(fileext = ".dta"))
     on.exit(unlink(paths), add = TRUE)
     modern <- dibble(b = dta_byte(rep(c(1, NA_real_, tagged_missing("z")), 25001)),

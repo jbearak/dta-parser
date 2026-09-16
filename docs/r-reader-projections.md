@@ -58,9 +58,10 @@ Choose the columns and observations that exercise the behavior under test.
 The [development-reader report](research/reader-parity-implementation-status.md)
 compares 30 scattered columns from the India dataset. In its six-read screen,
 median DTA time was 0.272 seconds and verified Arrow time was 0.072 seconds,
-versus 0.316 seconds for Stata. Those opt-in results are tied to source
-`9ac470bb`; they are not measurements of every projected read or of current
-default settings. The report includes the controls and the modest regressions
+versus 0.316 seconds for Stata. Those results were collected with opt-in
+optimizations at source `9ac470bb`, before the optimizations became defaults;
+they are not a timing promise for every projected read. The report includes
+the controls and the modest regressions
 against the preceding dtatools implementation.
 
 The [September 12 default-reader benchmark](../benchmarks/reader-refresh/results-2026-09-12-defaults/README.md)

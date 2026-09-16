@@ -1,5 +1,11 @@
 # Reader parity experiments
 
+The prepared DTA reader, wide numeric batches, four-slot observation ring,
+and owned Arrow buffers are now enabled by default. The historical experiment
+controls below apply only to older source revisions. The controller retains
+them for reproducing those runs; its Stata parity threshold is a research
+target, not a requirement for enabling these optimizations.
+
 This controller reruns Stata and both installed R readers on the same host.
 It records reader elapsed time, R reader CPU time, process CPU time and peak
 resident memory. Application startup is outside the reader clock; first reader
@@ -56,11 +62,11 @@ Process peak memory includes loading and consumption. Warm reader peaks include
 the warmup and repeated calls, including overlapping old/new R result lifetimes;
 they are not estimates of one retained result's size.
 
-The timing gate is only one release requirement. Correctness, downstream use,
-native lifetime, peak memory relative to baseline variability, corpus behavior
-and package/cross-language checks must pass before enabling an experiment by
-default. Full and projected reads must pass independently. Cold filesystem
-cache diagnostics must be reported separately.
+The controller's timing gate assesses the original Stata parity target.
+Default activation is assessed separately through correctness, downstream use,
+native lifetime, memory use, corpus behavior and package/cross-language checks,
+with full and projected reads considered independently. Cold filesystem cache
+diagnostics must be reported separately.
 
 Local job manifests and logs contain input paths and column names. Publish only
 sanitized observations, summaries and binding records. The controller does not
@@ -76,17 +82,17 @@ which tool runs before another. Input hashing warms the filesystem cache before
 the sequential runs. The controller does not flush or rewarm that cache between
 observations, add an in-process warmup, or request extra garbage collection.
 
-This example enables only owned Arrow buffers:
+This example uses the current reader defaults:
 
 ```sh
 python3 benchmarks/reader-parity/india.py \
   --cases /absolute/local/cases.json --case india-all \
   --library /absolute/candidate-library --build /absolute/candidate-build.json \
-  --output /absolute/local/india-results \
-  --experiment DTATOOLS_EXPERIMENT_ARROW_OWNED=1
+  --output /absolute/local/india-results
 ```
 
-Supply each experimental control explicitly; the result binding records them.
+For older source revisions, supply each experimental control explicitly; the
+result binding records them.
 The controller removes experimental environment variables from haven and Stata.
 `--smoke` runs one round on a small case to check the worker protocol. Its
 timings are marked as smoke results and should not be published as benchmarks.

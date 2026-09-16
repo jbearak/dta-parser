@@ -14,8 +14,8 @@ use std::thread;
 use dta_tools::arrow::{
     arrow_stored_signature, dataset_signature_from_sources, preflight_arrow_metadata,
     save_arrow_file_from_sources_with_preflight, ArrowCompression, ArrowFieldDocument,
-    ArrowFileSnapshot, ArrowMetadataPreflight, ArrowMissingEncoding, ArrowProfileError,
-    ArrowRSemantics, ArrowReadColumn, ArrowReadOptions, ArrowWriteSource, ArrowWriteSourceColumn,
+    ArrowFileSnapshot, ArrowMetadataPreflight, ArrowMissingEncoding, ArrowRSemantics,
+    ArrowReadColumn, ArrowReadOptions, ArrowWriteSource, ArrowWriteSourceColumn,
     ArrowWriteSourceDataset, DatasetDocument, StataStorage,
 };
 use dta_tools::{
@@ -42,13 +42,13 @@ use arrow_schema::{DataType, TimeUnit};
 use crate::{
     attach_dta_metadata, attach_source_rows, attach_variable_attribute_view, boundary,
     check_interrupt, coarse_interrupt, direct_r_missing_code, fill_string_region,
-    label_attribute_from_entries, missing_from_code, numeric_altrep_storage, observed_value,
-    parse_dta_metadata_sexp, poll_interrupt, r_char, r_missing, scalar_integer, scalar_string,
-    set_attr, set_class, set_symbol_attr, should_preserve_value_label_name, string_vector,
-    temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen, RNumericData, RStringData,
-    R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol, R_RowNamesSymbol, Sexp,
-    TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL, REAL, REALSXP,
-    SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT, STRSXP, VECSXP,
+    label_attribute_from_entries, missing_from_code, observed_value, parse_dta_metadata_sexp,
+    poll_interrupt, r_char, r_missing, scalar_integer, scalar_string, set_attr, set_class,
+    set_symbol_attr, should_preserve_value_label_name, string_vector, temporal_kind,
+    write_numeric_value, NumericKind, ProtectGuard, RLen, RStringData, R_ClassSymbol, R_NaInt,
+    R_NaReal, R_NaString, R_NamesSymbol, R_RowNamesSymbol, Sexp, TemporalKind, DAYS_1960_TO_1970,
+    INTEGER, INTSXP, LGLSXP, LOGICAL, REAL, REALSXP, SECONDS_1960_TO_1970, SET_STRING_ELT,
+    SET_VECTOR_ELT, STRSXP, VECSXP,
 };
 
 /// One column handed from C for `save_arrow()`. Field meanings depend on
@@ -2271,11 +2271,6 @@ enum ColumnFill {
         output: *mut f64,
         temporal: TemporalKind,
     },
-    ProfiledCompact {
-        values: *mut u8,
-        kind: NumericKind,
-        version: FormatVersion,
-    },
     ProfiledEager {
         output: *mut f64,
         storage: StataStorage,
@@ -2318,114 +2313,22 @@ enum ColumnFill {
 unsafe impl Send for ColumnFill {}
 unsafe impl Sync for ColumnFill {}
 
-impl ColumnFill {
-    /// The scheduler supplies disjoint checked row ranges within each column.
-    unsafe fn at_row(&self, row: usize) -> Result<Self, ArrowProfileError> {
-        Ok(match *self {
-            Self::ProfiledDouble { output, temporal } => Self::ProfiledDouble {
-                output: output.add(row),
-                temporal,
-            },
-            Self::ProfiledCompact {
-                values,
-                kind,
-                version,
-            } => {
-                let width = match kind {
-                    NumericKind::Byte => 1,
-                    NumericKind::Int => 2,
-                    _ => 4,
-                };
-                Self::ProfiledCompact {
-                    values: values.add(row * width),
-                    kind,
-                    version,
-                }
-            }
-            Self::ProfiledEager {
-                output,
-                storage,
-                temporal,
-                version,
-            } => Self::ProfiledEager {
-                output: output.add(row),
-                storage,
-                temporal,
-                version,
-            },
-            Self::Logical { output } => Self::Logical {
-                output: output.add(row),
-            },
-            Self::Integer { output } => Self::Integer {
-                output: output.add(row),
-            },
-            Self::Raw { output } => Self::Raw {
-                output: output.add(row),
-            },
-            Self::Date32 { output } => Self::Date32 {
-                output: output.add(row),
-            },
-            Self::Timestamp { output } => Self::Timestamp {
-                output: output.add(row),
-            },
-            Self::Duration {
-                output,
-                seconds_per_unit,
-            } => Self::Duration {
-                output: output.add(row),
-                seconds_per_unit,
-            },
-            Self::PayloadDouble { output } => Self::PayloadDouble {
-                output: output.add(row),
-            },
-            Self::SemanticDouble { output } => Self::SemanticDouble {
-                output: output.add(row),
-            },
-            _ => {
-                return Err(ArrowProfileError::Invalid(
-                    "unsupported bounded fill".to_owned(),
-                ))
-            }
-        })
-    }
-}
-
-fn supports_bounded_completion(column: &ArrowReadColumn) -> bool {
-    if column
-        .field
-        .as_ref()
-        .and_then(|field| field.storage)
-        .is_some()
-    {
-        return true;
-    }
-    // Int32 and strings require decoded values to choose their R shape.
-    // Dictionary levels also require the established finalization path.
-    !matches!(
-        column.data_type,
-        DataType::Int32 | DataType::Utf8 | DataType::LargeUtf8 | DataType::Dictionary(_, _)
-    )
-}
-
 /// What a fill hands back to the main thread for finalization.
 enum FillOutcome {
     Plain,
     OwnedNumeric(crate::owned_numeric::PreparedOwnedNumeric),
-    MissingCount(usize),
     Strings(RStringData),
     Levels(Vec<Option<String>>),
 }
 
 unsafe impl Send for FillOutcome {}
 
-/// One planned output column: its shape, the eagerly allocated R vector when
-/// the shape has one, the compact ALTREP backing when it does not, and the
-/// fill left to run. Eager string columns have no fill; the main thread
-/// materializes them during finalization.
+/// One planned output column: its shape, its eagerly allocated R vector when
+/// needed, and the fill left to run. Compact columns retain native owners;
+/// eager string columns materialize on the main thread during finalization.
 struct PlannedColumn {
     shape: ColumnShape,
     vector: Sexp,
-    compact: Option<RNumericData>,
     fill: Option<ColumnFill>,
 }
 
@@ -2436,8 +2339,16 @@ unsafe fn plan_read_column(
     guard: &mut ProtectGuard,
 ) -> Result<PlannedColumn, String> {
     let length = RLen::try_from(row_count).map_err(|_| "too long".to_owned())?;
-    if experiment_enabled("DTATOOLS_EXPERIMENT_ARROW_OWNED") {
-        if let ColumnShape::ProfiledCompact { storage, version } = &shape {
+    let (vector, fill) = match &shape {
+        ColumnShape::ProfiledDouble { temporal } => {
+            let vector = guard.alloc(REALSXP, length)?;
+            let fill = ColumnFill::ProfiledDouble {
+                output: REAL(vector),
+                temporal: *temporal,
+            };
+            (vector, Some(fill))
+        }
+        ColumnShape::ProfiledCompact { storage, version } => {
             let kind = match storage {
                 StataStorage::Byte => NumericKind::Byte,
                 StataStorage::Int => NumericKind::Int,
@@ -2445,43 +2356,13 @@ unsafe fn plan_read_column(
                 StataStorage::Float => NumericKind::Float,
                 StataStorage::Double => unreachable!("compact double shape"),
             };
-            return Ok(PlannedColumn {
-                fill: Some(ColumnFill::OwnedCompact {
-                    kind,
-                    temporal: temporal_kind(attributes.format()),
-                    version: *version,
-                    expected_rows: row_count,
-                }),
-                shape,
-                vector: ptr::null_mut(),
-                compact: None,
-            });
-        }
-    }
-    let (vector, compact, fill) = match &shape {
-        ColumnShape::ProfiledDouble { temporal } => {
-            let vector = guard.alloc(REALSXP, length)?;
-            let fill = ColumnFill::ProfiledDouble {
-                output: REAL(vector),
-                temporal: *temporal,
-            };
-            (vector, None, Some(fill))
-        }
-        ColumnShape::ProfiledCompact { storage, version } => {
-            let data = numeric_altrep_storage(
-                storage.dta_type(),
-                row_count,
-                temporal_kind(attributes.format()),
-                *version,
-                guard,
-            )
-            .map_err(|error| error.to_string())?;
-            let fill = ColumnFill::ProfiledCompact {
-                values: data.values,
-                kind: data.kind,
+            let fill = ColumnFill::OwnedCompact {
+                kind,
+                temporal: temporal_kind(attributes.format()),
                 version: *version,
+                expected_rows: row_count,
             };
-            (ptr::null_mut(), Some(data), Some(fill))
+            (ptr::null_mut(), Some(fill))
         }
         ColumnShape::ProfiledEager {
             storage,
@@ -2495,57 +2376,56 @@ unsafe fn plan_read_column(
                 temporal: *temporal,
                 version: *version,
             };
-            (vector, None, Some(fill))
+            (vector, Some(fill))
         }
         ColumnShape::Logical => {
             let vector = guard.alloc(LGLSXP, length)?;
             let fill = ColumnFill::Logical {
                 output: LOGICAL(vector),
             };
-            (vector, None, Some(fill))
+            (vector, Some(fill))
         }
         ColumnShape::Integer => {
             let vector = guard.alloc(INTSXP, length)?;
             let fill = ColumnFill::Integer {
                 output: INTEGER(vector),
             };
-            (vector, None, Some(fill))
+            (vector, Some(fill))
         }
         ColumnShape::Raw => {
             let vector = guard.alloc(crate::RAWSXP, length)?;
             let fill = ColumnFill::Raw {
                 output: crate::RAW(vector),
             };
-            (vector, None, Some(fill))
+            (vector, Some(fill))
         }
         ColumnShape::Strings { has_nulls: false } => (
             ptr::null_mut(),
-            None,
             Some(ColumnFill::DictStrings {
                 expected_rows: row_count,
             }),
         ),
-        ColumnShape::Strings { has_nulls: true } => (ptr::null_mut(), None, None),
+        ColumnShape::Strings { has_nulls: true } => (ptr::null_mut(), None),
         ColumnShape::Factor => {
             let vector = guard.alloc(INTSXP, length)?;
             let fill = ColumnFill::FactorCodes {
                 output: INTEGER(vector),
             };
-            (vector, None, Some(fill))
+            (vector, Some(fill))
         }
         ColumnShape::Date32 => {
             let vector = guard.alloc(REALSXP, length)?;
             let fill = ColumnFill::Date32 {
                 output: REAL(vector),
             };
-            (vector, None, Some(fill))
+            (vector, Some(fill))
         }
         ColumnShape::Timestamp => {
             let vector = guard.alloc(REALSXP, length)?;
             let fill = ColumnFill::Timestamp {
                 output: REAL(vector),
             };
-            (vector, None, Some(fill))
+            (vector, Some(fill))
         }
         ColumnShape::Duration { seconds_per_unit } => {
             let vector = guard.alloc(REALSXP, length)?;
@@ -2553,129 +2433,28 @@ unsafe fn plan_read_column(
                 output: REAL(vector),
                 seconds_per_unit: *seconds_per_unit,
             };
-            (vector, None, Some(fill))
+            (vector, Some(fill))
         }
         ColumnShape::PayloadDouble => {
             let vector = guard.alloc(REALSXP, length)?;
             let fill = ColumnFill::PayloadDouble {
                 output: REAL(vector),
             };
-            (vector, None, Some(fill))
+            (vector, Some(fill))
         }
         ColumnShape::SemanticDouble => {
             let vector = guard.alloc(REALSXP, length)?;
             let fill = ColumnFill::SemanticDouble {
                 output: REAL(vector),
             };
-            (vector, None, Some(fill))
+            (vector, Some(fill))
         }
     };
     Ok(PlannedColumn {
         shape,
         vector,
-        compact,
         fill,
     })
-}
-
-unsafe fn fill_profiled_compact(
-    column: &ArrowReadColumn,
-    values: *mut u8,
-    kind: NumericKind,
-    version: FormatVersion,
-) -> Result<usize, String> {
-    if experiment_enabled("DTATOOLS_EXPERIMENT_ARROW_BULK_COPY") {
-        return copy_profiled_compact(column, values, kind, version);
-    }
-    let mut missing_count = 0;
-    match kind {
-        NumericKind::Byte => for_each_value::<Int8Array>(column, |row, array, index| {
-            let value = array.value(index);
-            missing_count +=
-                usize::from(classify_byte_missing_for_version(value, version).is_some());
-            values.add(row).cast::<i8>().write_unaligned(value);
-            Ok(())
-        })?,
-        NumericKind::Int => for_each_value::<Int16Array>(column, |row, array, index| {
-            let value = array.value(index);
-            missing_count +=
-                usize::from(classify_int_missing_for_version(value, version).is_some());
-            values.add(row * 2).cast::<i16>().write_unaligned(value);
-            Ok(())
-        })?,
-        NumericKind::Long => for_each_value::<Int32Array>(column, |row, array, index| {
-            let value = array.value(index);
-            missing_count +=
-                usize::from(classify_long_missing_for_version(value, version).is_some());
-            values.add(row * 4).cast::<i32>().write_unaligned(value);
-            Ok(())
-        })?,
-        NumericKind::Float => for_each_value::<Float32Array>(column, |row, array, index| {
-            let value = array.value(index);
-            missing_count += usize::from(
-                value.is_nan()
-                    || classify_float_missing_bits_for_version(value.to_bits(), version).is_some(),
-            );
-            values.add(row * 4).cast::<f32>().write_unaligned(value);
-            Ok(())
-        })?,
-    }
-    Ok(missing_count)
-}
-
-fn experiment_enabled(name: &str) -> bool {
-    std::env::var_os(name).as_deref() == Some(std::ffi::OsStr::new("1"))
-}
-
-/// Compare contiguous copy plus a reduction against the original fused loop.
-/// The caller owns a protected destination with exactly the selected length.
-unsafe fn copy_profiled_compact(
-    column: &ArrowReadColumn,
-    output: *mut u8,
-    kind: NumericKind,
-    version: FormatVersion,
-) -> Result<usize, String> {
-    let mut row = 0_usize;
-    let mut missing_count = 0_usize;
-    macro_rules! copy_chunks {
-        ($array:ty, $native:ty, $missing:expr) => {
-            for chunk in &column.chunks {
-                let array = chunk
-                    .as_any()
-                    .downcast_ref::<$array>()
-                    .ok_or_else(|| chunk_error(&column.name))?;
-                let values = array.values().as_ref();
-                let width = std::mem::size_of::<$native>();
-                ptr::copy_nonoverlapping(
-                    values.as_ptr().cast::<u8>(),
-                    output.add(row * width),
-                    values.len() * width,
-                );
-                missing_count += values.iter().copied().filter($missing).count();
-                row += values.len();
-            }
-        };
-    }
-    match kind {
-        NumericKind::Byte => {
-            copy_chunks!(Int8Array, i8, |v: &i8| classify_byte_missing_for_version(
-                *v, version
-            )
-            .is_some())
-        }
-        NumericKind::Int => {
-            copy_chunks!(Int16Array, i16, |v: &i16| classify_int_missing_for_version(
-                *v, version
-            )
-            .is_some())
-        }
-        NumericKind::Long => copy_chunks!(Int32Array, i32, |v: &i32| {
-            classify_long_missing_for_version(*v, version).is_some()
-        }),
-        NumericKind::Float => copy_chunks!(Float32Array, f32, |v: &f32| v.is_nan()
-            || classify_float_missing_bits_for_version(v.to_bits(), version).is_some()),
-    }
-    Ok(missing_count)
 }
 
 unsafe fn fill_profiled_eager(
@@ -3165,16 +2944,6 @@ unsafe fn fill_duration(
     Ok(())
 }
 
-/// Run one column's pure conversion. Callable from any thread: it writes
-/// through pre-allocated pointers and builds Rust-owned dictionaries, never
-/// touching the R API.
-unsafe fn fill_read_column(
-    column: &ArrowReadColumn,
-    fill: &ColumnFill,
-) -> Result<FillOutcome, String> {
-    fill_read_column_with_poll(column, fill, || false)
-}
-
 /// Only the coordinator's poll may call R. Worker polls read cancellation.
 unsafe fn fill_read_column_with_poll(
     column: &ArrowReadColumn,
@@ -3209,13 +2978,6 @@ unsafe fn fill_read_column_with_poll(
             })?;
             Ok(FillOutcome::Plain)
         }
-        ColumnFill::ProfiledCompact {
-            values,
-            kind,
-            version,
-        } => Ok(FillOutcome::MissingCount(fill_profiled_compact(
-            column, *values, *kind, *version,
-        )?)),
         ColumnFill::ProfiledEager {
             output,
             storage,
@@ -3513,11 +3275,6 @@ unsafe fn finalize_read_column(
     let vector = match &plan.shape {
         ColumnShape::ProfiledCompact { .. } => match outcome {
             FillOutcome::OwnedNumeric(prepared) => guard.publish_owned_numeric(prepared)?,
-            FillOutcome::MissingCount(missing_count) => {
-                let mut data = plan.compact.ok_or_else(mismatch)?;
-                data.missing_count = missing_count;
-                guard.numeric(data)?
-            }
             _ => return Err(mismatch()),
         },
         ColumnShape::Strings { has_nulls: false } => {
@@ -3662,21 +3419,11 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
     error: *mut *mut c_char,
 ) -> Sexp {
     arrow_boundary(interrupted, error, ptr::null_mut(), || {
-        let trace = experiment_enabled("DTATOOLS_EXPERIMENT_TRACE");
-        let owned_mode = experiment_enabled("DTATOOLS_EXPERIMENT_ARROW_OWNED");
-        if owned_mode {
-            let charged = crate::owned_numeric::dtatools_owned_numeric_live_bytes();
-            if charged > 64 * 1024 * 1024 {
-                check_interrupt()?;
-                if crate::dtatools_owned_numeric_gc() == 0 {
-                    return Err("R could not collect unused owned numeric buffers".to_owned());
-                }
-                if trace {
-                    eprintln!(
-                        "dtatools experiment: Arrow owned_gc before={charged} after={}",
-                        crate::owned_numeric::dtatools_owned_numeric_live_bytes()
-                    );
-                }
+        let charged = crate::owned_numeric::dtatools_owned_numeric_live_bytes();
+        if charged > 64 * 1024 * 1024 {
+            check_interrupt()?;
+            if crate::dtatools_owned_numeric_gc() == 0 {
+                return Err("R could not collect unused owned numeric buffers".to_owned());
             }
         }
         let snapshot = required_arrow_snapshot(snapshot)?;
@@ -3713,59 +3460,12 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             record_signature: record_signature != 0,
             threads: requested,
         };
-        let bounded_mode = experiment_enabled("DTATOOLS_EXPERIMENT_ARROW_BOUNDED");
-        let (mut result, completion) = if bounded_mode && !owned_mode {
-            let prepared = snapshot
-                .prepare_completion(&options, count_source_rows != 0, &mut coarse_interrupt)
-                .map_err(|error| error.to_string())?;
-            if prepared
-                .metadata()
-                .columns
-                .iter()
-                .all(supports_bounded_completion)
-            {
-                if trace {
-                    eprintln!("dtatools experiment: Arrow bounded=active owned=false");
-                }
-                let (metadata, completion) = prepared.into_parts();
-                (metadata, Some(completion))
-            } else {
-                if trace {
-                    let unsupported: Vec<_> = prepared
-                        .metadata()
-                        .columns
-                        .iter()
-                        .filter(|column| !supports_bounded_completion(column))
-                        .map(|column| format!("{}:{:?}", column.name, column.data_type))
-                        .collect();
-                    eprintln!("dtatools experiment: Arrow bounded=fallback owned=false unsupported={unsupported:?}");
-                }
-                (
-                    prepared
-                        .read(&mut coarse_interrupt)
-                        .map_err(|error| error.to_string())?,
-                    None,
-                )
-            }
+        let mut result = if count_source_rows != 0 {
+            snapshot.read_with_source_row_count(&options, &mut coarse_interrupt)
         } else {
-            if trace {
-                eprintln!(
-                    "dtatools experiment: Arrow bounded={} owned={owned_mode}",
-                    if bounded_mode {
-                        "disabled-by-owned"
-                    } else {
-                        "off"
-                    }
-                );
-            }
-            let result = if count_source_rows != 0 {
-                snapshot.read_with_source_row_count(&options, &mut coarse_interrupt)
-            } else {
-                snapshot.read(&options, &mut coarse_interrupt)
-            }
-            .map_err(|error| error.to_string())?;
-            (result, None)
-        };
+            snapshot.read(&options, &mut coarse_interrupt)
+        }
+        .map_err(|error| error.to_string())?;
         let profiled = result.profile_version.is_some();
         let row_count = usize::try_from(result.row_count)
             .map_err(|_| "the selection has too many rows".to_owned())?;
@@ -3866,75 +3566,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
         // Fill: pure conversions, in parallel when worthwhile.
         let task_count = fills.iter().filter(|fill| fill.is_some()).count();
         let threads = fill_thread_count(requested, task_count, row_count);
-        if trace {
-            let owned_columns = fills
-                .iter()
-                .filter(|fill| matches!(fill, Some(ColumnFill::OwnedCompact { .. })))
-                .count();
-            eprintln!("dtatools experiment: Arrow owned_columns={owned_columns} fill_tasks={task_count} fill_threads={threads}");
-        }
-        let outcomes = if let Some(completion) = completion {
-            let missing: Vec<_> = fills.iter().map(|_| AtomicUsize::new(0)).collect();
-            let report = completion
-                .complete_with_report(
-                    64 * 1024 * 1024,
-                    &mut coarse_interrupt,
-                    |index, offset, chunk| {
-                        let column = result.columns.get(index).ok_or_else(|| {
-                            ArrowProfileError::Invalid("invalid completion column".to_owned())
-                        })?;
-                        if offset
-                            .checked_add(chunk.len())
-                            .is_none_or(|end| end > row_count)
-                        {
-                            return Err(ArrowProfileError::Invalid(
-                                "completion exceeds output length".to_owned(),
-                            ));
-                        }
-                        let fill = fills[index].as_ref().ok_or_else(|| {
-                            ArrowProfileError::Invalid("missing bounded fill".to_owned())
-                        })?;
-                        let chunk_column = ArrowReadColumn {
-                            name: column.name.clone(),
-                            data_type: column.data_type.clone(),
-                            nullable: column.nullable,
-                            dictionary_ordered: column.dictionary_ordered,
-                            field: None,
-                            chunks: vec![chunk],
-                        };
-                        match unsafe { fill_read_column(&chunk_column, &fill.at_row(offset)?) }
-                            .map_err(ArrowProfileError::Invalid)?
-                        {
-                            FillOutcome::MissingCount(count) => {
-                                missing[index].fetch_add(count, Ordering::Relaxed);
-                            }
-                            FillOutcome::Plain => {}
-                            _ => {
-                                return Err(ArrowProfileError::Invalid(
-                                    "unexpected bounded fill outcome".to_owned(),
-                                ))
-                            }
-                        }
-                        Ok(())
-                    },
-                )
-                .map_err(|error| error.to_string())?;
-            if trace {
-                eprintln!("dtatools experiment: Arrow completion={report:?}");
-            }
-            fills
-                .iter()
-                .enumerate()
-                .map(|(index, fill)| match fill {
-                    Some(ColumnFill::ProfiledCompact { .. }) => {
-                        FillOutcome::MissingCount(missing[index].load(Ordering::Relaxed))
-                    }
-                    _ => FillOutcome::Plain,
-                })
-                .collect()
-        } else {
-            run_column_fills(&result.columns, fills, threads)?
-        };
+        let outcomes = run_column_fills(&result.columns, fills, threads)?;
 
         // Finalize on the R thread: ALTREP wrapping, classes, attributes.
         for (index, ((column, plan), outcome)) in
@@ -4316,19 +3948,17 @@ mod tests {
                 system_missing,
             ]))],
         };
-        let mut values = vec![0_u8; 3 * std::mem::size_of::<f32>()];
+        let prepared = crate::owned_numeric::prepare_from_arrow(
+            &column.chunks,
+            NumericKind::Float,
+            TemporalKind::None,
+            FormatVersion::V118,
+            3,
+            || false,
+        )
+        .expect("owned compact float fill");
 
-        let missing_count = unsafe {
-            fill_profiled_compact(
-                &column,
-                values.as_mut_ptr(),
-                NumericKind::Float,
-                FormatVersion::V118,
-            )
-        }
-        .expect("compact float fill");
-
-        assert_eq!(missing_count, 2);
+        assert_eq!(prepared.into_descriptor().missing_count, 2);
     }
 
     #[test]

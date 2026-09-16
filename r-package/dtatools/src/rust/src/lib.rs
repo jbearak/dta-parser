@@ -3951,9 +3951,7 @@ unsafe fn read_from_file(
         row_count,
         column_indices: columns,
     };
-    let result = if config.direct_to_r
-        && std::env::var("DTATOOLS_EXPERIMENT_DTA_PREPARED").as_deref() == Ok("1")
-    {
+    let result = if config.direct_to_r {
         file.read_with_prepared_sink_and_interrupts(
             &options,
             config.requested_threads,
@@ -3965,37 +3963,6 @@ unsafe fn read_from_file(
             frequent_interrupt_poller(),
         )
         .map_err(|error| error.to_string())
-    } else if config.direct_to_r {
-        let threads = if config.numeric_altrep {
-            file.parallel_thread_count_for_compact_output(&options, config.requested_threads)
-        } else {
-            file.parallel_thread_count(&options, config.requested_threads)
-        }
-        .map_err(|error| error.to_string())?;
-        let columnar = file
-            .supports_columnar_sink(&options)
-            .map_err(|error| error.to_string())?;
-        if threads > 1 || columnar {
-            file.read_with_parallel_sink_and_interrupt(
-                &options,
-                threads,
-                |metadata, _row_start, row_count, indices| unsafe {
-                    RDataFrameSink::new(metadata, row_count, indices, config.numeric_altrep)
-                },
-                coarse_interrupt,
-            )
-            .map_err(|error| error.to_string())
-        } else {
-            file.read_with_sink_and_interrupts(
-                &options,
-                |metadata, _row_start, row_count, indices| unsafe {
-                    RDataFrameSink::new(metadata, row_count, indices, config.numeric_altrep)
-                },
-                coarse_interrupt,
-                frequent_interrupt_poller(),
-            )
-            .map_err(|error| error.to_string())
-        }
     } else {
         let data = file
             .read_with_interrupts(&options, coarse_interrupt, frequent_interrupt_poller())

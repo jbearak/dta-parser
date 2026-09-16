@@ -1,5 +1,11 @@
 # dtatools (development version)
 
+* Reader optimizations are now enabled by default. `read_dta()` reuses prepared
+  decode plans and selected-file handles, batches all numeric storage widths,
+  and overlaps eligible parallel reads through four bounded input buffers.
+  `read_arrow()` retains native compact numeric buffers without copying them
+  into R byte vectors. The private reader experiment switches are removed;
+  existing thread, projection, eager-output and verification options still apply.
 * `read_dta()` and `read_arrow()` avoid loading source-adapter dependencies
   for ordinary local datasets. This removes most first-read overhead on
   small DTA files and reduces repeated-read overhead. Compressed files,

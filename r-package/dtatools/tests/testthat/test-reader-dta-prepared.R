@@ -9,7 +9,6 @@
 }
 
 test_that("prepared DTA metadata and observations retain one file identity", {
-    withr::local_envvar(DTATOOLS_EXPERIMENT_DTA_PREPARED = "1")
     directory <- withr::local_tempdir()
     path <- file.path(directory, "source.dta")
     retained <- file.path(directory, "retained.dta")
@@ -54,7 +53,6 @@ test_that("prepared DTA reads consume once and close idempotently", {
 })
 
 test_that("prepared DTA closes before raw, gzip and connection source cleanup", {
-    withr::local_envvar(DTATOOLS_EXPERIMENT_DTA_PREPARED = "1")
     original_close <- dtatools:::.close_prepared_dta
     original_cleanup <- dtatools:::.cleanup_dta_source
     events <- character()
@@ -103,17 +101,18 @@ test_that("prepared DTA closes before raw, gzip and connection source cleanup", 
 
 test_that("prepared selection preserves selector warnings and errors", {
     path <- fixture("auto_v118.dta")
-    capture_read <- function(prepared, invalid = FALSE) {
+    capture_read <- function(invalid = FALSE) {
         warnings <- list()
+        select_columns <- function() {
+            warning("selector diagnostic", call. = FALSE)
+            tidyselect::all_of(if (invalid) "absent_column" else c("price", "mpg"))
+        }
         result <- withCallingHandlers(
-            tryCatch(withr::with_envvar(
-                c(DTATOOLS_EXPERIMENT_DTA_PREPARED = prepared),
-                read_dta(path, output = "tibble", col_select = {
-                    warning("selector diagnostic", call. = FALSE)
-                    tidyselect::all_of(if (invalid) "absent_column" else c("price", "mpg"))
-                })
-            ), error = function(condition) list(class = class(condition),
-                                                 message = conditionMessage(condition))),
+            tryCatch(
+                read_dta(path, output = "tibble", col_select = select_columns()),
+                error = function(condition) list(
+                    class = class(condition), message = conditionMessage(condition)
+                )),
             warning = function(condition) {
                 warnings[[length(warnings) + 1L]] <<- list(
                     class = class(condition), message = conditionMessage(condition)
@@ -123,16 +122,21 @@ test_that("prepared selection preserves selector warnings and errors", {
         )
         list(result = result, warnings = warnings)
     }
-    for (invalid in c(FALSE, TRUE)) {
-        expected <- capture_read("0", invalid)
-        actual <- capture_read("1", invalid)
-        expect_identical(actual, expected)
-        expect_identical(actual$warnings[[1L]]$message, "selector diagnostic")
-    }
+    actual <- capture_read()
+    expect_identical(actual$result, dtatools:::.read_dta_rust_vectors(
+        path, col_select = c(price, mpg)
+    ))
+    expect_length(actual$warnings, 1L)
+    expect_identical(actual$warnings[[1L]]$message, "selector diagnostic")
+    invalid <- capture_read(TRUE)
+    expect_true("error" %in% invalid$result$class)
+    expect_match(invalid$result$message, "absent_column")
+    expect_length(invalid$warnings, 1L)
+    expect_identical(invalid$warnings[[1L]]$message, "selector diagnostic")
+
 })
 
 test_that("an interrupted selector closes prepared DTA before source cleanup", {
-    withr::local_envvar(DTATOOLS_EXPERIMENT_DTA_PREPARED = "1")
     original_close <- dtatools:::.close_prepared_dta
     original_cleanup <- dtatools:::.cleanup_dta_source
     events <- character()
@@ -161,7 +165,6 @@ test_that("an interrupted selector closes prepared DTA before source cleanup", {
 })
 
 test_that("full DTA reads reuse decode plans without selection metadata discovery", {
-    withr::local_envvar(DTATOOLS_EXPERIMENT_DTA_PREPARED = "1")
     local_mocked_bindings(
         .dta_metadata = function(...) stop("unexpected metadata preflight"),
         .close_prepared_dta = function(...) stop("unexpected prepared read"),
@@ -176,8 +179,8 @@ test_that("full DTA reads reuse decode plans without selection metadata discover
                     fixture(name), skip = window[[1L]], n_max = window[[2L]],
                     threads = 4L, use_numeric_altrep = compact, output = "tibble"
                 )
-                expected <- withr::with_envvar(
-                    c(DTATOOLS_EXPERIMENT_DTA_PREPARED = "0"), read_full()
+                expected <- dtatools:::.read_dta_rust_vectors(
+                    fixture(name), skip = window[[1L]], n_max = window[[2L]]
                 )
                 expect_identical(read_full(), expected, info = paste(name, compact))
             }
@@ -203,12 +206,11 @@ test_that("prepared selections preserve legacy, wide, empty and labelled reads",
                         skip = window[[1L]], n_max = window[[2L]],
                         use_numeric_altrep = compact, threads = 4L, output = "tibble"
                     )
-                    expected <- withr::with_envvar(
-                        c(DTATOOLS_EXPERIMENT_DTA_PREPARED = "0"), read_selected()
+                    expected <- dtatools:::.read_dta_rust_vectors(
+                        path, col_select = tidyselect::all_of(selected),
+                        skip = window[[1L]], n_max = window[[2L]]
                     )
-                    actual <- withr::with_envvar(
-                        c(DTATOOLS_EXPERIMENT_DTA_PREPARED = "1"), read_selected()
-                    )
+                    actual <- read_selected()
                     expect_identical(actual, expected,
                                      info = paste(name, length(selected),
                                                   paste(window, collapse = ":"), compact))
@@ -218,21 +220,19 @@ test_that("prepared selections preserve legacy, wide, empty and labelled reads",
     }
 })
 
-test_that("prepared proxies, renaming and collector reads preserve labels", {
+test_that("prepared proxies and renaming preserve collector labels", {
     for (name in c("auto_v118.dta", "all_types_v115.dta", "value_labels_v118.dta")) {
         path <- fixture(name)
-        for (reader in list(function(...) read_dta(..., output = "tibble"),
-                            dtatools:::.read_dta_rust_vectors)) {
-            read_selected <- function() reader(
+        expected <- dtatools:::.read_dta_rust_vectors(
+            path, col_select = c(tidyselect::where(is.numeric),
+                                 renamed = tidyselect::last_col()),
+            skip = 1, n_max = 3
+        )
+        for (compact in c(FALSE, TRUE)) {
+            actual <- read_dta(
                 path, col_select = c(tidyselect::where(is.numeric),
                                      renamed = tidyselect::last_col()),
-                skip = 1, n_max = 3
-            )
-            expected <- withr::with_envvar(
-                c(DTATOOLS_EXPERIMENT_DTA_PREPARED = "0"), read_selected()
-            )
-            actual <- withr::with_envvar(
-                c(DTATOOLS_EXPERIMENT_DTA_PREPARED = "1"), read_selected()
+                skip = 1, n_max = 3, use_numeric_altrep = compact, output = "tibble"
             )
             expect_identical(actual, expected, info = name)
         }

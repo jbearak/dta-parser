@@ -22,8 +22,8 @@ For Stata imports in R, `dtatools::read_dta()` follows haven's common read
 interface and returns dibbles, tibbles, or data tables with haven-compatible
 labels and tagged missing values. Its multicore reader completed the
 repository's 641-file, 46.9 GB DHS benchmark 69.1 times faster than haven.
-With opt-in reader optimizations, median read time for the 5.2 GB India DHS
-file is under a second, versus several minutes with haven. See the R package
+Median read time for the 5.2 GB India DHS file is under a second, versus
+several minutes with haven. See the R package
 README for
 [benchmarks and methods](r-package/dtatools/README.md#why-use-dtatools).
 

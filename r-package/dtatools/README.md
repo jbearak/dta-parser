@@ -7,9 +7,9 @@ Use the Arrow-based `.arrow` format for performance-sensitive workloads or
 data frames that mix Stata and ordinary R column types.
 
 Across 641 DHS survey files totaling 46.9 GB, `read_dta()` took 39.4 seconds
-versus haven's 2,727 seconds, about **69 times faster**. With opt-in reader
-optimizations, median read time for the 5.2 GB India DHS file is under a second,
-compared with several minutes for haven.
+versus haven's 2,727 seconds, about **69 times faster**. Median read time for
+the 5.2 GB India DHS file is under a second, compared with several minutes
+for haven.
 See the [benchmark results and methods](#why-use-dtatools).
 
 Stata columns can live in ordinary data frames, tibbles, data.tables, or
@@ -157,9 +157,9 @@ and 5,972 columns, and compare ten full reads per tool.
 | `haven::read_dta()` | 472.9965 seconds | 422.801 to 572.189 seconds | 473.0478 seconds | 35.113 GB |
 | Stata native `use` | 0.4725 seconds | 0.471 to 0.542 seconds | 0.5070 seconds | 5.257 GB |
 
-These measurements use opt-in reader optimizations, disabled by default,
-on a shared Apple M4 Max. Arrow verification is enabled. Wall time covers the read
-call; CPU and peak RSS cover the entire fresh process. The
+These measurements were collected on a shared Apple M4 Max with the reader
+optimizations now enabled by default. Arrow verification is enabled. Wall time
+covers the read call; CPU and peak RSS cover the entire fresh process. The
 [report](../../benchmarks/reader-parity/results-2026-09-16-india/README.md)
 records cache handling, background activity, settings and all observations.
 

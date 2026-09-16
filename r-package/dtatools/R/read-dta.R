@@ -299,12 +299,8 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     if (rlang::quo_is_null(selection)) {
         column_indices <- NULL
     } else {
-        if (identical(Sys.getenv("DTATOOLS_EXPERIMENT_DTA_PREPARED"), "1")) {
-            prepared <- .Call(C_dtatools_prepare_dta_selection, source$path, encoding)
-            metadata_names <- prepared[[2L]]
-        } else {
-            metadata_names <- .dta_metadata(source$path, encoding)
-        }
+        prepared <- .Call(C_dtatools_prepare_dta_selection, source$path, encoding)
+        metadata_names <- prepared[[2L]]
         storage <- attr(metadata_names, "dta_storage", exact = TRUE)
         selection_proxy <- stats::setNames(
             lapply(storage, function(type) {
