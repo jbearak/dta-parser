@@ -9,7 +9,7 @@ source, `d6b0ae454c6ba85b3b22f7574cd828196197cf54`. They subsequently became
 defaults in [PR #231](https://github.com/jbearak/dta-parser/pull/231).
 The measurements below retain their original source and settings. This
 ten-read comparison predates default activation; the later
-[full-corpus run](../../reader-corpus/results-2026-09-16/README.md) measures the
+[full-corpus run](../../reader-corpus/results-2026-09-16-base-r/README.md) measures the
 default-enabled readers.
 
 | Reader | Median wall time | Range | Median process CPU time | Median peak RSS |

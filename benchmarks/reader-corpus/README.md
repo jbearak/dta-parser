@@ -1,8 +1,8 @@
 # Full-corpus DTA and Arrow reads
 
-See the [September 16 results](results-2026-09-16/README.md).
+See the [September 16 results](results-2026-09-16-base-r/README.md).
 
-This benchmark measures the default-enabled readers on the original 1,823-file
+This benchmark measures both readers with default settings on the original 1,823-file
 DHS, MICS and NSFG inventory. Each readable DTA file is converted to the current
 Arrow profile before timing, with matching full data-and-metadata signatures.
 Malformed DTA inputs remain recorded as failures and cannot produce Arrow files.
@@ -32,8 +32,7 @@ It checks that `jsonlite` is absent before and after reading. Python validates
 the results and writes the JSON records. The separate preparation process uses
 `jsonlite`, and exits before timing begins.
 
-Hashing both input files before
-each pair warms their filesystem cache; there is no in-process warmup or added
+Hashing both input files before each pair warms their filesystem cache; there is no in-process warmup or added
 pre-read garbage collection. The read-call clock excludes package loading but
 includes first-reader initialization. Results remain live until process exit.
 

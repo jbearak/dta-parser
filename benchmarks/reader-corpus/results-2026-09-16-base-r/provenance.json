@@ -1,0 +1,58 @@
+{
+  "worker_commit": "2402fb93f9cf8da841ff91d6e144dfae08dc3d5f",
+  "run": {
+    "started": "2026-09-16T17:57:15.166420+00:00",
+    "finished": "2026-09-16T18:24:18.461279+00:00",
+    "smoke": false,
+    "attempted_dta": 1823,
+    "qualified_arrow": 1821,
+    "comparable": 1812,
+    "measured_reads": 3644,
+    "system": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "protocol": "One full read per fresh process; input hashing warms each pair; reader order alternates by file; base-R worker I/O",
+    "timed_worker_jsonlite": false,
+    "arrow_verification": true,
+    "haven_invocations": 0,
+    "stata_invocations": 0
+  },
+  "binding": {
+    "commit": "137b503a6200e4cb4be9c224089376736bcf697e",
+    "source_tree": "886d76b6cc3ba1400379dde8fe9c20abb8a212d6",
+    "build_source_commit": "137b503a6200e4cb4be9c224089376736bcf697e",
+    "build_record_sha256": "042ed18fef80d349b301dcb21c6b082313928e12f74922edfd5008819e22d9e4",
+    "rscript_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f",
+    "experimental_environment": "DTATOOLS_EXPERIMENT_* removed in every child",
+    "inventory_sha256": "8f8964891ab2d9429988a8bcddf8ddb3a32338b3a4399ad154dc70df8a370367",
+    "archived_sha256": "7f47e48313d08a64cc4f7f885dd4954d57bf303e8362919d171cbd86d14d396c",
+    "installed_inventory_sha256": "eba95240f52506c05c247acbb298aa6e2437259297a0f5971f02435457025d4e",
+    "scripts": {
+      "benchmarks/reader-corpus/run.py": "1d6a96fee124a6f814babc5aad38d28502bf386238b70fc51b6eabb7ce17aa5d",
+      "benchmarks/reader-refresh/driver_common.py": "4cd4f21ffa5278fdb1d1d4543c929429cca83447e8c6055153e619ab46d7c085",
+      "benchmarks/reader-corpus/prepare.R": "6b56cd310be31e9a5ceb07d4483b829796bd5b20fb6c4b2eb67cd950ab0a1d03",
+      "benchmarks/reader-corpus/worker.R": "87ee7704bebfb7d6e873e26a52c70a9f9b2a505798e3dc98996dcbccbe3756b4",
+      "benchmarks/reader-refresh/workers/benchmark-common.R": "1652c6d1225d8b945b3451df23d703d6710341365cd2b503a66513e917c3c75b"
+    }
+  },
+  "hardware": {
+    "cpu": "Apple M4 Max",
+    "logical_cpus": 16,
+    "memory_bytes": 137438953472
+  },
+  "R": "4.6.1 (2026-06-24)",
+  "shared_host": true,
+  "comparator_date": "2026-08-24",
+  "comparator_report": "benchmarks/r-corpus-performance/results-2026-08-24.md",
+  "private_artifacts_sha256": {
+    "binding.json": "5d5190ad7e889e5aebad24d7add983556a9febeaa8abcbbd0b234b13fa5ffc78",
+    "inputs.json": "af3fe94cbe6de28d0af7075a3602730ceb08f4addb174f112bfa650236f9a54b",
+    "identities.json": "f516fd4281ca2cfaa67db9e85f78f7c2e1dcb1364a9d70d09e8c53cb9b61ace9",
+    "jobs.jsonl": "1c648d9f7564339c7a68cf2189bd22e0ba8ea23134a74d28af7a1a02f0570512",
+    "observations.csv": "37a6a4a9b5b492579974652b5e1bf19d0975fe653ab5512cce4515bf0ee2f33b",
+    "run.json": "a8071414898d21dcad6169acd07199b287411875fd2fe7b1fa82f7b45deeb18d"
+  },
+  "qualification_records_sha256": "fa25a6e514631327f9130d6c1eed52c1ac9c93c98a0881dfbbfc0889f68a5803",
+  "published_artifacts_sha256": {
+    "corpus-summary.csv": "3d7d98fa7dc9b9813f16d363066a303ed87253c66da71c6b8f1c2b9b817693aa"
+  }
+}

@@ -1,5 +1,10 @@
 # Full-corpus reader results, September 16, 2026
 
+The [base-R worker rerun](../results-2026-09-16-base-r/README.md) supersedes
+this run for current performance summaries. This earlier worker loaded
+`jsonlite` before timing, which changed garbage-collection costs during some
+reads. The original measurements and provenance remain below.
+
 Both default-enabled readers were run across the original DHS, MICS and NSFG
 inventory. All 1,821 readable DTA files produced Arrow copies with matching
 full value-and-metadata signatures. The two known malformed DTA inputs failed

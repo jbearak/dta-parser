@@ -4,11 +4,10 @@ This historical report retains the September 12, 2026 batching and
 automatic-thread experiments. Its timings and implementation descriptions
 refer to the source revisions measured here. The later
 [adaptive-default results](../reader-refresh/results-2026-09-12-defaults/README.md)
-record the subsequent thread policy. For the newer India measurements with
-reader optimizations that have since become defaults, see the
+record the subsequent thread policy. For the newer India measurements, see the
 [September 16 four-reader comparison](../reader-parity/results-2026-09-16-india/README.md).
-The [September 16 full-corpus run](../reader-corpus/results-2026-09-16/README.md)
-measures both default-enabled readers across DHS, MICS and NSFG.
+The [September 16 full-corpus run](../reader-corpus/results-2026-09-16-base-r/README.md)
+measures both readers with default settings across DHS, MICS and NSFG.
 
 ## Original automatic-thread results
 
