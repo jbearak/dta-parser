@@ -2,12 +2,10 @@
 
 `dta-tools` provides TypeScript and R libraries for working with Stata `.dta`
 files. Both readers cover Stata 5 through 19 and preserve labels, long strings,
-display formats, and Stata missing values. The R package also writes standalone
-Stata 18/19 `.dta` datasets or standalone `.arrow` datasets; callers choose one
-format for each save. The `.arrow` format preserves supported ordinary R column
-classes alongside Stata storage types and metadata, so one data frame can mix R
-and Stata columns without flattening them to one set of column types. The R
-package also supplies Stata-aware metadata, storage, recoding, tabulation,
+display formats, and Stata missing values. The R package also writes Stata
+18/19 `.dta` files. Its Arrow-based `.arrow` format preserves supported R column
+classes alongside Stata storage types and metadata in the same data frame.
+The R package also supplies Stata-aware metadata, storage, recoding, tabulation,
 merge, and data-signature operations.
 
 ## Choose a library
@@ -24,15 +22,9 @@ For Stata imports in R, `dtatools::read_dta()` follows haven's common read
 interface and returns dibbles, tibbles, or data tables with haven-compatible
 labels and tagged missing values. Its multicore reader completed the
 repository's 641-file, 46.9 GB DHS benchmark 69.1 times faster than haven.
-
-For repeated analysis, save an Arrow copy once per source-file version and
-read only the variables each analysis needs. Both readers accept
-`col_select = any_of(raw_variables)`, omitting names absent from a particular
-survey. Dibbles retain Stata column types and metadata through supported
-operations, including Stata-aware merges. See the R package README for the
-[reusable-file workflow](r-package/dtatools/README.md#reuse-survey-files-across-analyses)
-and [benchmarks](r-package/dtatools/README.md#why-use-dtatools), including the
-opt-in development reader results and their limitations.
+For the 5.2 GB India DHS file, the median across ten warm-cache reads was
+0.752 seconds, versus 488 seconds with haven. See the R package README for
+[benchmarks and methods](r-package/dtatools/README.md#why-use-dtatools).
 
 The Rust crate is the internal read/write core used by the R package. It is not published to crates.io. Its interface is documented with Rustdoc:
 
