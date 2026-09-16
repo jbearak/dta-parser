@@ -158,7 +158,7 @@
         },
         {
           "path": "tests/testthat/test-input-sources.R",
-          "sha256": "0c4027a61f44249a1e2205a48ef1ff872109801e1d5ab3100892c24cc25a3644"
+          "sha256": "d2865970e79bc3c798a99a978f73dfec87769ee76569ddcdb688ced9de18850a"
         },
         {
           "path": "tests/testthat/test-reader-dta-experiments.R",

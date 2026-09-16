@@ -299,13 +299,12 @@ test_that("temporary sources are cleaned when an interrupt unwinds the read", {
             path <<- source$path
             source
         },
-        .dta_metadata = function(file, encoding = NULL) rlang::interrupt(),
         .package = "dtatools"
     )
     interrupted <- tryCatch(
         {
             read_dta(
-                read_fixture_bytes(), col_select = tidyselect::everything()
+                read_fixture_bytes(), col_select = rlang::interrupt()
             )
             FALSE
         },
