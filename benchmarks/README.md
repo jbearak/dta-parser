@@ -66,17 +66,14 @@ including read-call CPU time and fresh-process peak RSS. The subsequent
 supplies corpus and fresh-process India comparisons for the defaults at that time, plus alternating
 old/new dtatools measurements on small files. It removes unnecessary dependency
 loading and reports read-call CPU time, whole-process CPU, and peak RSS.
-The [September 16 full-corpus run](reader-corpus/results-2026-09-16/README.md)
-updates both `read_dta()` and verified `read_arrow()` with the optimizations
-enabled by default. It qualifies Arrow copies for all 1,821 readable inputs,
-attempts all 1,823 original DTA inputs, and retains the same 1,812-file
-comparison set. Haven and Stata corpus timings remain from August 24.
+The [September 16 full-corpus run](reader-corpus/results-2026-09-16-base-r/README.md)
+updates both `read_dta()` and verified `read_arrow()` with default settings.
+Its timed workers use base R for setup and reporting. It qualifies Arrow
+copies for all 1,821 readable inputs, attempts all 1,823 original DTA inputs,
+and retains the same 1,812-file comparison set. Haven and Stata corpus timings remain from August 24.
 
 The [September 16 India comparison](reader-parity/results-2026-09-16-india/README.md)
-compares ten full reads each with dtatools reader optimizations, haven,
-and Stata. Those optimizations were opt-in in the measured build and are now
-enabled by default. This ten-read comparison predates default activation;
-the full-corpus run above measures the default-enabled readers.
+compares ten full reads each with dtatools, haven and Stata.
 The India report gives read wall time, whole-process CPU and peak RSS for all four
 readers. The [reader-parity controller](reader-parity/) also covers
 projected reads and downstream operations.

@@ -7,9 +7,9 @@ Use the Arrow-based `.arrow` format for performance-sensitive workloads or
 data frames that mix Stata and ordinary R column types.
 
 In the September 16, 2026 corpus run across 641 DHS survey files totaling
-46.9 GB, `read_dta()` took 39.7 seconds and `read_arrow()` took 28.3 seconds,
+46.9 GB, `read_dta()` took 38.7 seconds and `read_arrow()` took 26.9 seconds,
 compared with haven's recorded 2,727 seconds. That makes `read_dta()` about
-**69 times as fast**. In the ten-read India comparison, median read time for the
+**70 times as fast**. In the ten-read India comparison, median read time for the
 5.2 GB file was well under a second, compared with several minutes for haven.
 See the [benchmark results and methods](#why-use-dtatools).
 
@@ -107,22 +107,22 @@ both inputs loaded in R; Stata's timer includes reading the using file.
 
 ### Fast imports from existing Stata files
 
-The September 16, 2026 corpus run measures both readers with the optimizations
-enabled by default. Arrow times use preconverted files and include checksum
-verification; conversion time is excluded. Haven measurements are retained
-from August 24 on the same files and computer.
+The September 16, 2026 corpus run measures both readers with default settings.
+Arrow times use preconverted files and include checksum verification; conversion
+time is excluded. Haven measurements are retained from August 24 on the same
+files and computer.
 
 | Workload | `read_dta()` | `read_arrow()` | haven |
 | --- | ---: | ---: | ---: |
-| 641 DHS files, 46.9 GB total | 39.7 seconds | 28.3 seconds | 2,727 seconds |
-| 949 MICS files, 3.7 GB total | 7.9 seconds | 6.2 seconds | 216.7 seconds |
-| 222 NSFG files, 5.8 GB total | 8.9 seconds | 6.7 seconds | 234.6 seconds |
+| 641 DHS files, 46.9 GB total | 38.7 seconds | 26.9 seconds | 2,727 seconds |
+| 949 MICS files, 3.7 GB total | 6.6 seconds | 5.7 seconds | 216.7 seconds |
+| 222 NSFG files, 5.8 GB total | 8.7 seconds | 6.6 seconds | 234.6 seconds |
 
 These are batch totals from one fresh-process read per file with a warm
 filesystem cache, default dibble output and automatic thread selection on an
 Apple M4 Max. Both readers were faster than the recorded haven time on all
 1,812 comparable files. The
-[full-corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-corpus/results-2026-09-16/README.md)
+[full-corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-corpus/results-2026-09-16-base-r/README.md)
 includes Stata comparisons, CPU time, peak memory, coverage and methodology.
 
 Projected reads, which load specified columns instead of the whole dataset,
@@ -150,10 +150,9 @@ Using several cores at once can therefore consume several CPU-seconds during
 a subsecond read. Here, process CPU time also includes startup, package loading
 and shutdown, so the figures do not isolate the reader's CPU efficiency.
 
-These measurements were collected on a shared Apple M4 Max with opt-in reader
-optimizations that have since become defaults. This ten-read comparison
-predates default activation. Arrow verification is enabled. Wall time
-covers the read call; CPU and peak RSS cover the entire fresh process. The
+These measurements were collected on a shared Apple M4 Max. Arrow verification
+is enabled. Wall time covers the read call; CPU and peak RSS cover the entire
+fresh process. The
 [report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-parity/results-2026-09-16-india/README.md)
 records cache handling, background activity, settings and all observations.
 

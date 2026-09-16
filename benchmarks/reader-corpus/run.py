@@ -12,7 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "benchmarks/reader-refresh"))
-from driver_common import child_environment, require, run_child, sha, source_binding
+from driver_common import child_environment, read_cpu, require, run_child, sha, source_binding
 
 
 def table(file):
@@ -46,6 +46,29 @@ def validate_clock(value):
     require(type(value) in (int, float) and math.isfinite(value) and value >= 0,
             "invalid worker clock")
     return value
+
+
+def parse_read(log, method, qualification):
+    """Validate base-R output before retaining a read observation."""
+    markers = [line.split("\t") for line in log.splitlines()
+               if line.startswith("DTATOOLS_BENCH\t")]
+    require(len(markers) == 1 and len(markers[0]) == 5,
+            "missing, duplicate or malformed read marker")
+    _, status, elapsed, rows, columns = markers[0]
+    expected = qualification["status"]
+    if expected == "dta_error":
+        require(method == "read_dta" and status == "error" and
+                rows == columns == "NA", "expected malformed DTA error")
+        result = dict(status="dta_error")
+    else:
+        require(expected == "ok" and status == "ok", "qualified input failed to read")
+        require((int(rows), int(columns)) ==
+                (qualification["rows"], qualification["columns"]),
+                "timed read dimensions differ from qualification")
+        result = dict(status="ok", rows=int(rows), columns=int(columns))
+    result.update(elapsed_seconds=validate_clock(float(elapsed)),
+                  read_cpu_seconds=read_cpu(log)["cpu_seconds"])
+    return result
 
 
 def aggregate(inventory, common_ids, observations, archived):
@@ -117,7 +140,8 @@ def main():
 
     check_inventory()
     scripts = [Path(__file__), ROOT / "benchmarks/reader-refresh/driver_common.py",
-               ROOT / "benchmarks/reader-corpus/prepare.R", ROOT / "benchmarks/reader-corpus/worker.R"]
+               ROOT / "benchmarks/reader-corpus/prepare.R", ROOT / "benchmarks/reader-corpus/worker.R",
+               ROOT / "benchmarks/reader-refresh/workers/benchmark-common.R"]
     binding = source_binding(args.source_root, args.library, args.build_record, scripts)
     binding.update(inventory_sha256=sha(inventory_file), archived_sha256=sha(archived_file))
     args.output.mkdir(parents=True)
@@ -167,8 +191,9 @@ def main():
             jobfile, resultfile = args.output / "jobs" / (key + ".json"), args.output / "results" / (key + ".json")
             write_json(jobfile, dict(library=str(args.library), path=str(paths[method]), method=method,
                                     expected_status=q["status"], rows=q.get("rows"), columns=q.get("columns")))
-            resource, _ = run_child(args.output, key, scripts[3], [jobfile, resultfile], environment)
-            result = json.loads(resultfile.read_text())
+            resource, log = run_child(args.output, key, scripts[3], [method, paths[method]], environment)
+            result = parse_read(log, method, q)
+            write_json(resultfile, result)
             observations.append(dict(id=row["id"], corpus=row["corpus"], method=method,
                 method_position=position, status=result["status"], rows=result.get("rows", ""),
                 columns=result.get("columns", ""), elapsed_seconds=validate_clock(result["elapsed_seconds"]),
@@ -199,8 +224,8 @@ def main():
         smoke=args.smoke, attempted_dta=len(inventory),
         qualified_arrow=sum(q["status"] == "ok" for q in qualifications.values()), comparable=len(common_ids),
         measured_reads=len(observations), system=platform.platform(), machine=platform.machine(),
-        protocol="One full read per fresh process; input hashing warms each pair; reader order alternates by file",
-        arrow_verification=True, haven_invocations=0, stata_invocations=0))
+        protocol="One full read per fresh process; input hashing warms each pair; reader order alternates by file; base-R worker I/O",
+        timed_worker_jsonlite=False, arrow_verification=True, haven_invocations=0, stata_invocations=0))
     (args.output / "COMPLETE").write_text("smoke\n" if args.smoke else "corpus\n")
     print(json.dumps(summary, indent=2), flush=True)
 

@@ -1,11 +1,10 @@
 # Reader benchmark refresh
 
 These reports retain the September 12, 2026 measurements, before the latest
-reader optimizations. For the newer India measurements with optimizations
-that have since become defaults, see the
+reader optimizations. For the newer India measurements, see the
 [September 16 four-reader comparison](../reader-parity/results-2026-09-16-india/README.md).
-The [September 16 full-corpus run](../reader-corpus/results-2026-09-16/README.md)
-measures both default-enabled readers across DHS, MICS and NSFG.
+The [September 16 full-corpus run](../reader-corpus/results-2026-09-16-base-r/README.md)
+measures both readers with default settings across DHS, MICS and NSFG.
 
 The [September 12 adaptive-default report](results-2026-09-12-defaults/README.md)
 refreshes `dtatools::read_dta()` and `dtatools::read_arrow()` on the

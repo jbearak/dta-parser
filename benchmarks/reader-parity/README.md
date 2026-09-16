@@ -63,8 +63,8 @@ the warmup and repeated calls, including overlapping old/new R result lifetimes;
 they are not estimates of one retained result's size.
 
 The controller's timing gate assesses the original Stata parity target.
-Default activation is assessed separately through correctness, downstream use,
-native lifetime, memory use, corpus behavior and package/cross-language checks,
+Reader changes also need checks of correctness, downstream use,
+native lifetime, memory use, corpus behavior and package/cross-language behavior,
 with full and projected reads considered independently. Cold filesystem cache
 diagnostics must be reported separately.
 
