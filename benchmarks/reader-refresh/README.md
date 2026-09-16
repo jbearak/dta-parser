@@ -1,12 +1,19 @@
 # Reader benchmark refresh
 
+These reports retain the September 12, 2026 measurements, before the latest
+reader optimizations. For the newer India measurements with optimizations
+that have since become defaults, see the
+[September 16 four-reader comparison](../reader-parity/results-2026-09-16-india/README.md).
+The [September 16 full-corpus run](../reader-corpus/results-2026-09-16/README.md)
+measures both default-enabled readers across DHS, MICS and NSFG.
+
 The [September 12 adaptive-default report](results-2026-09-12-defaults/README.md)
 refreshes `dtatools::read_dta()` and `dtatools::read_arrow()` on the
 benchmark inputs. These drivers measure dtatools; benchmark artifacts record
 source and input identities for all comparisons.
 
 A [balanced-order follow-up](results-2026-09-12-balanced/README.md) supplies the
-current warm DTA/Arrow table, with all six reader orders and 486 observations.
+September 12 warm DTA/Arrow table, with all six reader orders and 486 observations.
 
 Earlier results remain available in the [initial refresh](results-2026-09-12/README.md),
 [ten-run four-tool India comparison](results-2026-09-12/india-10x.md), and
@@ -92,7 +99,7 @@ Hashes must match the published fixture record.
 The supplemental synthetic full/eight-column matrix uses seven warm reads on
 the Stata-first-save inputs. It does not reuse the August 24 synthetic
 comparator times, which used different row counts and bytes. That historical
-matrix remains dated. The current main warm DTA/Arrow matrix covers those
+matrix remains dated. The September 12 warm DTA/Arrow matrix covers those
 same inputs with its original 11-read protocol.
 
 Four small checked DTA fixtures cover modern all-types, wide, strL and legacy

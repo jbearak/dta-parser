@@ -1,8 +1,14 @@
 # Applying Arrow's batch filling to the DTA reader
 
-This report retains the original batching and automatic-thread experiments.
-The later [adaptive-default results](../reader-refresh/results-2026-09-12-defaults/README.md)
-record the production policy and its latest benchmark refresh.
+This historical report retains the September 12, 2026 batching and
+automatic-thread experiments. Its timings and implementation descriptions
+refer to the source revisions measured here. The later
+[adaptive-default results](../reader-refresh/results-2026-09-12-defaults/README.md)
+record the subsequent thread policy. For the newer India measurements with
+reader optimizations that have since become defaults, see the
+[September 16 four-reader comparison](../reader-parity/results-2026-09-16-india/README.md).
+The [September 16 full-corpus run](../reader-corpus/results-2026-09-16/README.md)
+measures both default-enabled readers across DHS, MICS and NSFG.
 
 ## Original automatic-thread results
 
@@ -17,7 +23,7 @@ A full dtatools-only rerun measured commit
 The India results below use the original four-tool worker protocol, with ten
 fresh reads per dtatools reader. Haven and Stata each have ten observations in the comparison.
 
-| Reader | Earlier median | Current median | Current median peak RSS |
+| Reader | Earlier median | Automatic-thread median | Automatic-thread median peak RSS |
 | --- | ---: | ---: | ---: |
 | `read_dta()` | 1.8465 s | 0.821 s | 5.236 GB |
 | `read_arrow()` | 0.6945 s | 0.5995 s | 10.280 GB |
@@ -82,7 +88,7 @@ rounds and run GC before timed calls. All configurations produced the same
 full data signature, `724115:100:c26c3f60ffc3eaf0`, outside timing. Input,
 worker and installation hashes matched before and after. The
 [reader-refresh driver in PR #225](https://github.com/jbearak/dta-parser/blob/codex/refresh-reader-benchmarks/benchmarks/reader-refresh/projection-threads.R)
-reproduces both controls. The current India trials exclude startup but include
+reproduces both controls. These automatic-thread India trials exclude startup but include
 first-call setup, without inserting an explicit GC before the timed call.
 They use a different worker protocol from the batching experiment below.
 
@@ -94,7 +100,7 @@ from **1.826 to 0.895 seconds (51.0%)**, with peak RSS unchanged at about
 the same input and machine. The final candidate has no profiling probes or
 experimental environment switches.
 
-| Input | Current reader | Batch fill | Read-time reduction | Current / batch peak RSS |
+| Input | Pre-batch reader | Batch fill | Read-time reduction | Pre-batch / batch peak RSS |
 | --- | ---: | ---: | ---: | ---: |
 | India, 5.2 GB, 5,972 columns | 1.826 s | 0.895 s | 51.0% | 5.230 / 5.231 GB |
 | Synthetic 100 MB, 40 columns | 0.088 s | 0.087 s | 1.1%; effectively unchanged at this timer resolution | 0.322 / 0.322 GB |
@@ -194,7 +200,7 @@ workers helped this wide input, but they are an independent tuning choice.
 ## Relation to the four-tool comparison
 
 Before any compilation or experimental timing, a separate ten-run India
-baseline measured all four tools: current `read_dta()` 1.8465 seconds,
+baseline measured all four tools: pre-batch `read_dta()` 1.8465 seconds,
 `read_arrow()` 0.6945 seconds, haven 488.204 seconds and Stata `use` 0.5015
 seconds. The [complete four-tool report](https://github.com/jbearak/dta-parser/pull/225)
 includes ranges and the original observations.

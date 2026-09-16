@@ -3,7 +3,10 @@
 This benchmark compares two installed dtatools versions on the same inputs.
 It measures the first public reader call in a fresh R process, then optionally
 measures batches of reads after an in-process warmup. It never runs haven or
-Stata. See [the September 13 results](results-2026-09-13/README.md).
+Stata. See [the September 13 results](results-2026-09-13/README.md), which
+predate the latest reader optimizations. For newer measurements, see the
+[September 16 full-corpus run](../reader-corpus/results-2026-09-16/README.md)
+and [ten-read India comparison](../reader-parity/results-2026-09-16-india/README.md).
 
 Build each version in its own clean checkout and isolated library with
 [`reader-refresh/install.py`](../reader-refresh/install.py). The build records

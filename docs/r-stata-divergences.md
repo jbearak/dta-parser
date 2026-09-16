@@ -200,17 +200,17 @@ adding casts to an R translation that reproduce information loss.
 
 ## Files
 
-**The writer targets Stata 18 and 19 only.** It emits release 118, or 119 above 32,767 variables, and does not write older releases or the release 120/121 alias-variable layouts. Use haven for older releases.
+**The writer targets Stata 18 and 19 only.** It uses DTA format code 118, or code 119 above 32,767 variables. These codes identify file layouts, not Stata application versions. The writer does not emit older formats or the alias-variable layouts identified by codes 120 and 121. Use haven to write for older Stata versions.
 
 **Output is always little-endian.** Byte order has no effect on the values Stata exposes, and fixing it makes output deterministic across writer hosts.
 
 **Extensionless local names resolve to `.dta`**, as Stata's `use` and `save` do. On write, dtatools adds the extension with a warning rather than silently.
 
-**Pre-Unicode encoding is a choice, not a fact read from the file.** Releases before 118 record no code page, so the reader defaults to Windows-1252 and accepts explicit UTF-8, Windows-1252, and true ISO-8859-1 overrides.
+**Pre-Unicode encoding is a choice, not a fact read from the file.** DTA formats before code 118 record no code page, so the reader defaults to Windows-1252 and accepts explicit UTF-8, Windows-1252, and true ISO-8859-1 overrides.
 
 **Notes and characteristics on a variable named `_dta` are rejected on DTA export.** Arrow can hold them; DTA reserves that spelling for dataset scope, so changing their scope silently is not an option.
 
-See the [compatibility contract](./compatibility.md) for supported releases, encodings, and the reader's stricter row-window validation, which differs from haven rather than from Stata.
+See the [compatibility contract](./compatibility.md) for supported Stata versions and file formats, encodings, and the reader's stricter row-window validation, which differs from haven rather than from Stata.
 
 ## Divergences from R, not from Stata
 

@@ -4,8 +4,13 @@ This comparison runs ten full reads per tool on the India 2021 DHS women's
 dataset, with 724,115 rows and 5,972 columns. The DTA is 5.196 GB and its
 preconverted Arrow dataset is 5.560 GB. Sizes and memory use decimal GB.
 
-The dtatools rows use opt-in reader optimizations in source
-`d6b0ae454c6ba85b3b22f7574cd828196197cf54`. The package defaults remain unchanged.
+The dtatools rows use reader optimizations that were opt-in in the measured
+source, `d6b0ae454c6ba85b3b22f7574cd828196197cf54`. They subsequently became
+defaults in [PR #231](https://github.com/jbearak/dta-parser/pull/231).
+The measurements below retain their original source and settings. This
+ten-read comparison predates default activation; the later
+[full-corpus run](../../reader-corpus/results-2026-09-16/README.md) measures the
+default-enabled readers.
 
 | Reader | Median wall time | Range | Median process CPU time | Median peak RSS |
 | --- | ---: | ---: | ---: | ---: |

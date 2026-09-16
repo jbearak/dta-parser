@@ -6,10 +6,11 @@ missing values, merge and append datasets, and save Stata or Arrow files.
 Use the Arrow-based `.arrow` format for performance-sensitive workloads or
 data frames that mix Stata and ordinary R column types.
 
-Across 641 DHS survey files totaling 46.9 GB, `read_dta()` took 39.4 seconds
-versus haven's 2,727 seconds, about **69 times faster**. Median read time for
-the 5.2 GB India DHS file is under a second, compared with several minutes
-for haven.
+In the September 16, 2026 corpus run across 641 DHS survey files totaling
+46.9 GB, `read_dta()` took 39.7 seconds and `read_arrow()` took 28.3 seconds,
+compared with haven's recorded 2,727 seconds. That makes `read_dta()` about
+**69 times as fast**. In the ten-read India comparison, median read time for the
+5.2 GB file was well under a second, compared with several minutes for haven.
 See the [benchmark results and methods](#why-use-dtatools).
 
 Stata columns can live in ordinary data frames, tibbles, data.tables, or
@@ -24,6 +25,8 @@ Dibbles support base R and dplyr syntax, plus mutation by reference through
 
 ## Installation
 
+Requires R 4.6 or later.
+
 Install from the [dtatools R package repository](https://jbearak.github.io/dta-parser/):
 
 ```r
@@ -33,39 +36,14 @@ install.packages("dtatools", repos = c(
 ))
 ```
 
+For manual installation, see [GitHub Releases](https://github.com/jbearak/dta-parser/releases/latest).
+See [installation details](https://github.com/jbearak/dta-parser/blob/main/docs/r-package-repository.md)
+for platform support and building from source.
+
 Dplyr is optional. Install dplyr 1.2.1 or newer to use its verbs with dibbles.
-Data-table output requires data.table 1.18.2.1 or newer.
 
-Requires R 4.6 or later. The `install.packages()` command above selects R 4.6
-binaries on Windows x86_64 and Apple Silicon macOS 14 or later. On Linux and
-Intel Macs, that command installs from source and requires Rust.
-
-Precompiled Linux x86_64 packages are available as direct downloads from
-[GitHub Releases](https://github.com/jbearak/dta-parser/releases/latest), alongside
-the Windows x86_64 and macOS ARM64 packages. The Linux archive is built on
-Ubuntu and requires compatible R and system libraries. See
-[repository details](../../docs/r-package-repository.md#available-packages)
-for installation guidance.
-
-To install a release archive directly, choose the asset matching your R
-version, operating system, and architecture, and copy its URL:
-
-```r
-pak::pkg_install("url::<asset-url>")
-```
-
-Base R can install the same URL after the package's imported dependencies are installed:
-
-```r
-install.packages("<asset-url>", repos = NULL)
-```
-
-Source installation requires Cargo and Rust 1.98.0 or newer:
-
-```sh
-git clone --depth 1 https://github.com/jbearak/dta-parser.git
-R CMD INSTALL dta-parser/r-package/dtatools
-```
+Data.table is also optional. Dibbles support mutation by reference natively.
+To use dtatools' storage types with data.table, install version 1.18.2.1 or newer.
 
 ## Dibbles, tibbles, and data tables
 
@@ -122,22 +100,30 @@ and the [egen guide](../../docs/r-egen.md) explains grouped calculations.
 
 ## Why use dtatools?
 
+In the benchmarks below, `read_dta()` took about **30% longer than Stata** to
+load the India file, while the synthetic merge workflows took about **61%
+less time for `1:m` and 71% less for `m:1`**. The merge comparison starts with
+both inputs loaded in R; Stata's timer includes reading the using file.
+
 ### Fast imports from existing Stata files
 
-Repository benchmarks compare `dtatools` with haven across three survey corpora.
-The measurements use the same files and computer, with dtatools 0.9.0,
-default dibble output and automatic thread selection.
+The September 16, 2026 corpus run measures both readers with the optimizations
+enabled by default. Arrow times use preconverted files and include checksum
+verification; conversion time is excluded. Haven measurements are retained
+from August 24 on the same files and computer.
 
-| Workload | dtatools | haven | Difference |
+| Workload | `read_dta()` | `read_arrow()` | haven |
 | --- | ---: | ---: | ---: |
-| 641 DHS files, 46.9 GB total | 39.4 seconds | 2,727 seconds | 69.1 times faster for the complete batch |
-| 949 MICS files, 3.7 GB total | 6.7 seconds | 216.7 seconds | 32.6 times faster for the complete batch |
-| 222 NSFG files, 5.8 GB total | 9.0 seconds | 234.6 seconds | 26.2 times faster for the complete batch |
+| 641 DHS files, 46.9 GB total | 39.7 seconds | 28.3 seconds | 2,727 seconds |
+| 949 MICS files, 3.7 GB total | 7.9 seconds | 6.2 seconds | 216.7 seconds |
+| 222 NSFG files, 5.8 GB total | 8.9 seconds | 6.7 seconds | 234.6 seconds |
 
-`dtatools` was faster on all 1,812 comparable files. These are warm-cache
-measurements from an Apple M4 Max. The
-[default-reader report](../../benchmarks/reader-startup/results-2026-09-13/README.md)
-includes the full corpus results, CPU time, peak memory and methodology.
+These are batch totals from one fresh-process read per file with a warm
+filesystem cache, default dibble output and automatic thread selection on an
+Apple M4 Max. Both readers were faster than the recorded haven time on all
+1,812 comparable files. The
+[full-corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-corpus/results-2026-09-16/README.md)
+includes Stata comparisons, CPU time, peak memory, coverage and methodology.
 
 Projected reads, which load specified columns instead of the whole dataset,
 were substantially faster than Stata in our wide-survey benchmarks and can
@@ -147,8 +133,8 @@ suite. See [details and examples](../../docs/r-reader-projections.md).
 ### Performance on a demanding dataset
 
 Performance on the largest, widest files matters alongside the averages.
-To test this, we use the 5.2 GB India 2021 DHS women's file, with 724,115 rows
-and 5,972 columns, and compare ten full reads per tool.
+The September 16, 2026 comparison uses the 5.2 GB India 2021 DHS women's file,
+with 724,115 rows and 5,972 columns, and measures ten full reads per tool.
 
 | Reader | Median wall time | Range | Median process CPU time | Median peak RSS |
 | --- | ---: | ---: | ---: | ---: |
@@ -157,10 +143,18 @@ and 5,972 columns, and compare ten full reads per tool.
 | `haven::read_dta()` | 472.9965 seconds | 422.801 to 572.189 seconds | 473.0478 seconds | 35.113 GB |
 | Stata native `use` | 0.4725 seconds | 0.471 to 0.542 seconds | 0.5070 seconds | 5.257 GB |
 
-These measurements were collected on a shared Apple M4 Max with the reader
-optimizations now enabled by default. Arrow verification is enabled. Wall time
+`read_dta()` approaches Stata's wall time here, but at a higher CPU cost: its
+process uses about ten times as much CPU time. Wall time measures how long you
+wait for the read; CPU time adds up the time spent working across CPU cores.
+Using several cores at once can therefore consume several CPU-seconds during
+a subsecond read. Here, process CPU time also includes startup, package loading
+and shutdown, so the figures do not isolate the reader's CPU efficiency.
+
+These measurements were collected on a shared Apple M4 Max with opt-in reader
+optimizations that have since become defaults. This ten-read comparison
+predates default activation. Arrow verification is enabled. Wall time
 covers the read call; CPU and peak RSS cover the entire fresh process. The
-[report](../../benchmarks/reader-parity/results-2026-09-16-india/README.md)
+[report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-parity/results-2026-09-16-india/README.md)
 records cache handling, background activity, settings and all observations.
 
 ### Using `.arrow` dataset files
@@ -187,9 +181,9 @@ reader comparisons are retained in the
 ### Synthetic merge benchmarks
 
 `dta_merge()` implements Stata key identity, relationship checks, shared-variable
-coalescing and the `_merge` indicator. In a synthetic benchmark, a 200,000-row,
-151-column master joins a 360,044-row, 110-column using dataset on a character
-key. Both dtatools and Stata return 440,044 rows and 201 columns.
+coalescing and the `_merge` indicator. In the August 28, 2026 synthetic benchmark,
+a 200,000-row, 151-column master joins a 360,044-row, 110-column using dataset
+on a character key. Both dtatools and Stata return 440,044 rows and 201 columns.
 
 | Relationship | `dta_merge()` on Stata columns | Stata 18 MP `merge` |
 | --- | ---: | ---: |
@@ -208,8 +202,9 @@ dplyr and base R comparisons, and reproduction commands.
 
 ### Synthetic write benchmarks
 
-On a 1 GB synthetic Stata-class fixture, `save_dta()` took 0.152 seconds,
-Stata `save` took 0.130 seconds, and `haven::write_dta()` took 9.048 seconds.
+In the August 29, 2026 comparison on a 1 GB synthetic Stata-class fixture,
+`save_dta()` took 0.152 seconds, Stata `save` took 0.130 seconds, and
+`haven::write_dta()` took 9.048 seconds.
 These are medians from seven fresh-process runs on the same Apple M4 Max.
 dtatools retained declared numeric storage; haven widened the 30 numeric
 columns to double. The
@@ -250,8 +245,8 @@ cars <- read_dta("auto") # reads auto.dta
 save_dta(cars, "cars.dta")
 ```
 
-The writer targets Stata 18 or 19 and emits release 118 for ordinary datasets
-or release 119 above 32,767 variables. It preserves declared numeric storage,
+The writer targets Stata 18 or 19. With the default Stata 19 target, it also
+supports wide datasets with more than 32,767 variables. It preserves declared numeric storage,
 formats, temporal values, labels, tagged missing codes, long strings, numbered
 notes, and arbitrary characteristics at dataset and variable scope. It writes
 through a sibling temporary file so validation,
@@ -774,13 +769,12 @@ Additional measurements and their provenance live in the repository's [benchmark
 ## Compatibility
 
 The reader covers Stata 5 through 19. The writer targets Stata 18/19 and does
-not emit older formats. See the shared [compatibility contract](https://github.com/jbearak/dta-parser/blob/main/docs/compatibility.md) for exact format releases, encodings, missing-value behavior, and intentional differences from haven.
+not emit older formats. See the shared [compatibility contract](https://github.com/jbearak/dta-parser/blob/main/docs/compatibility.md) for supported file formats, encodings, missing-value behavior, and intentional differences from haven.
 
 `dtatools` takes Stata's behavior as its compatibility target.
-[Where dtatools diverges from Stata](https://github.com/jbearak/dta-parser/blob/main/docs/r-stata-divergences.md) lists
-the places it deliberately does something else — the `generate` default's
-reach, the promotion ladder, merge result order, colliding value-label table
-names, `labelbook`'s deterministic listing, and the rest — and why.
+[Where dtatools diverges from Stata](https://github.com/jbearak/dta-parser/blob/main/docs/r-stata-divergences.md)
+explains differences such as `gen(data, y = x)` copying labels as well as values,
+numeric type promotion, and merge result order.
 
 ## Contributing
 

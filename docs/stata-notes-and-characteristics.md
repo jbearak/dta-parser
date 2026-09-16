@@ -29,9 +29,9 @@ to the 67,784-byte target-format limit.
 
 The DTA writer accepts note numbers 1 through 9,999. It rejects duplicate or
 reserved keys, NUL characters, over-limit values, and characteristic names
-that are not valid Stata names. It never truncates metadata. Modern releases
-118 and 119 can be written; releases 105 through 115 and 117 through 119 can
-be read.
+that are not valid Stata names. It never truncates metadata. See
+[DTA compatibility](./compatibility.md) for the supported Stata versions and
+file formats.
 
 ## R
 

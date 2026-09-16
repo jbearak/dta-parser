@@ -20,11 +20,12 @@ or a Node filesystem-backed reader.
 
 For Stata imports in R, `dtatools::read_dta()` follows haven's common read
 interface and returns dibbles, tibbles, or data tables with haven-compatible
-labels and tagged missing values. Its multicore reader completed the
-repository's 641-file, 46.9 GB DHS benchmark 69.1 times faster than haven.
-Median read time for the 5.2 GB India DHS file is under a second, versus
-several minutes with haven. See the R package
-README for
+labels and tagged missing values. In the September 16, 2026 corpus run, its
+multicore reader completed the 641-file, 46.9 GB DHS corpus in 39.7 seconds,
+about 69 times as fast as the recorded haven comparison. In the ten-read
+India comparison, median read time for the 5.2 GB file was well under a second,
+versus several minutes with haven.
+See the R package README for
 [benchmarks and methods](r-package/dtatools/README.md#why-use-dtatools).
 
 The Rust crate is the internal read/write core used by the R package. It is not published to crates.io. Its interface is documented with Rustdoc:
