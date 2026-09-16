@@ -4688,7 +4688,7 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "3ae6832e06dc1a333a192352a8da18e18697a9d0103a3e97784c3e5348bec9e8"
+          "sha256": "2d42387d0856f0cf9f1d614b00e72b2984551106535d6297ed3e729bd25063a3"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
@@ -5197,7 +5197,7 @@
           "test": "generic ALTREP detachment interrupts before installation",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 5,
+          "min_pass": 6,
           "warnings": 0
         },
         {
@@ -6375,15 +6375,7 @@
           "minimum": 1,
           "maximum": 1,
           "completion": "complete",
-          "allow_error": false,
-          "forks": [
-            {
-              "id": "detach-signal",
-              "minimum": 1,
-              "maximum": 1,
-              "delay": 0.01
-            }
-          ]
+          "allow_error": false
         },
         {
           "id": "generation-signal",
@@ -11321,16 +11313,6 @@
           "warnings": 0
         },
         {
-          "file": "test-mutate-data.R",
-          "test": "generic ALTREP detachment interrupts before installation",
-          "occurrence": 1,
-          "skip": "require",
-          "reason": "Windows",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: On Windows",
-          "warnings": 0
-        },
-        {
           "file": "test-save-dta.R",
           "test": "native temporary DTA files are private on Unix",
           "occurrence": 1,
@@ -11374,12 +11356,6 @@
       "children": [
         {
           "family": "mutation",
-          "id": "detach-interrupt",
-          "minimum": 0,
-          "maximum": 0
-        },
-        {
-          "family": "mutation",
           "id": "generation-signal",
           "minimum": 0,
           "maximum": 0
@@ -11395,13 +11371,6 @@
         {
           "family": "io",
           "id": "arrow-write-signal",
-          "minimum": 0,
-          "maximum": 0
-        },
-        {
-          "family": "mutation",
-          "child": "detach-interrupt",
-          "id": "detach-signal",
           "minimum": 0,
           "maximum": 0
         }
