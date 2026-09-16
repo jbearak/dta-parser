@@ -184,7 +184,7 @@ impl ParallelDtaSink for ProbeSink {
     }
 }
 
-fn first_non_strl_columns(file: &DtaFile<Cursor<Vec<u8>>>, count: usize) -> Vec<u32> {
+fn first_non_strl_columns<R: Read + Seek>(file: &DtaFile<R>, count: usize) -> Vec<u32> {
     file.metadata()
         .variables
         .iter()
@@ -749,8 +749,9 @@ fn parallel_sink_panics_are_returned_as_errors() {
 #[test]
 fn pipelined_cancellation_does_not_dispatch_the_ready_block() {
     let buffer_limit = 1024;
+    let (reader, trace) = TracedReader::new(fixture("auto_v118.dta"));
     let mut file = DtaFile::from_reader_with_options(
-        Cursor::new(fixture("auto_v118.dta")),
+        reader,
         FileOptions {
             max_buffer_bytes: buffer_limit,
         },
@@ -762,6 +763,10 @@ fn pipelined_cancellation_does_not_dispatch_the_ready_block() {
         buffer_limit / usize::try_from(file.metadata().obs_length).expect("row width fits usize");
     assert!(rows_per_block > 0);
     assert!(usize::try_from(file.metadata().nobs).unwrap() > rows_per_block);
+    let second_block_offset = file.metadata().section_offsets.data
+        + b"<data>".len() as u64
+        + rows_per_block as u64 * file.metadata().obs_length;
+    trace.borrow_mut().reads.clear();
     let started = Arc::new(AtomicBool::new(false));
     let pushes = Arc::new(AtomicUsize::new(0));
 
@@ -780,9 +785,14 @@ fn pipelined_cancellation_does_not_dispatch_the_ready_block() {
                 ))
             }
         },
-        {
-            let started = Arc::clone(&started);
-            move || started.load(Ordering::SeqCst)
+        // Cancellation after the second block's I/O must prevent its
+        // dispatch, regardless of when workers start the first queued block.
+        || {
+            trace
+                .borrow()
+                .reads
+                .iter()
+                .any(|&(offset, _)| offset == second_block_offset)
         },
     );
 

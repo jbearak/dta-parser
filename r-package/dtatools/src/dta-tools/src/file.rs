@@ -1683,8 +1683,8 @@ struct ObservationBlock {
     row_count: usize,
 }
 
-#[derive(Clone, Copy, Default)]
-struct ObservationExperiments {
+#[derive(Clone, Copy)]
+struct ObservationExecutionOptions {
     wide_numeric_batches: bool,
     ring: Option<ObservationRing>,
 }
@@ -1693,35 +1693,18 @@ struct ObservationExperiments {
 struct ObservationRing {
     slots: usize,
     budget_bytes: usize,
-    // DTATOOLS_EXPERIMENT_DTA_RING_BLOCK_BYTES may reduce the default 8 MiB
-    // block independently of slots and total budget. For equal-budget runs,
-    // compare 2 * 8 MiB with 4 * 4 MiB at a 16 MiB total budget. Worker policy
-    // continues to use the existing FileOptions limit, not this experiment.
+    // Bound read-ahead independently of the existing adaptive worker policy.
     block_bytes: usize,
 }
 
-impl ObservationExperiments {
-    fn from_env() -> Self {
-        let slots = std::env::var("DTATOOLS_EXPERIMENT_DTA_RING")
-            .ok()
-            .and_then(|value| value.parse::<usize>().ok())
-            .filter(|slots| matches!(slots, 2 | 4));
-        let block_bytes = std::env::var("DTATOOLS_EXPERIMENT_DTA_RING_BLOCK_BYTES")
-            .ok()
-            .and_then(|value| value.parse::<usize>().ok())
-            .filter(|bytes| *bytes > 0)
-            .unwrap_or(DEFAULT_MAX_BUFFER_BYTES)
-            .min(DEFAULT_MAX_BUFFER_BYTES);
+impl Default for ObservationExecutionOptions {
+    fn default() -> Self {
         Self {
-            wide_numeric_batches: std::env::var("DTATOOLS_EXPERIMENT_DTA_WIDE_BATCH")
-                .is_ok_and(|value| value == "1"),
-            ring: slots.map(|slots| ObservationRing {
-                slots,
-                budget_bytes: std::env::var("DTATOOLS_EXPERIMENT_DTA_RING_BUDGET_BYTES")
-                    .ok()
-                    .and_then(|value| value.parse::<usize>().ok())
-                    .unwrap_or(slots * block_bytes),
-                block_bytes,
+            wide_numeric_batches: true,
+            ring: Some(ObservationRing {
+                slots: 4,
+                budget_bytes: 16 * 1024 * 1024,
+                block_bytes: 4 * 1024 * 1024,
             }),
         }
     }
@@ -1789,6 +1772,7 @@ struct ObservationRingExecution {
 // Count each shared observation allocation once, including the next read and
 // reusable buffers still retained by the coordinator. This diagnostic counts
 // Vec capacities, not allocator bookkeeping, descriptors or final columns.
+#[cfg(test)]
 fn observation_ring_capacity(
     reading_capacity: usize,
     inflight: &VecDeque<Arc<ObservationBlock>>,
@@ -1855,7 +1839,6 @@ where
     F: FnMut() -> bool,
 {
     let cancelled = AtomicBool::new(false);
-    let trace = std::env::var("DTATOOLS_EXPERIMENT_TRACE").is_ok_and(|value| value == "1");
     thread::scope(|scope| {
         let mut senders = Vec::with_capacity(shards.len());
         let mut ack_receivers = Vec::with_capacity(shards.len());
@@ -1891,7 +1874,6 @@ where
             }));
         }
 
-        let mut peak_vec_capacity_bytes = 0;
         let execution = (|| {
             let rows_per_block = config.block_bytes / config.row_width;
             let mut inflight = VecDeque::<Arc<ObservationBlock>>::with_capacity(config.slots);
@@ -1933,11 +1915,6 @@ where
                         )?;
                         Ok((count, row_count, source_offset))
                     })();
-                    if trace {
-                        peak_vec_capacity_bytes = peak_vec_capacity_bytes.max(
-                            observation_ring_capacity(bytes.capacity(), &inflight, &reusable),
-                        );
-                    }
                     match ready {
                         Err(error) => {
                             // Retire earlier dispatched blocks before returning
@@ -2010,13 +1987,6 @@ where
                 Ok(shard) => completed.extend(shard),
                 Err(_) => panicked = true,
             }
-        }
-        if trace {
-            eprintln!(
-                "DTATOOLS_EXPERIMENT dta_ring_peak_vec_capacity_bytes={} dta_ring_requested_buffer_bytes={}",
-                peak_vec_capacity_bytes,
-                config.slots * config.block_bytes,
-            );
         }
         if panicked {
             return Err(DtaError::Output(
@@ -2667,12 +2637,12 @@ impl<R: Read + Seek> DtaFile<R> {
         let columnar =
             !plan.columns.is_empty() && plan.row_width > 0 && plan.row_width <= self.scratch.limit;
         if threads > 1 || columnar {
-            self.read_with_parallel_sink_experiments(
+            self.read_with_parallel_sink_execution(
                 options,
                 threads,
                 build_sink,
                 coarse_interrupt,
-                ObservationExperiments::from_env(),
+                ObservationExecutionOptions::default(),
                 Some(prepared),
             )
         } else {
@@ -2728,23 +2698,23 @@ impl<R: Read + Seek> DtaFile<R> {
         B: FnOnce(&DtaMetadata, u64, u64, &[u32]) -> Result<S, DtaError>,
         F: FnMut() -> bool,
     {
-        self.read_with_parallel_sink_experiments(
+        self.read_with_parallel_sink_execution(
             options,
             thread_count,
             build_sink,
             should_interrupt,
-            ObservationExperiments::from_env(),
+            ObservationExecutionOptions::default(),
             None,
         )
     }
 
-    fn read_with_parallel_sink_experiments<S, B, F>(
+    fn read_with_parallel_sink_execution<S, B, F>(
         &mut self,
         options: &ReadOptions,
         thread_count: usize,
         build_sink: B,
         mut should_interrupt: F,
-        experiments: ObservationExperiments,
+        execution: ObservationExecutionOptions,
         prepared: Option<PreparedObservationRead>,
     ) -> Result<S::Output, DtaError>
     where
@@ -2824,21 +2794,10 @@ impl<R: Read + Seek> DtaFile<R> {
         let metadata = &self.metadata;
         let encoding = self.text_encoding;
         let mut observation_buffer = Vec::new();
-        let ring_geometry = experiments
+        let ring_geometry = execution
             .ring
             .filter(|_| worker_count > 1 && row_count > 0)
             .and_then(|ring| ring.geometry(&plan, self.scratch.limit));
-        if std::env::var("DTATOOLS_EXPERIMENT_TRACE").is_ok_and(|value| value == "1") {
-            eprintln!(
-                "DTATOOLS_EXPERIMENT dta_wide_batch={} dta_ring_slots={} dta_ring_block_bytes={} workers={} rows={} columns={}",
-                experiments.wide_numeric_batches,
-                ring_geometry.map_or(0, |(_, slots)| slots),
-                ring_geometry.map_or(0, |(bytes, _)| bytes),
-                worker_count,
-                row_count,
-                plan.columns.len(),
-            );
-        }
 
         let decoded_columns = if let Some((block_bytes, slots)) = ring_geometry {
             decode_observation_ring(
@@ -2852,7 +2811,7 @@ impl<R: Read + Seek> DtaFile<R> {
                     payload_start,
                     block_bytes,
                     slots,
-                    wide_numeric_batches: experiments.wide_numeric_batches,
+                    wide_numeric_batches: execution.wide_numeric_batches,
                 },
                 metadata,
                 encoding,
@@ -2904,7 +2863,7 @@ impl<R: Read + Seek> DtaFile<R> {
                     metadata,
                     encoding,
                     Some(&mut should_interrupt),
-                    experiments.wide_numeric_batches,
+                    execution.wide_numeric_batches,
                 )?;
                 observation_buffer = block.bytes;
                 row = row
@@ -2938,7 +2897,7 @@ impl<R: Read + Seek> DtaFile<R> {
                                             metadata,
                                             encoding,
                                             None,
-                                            experiments.wide_numeric_batches,
+                                            execution.wide_numeric_batches,
                                         );
                                         drop(block);
                                         let failed = result.is_err();
@@ -8625,7 +8584,7 @@ mod tests {
     }
 
     #[test]
-    fn experimental_wide_batches_preserve_endian_missing_codes_and_float_bits() {
+    fn wide_batches_preserve_endian_missing_codes_and_float_bits() {
         for order in [ByteOrder::Lsf, ByteOrder::Msf] {
             for version in [
                 FormatVersion::V105,
@@ -8734,7 +8693,7 @@ mod tests {
     }
 
     #[test]
-    fn experimental_wide_batches_poll_before_each_serial_run() {
+    fn wide_batches_poll_before_each_serial_run() {
         let rows = COLUMNAR_CANCEL_CHECK_INTERVAL * 3;
         let block = ObservationBlock {
             bytes: vec![0; rows * 2],
@@ -8882,7 +8841,7 @@ mod tests {
     }
 
     #[test]
-    fn experimental_ring_geometry_bounds_slots_and_excludes_strls() {
+    fn ring_geometry_bounds_slots_and_excludes_strls() {
         let mut plan = policy_plan(100, 2, ObservationKind::Byte, 1);
         let ring = ObservationRing {
             slots: 4,
@@ -8905,7 +8864,20 @@ mod tests {
     }
 
     #[test]
-    fn experimental_ring_geometry_keeps_two_and_four_slots_at_equal_budget() {
+    fn default_execution_uses_wide_batches_and_four_bounded_blocks() {
+        let execution = ObservationExecutionOptions::default();
+        assert!(execution.wide_numeric_batches);
+        let ring = execution.ring.expect("parallel read-ahead is enabled");
+        let plan = policy_plan(64, 2, ObservationKind::Byte, 1);
+        assert_eq!(
+            ring.geometry(&plan, DEFAULT_MAX_BUFFER_BYTES),
+            Some((4 * 1024 * 1024, 4))
+        );
+        assert_eq!(ring.budget_bytes, 16 * 1024 * 1024);
+    }
+
+    #[test]
+    fn ring_geometry_keeps_two_and_four_slots_at_equal_budget() {
         let plan = policy_plan(64, 2, ObservationKind::Byte, 1);
         let budget_bytes = 16 * 1024 * 1024;
         for (slots, block_bytes) in [(2, 8 * 1024 * 1024), (4, 4 * 1024 * 1024)] {
@@ -8929,7 +8901,7 @@ mod tests {
     }
 
     #[test]
-    fn experimental_ring_capacity_counts_reading_reuse_and_shared_blocks_once() {
+    fn ring_capacity_counts_reading_reuse_and_shared_blocks_once() {
         let reading = Vec::<u8>::with_capacity(11);
         let reusable = vec![Vec::<u8>::with_capacity(13)];
         let block = Arc::new(ObservationBlock {
@@ -8949,7 +8921,7 @@ mod tests {
     }
 
     #[test]
-    fn experimental_ring_reads_mixed_columns_in_requested_row_order() {
+    fn ring_reads_mixed_columns_in_requested_row_order() {
         let bytes = include_bytes!("../../../inst/extdata/auto_v118.dta").to_vec();
         for slots in [2, 4] {
             for wide_numeric_batches in [false, true] {
@@ -8971,14 +8943,14 @@ mod tests {
                     .read_with_options(&options)
                     .unwrap();
                 let result = file
-                    .read_with_parallel_sink_experiments(
+                    .read_with_parallel_sink_execution(
                         &options,
                         3,
                         |metadata, _, rows, indices| {
                             Ok(VecSink::new(metadata, indices, rows as usize))
                         },
                         || false,
-                        ObservationExperiments {
+                        ObservationExecutionOptions {
                             wide_numeric_batches,
                             ring: Some(ObservationRing {
                                 slots,
@@ -8996,7 +8968,7 @@ mod tests {
     }
 
     #[test]
-    fn experimental_ring_joins_workers_on_cancel_decode_failure_and_panic() {
+    fn ring_joins_workers_on_cancel_decode_failure_and_panic() {
         for mode in 0..3 {
             let started = Arc::new(AtomicBool::new(false));
             let mut first = byte_batch_column(false);

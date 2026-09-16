@@ -162,15 +162,15 @@
         },
         {
           "path": "tests/testthat/test-reader-dta-experiments.R",
-          "sha256": "86872b51d67bc69bfdd1a80c3661a1967b24b36c30e1013d6db02222abefe6f0"
+          "sha256": "0b47be3418d3c296294a0ac767dd9c357d14e7fdc24008d22d4a58dea3ff524a"
         },
         {
           "path": "tests/testthat/test-reader-dta-prepared.R",
-          "sha256": "f9426bfb67aea2e8ce303b18e67d2a68b431b4d97b848f0e980d2281ca40a157"
+          "sha256": "bf5417a39ef0c85256e834f5cce00aa16e38f4e7f425aa3dae4d25fbf295856f"
         },
         {
           "path": "tests/testthat/test-reader-experiments.R",
-          "sha256": "21365e57d4a3290c6a97f7d17f09eabfed1ff3f2ce205021d400539e7bb696a8"
+          "sha256": "3d570df8d5e20a19722df0e6b4ad3421c0bf56263cc44917edfd3fab8071ef6e"
         }
       ],
       "blocks": [
@@ -1241,26 +1241,26 @@
         },
         {
           "file": "test-reader-dta-experiments.R",
-          "test": "DTA experiment combinations preserve projected legacy reads",
+          "test": "DTA defaults preserve projected legacy and strL reads",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 126,
+          "min_pass": 63,
           "warnings": 0
         },
         {
           "file": "test-reader-dta-experiments.R",
-          "test": "DTA experimental fills retain every storage width and missing code",
+          "test": "DTA default fills retain every storage width and missing code",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 576,
+          "min_pass": 144,
           "warnings": 0
         },
         {
           "file": "test-reader-dta-experiments.R",
-          "test": "DTA ring completes multiple blocks with ordered strings and bounded budgets",
+          "test": "DTA default ring completes multiple blocks with ordered strings",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 11,
+          "min_pass": 5,
           "warnings": 0
         },
         {
@@ -1305,7 +1305,7 @@
         },
         {
           "file": "test-reader-dta-prepared.R",
-          "test": "prepared proxies, renaming and collector reads preserve labels",
+          "test": "prepared proxies and renaming preserve collector labels",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
@@ -1316,7 +1316,7 @@
           "test": "prepared selection preserves selector warnings and errors",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 4,
+          "min_pass": 7,
           "warnings": 0
         },
         {
@@ -1329,18 +1329,18 @@
         },
         {
           "file": "test-reader-experiments.R",
-          "test": "bounded Arrow falls back for value-dependent ordinary storage",
+          "test": "Arrow reads preserve ordinary columns alongside owned numeric storage",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 2,
+          "min_pass": 16,
           "warnings": 0
         },
         {
           "file": "test-reader-experiments.R",
-          "test": "experimental Arrow fills preserve compact values and projected windows",
+          "test": "Arrow reads preserve numeric values across representations and projected windows",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 60,
+          "min_pass": 96,
           "warnings": 0
         }
       ],
@@ -3525,7 +3525,7 @@
         },
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
-          "sha256": "485146369e2a53be8f75579b285dc0bba2856f0f0d68746b8a7e1454506384b2"
+          "sha256": "01a7d6f9dadf79bec54120bd5f94ae5512666c20ab1952072af56f1118e5433e"
         }
       ],
       "blocks": [
@@ -4545,7 +4545,7 @@
         },
         {
           "file": "test-owned-numeric-buffers.R",
-          "test": "owned Arrow experiment retains buffers independently of its source",
+          "test": "Arrow reads retain owned buffers independently of their source",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 48,

@@ -55,7 +55,7 @@ static void owned_numeric_gc_call(void *unused) {
     R_gc();
 }
 
-/* Called only by the experimental reader, on the R thread before native
+/* Called by the Arrow reader on the R thread before native
    preparation. Contain any long jump from user finalizers inside C. */
 int dtatools_owned_numeric_gc(void) {
     return R_ToplevelExec(owned_numeric_gc_call, NULL);

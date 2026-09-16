@@ -1,5 +1,10 @@
 # Reader parity implementation results
 
+This is a historical development report. Prepared DTA reads, wide numeric
+batches, the four-slot DTA ring and owned Arrow buffers are now enabled by
+default. The alternative bounded Arrow bridge was removed. The measurements
+and original rollout assessment below describe the recorded source revisions.
+
 Owned Arrow buffers substantially improve the India full read, and wider DTA execution reduces its full-read gap. The implementation has not established general parity with Stata. DTA full reads still trail Stata, projection regressions remain, and some completed downstream workflows are slower. **All experimental controls remain disabled by default.** Full reads and projections must pass independently.
 
 The final reader and downstream screens use source `9ac470bb07029db52e02b02780999cf8bec75291`, compared with baseline `b41d8f9d8dba260b8c93d5c7d83cb12ee8102600`. Build, installation, input and worker hashes are recorded with the [results](reader-parity-results/README.md). These are screening results, not a release qualification.
