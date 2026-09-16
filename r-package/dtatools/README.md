@@ -3,8 +3,8 @@
 `dtatools` reads Stata data quickly and brings Stata column types and
 data-management tools to R. Create and recode variables, manage labels and
 missing values, merge and append datasets, and save Stata or Arrow files.
-Read original datasets directly or keep an Arrow copy for repeated analysis,
-loading only the variables each analysis needs.
+Use the Arrow-based `.arrow` format for performance-sensitive workloads or
+data frames that mix Stata and ordinary R column types.
 
 Across 641 DHS survey files totaling 46.9 GB, `read_dta()` took 39.4 seconds
 versus haven's 2,727 seconds, about **69 times faster**. For the 5.2 GB India
