@@ -1684,6 +1684,7 @@ fn insert_value_label_tables(
 ///
 /// The same descriptor, label, and notes contracts as
 /// [`dtatools_save_arrow_rust`].
+#[allow(clippy::too_many_arguments)] // Matches the two C writer/signature boundaries.
 unsafe fn assemble_write_dataset(
     dataset_label: *const c_char,
     output_container: *const c_char,

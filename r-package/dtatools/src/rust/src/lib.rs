@@ -3620,7 +3620,7 @@ impl DtaSink for RDataFrameSink {
         let expected_string_rows = usize::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         let value_label_reference_counts = value_label_reference_counts(
-            &metadata,
+            metadata,
             self.source_indices.iter().map(|&index| index as usize),
         );
         let mut value_label_tables_by_name = AHashMap::with_capacity(value_label_tables.len());
