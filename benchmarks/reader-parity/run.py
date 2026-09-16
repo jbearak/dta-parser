@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import signal
 import statistics
 import subprocess
 import shutil
@@ -96,7 +97,28 @@ def child(command, directory, environment):
     with (directory / 'process.log').open('w') as stream:
         process = subprocess.Popen(command, cwd=directory, env=environment,
                                    stdout=stream, stderr=subprocess.STDOUT)
-        _, status, usage = os.wait4(process.pid, 0)
+        try:
+            _, status, usage = os.wait4(process.pid, 0)
+        except BaseException:
+            # A cancelled long read must not continue consuming CPU and memory
+            # after the controller exits. Reap before its PID can be reused.
+            while True:
+                try:
+                    waited, status, _ = os.wait4(process.pid, os.WNOHANG)
+                    if not waited:
+                        try:
+                            os.kill(process.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        _, status, _ = os.wait4(process.pid, 0)
+                    process.returncode = os.waitstatus_to_exitcode(status)
+                    break
+                except (InterruptedError, KeyboardInterrupt):
+                    continue
+                except ChildProcessError:
+                    process.returncode = 1
+                    break
+            raise
         process.returncode = os.waitstatus_to_exitcode(status)
         if process.returncode:
             raise subprocess.CalledProcessError(process.returncode, command)

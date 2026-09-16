@@ -2,10 +2,12 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 spec = importlib.util.spec_from_file_location('parity_driver', Path(__file__).with_name('run.py'))
 driver = importlib.util.module_from_spec(spec)
@@ -13,6 +15,36 @@ spec.loader.exec_module(driver)
 
 
 class DriverTest(unittest.TestCase):
+    @unittest.skipUnless(hasattr(os, 'wait4'), 'Requires Unix child accounting')
+    def test_interrupted_controller_reaps_its_reader(self):
+        wait4 = os.wait4
+        child_pid = None
+
+        def interrupt_once(pid, options):
+            nonlocal child_pid
+            if child_pid is None:
+                child_pid = pid
+                raise KeyboardInterrupt()
+            return wait4(pid, options)
+
+        try:
+            with tempfile.TemporaryDirectory() as temporary, mock.patch.object(driver.os, 'wait4', side_effect=interrupt_once):
+                with self.assertRaises(KeyboardInterrupt):
+                    driver.child([sys.executable, '-c', 'import time; time.sleep(60)'],
+                                 Path(temporary), os.environ.copy())
+            with self.assertRaises(ChildProcessError):
+                wait4(child_pid, os.WNOHANG)
+        finally:
+            # The red version must not leave a reader running after this test.
+            if child_pid is not None:
+                try:
+                    waited, _, _ = wait4(child_pid, os.WNOHANG)
+                    if not waited:
+                        os.kill(child_pid, signal.SIGKILL)
+                        wait4(child_pid, 0)
+                except ChildProcessError:
+                    pass
+
     @unittest.skipUnless(hasattr(os, 'wait4'), 'The measurement controller requires Unix resource accounting')
     def test_relative_cli_paths_survive_worker_directory_changes(self):
         # A stand-in executable exercises the real subprocess/job-file protocol
