@@ -20,9 +20,14 @@ read_one <- function() {
     do.call(reader, arguments)
 }
 if (job$mode == "qualify") {
-    value <- read_one()
+    warnings <- character()
+    value <- withCallingHandlers(read_one(), warning = function(w) {
+        warnings <<- c(warnings, conditionMessage(w))
+        invokeRestart("muffleWarning")
+    })
     jsonlite::write_json(list(signature = dtatools::datasig(value),
-        rows = nrow(value), columns = ncol(value)), args[[2L]], auto_unbox = TRUE)
+        rows = nrow(value), columns = ncol(value), warnings = warnings),
+        args[[2L]], auto_unbox = TRUE)
     quit(status = 0)
 }
 if (job$mode == "warm") {

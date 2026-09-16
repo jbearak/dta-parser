@@ -11,6 +11,8 @@ import platform
 import re
 import statistics
 import subprocess
+import shutil
+import sys
 
 HERE = Path(__file__).resolve().parent
 
@@ -66,6 +68,7 @@ def stata_program(case, mode, calls, output):
 clear all
 set more off
 set maxvar 32767
+creturn list
 {warm}timer clear 1
 timer on 1
 forvalues i = 1/{calls} {{
@@ -108,17 +111,23 @@ def summaries(observations, eligible):
     for case, mode, cohort in groups:
         group = [r for r in observations if (r['case'], r['mode'], r['cohort']) == (case, mode, cohort)]
         stata = statistics.median(r['elapsed_seconds'] for r in group if r['method'] == 'stata')
+        stata_calls = min(r.get('calls', 1) for r in group if r['method'] == 'stata')
         for method in sorted({r['method'] for r in group}):
             rows = [r for r in group if r['method'] == method]
             values = [r['elapsed_seconds'] for r in rows]
             median = statistics.median(values)
+            # Both clocks are quantized to milliseconds. Require at least ten
+            # ticks per timed interval; batching applies only to warm reads.
+            resolved = (median * min(r.get('calls', 1) for r in rows) >= 0.010
+                        and stata * stata_calls >= 0.010)
             result.append(dict(case=case, mode=mode, cohort=cohort, method=method,
                 observations=len(rows), median_seconds=median, min_seconds=min(values),
                 max_seconds=max(values), stata_median_seconds=stata,
+                timer_resolved=resolved,
                 median_peak_rss_bytes=statistics.median(r['peak_rss_bytes'] for r in rows),
                 median_cpu_seconds=statistics.median(r['cpu_seconds'] for r in rows
                     if r['cpu_seconds'] is not None) if method != 'stata' else None,
-                parity=eligible and len(rows) >= 12 and stata > 0 and median <= stata))
+                parity=eligible and len(rows) >= 12 and resolved and median > 0 and median <= stata))
     return result
 
 
@@ -133,6 +142,7 @@ def main():
     parser.add_argument('--repetitions', type=int, default=20)
     parser.add_argument('--cohorts', type=int, default=2)
     parser.add_argument('--screen', action='store_true')
+    parser.add_argument('--qualify-only', action='store_true')
     parser.add_argument('--case', action='append', default=[])
     parser.add_argument('--mode', choices=('fresh', 'warm'), action='append')
     parser.add_argument('--experiment', action='append', default=[], help='Candidate-only NAME=VALUE')
@@ -144,10 +154,10 @@ def main():
         parser.error('Candidate library and build record must be supplied together')
     methods = [v + '-' + r for v in variants for r in ('dta', 'arrow')] + ['stata']
     modes = args.mode or ['fresh', 'warm']
-    eligible = (not args.screen and len(variants) == 2 and args.cohorts >= 2
+    eligible = (not args.screen and not args.qualify_only and len(variants) == 2 and args.cohorts >= 2
                 and args.repetitions >= 12 and args.repetitions % (2 * len(methods)) == 0
                 and not args.case and modes == ['fresh', 'warm'])
-    if not args.screen and not eligible:
+    if not args.screen and not args.qualify_only and not eligible:
         parser.error('Release runs need both builds, >=2 cohorts, a balanced >=12 repetitions, all cases and both modes')
     cases = json.loads(args.cases.read_text())
     if len({c['id'] for c in cases}) != len(cases):
@@ -168,6 +178,19 @@ def main():
         stata_sha256=sha(args.stata), host=platform.platform(), cpu_count=os.cpu_count(),
         cache='warm filesystem', experiments=experiment, eligible=eligible,
         cohorts=args.cohorts, repetitions=args.repetitions)
+    rscript = Path(shutil.which('Rscript')).resolve()
+    binding['Rscript_sha256'] = sha(rscript)
+    runtime_code = '''.libPaths(c(commandArgs(TRUE)[1], .libPaths()));
+      packages <- c("dtatools", "rlang", "tibble", "tidyselect", "vctrs");
+      cat(jsonlite::toJSON(list(R=R.version.string, platform=R.version$platform,
+          packages=setNames(lapply(packages, function(x) as.character(packageVersion(x))), packages)),
+          auto_unbox=TRUE))'''
+    binding['runtimes'] = {v: json.loads(subprocess.check_output([str(rscript), '--vanilla', '-e',
+        runtime_code, str(getattr(args, v + '_library'))], text=True)) for v in variants}
+    binding['threads'] = dict(R_reader='default adaptive policy, threads=0',
+        stata='recorded from creturn in each Stata worker',
+        environment={k: os.environ[k] for k in ('OMP_NUM_THREADS', 'RAYON_NUM_THREADS',
+            'R_PARALLEL_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'VECLIB_MAXIMUM_THREADS') if k in os.environ})
     (args.output / 'binding.json').write_text(json.dumps(binding, indent=2) + '\n')
     environment = {k: v for k, v in os.environ.items()
                    if not k.startswith(('DTATOOLS_EXPERIMENT_', 'DTA_READ_PERF_'))}
@@ -186,6 +209,13 @@ def main():
             script.write_text(stata_program(case, mode, calls, output))
             resources = child([str(args.stata), '-b', 'do', str(script)], directory, env)
             value = dict(elapsed_seconds=float(output.read_text()), cpu_seconds=None)
+            configuration = [line.strip() for p in directory.glob('*.log') for line in p.read_text().splitlines()
+                if re.search(r'c\((processors[a-z_]*|stata_version|edition[a-z_]*|flavor|MP)\)', line)]
+            if configuration:
+                if 'stata_configuration' in binding and configuration != binding['stata_configuration']:
+                    raise ValueError('Stata configuration changed during measurement')
+                binding['stata_configuration'] = configuration
+                (args.output / 'binding.json').write_text(json.dumps(binding, indent=2) + '\n')
         else:
             variant, reader = method.split('-')
             if variant == 'candidate':
@@ -200,19 +230,50 @@ def main():
             if not math.isfinite(value['elapsed_seconds']) or value['elapsed_seconds'] < 0:
                 raise ValueError('Invalid reader clock')
             value.update(resources)
+            value['calls'] = calls
             value.pop('rows', None)
             value.pop('columns', None)
         return value
 
-    # Qualification precedes all timing, including projected ordering/metadata.
+    # R-to-R qualification precedes timing, including projected ordering/metadata.
+    # Stata loads the identical DTA and checks dimensions; cross-language semantic
+    # conformance is a separate gate, not an equivalence of signature algorithms.
+    qualifications = []
     for case in selected:
         expected = None
+        warnings = {}
         for method in methods[:-1]:
             value = run(case, method, 'qualify')
+            method_warnings = value.pop('warnings')
+            variant, reader = method.split('-')
+            if variant == 'baseline':
+                warnings[reader] = method_warnings
+            elif method_warnings != warnings[reader]:
+                raise ValueError('Reader warnings differ: ' + case['id'] + '/' + method)
+            if (value['rows'], value['columns']) != (case['rows'], case['columns']):
+                raise ValueError('Qualified dimensions differ from manifest: ' + case['id'])
             if expected is not None and value != expected:
                 raise ValueError('Semantic qualification failed: ' + case['id'] + '/' + method)
             expected = value
         print('QUALIFIED ' + case['id'], flush=True)
+        qualifications.append(dict(case=case['id'], **expected, warnings=warnings))
+    (args.output / 'qualification.json').write_text(json.dumps(qualifications, indent=2) + '\n')
+
+    def validate_final():
+        if {p: sha(p) for p in paths} != inputs or sha(args.cases) != binding['manifest_sha256']:
+            raise ValueError('Inputs or manifest changed during measurement')
+        if {p.name: sha(p) for p in (HERE / 'worker.R', Path(__file__))} != binding['workers']:
+            raise ValueError('Workers changed during measurement')
+        if sha(args.stata) != binding['stata_sha256'] or sha(rscript) != binding['Rscript_sha256']:
+            raise ValueError('Executables changed during measurement')
+        for v in variants:
+            if installed_binding(getattr(args, v + '_library'), getattr(args, v + '_build')) != bindings[v]:
+                raise ValueError('Installation changed during measurement')
+
+    if args.qualify_only:
+        validate_final()
+        print('SEMANTIC QUALIFICATION COMPLETE; no timing gate attempted', flush=True)
+        return 0
     observations = []
     for cohort in range(1, args.cohorts + 1):
         cohort_cases = selected if cohort % 2 else list(reversed(selected))
@@ -229,18 +290,15 @@ def main():
                             method=method, **value))
                         write_csv(args.output / 'observations.csv', observations)
                 print(f'MEASURED {cohort}/{case["id"]}/{mode}', flush=True)
-    if {p: sha(p) for p in paths} != inputs:
-        raise ValueError('Inputs changed during measurement')
-    for v in variants:
-        if installed_binding(getattr(args, v + '_library'), getattr(args, v + '_build')) != bindings[v]:
-            raise ValueError('Installation changed during measurement')
+    validate_final()
     summary = summaries(observations, eligible)
     write_csv(args.output / 'summary.csv', summary)
     passed = eligible and all(r['parity'] for r in summary if r['method'].startswith('candidate-'))
     (args.output / 'gate.json').write_text(json.dumps(dict(timing_parity=passed,
         eligible=eligible, note='Memory, downstream, corpus and conformance gates are separate.'), indent=2) + '\n')
     print('TIMING PARITY: ' + ('PASS' if passed else 'NOT MET'), flush=True)
+    return 0 if passed or args.screen else 1
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

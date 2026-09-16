@@ -606,6 +606,29 @@ struct ObservationPlan {
     columns: Vec<ObservationColumnPlan>,
 }
 
+// Kept private and moved straight into an executor, so a plan cannot be
+// reused against another file or a different projection/window.
+struct PreparedObservationRead {
+    indices: Vec<u32>,
+    row_start: u64,
+    row_count: u64,
+    plan: ObservationPlan,
+}
+
+impl PreparedObservationRead {
+    fn new(metadata: &DtaMetadata, options: &ReadOptions) -> Result<Self, DtaError> {
+        let indices = resolve_columns(metadata, options)?;
+        let (row_start, row_count) = row_window(metadata, options);
+        let plan = ObservationPlan::new(metadata, &indices)?;
+        Ok(Self {
+            indices,
+            row_start,
+            row_count,
+            plan,
+        })
+    }
+}
+
 trait InterruptChecks {
     fn coarse(&mut self) -> bool;
     fn frequent(&mut self) -> bool;
@@ -1670,6 +1693,11 @@ struct ObservationExperiments {
 struct ObservationRing {
     slots: usize,
     budget_bytes: usize,
+    // DTATOOLS_EXPERIMENT_DTA_RING_BLOCK_BYTES may reduce the default 8 MiB
+    // block independently of slots and total budget. For equal-budget runs,
+    // compare 2 * 8 MiB with 4 * 4 MiB at a 16 MiB total budget. Worker policy
+    // continues to use the existing FileOptions limit, not this experiment.
+    block_bytes: usize,
 }
 
 impl ObservationExperiments {
@@ -1678,6 +1706,12 @@ impl ObservationExperiments {
             .ok()
             .and_then(|value| value.parse::<usize>().ok())
             .filter(|slots| matches!(slots, 2 | 4));
+        let block_bytes = std::env::var("DTATOOLS_EXPERIMENT_DTA_RING_BLOCK_BYTES")
+            .ok()
+            .and_then(|value| value.parse::<usize>().ok())
+            .filter(|bytes| *bytes > 0)
+            .unwrap_or(DEFAULT_MAX_BUFFER_BYTES)
+            .min(DEFAULT_MAX_BUFFER_BYTES);
         Self {
             wide_numeric_batches: std::env::var("DTATOOLS_EXPERIMENT_DTA_WIDE_BATCH")
                 .is_ok_and(|value| value == "1"),
@@ -1686,7 +1720,8 @@ impl ObservationExperiments {
                 budget_bytes: std::env::var("DTATOOLS_EXPERIMENT_DTA_RING_BUDGET_BYTES")
                     .ok()
                     .and_then(|value| value.parse::<usize>().ok())
-                    .unwrap_or(slots * DEFAULT_MAX_BUFFER_BYTES),
+                    .unwrap_or(slots * block_bytes),
+                block_bytes,
             }),
         }
     }
@@ -1697,7 +1732,9 @@ impl ObservationRing {
         if plan.has_strls() || plan.row_width == 0 {
             return None;
         }
-        let block_limit = scratch_limit.min(DEFAULT_MAX_BUFFER_BYTES);
+        let block_limit = scratch_limit
+            .min(DEFAULT_MAX_BUFFER_BYTES)
+            .min(self.block_bytes);
         let block_bytes = block_limit / plan.row_width * plan.row_width;
         if block_bytes == 0 {
             return None;
@@ -1747,6 +1784,22 @@ struct ObservationRingExecution {
     block_bytes: usize,
     slots: usize,
     wide_numeric_batches: bool,
+}
+
+// Count each shared observation allocation once, including the next read and
+// reusable buffers still retained by the coordinator. This diagnostic counts
+// Vec capacities, not allocator bookkeeping, descriptors or final columns.
+fn observation_ring_capacity(
+    reading_capacity: usize,
+    inflight: &VecDeque<Arc<ObservationBlock>>,
+    reusable: &[Vec<u8>],
+) -> usize {
+    reading_capacity
+        + inflight
+            .iter()
+            .map(|block| block.bytes.capacity())
+            .sum::<usize>()
+        + reusable.iter().map(Vec::capacity).sum::<usize>()
 }
 
 fn receive_ring_acks<F: FnMut() -> bool>(
@@ -1802,6 +1855,7 @@ where
     F: FnMut() -> bool,
 {
     let cancelled = AtomicBool::new(false);
+    let trace = std::env::var("DTATOOLS_EXPERIMENT_TRACE").is_ok_and(|value| value == "1");
     thread::scope(|scope| {
         let mut senders = Vec::with_capacity(shards.len());
         let mut ack_receivers = Vec::with_capacity(shards.len());
@@ -1837,6 +1891,7 @@ where
             }));
         }
 
+        let mut peak_vec_capacity_bytes = 0;
         let execution = (|| {
             let rows_per_block = config.block_bytes / config.row_width;
             let mut inflight = VecDeque::<Arc<ObservationBlock>>::with_capacity(config.slots);
@@ -1878,6 +1933,11 @@ where
                         )?;
                         Ok((count, row_count, source_offset))
                     })();
+                    if trace {
+                        peak_vec_capacity_bytes = peak_vec_capacity_bytes.max(
+                            observation_ring_capacity(bytes.capacity(), &inflight, &reusable),
+                        );
+                    }
                     match ready {
                         Err(error) => {
                             // Retire earlier dispatched blocks before returning
@@ -1950,6 +2010,13 @@ where
                 Ok(shard) => completed.extend(shard),
                 Err(_) => panicked = true,
             }
+        }
+        if trace {
+            eprintln!(
+                "DTATOOLS_EXPERIMENT dta_ring_peak_vec_capacity_bytes={} dta_ring_requested_buffer_bytes={}",
+                peak_vec_capacity_bytes,
+                config.slots * config.block_bytes,
+            );
         }
         if panicked {
             return Err(DtaError::Output(
@@ -2564,6 +2631,63 @@ impl<R: Read + Seek> DtaFile<R> {
         Ok(!plan.columns.is_empty() && plan.row_width > 0 && plan.row_width <= self.scratch.limit)
     }
 
+    /// Internal R adapter entry point: prepare once, choose the existing
+    /// output policy, then execute with the same plan and interrupt behavior.
+    #[cfg(feature = "r-adapter-internal")]
+    #[doc(hidden)]
+    pub fn read_with_prepared_sink_and_interrupts<S, B, C, F>(
+        &mut self,
+        options: &ReadOptions,
+        requested_threads: usize,
+        compact_output: bool,
+        build_sink: B,
+        coarse_interrupt: C,
+        frequent_interrupt: F,
+    ) -> Result<<S as DtaSink>::Output, DtaError>
+    where
+        S: DtaSink + ParallelDtaSink<Output = <S as DtaSink>::Output>,
+        B: FnOnce(&DtaMetadata, u64, u64, &[u32]) -> Result<S, DtaError>,
+        C: FnMut() -> bool,
+        F: FnMut() -> bool,
+    {
+        let prepared = PreparedObservationRead::new(&self.metadata, options)?;
+        let plan = &prepared.plan;
+        let threads = if requested_threads == 1 {
+            1
+        } else {
+            observation_worker_count(
+                plan,
+                prepared.row_count,
+                self.scratch.limit,
+                requested_threads,
+                thread::available_parallelism().map_or(1, usize::from),
+                compact_output,
+            )
+        };
+        let columnar =
+            !plan.columns.is_empty() && plan.row_width > 0 && plan.row_width <= self.scratch.limit;
+        if threads > 1 || columnar {
+            self.read_with_parallel_sink_experiments(
+                options,
+                threads,
+                build_sink,
+                coarse_interrupt,
+                ObservationExperiments::from_env(),
+                Some(prepared),
+            )
+        } else {
+            self.read_with_sink_and_interrupt_controller(
+                options,
+                build_sink,
+                SplitInterrupt {
+                    coarse: coarse_interrupt,
+                    frequent: frequent_interrupt,
+                },
+                Some(prepared),
+            )
+        }
+    }
+
     /// Decode a projection into ordinary Rust vectors with the shared parallel
     /// block executor.
     pub fn read_with_parallel_interrupt<F>(
@@ -2610,6 +2734,7 @@ impl<R: Read + Seek> DtaFile<R> {
             build_sink,
             should_interrupt,
             ObservationExperiments::from_env(),
+            None,
         )
     }
 
@@ -2620,6 +2745,7 @@ impl<R: Read + Seek> DtaFile<R> {
         build_sink: B,
         mut should_interrupt: F,
         experiments: ObservationExperiments,
+        prepared: Option<PreparedObservationRead>,
     ) -> Result<S::Output, DtaError>
     where
         S: ParallelDtaSink,
@@ -2633,9 +2759,15 @@ impl<R: Read + Seek> DtaFile<R> {
             self.file_length,
             &mut self.scratch,
         )?;
-        let indices = resolve_columns(&self.metadata, options)?;
-        let (row_start, row_count) = row_window(&self.metadata, options);
-        let plan = ObservationPlan::new(&self.metadata, &indices)?;
+        let PreparedObservationRead {
+            indices,
+            row_start,
+            row_count,
+            plan,
+        } = match prepared {
+            Some(prepared) => prepared,
+            None => PreparedObservationRead::new(&self.metadata, options)?,
+        };
         if thread_count == 0
             || plan.columns.is_empty()
             || plan.row_width == 0
@@ -3052,6 +3184,7 @@ impl<R: Read + Seek> DtaFile<R> {
             SharedInterrupt {
                 callback: should_interrupt,
             },
+            None,
         )
     }
 
@@ -3077,6 +3210,7 @@ impl<R: Read + Seek> DtaFile<R> {
                 coarse: coarse_interrupt,
                 frequent: frequent_interrupt,
             },
+            None,
         )
     }
 
@@ -3085,6 +3219,7 @@ impl<R: Read + Seek> DtaFile<R> {
         options: &ReadOptions,
         build_sink: B,
         mut interrupts: I,
+        prepared: Option<PreparedObservationRead>,
     ) -> Result<S::Output, DtaError>
     where
         S: DtaSink,
@@ -3098,9 +3233,15 @@ impl<R: Read + Seek> DtaFile<R> {
             self.file_length,
             &mut self.scratch,
         )?;
-        let indices = resolve_columns(&self.metadata, options)?;
-        let (row_start, row_count) = row_window(&self.metadata, options);
-        let plan = ObservationPlan::new(&self.metadata, &indices)?;
+        let PreparedObservationRead {
+            indices,
+            row_start,
+            row_count,
+            plan,
+        } = match prepared {
+            Some(prepared) => prepared,
+            None => PreparedObservationRead::new(&self.metadata, options)?,
+        };
         let capacity = usize::try_from(row_count)
             .map_err(|_| DtaError::ArithmeticOverflow("projected row count"))?;
         let mut sink = build_sink(&self.metadata, row_start, row_count, &indices)?;
@@ -8622,17 +8763,137 @@ mod tests {
         assert_eq!(values.len(), COLUMNAR_CANCEL_CHECK_INTERVAL);
     }
 
+    #[cfg(feature = "r-adapter-internal")]
+    #[test]
+    fn prepared_observation_read_matches_full_projected_legacy_and_strl_reads() {
+        let fixtures: &[&[u8]] = &[
+            include_bytes!("../../../inst/extdata/synthetic_v105.dta"),
+            include_bytes!("../../../inst/extdata/all_types_v115.dta"),
+            include_bytes!("../../../inst/extdata/auto_v118.dta"),
+            include_bytes!("../../../inst/extdata/wide_v118.dta"),
+            include_bytes!("../../../inst/extdata/strl_test_v118.dta"),
+        ];
+        for &bytes in fixtures {
+            let source = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+            let reversed = (0..source.metadata.nvar).rev().collect::<Vec<_>>();
+            for columns in [None, Some(reversed), Some(vec![0, 0]), Some(Vec::new())] {
+                for (row_start, row_count) in [(0, None), (1, Some(3)), (0, Some(0))] {
+                    let options = ReadOptions {
+                        row_start,
+                        row_count,
+                        column_indices: columns.clone(),
+                    };
+                    let expected = DtaFile::from_reader(Cursor::new(bytes))
+                        .unwrap()
+                        .read_with_options(&options)
+                        .unwrap();
+                    for compact in [false, true] {
+                        for requested in [0, 1, 4] {
+                            let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+                            let actual = file
+                                .read_with_prepared_sink_and_interrupts(
+                                    &options,
+                                    requested,
+                                    compact,
+                                    |metadata, _, rows, indices| {
+                                        Ok(VecSink::new(metadata, indices, rows as usize))
+                                    },
+                                    || false,
+                                    || false,
+                                )
+                                .unwrap();
+                            assert_eq!(actual, expected);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "r-adapter-internal")]
+    #[test]
+    fn prepared_observation_read_rejects_invalid_selection_before_sink_allocation() {
+        let bytes = include_bytes!("../../../inst/extdata/auto_v118.dta");
+        for indices in [vec![u32::MAX], vec![0, u32::MAX]] {
+            let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+            let options = ReadOptions {
+                column_indices: Some(indices),
+                ..ReadOptions::default()
+            };
+            let expected = file.supports_columnar_sink(&options).unwrap_err();
+            let mut built = false;
+            let actual = file.read_with_prepared_sink_and_interrupts(
+                &options,
+                1,
+                true,
+                |metadata, _, rows, indices| {
+                    built = true;
+                    Ok(VecSink::new(metadata, indices, rows as usize))
+                },
+                || false,
+                || false,
+            );
+            assert_eq!(actual, Err(expected));
+            assert!(!built);
+        }
+    }
+
+    #[cfg(feature = "r-adapter-internal")]
+    #[test]
+    fn prepared_observation_read_keeps_layout_validation_and_interrupts() {
+        let original = include_bytes!("../../../inst/extdata/auto_v118.dta");
+        for columns in [None, Some(Vec::new())] {
+            let options = ReadOptions {
+                column_indices: columns,
+                ..ReadOptions::default()
+            };
+            let mut file = DtaFile::from_reader(Cursor::new(original)).unwrap();
+            let actual = file.read_with_prepared_sink_and_interrupts(
+                &options,
+                0,
+                true,
+                |_, _, _, _| -> Result<VecSink, DtaError> {
+                    panic!("cancelled read must not allocate a sink")
+                },
+                || true,
+                || false,
+            );
+            assert_eq!(actual, Err(DtaError::Cancelled));
+
+            let mut bytes = original.to_vec();
+            bytes[file.metadata.section_offsets.data as usize] = b'!';
+            let mut file = DtaFile::from_reader(Cursor::new(original.to_vec())).unwrap();
+            // Replace the already-open reader contents to exercise execution's
+            // retained layout check after metadata and plan preparation.
+            file.reader = Cursor::new(bytes);
+            let expected = file.read_with_options(&options).unwrap_err();
+            let actual = file.read_with_prepared_sink_and_interrupts(
+                &options,
+                0,
+                true,
+                |_, _, _, _| -> Result<VecSink, DtaError> {
+                    panic!("invalid layout must not allocate a sink")
+                },
+                || false,
+                || false,
+            );
+            assert_eq!(actual, Err(expected));
+        }
+    }
+
     #[test]
     fn experimental_ring_geometry_bounds_slots_and_excludes_strls() {
         let mut plan = policy_plan(100, 2, ObservationKind::Byte, 1);
         let ring = ObservationRing {
             slots: 4,
             budget_bytes: 2048,
+            block_bytes: DEFAULT_MAX_BUFFER_BYTES,
         };
         assert_eq!(ring.geometry(&plan, 1024), Some((1000, 2)));
         assert!(ObservationRing {
             slots: 4,
-            budget_bytes: 1999
+            budget_bytes: 1999,
+            block_bytes: DEFAULT_MAX_BUFFER_BYTES,
         }
         .geometry(&plan, 1024)
         .is_none());
@@ -8641,6 +8902,50 @@ mod tests {
         plan.columns[0].kind = ObservationKind::Byte;
         plan.row_width = DEFAULT_MAX_BUFFER_BYTES + 1;
         assert!(ring.geometry(&plan, plan.row_width * 4).is_none());
+    }
+
+    #[test]
+    fn experimental_ring_geometry_keeps_two_and_four_slots_at_equal_budget() {
+        let plan = policy_plan(64, 2, ObservationKind::Byte, 1);
+        let budget_bytes = 16 * 1024 * 1024;
+        for (slots, block_bytes) in [(2, 8 * 1024 * 1024), (4, 4 * 1024 * 1024)] {
+            let ring = ObservationRing {
+                slots,
+                budget_bytes,
+                block_bytes,
+            };
+            let geometry = ring.geometry(&plan, DEFAULT_MAX_BUFFER_BYTES).unwrap();
+            assert_eq!(geometry, (block_bytes, slots));
+            assert_eq!(geometry.0 * geometry.1, budget_bytes);
+        }
+        let too_small = ObservationRing {
+            slots: 4,
+            budget_bytes,
+            block_bytes: plan.row_width - 1,
+        };
+        assert!(too_small
+            .geometry(&plan, DEFAULT_MAX_BUFFER_BYTES)
+            .is_none());
+    }
+
+    #[test]
+    fn experimental_ring_capacity_counts_reading_reuse_and_shared_blocks_once() {
+        let reading = Vec::<u8>::with_capacity(11);
+        let reusable = vec![Vec::<u8>::with_capacity(13)];
+        let block = Arc::new(ObservationBlock {
+            bytes: Vec::with_capacity(19),
+            source_offset: 0,
+            output_row_start: 0,
+            row_count: 0,
+        });
+        let worker_reference = Arc::clone(&block);
+        let expected = reading.capacity() + reusable[0].capacity() + block.bytes.capacity();
+        let inflight = VecDeque::from([block]);
+        assert_eq!(
+            observation_ring_capacity(reading.capacity(), &inflight, &reusable),
+            expected
+        );
+        assert_eq!(Arc::strong_count(&worker_reference), 2);
     }
 
     #[test]
@@ -8678,8 +8983,10 @@ mod tests {
                             ring: Some(ObservationRing {
                                 slots,
                                 budget_bytes: slots * 1024,
+                                block_bytes: DEFAULT_MAX_BUFFER_BYTES,
                             }),
                         },
+                        None,
                     )
                     .unwrap();
                 assert_eq!(result, expected);

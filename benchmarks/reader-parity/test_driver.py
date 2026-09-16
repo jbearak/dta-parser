@@ -32,6 +32,10 @@ class DriverTest(unittest.TestCase):
         for row in rows:
             row['elapsed_seconds'] = 0
         self.assertFalse(any(r['parity'] for r in driver.summaries(rows, True)))
+        for row in rows:
+            row['elapsed_seconds'] = 0.001 if row['method'] == 'candidate-dta' else 1.0
+        self.assertFalse(any(r['parity'] for r in driver.summaries(rows, True)
+                             if r['method'] == 'candidate-dta'))
 
     def test_discovery_is_timed_and_direct_projection_is_direct(self):
         case = dict(dta='/tmp/input.dta', selection=['a', 'b'], selection_mode='known', rows=10, columns=2)

@@ -9,6 +9,7 @@ if (job$selection_mode != "all") {
     arguments$col_select <- bquote(tidyselect::all_of(.(selected)))
 }
 started <- proc.time()
+workflow_started <- started
 value <- do.call(reader, arguments)
 loaded <- proc.time() - started
 selected <- head(names(value)[vapply(value, is.numeric, logical(1))], 30L)
@@ -18,6 +19,12 @@ info <- function() {
     if (is.null(symbol)) return(NULL)
     as.list(.Call(symbol, value[[selected[[1L]]]]))
 }
+if (job$workload == "first_write") {
+    saved <- copy_data(value)
+    original <- as.double(saved[[selected[[1L]]]][1L])
+    replacement <- if (is.finite(original) && original == 0) 1 else 0
+    arguments <- c(list(data = value), setNames(list(replacement), selected[[1L]]), list(where = 1L))
+}
 before <- info()
 started <- proc.time()
 if (job$workload == "sparse") {
@@ -25,17 +32,22 @@ if (job$workload == "sparse") {
 } else if (job$workload == "traverse") {
     result <- datasig(value)
 } else if (job$workload == "first_write") {
-    saved <- copy_data(value)
-    arguments <- c(list(data = value), setNames(list(0), selected[[1L]]), list(where = 1L))
     invisible(do.call(replace_values, arguments))
     result <- as.double(value[[selected[[1L]]]][1L])
-    stopifnot(result == 0)
 } else if (job$workload == "r_vector") {
-    result <- mean(value[[selected[[1L]]]], na.rm = TRUE)
+    ordinary <- numeric(length(value[[selected[[1L]]]]))
+    ordinary[] <- as.double(value[[selected[[1L]]]])
+    result <- mean(ordinary, na.rm = TRUE)
     result <- as.double(result)
 } else stop("Unknown downstream workload")
-duration <- proc.time() - started
+finished <- proc.time()
+duration <- finished - started
+if (job$workload == "first_write") {
+    stopifnot(result == replacement,
+              identical(as.double(saved[[selected[[1L]]]][1L]), original))
+}
 jsonlite::write_json(list(load_seconds = unname(loaded[["elapsed"]]),
+    workflow_seconds = unname((finished - workflow_started)[["elapsed"]]),
     elapsed_seconds = unname(duration[["elapsed"]]),
     cpu_seconds = unname(duration[["user.self"]] + duration[["sys.self"]]),
     result = result, native_before = before, native_after = info()),

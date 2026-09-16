@@ -26,6 +26,11 @@ extern SEXP dtatools_read_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
     const char *, char **
 );
+extern SEXP dtatools_prepare_dta_rust(const char *, const char *, void **, char **);
+extern SEXP dtatools_read_prepared_dta_rust(
+    void *, const int *, size_t, int, double, double, int, int, int, char **
+);
+extern void dtatools_close_prepared_dta_rust(void *);
 extern int dtatools_write_rust(
     const char *, const char *, SEXP, const void *,
     size_t, const void *, size_t, double *, size_t, const char *, char **
@@ -44,11 +49,23 @@ extern int dtatools_owned_numeric_region(
 extern size_t dtatools_owned_numeric_live_bytes(void);
 extern size_t dtatools_owned_numeric_live_owners(void);
 extern size_t dtatools_owned_numeric_chunks(const void *);
+
+static void owned_numeric_gc_call(void *unused) {
+    (void) unused;
+    R_gc();
+}
+
+/* Called only by the experimental reader, on the R thread before native
+   preparation. Contain any long jump from user finalizers inside C. */
+int dtatools_owned_numeric_gc(void) {
+    return R_ToplevelExec(owned_numeric_gc_call, NULL);
+}
 typedef struct {
     void *values;
     int kind;
     int temporal;
     int format_version;
+    const void *native_owner;
 } dtatools_compare_operand;
 extern int dtatools_numeric_compare(
     int, const dtatools_compare_operand *, const dtatools_compare_operand *,
@@ -108,6 +125,7 @@ typedef struct {
     int haven_labelled;
     /* Unmaterialized dictionary-string payload, or NULL for eager columns. */
     const void *dictstring;
+    const void *compact_owner;
 } dtatools_arrow_column;
 
 enum dtatools_arrow_specification_slot {
@@ -278,6 +296,10 @@ typedef struct {
     int kind;
     int format_version;
     int source_has_missing;
+    uintptr_t x_owner;
+    uintptr_t y_owner;
+    size_t x_length;
+    size_t y_length;
 } numeric_gather_column;
 
 enum {
@@ -724,9 +746,12 @@ enum {
    data1/data2 state. This function neither copies nor marks backing shared. */
 static SEXP numeric_payload_root(SEXP value) {
     if (owned_column(value)) return owned_values(value);
-    if (unmaterialized_numeric_storage(value) != NULL) {
-        SEXP source = value;
-        while (R_altrep_inherits(source, dtatools_metadata_real_class)) source = metadata_proxy_source(source);
+    if (unmaterialized_numeric_read_storage(value) != NULL) {
+        SEXP source = numeric_base_source(value);
+        /* A private handle cannot be materialized or cleared by a callback
+           that holds the public vector. It also retains frozen R raw roots. */
+        if (numeric_read_storage(source)->native_owner != NULL)
+            return numeric_handle_copy(source);
         return R_ExternalPtrProtected(R_altrep_data1(source));
     }
     if (ALTREP(value) && R_altrep_data2(value) != R_NilValue) return R_altrep_data2(value);
@@ -740,7 +765,12 @@ static numeric_reader numeric_reader_create(
         value, NULL, NULL, NULL, TYPEOF(value)
     };
     if (reader.type == REALSXP) {
-        reader.storage = unmaterialized_numeric_storage(value);
+        reader.storage = unmaterialized_numeric_read_storage(value);
+        if (reader.storage != NULL && reader.storage->native_owner != NULL) {
+            numeric_data encoding = *reader.storage;
+            reader.storage = (numeric_data *) R_alloc(1, sizeof(numeric_data));
+            *reader.storage = encoding;
+        }
         if (reader.storage != NULL &&
             (R_xlen_t) reader.storage->length != expected_length) {
             Rf_error(
@@ -948,6 +978,7 @@ typedef struct {
     int direct_numeric_temporal;
     int direct_numeric_no_na;
     void *direct_string_data;
+    const void *direct_numeric_owner;
 } dtatools_write_column;
 
 enum dtatools_dta_column_slot {
@@ -967,6 +998,12 @@ enum dtatools_dta_column_slot {
     typedef char dtatools_layout_assert_##name[(condition) ? 1 : -1]
 
 #if UINTPTR_MAX == UINT64_MAX
+DTATOOLS_LAYOUT_ASSERT(compare_owner, offsetof(dtatools_compare_operand, native_owner) == 24);
+DTATOOLS_LAYOUT_ASSERT(compare_size, sizeof(dtatools_compare_operand) == 32);
+DTATOOLS_LAYOUT_ASSERT(gather_x_owner, offsetof(numeric_gather_column, x_owner) == 64);
+DTATOOLS_LAYOUT_ASSERT(gather_y_owner, offsetof(numeric_gather_column, y_owner) == 72);
+DTATOOLS_LAYOUT_ASSERT(gather_x_length, offsetof(numeric_gather_column, x_length) == 80);
+DTATOOLS_LAYOUT_ASSERT(gather_size, sizeof(numeric_gather_column) == 96);
 DTATOOLS_LAYOUT_ASSERT(numeric_owner, offsetof(numeric_data, native_owner) == 40);
 DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 48);
 DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
@@ -985,7 +1022,8 @@ DTATOOLS_LAYOUT_ASSERT(write_column_direct_version, offsetof(dtatools_write_colu
 DTATOOLS_LAYOUT_ASSERT(write_column_direct_temporal, offsetof(dtatools_write_column, direct_numeric_temporal) == 96);
 DTATOOLS_LAYOUT_ASSERT(write_column_direct_no_na, offsetof(dtatools_write_column, direct_numeric_no_na) == 100);
 DTATOOLS_LAYOUT_ASSERT(write_column_direct_string, offsetof(dtatools_write_column, direct_string_data) == 104);
-DTATOOLS_LAYOUT_ASSERT(write_column_size, sizeof(dtatools_write_column) == 112);
+DTATOOLS_LAYOUT_ASSERT(write_column_direct_owner, offsetof(dtatools_write_column, direct_numeric_owner) == 112);
+DTATOOLS_LAYOUT_ASSERT(write_column_size, sizeof(dtatools_write_column) == 120);
 DTATOOLS_LAYOUT_ASSERT(write_table_name, offsetof(dtatools_write_value_label_table, name) == 0);
 DTATOOLS_LAYOUT_ASSERT(write_table_values, offsetof(dtatools_write_value_label_table, label_values) == 8);
 DTATOOLS_LAYOUT_ASSERT(write_table_texts, offsetof(dtatools_write_value_label_table, label_texts) == 16);
@@ -1011,7 +1049,8 @@ DTATOOLS_LAYOUT_ASSERT(arrow_column_value_label_index, offsetof(dtatools_arrow_c
 DTATOOLS_LAYOUT_ASSERT(arrow_column_dta_metadata, offsetof(dtatools_arrow_column, dta_metadata) == 112);
 DTATOOLS_LAYOUT_ASSERT(arrow_column_haven_labelled, offsetof(dtatools_arrow_column, haven_labelled) == 120);
 DTATOOLS_LAYOUT_ASSERT(arrow_column_dictstring, offsetof(dtatools_arrow_column, dictstring) == 128);
-DTATOOLS_LAYOUT_ASSERT(arrow_column_size, sizeof(dtatools_arrow_column) == 136);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_compact_owner, offsetof(dtatools_arrow_column, compact_owner) == 136);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_size, sizeof(dtatools_arrow_column) == 144);
 DTATOOLS_LAYOUT_ASSERT(arrow_table_name, offsetof(dtatools_arrow_value_label_table, name) == 0);
 DTATOOLS_LAYOUT_ASSERT(arrow_table_values, offsetof(dtatools_arrow_value_label_table, label_values) == 8);
 DTATOOLS_LAYOUT_ASSERT(arrow_table_texts, offsetof(dtatools_arrow_value_label_table, label_texts) == 16);
@@ -2203,6 +2242,12 @@ static void numeric_gather_element(
     unsigned char *output, R_xlen_t output_index,
     const numeric_data *source, R_xlen_t source_index, size_t width
 ) {
+    if (source->native_owner != NULL) {
+        size_t available;
+        const void *input = numeric_read_span(source, (size_t) source_index, 1, &available);
+        memcpy(output + (size_t) output_index * width, input, width);
+        return;
+    }
     const unsigned char *input = (const unsigned char *) source->values;
     if (width == 1) {
         output[output_index] = input[source_index];
@@ -2220,22 +2265,32 @@ static void numeric_gather_element(
 SEXP C_dtatools_gather_numeric(
     SEXP x, SEXP y, SEXP x_rows, SEXP y_rows
 ) {
-    numeric_data *x_data = unmaterialized_numeric_storage(x);
+    SEXP x_root = PROTECT(numeric_payload_root(x));
+    SEXP y_root = PROTECT(y == R_NilValue ? R_NilValue : numeric_payload_root(y));
+    numeric_data *x_data = unmaterialized_numeric_read_storage(x_root);
+    if (x_data == NULL) x_data = unmaterialized_numeric_read_storage(x);
     if (x_data == NULL) {
         Rf_error("internal numeric gather requires compact `x` storage");
     }
+    numeric_data x_encoding = *x_data;
+    x_data = &x_encoding;
     numeric_data *y_data = NULL;
+    numeric_data y_encoding;
     if (y != R_NilValue) {
-        y_data = unmaterialized_numeric_storage(y);
+        y_data = unmaterialized_numeric_read_storage(y_root);
+        if (y_data == NULL) y_data = unmaterialized_numeric_read_storage(y);
         if (y_data == NULL) {
             Rf_error("internal numeric gather requires compact `y` storage");
         }
+        y_encoding = *y_data;
+        y_data = &y_encoding;
         if (x_data->kind != y_data->kind ||
             x_data->temporal != y_data->temporal) {
             Rf_error("internal numeric gather requires matching storage");
         }
         if ((x_data->format_version <= 111) !=
             (y_data->format_version <= 111)) {
+            UNPROTECT(2);
             return R_NilValue;
         }
         if (XLENGTH(y_rows) != XLENGTH(x_rows)) {
@@ -2312,7 +2367,7 @@ SEXP C_dtatools_gather_numeric(
     if (gathered_names != R_NilValue) {
         Rf_setAttrib(result, R_NamesSymbol, gathered_names);
     }
-    UNPROTECT(gathered_names == R_NilValue ? 2 : 3);
+    UNPROTECT(gathered_names == R_NilValue ? 4 : 5);
     return result;
 }
 
@@ -2350,7 +2405,7 @@ typedef struct {
 static numeric_gather_source numeric_gather_source_create(
     SEXP value, const char *argument
 ) {
-    numeric_data *compact = unmaterialized_numeric_storage(value);
+    numeric_data *compact = unmaterialized_numeric_read_storage(value);
     if (compact != NULL) {
         numeric_gather_source source = {
             (const unsigned char *) compact->values,
@@ -2389,8 +2444,14 @@ SEXP C_dtatools_gather_numeric_columns(
     }
     R_xlen_t column_count = XLENGTH(x);
     SEXP result = PROTECT(Rf_allocVector(VECSXP, column_count));
+    SEXP read_roots = PROTECT(Rf_allocVector(VECSXP, 2 * column_count));
+    for (R_xlen_t index = 0; index < column_count; index++) {
+        SET_VECTOR_ELT(read_roots, 2 * index, numeric_payload_root(VECTOR_ELT(x, index)));
+        if (y != R_NilValue)
+            SET_VECTOR_ELT(read_roots, 2 * index + 1, numeric_payload_root(VECTOR_ELT(y, index)));
+    }
     if (column_count == 0) {
-        UNPROTECT(1);
+        UNPROTECT(2);
         return result;
     }
 
@@ -2425,12 +2486,15 @@ SEXP C_dtatools_gather_numeric_columns(
         SEXP x_value = VECTOR_ELT(x, index);
         SEXP y_value = y == R_NilValue
             ? R_NilValue : VECTOR_ELT(y, index);
+        SEXP x_read = VECTOR_ELT(read_roots, 2 * index);
+        SEXP y_read = VECTOR_ELT(read_roots, 2 * index + 1);
         numeric_gather_source x_source = numeric_gather_source_create(
-            x_value, "x"
+            unmaterialized_numeric_read_storage(x_read) != NULL ? x_read : x_value, "x"
         );
         numeric_gather_source y_source;
         if (y != R_NilValue) {
-            y_source = numeric_gather_source_create(y_value, "y");
+            y_source = numeric_gather_source_create(
+                unmaterialized_numeric_read_storage(y_read) != NULL ? y_read : y_value, "y");
         }
         if (x_source.length != first_x.length ||
             (y != R_NilValue && y_source.length != first_y.length)) {
@@ -2483,6 +2547,11 @@ SEXP C_dtatools_gather_numeric_columns(
         column->x_values = (uintptr_t) x_source.values;
         column->y_values = y == R_NilValue
             ? (uintptr_t) 0 : (uintptr_t) y_source.values;
+        column->x_owner = x_source.compact == NULL ? 0 : (uintptr_t) x_source.compact->native_owner;
+        column->y_owner = y == R_NilValue || y_source.compact == NULL
+            ? 0 : (uintptr_t) y_source.compact->native_owner;
+        column->x_length = x_source.length;
+        column->y_length = y == R_NilValue ? 0 : y_source.length;
         column->output = x_source.compact == NULL
             ? (uintptr_t) REAL(gathered) : (uintptr_t) RAW(backing);
         column->width = width;
@@ -2531,7 +2600,7 @@ SEXP C_dtatools_gather_numeric_columns(
             UNPROTECT(1);
         }
     }
-    UNPROTECT(1);
+    UNPROTECT(2);
     return result;
 }
 
@@ -3439,13 +3508,10 @@ SEXP C_dtatools_metadata(
     return result;
 }
 
-SEXP C_dtatools_read(
-    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
-    SEXP threads, SEXP numeric_altrep, SEXP encoding
+static void validate_dta_read_arguments(
+    SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
+    SEXP threads, SEXP numeric_altrep
 ) {
-    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
-        Rf_error("`file` must be one non-missing path");
-    }
     int all_columns = Rf_isNull(columns);
     if (!all_columns && TYPEOF(columns) != INTSXP) {
         Rf_error("internal column selection must be integer");
@@ -3466,6 +3532,17 @@ SEXP C_dtatools_read(
         LOGICAL(numeric_altrep)[0] == NA_LOGICAL) {
         Rf_error("internal numeric ALTREP selector must be logical");
     }
+}
+
+SEXP C_dtatools_read(
+    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
+    SEXP threads, SEXP numeric_altrep, SEXP encoding
+) {
+    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
+        Rf_error("`file` must be one non-missing path");
+    }
+    validate_dta_read_arguments(columns, skip, n_max, direct_to_r, threads, numeric_altrep);
+    int all_columns = Rf_isNull(columns);
     char *error = NULL;
     SEXP result = dtatools_read_rust(
         Rf_translateCharUTF8(STRING_ELT(path, 0)),
@@ -3482,6 +3559,73 @@ SEXP C_dtatools_read(
     );
     if (result == NULL) fail_from_rust(error);
     return result;
+}
+
+static SEXP prepared_dta_tag = NULL;
+
+static void prepared_dta_finalizer(SEXP prepared) {
+    void *owner = R_ExternalPtrAddr(prepared);
+    if (owner != NULL) {
+        R_ClearExternalPtr(prepared);
+        dtatools_close_prepared_dta_rust(owner);
+    }
+}
+
+static void validate_prepared_dta(SEXP prepared) {
+    if (TYPEOF(prepared) != EXTPTRSXP || prepared_dta_tag == NULL ||
+        R_ExternalPtrTag(prepared) != prepared_dta_tag) {
+        Rf_error("invalid prepared DTA read");
+    }
+}
+
+SEXP C_dtatools_prepare_dta_selection(SEXP path, SEXP encoding) {
+    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
+        Rf_error("`file` must be one non-missing path");
+    }
+    if (prepared_dta_tag == NULL) prepared_dta_tag = Rf_install("dtatools_prepared_dta");
+    // Allocate and register finalization before transferring a Rust owner.
+    // Attaching the returned pointer and metadata below cannot allocate in R.
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+    SEXP prepared = PROTECT(R_MakeExternalPtr(NULL, prepared_dta_tag, R_NilValue));
+    R_RegisterCFinalizerEx(prepared, prepared_dta_finalizer, TRUE);
+    SET_VECTOR_ELT(result, 0, prepared);
+    void *owner = NULL;
+    char *error = NULL;
+    SEXP metadata = dtatools_prepare_dta_rust(
+        Rf_translateCharUTF8(STRING_ELT(path, 0)), optional_encoding(encoding),
+        &owner, &error
+    );
+    if (metadata == NULL) fail_from_rust(error);
+    R_SetExternalPtrAddr(prepared, owner);
+    SET_VECTOR_ELT(result, 1, metadata);
+    UNPROTECT(2);
+    return result;
+}
+
+SEXP C_dtatools_read_prepared_dta(
+    SEXP prepared, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
+    SEXP threads, SEXP numeric_altrep
+) {
+    validate_prepared_dta(prepared);
+    void *owner = R_ExternalPtrAddr(prepared);
+    if (owner == NULL) Rf_error("prepared DTA read is closed");
+    validate_dta_read_arguments(columns, skip, n_max, direct_to_r, threads, numeric_altrep);
+    int all_columns = Rf_isNull(columns);
+    char *error = NULL;
+    SEXP result = dtatools_read_prepared_dta_rust(
+        owner, all_columns ? NULL : INTEGER(columns),
+        all_columns ? 0 : (size_t) XLENGTH(columns), all_columns,
+        REAL(skip)[0], REAL(n_max)[0], LOGICAL(direct_to_r)[0],
+        INTEGER(threads)[0], LOGICAL(numeric_altrep)[0], &error
+    );
+    if (result == NULL) fail_from_rust(error);
+    return result;
+}
+
+SEXP C_dtatools_close_prepared_dta(SEXP prepared) {
+    validate_prepared_dta(prepared);
+    prepared_dta_finalizer(prepared);
+    return R_NilValue;
 }
 
 static const char *write_scalar_string(SEXP value, const char *name) {
@@ -3725,8 +3869,11 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         descriptor->label_values = NULL;
         if (descriptor->label_count > 0) {
             numeric_reader *reader = &label_readers[index];
-            *reader = numeric_reader_create(label_values, XLENGTH(label_values));
-            SET_VECTOR_ELT(payload_roots, (R_xlen_t) index, numeric_payload_root(label_values));
+            SEXP root = numeric_payload_root(label_values);
+            SET_VECTOR_ELT(payload_roots, (R_xlen_t) index, root);
+            *reader = numeric_reader_create(
+                unmaterialized_numeric_read_storage(root) != NULL ? root : label_values,
+                (R_xlen_t) descriptor->label_count);
             if (reader->storage != NULL) {
                 encodings[index] = *reader->storage;
                 reader->storage = &encodings[index];
@@ -3791,8 +3938,11 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         };
         if (descriptor->dta_type <= 4) {
             numeric_reader *reader = &value_readers[value_reader_index++];
-            *reader = numeric_reader_create(values, (R_xlen_t) row_count);
-            SET_VECTOR_ELT(payload_roots, (R_xlen_t) (table_count + index), numeric_payload_root(values));
+            SEXP root = numeric_payload_root(values);
+            SET_VECTOR_ELT(payload_roots, (R_xlen_t) (table_count + index), root);
+            *reader = numeric_reader_create(
+                unmaterialized_numeric_read_storage(root) != NULL ? root : values,
+                (R_xlen_t) row_count);
             if (reader->storage != NULL) {
                 encodings[table_count + index] = *reader->storage;
                 reader->storage = &encodings[table_count + index];
@@ -3800,6 +3950,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
             descriptor->numeric_values = reader;
             if (reader->storage != NULL) {
                 descriptor->direct_numeric_values = reader->storage->values;
+                descriptor->direct_numeric_owner = reader->storage->native_owner;
                 descriptor->direct_numeric_kind =
                     WRITE_NUMERIC_BYTE + reader->storage->kind;
                 descriptor->direct_numeric_format_version =
@@ -3987,9 +4138,10 @@ static void arrow_write_column_descriptor(
         descriptor->string_count = (size_t) XLENGTH(levels);
         break;
     case 9: { /* profiled Stata numeric */
-        numeric_data *compact = unmaterialized_numeric_storage(values);
+        numeric_data *compact = unmaterialized_numeric_read_storage(values);
         if (compact != NULL) {
             descriptor->compact_values = compact->values;
+            descriptor->compact_owner = compact->native_owner;
             descriptor->compact_kind = compact->kind;
             descriptor->compact_format_version = compact->format_version;
             descriptor->compact_temporal = compact->temporal;
@@ -8123,23 +8275,30 @@ SEXP C_dtatools_missing_tag(SEXP value) {
 }
 
 static int numeric_compare_operand_create(
-    SEXP value, dtatools_compare_operand *operand, size_t *length
+    SEXP value, dtatools_compare_operand *operand, size_t *length, SEXP *read_root
 ) {
-    numeric_data *compact = unmaterialized_numeric_storage(value);
+    SEXP root = PROTECT(numeric_payload_root(value));
+    *read_root = root;
+    numeric_data *compact = unmaterialized_numeric_read_storage(root);
+    if (compact == NULL) compact = unmaterialized_numeric_read_storage(value);
     if (compact != NULL) {
         operand->values = compact->values;
+        operand->native_owner = compact->native_owner;
         operand->kind = compact->kind;
         operand->temporal = compact->temporal;
         operand->format_version = compact->format_version;
         *length = compact->length;
+        UNPROTECT(1);
         return 1;
     }
-    if (TYPEOF(value) != REALSXP) return 0;
+    if (TYPEOF(value) != REALSXP) { UNPROTECT(1); return 0; }
     operand->values = (void *) DATAPTR_RO(value);
+    operand->native_owner = NULL;
     operand->kind = NUMERIC_DOUBLE;
     operand->temporal = 0;
     operand->format_version = 0;
     *length = (size_t) XLENGTH(value);
+    UNPROTECT(1);
     return 1;
 }
 
@@ -8308,13 +8467,14 @@ static SEXP fused_compare_patch(
     if (threads == NA_INTEGER || threads < 0) threads = 0;
 
     dtatools_compare_operand left;
+    SEXP left_root;
     size_t length = 0;
-    if (!numeric_compare_operand_create(x, &left, &length) ||
+    if (!numeric_compare_operand_create(x, &left, &length, &left_root) ||
         length != encoding.length) {
         UNPROTECT(protect_count);
         return R_NilValue;
     }
-    PROTECT(numeric_payload_root(x));
+    PROTECT(left_root);
     protect_count++;
     dtatools_compare_operand right;
     memset(&right, 0, sizeof(right));
@@ -8323,12 +8483,13 @@ static SEXP fused_compare_patch(
     int scalar_rank = 0;
     if (has_right) {
         size_t right_length = 0;
-        if (!numeric_compare_operand_create(y, &right, &right_length) ||
+        SEXP right_root;
+        if (!numeric_compare_operand_create(y, &right, &right_length, &right_root) ||
             right_length != length) {
             UNPROTECT(protect_count);
             return R_NilValue;
         }
-        PROTECT(numeric_payload_root(y));
+        PROTECT(right_root);
         protect_count++;
     } else {
         numeric_scalar_plan(
@@ -8344,13 +8505,14 @@ static SEXP fused_compare_patch(
     int replacement_scalar_rank = 0;
     if (has_replacement) {
         size_t replacement_length = 0;
+        SEXP replacement_root;
         if (!numeric_compare_operand_create(
-                replacement, &replacement_operand, &replacement_length
+                replacement, &replacement_operand, &replacement_length, &replacement_root
             ) || replacement_length != length) {
             UNPROTECT(protect_count);
             return R_NilValue;
         }
-        PROTECT(numeric_payload_root(replacement));
+        PROTECT(replacement_root);
         protect_count++;
     } else {
         numeric_scalar_plan(
@@ -8468,20 +8630,22 @@ SEXP C_dtatools_dta_compare(
     if (threads == NA_INTEGER || threads < 0) threads = 0;
 
     dtatools_compare_operand left, right;
+    SEXP left_root;
     size_t length;
-    if (!numeric_compare_operand_create(x, &left, &length)) return R_NilValue;
-    PROTECT(numeric_payload_root(x));
+    if (!numeric_compare_operand_create(x, &left, &length, &left_root)) return R_NilValue;
+    PROTECT(left_root);
     int protected = 1;
     const dtatools_compare_operand *right_pointer = NULL;
     double scalar_value = 0;
     int scalar_rank = 0;
     if (y != R_NilValue) {
         size_t right_length;
-        if (!numeric_compare_operand_create(y, &right, &right_length) || right_length != length) {
+        SEXP right_root;
+        if (!numeric_compare_operand_create(y, &right, &right_length, &right_root) || right_length != length) {
             UNPROTECT(protected);
             return R_NilValue;
         }
-        PROTECT(numeric_payload_root(y));
+        PROTECT(right_root);
         protected++;
         right_pointer = &right;
     } else numeric_scalar_plan(scalar, &scalar_value, &scalar_rank,
@@ -8655,6 +8819,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_egen_rows", (DL_FUNC) &C_dtatools_egen_rows, 4},
     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 5},
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
+    {"C_dtatools_prepare_dta_selection", (DL_FUNC) &C_dtatools_prepare_dta_selection, 2},
+    {"C_dtatools_read_prepared_dta", (DL_FUNC) &C_dtatools_read_prepared_dta, 7},
+    {"C_dtatools_close_prepared_dta", (DL_FUNC) &C_dtatools_close_prepared_dta, 1},
     {"C_dtatools_write", (DL_FUNC) &C_dtatools_write, 2},
     {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 5},
     {"C_dtatools_has_bytes_encoding",

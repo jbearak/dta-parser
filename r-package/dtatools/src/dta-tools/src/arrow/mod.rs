@@ -11,6 +11,8 @@ mod checksum;
 mod profile;
 mod read;
 mod write;
+#[cfg(feature = "r-adapter-internal")]
+mod write_source;
 
 pub(crate) const MAX_IPC_METADATA_BYTES: usize = 64 * 1024 * 1024;
 
@@ -24,13 +26,19 @@ pub use read::{
     ArrowColumnSummary, ArrowFileSnapshot, ArrowFileSummary, ArrowReadColumn, ArrowReadOptions,
     ArrowReadResult,
 };
-#[cfg(feature = "r-adapter-internal")]
-pub use write::save_arrow_file_with_preflight;
 pub use write::{
     dataset_signature, preflight_arrow_metadata, save_arrow_file, save_arrow_file_to,
     ArrowCompression, ArrowMetadataPreflight, ArrowWriteColumn, ArrowWriteDataset,
     ARROW_ROWS_PER_BATCH,
 };
+#[cfg(feature = "r-adapter-internal")]
+pub use write::{
+    dataset_signature_from_sources, save_arrow_file_from_sources_to,
+    save_arrow_file_from_sources_with_preflight, save_arrow_file_with_preflight,
+    ArrowWriteSourceColumn, ArrowWriteSourceDataset,
+};
+#[cfg(feature = "r-adapter-internal")]
+pub use write_source::ArrowWriteSource;
 
 use thiserror::Error;
 

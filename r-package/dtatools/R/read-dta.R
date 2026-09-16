@@ -290,12 +290,21 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     use_numeric_altrep <- .normalize_use_numeric_altrep(use_numeric_altrep)
 
     source <- .resolve_dta_source(file)
-    on.exit(.cleanup_dta_source(source), add = TRUE)
+    prepared <- NULL
+    on.exit({
+        if (!is.null(prepared)) .close_prepared_dta(prepared[[1L]])
+        .cleanup_dta_source(source)
+    }, add = TRUE)
 
     if (rlang::quo_is_null(selection)) {
         column_indices <- NULL
     } else {
-        metadata_names <- .dta_metadata(source$path, encoding)
+        if (identical(Sys.getenv("DTATOOLS_EXPERIMENT_DTA_PREPARED"), "1")) {
+            prepared <- .Call(C_dtatools_prepare_dta_selection, source$path, encoding)
+            metadata_names <- prepared[[2L]]
+        } else {
+            metadata_names <- .dta_metadata(source$path, encoding)
+        }
         storage <- attr(metadata_names, "dta_storage", exact = TRUE)
         selection_proxy <- stats::setNames(
             lapply(storage, function(type) {
@@ -309,17 +318,19 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         selected_names <- names(selected)
     }
 
-    native <- .Call(
-        C_dtatools_read,
-        source$path,
-        column_indices,
-        row_window$skip,
-        row_window$n_max,
-        identical(materialization, "direct"),
-        threads,
-        use_numeric_altrep,
-        encoding
-    )
+    native <- if (is.null(prepared)) {
+        .Call(
+            C_dtatools_read, source$path, column_indices,
+            row_window$skip, row_window$n_max, identical(materialization, "direct"),
+            threads, use_numeric_altrep, encoding
+        )
+    } else {
+        .Call(
+            C_dtatools_read_prepared_dta, prepared[[1L]], column_indices,
+            row_window$skip, row_window$n_max, identical(materialization, "direct"),
+            threads, use_numeric_altrep
+        )
+    }
     source_rows <- attr(native, "dtatools.source.rows", exact = TRUE)
     attr(native, "dtatools.source.rows") <- NULL
     if (!is.null(column_indices)) {
@@ -350,6 +361,11 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         attr(result, "dtatools.source.rows") <- source_rows
     }
     .complete_output_container(result, output, reader = TRUE)
+}
+
+.close_prepared_dta <- function(prepared) {
+    .Call(C_dtatools_close_prepared_dta, prepared)
+    invisible(NULL)
 }
 
 .normalize_use_numeric_altrep <- function(value) {

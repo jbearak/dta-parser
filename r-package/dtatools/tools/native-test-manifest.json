@@ -159,6 +159,18 @@
         {
           "path": "tests/testthat/test-input-sources.R",
           "sha256": "0c4027a61f44249a1e2205a48ef1ff872109801e1d5ab3100892c24cc25a3644"
+        },
+        {
+          "path": "tests/testthat/test-reader-dta-experiments.R",
+          "sha256": "86872b51d67bc69bfdd1a80c3661a1967b24b36c30e1013d6db02222abefe6f0"
+        },
+        {
+          "path": "tests/testthat/test-reader-dta-prepared.R",
+          "sha256": "f9426bfb67aea2e8ce303b18e67d2a68b431b4d97b848f0e980d2281ca40a157"
+        },
+        {
+          "path": "tests/testthat/test-reader-experiments.R",
+          "sha256": "21365e57d4a3290c6a97f7d17f09eabfed1ff3f2ce205021d400539e7bb696a8"
         }
       ],
       "blocks": [
@@ -1225,6 +1237,110 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-experiments.R",
+          "test": "DTA experiment combinations preserve projected legacy reads",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 126,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-experiments.R",
+          "test": "DTA experimental fills retain every storage width and missing code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 576,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-experiments.R",
+          "test": "DTA ring completes multiple blocks with ordered strings and bounded budgets",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-prepared.R",
+          "test": "an interrupted selector closes prepared DTA before source cleanup",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-prepared.R",
+          "test": "full DTA reads reuse decode plans without selection metadata discovery",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 28,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-prepared.R",
+          "test": "prepared DTA closes before raw, gzip and connection source cleanup",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 36,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-prepared.R",
+          "test": "prepared DTA metadata and observations retain one file identity",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-prepared.R",
+          "test": "prepared DTA reads consume once and close idempotently",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-prepared.R",
+          "test": "prepared proxies, renaming and collector reads preserve labels",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-prepared.R",
+          "test": "prepared selection preserves selector warnings and errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-prepared.R",
+          "test": "prepared selections preserve legacy, wide, empty and labelled reads",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 336,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-experiments.R",
+          "test": "bounded Arrow falls back for value-dependent ordinary storage",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-experiments.R",
+          "test": "experimental Arrow fills preserve compact values and projected windows",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 60,
           "warnings": 0
         }
       ],
@@ -3406,6 +3522,10 @@
         {
           "path": "tests/testthat/test-copy-data.R",
           "sha256": "cbd704afda0f4c07333653e13084817667f57a2d556410cde010a3abf18a7d73"
+        },
+        {
+          "path": "tests/testthat/test-owned-numeric-buffers.R",
+          "sha256": "2527e7f270f3503168a718e77caceafa90cf28319f97df9089b0139db91d84cd"
         }
       ],
       "blocks": [
@@ -4357,6 +4477,134 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "Arrow writer and signature pins survive later operand callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "DTA writer pins owned sources while later callbacks materialize them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "comparisons and gathers read retained regions without compatibility copies",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 120,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "direct owned compact patches commit only after successful completion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "failed and interrupted owned-column mutations leave captured values intact",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "immutable captures isolate writable pointers and explicit mutations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "immutable compact dates preserve conversion and serialization",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "immutable compact regions preserve all missing codes and chunk edges",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 236,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "legacy writer layout considers an observed conflict in a later chunk",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "owned Arrow experiment retains buffers independently of its source",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 48,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "owned allocation charges are released after final handles disappear",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "parallel comparison workers split mismatched owned chunk boundaries",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "parallel owned fills finish exact counts before publishing chunked columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "read roots survive foreign operand and gather callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "repeated owned reads collect unreachable native allocations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "writers and signatures retain modern and legacy compact sources",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 42,
           "warnings": 0
         }
       ],

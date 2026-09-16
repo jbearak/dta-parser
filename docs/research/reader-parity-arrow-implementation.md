@@ -1,4 +1,4 @@
-# Bounded Arrow completion experiment
+# Arrow completion and native consumer experiments
 
 Implemented September 15, 2026, in the isolated reader-parity worktree. This note describes the core experiment. It makes no performance claim and does not change the default core reader.
 
@@ -38,7 +38,19 @@ Every task calls the existing `decode_planned_column`. Layout checks and require
 
 The metadata-move audit confirms that `decode_planned_column` reads only the retained profile version and checksums. Array validation uses footer field types/nullability, layouts, and retained dictionaries. It does not inspect moved dataset or field documents. The prepared fallback returns those documents from the separate metadata result.
 
-The default `read()`, `read_with_source_row_count()`, and generic seekable-source reader remain unchanged. New code is confined to the feature-gated completion path and its tests.
+The default `read()`, `read_with_source_row_count()`, and generic seekable-source reader remain unchanged. The completion interface is feature-gated. The writer changes below share an implementation with the existing public writer.
+
+## Chunk sources for writing and signatures
+
+The private `r-adapter-internal` interface adds `ArrowWriteSource`, `ArrowWriteSourceColumn`, and `ArrowWriteSourceDataset`. `ArrowWriteSource::try_new(chunks)` owns immutable array handles, validates each array's layout and values, checks type and aggregate length, and requires unchanged dictionary values across chunks. Empty columns supply at least one typed empty array. Its metadata accessors are `len()`, `is_empty()`, `data_type()`, and `null_count()`.
+
+`ArrowWriteSource::from_array(array)` adapts ordinary arrays under the same valid-array precondition as the existing `ArrowWriteColumn`. It retains a handle and small source descriptors without copying the column or adding a full validation pass. This matters for ordinary R string and dictionary arrays already checked by their builders. The multichunk constructor's full validation is constant work per primitive numeric chunk without nulls; null bitmaps, strings, and dictionary keys require scans. The common writer does not repeat that full array validation.
+
+`dataset_signature_from_sources`, `save_arrow_file_from_sources_with_preflight`, and `save_arrow_file_from_sources_to` use the same validation, metadata, checksum, and IPC writer implementation as the existing public functions. `ArrowWriteColumn` and `ArrowWriteDataset` remain unchanged. Their single-array adapter does not allocate source descriptors. Canonical record batches remain exactly 65,536 rows, independent of source chunk boundaries, and the data-signature payload is unchanged.
+
+A canonical window contained within one chunk shares its value buffers. A crossing window concatenates only its selected rows. Non-byte-aligned validity or boolean buffers receive a bounded bitmap copy because the existing canonical checksum requires byte alignment. Dictionary windows concatenate keys without recoding or dropping levels. Batch hash workers retain at most one canonical column window each; dictionary-value hashing retains its existing whole-dictionary behavior. The IPC writer requires a complete record batch and can retain one such window per column, plus existing compression and encoding scratch. Variable-width windows have no fixed byte limit. There is no 64 MiB writer-memory claim.
+
+The R bridge supplies retained native chunks for owned compact columns. Arrays backed by native Arrow buffers keep those buffers alive independently of R handles; the R-backed compatibility case copies before an array can outlive its C root. Modern compact values need no missing-code conversion. For legacy compact layouts, the bridge checks the entire logical column for observed values that collide with modern missing sentinels before normalizing any chunk. A conflict preserves every chunk's legacy layout and records release 111, matching the existing contiguous adapter. Otherwise it normalizes each chunk. This legacy conversion can allocate across the whole column before writing and is outside the canonical-window scratch bound.
 
 ## Checks completed
 
@@ -53,3 +65,7 @@ The default `read()`, `read_with_source_row_count()`, and generic seekable-sourc
 - Dictionary-capacity accounting, observed decoded capacities, dictionary fallback parity, and zero-row dictionary values surviving the metadata move.
 
 The first test run rejected an invalid fixture that omitted the required sentinel-encoding declaration. Correcting that fixture produced the passing results above. R runtime qualification and matched completed-workflow measurements belong to the integration stage.
+
+`cargo test -p dta-tools --features r-adapter-internal arrow::write --lib` passed all 13 writer/source tests. The five added tests cover shared within-chunk buffers, bounded crossing copies, invalid sources and row counts, non-nullable profile rejection, interruption, bit-exact signatures and verified round trips across misaligned chunks, all ten supported missing-release documents, serial and parallel hashing, uncompressed/LZ4/zstd writing, checksum-free writing, unaligned null/boolean bitmaps, strings, unchanged dictionaries, and zero-row dictionary levels. Existing metadata preflight and footer-size tests also passed. `cargo check -p dta-tools` passed without the private adapter feature.
+
+The core tests preserve raw missing layouts; the bridge's legacy normalization and callback/root behavior require the separate R integration tests. A read-only bridge audit found matching C/Rust descriptor layouts and independently rooted compact owners. Later callbacks can materialize a public vector while its private read handle continues to retain the original source.

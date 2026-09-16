@@ -5,7 +5,9 @@ It records reader elapsed time, R reader CPU time, process CPU time and peak
 resident memory. Application startup is outside the reader clock; first reader
 initialization remains inside fresh measurements. Warm measurements perform one
 untimed read, then the manifest's number of repeated reads. Small warm cases use
-100 calls to exceed timer resolution. A zero Stata median cannot pass the gate.
+100 calls to exceed timer resolution. A timed interval shorter than ten
+milliseconds is indeterminate and cannot pass, for either reader. Tiny fresh
+cases may therefore remain unqualified even when the rounded medians match.
 
 `prepare.R BASELINE_LIBRARY INPUTS_JSON ARROW_DIRECTORY CASES_JSON` creates
 current-profile Arrow files once and checks full value/metadata signatures.
@@ -26,15 +28,33 @@ python3 benchmarks/reader-parity/run.py \
 Defaults are two independent cohorts, 20 observations per method/case/cohort,
 and both fresh and warm modes. Forward and reversed rotations balance method
 positions and pair order. Cases reverse between cohorts. Every candidate median
-must be at most its matched Stata median in each cohort. All signatures qualify
-before any timings. Build records bind installed files to source commits; worker,
+must be at most its matched Stata median in each cohort. Baseline/candidate R
+value and metadata signatures qualify before timing. Stata loads the same DTA
+and checks dimensions; Stata value/metadata conformance is a separate gate.
+Build records bind installed files to source commits; worker,
 input and Stata hashes are recorded. Inputs and installed files are checked again
 after the run. No heavy builds or other benchmarks should run concurrently.
 
+`qualify-corpus.py` compares full signatures, dimensions, warnings and failure
+messages across the two installations. Its input list contains `id`, `path` and
+`reader` fields, with reader set to `read_dta` or `read_arrow`. Use this separately
+for a larger DTA corpus and retained older Arrow files. Per-file paths and error
+messages stay in local records; the summary uses opaque input IDs.
+
+`--qualify-only` checks signatures and dimensions without attempting timings.
 `--screen` permits a smaller diagnostic run. Such runs always report an unmet
 release gate. `--case ID` and `--mode fresh` are screening controls. Candidate-only
 `--experiment NAME=VALUE` accepts private `DTATOOLS_EXPERIMENT_` controls. The
 baseline always runs without experimental environment variables.
+
+`downstream.py` compares sums over up to 30 numeric columns, full signatures,
+first writes with a captured copy, and conversion to ordinary R numeric storage.
+It records both consumer time and each observation's complete load-and-use time.
+The first-write setup is outside the consumer clock but inside the complete
+workflow clock. Results and captured-copy isolation are checked after mutation.
+Process peak memory includes loading and consumption. Warm reader peaks include
+the warmup and repeated calls, including overlapping old/new R result lifetimes;
+they are not estimates of one retained result's size.
 
 The timing gate is only one release requirement. Correctness, downstream use,
 native lifetime, peak memory relative to baseline variability, corpus behavior
