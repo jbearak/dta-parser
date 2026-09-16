@@ -6,10 +6,10 @@ missing values, merge and append datasets, and save Stata or Arrow files.
 Use the Arrow-based `.arrow` format for performance-sensitive workloads or
 data frames that mix Stata and ordinary R column types.
 
-Across 641 DHS survey files totaling 46.9 GB, `read_dta()` took 39.4 seconds
-versus haven's 2,727 seconds, about **69 times faster**. Median read time for
-the 5.2 GB India DHS file is under a second, compared with several minutes
-for haven.
+In the September 13, 2026 benchmark across 641 DHS survey files totaling
+46.9 GB, `read_dta()` took 39.4 seconds versus haven's 2,727 seconds, about
+**69 times faster**. In the September 16 comparison, median read time for the
+5.2 GB India DHS file was under a second, compared with several minutes for haven.
 See the [benchmark results and methods](#why-use-dtatools).
 
 Stata columns can live in ordinary data frames, tibbles, data.tables, or
@@ -124,9 +124,11 @@ and the [egen guide](../../docs/r-egen.md) explains grouped calculations.
 
 ### Fast imports from existing Stata files
 
-Repository benchmarks compare `dtatools` with haven across three survey corpora.
-The measurements use the same files and computer, with dtatools 0.9.0,
-default dibble output and automatic thread selection.
+The September 13, 2026 corpus report compares `dtatools` with haven across
+three survey corpora on the same files and computer. The dtatools measurements
+use version 0.9.0, default dibble output and automatic thread selection.
+They predate the latest reader optimizations; the corpus has not been retimed
+with those changes. The report retains the earlier haven measurements.
 
 | Workload | dtatools | haven | Difference |
 | --- | ---: | ---: | ---: |
@@ -136,7 +138,7 @@ default dibble output and automatic thread selection.
 
 `dtatools` was faster on all 1,812 comparable files. These are warm-cache
 measurements from an Apple M4 Max. The
-[default-reader report](../../benchmarks/reader-startup/results-2026-09-13/README.md)
+[September 13 corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-startup/results-2026-09-13/README.md)
 includes the full corpus results, CPU time, peak memory and methodology.
 
 Projected reads, which load specified columns instead of the whole dataset,
@@ -147,8 +149,8 @@ suite. See [details and examples](../../docs/r-reader-projections.md).
 ### Performance on a demanding dataset
 
 Performance on the largest, widest files matters alongside the averages.
-To test this, we use the 5.2 GB India 2021 DHS women's file, with 724,115 rows
-and 5,972 columns, and compare ten full reads per tool.
+The September 16, 2026 comparison uses the 5.2 GB India 2021 DHS women's file,
+with 724,115 rows and 5,972 columns, and measures ten full reads per tool.
 
 | Reader | Median wall time | Range | Median process CPU time | Median peak RSS |
 | --- | ---: | ---: | ---: | ---: |
@@ -157,10 +159,11 @@ and 5,972 columns, and compare ten full reads per tool.
 | `haven::read_dta()` | 472.9965 seconds | 422.801 to 572.189 seconds | 473.0478 seconds | 35.113 GB |
 | Stata native `use` | 0.4725 seconds | 0.471 to 0.542 seconds | 0.5070 seconds | 5.257 GB |
 
-These measurements were collected on a shared Apple M4 Max with the reader
-optimizations now enabled by default. Arrow verification is enabled. Wall time
+These measurements were collected on a shared Apple M4 Max with opt-in reader
+optimizations that have since become defaults. The final default-enabled build
+has not been retimed. Arrow verification is enabled. Wall time
 covers the read call; CPU and peak RSS cover the entire fresh process. The
-[report](../../benchmarks/reader-parity/results-2026-09-16-india/README.md)
+[report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-parity/results-2026-09-16-india/README.md)
 records cache handling, background activity, settings and all observations.
 
 ### Using `.arrow` dataset files
@@ -187,9 +190,9 @@ reader comparisons are retained in the
 ### Synthetic merge benchmarks
 
 `dta_merge()` implements Stata key identity, relationship checks, shared-variable
-coalescing and the `_merge` indicator. In a synthetic benchmark, a 200,000-row,
-151-column master joins a 360,044-row, 110-column using dataset on a character
-key. Both dtatools and Stata return 440,044 rows and 201 columns.
+coalescing and the `_merge` indicator. In the August 28, 2026 synthetic benchmark,
+a 200,000-row, 151-column master joins a 360,044-row, 110-column using dataset
+on a character key. Both dtatools and Stata return 440,044 rows and 201 columns.
 
 | Relationship | `dta_merge()` on Stata columns | Stata 18 MP `merge` |
 | --- | ---: | ---: |
@@ -208,8 +211,9 @@ dplyr and base R comparisons, and reproduction commands.
 
 ### Synthetic write benchmarks
 
-On a 1 GB synthetic Stata-class fixture, `save_dta()` took 0.152 seconds,
-Stata `save` took 0.130 seconds, and `haven::write_dta()` took 9.048 seconds.
+In the August 29, 2026 comparison on a 1 GB synthetic Stata-class fixture,
+`save_dta()` took 0.152 seconds, Stata `save` took 0.130 seconds, and
+`haven::write_dta()` took 9.048 seconds.
 These are medians from seven fresh-process runs on the same Apple M4 Max.
 dtatools retained declared numeric storage; haven widened the 30 numeric
 columns to double. The

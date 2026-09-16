@@ -20,8 +20,10 @@ per-file peak RSS observed for each reader. Unrecognized or
 unreadable signatures remain accounted for as `unknown` inventory groups. The
 report never publishes private paths or data values.
 
-The [local-reader report](../reader-startup/results-2026-09-13/README.md)
-contains the reader comparisons used in the R package README. The
+The [September 13 corpus report](../reader-startup/results-2026-09-13/README.md)
+contains the corpus comparisons used in the R package README. These predate
+the latest reader optimizations; the corpus has not been retimed with those
+changes. The
 [corpus methodology](results-2026-08-24.md) describes the 1,823-file inventory.
 
 On macOS, run the complete suite from the checkout root:

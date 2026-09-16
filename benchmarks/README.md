@@ -59,18 +59,22 @@ dta-tools, haven, and Stata in fresh processes. It aggregates elapsed time and
 maximum per-file peak RSS by corpus and stored DTA release while keeping paths
 and raw results private.
 Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
-original comparator results. The [adaptive-default reader refresh](reader-refresh/results-2026-09-12-defaults/README.md)
+original comparator results. The [September 12 adaptive-default reader refresh](reader-refresh/results-2026-09-12-defaults/README.md)
 updates the dtatools corpus, DTA/Arrow, India, projection and fixture measurements,
 including read-call CPU time and fresh-process peak RSS. The subsequent
-[local-reader startup investigation](reader-startup/results-2026-09-13/README.md)
-supplies default-reader corpus and fresh-process India comparisons, plus alternating
+[September 13 local-reader startup investigation](reader-startup/results-2026-09-13/README.md)
+supplies corpus and fresh-process India comparisons for the defaults at that time, plus alternating
 old/new dtatools measurements on small files. It removes unnecessary dependency
 loading and reports read-call CPU time, whole-process CPU, and peak RSS.
+The corpus totals predate the latest reader optimizations and have not been
+retimed with those changes.
 
 The [September 16 India comparison](reader-parity/results-2026-09-16-india/README.md)
-compares ten full reads each with opt-in dtatools reader optimizations, haven,
-and Stata. It reports read wall time, whole-process CPU and peak RSS for all
-four readers. The [reader-parity controller](reader-parity/) also covers
+compares ten full reads each with dtatools reader optimizations, haven,
+and Stata. Those optimizations were opt-in in the measured build and are now
+enabled by default; the final default-enabled build has not been retimed.
+The report gives read wall time, whole-process CPU and peak RSS for all four
+readers. The [reader-parity controller](reader-parity/) also covers
 projected reads and downstream operations.
 
 The synthetic [`projection-introspection/`](projection-introspection/) suite
@@ -103,10 +107,10 @@ Stata medians on the deterministic 100 MB and 1 GB fixtures and the
 India 2021 DHS women's file, including the additive impact of each write
 optimization and the checksums flag. Its
 [2026-08-29 report](arrow-interchange/results-2026-08-29.md) records the
-original read and conversion results. Default-reader India medians are in
-the [local-reader report](reader-startup/results-2026-09-13/README.md), and the
-[adaptive-default refresh](reader-refresh/results-2026-09-12-defaults/README.md)
-reports synthetic reader measurements.
+original read and conversion results. For the newer India measurements, see
+the [September 16 four-reader comparison](reader-parity/results-2026-09-16-india/README.md).
+The [September 12 balanced warm report](reader-refresh/results-2026-09-12-balanced/README.md)
+retains synthetic reader measurements from before the latest optimizations.
 
 The report-only [`dta-merge/`](dta-merge/) benchmark times one `dta_merge()`
 across every x/y input-source combination — preloaded frames and `.dta` and
