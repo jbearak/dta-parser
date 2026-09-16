@@ -17,8 +17,8 @@ egen(
 )
 }
 \arguments{
-\item{data}{A data frame, tibble, dibble, or ordinary data table, modified
-by reference under the same capacity rules as \code{gen()}.}
+\item{data}{A dibble, modified by reference under the same capacity
+rules as \code{gen()}.}
 
 \item{...}{One \code{target = calculation} pair or \verb{target, calculation},
 optionally followed by an untagged \code{where}, as in \code{gen()}.}

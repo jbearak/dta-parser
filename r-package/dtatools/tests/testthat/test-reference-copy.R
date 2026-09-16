@@ -24,32 +24,34 @@ test_that("replacement isolates unchanged columns and caller bindings", {
 })
 
 test_that("explicit helpers isolate distinct tables while preserving table and slot aliases", {
-    factories <- list(
-        function(x) dibble(x = x, selector = x),
-        function(x) tibble::tibble(x = x, selector = x),
-        function(x) data.frame(x = x, selector = x)
-    )
+    data <- dibble(x = dta_int(c(2L, 1L, 1L)), selector = dta_int(c(2L, 1L, 1L)))
+    # Install exactly the same vector in both physical slots.
+    .Call(dtatools:::C_dtatools_set_data_column, data, 2L, data$x)
+    expect_identical(rlang::obj_address(data$x), rlang::obj_address(data$selector))
+    alias <- data
+    copied <- data
+    attr(copied, "source") <- "copy"
+    repl(data, x = 7, where = selector)
+    expect_identical(as.integer(alias$x), c(7L, 7L, 1L))
+    expect_identical(as.integer(alias$selector), c(7L, 7L, 1L))
+    expect_identical(as.integer(copied$x), c(2L, 1L, 1L))
+    repl(copied, x = 8L)
+    expect_identical(as.integer(data$x), c(7L, 7L, 1L))
+    expect_identical(as.integer(copied$selector), rep(8L, 3))
+})
+
+test_that("explicit helpers reject ordinary containers without touching them", {
+    containers <- list(data.frame(x = 1:3), tibble::tibble(x = 1:3))
     if (requireNamespace("data.table", quietly = TRUE)) {
-        factories <- c(factories, list(function(x) {
-            d <- data.table::data.table(x = x)
-            # Set exactly the same vector in both physical slots.
-            data.table::set(d, j = "selector", value = d$x)
-            .Call(dtatools:::C_dtatools_set_data_column, d, 2L, d$x)
-            d
-        }))
+        containers <- c(containers, list(data.table::data.table(x = 1:3)))
     }
-    for (factory in factories) {
-        data <- factory(dta_int(c(2L, 1L, 1L)))
-        alias <- data
-        copied <- data
-        attr(copied, "source") <- "copy"
-        repl(data, x = 7, where = selector)
-        expect_identical(as.integer(alias$x), c(7L, 7L, 1L))
-        expect_identical(as.integer(alias$selector), c(7L, 7L, 1L))
-        expect_identical(as.integer(copied$x), c(2L, 1L, 1L))
-        repl(copied, x = 8L)
-        expect_identical(as.integer(data$x), c(7L, 7L, 1L))
-        expect_identical(as.integer(copied$selector), rep(8L, 3))
+    for (data in containers) {
+        before <- serialize(data, NULL)
+        expect_error(repl(data, x = stop("RHS ran")), "must be a dibble")
+        expect_error(set_var_format(data, x, "%18.0g"), "must be a dibble")
+        expect_error(copy_data(data), "must be a dibble")
+        expect_identical(serialize(data, NULL), before)
+        expect_false(inherits(data, "dtatools_ref_data"))
     }
 })
 
@@ -161,26 +163,6 @@ test_that("preparation and ordinary metadata replacement preserve within-table a
     }
 })
 
-test_that("all changed same-vector data.table columns invalidate lookup state", {
-    skip_if_not_installed("data.table")
-    for (fused in c(FALSE, TRUE)) {
-        data <- data.table::data.table(x = 1:3, selector = 1:3)
-        data.table::setkeyv(data, "selector")
-        data.table::setindexv(data, "selector")
-        column <- dta_long(1:3)
-        .Call(dtatools:::C_dtatools_set_data_column, data, 1L, column)
-        .Call(dtatools:::C_dtatools_set_data_column, data, 2L, column)
-        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
-        alias <- data
-        copied <- copy_data(data)
-        if (fused) repl(data, x = 3L, where = x == 1L) else repl(data, x = 3L, where = 1L)
-        expect_identical(as.integer(alias$selector), c(3L, 2L, 3L))
-        expect_null(data.table::key(data))
-        expect_length(data.table::indices(data), 0L)
-        expect_identical(as.integer(copied$selector), 1:3)
-    }
-})
-
 test_that("promotion replaces its named column without promoting other slots", {
     column <- dta_byte(1:3)
     data <- dibble(x = column, y = column)
@@ -202,23 +184,23 @@ test_that("ordinary duplication of compact metadata wrappers keeps both sides co
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(numeric))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(copied))
     expect_identical(attributes(copied), attributes(numeric))
-    left <- data.frame(x = numeric)
-    right <- data.frame(x = copied)
+    left <- dibble(x = numeric)
+    right <- dibble(x = copied)
     repl(left, x = 9L)
     expect_identical(as.integer(right$x), 1:3)
 
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(data.frame(text = c("a", "b", "a")), path)
-    source <- read_arrow(path, output = "tibble")
+    source <- read_arrow(path, output = "dibble")
     set_var_label(source, text, "Text")
     column <- dtatools:::.metadata_copy(source$text)
     copied <- data.table::copy(column)
     expect_true(dtatools:::.is_unmaterialized_dictstring(column))
     expect_true(dtatools:::.is_unmaterialized_dictstring(copied))
     expect_identical(attributes(copied), attributes(column))
-    left <- data.frame(text = column)
-    right <- data.frame(text = copied)
+    left <- dibble(text = column)
+    right <- dibble(text = copied)
     repl(left, text = "c", where = 1L)
     expect_identical(as.character(right$text), c("a", "b", "a"))
     expect_identical(as.character(source$text), c("a", "b", "a"))

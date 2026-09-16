@@ -253,26 +253,6 @@ test_that("bracket subscript calls are evaluated once in their established order
     expect_identical(events, "j")
 })
 
-test_that("plain reference containers retain base and tibble row rules", {
-    for (tibble in c(FALSE, TRUE)) {
-        source <- data.frame(x = dta_long(1:4), y = letters[1:4],
-                             row.names = paste0("row", 1:4))
-        if (tibble) source <- tibble::as_tibble(source)
-        attr(source, "custom") <- list(key = "kept")
-        attr(source, "notes") <- "also kept"
-        data <- reserve_columns(source)
-        gen(data, z = x)
-        source <- dtatools:::.reference_snapshot(data)
-        for (expr in alist(d[c(4L, 1L, NA_integer_), ], d[-2L, "x"],
-                           d["row", ], d[NULL, ], d[, NULL], d[, "x"],
-                           d[1L, , drop = TRUE], d[2L], d[, ])) {
-            expected <- suppressWarnings(eval(expr, list(d = source)))
-            actual <- suppressWarnings(eval(expr, list(d = data)))
-            expect_identical(actual, expected)
-        }
-    }
-})
-
 test_that("group metadata rebuild matches sorted factor expansion", {
     fixtures <- list(
         tibble::tibble(f = factor(c("b", "a", NA), levels = c("a", "b", "c")),
@@ -537,36 +517,6 @@ test_that("bracket planning never executes language-valued indices", {
     }
 })
 
-.check_optional_split_dibble_rows_272 <- function(include_dplyr) {
-    for (drop in c(FALSE, TRUE)) {
-        plain <- tibble::tibble(g = c(1L, 1L, 2L), x = 1:3)
-        entry <- if (!include_dplyr) .group_fixture(
-            if (drop) "g_112_i_drop" else "g_112_i_keep")
-        grouped <- if (include_dplyr) dplyr::group_by(plain, g, .drop = drop) else entry$data
-        data <- reserve_columns(grouped)
-        gen(data, y = x)
-        snapshot <- dtatools:::.reference_snapshot(data)
-        result <- slice_dta_rows(data, 2:1)
-        expect_false(is_dibble(result))
-        if (include_dplyr) expect_identical(result, snapshot[2:1, ]) else
-            expect_identical(.row_result_plain(result),
-                .row_result_plain(entry$expected$generated_y_bracket_21))
-        if (include_dplyr) {
-            result <- dplyr::dplyr_row_slice(data, 2:1)
-            expect_false(is_dibble(result))
-            expect_identical(result, dplyr::dplyr_row_slice(snapshot, 2:1))
-        }
-    }
-}
-
-test_that("plain grouped reference frames retain row slicing support", {
-    .check_optional_split_dibble_rows_272(FALSE)
-})
-
-test_that("plain grouped reference slicing through dplyr", {
-    skip_if_not_installed("dplyr", "1.2.1")
-    .check_optional_split_dibble_rows_272(TRUE)
-})
 .check_optional_split_dibble_rows_289 <- function(include_dplyr) {
     for (kind in c("plain", "grouped", "rowwise")) {
         data <- dibble(x = 1:3, y = 4:6)
@@ -600,24 +550,6 @@ test_that("plain grouped reference slicing through dplyr", {
             }
         }
         if (kind != "plain") expect_error(data[, , extra = 1], "unused argument")
-    }
-    for (tibble in c(FALSE, TRUE)) {
-        plain <- data.frame(x = 1:3, y = 4:6)
-        if (tibble) plain <- tibble::as_tibble(plain)
-        data <- reserve_columns(plain)
-        gen(data, z = x)
-        expect_s3_class(data, "dtatools_ref_data")
-        events <- character()
-        i <- function() { events <<- c(events, "i"); 1L }
-        j <- function() { events <<- c(events, "j"); 1L }
-        data[i(), j(), drop = FALSE]
-        expect_identical(events, if (tibble) c("i", "j") else c("j", "i"))
-        events <- character()
-        i_error <- function() { events <<- c(events, "i"); stop("row expression") }
-        j_error <- function() { events <<- c(events, "j"); stop("column expression") }
-        expect_error(data[i_error(), j_error(), drop = FALSE],
-                     if (tibble) "row expression" else "column expression")
-        expect_identical(events, if (tibble) "i" else "j")
     }
 }
 
@@ -678,7 +610,7 @@ test_that("serialized grouping works without loading the dplyr namespace", {
     on.exit(unlink(fixture), add = TRUE)
     grouped <- as_dibble(.group_fixture("g_212_i_typed")$data)
     rowwise <- as_dibble(.group_fixture("g123_x456_rowwise_typed")$data)
-    plain <- reserve_columns(.group_fixture("g_212_i")$data)
+    plain <- as_dibble(.group_fixture("g_212_i")$data)
     gen(plain, y = x)
     saveRDS(list(grouped, rowwise, plain), fixture)
     result <- .dtatools_child_r("serialized-groups", function(path) {
@@ -705,27 +637,21 @@ test_that("serialized grouping works without loading the dplyr namespace", {
     }
 })
 
-
 test_that("the dplyr row hook keeps vctrs row-name repair", {
     skip_if_not_installed("dplyr", "1.2.1")
-    for (tibble in c(FALSE, TRUE)) for (dibble in c(FALSE, TRUE)) {
+    for (tibble in c(FALSE, TRUE)) {
         data <- data.frame(x = dta_long(1:3), y = letters[1:3])
         if (tibble) data <- tibble::as_tibble(data)
-        if (dibble) data <- as_dibble(data) else {
-            data <- reserve_columns(data)
-            gen(data, z = x)
-        }
+        data <- as_dibble(data)
         attr(data, "row.names") <- c("abc", "def", "ghi")
         snapshot <- dtatools:::.reference_snapshot(data)
         for (rows in list(c(3L, 1L, 1L), c(NA_integer_, NA_integer_, 2L), integer())) {
             actual <- dplyr::dplyr_row_slice(data, rows)
-            expected <- dplyr::dplyr_row_slice(snapshot, rows)
-            if (dibble) expected <- dtatools:::.close_dibble(data, expected)
+            expected <- dtatools:::.close_dibble(data, dplyr::dplyr_row_slice(snapshot, rows))
             expect_identical(.row_result_plain(actual), .row_result_plain(expected))
         }
     }
 })
-
 
 .check_optional_split_dibble_rows_419 <- function(include_dplyr) {
     withr::local_options(list(dplyr.legacy_locale = TRUE))
@@ -758,82 +684,27 @@ test_that("legacy ambient locale comparison through dplyr", {
     .check_optional_split_dibble_rows_419(TRUE)
 })
 test_that("bracket planning does not introduce named-argument warnings", {
-    data <- reserve_columns(data.frame(x = 1:3, y = 4:6))
+    data <- dibble(x = 1:3, y = 4:6)
     gen(data, z = x)
     expect_silent(data[2L])
     expect_silent(data[2:1, ])
-    expect_warning(data[i = 2:1, ], "named arguments")
-})
-
-
-test_that("base reference gathers retain base observation metadata and drop shapes", {
-    plain <- data.frame(x = 1:4, y = 5:8)
-    plain$named <- stats::setNames(11:14, letters[1:4])
-    plain$matrix <- I(matrix(1:8, nrow = 4L, dimnames = list(letters[1:4], c("a", "b"))))
-    plain$nested <- data.frame(value = 21:24)
-    data <- reserve_columns(plain)
-    gen(data, generated = x)
-    snapshot <- dtatools:::.reference_snapshot(data)
-    for (rows in list(c(NA_integer_, 2L), c(4L, 1L, 1L))) {
-        expect_identical(data[rows, , drop = FALSE], snapshot[rows, , drop = FALSE])
-    }
-    for (expr in alist(d[1L, c(1L, 1L), drop = TRUE],
-                       d[1L, integer(), drop = TRUE],
-                       d[1L, 99L, drop = TRUE])) {
-        expect_identical(eval(expr, list(d = data)), eval(expr, list(d = snapshot)))
-    }
-    expect_error(data[, 99L, drop = TRUE], "undefined columns")
-    empty <- reserve_columns(data.frame(row.names = letters[1:4]))
-    gen(empty, temporary = 1L)
-    drop_vars(empty, temporary)
-    expect_s3_class(empty, "dtatools_ref_data")
-    snapshot <- dtatools:::.reference_snapshot(empty)
-    expect_identical(empty[1L, , drop = TRUE], snapshot[1L, , drop = TRUE])
-    expect_identical(empty[1L, 1L, drop = TRUE], snapshot[1L, 1L, drop = TRUE])
-})
-
-test_that("reference row subsets preserve the metadata wrapper's policies", {
-    for (tibble in c(FALSE, TRUE)) for (mark in c("raw", "dataset", "variable", "both")) {
-        source <- data.frame(x = 1:3, y = letters[1:3])
-        if (tibble) source <- tibble::as_tibble(source)
-        attr(source, "custom") <- list(key = "kept")
-        attr(source, "notes") <- "raw note"
-        data <- reserve_columns(source)
-        gen(data, z = x)
-        if (mark %in% c("dataset", "both")) add_dta_note(data, "dataset")
-        if (mark %in% c("variable", "both")) add_dta_note(data, "column", variable = "x")
-        expect_s3_class(data, "dtatools_ref_data")
-        snapshot <- dtatools:::.reference_snapshot(data)
-        for (expr in alist(d[, NULL], d[, c("x", "y"), drop = FALSE],
-                           d[c(NA_integer_, 2L), c("x", "y"), drop = FALSE],
-                           d[2:1, ], d[NULL, "x", drop = TRUE],
-                           d[1L, "x", drop = TRUE], d[1L, , drop = TRUE])) {
-            expect_identical(eval(expr, list(d = data)), eval(expr, list(d = snapshot)))
-        }
-        events <- character()
-        rows <- function() { events <<- c(events, "i"); 1L }
-        cols <- function() { events <<- c(events, "j"); 1L }
-        data[rows(), cols(), drop = FALSE]
-        expected_order <- if (tibble && mark == "raw") c("i", "j") else c("j", "i")
-        expect_identical(events, expected_order)
-    }
+    expect_silent(data[i = 2:1, ])
 })
 
 test_that("metadata subscript forcing precedes container argument validation", {
-    for (kind in c("base", "tibble", "grouped", "rowwise")) {
-        data <- data.frame(x = 1:3, y = 4:6)
-        if (kind != "base") data <- tibble::as_tibble(data)
-        if (kind == "grouped") data <- .group_fixture("xy_123_456")$data
-        if (kind == "rowwise") data <- as_dibble(.group_fixture("xy_123_456_typed_rowwise")$data) else {
+    for (kind in c("plain", "grouped", "rowwise")) {
+        data <- switch(kind,
+            plain = dibble(x = 1:3, y = 4:6),
+            grouped = as_dibble(.group_fixture("xy_123_456_typed")$data),
+            rowwise = as_dibble(.group_fixture("xy_123_456_typed_rowwise")$data))
+        if (kind != "rowwise") {
             data <- reserve_columns(data)
             gen(data, marker = x)
         }
         add_dta_note(data, "dataset")
         expect_s3_class(data, "dtatools_ref_data")
         expect_error(data[, stop("column expression"), extra = 1], "column expression")
-        if (kind != "base") {
-            expect_error(data[stop("row expression"), "absent"], "row expression")
-        }
+        expect_error(data[stop("row expression"), "absent"], "row expression")
         events <- character()
         cols <- function() { events <<- c(events, "j"); "absent" }
         rows <- function() { events <<- c(events, "i"); stop("row expression") }
@@ -842,30 +713,6 @@ test_that("metadata subscript forcing precedes container argument validation", {
     }
 })
 
-.check_optional_split_dibble_rows_520 <- function(include_dplyr) {
-    withr::local_options(list(dplyr.legacy_locale = TRUE))
-    if (!include_dplyr) withr::local_collate("C")
-    plain <- tibble::tibble(n = c(NA_real_, NaN, NA_real_), s = c("a", "b", "c"),
-                           f = factor(rep("u", 3L), levels = c("u", "v")), x = 1:3)
-    entry <- if (!include_dplyr) .group_fixture("legacy_C_prefix")
-    data <- reserve_columns(if (include_dplyr)
-        suppressWarnings(dplyr::group_by(plain, n, s, f, .drop = FALSE)) else entry$data)
-    gen(data, marker = x)
-    expect_s3_class(data, "dtatools_ref_data")
-    snapshot <- dtatools:::.reference_snapshot(data)
-    expect_identical(attr(data[3:1, ], "groups"),
-                     if (include_dplyr) suppressWarnings(attr(snapshot[3:1, ], "groups")) else
-                         entry$expected$marker_reversed_groups)
-}
-
-test_that("legacy factor expansion retains contiguous missing-value prefixes", {
-    .check_optional_split_dibble_rows_520(FALSE)
-})
-
-test_that("legacy missing prefix expansion through dplyr", {
-    skip_if_not_installed("dplyr", "1.2.1")
-    .check_optional_split_dibble_rows_520(TRUE)
-})
 .check_optional_split_dibble_rows_532 <- function(include_dplyr) {
     for (explicit in c(FALSE, TRUE)) {
         data <- dibble(x = 1:3, s = c("a", "b", "c"))
@@ -906,34 +753,29 @@ test_that("row-name bookkeeping through dplyr", {
     skip_if_not_installed("dplyr", "1.2.1")
     .check_optional_split_dibble_rows_532(TRUE)
 })
-test_that("plain-reference reconstruction preserves raw payload row names", {
-    skip_if_not_installed("dplyr", "1.2.1")
-    for (tibble in c(FALSE, TRUE)) for (explicit in c(FALSE, TRUE)) {
-        data <- data.frame(x = 1:3, y = 4:6)
-        if (tibble) data <- tibble::as_tibble(data)
-        data <- reserve_columns(data)
-        gen(data, z = x)
-        expect_s3_class(data, "dtatools_ref_data")
-        payload <- data.frame(x = 4:5)
-        if (explicit) attr(payload, "row.names") <- c("a", "b")
-        expect_identical(.row_names_info(dplyr::dplyr_reconstruct(payload, data), 0L),
-                         .row_names_info(payload, 0L))
-    }
-})
-
 
 test_that("the row helper retains its shell's raw row-name policy", {
     for (tibble in c(FALSE, TRUE)) for (row_names in list(NULL, 1:3, c("a", "b", "c"))) {
         data <- data.frame(x = 1:3, y = 4:6)
         if (tibble) data <- tibble::as_tibble(data)
         if (!is.null(row_names)) attr(data, "row.names") <- row_names
-        data <- reserve_columns(data)
-        gen(data, z = x)
-        snapshot <- dtatools:::.reference_snapshot(data)
         for (rows in list(1:3, 3:1, c(NA_integer_, 2L))) {
             expect_identical(.row_names_info(slice_dta_rows(data, rows), 0L),
-                             .row_names_info(snapshot[rows, integer(), drop = FALSE], 0L))
+                             .row_names_info(data[rows, integer(), drop = FALSE], 0L))
         }
+    }
+})
+
+test_that("row helpers never mark a plain container as a mutation target", {
+    for (make in list(data.frame, tibble::tibble)) {
+        data <- make(x = 1:3, y = 4:6)
+        before <- serialize(data, NULL)
+        expect_error(gen(data, z = x), "must be a dibble")
+        expect_error(reorder_dta_rows(data, 3:1), "must be a dibble")
+        expect_error(add_dta_note(data, "dataset"), "must be a dibble")
+        expect_false(inherits(data, "dtatools_ref_data"))
+        expect_identical(serialize(data, NULL), before)
+        expect_false(is_dibble(slice_dta_rows(data, 2:1)))
     }
 })
 

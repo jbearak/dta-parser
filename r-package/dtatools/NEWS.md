@@ -1,5 +1,16 @@
 # dtatools (development version)
 
+* Breaking: mutation by reference now requires a dibble. `gen()`, `egen()`,
+  `repl()`, `replace_values()`, dibble `:=`, `keep_vars()`, `drop_vars()`,
+  `rename_vars()`, `order_vars()`, `reorder_dta_rows()`, the table forms of
+  the label, format, metadata, note and characteristic setters, and
+  `reserve_columns()`, `copy_data()`, `column_capacity()` and
+  `can_add_columns()` reject a base data frame, tibble or data.table with an
+  error naming the recovery, `data <- as_dibble(data)`. Data.table users who
+  want by-reference mutation without Stata typing use data.table's own
+  operators. Plain containers no longer acquire the `dtatools_ref_data` class,
+  and legacy overlay reference state is no longer read. Copying operations,
+  the readers and the writers accept every container as before. See ADR 0036.
 * Reader optimizations are now enabled by default. `read_dta()` reuses prepared
   decode plans and selected-file handles, batches all numeric storage widths,
   and overlaps eligible parallel reads through four bounded input buffers.

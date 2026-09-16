@@ -156,7 +156,7 @@ test_that("group keys use encoded temporal values", {
 })
 
 test_that("computed NaN group labels use the normalized system missing", {
-    data <- reserve_columns(tibble::tibble(x = 0))
+    data <- dibble(x = 0)
     egen(data, g = dta_group_id(x / x, missing = TRUE, label = TRUE))
     expect_identical(attr(data$g, "labels"), c("." = 1))
 })

@@ -7,7 +7,7 @@
 rename_vars(data, ..., .names = NULL)
 }
 \arguments{
-\item{data}{An ungrouped data frame or tibble to mutate.}
+\item{data}{An ungrouped dibble to mutate.}
 
 \item{...}{Replacements of the form \code{new_name = old_name}, where
 \code{old_name} is a bare name or a string.}

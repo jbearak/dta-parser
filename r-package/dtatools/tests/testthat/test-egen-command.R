@@ -85,9 +85,9 @@ test_that("egen uses Stata key identity and does not reorder for by", {
     egen(d, y = dta_total(x), by = g)
     expect_identical(as.double(d$g), before)
     expect_equal(as.double(d$y), c(5, 4, 7, 9, 4))
-    plain <- reserve_columns(data.frame(g = before, x = c(5, 1, 7, 9, 3)))
-    egen(plain, y = dta_total(x), by = g)
-    expect_equal(as.double(plain$y), c(5, 4, 7, 9, 4))
+    untyped <- dibble(g = before, x = c(5, 1, 7, 9, 3))
+    egen(untyped, y = dta_total(x), by = g)
+    expect_equal(as.double(untyped$y), c(5, 4, 7, 9, 4))
 })
 
 test_that("egen stages bysort and commits only after success", {
@@ -147,12 +147,16 @@ test_that("egen does not evaluate values separately for each admitted row", {
 })
 
 test_that("egen validates source NaN and normalizes arithmetic NaN", {
-    d <- reserve_columns(data.frame(x = c(0, 1)))
+    d <- dibble(x = c(0, 1))
     egen(d, y = dta_mean(x / x))
     expect_equal(as.double(d$y), c(1, 1))
     egen(d, extracted = dta_total((x / x)[[1]]))
     expect_equal(as.double(d$extracted), c(0, 0))
-    invalid <- reserve_columns(data.frame(x = c(NaN, 1)))
+    # dibble() refuses NaN on construction; plant it behind the class to
+    # reach egen's own source validation.
+    invalid <- unclass(dibble(x = c(0, 1)))
+    invalid$x <- c(NaN, 1)
+    class(invalid) <- class(d)
     expect_error(egen(invalid, y = dta_mean(x)), "NaN")
     expect_identical(names(invalid), "x")
     raw <- NaN
@@ -204,17 +208,21 @@ test_that("egen preserves aliases and copy isolation through pipelines", {
     expect_identical(dta_storage_type(d$double), "double")
 })
 
-test_that("egen keeps data.table keys unless bysort changes row order", {
+test_that("egen rejects containers that are not dibbles", {
+    expect_error(
+        egen(data.frame(x = c(1, 2)), y = dta_total(x)),
+        "must be a dibble"
+    )
+    expect_error(
+        egen(tibble::tibble(x = c(1, 2)), y = dta_total(x)),
+        "must be a dibble"
+    )
     skip_if_not_installed("data.table")
-    d <- data.table::data.table(g = c(2, 1, 2, 1), x = c(1, 2, 3, 4))
+    d <- data.table::data.table(g = c(2, 1), x = c(1, 2))
     data.table::setkeyv(d, "x")
-    alias <- d
-    egen(d, y = dta_total(x), by = g)
+    expect_error(egen(d, y = dta_total(x), by = g), "must be a dibble")
+    expect_identical(names(d), c("g", "x"))
     expect_identical(data.table::key(d), "x")
-    egen(d, z = dta_total(x), bysort = g)
-    expect_equal(d$g, c(1, 1, 2, 2))
-    expect_null(data.table::key(d))
-    expect_identical(names(alias), names(d))
 })
 
 test_that("egen grouped calculations leave compact source columns untouched", {

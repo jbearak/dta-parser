@@ -75,13 +75,14 @@ test_that("datasig covers names, storage types, labels, and metadata", {
     attr(noted, "notes") <- "a note"
     expect_false(identical(datasig(noted), signature))
 
-    variable_noted <- set_dta_note(base, 2, "variable note", variable = "x")
+    variable_noted <- as_dibble(base)
+    set_dta_note(variable_noted, 2, "variable note", variable = "x")
     expect_false(identical(datasig(variable_noted), signature))
 
-    characterized <- set_dta_characteristic(
-        base, "source", "survey", variable = "x"
-    )
+    characterized <- as_dibble(base)
+    set_dta_characteristic(characterized, "source", "survey", variable = "x")
     expect_false(identical(datasig(characterized), signature))
+    expect_identical(datasig(base), signature)
 
     value_labelled <- base
     attr(value_labelled$x, "labels") <- c(one = 1)

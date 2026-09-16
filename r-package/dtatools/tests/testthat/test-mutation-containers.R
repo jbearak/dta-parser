@@ -7,34 +7,54 @@ container_factories <- function() {
     result
 }
 
-test_that("explicit helper boundaries reject subclasses before evaluating updates", {
-    operations <- list(
-        gen = function(d, touch) gen(d, y = !!touch(1L)),
-        egen = function(d, touch) egen(d, y = dta_mean(x), where = touch(TRUE)),
-        repl = function(d, touch) repl(d, x = !!touch(1L)),
-        keep = function(d, touch) keep_vars(d, tidyselect::all_of(touch("x"))),
-        drop = function(d, touch) drop_vars(d, tidyselect::all_of(touch("x"))),
-        order = function(d, touch) order_vars(d, tidyselect::all_of(touch("x"))),
-        rename = function(d, touch) rename_vars(d, .names = touch("z")),
-        rows = function(d, touch) reorder_dta_rows(d, touch(3:1)),
-        label = function(d, touch) set_var_label(d, .(touch("x")), touch("Label")),
-        labels = function(d, touch) set_var_labels(d, x = touch("Label")),
-        values = function(d, touch) set_val_labels(d, x = touch(c(One = 1))),
-        format = function(d, touch) set_var_format(d, .(touch("x")), touch("%9.0g")),
-        formats = function(d, touch) set_var_formats(d, x, touch("%9.0g")),
-        metadata = function(d, touch) set_dta_metadata(d, source = touch("survey")),
-        note = function(d, touch) set_dta_note(d, touch(1L), "note", variable = "x"),
-        add_note = function(d, touch) add_dta_note(d, touch("note"), variable = "x"),
-        drop_note = function(d, touch) drop_dta_notes(d, touch(1L), variable = "x"),
-        number_note = function(d, touch) renumber_dta_notes(d, touch(2L), variable = "x"),
-        char = function(d, touch) set_dta_characteristic(d, touch("source"), "survey", variable = "x"),
-        drop_char = function(d, touch) drop_dta_characteristics(d, touch("source"), variable = "x"),
-        reserve = function(d, touch) reserve_columns(d, touch(2)),
-        capacity = function(d, touch) can_add_columns(d, touch(2)),
-        copy = function(d, touch) copy_data(d)
-    )
-    for (make in container_factories()) for (operation in operations) {
+operations <- list(
+    gen = function(d, touch) gen(d, y = !!touch(1L)),
+    egen = function(d, touch) egen(d, y = dta_mean(x), where = touch(TRUE)),
+    repl = function(d, touch) repl(d, x = !!touch(1L)),
+    keep = function(d, touch) keep_vars(d, tidyselect::all_of(touch("x"))),
+    drop = function(d, touch) drop_vars(d, tidyselect::all_of(touch("x"))),
+    order = function(d, touch) order_vars(d, tidyselect::all_of(touch("x"))),
+    rename = function(d, touch) rename_vars(d, .names = touch("z")),
+    rows = function(d, touch) reorder_dta_rows(d, touch(3:1)),
+    label = function(d, touch) set_var_label(d, .(touch("x")), touch("Label")),
+    labels = function(d, touch) set_var_labels(d, x = touch("Label")),
+    values = function(d, touch) set_val_labels(d, x = touch(c(One = 1))),
+    format = function(d, touch) set_var_format(d, .(touch("x")), touch("%9.0g")),
+    formats = function(d, touch) set_var_formats(d, x, touch("%9.0g")),
+    metadata = function(d, touch) set_dta_metadata(d, source = touch("survey")),
+    note = function(d, touch) set_dta_note(d, touch(1L), "note", variable = "x"),
+    add_note = function(d, touch) add_dta_note(d, touch("note"), variable = "x"),
+    drop_note = function(d, touch) drop_dta_notes(d, touch(1L), variable = "x"),
+    number_note = function(d, touch) renumber_dta_notes(d, touch(2L), variable = "x"),
+    char = function(d, touch) set_dta_characteristic(d, touch("source"), "survey", variable = "x"),
+    drop_char = function(d, touch) drop_dta_characteristics(d, touch("source"), variable = "x"),
+    reserve = function(d, touch) reserve_columns(d, touch(2)),
+    capacity = function(d, touch) can_add_columns(d, touch(2)),
+    copy = function(d, touch) copy_data(d)
+)
+
+test_that("every mutation helper rejects plain containers before evaluating arguments", {
+    factories <- list(frame = data.frame, tibble = tibble::tibble)
+    if (requireNamespace("data.table", quietly = TRUE,
+                         versionCheck = list(op = ">=", version = "1.18.2.1"))) {
+        factories$table <- data.table::data.table
+    }
+    for (make in factories) for (operation in operations) {
         d <- make(x = 1:3)
+        alias <- d
+        before <- serialize(d, NULL)
+        effects <- 0L
+        touch <- function(x) { effects <<- effects + 1L; x }
+        expect_error(operation(d, touch), "must be a dibble")
+        expect_identical(effects, 0L)
+        expect_false(inherits(d, "dtatools_ref_data"))
+        expect_identical(serialize(alias, NULL), before)
+    }
+})
+
+test_that("explicit helper boundaries reject dibble subclasses before evaluating updates", {
+    for (operation in operations) {
+        d <- dibble(x = 1:3)
         class(d) <- c("custom_container", class(d))
         alias <- d
         before <- serialize(d, NULL)
@@ -77,41 +97,37 @@ test_that("explicit conversion removes custom container classes in isolation", {
     }
 })
 
-test_that("supported containers preserve existing column classes and true aliases", {
-    for (make in container_factories()) {
-        d <- reserve_columns(make(
-            x = 1:3, text = c("a", "b", "c"), flag = c(TRUE, FALSE, TRUE),
-            factor = factor(c("a", "b", "a")), date = as.Date("2020-01-01") + 0:2,
-            datetime = as.POSIXct("2020-01-01", tz = "UTC") + 0:2,
-            owned = dta_byte(1:3)
-        ), 2)
-        classes <- lapply(d, class)
-        container_class <- class(d)
-        alias <- d
-        gen(d, generated = .data$x + 1L)
-        repl(d, x = 7L)
-        set_var_format(d, text, "%8s")
-        set_dta_note(d, 1L, "Checked", variable = "date")
-        markers <- c("dtatools_ref_data", "dtatools_dta_metadata")
-        expect_identical(setdiff(class(d), markers), setdiff(container_class, markers))
-        expect_equal(as.integer(alias$x), rep(7L, 3))
-        expect_equal(as.integer(alias$generated), 2:4)
-        expect_identical(attr(alias$text, "format.stata"), "%8s")
-        # The note marker supplies restoration dispatch without changing the
-        # vector's existing Date or Stata temporal/storage classes.
-        for (name in names(classes)) {
-            expect_identical(setdiff(class(d[[name]]), "dtatools_dta_metadata_vector"),
-                             setdiff(classes[[name]], "dtatools_dta_metadata_vector"))
-        }
+test_that("a dibble preserves existing column classes and true aliases", {
+    d <- reserve_columns(dibble(
+        x = 1:3, text = c("a", "b", "c"), flag = c(TRUE, FALSE, TRUE),
+        factor = factor(c("a", "b", "a")), date = as.Date("2020-01-01") + 0:2,
+        datetime = as.POSIXct("2020-01-01", tz = "UTC") + 0:2,
+        owned = dta_byte(1:3)
+    ), 2)
+    classes <- lapply(d, class)
+    container_class <- class(d)
+    alias <- d
+    gen(d, generated = .data$x + 1L)
+    repl(d, x = 7L)
+    set_var_format(d, text, "%8s")
+    set_dta_note(d, 1L, "Checked", variable = "date")
+    markers <- c("dtatools_ref_data", "dtatools_dta_metadata")
+    expect_identical(setdiff(class(d), markers), setdiff(container_class, markers))
+    expect_equal(as.integer(alias$x), rep(7L, 3))
+    expect_equal(as.integer(alias$generated), 2:4)
+    expect_identical(attr(alias$text, "format.stata"), "%8s")
+    # The note marker supplies restoration dispatch without changing the
+    # vector's existing Date or Stata temporal/storage classes.
+    for (name in names(classes)) {
+        expect_identical(setdiff(class(d[[name]]), "dtatools_dta_metadata_vector"),
+                         setdiff(classes[[name]], "dtatools_dta_metadata_vector"))
     }
 })
 
 test_that("grouped and rowwise metadata writes preserve grouping", {
-    for (make in list(tibble::tibble, dibble)) for (rowwise in c(FALSE, TRUE)) {
-        d <- make(g = c(1L, 1L, 2L), x = 1:3)
-        id <- paste0("g_112_i", if (is_dibble(d)) "_typed" else "", if (rowwise) "_rowwise" else "")
-        prepared <- .group_fixture(id)$data
-        d <- if (is_dibble(d)) as_dibble(prepared) else prepared
+    for (rowwise in c(FALSE, TRUE)) {
+        id <- paste0("g_112_i_typed", if (rowwise) "_rowwise" else "")
+        d <- as_dibble(.group_fixture(id)$data)
         d <- reserve_columns(d, 3)
         alias <- d
         groups <- attr(d, "groups", exact = TRUE)
@@ -171,45 +187,19 @@ test_that("malformed frames and grouping fail before metadata evaluation", {
     }
 })
 
-test_that("dropping the last column keeps each container's public empty shape", {
-    for (make in container_factories()) {
-        d <- reserve_columns(make(x = 1:3), 2)
-        alias <- d
-        drop_vars(d, x)
-        rows <- if (inherits(d, "data.table")) 0L else 3L
-        expect_identical(nrow(alias), rows)
-        expect_identical(abs(.row_names_info(alias, 2L)), rows)
-        expect_identical(nrow(copy_data(d)), rows)
-        expect_identical(nrow(as_dibble(d)), rows)
-        expect_identical(nrow(unserialize(serialize(d, NULL))), rows)
-        gen(d, added = 1L)
-        expect_identical(nrow(alias), rows)
-        expect_identical(length(alias$added), rows)
-        if (inherits(d, "data.table")) {
-            expect_identical(data.table:::selfrefok(d), 1L)
-            data.table::setnames(d, "added", "renamed")
-            expect_identical(names(alias), "renamed")
-        }
-    }
+test_that("dropping the last column keeps the dibble's public empty shape", {
+    d <- reserve_columns(dibble(x = 1:3), 2)
+    alias <- d
+    drop_vars(d, x)
+    expect_identical(nrow(alias), 3L)
+    expect_identical(abs(.row_names_info(alias, 2L)), 3L)
+    expect_identical(nrow(copy_data(d)), 3L)
+    expect_identical(nrow(as_dibble(d)), 3L)
+    expect_identical(nrow(unserialize(serialize(d, NULL))), 3L)
+    gen(d, added = 1L)
+    expect_identical(nrow(alias), 3L)
+    expect_identical(length(alias$added), 3L)
 })
-
-
-test_that("a stray reference marker on data.table requires explicit conversion", {
-    skip_if_not_installed("data.table", "1.18.2.1")
-    d <- data.table::data.table(x = 1:3)
-    class(d) <- c("dtatools_ref_data", class(d))
-    before <- serialize(d, NULL)
-    expect_error(column_capacity(d), "as_dibble")
-    expect_error(reserve_columns(d), "as_dibble")
-    expect_error(copy_data(d), "as_dibble")
-    expect_error(set_var_format(d, x, "%9.0g"), "as_dibble")
-    converted <- as_dibble(d)
-    expect_true(is_dibble(converted))
-    gen(converted, y = 1L)
-    expect_equal(as.integer(converted$x), 1:3)
-    expect_identical(serialize(d, NULL), before)
-})
-
 
 test_that("ordinary dibble brackets keep omitted-column forms", {
     for (grouped in c(FALSE, TRUE)) {
@@ -227,9 +217,8 @@ test_that("ordinary dibble brackets keep omitted-column forms", {
     }
 })
 
-
 test_that("duplicate grouped keys cannot split a logical group", {
-    d <- .group_fixture("g_112_i")$data
+    d <- as_dibble(.group_fixture("g_112_i_typed")$data)
     attr(d, "groups") <- tibble::new_tibble(list(g = c(1L, 1L, 2L),
         .rows = vctrs::list_of(1L, 2L, 3L)), nrow = 3L)
     alias <- d
@@ -242,7 +231,7 @@ test_that("duplicate grouped keys cannot split a logical group", {
     )) expect_error(operation(), "duplicated grouping keys")
     expect_identical(effects, 0L)
     expect_identical(serialize(alias, NULL), before)
-    attr(d, "groups") <- .group_fixture("g_112_i")$groups
+    attr(d, "groups") <- .group_fixture("g_112_i_typed")$groups
     d <- reserve_columns(d, 2)
     gen(d, size = .N)
     egen(d, total = dta_total(x))
@@ -250,11 +239,9 @@ test_that("duplicate grouped keys cannot split a logical group", {
     expect_equal(as.integer(d$total), c(3L, 3L, 3L))
 })
 
-
 test_that("grouping validation ignores label wrappers on keys and identifiers", {
     for (rowwise in c(FALSE, TRUE)) {
-        d <- tibble::tibble(g = c(1L, 1L, 2L), x = 1:3)
-        d <- .group_fixture(if (rowwise) "g_112_i_rowwise" else "g_112_i")$data
+        d <- as_dibble(.group_fixture(if (rowwise) "g_112_i_typed_rowwise" else "g_112_i_typed")$data)
         d <- reserve_columns(d, 1)
         alias <- d
         groups <- attr(d, "groups", exact = TRUE)
@@ -273,7 +260,7 @@ test_that("grouping validation ignores label wrappers on keys and identifiers", 
 })
 
 test_that("group row positions follow physical order before using dot-n", {
-    d <- .group_fixture("g_112_i")$data
+    d <- as_dibble(.group_fixture("g_112_i_typed")$data)
     attr(d, "groups")$.rows[[1L]] <- c(2L, 1L)
     before <- serialize(d, NULL)
     effects <- 0L
@@ -284,7 +271,6 @@ test_that("group row positions follow physical order before using dot-n", {
     expect_identical(serialize(d, NULL), before)
 })
 
-
 test_that("rowwise grouping frames reject ambiguous or inconsistent columns", {
     for (damage in list(
         function(groups) { groups$extra <- groups$g; names(groups)[3L] <- "g"; groups },
@@ -292,7 +278,7 @@ test_that("rowwise grouping frames reject ambiguous or inconsistent columns", {
         function(groups) { attr(groups, "names") <- c("", ".rows"); groups },
         function(groups) { attr(groups, "row.names") <- .set_row_names(2L); groups }
     )) {
-        d <- .group_fixture("g_112_i_rowwise")$data
+        d <- as_dibble(.group_fixture("g_112_i_typed_rowwise")$data)
         attr(d, "groups") <- damage(attr(d, "groups"))
         alias <- d
         before <- serialize(d, NULL)
@@ -304,41 +290,3 @@ test_that("rowwise grouping frames reject ambiguous or inconsistent columns", {
     }
 })
 
-
-test_that("non-dibble reference markers do not enable bracket assignment", {
-    for (make in list(data.frame, tibble::tibble)) for (grouped in c(FALSE, TRUE)) {
-        data <- make(g = c(1L, 1L, 2L), x = 1:3)
-        if (grouped) data <- .group_fixture("g_112_i")$data
-        data <- reserve_columns(data, 3L)
-        gen(data, generated = 1L)
-        expect_s3_class(data, "dtatools_ref_data")
-        expect_false(is_dibble(data))
-        alias <- data
-        before <- serialize(data, NULL)
-        effects <- 0L
-        touch <- function(value) { effects <<- effects + 1L; value }
-        assignments <- list(
-            function() data[, extra := touch(2L)],
-            function() data[touch(TRUE), x := touch(2L)],
-            function() data[, .(touch("extra")) := touch(2L)],
-            function() data[, `:=`(extra = touch(2L), another = touch(3L))],
-            function() {
-                expression <- quote(.(touch("extra")) := touch(2L))
-                data[, !!expression]
-            }
-        )
-        for (assignment in assignments) {
-            expect_error(assignment(), "needs a dibble; use `gen()` or `replace_values()`", fixed = TRUE)
-            expect_identical(effects, 0L)
-            expect_identical(serialize(alias, NULL), before)
-        }
-        for (result in list(data[], data[, ], data[1:2, , drop = FALSE])) {
-            expect_false(is_dibble(result))
-            expect_equal(as.integer(result$x), seq_len(nrow(result)))
-        }
-        repl(data, x = 5L)
-        gen(data, extra = 2L)
-        expect_equal(as.integer(alias$x), rep(5L, 3))
-        expect_equal(as.integer(alias$extra), rep(2L, 3))
-    }
-})

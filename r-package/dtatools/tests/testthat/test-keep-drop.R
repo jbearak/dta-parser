@@ -1,6 +1,5 @@
 test_that("keep_vars keeps physical order and resolves generated columns", {
-    data <- data.frame(a = 1:2, b = 3:4, c = 5:6)
-    data <- reserve_columns(data)
+    data <- dibble(a = 1:2, b = 3:4, c = 5:6)
     alias <- data
     gen(data, generated, a + b)
 
@@ -15,8 +14,7 @@ test_that("keep_vars keeps physical order and resolves generated columns", {
 })
 
 test_that("drop_vars removes physical and generated columns", {
-    data <- tibble::tibble(a = 1:2, b = 3:4, c = 5:6)
-    data <- reserve_columns(data)
+    data <- dibble(a = 1:2, b = 3:4, c = 5:6)
     alias <- data
     gen(data, generated, a + b)
 
@@ -25,29 +23,13 @@ test_that("drop_vars removes physical and generated columns", {
     expect_named(data, c("a", "c"))
     expect_named(alias, c("a", "c"))
     expect_s3_class(data, "tbl_df")
-    # gen() left the tibble a tibble, so its own columns stay bare.
-    expect_false(is_dibble(data))
-    expect_identical(data$a, 1:2)
+    expect_true(is_dibble(data))
+    expect_identical(as.integer(data$a), 1:2)
     expect_identical(as.integer(data$c), 5:6)
 })
 
-test_that("physical-only selection mutates ordinary data aliases", {
-    data <- data.frame(a = 1:2, b = 3:4, c = 5:6)
-    data <- reserve_columns(data)
-    alias <- data
-    kept_a <- data$a
-    kept_c <- data$c
-
-    drop_vars(data, b)
-
-    expect_named(data, c("a", "c"))
-    expect_named(alias, c("a", "c"))
-    expect_identical(data$a, kept_a)
-    expect_identical(data$c, kept_c)
-})
-
 test_that("structural mutation does not alter shared names vectors", {
-    data <- reserve_columns(data.frame(a = 1:2, b = 3:4, c = 5:6))
+    data <- dibble(a = 1:2, b = 3:4, c = 5:6)
     name_alias <- names(data)
     other <- data.frame(x = 1:2, y = 3:4, z = 5:6)
     names(other) <- names(data)
@@ -60,7 +42,7 @@ test_that("structural mutation does not alter shared names vectors", {
 })
 
 test_that("same-size selection materializes generated columns", {
-    data <- reserve_columns(data.frame(a = 1:2, b = 3:4))
+    data <- dibble(a = 1:2, b = 3:4)
     gen(data, generated, a + b)
 
     drop_vars(data, b)
@@ -72,31 +54,6 @@ test_that("same-size selection materializes generated columns", {
     expect_identical(as.double(data$later), c(5, 8))
 })
 
-test_that("ordinary gen keeps physical columns authoritative", {
-    data <- reserve_columns(data.frame(a = 1:3))
-    gen(data, generated, a + 1L)
-
-    repl(data, a, NA_integer_, where = 1)
-
-    expect_identical(data$a, c(NA_integer_, 2L, 3L))
-    expect_identical(unclass(data)[[1L]], data$a)
-    expect_identical(complete.cases(data), c(FALSE, TRUE, TRUE))
-})
-
-test_that("legacy serialized reference state remains readable", {
-    data <- reserve_columns(data.frame(a = 1:2, b = 3:4))
-    gen(data, generated, a + b)
-    state <- attr(data, ".dtatools_ref_state", exact = TRUE)
-    state$physical_names <- names(data)
-    rm("physical_names", "physical_overlay", envir = state)
-    data <- unserialize(serialize(data, NULL))
-
-    expect_named(data, c("a", "b", "generated"))
-    expect_identical(as.data.frame(data)$a, 1:2)
-    repl(data, a, 9L, where = 1)
-    expect_identical(data$a, c(9L, 2L))
-})
-
 test_that("ALTREP data-frame wrappers support structural mutation", {
     data <- structure(
         lapply(1:100, function(index) index),
@@ -104,19 +61,19 @@ test_that("ALTREP data-frame wrappers support structural mutation", {
         row.names = 1L,
         class = "data.frame"
     )
-    data <- reserve_columns(data)
+    data <- as_dibble(data)
     alias <- data
 
     drop_vars(data, v00100)
 
     expect_named(data, sprintf("v%05d", 1:99))
     expect_named(alias, sprintf("v%05d", 1:99))
-    expect_identical(data$v00099, 99L)
+    expect_identical(as.integer(data$v00099), 99L)
 })
 
 test_that("selection errors are atomic", {
     make_data <- function() {
-        data <- reserve_columns(data.frame(a = 1, b = 2))
+        data <- dibble(a = 1, b = 2)
         gen(data, generated, a + b)
         data
     }
@@ -181,7 +138,7 @@ test_that("selection errors are atomic", {
 })
 
 test_that("strict name selection supports ranges, c, and all_of", {
-    data <- reserve_columns(data.frame(a = 1, b = 2, c = 3, d = 4))
+    data <- dibble(a = 1, b = 2, c = 3, d = 4)
     config <- list(requested = c("d", "a"))
 
     keep_vars(data, c(a:b), tidyselect::all_of(config$requested))
@@ -189,13 +146,13 @@ test_that("strict name selection supports ranges, c, and all_of", {
     expect_named(data, c("a", "b", "d"))
 
     all_of <- tidyselect::all_of
-    data <- reserve_columns(data.frame(a = 1, b = 2, c = 3))
+    data <- dibble(a = 1, b = 2, c = 3)
     keep_vars(data, all_of(c("c", "a")))
     expect_named(data, c("a", "c"))
 })
 
 test_that("multiple ranges resolve together", {
-    data <- reserve_columns(as.data.frame(setNames(as.list(1:8), letters[1:8])))
+    data <- dibble(!!!setNames(as.list(1:8), letters[1:8]))
 
     keep_vars(data, c(a:b, d:e), g:h)
 
@@ -206,7 +163,7 @@ test_that("all_of snapshots promises as character names before selection", {
     wrapper <- function(data, requested) {
         keep_vars(data, tidyselect::all_of(requested))
     }
-    data <- reserve_columns(data.frame(a = 1, b = 2))
+    data <- dibble(a = 1, b = 2)
     before <- serialize(data, NULL)
 
     expect_error(
@@ -222,78 +179,37 @@ test_that("all_of snapshots promises as character names before selection", {
     expect_identical(serialize(data, NULL), before)
 })
 
-test_that("data.table materialization clears keys and indexes", {
-    skip_if_not_installed("data.table")
-    data <- data.table::data.table(a = 1:2, b = 3:4, c = 5:6)
-    data.table::setkeyv(data, "a")
-    data.table::setindexv(data, "b")
-    gen(data, generated, a + c)
-
-    drop_vars(data, a, b)
-
-    expect_false(inherits(data, "dtatools_ref_data"))
-    expect_named(data, c("c", "generated"))
-    expect_null(data.table::key(data))
-    expect_length(data.table::indices(data), 0L)
-    data.table::set(
-        data,
-        j = "later",
-        value = data$c + data$generated
-    )
-    expect_identical(as.double(data$later), c(11, 14))
-})
-
 test_that("validated keep-all is a structural no-op", {
-    skip_if_not_installed("data.table")
-    data <- data.table::data.table(a = 1:2, b = 3:4, c = 5:6)
-    data.table::setkeyv(data, "a")
-    data.table::setindexv(data, "b")
-    data <- reserve_columns(data)
+    data <- dibble(a = 1:2, b = 3:4, c = 5:6)
     alias <- data
 
     keep_vars(data, c, a:b)
 
     expect_identical(data, alias)
-    expect_identical(data.table::key(data), "a")
-    expect_identical(data.table::indices(data), "b")
-})
-
-test_that("serialized data.tables require assigned repair and preserve old aliases", {
-    skip_if_not_installed("data.table")
-    data <- unserialize(serialize(data.table::data.table(a = 1:2, b = 3:4), NULL))
-    alias <- data
-    expect_error(drop_vars(data, b), "Assign.*reserve_columns")
-    expect_named(data, c("a", "b"))
-    data <- reserve_columns(data, 0)
-    expect_silent(drop_vars(data, b))
-    expect_named(data, "a")
-    expect_named(alias, c("a", "b"))
-    expect_identical(length(unclass(data)), 1L)
-    expect_silent(drop_vars(data, a))
-    expect_identical(ncol(data), 0L)
+    expect_named(data, c("a", "b", "c"))
 })
 
 test_that("structural mutation uses values installed by repl", {
-    data <- reserve_columns(data.frame(a = 1:3, b = 4:6))
+    data <- dibble(a = 1:3, b = 4:6)
     gen(data, generated, a + b)
     repl(data, a, 9L, where = 2)
     repl(data, generated, 20, where = 3)
 
     keep_vars(data, generated, a)
 
-    expect_identical(data$a, c(1L, 9L, 3L))
+    expect_identical(as.integer(data$a), c(1L, 9L, 3L))
     expect_identical(as.double(data$generated), c(5, 7, 20))
     drop_vars(data, generated)
     expect_named(data, "a")
     repl(data, a, 7L, where = 1)
-    expect_identical(data$a, c(7L, 9L, 3L))
+    expect_identical(as.integer(data$a), c(7L, 9L, 3L))
 })
 
 test_that("surviving columns keep Stata values and metadata", {
     values <- dta_byte(c(1, tagged_missing("a"), NA_real_))
     attr(values, "label") <- "Status"
     attr(values, "labels") <- c(Active = 1)
-    data <- reserve_columns(data.frame(discard = 1:3, status = values))
+    data <- dibble(discard = 1:3, status = values)
     before <- serialize(data$status, NULL)
 
     keep_vars(data, status)
@@ -306,7 +222,7 @@ test_that("surviving columns keep Stata values and metadata", {
 })
 
 test_that("keep and drop support zero-row and zero-column results", {
-    empty <- reserve_columns(data.frame(a = integer(), b = character()))
+    empty <- dibble(a = integer(), b = character())
     gen(empty, generated, numeric())
     keep_vars(empty, generated, a)
     expect_identical(dim(empty), c(0L, 2L))
@@ -318,7 +234,7 @@ test_that("keep and drop support zero-row and zero-column results", {
 })
 
 test_that("later reference mutations see a consistent overlay", {
-    data <- reserve_columns(data.frame(a = 1:2, b = 3:4, c = 5:6))
+    data <- dibble(a = 1:2, b = 3:4, c = 5:6)
     gen(data, first, a + b)
     gen(data, second, first + c)
 
@@ -329,7 +245,7 @@ test_that("later reference mutations see a consistent overlay", {
     expect_named(data, c("a", "c", "second", "third"))
     expect_identical(as.double(data$second), c(99, 12))
     expect_identical(as.double(data$third), c(10, 14))
-    expect_identical(as.data.frame(data)$a, 1:2)
+    expect_identical(as.integer(as.data.frame(data)$a), 1:2)
     expect_identical(names(copy_data(data)), names(data))
 
     restored <- unserialize(serialize(data, NULL))
@@ -337,31 +253,17 @@ test_that("later reference mutations see a consistent overlay", {
     expect_identical(as.data.frame(restored), as.data.frame(data))
 })
 
-test_that("renaming a data.table carries its key and indexes over", {
-    skip_if_not_installed("data.table")
-    data <- data.table::data.table(a = 1:2, b = 3:4, c = 5:6)
-    data.table::setkeyv(data, "a")
-    data.table::setindexv(data, "b")
-    data.table::setindexv(data, c("b", "c"))
-
-    rename_vars(data, x = a, y = b)
-
-    expect_named(data, c("x", "y", "c"))
-    expect_identical(data.table::key(data), "x")
-    expect_identical(
-        data.table::indices(data, vectors = TRUE),
-        list("y", c("y", "c"))
+test_that("keep_vars and drop_vars reject plain containers", {
+    plain <- list(
+        data.frame(a = 1:2, b = 3:4),
+        tibble::tibble(a = 1:2, b = 3:4)
     )
-})
-
-test_that("renaming every data.table column carries its key over", {
-    skip_if_not_installed("data.table")
-    data <- data.table::data.table(a = 1:2, b = 3:4)
-    data.table::setkeyv(data, "a")
-    data.table::setindexv(data, "b")
-
-    rename_vars(data, .names = c("first", "second"))
-
-    expect_identical(data.table::key(data), "first")
-    expect_identical(data.table::indices(data), "second")
+    if (requireNamespace("data.table", quietly = TRUE)) {
+        plain <- append(plain, list(data.table::data.table(a = 1:2, b = 3:4)))
+    }
+    for (data in plain) {
+        expect_error(keep_vars(data, a), "must be a dibble")
+        expect_error(drop_vars(data, b), "must be a dibble")
+        expect_named(data, c("a", "b"))
+    }
 })

@@ -82,9 +82,11 @@ survey <- read_dta("survey.dta")
 `save_arrow()` records the container, and `read_arrow()` restores it unless
 you supply an `output` argument.
 
-Helpers such as `gen()`, `repl()`, and `rename_vars()` update the supplied dataset
-in place. Use `copy_data()` when you need an independent copy. Functions that
-add columns should return the updated dataset for their caller to assign.
+Helpers such as `gen()`, `repl()`, and `rename_vars()` update the supplied dibble
+in place; a tibble, data frame, or data table is rejected until you assign
+`data <- as_dibble(data)`. Use `copy_data()` when you need an independent copy.
+Functions that add columns should return the updated dataset for their caller
+to assign.
 
 ```r
 order_vars(survey, region)
@@ -579,7 +581,7 @@ and `.N` as the within-group row number and count, so `bysort id: replace
 last = _n == _N` becomes one line. `bysort` sorts the dataset by reference
 on the listed columns, in Stata's total order for declared Stata columns
 (finite values, then `.`, then `.a` through `.z`), and then groups by them;
-`by` never sorts. A tibble grouped with `dplyr::group_by()` supplies its
+`by` never sorts. A dibble grouped with `dplyr::group_by()` supplies its
 groups the same way. Stata's parenthesized sort-only keys have no direct
 equivalent: write `bysort id (date):` as `dplyr::arrange()` or
 `reorder_dta_rows()` followed by `by = id`.

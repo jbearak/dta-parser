@@ -10,7 +10,7 @@ set_var_format(data, variable, format)
 set_var_formats(.data, ..., .formats = NULL)
 }
 \arguments{
-\item{data, .data}{A data frame, or a vector for the assigned vector form.}
+\item{data, .data}{A dibble, or a vector for the assigned vector form.}
 
 \item{variable}{One column name using the forms described above. On a
 vector, the second argument is its new format.}

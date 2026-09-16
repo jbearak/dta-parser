@@ -4,35 +4,30 @@ overlay_table <- function(names_out = FALSE) {
         data.frame(id = dta_int(1:5), v = dta_int(1:5), w = dta_int(6:10)),
         path
     )
-    read_dta(path, encoding = "UTF-8", output = "tibble")
+    read_dta(path, encoding = "UTF-8", output = "dibble")
 }
 
 nums <- function(x) as.double(vctrs::vec_data(x))
 
 test_that("order_vars moves selected columns to the front", {
-    data <- data.frame(a = 1:3, b = 4:6, c = 7:9)
+    data <- dibble(a = 1:3, b = 4:6, c = 7:9)
     expect_identical(order_vars(data, c, a), invisible(data))
     expect_identical(names(data), c("c", "a", "b"))
-    expect_identical(data$c, 7:9)
+    expect_identical(as.integer(data$c), 7:9)
 })
 
-test_that("order_vars permutes a tibble and a data.table by reference", {
-    table <- tibble::tibble(a = 1:3, b = 4:6, c = 7:9)
+test_that("order_vars permutes a dibble by reference", {
+    table <- dibble(a = 1:3, b = 4:6, c = 7:9)
     alias <- table
     order_vars(table, c, b, a)
     expect_identical(names(table), c("c", "b", "a"))
     expect_identical(names(alias), c("c", "b", "a"))
-    expect_true(tibble::is_tibble(table))
-    expect_identical(table$a, 1:3)
-
-    dta_table <- data.table::data.table(a = 1:3, b = 4:6, c = 7:9)
-    order_vars(dta_table, b)
-    expect_identical(names(dta_table), c("b", "a", "c"))
-    expect_true(data.table::is.data.table(dta_table))
+    expect_true(is_dibble(table))
+    expect_identical(as.integer(table$a), 1:3)
 })
 
 test_that("order_vars leaves an unchanged order alone", {
-    table <- tibble::tibble(a = 1:3, b = 4:6)
+    table <- dibble(a = 1:3, b = 4:6)
     order_vars(table, a)
     expect_identical(names(table), c("a", "b"))
 })
@@ -74,30 +69,30 @@ test_that("order_vars permutes a structural reference state", {
 })
 
 test_that("order_vars rejects absent and empty selections", {
-    data <- data.frame(a = 1:2, b = 3:4)
+    data <- dibble(a = 1:2, b = 3:4)
     expect_error(order_vars(data, absent))
     expect_error(order_vars(data))
 })
 
 test_that("rename_vars renames by reference", {
-    data <- data.frame(id = 1:3, v1 = 4:6, v2 = 7:9)
+    data <- dibble(id = 1:3, v1 = 4:6, v2 = 7:9)
     expect_identical(rename_vars(data, age_years = v1), invisible(data))
     expect_identical(names(data), c("id", "age_years", "v2"))
-    expect_identical(data$age_years, 4:6)
+    expect_identical(as.integer(data$age_years), 4:6)
 
-    table <- tibble::tibble(a = 1:3, b = 4:6)
+    table <- dibble(a = 1:3, b = 4:6)
     alias <- table
     rename_vars(table, x = a, y = "b")
     expect_identical(names(table), c("x", "y"))
     expect_identical(names(alias), c("x", "y"))
-    expect_true(tibble::is_tibble(table))
+    expect_true(is_dibble(table))
 })
 
 test_that("rename_vars accepts a permutation of existing names", {
-    table <- tibble::tibble(a = 1:3, b = 4:6)
+    table <- dibble(a = 1:3, b = 4:6)
     rename_vars(table, b = a, a = b)
     expect_identical(names(table), c("b", "a"))
-    expect_identical(table$b, 1:3)
+    expect_identical(as.integer(table$b), 1:3)
 })
 
 test_that("rename_vars renames generated columns and keeps them writable", {
@@ -124,7 +119,7 @@ test_that("rename_vars keeps compact columns and metadata", {
 })
 
 test_that("rename_vars rejects malformed replacements", {
-    data <- data.frame(id = 1:2, v1 = 3:4, v2 = 5:6)
+    data <- dibble(id = 1:2, v1 = 3:4, v2 = 5:6)
     expect_error(rename_vars(data, x = absent))
     expect_error(rename_vars(data, v2 = id), "collides")
     expect_error(rename_vars(data, id), "new_name = old_name")
@@ -133,12 +128,12 @@ test_that("rename_vars rejects malformed replacements", {
 })
 
 test_that("rename_vars replaces every name through .names", {
-    table <- tibble::tibble(a = 1:3, b = 4:6)
+    table <- dibble(a = 1:3, b = 4:6)
     alias <- table
     rename_vars(table, .names = c("x", "y"))
     expect_identical(names(table), c("x", "y"))
     expect_identical(names(alias), c("x", "y"))
-    expect_identical(table$x, 1:3)
+    expect_identical(as.integer(table$x), 1:3)
 
     data <- overlay_table()
     gen(data, doubled, v * 2)
@@ -150,9 +145,24 @@ test_that("rename_vars replaces every name through .names", {
 })
 
 test_that("rename_vars rejects a malformed .names", {
-    table <- tibble::tibble(a = 1:3, b = 4:6)
+    table <- dibble(a = 1:3, b = 4:6)
     expect_error(rename_vars(table, .names = "x"), "must give 2 names")
     expect_error(rename_vars(table, .names = c("x", "x")), "distinct")
     expect_error(rename_vars(table, .names = 1:2), "character vector")
     expect_error(rename_vars(table, x = a, .names = c("x", "y")), "not both")
+})
+
+test_that("order_vars and rename_vars reject plain containers", {
+    plain <- list(
+        data.frame(a = 1:2, b = 3:4),
+        tibble::tibble(a = 1:2, b = 3:4)
+    )
+    if (requireNamespace("data.table", quietly = TRUE)) {
+        plain <- append(plain, list(data.table::data.table(a = 1:2, b = 3:4)))
+    }
+    for (data in plain) {
+        expect_error(order_vars(data, b), "must be a dibble")
+        expect_error(rename_vars(data, x = a), "must be a dibble")
+        expect_named(data, c("a", "b"))
+    }
 })

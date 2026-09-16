@@ -7,7 +7,7 @@
 order_vars(data, ...)
 }
 \arguments{
-\item{data}{An ungrouped data frame or tibble to mutate.}
+\item{data}{An ungrouped dibble to mutate.}
 
 \item{...}{Column names, name ranges, \code{c()}, or
 \code{tidyselect::all_of()} character vectors to move to the front.}

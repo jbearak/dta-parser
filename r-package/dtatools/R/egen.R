@@ -48,8 +48,8 @@
 #' `options(dtatools.auto_grow = FALSE)` keeps strict early failure; assign
 #' [reserve_columns()] before calling `egen()` in that mode.
 #'
-#' @param data A data frame, tibble, dibble, or ordinary data table, modified
-#'   by reference under the same capacity rules as `gen()`.
+#' @param data A dibble, modified by reference under the same capacity
+#'   rules as `gen()`.
 #' @param ... One `target = calculation` pair or `target, calculation`,
 #'   optionally followed by an untagged `where`, as in `gen()`.
 #' @param where A logical expression or row positions selecting the
@@ -82,6 +82,7 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     target_expr <- substitute(data)
     destination <- if (is.call(target_expr)) .capture_mutation_binding(target_expr, parent.frame()) else NULL
     if (!is.null(destination)) data <- destination$data
+    .require_mutation_target(data)
     original_data <- data
     auto_grow <- .mutation_auto_grow()
     original <- .as_mutation_data(data, allow_grouped = TRUE,

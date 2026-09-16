@@ -1,44 +1,6 @@
 # New Stage8 regression fixtures; join policy follows the pinned dplyr sources
 # documented in installed NOTICE. Expected row indices below are independent.
 
-test_that("J11 ordinary reference frames retain their next-method routes", {
-    skip_if_not_installed("dplyr", "1.2.1")
-    make_reference <- function() {
-        value <- reserve_columns(data.frame(k = 1:2, value = c(10, NA_real_)))
-        dtatools:::.mark_reference_data(value,
-            dtatools:::.new_reference_state(value, dibble = FALSE))
-    }
-    for (verb in c("inner", "left", "right", "full", "semi", "anti", "cross", "nest")) {
-        x <- make_reference()
-        expect_false(is_dibble(x))
-        expect_true(inherits(x, "dtatools_ref_data"))
-        expect_true(dtatools:::.reference_state_valid(x))
-        y <- data.frame(k = c(2L, 3L), other = c(20, 30))
-        fn <- getExportedValue("dplyr", paste0(verb, "_join"))
-        arguments <- if (verb == "cross") list() else list(by = "k")
-        if (verb == "nest") arguments$name <- "matches"
-        plain <- dtatools:::.reference_snapshot(x)
-        expected <- do.call(fn, c(list(plain, y), arguments))
-        out <- do.call(fn, c(list(x, y), arguments))
-        expect_false(is_dibble(out))
-        expect_identical(out, expected)
-        expect_identical(dtatools:::.reference_snapshot(x), plain)
-    }
-    for (verb in c("insert", "append", "update", "patch", "upsert", "delete")) {
-        x <- make_reference()
-        y <- if (verb %in% c("insert", "append")) data.frame(k = 3L, value = 30) else
-            if (verb == "delete") data.frame(k = 2L) else data.frame(k = 2L, value = 99)
-        fn <- getExportedValue("dplyr", paste0("rows_", verb))
-        arguments <- if (verb == "append") list() else list(by = "k")
-        plain <- dtatools:::.reference_snapshot(x)
-        expected <- do.call(fn, c(list(plain, y), arguments))
-        out <- do.call(fn, c(list(x, y), arguments))
-        expect_false(is_dibble(out))
-        expect_identical(out, expected)
-        expect_identical(dtatools:::.reference_snapshot(x), plain)
-    }
-})
-
 test_that("J01 direct joins preserve duplicate expansion and unmatched order", {
     skip_if_not_installed("dplyr", "1.2.1")
     x <- dibble(k = c(2L, 1L, 2L, 3L), xid = 1:4)
@@ -374,3 +336,21 @@ test_that("J10 custom join keys retain public common-type cast and matching prox
         }
     }
 })
+
+test_that("J11 ordinary frames join as copies and are never mutation targets", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    for (make in list(data.frame, tibble::tibble)) {
+        x <- make(k = 1:2, value = c(10, NA_real_))
+        before <- serialize(x, NULL)
+        expect_error(gen(x, flag = 1L), "must be a dibble")
+        expect_error(repl(x, value = 0), "must be a dibble")
+        expect_false(inherits(x, "dtatools_ref_data"))
+        expect_identical(serialize(x, NULL), before)
+        y <- data.frame(k = c(2L, 3L), other = c(20, 30))
+        out <- dplyr::left_join(x, y, by = "k")
+        expect_false(is_dibble(out))
+        expect_identical(class(out), class(x))
+        expect_identical(serialize(x, NULL), before)
+    }
+})
+

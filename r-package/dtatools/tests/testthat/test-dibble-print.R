@@ -177,19 +177,19 @@ test_that("narrow output and row slicing retain omitted string declarations", {
     expect_match(paste(format(data), collapse = "\n"), "19 more rows", fixed = TRUE)
 })
 
-test_that("ordinary reference containers keep their usual display", {
-    tbl <- reserve_columns(tibble::tibble(x = 1:2, string = c("a", NA)))
-    gen(tbl, typed = dta_int(c(1, 2)))
+test_that("ordinary containers keep their usual display and reject by-reference helpers", {
+    tbl <- tibble::tibble(x = 1:2, string = c("a", NA))
+    before <- serialize(tbl, NULL)
+    expect_error(gen(tbl, typed = dta_int(c(1, 2))), "must be a dibble")
     expect_false(is_dibble(tbl))
+    expect_identical(serialize(tbl, NULL), before)
     expect_match(format(tbl)[[1L]], "^# A tibble:")
     expect_match(paste(format(tbl), collapse = "\n"), "<int>", fixed = TRUE)
     expect_match(paste(format(tbl), collapse = "\n"), "<chr>", fixed = TRUE)
-    expect_identical(format(tbl), format(dtatools:::.reference_snapshot(tbl)))
-    frame <- reserve_columns(data.frame(x = 1:2))
-    gen(frame, y = 1L)
-    expect_identical(format(frame), format(dtatools:::.reference_snapshot(frame)))
+    frame <- data.frame(x = 1:2)
+    expect_error(gen(frame, y = 1L), "must be a dibble")
+    expect_identical(format(frame), format(data.frame(x = 1:2)))
 })
-
 test_that("printing preserves cells metadata aliases and compact backing", {
     data <- read_dta(fixture("all_types_v118.dta"))
     gen(data, generated = c("a", "", "b"), where = 1:3)

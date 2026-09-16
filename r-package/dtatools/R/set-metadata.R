@@ -64,7 +64,7 @@
 #' format language, change values, or convert a vector to a date or string.
 #' `NULL` removes the format.
 #'
-#' @param data,.data A data frame, or a vector for the assigned vector form.
+#' @param data,.data A dibble, or a vector for the assigned vector form.
 #' @param variable One column name using the forms described above. On a
 #'   vector, the second argument is its new format.
 #' @param format One Stata display format or `NULL`.
@@ -79,7 +79,7 @@
 #' set_var_formats(survey, age = "%9.0g", .formats = list(income = "%10.0g"))
 #' @export
 set_var_format <- function(data, variable, format) {
-    .validate_metadata_input(data)
+    .require_metadata_target(data)
     if (!is.data.frame(data)) {
         if (missing(variable) && missing(format)) {
             stop("Supply a vector `format`, or NULL to remove it", call. = FALSE)
@@ -98,7 +98,7 @@ set_var_format <- function(data, variable, format) {
 #' @rdname set_var_format
 #' @export
 set_var_formats <- function(.data, ..., .formats = NULL) {
-    .validate_metadata_input(.data)
+    .require_metadata_target(.data)
     quoted <- substitute(...())
     dots <- if (is.data.frame(.data) && is.null(.formats) &&
         .is_positional_label_dots(quoted)) {
@@ -203,7 +203,7 @@ set_var_formats <- function(.data, ..., .formats = NULL) {
 #' set_dta_metadata(survey, label = "Baseline", source = "interviews")
 #' @export
 set_dta_metadata <- function(x, ..., .metadata = NULL, variable = NULL) {
-    .validate_metadata_input(x)
+    .require_metadata_target(x)
     dots <- rlang::dots_list(..., .homonyms = "keep", .ignore_empty = "none")
     if (!is.null(.metadata) && !is.list(.metadata)) {
         stop("`.metadata` must be a named list or NULL", call. = FALSE)

@@ -251,13 +251,15 @@ test_that("plain containers do not gain bracket assignment", {
     tbl <- tibble::tibble(x = 1)
     expect_error(tbl[1, y := 1])
     expect_identical(names(tbl), "x")
-    # Reference bookkeeping does not grant the dibble-only assignment form.
-    marked <- reserve_columns(data.frame(x = c(1, 2)))
-    gen(marked, y = x)
+    # No by-reference helper marks a plain frame either: it is rejected
+    # and left as it was.
+    marked <- data.frame(x = c(1, 2), y = c(1, 2))
     alias <- marked
     before <- serialize(marked, NULL)
+    expect_error(gen(marked, w = x), "must be a dibble")
     expect_false(is_dibble(marked))
-    expect_error(marked[x > 1, z := 1], "needs a dibble")
+    expect_false(inherits(marked, "dtatools_ref_data"))
+    expect_error(marked[x > 1, z := 1])
     expect_identical(serialize(alias, NULL), before)
     # Explicit, assigned conversion enables the same selective assignment
     # on its independent dibble result.

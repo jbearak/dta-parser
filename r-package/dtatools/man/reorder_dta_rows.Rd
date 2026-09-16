@@ -7,8 +7,7 @@
 reorder_dta_rows(data, rows)
 }
 \arguments{
-\item{data}{An ordinary base data frame, tibble, dibble, or data.table,
-modified by reference.}
+\item{data}{A dibble, modified by reference.}
 
 \item{rows}{A permutation of \code{seq_len(nrow(data))} following
 \code{\link[vctrs:vec_as_location]{vctrs::vec_as_location()}} semantics, without missing locations.

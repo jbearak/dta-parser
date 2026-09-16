@@ -8,7 +8,7 @@ native_generation_interrupt_cases <- function(package_path, load_package, mode, 
     inject <- get("C_dtatools_inject_generation_interrupt", asNamespace("dtatools"))
     run_case <- function(name, values, existing = FALSE, dictionary = FALSE) {
         on.exit(.Call(inject, 0L), add = TRUE)
-        data <- reserve_columns(data.frame(anchor = dta_byte(.size = 8L)))
+        data <- dibble(anchor = dta_byte(.size = 8L))
         if (existing) gen(data, prior, 1)
         alias <- data
         before <- serialize(data, NULL)

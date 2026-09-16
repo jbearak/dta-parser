@@ -23,21 +23,24 @@ test_that("dibble class is public identity independently of reference ownership"
     expect_identical(names(restored), "x")
 })
 
-test_that("reference support does not grant ordinary containers dibble identity", {
+test_that("ordinary containers are never mutation targets and never gain dibble identity", {
     factories <- list(data.frame, tibble::tibble)
     if (requireNamespace("data.table", quietly = TRUE)) {
         factories <- c(factories, list(data.table::data.table))
     }
     for (factory in factories) {
-        data <- reserve_columns(factory(x = 1:3, text = c("a", NA, "")), 1L)
+        data <- factory(x = 1:3, text = c("a", NA, ""))
         columns <- lapply(data, attributes)
-        gen(data, y = 1L)
+        before <- serialize(data, NULL)
+        expect_error(reserve_columns(data, 1L), "must be a dibble")
+        expect_error(gen(data, y = 1L), "must be a dibble")
+        expect_error(copy_data(data), "must be a dibble")
         expect_false(inherits(data, "dibble"))
+        expect_false(inherits(data, "dtatools_ref_data"))
         expect_false(is_dibble(data))
         expect_identical(attributes(data$x), columns$x)
         expect_identical(attributes(data$text), columns$text)
-        expect_false(inherits(copy_data(data), "dibble"))
-        expect_false(inherits(reserve_columns(data), "dibble"))
+        expect_identical(serialize(data, NULL), before)
     }
 })
 
@@ -115,12 +118,12 @@ test_that("grouping and metadata class identity through dplyr", {
             expect_identical(serialize(alias, NULL), before)
         }
     }
-    ordinary <- reserve_columns(tibble::tibble(x = 1:3))
-    gen(ordinary, y = 1L)
-    expect_identical(dtatools:::.reference_state(ordinary)$dibble, FALSE)
+    ordinary <- tibble::tibble(x = 1:3)
+    expect_error(gen(ordinary, y = 1L), "must be a dibble")
+    expect_null(dtatools:::.reference_state(ordinary))
     restored <- unserialize(serialize(ordinary, NULL))
     expect_false(is_dibble(restored))
-    expect_false(inherits(reserve_columns(restored), "dibble"))
+    expect_error(reserve_columns(restored), "must be a dibble")
     expect_match(format(restored)[[1L]], "^# A tibble:")
 }
 

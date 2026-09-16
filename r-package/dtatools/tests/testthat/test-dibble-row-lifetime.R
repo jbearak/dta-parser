@@ -159,23 +159,23 @@ test_that("S6-L03 nested row verbs restore outer context after success and error
     expect_identical(.s6_ids(dplyr::filter(data, TRUE)), 1:4)
 })
 
-test_that("S6-L04 plain reference-marked frame fallback preserves its container policy", {
+test_that("S6-L04 plain frames are never mutation targets and keep their container policy", {
     skip_if_not_installed("dplyr", "1.2.1")
     withr::local_seed(7)
-    for (tibble in c(FALSE, TRUE)) for (operation in .s6_row_operations()) {
+    for (tibble in c(FALSE, TRUE)) {
         source <- data.frame(id = 1:4, x = c(4, 1, 3, 2))
         if (tibble) source <- tibble::as_tibble(source)
-        source <- reserve_columns(source)
-        gen(source, staged = x)
-        expect_s3_class(source, "dtatools_ref_data")
+        before <- serialize(source, NULL)
+        expect_error(gen(source, staged = x), "must be a dibble")
+        expect_false(inherits(source, "dtatools_ref_data"))
         expect_false(is_dibble(source))
-        plain <- dtatools:::.reference_snapshot(source)
-        set.seed(7)
-        expected <- operation(plain)
-        set.seed(7)
-        actual <- operation(source)
-        expect_identical(.s6_plain(actual), expected)
-        expect_false(is_dibble(actual))
+        expect_identical(serialize(source, NULL), before)
+        for (operation in .s6_row_operations()) {
+            set.seed(7)
+            actual <- operation(source)
+            expect_false(is_dibble(actual))
+            expect_identical(class(actual), class(source))
+        }
     }
 })
 

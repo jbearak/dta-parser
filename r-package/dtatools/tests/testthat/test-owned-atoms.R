@@ -1082,6 +1082,8 @@ test_that("Arrow UTF-8 preflight retains its original fallback when base convers
     for (value in owned_atom_fixtures()[c("string", "declared", "logical")]) for (kind in names(exports)) {
         source <- dibble(x = value)
         exported <- exports[[kind]](source$x)
+        # Explicit writes need a dibble target; data.table keeps its own operator.
+        if (kind != "data.table") exported <- as_dibble(exported)
         if (include_dplyr) selected <- dplyr::rename(source, y = x)
         replace_values(source, x, source$x[2L], where = 1L)
         source_after <- .deep_copy_value(source$x)

@@ -10,8 +10,8 @@ column_capacity(data)
 can_add_columns(data, n = 1L)
 }
 \arguments{
-\item{data}{A dibble, tibble, base data frame, or data table. data.table
-support requires data.table 1.18.2.1 or newer.}
+\item{data}{A dibble. Assign \code{data <- as_dibble(data)} to convert another
+container first.}
 
 \item{n}{A finite, nonnegative whole number of additional columns.}
 }

@@ -23,7 +23,7 @@
 #' [reserve_columns()] after base serialization, copying, or subsetting when
 #' needed. Helpers never rebuild a table or rebind a function parameter.
 #'
-#' @param data An ungrouped data frame or tibble to mutate.
+#' @param data An ungrouped dibble to mutate.
 #' @param ... Column names, name ranges, `c()`, or
 #'   `tidyselect::all_of()` character vectors to keep or drop.
 #' @return `data`, invisibly.
@@ -35,6 +35,7 @@
 #' names(survey)
 #' @export
 keep_vars <- function(data, ...) {
+    .require_mutation_target(data)
     .as_mutation_data(data)
 
     dots <- rlang::enquos(...)
@@ -45,6 +46,7 @@ keep_vars <- function(data, ...) {
 #' @rdname keep_vars
 #' @export
 drop_vars <- function(data, ...) {
+    .require_mutation_target(data)
     .as_mutation_data(data)
 
     dots <- rlang::enquos(...)
@@ -66,7 +68,7 @@ drop_vars <- function(data, ...) {
 #' values, labels, and compact representations all survive the move.
 #' Columns created by `gen()` may be reordered alongside physical ones.
 #'
-#' @param data An ungrouped data frame or tibble to mutate.
+#' @param data An ungrouped dibble to mutate.
 #' @param ... Column names, name ranges, `c()`, or
 #'   `tidyselect::all_of()` character vectors to move to the front.
 #' @return `data`, invisibly.
@@ -76,6 +78,7 @@ drop_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 order_vars <- function(data, ...) {
+    .require_mutation_target(data)
     .as_mutation_data(data)
 
     dots <- rlang::enquos(...)
@@ -100,7 +103,7 @@ order_vars <- function(data, ...) {
 #' `names<-` would, but by reference. The vector must give one name per
 #' visible column, in order.
 #'
-#' @param data An ungrouped data frame or tibble to mutate.
+#' @param data An ungrouped dibble to mutate.
 #' @param ... Replacements of the form `new_name = old_name`, where
 #'   `old_name` is a bare name or a string.
 #' @param .names A character vector of replacement names, one per column,
@@ -114,6 +117,7 @@ order_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 rename_vars <- function(data, ..., .names = NULL) {
+    .require_mutation_target(data)
     .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
 

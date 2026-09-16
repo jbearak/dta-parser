@@ -1,5 +1,5 @@
 test_that("note accessors preserve gaps, empty text, scope, and stable renumbering", {
-    data <- data.frame(x = 1:2, y = 3:4)
+    data <- dibble(x = 1:2, y = 3:4)
     original <- copy_data(data)
     data <- set_dta_note(data, 4, "four")
     data <- set_dta_note(data, 1, "")
@@ -22,7 +22,7 @@ test_that("note accessors preserve gaps, empty text, scope, and stable renumberi
 })
 
 test_that("characteristic accessors preserve order, Unicode, and empty values", {
-    data <- data.frame(x = 1)
+    data <- dibble(x = 1)
     data <- set_dta_characteristic(data, "source", "")
     data <- set_dta_characteristic(data, "café", "naïve")
     data <- set_dta_characteristic(data, "role", "id", variable = "x")
@@ -43,7 +43,7 @@ test_that("characteristic accessors preserve order, Unicode, and empty values", 
 })
 
 test_that("metadata accessors reject malformed and reserved input atomically", {
-    data <- data.frame(x = 1)
+    data <- dibble(x = 1)
     expect_error(set_dta_note(data, 0, "bad"), "1 through 9,999")
     expect_error(set_dta_note(data, 10000, "bad"), "1 through 9,999")
     expect_error(set_dta_note(data, 1.5, "bad"), "1 through 9,999")
@@ -111,20 +111,27 @@ test_that("metadata accessors reject malformed and reserved input atomically", {
         "malformed Stata characteristic metadata"
     )
     expect_error(dta_notes(data, "missing"), "does not exist")
-    expect_identical(attributes(data), attributes(data.frame(x = 1)))
+    expect_identical(
+        attributes(as.data.frame(data)),
+        attributes(as.data.frame(dibble(x = 1)))
+    )
 })
 
 test_that("base and tibble subsetting preserve Stata metadata", {
+    source <- dibble(x = 1:2, y = 3:4)
+    set_dta_note(source, 3, "dataset")
+    set_dta_characteristic(source, "source", "survey")
+    set_dta_note(source, 2, "x note", variable = "x")
+    set_dta_characteristic(source, "role", "id", variable = "x")
+    # Plain copies keep the metadata attributes and the marker class that
+    # routes `[` through the metadata-preserving methods.
     inputs <- list(
-        base = data.frame(x = 1:2, y = 3:4),
-        tibble = tibble::tibble(x = 1:2, y = 3:4)
+        base = as.data.frame(source),
+        tibble = tibble::as_tibble(source)
     )
     for (kind in names(inputs)) {
         data <- inputs[[kind]]
-        data <- set_dta_note(data, 3, "dataset")
-        data <- set_dta_characteristic(data, "source", "survey")
-        data <- set_dta_note(data, 2, "x note", variable = "x")
-        data <- set_dta_characteristic(data, "role", "id", variable = "x")
+        class(data) <- c("dtatools_dta_metadata", class(data))
 
         subsets <- list(
             rows = data[1L, , drop = FALSE],
@@ -183,10 +190,14 @@ test_that("base and tibble subsetting preserve Stata metadata", {
             )
         }
 
-        cleared <- drop_dta_notes(data)
-        cleared <- drop_dta_characteristics(cleared)
-        cleared <- drop_dta_notes(cleared, variable = "x")
-        cleared <- drop_dta_characteristics(cleared, variable = "x")
+        cleared <- as_dibble(data)
+        expect_identical(dta_notes(cleared), c(`3` = "dataset"))
+        drop_dta_notes(cleared)
+        drop_dta_characteristics(cleared)
+        drop_dta_notes(cleared, variable = "x")
+        drop_dta_characteristics(cleared, variable = "x")
+        expect_length(dta_notes(cleared), 0L)
+        expect_length(dta_characteristics(cleared, "x"), 0L)
         expect_false(inherits(cleared, "dtatools_dta_metadata"))
     }
 })
@@ -392,7 +403,7 @@ test_that("wide subsets restore only metadata-bearing variables", {
 })
 
 test_that("writers reject manually attached over-limit metadata safely", {
-    data <- data.frame(x = 1)
+    data <- dibble(x = 1)
     expect_error(
         set_dta_characteristic(data, "source", strrep("x", 67785L)),
         "67,784-byte"
@@ -512,8 +523,8 @@ test_that("empty write metadata uses one native sentinel at high column counts",
 })
 
 test_that("Arrow retains `_dta` variable metadata that DTA cannot represent", {
-    data <- data.frame(`_dta` = 1, check.names = FALSE)
-    data <- set_dta_note(data, 1, "variable note", variable = "_dta")
+    data <- dibble(`_dta` = 1)
+    set_dta_note(data, 1, "variable note", variable = "_dta")
     arrow <- tempfile(fileext = ".arrow")
     dta <- tempfile(fileext = ".dta")
     on.exit(unlink(c(arrow, dta)), add = TRUE)
@@ -533,13 +544,13 @@ test_that("Arrow retains `_dta` variable metadata that DTA cannot represent", {
 })
 
 test_that("DTA and Arrow round trips retain dataset and projected variable metadata", {
-    data <- data.frame(x = dta_int(c(1, 2)), y = c("a", "b"))
+    data <- dibble(x = dta_int(c(1, 2)), y = c("a", "b"))
     attr(data$x, "labels") <- c(one = 1L, two = 2L)
-    data <- set_dta_note(data, 3, "dataset gap")
-    data <- set_dta_characteristic(data, "source", "survey")
-    data <- set_dta_note(data, 2, "x note", variable = "x")
-    data <- set_dta_characteristic(data, "role", "id", variable = "x")
-    data <- set_dta_note(data, 1, "y note", variable = "y")
+    set_dta_note(data, 3, "dataset gap")
+    set_dta_characteristic(data, "source", "survey")
+    set_dta_note(data, 2, "x note", variable = "x")
+    set_dta_characteristic(data, "role", "id", variable = "x")
+    set_dta_note(data, 1, "y note", variable = "y")
 
     dta <- tempfile(fileext = ".dta")
     arrow <- tempfile(fileext = ".arrow")

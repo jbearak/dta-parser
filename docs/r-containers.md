@@ -22,46 +22,43 @@ mutation. The other supported containers do not require data.table.
 
 | Operation | dibble | tibble | data.frame | data.table |
 | --- | --- | --- | --- | --- |
-| `gen(data, y = v)` | Reference | Reference; stays a tibble with existing columns unchanged | Reference; stays a base data frame with existing columns unchanged | Reference; installs a physical column |
-| `egen(data, y = dta_mean(x))` | Reference | Reference; stays a tibble | Reference; stays a base data frame | Reference; installs a physical column |
-| `repl(data, y = v, where = )` | Reference | Reference | Reference | Reference; invalidates keys and indexes on the changed column only |
-| `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()` | Reference | Reference | Reference | Reference |
-| `reorder_dta_rows(data, perm)` | Reference | Reference | Reference | Reference; drops the `sorted` marker and secondary indexes |
+| `gen(data, y = v)`, `egen(data, y = dta_mean(x))` | Reference | Error: assign `data <- as_dibble(data)` | Error | Error; use data.table's own `:=` or `set()` |
+| `repl(data, y = v, where = )` | Reference | Error | Error | Error |
+| `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`, `reorder_dta_rows()` | Reference | Error | Error | Error |
 | `data[i, y := v]` | Reference | Error | Error | data.table's own `:=`: reference, ignoring declared Stata storage |
+| `set_var_label()`, `set_val_labels()`, `set_var_format()`, `set_dta_metadata()`, note and characteristic setters, on a table | Reference | Error | Error | Error |
+| `reserve_columns()`, `copy_data()`, `column_capacity()`, `can_add_columns()` | Reference / inspect | Error | Error | Error |
 | `dplyr::mutate()` and the other verbs | Copy → dibble | Copy → tibble | Copy → data.frame | Copy → data.table |
 | `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, `row.names<-` | Copy | Copy | Copy | Copy |
 | `var_label(data$x) <-`, `val_labels(data$x) <-`, `attr(data$x, ...) <-` | Copy | Copy | Copy | Copy |
-| `set_var_label()`, `set_var_labels()`, `set_val_labels()` on a data frame | Reference | Reference | Reference | Reference |
-| `set_var_format()`, `set_var_formats()`, `set_dta_metadata()` on a data frame | Reference | Reference | Reference | Reference |
-| `set_dta_note()`, `add_dta_note()`, `drop_dta_notes()`, `renumber_dta_notes()`, `set_dta_characteristic()`, `drop_dta_characteristics()` on a data frame | Reference | Reference | Reference | Reference |
 | `slice_dta_rows(data, i)` | Copy → dibble | Copy → tibble | Copy → data.frame | Copy → data.table |
 | `data[i, ]`, `subset()`, `transform()`, `within()`, `head()`, `rbind()`, `cbind()` | Copy → dibble | Copy → tibble | Copy → data.frame | data.table's own behavior |
-| Joins, `bind_rows()` | Copy → dibble when the dibble is first | Copy → tibble | Copy → data.frame | Copy → data.table |
-| `copy_data()`, `tibble::as_tibble()` | Copy, independent | Copy, independent | Copy, independent | Copy, independent |
+| Joins, `bind_rows()`, `dta_merge()`, `dta_append()` | Copy → dibble when the dibble is first | Copy → tibble | Copy → data.frame | Copy → data.table |
+| `tibble::as_tibble()`, `as.data.frame()` | Copy, independent | Copy, independent | Copy, independent | Copy, independent |
 
-`gen()` never changes what kind of table it was handed. A caller-prepared tibble stays a tibble, with R's own semantics for the replacement operators and its existing columns untouched, exactly as a base data frame does however often `gen()` has run on it. `is_dibble()` reports `FALSE` throughout. Call `as_dibble()` when you want the Stata dataset.
+Only a dibble is a mutation target. The by-reference helpers were written before the dibble existed and once accepted every container; [ADR 0036](./adr/0036-mutate-by-reference-only-on-dibbles.md) restricts them to the container built for that contract. A tibble, data frame, or data table stays a copy-on-modify R object throughout; convert with `as_dibble()` when you want the Stata dataset, or use data.table's own operators when you want its by-reference semantics without Stata typing.
 
 Ordinary replacement uses copy-and-rebind semantics in every container. For metadata writes that must reach a caller, use `set_var_format()`, `set_var_label()`, `set_val_labels()`, or the note and characteristic helpers. Converting with `data <- as_dibble(data)` does not make function-local nested replacement mutate the caller.
 
 Supported ordinary double columns can use package-owned backing without changing
 their R type or classes. Independent dibble results share those values until a
 write needs isolation. Explicit helpers still modify the supplied physical table
-in every supported container. Capturing a borrowed column can cost one column
+in a dibble. Capturing a borrowed column can cost one column
 copy; later private sparse writes reuse that backing. A source table and a result
 remain independent in either direction. This storage change requires no new
 mutation API or conversion step.
 
-`[i, y := v]` is a dibble form. A data table runs its own bracket implementation, with its own storage and promotion rules; plain tibbles and data frames have no `:=` form. `gen()` and `repl()` are the explicit spellings shared by all four containers.
+`[i, y := v]` is a dibble form. A data table runs its own bracket implementation, with its own storage and promotion rules; plain tibbles and data frames have no `:=` form. `gen()` and `repl()` are the explicit spellings of the same dibble operations.
 
-Grouping works the same way everywhere: `by = ` groups in current row order, `bysort = ` sorts by reference and then groups, and a grouped tibble or dibble supplies its dplyr groups. The order of operations is Stata's — groups first, then row selection and values per group, with `.n` and `.N` as the within-group row number and count — rather than data.table's, which applies `i` before grouping.
+Grouping works the same way in every helper: `by = ` groups in current row order, `bysort = ` sorts by reference and then groups, and a grouped dibble supplies its dplyr groups. The order of operations is Stata's — groups first, then row selection and values per group, with `.n` and `.N` as the within-group row number and count — rather than data.table's, which applies `i` before grouping.
 
 ## Class identity and older objects
 
 An ungrouped dibble has class
 `c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")`.
-Grouping and metadata classes follow the first two classes. Ordinary tibbles and
-base frames can acquire `dtatools_ref_data` support through explicit helpers;
-they do not acquire `dibble` or change their existing column classes.
+Grouping and metadata classes follow the first two classes. Only a dibble
+carries `dtatools_ref_data`; the explicit helpers reject other containers, so
+an ordinary tibble or base frame never acquires it.
 
 Use `is_dibble(data)` for recognition across versions. It recognizes the new
 class and supported older serialized dibbles that recorded their type only in
@@ -78,7 +75,7 @@ mutation. Current dibble identity survives that loss of preparation.
 
 ## What column type results
 
-A dibble types the whole dataset. Plain tibbles, data frames, and data tables keep their existing column classes. `gen()` and `egen()` apply Stata generation rules to their new column on every supported container. Ordinary operations on the other containers retain their own R column semantics. The last column below describes those ordinary operations, not generation.
+A dibble types the whole dataset. Plain tibbles, data frames, and data tables keep their existing column classes, and `gen()` and `egen()` do not accept them. The last column below describes ordinary R operations on those containers, not generation.
 
 | Value produced by the expression | `gen()`, `egen()`, and a new `:=` column | `mutate()`, `transform()`, `$<-` on a dibble | tibble, data.frame, data.table |
 | --- | --- | --- | --- |

@@ -145,7 +145,7 @@
         # argument-matching errors without loading either implementation.
         function(x, i, j, drop = FALSE) NULL
     } else if (inherits(snapshot, "tbl_df"))
-        utils::getS3method("[", "tbl_df") else `[.data.frame`
+        utils::getS3method("[", "tbl_df", envir = asNamespace("tibble")) else `[.data.frame`
     matched <- match.call(method, call, expand.dots = TRUE)
     supplied_i <- "i" %in% names(matched)
     supplied_j <- "j" %in% names(matched)

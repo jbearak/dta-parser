@@ -94,8 +94,11 @@ test_that("direct Arrow dibbles normalize ordinary R columns and retain metadata
         datetime = as.POSIXct(c(1, NA, 3), origin = "1970-01-01", tz = "UTC"),
         duration = as.difftime(c(1, NA, 3), units = "hours"), raw = as.raw(1:3)
     )
-    set_dta_note(data, 1L, "dataset note")
-    set_dta_note(data, 2L, "variable note", variable = "text")
+    # A tibble is not a mutation target; the vector form and the dataset
+    # attributes carry the notes into the Arrow file.
+    data$text <- set_dta_note(data$text, 2L, "variable note")
+    attr(data, "notes") <- "dataset note"
+    attr(data, "stata.note.numbers") <- 1L
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(data, path)

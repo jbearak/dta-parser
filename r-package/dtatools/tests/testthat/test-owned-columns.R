@@ -5,20 +5,20 @@ test_that("bounded generation shape checks retain wide and encoded fallbacks", {
     for (count in c(2047L, 2048L, 2049L)) {
         data <- structure(rep(list(1L), count), names = sprintf("v%04d", seq_len(count)),
                           class = "data.frame", row.names = c(NA_integer_, -1L))
-        data <- reserve_columns(data, n = 1L)
+        data <- reserve_columns(as_dibble(data), n = 1L)
         expect_identical(.Call(C_dtatools_mutation_shape, data, 1L), count <= 2048L)
         gen(data, added, 9L)
         expect_identical(names(data)[[count + 1L]], "added")
         expect_identical(as.integer(data$added), 9L)
-        expect_identical(data[[count]], 1L)
+        expect_identical(as.integer(data[[count]]), 1L)
     }
     latin <- iconv("\u00e9", from = "UTF-8", to = "latin1")
     data <- structure(list(1L, 2L), names = c(latin, "\u00e9"),
                       class = "data.frame", row.names = c(NA_integer_, -1L))
     expect_false(.Call(C_dtatools_mutation_shape, data, 1L))
-    expect_error(gen(data, added, 9L), "unique, non-missing column names")
+    expect_error(as_dibble(data), "unique, non-missing column names")
     names(data) <- c(latin, "other")
-    data <- reserve_columns(data, n = 1L)
+    data <- reserve_columns(as_dibble(data), n = 1L)
     gen(data, added, 9L)
     expect_identical(as.integer(data$added), 9L)
 })
@@ -36,7 +36,7 @@ test_that("generation shape validation never invokes foreign class callbacks", {
     classes <- .Call(C_dtatools_callback_character, "Date", function() NULL)
     column <- c(1, 2, 3)
     attr(column, "class") <- classes
-    data <- reserve_columns(data.frame(x = c(1, 2, 3)), n = 1L)
+    data <- reserve_columns(dibble(x = c(1, 2, 3)), n = 1L)
     .Call(C_dtatools_set_data_column, data, 1L, column)
     .Call(C_dtatools_arm_callback_character, classes, function() {
         calls <<- calls + 1L
@@ -50,7 +50,7 @@ test_that("generation shape validation never invokes foreign class callbacks", {
 
 test_that("attributed env members retain ordinary evaluation without eligibility callbacks", {
     calls <- 0L
-    data <- reserve_columns(data.frame(x = c(1L, 2L, 3L)), n = 1L)
+    data <- reserve_columns(dibble(x = c(1L, 2L, 3L)), n = 1L)
     rhs <- 7L
     member <- structure("rhs", class = "owned_test_member")
     rlang::local_bindings(
@@ -74,7 +74,7 @@ test_that("attributed env members retain ordinary evaluation without eligibility
 
 test_that("journaled append restores shape and metadata after errors and interrupts", {
     withr::defer(.Call(C_dtatools_inject_column_append_failure, 0L, FALSE))
-    for (constructor in list(identity, tibble::as_tibble, as_dibble)) {
+    for (constructor in list(as_dibble, function(data) as_dibble(tibble::as_tibble(data)))) {
         for (shared in c(FALSE, TRUE)) for (stage in 1:3) for (interrupt in c(FALSE, TRUE)) {
             fixture <- function() reserve_columns(constructor(data.frame(x = 1:3)), n = 3L)
             control <- fixture()
@@ -117,9 +117,8 @@ test_that("classed column names retain R validation dispatch", {
         if (reject) stop("classed names validation")
         FALSE
     }, .env = globalenv())
-    data <- structure(list(1L), names = structure("x", class = "owned_test_names"),
-                      class = "data.frame", row.names = c(NA_integer_, -1L))
-    data <- reserve_columns(data, n = 1L)
+    data <- reserve_columns(dibble(x = 1L), n = 1L)
+    .Call(C_dtatools_set_attribute, data, "names", structure("x", class = "owned_test_names"))
     expect_false(.Call(C_dtatools_mutation_shape, data, 1L))
     calls <- 0L
     reject <- TRUE
@@ -129,7 +128,7 @@ test_that("classed column names retain R validation dispatch", {
 })
 
 test_that("private append reuses names without a collection or prior names read", {
-    for (constructor in list(identity, tibble::as_tibble, as_dibble)) for (empty in c(FALSE, TRUE)) {
+    for (constructor in list(as_dibble, function(data) as_dibble(tibble::as_tibble(data)))) for (empty in c(FALSE, TRUE)) {
         data <- reserve_columns(constructor(if (empty) data.frame(row.names = 1:3) else
             data.frame(x = 1:3)), n = 10L)
         before <- .Call(C_dtatools_column_names_info, data)
@@ -147,7 +146,7 @@ test_that("private append reuses names without a collection or prior names read"
 })
 
 test_that("generation preserves saved names, attributes and shallow table copies", {
-    constructors <- list(identity, tibble::as_tibble, as_dibble)
+    constructors <- list(as_dibble, function(data) as_dibble(tibble::as_tibble(data)))
     for (constructor in constructors) {
         data <- reserve_columns(constructor(data.frame(x = 1:3)), n = 3L)
         saved_names <- names(data)
@@ -177,18 +176,18 @@ test_that("generation protects shallow table names before any public names read"
     for (copy in list(function(data) { attr(data, "note") <- "copy"; data },
                       function(data) .Call(C_dtatools_metadata_copy, data),
                       function(data) unclass(data))) {
-        data <- reserve_columns(data.frame(x = 1L), n = 2L)
+        data <- reserve_columns(dibble(x = 1L), n = 2L)
         other <- copy(data)
         gen(data, added, 9L)
         gen(data, last, 8L)
         expect_identical(names(other), "x")
         expect_identical(names(data), c("x", "added", "last"))
-        expect_identical(other[[1L]], 1L)
+        expect_identical(as.integer(other[[1L]]), 1L)
     }
 })
 
 test_that("generation checks physical rows again after argument capture", {
-    data <- reserve_columns(data.frame(x = 1:3), n = 1L)
+    data <- reserve_columns(dibble(x = 1:3), n = 1L)
     expect_error(gen(data, !!{
         .Call(C_dtatools_set_data_column, data, 1L, 1:4)
         rlang::sym("added")
@@ -202,7 +201,7 @@ test_that("captured mutation masks preserve unread columns and lexical lookup", 
         for (capture in c("closure", "environment", "helper", "promise", "pronoun")) {
             for (site in c("values", "where", "gen")) {
                 for (outcome in c("success", "empty", "error")) {
-                    data <- reserve_columns(data.frame(anchor = 1:3))
+                    data <- dibble(anchor = 1:3)
                     gen(data, x, constructor(c(1, 2, 3)))
                     saved <- NULL
                     delayed <- new.env(parent = emptyenv())
@@ -265,7 +264,7 @@ test_that("plain table staging guards aliases introduced by row callbacks", {
 })
 
 test_that("ordinary private string writes retain sparse allocation and snapshot isolation", {
-    data <- reserve_columns(data.frame(anchor = seq_len(100000L)))
+    data <- dibble(anchor = seq_len(100000L))
     gen(data, text, "")
     address <- mutation_info(data, 2L)$handle
     for (iteration in 1:3) {
@@ -325,8 +324,9 @@ test_that("native promotion fits preserve ranges, precision and selected values"
 })
 
 test_that("grouped proxy callbacks retain isolated Date inputs", {
-    data <- data.frame(x = as.Date(c(1, 2, 3, 4), origin = "1970-01-01"),
-                       g = c(1L, 1L, 2L, 2L))
+    data <- dibble(x = 1:4, g = c(1L, 1L, 2L, 2L))
+    # Install a plain Date column: dibble() would otherwise type it as dta_date.
+    .Call(C_dtatools_set_data_column, data, 1L, as.Date(c(1, 2, 3, 4), origin = "1970-01-01"))
     replace_values(data, x, as.Date(1, origin = "1970-01-01"), where = 1L)
     expect_true(mutation_info(data, 1L)$backing_private)
     escaped <- list()
@@ -393,7 +393,7 @@ test_that("compact subsetting retains storage across index materialization callb
 
 test_that("native readers cannot export aliases after the effective write guard", {
     for (mode in c("fused_public", "fused_private", "staged_public", "staged_private")) {
-        data <- reserve_columns(data.frame(anchor = 1:3))
+        data <- dibble(anchor = 1:3)
         gen(data, x, dta_byte(c(1, 2, 3)))
         expect_false(mutation_info(data, 2L)$handle_shared)
         escaped <- NULL
@@ -421,7 +421,7 @@ test_that("native readers cannot export aliases after the effective write guard"
 
 test_that("failed fused writes retain sharing introduced by an operand callback", {
     for (mode in c("no_match", "callback_error", "callback_interrupt", "write_interrupt")) {
-        data <- reserve_columns(data.frame(anchor = 1:3))
+        data <- dibble(anchor = 1:3)
         gen(data, x, dta_byte(c(1, 2, 3)))
         before <- mutation_info(data, 2L)
         expect_false(before$handle_shared)
@@ -462,7 +462,7 @@ test_that("failed fused writes retain sharing introduced by an operand callback"
 
 test_that("direct owned writes retain callback forks after an interrupt", {
     for (pre_shared in c(FALSE, TRUE)) {
-        data <- reserve_columns(data.frame(anchor = 1:3))
+        data <- dibble(anchor = 1:3)
         gen(data, x, dta_double(c(1, 2, 3)))
         source <- data$x
         if (pre_shared) historical <- .metadata_copy(source)
@@ -489,7 +489,7 @@ test_that("direct owned writes retain callback forks after an interrupt", {
 test_that("materialized partial writes roll back completed writes and original state", {
     source <- dta_float(c(1, NA_real_, 3, 4))
     .force_altrep_materialization(source)
-    data <- data.frame(x = source)
+    data <- dibble(x = source)
     before <- mutation_info(data, 1L)
     .Call(C_dtatools_native_copy_stats, TRUE)
     .inject_reference_write_interrupt(TRUE)
@@ -518,7 +518,9 @@ test_that("materialized partial writes roll back completed writes and original s
 
 test_that("plain doubles capture once and preserve private sparse backing afterwards", {
     source <- rep(1, 1000L)
-    data <- data.frame(x = source)
+    data <- dibble(x = source)
+    # Install the ordinary double itself: dibble() would otherwise type it.
+    .Call(C_dtatools_set_data_column, data, 1L, source)
     .Call(C_dtatools_native_copy_stats, TRUE)
     replace_values(data, x, 2, where = 1L)
     capture <- .Call(C_dtatools_native_copy_stats, FALSE)
@@ -545,7 +547,7 @@ test_that("materialized full replacement copies new values without reading old p
     for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
         source <- constructor(c(1, 2, NA_real_, 4))
         .force_altrep_materialization(source)
-        data <- data.frame(x = source)
+        data <- dibble(x = source)
         .Call(C_dtatools_native_copy_stats, TRUE)
         replace_values(data, x, c(7, 8, 9, 10))
         stats <- .Call(C_dtatools_native_copy_stats, FALSE)
@@ -559,7 +561,7 @@ test_that("materialized full replacement copies new values without reading old p
 
 test_that("native-generated private numeric writes stage new bytes without copying old values", {
     for (constructor in list(dta_double, dta_byte, dta_int, dta_long, dta_float)) {
-        data <- reserve_columns(data.frame(anchor = 1:4))
+        data <- dibble(anchor = 1:4)
         gen(data, x, constructor(c(1, 2, 3, 4)))
         before <- mutation_info(data, 2L)
         expect_false(before$handle_shared)
@@ -584,7 +586,7 @@ test_that("native-generated private numeric writes stage new bytes without copyi
 test_that("full numeric replacement protects borrowed aliases without copying their old payload", {
     for (constructor in list(dta_double, dta_byte, dta_int, dta_long, dta_float)) {
         source <- constructor(c(1, 2, NA_real_, 4))
-        data <- data.frame(x = source)
+        data <- dibble(x = source)
         expect_true(mutation_info(data, 1L)$handle_shared)
         .Call(C_dtatools_native_copy_stats, TRUE)
         replace_values(data, x, 7)
@@ -597,7 +599,7 @@ test_that("full numeric replacement protects borrowed aliases without copying th
 
 test_that("validation never exposes an internal read handle to R methods", {
     for (constructor in list(dta_double, dta_byte)) {
-        data <- reserve_columns(data.frame(anchor = 1:2))
+        data <- dibble(anchor = 1:2)
         gen(data, x, constructor(c(1, 2)))
         expect_false(.Call(C_dtatools_shared_columns, data)[[2L]])
         escaped <- list()
@@ -623,7 +625,7 @@ test_that("validation never exposes an internal read handle to R methods", {
 })
 
 test_that("custom classes on owned handles use conservative shape validation", {
-    data <- reserve_columns(data.frame(anchor = 1:2))
+    data <- dibble(anchor = 1:2)
     gen(data, x, dta_double(c(1, 2)))
     class(data$x) <- c("owned_custom", class(data$x))
     escaped <- list()
@@ -649,7 +651,7 @@ test_that("custom classes on owned handles use conservative shape validation", {
 })
 
 test_that("comparison callbacks cannot retain a view changed by the patch", {
-    data <- reserve_columns(data.frame(anchor = 1:2))
+    data <- dibble(anchor = 1:2)
     gen(data, x, dta_double(c(1, 2)))
     escaped <- list()
     expected <- list()
@@ -668,7 +670,7 @@ test_that("comparison callbacks cannot retain a view changed by the patch", {
 })
 
 test_that("native comparison decline isolates handles before R fallback errors", {
-    data <- reserve_columns(data.frame(anchor = 1:2))
+    data <- dibble(anchor = 1:2)
     gen(data, x, dta_double(c(1, 2)))
     pointer <- .Call(C_dtatools_owned_pointer, data$x, TRUE)
     .Call(C_dtatools_owned_pointer_write, pointer, 1L, NaN)
@@ -750,8 +752,9 @@ test_that("foreign integer prototypes and full replacements skip old payload rea
         })
         attr(source, "label") <- "Values"
         names(source) <- c("a", "b", "c")
-        data <- structure(list(x = source), class = "data.frame",
-                          row.names = c(NA_integer_, -3L))
+        data <- dibble(x = 1:3)
+        # Install the foreign integer itself: dibble() would otherwise type it.
+        .Call(C_dtatools_set_data_column, data, 1L, source)
         alias <- data
         if (mode == "prototype") {
             expect_identical(.Call(C_dtatools_mutation_prototype, source),
@@ -826,7 +829,7 @@ test_that("public column exports isolate later ordinary and explicit writes", {
         as_data_table = function(data) data.table::as.data.table(data)[[2L]]
     )
     for (typed in c(FALSE, TRUE)) for (export in exports) {
-        data <- reserve_columns(data.frame(anchor = 1:3))
+        data <- dibble(anchor = 1:3)
         gen(data, x, dta_double(c(1, 2, 3)))
         if (!typed) class(data$x) <- NULL
         value <- export(data)
