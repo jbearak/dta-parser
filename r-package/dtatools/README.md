@@ -150,10 +150,9 @@ Using several cores at once can therefore consume several CPU-seconds during
 a subsecond read. Here, process CPU time also includes startup, package loading
 and shutdown, so the figures do not isolate the reader's CPU efficiency.
 
-These measurements were collected on a shared Apple M4 Max with opt-in reader
-optimizations that have since become defaults. This ten-read comparison
-predates default activation. Arrow verification is enabled. Wall time
-covers the read call; CPU and peak RSS cover the entire fresh process. The
+These measurements were collected on a shared Apple M4 Max. Arrow verification
+is enabled. Wall time covers the read call; CPU and peak RSS cover the entire
+fresh process. The
 [report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-parity/results-2026-09-16-india/README.md)
 records cache handling, background activity, settings and all observations.
 

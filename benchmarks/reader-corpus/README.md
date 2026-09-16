@@ -26,7 +26,13 @@ inputs; smoke results are not a full-corpus benchmark.
 
 Preparation finishes before any timed reads. Each file is read once per format
 in a fresh R process, with automatic thread selection and Arrow verification
-enabled. Reader order alternates across files. Hashing both input files before
+enabled. Files and formats run sequentially. Reader order alternates across files.
+The timed worker accepts command-line arguments and prints results using base R.
+It checks that `jsonlite` is absent before and after reading. Python validates
+the results and writes the JSON records. The separate preparation process uses
+`jsonlite`, and exits before timing begins.
+
+Hashing both input files before
 each pair warms their filesystem cache; there is no in-process warmup or added
 pre-read garbage collection. The read-call clock excludes package loading but
 includes first-reader initialization. Results remain live until process exit.
@@ -36,6 +42,9 @@ shutdown. Read-call CPU is recorded separately. Conversion, signature checks
 and input hashing are outside all reported read and process measurements.
 The package, worker scripts, retained evidence and input hashes are checked
 again before the run receives its COMPLETE marker.
+
+Run the observation-parser checks with
+`python3 -m unittest discover -s benchmarks/reader-corpus -p test_run.py`.
 
 The comparable-file summaries sum read times over the frozen 1,812-file set.
 They are batch totals from one observation per file, not repeated-read medians.

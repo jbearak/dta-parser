@@ -1,27 +1,33 @@
 # One fresh-process full read; result stays live until process exit.
-args <- commandArgs(TRUE)
-stopifnot(length(args) == 2L)
-job <- jsonlite::fromJSON(args[[1L]])
-.libPaths(c(job$library, .libPaths()))
-stopifnot(requireNamespace("dtatools", quietly = TRUE))
-stopifnot(normalizePath(find.package("dtatools")) ==
-          normalizePath(file.path(job$library, "dtatools")))
-stopifnot(job$method %in% c("read_dta", "read_arrow"))
-reader <- getExportedValue("dtatools", job$method)
+args <- commandArgs(trailingOnly = TRUE)
+stopifnot(length(args) == 2L, args[[1L]] %in% c("read_dta", "read_arrow"))
+method <- args[[1L]]
+path <- normalizePath(args[[2L]], winslash = "/", mustWork = TRUE)
+script_argument <- grep(
+    "^--file=", commandArgs(trailingOnly = FALSE), value = TRUE
+)[[1L]]
+script_dir <- dirname(normalizePath(sub("^--file=", "", script_argument)))
+# Match the earlier corpus worker's setup without loading reporting packages.
+sys.source(
+    file.path(script_dir, "../reader-refresh/workers/benchmark-common.R"),
+    envir = environment()
+)
+benchmark_activate_library("dtatools", verify_dtatools = TRUE)
+stopifnot(!"jsonlite" %in% loadedNamespaces())
 started <- proc.time()
 value <- tryCatch(
-    if (job$method == "read_arrow") reader(job$path, verify = TRUE) else reader(job$path),
+    if (method == "read_arrow") dtatools::read_arrow(path, verify = TRUE)
+    else dtatools::read_dta(path),
     error = identity
 )
 duration <- proc.time() - started
 if (inherits(value, "error")) {
-    stopifnot(job$expected_status == "dta_error", job$method == "read_dta")
-    result <- list(status = "dta_error", message = conditionMessage(value))
+    cat(sprintf("DTATOOLS_BENCH\terror\t%.9f\tNA\tNA\n", duration[["elapsed"]]))
+    message(conditionMessage(value))
 } else {
-    stopifnot(job$expected_status == "ok", nrow(value) == job$rows,
-              ncol(value) == job$columns)
-    result <- list(status = "ok", rows = nrow(value), columns = ncol(value))
+    cat(sprintf("DTATOOLS_BENCH\tok\t%.9f\t%d\t%d\n",
+                duration[["elapsed"]], nrow(value), ncol(value)))
 }
-result$elapsed_seconds <- unname(duration[["elapsed"]])
-result$read_cpu_seconds <- unname(duration[["user.self"]] + duration[["sys.self"]])
-jsonlite::write_json(result, args[[2L]], auto_unbox = TRUE, digits = 12)
+cat(sprintf("DTATOOLS_CPU\t%.9f\t%.9f\n",
+            duration[["user.self"]], duration[["sys.self"]]))
+stopifnot(!"jsonlite" %in% loadedNamespaces())
