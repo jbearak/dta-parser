@@ -1,0 +1,55 @@
+{
+  "run": {
+    "started": "2026-09-16T16:17:38.314122+00:00",
+    "finished": "2026-09-16T16:45:20.989640+00:00",
+    "smoke": false,
+    "attempted_dta": 1823,
+    "qualified_arrow": 1821,
+    "comparable": 1812,
+    "measured_reads": 3644,
+    "system": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "protocol": "One full read per fresh process; input hashing warms each pair; reader order alternates by file",
+    "arrow_verification": true,
+    "haven_invocations": 0,
+    "stata_invocations": 0
+  },
+  "binding": {
+    "commit": "137b503a6200e4cb4be9c224089376736bcf697e",
+    "source_tree": "886d76b6cc3ba1400379dde8fe9c20abb8a212d6",
+    "build_source_commit": "137b503a6200e4cb4be9c224089376736bcf697e",
+    "build_record_sha256": "042ed18fef80d349b301dcb21c6b082313928e12f74922edfd5008819e22d9e4",
+    "rscript_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f",
+    "experimental_environment": "DTATOOLS_EXPERIMENT_* removed in every child",
+    "inventory_sha256": "8f8964891ab2d9429988a8bcddf8ddb3a32338b3a4399ad154dc70df8a370367",
+    "archived_sha256": "7f47e48313d08a64cc4f7f885dd4954d57bf303e8362919d171cbd86d14d396c",
+    "installed_inventory_sha256": "eba95240f52506c05c247acbb298aa6e2437259297a0f5971f02435457025d4e",
+    "scripts": {
+      "benchmarks/reader-corpus/run.py": "8d61419b94e3c5af14b60b47f40e65ee7c5b79ca0a33d7a615c4dd9ec892d667",
+      "benchmarks/reader-refresh/driver_common.py": "4cd4f21ffa5278fdb1d1d4543c929429cca83447e8c6055153e619ab46d7c085",
+      "benchmarks/reader-corpus/prepare.R": "6b56cd310be31e9a5ceb07d4483b829796bd5b20fb6c4b2eb67cd950ab0a1d03",
+      "benchmarks/reader-corpus/worker.R": "4a6986b59db07b3915809811aa0d5220bad1f6fc0ae97b2d52d3beb45f45c0b3"
+    }
+  },
+  "hardware": {
+    "cpu": "Apple M4 Max",
+    "logical_cpus": 16,
+    "memory_bytes": 137438953472
+  },
+  "R": "4.6.1 (2026-06-24)",
+  "shared_host": true,
+  "comparator_date": "2026-08-24",
+  "comparator_report": "benchmarks/r-corpus-performance/results-2026-08-24.md",
+  "private_artifacts_sha256": {
+    "binding.json": "ea262b2e9731317f7e6a9a40c57d5e4850b43b62c89441cbe93b8baa72549481",
+    "inputs.json": "af3fe94cbe6de28d0af7075a3602730ceb08f4addb174f112bfa650236f9a54b",
+    "identities.json": "f516fd4281ca2cfaa67db9e85f78f7c2e1dcb1364a9d70d09e8c53cb9b61ace9",
+    "jobs.jsonl": "ba69883d2d5cd9e9a3f2ad9a43de4a62888cda097cc74871d14ff4f35cf7e985",
+    "observations.csv": "1296418db6a0c9b7c4418aa6a3de7999e15160f5f60c7711654449642d451265",
+    "run.json": "292e6266dbf046a0afc314a905cf40181fbf9de1926ac4517601af84f277a225"
+  },
+  "qualification_records_sha256": "d940bbdd8265c2137a27f0f03d5d52bf657751857d18f7788c46b19ed1146f91",
+  "published_artifacts_sha256": {
+    "corpus-summary.csv": "3824ba003e67f3fd38002b4aef3f9188014257dfac29f83410de0a5e1c8c9d8d"
+  }
+}

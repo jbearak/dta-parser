@@ -35,8 +35,10 @@ time (\code{TRUE}) or the underlying UTC instant (\code{FALSE}).}
 }
 \description{
 Streams a data frame to the standalone DTA encoding used by Stata 18 and
-19. Stata 18 targets are limited to 32,767 variables and DTA release 118.
-Stata 19 targets use release 118 through that limit and release 119 above it.
+19. This writer limits Stata 18 targets to 32,767 variables and DTA format
+code 118. Stata 19 targets use format code 118 through that limit and format
+code 119 above it. These are internal file-format codes, separate from Stata
+application versions; format code 119 does not mean Stata 19.
 }
 \section{Conversions and metadata}{
 

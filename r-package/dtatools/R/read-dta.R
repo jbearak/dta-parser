@@ -1,6 +1,7 @@
 #' Read a Stata DTA file
 #'
-#' Reads releases 105, 108, 110--111, 113--115, and 117--119 through the native Rust parser.
+#' Reads standalone Stata 5 through 19 datasets through the native Rust parser.
+#' Alias-variable file layouts are unsupported.
 #' Numeric and character columns are created directly by native code. Numeric
 #' columns carry their declared Stata storage type throughout the R session.
 #' Byte, int, long, and float columns retain their compact Stata storage width
@@ -21,8 +22,8 @@
 #' deciding whether to retain the name hint.
 #'
 #' @section Stata missing values:
-#' Stata system missing (`.`) is returned as `NA_real_`; in releases supporting
-#' extended missings (113 and newer), `.a` through `.z` use haven-compatible
+#' Stata system missing (`.`) is returned as `NA_real_`; in DTA formats supporting
+#' extended missings (format code 113 and newer), `.a` through `.z` use haven-compatible
 #' tagged-NA payloads. Base [is.na()] therefore identifies every code present.
 #' Use [missing_tag()] to recover their letters, [is_tagged_missing()] to
 #' select tagged values, and [tagged_missing()] to create them. Use ordinary
@@ -138,8 +139,9 @@
 #' @param encoding Optional source encoding override. Supported aliases are
 #'   `"UTF-8"`/`"UTF8"`, `"Windows-1252"`/`"CP1252"`, and
 #'   `"ISO-8859-1"`/`"latin1"`, matched case-insensitively. `NULL` uses
-#'   Windows-1252 for pre-Unicode releases 105, 108, 110--111, 113--115, and
-#'   117, and UTF-8 for releases 118--119. Older DTA files do not record their
+#'   Windows-1252 for pre-Unicode DTA format codes 105, 108, 110--111, 113--115,
+#'   and 117, and UTF-8 for format codes 118--119. These codes identify file
+#'   layouts, not Stata application versions. Older DTA files do not record their
 #'   code page, so Windows-1252 is a pragmatic guess that commonly recovers the
 #'   intended text. Use `encoding = "UTF-8"` for strict Stata 18 behavior;
 #'   malformed input sequences are then replaced deterministically with

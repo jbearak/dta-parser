@@ -4,6 +4,10 @@ The TypeScript and Rust parsers are independent implementations. The R package u
 
 ## Supported releases
 
+DTA format codes identify the file layout stored in a `.dta` header. They are
+separate from Stata application versions: format code 119 does not mean
+Stata 19. Several Stata versions can use the same file format, as shown below.
+
 | DTA format code | Stata versions |
 | ---: | --- |
 | 105 | Stata 5 |
@@ -22,9 +26,10 @@ Other format codes are rejected.
 ## Write compatibility
 
 The R package and reusable Rust core write standalone datasets for the Stata 18
-and 19 applications. Datasets with at most 32,767 variables use release 118;
-wider datasets use release 119, up to Stata's 120,000-variable limit. The writer
-does not emit older releases or release 120/121 alias-variable layouts.
+and 19 applications. Datasets with at most 32,767 variables use DTA format
+code 118; wider datasets use format code 119, up to Stata's 120,000-variable
+limit. The writer does not emit older formats or the alias-variable layouts
+identified by format codes 120 and 121.
 
 Output is always little-endian. This makes files deterministic across writer
 hosts and follows the dominant contemporary DTA representation; byte order has
@@ -41,7 +46,7 @@ extensionless file exists. Explicit extensions remain unchanged.
 
 Both parsers retain:
 
-- format release and byte order;
+- DTA format code and byte order;
 - dataset and variable metadata;
 - numeric storage types and fixed strings;
 - numbered dataset and variable notes, arbitrary characteristics, and display
@@ -55,13 +60,13 @@ Modern `strL` data, mapped sections, value-label tables, and legacy sequential l
 
 ## Text encoding
 
-Automatic text decoding uses Windows-1252 for releases 105, 108, 110 through 111, 113 through 115, and 117. It uses UTF-8 for releases 118 and 119. Pre-Unicode DTA files do not record a code page, so the Windows-1252 choice is a practical default rather than information read from the file.
+Automatic text decoding uses Windows-1252 for DTA format codes 105, 108, 110 through 111, 113 through 115, and 117. It uses UTF-8 for format codes 118 and 119. Pre-Unicode DTA files do not record a code page, so the Windows-1252 choice is a practical default rather than information read from the file.
 
 Every interface accepts explicit UTF-8, Windows-1252, and true ISO-8859-1 overrides. The override applies to metadata, fixed strings, long strings, and value-label names and text. ISO-8859-1 remains distinct from Windows-1252 at bytes `0x80` through `0x9f`.
 
 ## Missing values
 
-Releases 105 through 111 encode one system-missing value per numeric storage type. Releases 113 and newer can encode system missing `.` plus the 26 extended codes `.a` through `.z`. The parsers preserve the exact code.
+DTA formats 105 through 111 encode one system-missing value per numeric storage type. Formats 113 and newer can encode system missing `.` plus the 26 extended codes `.a` through `.z`. The parsers preserve the exact code.
 
 | Interface | Representation |
 | --- | --- |

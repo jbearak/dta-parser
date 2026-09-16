@@ -7,6 +7,8 @@ refer to the source revisions measured here. The later
 record the subsequent thread policy. For the newer India measurements with
 reader optimizations that have since become defaults, see the
 [September 16 four-reader comparison](../reader-parity/results-2026-09-16-india/README.md).
+The [September 16 full-corpus run](../reader-corpus/results-2026-09-16/README.md)
+measures both default-enabled readers across DHS, MICS and NSFG.
 
 ## Original automatic-thread results
 

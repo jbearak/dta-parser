@@ -7,8 +7,10 @@ preconverted Arrow dataset is 5.560 GB. Sizes and memory use decimal GB.
 The dtatools rows use reader optimizations that were opt-in in the measured
 source, `d6b0ae454c6ba85b3b22f7574cd828196197cf54`. They subsequently became
 defaults in [PR #231](https://github.com/jbearak/dta-parser/pull/231).
-The measurements below retain their original source and settings; the final
-default-enabled build has not been retimed.
+The measurements below retain their original source and settings. This
+ten-read comparison predates default activation; the later
+[full-corpus run](../../reader-corpus/results-2026-09-16/README.md) measures the
+default-enabled readers.
 
 | Reader | Median wall time | Range | Median process CPU time | Median peak RSS |
 | --- | ---: | ---: | ---: | ---: |

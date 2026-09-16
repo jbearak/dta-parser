@@ -19,8 +19,9 @@ untrusted \code{file} values should validate or allowlist sources before calling
 \item{encoding}{Optional source encoding override. Supported aliases are
 \code{"UTF-8"}/\code{"UTF8"}, \code{"Windows-1252"}/\code{"CP1252"}, and
 \code{"ISO-8859-1"}/\code{"latin1"}, matched case-insensitively. \code{NULL}
-uses Windows-1252 for releases 105, 108, 110--111, 113--115, and 117 and UTF-8 for releases
-118--119. The override
+uses Windows-1252 for DTA format codes 105, 108, 110--111, 113--115, and 117
+and UTF-8 for format codes 118--119. These codes identify file layouts, not
+Stata application versions. The override
 applies to metadata, fixed strings, \code{strL} payloads, and value-label
 names and text. Explicit UTF-8 replaces malformed input sequences
 deterministically with U+FFFD. Haven 2.5.5 may instead omit an affected label.}
@@ -72,9 +73,10 @@ and \code{POSIXt} in UTC. Other Stata temporal formats remain numeric with
 their \code{format.stata} attribute. String storage and metadata survive
 supported vector operations.}
 \description{
-Reads Stata releases 105, 108, 110--111, 113--115, and 117--119 through the native Rust parser,
+Reads standalone Stata 5 through 19 datasets through the native Rust parser,
 retaining dataset and variable labels, dataset notes, formats, value labels,
 long strings, temporal classes, and Stata tagged missing values.
+Alias-variable file layouts are unsupported.
 Stata stores named value-label definitions at dataset scope and assigns a
 definition to each labelled variable. \code{read_dta()} instead gives each
 variable its resolved code-to-text mapping in \code{labels}. An imported table
@@ -86,8 +88,8 @@ definition. Projection checks all source variables when deciding whether to
 retain the name hint.
 }
 \section{Stata missing values}{
-Stata system missing (\code{.}) is returned as \code{NA_real_}; in releases
-supporting extended missings (113 and newer), \code{.a} through \code{.z} use
+Stata system missing (\code{.}) is returned as \code{NA_real_}; in DTA formats
+supporting extended missings (format code 113 and newer), \code{.a} through \code{.z} use
 haven-compatible tagged-NA payloads. Base \code{is.na()} therefore identifies
 every code present. Use \code{missing_tag()} to recover their letters,
 \code{is_tagged_missing()} to select tagged values, and
