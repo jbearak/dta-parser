@@ -3526,50 +3526,9 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     # an inlined function object.
     environment <- new.env(parent = baseenv())
     environment[[generic]] <- getExportedValue("dplyr", generic)
-    if (!is_dibble(data)) {
-        call <- rlang::call2(generic, .reference_snapshot(data), !!!dots,
-                             !!!arguments)
-        return(eval(call, environment))
-    }
-    before <- .data_columns(data)
-    wrapped <- .wrap_mask_expressions(dots, before, caller)
-    call <- rlang::call2(
-        generic, .reference_snapshot(data), !!!wrapped$dots, !!!arguments
-    )
-    result <- .relabel_mask_conditions(
-        eval(call, environment), wrapped$labels
-    )
-    .close_dibble(
-        data, .retype_changed_columns(result, before, caller), caller
-    )
-}
-
-.wrap_mask_expressions <- function(dots, before, caller) {
-    names <- rlang::names2(dots)
-    labels <- character()
-    for (index in seq_along(dots)) {
-        quosure <- dots[[index]]
-        if (!.mask_expression_typable(quosure, before)) next
-        name <- names[[index]]
-        typer <- .mask_value_typer(
-            before, caller, if (nzchar(name)) name else NULL,
-            .mask_expression_label(quosure)
-        )
-        environment <- new.env(parent = rlang::quo_get_env(quosure))
-        environment[["("]] <- typer
-        wrapped <- rlang::new_quosure(
-            rlang::call2("(", quosure), environment
-        )
-        inner <- .mask_expression_label(quosure)
-        outer <- .mask_expression_label(wrapped)
-        if (nzchar(name)) {
-            labels[[paste0(name, " = ", outer)]] <- paste0(name, " = ", inner)
-        } else {
-            labels[[outer]] <- inner
-        }
-        dots[[index]] <- wrapped
-    }
-    list(dots = dots, labels = labels)
+    call <- rlang::call2(generic, .reference_snapshot(data), !!!dots,
+                         !!!arguments)
+    eval(call, environment)
 }
 
 .mask_expression_typable <- function(quosure, before) {
@@ -3598,95 +3557,11 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     )
 }
 
-# Types one result as it enters the mask. A named expression that
-# overwrites a column promotes from that column; an unnamed data frame
-# result is unpacked by dplyr, so each of its columns is typed against
-# the column of the same name.
-.mask_value_typer <- function(before, caller, name, label) {
-    force(name)
-    force(label)
-    function(value) {
-        if (is.null(value)) return(NULL)
-        # rlang's mask top holds the live column bindings, including earlier
-        # clauses. Read only the target; caller bindings must not supply it.
-        mask <- rlang::env_get(parent.frame(), ".top_env", default = NULL)
-        prior <- function(target) {
-            if (is.environment(mask)) {
-                rlang::env_get(mask, target, default = NULL)
-            } else {
-                before[[target]]
-            }
-        }
-        if (is.data.frame(value)) {
-            if (!is.null(name)) return(value)
-            columns <- names(value)
-            for (index in seq_along(columns)) {
-                value[[index]] <- .typed_mask_value(
-                    .subset2(value, index), prior(columns[[index]]),
-                    caller
-                )
-            }
-            return(value)
-        }
-        target <- if (is.null(name)) label else name
-        result <- .typed_mask_value(value, prior(target), caller)
-        if (!is.null(name)) return(result)
-        vctrs::new_data_frame(
-            stats::setNames(list(result), target), n = vctrs::vec_size(result)
-        )
-    }
-}
-
 .typed_mask_value <- function(value, prior, caller) {
     if (is.null(prior)) {
         return(.typed_column_named(value, length(value), caller, NULL))
     }
     .promoted_column(value, prior, length(value), caller)
-}
-
-# dplyr's "In argument: `y = (x + 1)`." bullets name the wrapped
-# expression; the parentheses are stripped so the message reads as the
-# user wrote the call.
-.relabel_mask_conditions <- function(expression, labels) {
-    if (length(labels) == 0L) return(expression)
-    relabel <- function(condition) {
-        for (field in c("message", "body")) {
-            text <- condition[[field]]
-            if (!is.character(text)) next
-            from <- paste0("In argument: `", names(labels), "`.")
-            to <- paste0("In argument: `", labels, "`.")
-            condition[[field]] <- vapply(text, function(message) {
-                if (is.na(message)) return(message)
-                # Warnings can arrive with their cause already rendered into
-                # the message. Rewrite only the generated annotation before
-                # that cause, never the user's warning text below it.
-                lines <- strsplit(paste0(message, "\n"), "\n", fixed = TRUE)[[1L]]
-                for (index in seq_along(lines)) {
-                    line <- lines[[index]]
-                    if (startsWith(line, "Caused by ")) break
-                    prefix <- if (startsWith(line, "\u2139 ")) "\u2139 " else
-                        if (startsWith(line, "i ")) "i " else ""
-                    annotation <- substring(line, nchar(prefix) + 1L)
-                    replacement <- match(annotation, from)
-                    if (!is.na(replacement)) {
-                        lines[[index]] <- paste0(prefix, to[[replacement]])
-                    }
-                }
-                paste(lines, collapse = "\n")
-            }, character(1), USE.NAMES = FALSE)
-            names(condition[[field]]) <- names(text)
-        }
-        condition
-    }
-    withCallingHandlers(
-        tryCatch(expression, error = function(condition) {
-            rlang::cnd_signal(relabel(condition))
-        }),
-        warning = function(condition) {
-            rlang::cnd_signal(relabel(condition))
-            invokeRestart("muffleWarning")
-        }
-    )
 }
 
 .typed_reference_replacement <- function(data, result, caller) {
