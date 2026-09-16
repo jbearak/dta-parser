@@ -15,7 +15,7 @@
 #' warning. Use `resolve_var_name(..., on_failure = "error")` when resolution
 #' failures should stop execution.
 #'
-#' @param data A data frame, tibble, data table, or `dtatools_ref_data`.
+#' @param data A data frame, tibble, data table, or dibble.
 #' @param name One nonempty, non-missing character string.
 #' @param exact If `TRUE`, require an exact column name and do not resolve
 #'   abbreviations.

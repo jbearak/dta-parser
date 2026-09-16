@@ -61,13 +61,11 @@ Grouping and metadata classes follow the first two classes. Only a dibble
 carries `dtatools_ref_data`; the explicit helpers reject other containers, so
 an ordinary tibble or base frame never acquires it.
 
-Use `is_dibble(data)` for recognition across versions. It recognizes the new
-class and supported older serialized dibbles that recorded their type only in
-reference state. A stored `TRUE` means dibble; an absent flag falls back to stored
-tibble classes. A stored `FALSE` without the new class remains ordinary.
-Assigned `as_dibble()`, `copy_data()`, or `reserve_columns()` upgrades a legacy
-dibble on a fresh object, leaving aliases unchanged. `as_tibble()` and
-`as.data.frame()` remove dibble and shared reference dispatch.
+Use `is_dibble(data)` for recognition. It tests the `dibble` class, which
+survives serialization. Older serialized objects that recorded dibble identity
+only in their reference state are no longer recognized; assign
+`data <- as_dibble(data)` to rebuild one. `as_tibble()` and `as.data.frame()`
+remove dibble and shared reference dispatch.
 
 The new leading class changes exact `class()` comparisons and S3 dispatch.
 Type identity does not promise valid reference bookkeeping or spare capacity.

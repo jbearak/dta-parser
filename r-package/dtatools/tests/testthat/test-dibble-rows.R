@@ -142,20 +142,13 @@ test_that("read predicate results preserve metadata and later write isolation", 
     }
 })
 
-test_that("escaped read masks protect unread owned compact and overlay columns", {
-    for (kind in c("owned", "compact", "overlay")) for (pronoun in c(FALSE, TRUE))
+test_that("escaped read masks protect unread owned and compact columns", {
+    for (kind in c("owned", "compact")) for (pronoun in c(FALSE, TRUE))
         for (outcome in c("success", "empty", "error")) {
         data <- dibble(x = if (kind == "owned") dta_double(c(1, 2, 3)) else dta_int(1:3), s = letters[1:3])
         if (kind == "owned") {
             expect_false(is.null(.Call(dtatools:::C_dtatools_owned_info, .subset2(data, "x"))))
         } else expect_true(dtatools:::.is_unmaterialized_numeric_altrep(.subset2(data, "x")))
-        if (kind == "overlay") {
-            state <- dtatools:::.reference_state(data)
-            dtatools:::.append_generated_column(state, "extra",
-                .Call(dtatools:::C_dtatools_capture_column, dta_double(c(4, 5, 6))))
-            expect_true(dtatools:::.has_column_overlay(data))
-            expect_false(is.null(.Call(dtatools:::C_dtatools_owned_info, state$columns$extra)))
-        }
         holder <- new.env(parent = emptyenv())
         result <- tryCatch(if (pronoun) data[{
             holder$mask <- environment()
@@ -166,24 +159,13 @@ test_that("escaped read masks protect unread owned compact and overlay columns",
             if (outcome == "error") stop("predicate failed")
             x > if (outcome == "empty") 3 else 1
         }, .(x, s)], error = identity)
-        # Neither s nor the overlay-only extra has been read through the mask.
-        if (kind == "overlay") {
-            # Public repl requires assigned overlay preparation. This existing
-            # internal setter tests the original handles without normalizing
-            # the table or obtaining copies through its public $ extractor.
-            .Call(dtatools:::C_dtatools_patch_vector, .subset2(data, "x"), 1L, 9L)
-            .Call(dtatools:::C_dtatools_patch_vector, .subset2(data, "s"), 1L, "z")
-            .Call(dtatools:::C_dtatools_patch_vector, state$columns$extra, 1L, 0)
-            expect_identical(as.double(state$columns$extra), c(0, 5, 6))
-        } else {
-            repl(data, x = 9L, where = 1L)
-            repl(data, s = "z", where = 1L)
-        }
+        # `s` has not been read through the mask.
+        repl(data, x = 9L, where = 1L)
+        repl(data, s = "z", where = 1L)
         expect_identical(as.double(data$x), c(9, 2, 3))
         expect_identical(as.character(data$s), c("z", "b", "c"))
         expect_identical(as.double(eval(quote(x), holder$mask)), c(1, 2, 3))
         expect_identical(as.character(eval(quote(s), holder$mask)), letters[1:3])
-        if (kind == "overlay") expect_identical(as.double(eval(quote(extra), holder$mask)), c(4, 5, 6))
         if (outcome == "error") {
             expect_s3_class(result, "error")
             expect_identical(conditionMessage(result), "predicate failed")

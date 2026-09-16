@@ -173,7 +173,7 @@ test_that("B05 inherited column modification reaches custom reconstruction", {
     ordinary <- dtatools:::.reference_snapshot(dibble(k = 1:2, value = c(10, 20)))
     class(ordinary) <- c("dtatools_binding_reconstruct_probe", "data.frame")
     x <- dtatools:::.mark_reference_data(ordinary,
-        dtatools:::.new_reference_state(ordinary, dibble = TRUE))
+        dtatools:::.new_reference_state(ordinary))
     expect_true(dtatools:::.reference_state_valid(x))
     reference <- dtatools:::.reference_snapshot(x)
     expect_identical(class(reference), c("dtatools_binding_reconstruct_probe", "data.frame"))

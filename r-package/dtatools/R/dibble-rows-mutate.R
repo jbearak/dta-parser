@@ -140,9 +140,8 @@
 }
 
 #' @export
-rows_insert.dtatools_ref_data <- function(x, y, by = NULL, ...,
+rows_insert.dibble <- function(x, y, by = NULL, ...,
     conflict = c("error", "ignore"), copy = FALSE, in_place = FALSE) {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     call <- rlang::current_env()
     .dibble_rows_in_place(in_place, call)
@@ -157,8 +156,7 @@ rows_insert.dtatools_ref_data <- function(x, y, by = NULL, ...,
 }
 
 #' @export
-rows_append.dtatools_ref_data <- function(x, y, ..., copy = FALSE, in_place = FALSE) {
-    if (!is_dibble(x)) return(NextMethod())
+rows_append.dibble <- function(x, y, ..., copy = FALSE, in_place = FALSE) {
     rlang::check_dots_empty()
     call <- rlang::current_env()
     .dibble_rows_in_place(in_place, call)
@@ -169,9 +167,8 @@ rows_append.dtatools_ref_data <- function(x, y, ..., copy = FALSE, in_place = FA
 }
 
 #' @export
-rows_update.dtatools_ref_data <- function(x, y, by = NULL, ...,
+rows_update.dibble <- function(x, y, by = NULL, ...,
     unmatched = c("error", "ignore"), copy = FALSE, in_place = FALSE) {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     call <- rlang::current_env()
     .dibble_rows_in_place(in_place, call)
@@ -180,9 +177,8 @@ rows_update.dtatools_ref_data <- function(x, y, by = NULL, ...,
 }
 
 #' @export
-rows_patch.dtatools_ref_data <- function(x, y, by = NULL, ...,
+rows_patch.dibble <- function(x, y, by = NULL, ...,
     unmatched = c("error", "ignore"), copy = FALSE, in_place = FALSE) {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     call <- rlang::current_env()
     .dibble_rows_in_place(in_place, call)
@@ -191,8 +187,7 @@ rows_patch.dtatools_ref_data <- function(x, y, by = NULL, ...,
 }
 
 #' @export
-rows_upsert.dtatools_ref_data <- function(x, y, by = NULL, ..., copy = FALSE, in_place = FALSE) {
-    if (!is_dibble(x)) return(NextMethod())
+rows_upsert.dibble <- function(x, y, by = NULL, ..., copy = FALSE, in_place = FALSE) {
     rlang::check_dots_empty()
     call <- rlang::current_env()
     .dibble_rows_in_place(in_place, call)
@@ -201,9 +196,8 @@ rows_upsert.dtatools_ref_data <- function(x, y, by = NULL, ..., copy = FALSE, in
 }
 
 #' @export
-rows_delete.dtatools_ref_data <- function(x, y, by = NULL, ...,
+rows_delete.dibble <- function(x, y, by = NULL, ...,
     unmatched = c("error", "ignore"), copy = FALSE, in_place = FALSE) {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     call <- rlang::current_env()
     .dibble_rows_in_place(in_place, call)

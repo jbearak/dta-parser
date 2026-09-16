@@ -9,7 +9,6 @@ test_that("dibble() builds a tibble that carries reference state", {
     expect_false(is.null(state))
     expect_identical(state$classes, c("tbl_df", "tbl", "data.frame"))
     expect_identical(state$physical_count, 2L)
-    expect_identical(state$generated_count, 0L)
     expect_identical(names(data), c("x", "y"))
     expect_identical(dim(data), c(3L, 2L))
     # Every column of a dibble carries Stata storage from construction.
@@ -1355,9 +1354,6 @@ test_that("compact dictionary subsetting through dplyr", {
     if (include_dplyr) {
         expect_identical(names(dplyr::bind_rows(tbl, tbl)), c("a", "b", "c"))
     }
-    state <- dtatools:::.reference_state(tbl)
-    expect_identical(state$generated_count, 0L)
-    expect_false(state$physical_overlay)
 }
 
 test_that("generated columns reach consumers that read the column list", {
@@ -1736,11 +1732,7 @@ test_that("copying replacement and regrouping through dplyr", {
     .check_optional_split_dibble_1550(TRUE)
 })
 .check_optional_split_dibble_1646 <- function(include_dplyr) {
-    legacy <- dibble(x = 1:3)
-    state <- dtatools:::.reference_state(legacy)
-    state$dibble <- NULL
-    class(legacy) <- setdiff(class(legacy), "dibble")
-    restored <- unserialize(serialize(legacy, NULL))
+    restored <- unserialize(serialize(dibble(x = 1:3), NULL))
     expect_true(is_dibble(restored))
     restored$x <- c(4, 5, 6)
     expect_true(is_dibble(restored))
@@ -1766,11 +1758,11 @@ test_that("copying replacement and regrouping through dplyr", {
     expect_false(is_dibble(unserialize(serialize(ordinary, NULL))))
 }
 
-test_that("serialized legacy dibbles retain typing and closure", {
+test_that("serialized dibbles retain typing and closure", {
     .check_optional_split_dibble_1646(FALSE)
 })
 
-test_that("serialized legacy closure through dplyr", {
+test_that("serialized dibble closure through dplyr", {
     skip_if_not_installed("dplyr", "1.2.1")
     .check_optional_split_dibble_1646(TRUE)
 })

@@ -9,9 +9,6 @@ test_that("dibble class is public identity independently of reference ownership"
     expect_true(is_dibble(restored))
     expect_false(dtatools:::.reference_state_valid(restored))
     expect_false(can_add_columns(restored))
-    state <- dtatools:::.reference_state(restored)
-    state$dibble <- FALSE
-    expect_true(is_dibble(restored))
     attr(restored, ".dtatools_ref_state") <- NULL
     expect_true(is_dibble(restored))
     expect_false(dtatools:::.reference_state_valid(restored))
@@ -91,20 +88,20 @@ test_that("grouping and metadata class identity through dplyr", {
     .check_optional_split_dibble_class_44(TRUE)
 })
 .check_optional_split_dibble_class_78 <- function(include_dplyr) {
-    for (flag in list(TRUE, NULL)) {
+    {
         data <- dibble(x = 1:3, text = c("a", "b", "c"))
-        state <- dtatools:::.reference_state(data)
-        state$dibble <- flag
-        class(data) <- setdiff(class(data), "dibble")
         legacy <- unserialize(serialize(data, NULL))
         alias <- legacy
         state <- dtatools:::.reference_state(legacy)
         before <- serialize(legacy, NULL)
         expect_true(is_dibble(legacy))
-        expect_false(inherits(legacy, "dibble"))
+        expect_false(dtatools:::.reference_state_valid(legacy))
         expect_match(format(legacy)[[1L]], "^# A dibble:")
         expect_identical(capture.output(print(legacy)), format(legacy))
-        operations <- list(as_dibble, copy_data, reserve_columns,
+        # A serialized dibble keeps its identity, so `as_dibble()` returns
+        # it unchanged; the assigned preparation helpers rebuild it.
+        expect_identical(as_dibble(legacy), legacy)
+        operations <- list(copy_data, reserve_columns,
                            function(x) x[1:2, ])
         if (include_dplyr) operations <- c(operations, list(
             function(x) dplyr::mutate(x, y = x + 1L)))
@@ -127,11 +124,11 @@ test_that("grouping and metadata class identity through dplyr", {
     expect_match(format(restored)[[1L]], "^# A tibble:")
 }
 
-test_that("legacy flags recognize type and assigned upgrade isolates aliases", {
+test_that("serialized dibbles keep identity and assigned upgrade isolates aliases", {
     .check_optional_split_dibble_class_78(FALSE)
 })
 
-test_that("legacy assigned upgrade through dplyr", {
+test_that("serialized dibble upgrade through dplyr", {
     skip_if_not_installed("dplyr", "1.2.1")
     .check_optional_split_dibble_class_78(TRUE)
 })

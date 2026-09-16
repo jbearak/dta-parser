@@ -10,7 +10,7 @@ resolve_var_name(data, name, exact = FALSE, on_failure = c("missing", "error"))
 confirm_var(data, name, exact = FALSE, on_failure = c("error", "false"))
 }
 \arguments{
-\item{data}{A data frame, tibble, data table, or \code{dtatools_ref_data}.}
+\item{data}{A data frame, tibble, data table, or dibble.}
 
 \item{name}{One nonempty, non-missing character string.}
 

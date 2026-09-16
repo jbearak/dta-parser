@@ -10,24 +10,17 @@
 #'
 #' New ungrouped dibbles have class
 #' `c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")`.
-#' Grouping and metadata classes follow `dibble` and shared reference support.
-#' The `dibble` class identifies current objects even after bookkeeping or
-#' spare capacity is lost. `is_dibble()` also recognizes legacy serialized
-#' objects without that class: their reference-state flag must be `TRUE`,
-#' or absent with stored tibble classes. An explicit legacy `FALSE` stays
-#' ordinary. Prefer `is_dibble()` to exact class comparisons for recognition
-#' across package versions. This predicate does not validate ownership or
-#' capacity. Assign [reserve_columns()] when preparation is needed.
-#' Assigned `as_dibble()`, `copy_data()`, and `reserve_columns()` upgrade
-#' legacy dibbles to the current class on a fresh object, leaving aliases
-#' and their shared bookkeeping unchanged.
+#' Grouping and metadata classes follow those two. The `dibble` class is
+#' the dataset's identity: `is_dibble()` tests for it, and it survives
+#' serialization even when bookkeeping or spare capacity is lost. The
+#' predicate does not validate ownership or capacity; assign
+#' [reserve_columns()] when preparation is needed.
 #'
 #' [gen()], \code{\link[=replace_values]{replace_values()}}, [keep_vars()],
-#' and the other by-reference operations change a prepared dataset in place.
-#' Within capacity, every binding sees the change. [gen()] keeps an ordinary
-#' tibble or data frame's existing columns unchanged and types only its new
-#' column; `is_dibble()` remains `FALSE`. Call `as_dibble()` to type the
-#' whole dataset. Conversion does not make function-local replacement reach its caller.
+#' and the other by-reference operations change a prepared dibble in place.
+#' Within capacity, every binding sees the change. They reject an ordinary
+#' tibble, data frame, or data table; assign `data <- as_dibble(data)` first.
+#' Conversion does not make function-local replacement reach its caller.
 #'
 #' A dibble is a Stata dataset held in a tibble, and two invariants follow.
 #' Every numeric and string column carries Stata storage: `dibble()` and
@@ -157,18 +150,7 @@ as_dibble <- function(x) {
 #' @rdname dibble
 #' @export
 is_dibble <- function(x) {
-    if (inherits(x, "dibble")) return(TRUE)
-    state <- .reference_state(x)
-    # Current type identity is independent of ownership and legacy flags.
-    # Older serialized objects use the flag in their reference state.
-    if (is.null(state)) return(FALSE)
-    # Serialized pre-0025 dibbles have no explicit flag. Preserve a stored
-    # FALSE on ordinary containers that acquired state through gen().
-    if (is.null(state$dibble)) {
-        "tbl_df" %in% state$classes
-    } else {
-        isTRUE(state$dibble)
-    }
+    inherits(x, "dibble")
 }
 
 # Builds the dibble from a data frame carrying no reference state. A grouped
@@ -250,7 +232,7 @@ is_dibble <- function(x) {
     # Spare column slots let `gen()` append in place, so the physical
     # list stays the complete dataset for every reader.
     x <- .reserve_column_capacity(x)
-    .mark_reference_data(x, .new_reference_state(x, dibble = TRUE))
+    .mark_reference_data(x, .new_reference_state(x))
 }
 
 # `tibble::as_tibble()` on a data.table goes through data.table's own
@@ -406,7 +388,7 @@ NULL
 
 #' @rdname dibble-bracket
 #' @export
-`[.dtatools_ref_data` <- function(x, i, j, ..., by = NULL, bysort = NULL,
+`[.dibble` <- function(x, i, j, ..., by = NULL, bysort = NULL,
                                   drop) {
     .validate_mutation_container(x, allow_grouped = TRUE)
     raw_j <- rlang::enquo0(j)
@@ -420,7 +402,6 @@ NULL
         destination <- if (is.call(target_expr)) {
             .capture_mutation_binding(target_expr, parent.frame(), value = x)
         } else target_expr
-        .require_dibble_assignment(x)
         .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE,
                           private_views = TRUE)
     }
@@ -459,7 +440,7 @@ NULL
     # operands were not captured before its callbacks, so those return only.
     auto_grow <- .mutation_auto_grow()
     new_names <- setdiff(vapply(assignments, `[[`, character(1), "name"),
-                         .reference_names(x))
+                         names(x))
     if (length(new_names)) {
         x <- .prepare_column_growth(x, length(x) + length(new_names), auto_grow)
     } else .prepare_column_operation(x, length(x), names_change = FALSE)
@@ -472,7 +453,7 @@ NULL
         # `:=` creates or overwrites, so the target's presence picks the
         # path. Looked up per assignment because an earlier one may have
         # created the column.
-        exists <- assignment$name %in% .reference_names(x)
+        exists <- assignment$name %in% names(x)
         x <- .mutate_data(
             x, rlang::new_quosure(assignment$name, emptyenv()),
             assignment$values, where, generate = !exists,
@@ -486,16 +467,6 @@ NULL
     # the last write so a failed assignment still shows its error only.
     .suppress_bracket_autoprint(x)
     invisible(x)
-}
-
-# A reference marker also belongs to ordinary tables after explicit helpers.
-# Only dibble type grants the package's bracket mutation syntax.
-.require_dibble_assignment <- function(data) {
-    if (!is_dibble(data)) {
-        stop("`:=` bracket assignment needs a dibble; use `gen()` or `replace_values()`",
-             call. = FALSE)
-    }
-    invisible(NULL)
 }
 
 # Reads `j` as one or more `:=` assignments, or `NULL` when `j` is
@@ -512,9 +483,6 @@ NULL
     if (!is.call(expression) || !identical(expression[[1L]], quote(`:=`))) {
         return(NULL)
     }
-    # Injection can supply the complete := call, so recheck its container
-    # before resolving the expanded expression's runtime targets or values.
-    .require_dibble_assignment(data)
     environment <- rlang::quo_get_env(j_quo)
     arguments <- as.list(expression)[-1L]
     tags <- names(arguments)
