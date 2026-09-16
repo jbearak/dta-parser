@@ -669,38 +669,31 @@ test_that("generation interrupt controls disarm after validation errors", {
 })
 
 test_that("generic ALTREP detachment interrupts before installation", {
-    skip_on_os("windows")
     skip_if_not_installed("callr")
 
     package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
     result <- .dtatools_child_r("detach-interrupt",
         function(package_path, load_package) {
             load_package(package_path)
-            size <- 20000000L
+            on.exit(dtatools:::.inject_reference_write_interrupt(FALSE),
+                add = TRUE)
+            size <- 100000L
             data <- data.frame(x = seq_len(size))
             before <- serialize(data, NULL)
-            parent <- Sys.getpid()
-            loadNamespace("parallel")
-            request <- if (is.null(getOption("dtatools.native.child"))) NULL else
-                native_fork_request("detach-signal")
-            signal <- parallel::mcparallel({
-                if (is.null(request)) {
-                    Sys.sleep(0.01)
-                    tools::pskill(parent, tools::SIGINT)
-                } else native_fork_signal(request, 0.01, tools::SIGINT)
-            }, silent = TRUE)
             condition <- tryCatch(
                 {
+                    # The native hook runs after writing the private detached
+                    # column and before installing it into the data frame.
+                    dtatools:::.inject_reference_write_interrupt(TRUE)
                     replace_values(data, x, 2L)
                     NULL
                 },
                 condition = identity
             )
-            collected <- tryCatch(
-                suppressWarnings(parallel::mccollect(signal)), condition = identity)
-            if (!is.null(request)) native_fork_finish(request, collected, signal$pid)
+            consumed <- !dtatools:::.inject_reference_write_interrupt(FALSE)
             list(
                 interrupted = inherits(condition, "interrupt"),
+                consumed = consumed,
                 unchanged = identical(serialize(data, NULL), before),
                 altrep = dtatools:::.is_altrep(data$x),
                 range = range(data$x),
@@ -717,6 +710,7 @@ test_that("generic ALTREP detachment interrupts before installation", {
     )
 
     expect_true(result$interrupted)
+    expect_true(result$consumed)
     expect_true(result$unchanged)
     expect_true(result$altrep)
     expect_identical(result$range, c(1L, result$size))

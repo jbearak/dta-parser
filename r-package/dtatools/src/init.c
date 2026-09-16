@@ -26,6 +26,11 @@ extern SEXP dtatools_read_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
     const char *, char **
 );
+extern SEXP dtatools_prepare_dta_rust(const char *, const char *, void **, char **);
+extern SEXP dtatools_read_prepared_dta_rust(
+    void *, const int *, size_t, int, double, double, int, int, int, char **
+);
+extern void dtatools_close_prepared_dta_rust(void *);
 extern int dtatools_write_rust(
     const char *, const char *, SEXP, const void *,
     size_t, const void *, size_t, double *, size_t, const char *, char **
@@ -34,11 +39,33 @@ extern int dtatools_write_path_kind(const char *, char **);
 extern void dtatools_free_error(char *);
 extern void dtatools_numeric_free(void *);
 extern void *dtatools_numeric_alloc(void *, size_t, int, int, size_t);
+extern void *dtatools_owned_numeric_from_raw(
+    const unsigned char *, size_t, size_t, int, int, int, size_t
+);
+extern void *dtatools_owned_numeric_clone(const void *);
+extern int dtatools_owned_numeric_region(
+    const void *, size_t, size_t, const void **, size_t *
+);
+extern size_t dtatools_owned_numeric_live_bytes(void);
+extern size_t dtatools_owned_numeric_live_owners(void);
+extern size_t dtatools_owned_numeric_chunks(const void *);
+
+static void owned_numeric_gc_call(void *unused) {
+    (void) unused;
+    R_gc();
+}
+
+/* Called only by the experimental reader, on the R thread before native
+   preparation. Contain any long jump from user finalizers inside C. */
+int dtatools_owned_numeric_gc(void) {
+    return R_ToplevelExec(owned_numeric_gc_call, NULL);
+}
 typedef struct {
     void *values;
     int kind;
     int temporal;
     int format_version;
+    const void *native_owner;
 } dtatools_compare_operand;
 extern int dtatools_numeric_compare(
     int, const dtatools_compare_operand *, const dtatools_compare_operand *,
@@ -98,6 +125,7 @@ typedef struct {
     int haven_labelled;
     /* Unmaterialized dictionary-string payload, or NULL for eager columns. */
     const void *dictstring;
+    const void *compact_owner;
 } dtatools_arrow_column;
 
 enum dtatools_arrow_specification_slot {
@@ -206,9 +234,13 @@ typedef struct {
     int temporal;
     int format_version;
     size_t missing_count;
+    /* Opaque immutable Rust owner. values is NULL when this is non-NULL. */
+    const void *native_owner;
 } numeric_data;
 
 static SEXP numeric_compact_copy(const numeric_data *data);
+static SEXP numeric_handle_copy(SEXP source);
+static double owned_numeric_compatibility_bytes = 0.0;
 
 /* Compact ALTREP payload ownership lives in the external-pointer tag. A NULL
    tag is directly writable. A non-NULL tag means an alias exists and ordinary
@@ -264,6 +296,10 @@ typedef struct {
     int kind;
     int format_version;
     int source_has_missing;
+    uintptr_t x_owner;
+    uintptr_t y_owner;
+    size_t x_length;
+    size_t y_length;
 } numeric_gather_column;
 
 enum {
@@ -283,7 +319,7 @@ static void numeric_finalize(SEXP external) {
     R_SetExternalPtrProtected(external, R_NilValue);
 }
 
-static numeric_data *numeric_storage(SEXP value) {
+static numeric_data *numeric_read_storage(SEXP value) {
     numeric_data *data = (numeric_data *) R_ExternalPtrAddr(
         R_altrep_data1(value)
     );
@@ -291,10 +327,25 @@ static numeric_data *numeric_storage(SEXP value) {
     return data;
 }
 
+/* Conservative adapter for legacy consumers which require contiguous,
+   writable bytes. No immutable owner ever enters those pointer interfaces. */
+static numeric_data *numeric_storage(SEXP value) {
+    numeric_data *data = numeric_read_storage(value);
+    if (data->native_owner != NULL) {
+        SEXP detached = PROTECT(numeric_compact_copy(data));
+        owned_numeric_compatibility_bytes +=
+            (double) data->length * (double) numeric_kind_width(data->kind);
+        R_set_altrep_data1(value, R_altrep_data1(detached));
+        data = numeric_read_storage(value);
+        UNPROTECT(1);
+    }
+    return data;
+}
+
 static R_xlen_t numeric_length(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return XLENGTH(materialized);
-    size_t length = numeric_storage(value)->length;
+    size_t length = numeric_read_storage(value)->length;
     if (length > (size_t) R_XLEN_T_MAX) {
         Rf_error("dtatools numeric vector is too long");
     }
@@ -412,6 +463,61 @@ static numeric_data *unmaterialized_numeric_storage(SEXP value) {
     return numeric_storage(value);
 }
 
+static SEXP numeric_base_source(SEXP value) {
+    while (ALTREP(value) &&
+           R_altrep_inherits(value, dtatools_metadata_real_class)) {
+        if (R_altrep_data2(value) != R_NilValue) return R_NilValue;
+        value = metadata_proxy_source(value);
+    }
+    return ALTREP(value) && R_altrep_inherits(value, dtatools_numeric_class) &&
+        R_altrep_data2(value) == R_NilValue ? value : R_NilValue;
+}
+
+static numeric_data *unmaterialized_numeric_read_storage(SEXP value) {
+    SEXP source = numeric_base_source(value);
+    return source == R_NilValue ? NULL : numeric_read_storage(source);
+}
+
+/* Immutable span access, with a contiguous R-backed adapter. The source
+   descriptor and its owning handle must remain rooted across the call. */
+static const void *numeric_read_span(
+    const numeric_data *data, size_t start, size_t requested, size_t *count
+) {
+    if (start > data->length) Rf_error("invalid compact numeric region");
+    if (data->native_owner == NULL) {
+        *count = requested < data->length - start ? requested : data->length - start;
+        return (const unsigned char *) data->values + start * numeric_kind_width(data->kind);
+    }
+    const void *values = NULL;
+    if (!dtatools_owned_numeric_region(data, start, requested, &values, count) ||
+        (*count == 0 && requested != 0 && start != data->length)) {
+        Rf_error("invalid owned compact numeric region");
+    }
+    return values;
+}
+
+static void numeric_copy_region(
+    const numeric_data *data, size_t start, size_t length, void *output
+) {
+    size_t width = numeric_kind_width(data->kind);
+    if (start > data->length || length > data->length - start) {
+        Rf_error("invalid compact numeric copy range");
+    }
+    if (data->native_owner == NULL) {
+        if (length != 0) memcpy(output, (const unsigned char *) data->values + start * width, length * width);
+        return;
+    }
+    size_t copied = 0;
+    while (copied < length) {
+        if (length >= 16384) R_CheckUserInterrupt();
+        size_t count = 0;
+        size_t wanted = length - copied < 65536 ? length - copied : 65536;
+        const void *values = numeric_read_span(data, start + copied, wanted, &count);
+        memcpy((unsigned char *) output + copied * width, values, count * width);
+        copied += count;
+    }
+}
+
 static int materialized_numeric_storage(
     SEXP value, numeric_data *storage
 ) {
@@ -448,8 +554,15 @@ static double numeric_observed_value(double value, int temporal) {
         const numeric_data *data, size_t index                               \
     ) {                                                                       \
         TYPE raw;                                                             \
-        memcpy(&raw, (const char *) data->values + index * sizeof(raw),       \
-               sizeof(raw));                                                  \
+        if (data->native_owner == NULL) {                                     \
+            memcpy(&raw, (const char *) data->values + index * sizeof(raw),   \
+                   sizeof(raw));                                              \
+        } else {                                                              \
+            size_t available = 0;                                            \
+            const void *source = numeric_read_span(data, index, 1, &available);\
+            if (available != 1) Rf_error("invalid compact numeric index");    \
+            memcpy(&raw, source, sizeof(raw));                                \
+        }                                                                     \
         return raw;                                                           \
     }                                                                         \
                                                                               \
@@ -484,10 +597,10 @@ static double numeric_observed_value(double value, int temporal) {
         }                                                                     \
     }                                                                         \
                                                                               \
-    static long double numeric_##NAME##_sum(                                  \
-        const numeric_data *data, Rboolean na_rm                              \
+    static void numeric_##NAME##_sum_accumulate(                              \
+        const numeric_data *data, Rboolean na_rm, long double *accumulator    \
     ) {                                                                       \
-        long double sum = 0.0;                                                \
+        long double sum = *accumulator;                                       \
         if (data->missing_count == 0) {                                       \
             for (size_t index = 0; index < data->length; index++) {           \
                 if ((index & 16383) == 0) R_CheckUserInterrupt();             \
@@ -501,24 +614,34 @@ static double numeric_observed_value(double value, int temporal) {
                 if (!na_rm || !ISNAN(element)) sum += element;                \
             }                                                                 \
         }                                                                     \
+        *accumulator = sum;                                                   \
+    }                                                                         \
+                                                                              \
+    static long double numeric_##NAME##_sum(                                  \
+        const numeric_data *data, Rboolean na_rm                              \
+    ) {                                                                       \
+        long double sum = 0.0;                                                \
+        numeric_##NAME##_sum_accumulate(data, na_rm, &sum);                   \
         return sum;                                                           \
     }                                                                         \
                                                                               \
-    static int numeric_##NAME##_extreme(                                      \
-        const numeric_data *data, Rboolean na_rm, int minimum, double *result \
+    static void numeric_##NAME##_extreme_accumulate(                          \
+        const numeric_data *data, Rboolean na_rm, int minimum,               \
+        double *accumulator, int *initialized                                \
     ) {                                                                       \
-        double current = 0.0;                                                 \
-        int updated = 0;                                                      \
+        double current = *accumulator;                                       \
+        int updated = *initialized;                                          \
         if (data->missing_count == 0) {                                       \
-            if (data->length == 0) return 0;                                  \
-            TYPE raw = numeric_##NAME##_raw_at(data, 0);                     \
-            current = numeric_observed_value(                                \
-                (double) raw, data->temporal                                  \
-            );                                                                \
-            updated = 1;                                                      \
-            for (size_t index = 1; index < data->length; index++) {           \
+            size_t first = 0;                                                 \
+            if (!updated && data->length != 0) {                             \
+                TYPE raw = numeric_##NAME##_raw_at(data, 0);                 \
+                current = numeric_observed_value((double) raw, data->temporal);\
+                updated = 1;                                                  \
+                first = 1;                                                    \
+            }                                                                 \
+            for (size_t index = first; index < data->length; index++) {       \
                 if ((index & 16383) == 0) R_CheckUserInterrupt();             \
-                raw = numeric_##NAME##_raw_at(data, index);                   \
+                TYPE raw = numeric_##NAME##_raw_at(data, index);              \
                 double element = numeric_observed_value(                     \
                     (double) raw, data->temporal                              \
                 );                                                            \
@@ -542,6 +665,16 @@ static double numeric_observed_value(double value, int temporal) {
                 }                                                             \
             }                                                                 \
         }                                                                     \
+        *accumulator = current;                                               \
+        *initialized = updated;                                               \
+    }                                                                         \
+                                                                              \
+    static int numeric_##NAME##_extreme(                                      \
+        const numeric_data *data, Rboolean na_rm, int minimum, double *result \
+    ) {                                                                       \
+        double current = 0.0;                                                 \
+        int updated = 0;                                                      \
+        numeric_##NAME##_extreme_accumulate(data, na_rm, minimum, &current, &updated);\
         if (updated) *result = current;                                       \
         return updated;                                                       \
     }
@@ -633,9 +766,12 @@ enum {
    data1/data2 state. This function neither copies nor marks backing shared. */
 static SEXP numeric_payload_root(SEXP value) {
     if (owned_column(value)) return owned_values(value);
-    if (unmaterialized_numeric_storage(value) != NULL) {
-        SEXP source = value;
-        while (R_altrep_inherits(source, dtatools_metadata_real_class)) source = metadata_proxy_source(source);
+    if (unmaterialized_numeric_read_storage(value) != NULL) {
+        SEXP source = numeric_base_source(value);
+        /* A private handle cannot be materialized or cleared by a callback
+           that holds the public vector. It also retains frozen R raw roots. */
+        if (numeric_read_storage(source)->native_owner != NULL)
+            return numeric_handle_copy(source);
         return R_ExternalPtrProtected(R_altrep_data1(source));
     }
     if (ALTREP(value) && R_altrep_data2(value) != R_NilValue) return R_altrep_data2(value);
@@ -645,11 +781,19 @@ static SEXP numeric_payload_root(SEXP value) {
 static numeric_reader numeric_reader_create(
     SEXP value, R_xlen_t expected_length
 ) {
+    /* Callers that keep this reader across callbacks must also protect
+       numeric_payload_root(value). Snapshot the descriptor because public
+       handle materialization can free it even while its backing is rooted. */
     numeric_reader reader = {
         value, NULL, NULL, NULL, TYPEOF(value)
     };
     if (reader.type == REALSXP) {
-        reader.storage = unmaterialized_numeric_storage(value);
+        reader.storage = unmaterialized_numeric_read_storage(value);
+        if (reader.storage != NULL) {
+            numeric_data encoding = *reader.storage;
+            reader.storage = (numeric_data *) R_alloc(1, sizeof(numeric_data));
+            *reader.storage = encoding;
+        }
         if (reader.storage != NULL &&
             (R_xlen_t) reader.storage->length != expected_length) {
             Rf_error(
@@ -857,6 +1001,7 @@ typedef struct {
     int direct_numeric_temporal;
     int direct_numeric_no_na;
     void *direct_string_data;
+    const void *direct_numeric_owner;
 } dtatools_write_column;
 
 enum dtatools_dta_column_slot {
@@ -876,6 +1021,14 @@ enum dtatools_dta_column_slot {
     typedef char dtatools_layout_assert_##name[(condition) ? 1 : -1]
 
 #if UINTPTR_MAX == UINT64_MAX
+DTATOOLS_LAYOUT_ASSERT(compare_owner, offsetof(dtatools_compare_operand, native_owner) == 24);
+DTATOOLS_LAYOUT_ASSERT(compare_size, sizeof(dtatools_compare_operand) == 32);
+DTATOOLS_LAYOUT_ASSERT(gather_x_owner, offsetof(numeric_gather_column, x_owner) == 64);
+DTATOOLS_LAYOUT_ASSERT(gather_y_owner, offsetof(numeric_gather_column, y_owner) == 72);
+DTATOOLS_LAYOUT_ASSERT(gather_x_length, offsetof(numeric_gather_column, x_length) == 80);
+DTATOOLS_LAYOUT_ASSERT(gather_size, sizeof(numeric_gather_column) == 96);
+DTATOOLS_LAYOUT_ASSERT(numeric_owner, offsetof(numeric_data, native_owner) == 40);
+DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 48);
 DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
 DTATOOLS_LAYOUT_ASSERT(write_column_dta_type, offsetof(dtatools_write_column, dta_type) == 8);
 DTATOOLS_LAYOUT_ASSERT(write_column_format, offsetof(dtatools_write_column, format) == 16);
@@ -892,7 +1045,8 @@ DTATOOLS_LAYOUT_ASSERT(write_column_direct_version, offsetof(dtatools_write_colu
 DTATOOLS_LAYOUT_ASSERT(write_column_direct_temporal, offsetof(dtatools_write_column, direct_numeric_temporal) == 96);
 DTATOOLS_LAYOUT_ASSERT(write_column_direct_no_na, offsetof(dtatools_write_column, direct_numeric_no_na) == 100);
 DTATOOLS_LAYOUT_ASSERT(write_column_direct_string, offsetof(dtatools_write_column, direct_string_data) == 104);
-DTATOOLS_LAYOUT_ASSERT(write_column_size, sizeof(dtatools_write_column) == 112);
+DTATOOLS_LAYOUT_ASSERT(write_column_direct_owner, offsetof(dtatools_write_column, direct_numeric_owner) == 112);
+DTATOOLS_LAYOUT_ASSERT(write_column_size, sizeof(dtatools_write_column) == 120);
 DTATOOLS_LAYOUT_ASSERT(write_table_name, offsetof(dtatools_write_value_label_table, name) == 0);
 DTATOOLS_LAYOUT_ASSERT(write_table_values, offsetof(dtatools_write_value_label_table, label_values) == 8);
 DTATOOLS_LAYOUT_ASSERT(write_table_texts, offsetof(dtatools_write_value_label_table, label_texts) == 16);
@@ -918,7 +1072,8 @@ DTATOOLS_LAYOUT_ASSERT(arrow_column_value_label_index, offsetof(dtatools_arrow_c
 DTATOOLS_LAYOUT_ASSERT(arrow_column_dta_metadata, offsetof(dtatools_arrow_column, dta_metadata) == 112);
 DTATOOLS_LAYOUT_ASSERT(arrow_column_haven_labelled, offsetof(dtatools_arrow_column, haven_labelled) == 120);
 DTATOOLS_LAYOUT_ASSERT(arrow_column_dictstring, offsetof(dtatools_arrow_column, dictstring) == 128);
-DTATOOLS_LAYOUT_ASSERT(arrow_column_size, sizeof(dtatools_arrow_column) == 136);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_compact_owner, offsetof(dtatools_arrow_column, compact_owner) == 136);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_size, sizeof(dtatools_arrow_column) == 144);
 DTATOOLS_LAYOUT_ASSERT(arrow_table_name, offsetof(dtatools_arrow_value_label_table, name) == 0);
 DTATOOLS_LAYOUT_ASSERT(arrow_table_values, offsetof(dtatools_arrow_value_label_table, label_values) == 8);
 DTATOOLS_LAYOUT_ASSERT(arrow_table_texts, offsetof(dtatools_arrow_value_label_table, label_texts) == 16);
@@ -1604,6 +1759,20 @@ SEXP C_dtatools_factorize_numeric(
 static void numeric_fill_region(
     const numeric_data *data, size_t index, size_t length, double *output
 ) {
+    if (data->native_owner != NULL) {
+        size_t copied = 0;
+        while (copied < length) {
+            size_t count = 0;
+            const void *values = numeric_read_span(data, index + copied, length - copied, &count);
+            numeric_data region = *data;
+            region.values = (void *) values;
+            region.length = count;
+            region.native_owner = NULL;
+            numeric_fill_region(&region, 0, count, output + copied);
+            copied += count;
+        }
+        return;
+    }
     switch (data->kind) {
     case NUMERIC_BYTE:
         numeric_byte_region(data, index, length, output);
@@ -1625,6 +1794,28 @@ static void numeric_fill_region(
 static long double numeric_sum_storage(
     const numeric_data *data, Rboolean na_rm
 ) {
+    if (data->native_owner != NULL) {
+        long double sum = 0.0;
+        for (size_t start = 0; start < data->length;) {
+            R_CheckUserInterrupt();
+            size_t count = 0;
+            numeric_data region = *data;
+            region.values = (void *) numeric_read_span(data, start, data->length - start, &count);
+            region.length = count;
+            region.native_owner = NULL;
+            /* Carry one accumulator through every row. Summing independent
+               chunks and combining their totals changes floating rounding. */
+            switch (data->kind) {
+            case NUMERIC_BYTE: numeric_byte_sum_accumulate(&region, na_rm, &sum); break;
+            case NUMERIC_INT: numeric_int_sum_accumulate(&region, na_rm, &sum); break;
+            case NUMERIC_LONG: numeric_long_sum_accumulate(&region, na_rm, &sum); break;
+            case NUMERIC_FLOAT: numeric_float_sum_accumulate(&region, na_rm, &sum); break;
+            default: Rf_error("invalid dtatools numeric storage kind");
+            }
+            start += count;
+        }
+        return sum;
+    }
     switch (data->kind) {
     case NUMERIC_BYTE:
         return numeric_byte_sum(data, na_rm);
@@ -1642,6 +1833,28 @@ static long double numeric_sum_storage(
 static int numeric_extreme_storage(
     const numeric_data *data, Rboolean na_rm, int minimum, double *result
 ) {
+    if (data->native_owner != NULL) {
+        double current = 0.0;
+        int updated = 0;
+        for (size_t start = 0; start < data->length;) {
+            R_CheckUserInterrupt();
+            size_t count = 0;
+            numeric_data region = *data;
+            region.values = (void *) numeric_read_span(data, start, data->length - start, &count);
+            region.length = count;
+            region.native_owner = NULL;
+            switch (data->kind) {
+            case NUMERIC_BYTE: numeric_byte_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
+            case NUMERIC_INT: numeric_int_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
+            case NUMERIC_LONG: numeric_long_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
+            case NUMERIC_FLOAT: numeric_float_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
+            default: Rf_error("invalid dtatools numeric storage kind");
+            }
+            start += count;
+        }
+        if (updated) *result = current;
+        return updated;
+    }
     switch (data->kind) {
     case NUMERIC_BYTE:
         return numeric_byte_extreme(data, na_rm, minimum, result);
@@ -1659,7 +1872,7 @@ static int numeric_extreme_storage(
 static double numeric_value(SEXP value, R_xlen_t index) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return REAL_ELT(materialized, index);
-    numeric_data *data = numeric_storage(value);
+    numeric_data *data = numeric_read_storage(value);
     if (index < 0 || (size_t) index >= data->length) {
         Rf_error("invalid dtatools numeric-vector index");
     }
@@ -1679,7 +1892,7 @@ static R_xlen_t numeric_region(
                (size_t) copied * sizeof(double));
         return copied;
     }
-    numeric_data *data = numeric_storage(value);
+    numeric_data *data = numeric_read_storage(value);
     if (index < 0 || count < 0 || (size_t) index >= data->length) return 0;
     size_t available = data->length - (size_t) index;
     size_t requested = (size_t) count;
@@ -1694,8 +1907,13 @@ static SEXP numeric_materialize(SEXP value, Rboolean writeable) {
         return writeable
             ? detach_shared_materialized_payload(value) : materialized;
     }
-    numeric_data *data = numeric_storage(value);
-    if (compact_payload_is_shared(R_altrep_data1(value))) {
+    numeric_data *data = numeric_read_storage(value);
+    if (data->native_owner != NULL) {
+        SEXP detached = PROTECT(numeric_handle_copy(value));
+        R_set_altrep_data1(value, R_altrep_data1(detached));
+        data = numeric_read_storage(value);
+        UNPROTECT(1);
+    } else if (compact_payload_is_shared(R_altrep_data1(value))) {
         SEXP detached = PROTECT(numeric_compact_copy(data));
         R_set_altrep_data1(value, R_altrep_data1(detached));
         data = numeric_storage(value);
@@ -1731,12 +1949,12 @@ static int numeric_no_na(SEXP value) {
         }
         return 1;
     }
-    return numeric_storage(value)->missing_count == 0;
+    return numeric_read_storage(value)->missing_count == 0;
 }
 
 static SEXP numeric_sum(SEXP value, Rboolean na_rm) {
     if (R_altrep_data2(value) != R_NilValue) return NULL;
-    numeric_data *data = numeric_storage(value);
+    numeric_data *data = numeric_read_storage(value);
     long double sum = numeric_sum_storage(data, na_rm);
     if (sum > DBL_MAX) return Rf_ScalarReal(R_PosInf);
     if (sum < -DBL_MAX) return Rf_ScalarReal(R_NegInf);
@@ -1749,7 +1967,7 @@ static SEXP numeric_extreme(
     if (R_altrep_data2(value) != R_NilValue) return NULL;
     double result;
     if (!numeric_extreme_storage(
-            numeric_storage(value), na_rm, minimum, &result
+            numeric_read_storage(value), na_rm, minimum, &result
         )) {
         return NULL;
     }
@@ -1797,13 +2015,30 @@ static SEXP numeric_compact_copy(const numeric_data *data) {
     }
     R_xlen_t byte_length = (R_xlen_t) (data->length * width);
     SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
-    memcpy(RAW(backing), data->values, (size_t) byte_length);
+    numeric_copy_region(data, 0, data->length, RAW(backing));
     compact_copy_bytes += (double) byte_length;
     SEXP result = numeric_from_backing(
         backing, data->length, data->kind, data->temporal,
         data->format_version, data->missing_count
     );
     UNPROTECT(1);
+    return result;
+}
+
+/* Share only immutable bytes. Every returned vector has its own descriptor,
+   external pointer and materialization state, plus the original R roots. */
+static SEXP numeric_handle_copy(SEXP source) {
+    numeric_data *data = numeric_read_storage(source);
+    if (data->native_owner == NULL) return numeric_compact_copy(data);
+    SEXP external = PROTECT(R_MakeExternalPtr(
+        NULL, R_NilValue, R_ExternalPtrProtected(R_altrep_data1(source))
+    ));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    void *copy = dtatools_owned_numeric_clone(data);
+    if (copy == NULL) Rf_error("could not retain an owned numeric column");
+    R_SetExternalPtrAddr(external, copy);
+    SEXP result = PROTECT(R_new_altrep(dtatools_numeric_class, external, R_NilValue));
+    UNPROTECT(2);
     return result;
 }
 
@@ -1829,11 +2064,11 @@ static void swap_compact_numeric_bytes(
 
 static SEXP numeric_serialized_state(SEXP value) {
     if (R_altrep_data2(value) != R_NilValue) return NULL;
-    numeric_data *data = numeric_storage(value);
+    numeric_data *data = numeric_read_storage(value);
     SEXP backing = PROTECT(Rf_allocVector(
         RAWSXP, (R_xlen_t) (data->length * numeric_kind_width(data->kind))
     ));
-    memcpy(RAW(backing), data->values, (size_t) XLENGTH(backing));
+    numeric_copy_region(data, 0, data->length, RAW(backing));
     if (!host_is_little_endian()) {
         swap_compact_numeric_bytes(
             RAW(backing), data->length, numeric_kind_width(data->kind)
@@ -1886,7 +2121,7 @@ static SEXP numeric_unserialize(SEXP class, SEXP state) {
 static SEXP numeric_duplicate(SEXP value, Rboolean deep) {
     (void) deep;
     if (R_altrep_data2(value) != R_NilValue) return NULL;
-    return numeric_compact_copy(numeric_storage(value));
+    return numeric_handle_copy(value);
 }
 
 static void write_numeric_system_missing_raw(
@@ -1932,9 +2167,13 @@ static SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
     }
     /* Index callbacks can materialize value and free its native descriptor.
        Freeze the descriptor and retain its raw payload for this read loop. */
-    numeric_data snapshot = *numeric_storage(value);
+    /* The independent immutable handle keeps the owner alive even when an
+       index callback materializes or mutates the original value. */
+    SEXP read_handle = PROTECT(numeric_read_storage(value)->native_owner != NULL
+        ? numeric_handle_copy(value) : value);
+    numeric_data snapshot = *numeric_read_storage(read_handle);
     const numeric_data *data = &snapshot;
-    SEXP source_backing = PROTECT(R_ExternalPtrProtected(R_altrep_data1(value)));
+    SEXP source_backing = PROTECT(R_ExternalPtrProtected(R_altrep_data1(read_handle)));
     (void) source_backing;
     R_xlen_t length = XLENGTH(index);
     size_t width = numeric_kind_width(data->kind);
@@ -1961,9 +2200,8 @@ static SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
             }
         }
         if (source >= 0) {
-            memcpy(output + (size_t) i * width,
-                   (unsigned char *) data->values + (size_t) source * width,
-                   width);
+            numeric_copy_region(data, (size_t) source, 1,
+                                output + (size_t) i * width);
             if (numeric_value_is_missing_at(data, (size_t) source)) {
                 missing_count++;
             }
@@ -1978,7 +2216,7 @@ static SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
         backing, (size_t) length, data->kind, data->temporal,
         data->format_version, missing_count
     );
-    UNPROTECT(2);
+    UNPROTECT(3);
     return result;
 }
 
@@ -2035,6 +2273,12 @@ static void numeric_gather_element(
     unsigned char *output, R_xlen_t output_index,
     const numeric_data *source, R_xlen_t source_index, size_t width
 ) {
+    if (source->native_owner != NULL) {
+        size_t available;
+        const void *input = numeric_read_span(source, (size_t) source_index, 1, &available);
+        memcpy(output + (size_t) output_index * width, input, width);
+        return;
+    }
     const unsigned char *input = (const unsigned char *) source->values;
     if (width == 1) {
         output[output_index] = input[source_index];
@@ -2052,22 +2296,32 @@ static void numeric_gather_element(
 SEXP C_dtatools_gather_numeric(
     SEXP x, SEXP y, SEXP x_rows, SEXP y_rows
 ) {
-    numeric_data *x_data = unmaterialized_numeric_storage(x);
+    SEXP x_root = PROTECT(numeric_payload_root(x));
+    SEXP y_root = PROTECT(y == R_NilValue ? R_NilValue : numeric_payload_root(y));
+    numeric_data *x_data = unmaterialized_numeric_read_storage(x_root);
+    if (x_data == NULL) x_data = unmaterialized_numeric_read_storage(x);
     if (x_data == NULL) {
         Rf_error("internal numeric gather requires compact `x` storage");
     }
+    numeric_data x_encoding = *x_data;
+    x_data = &x_encoding;
     numeric_data *y_data = NULL;
+    numeric_data y_encoding;
     if (y != R_NilValue) {
-        y_data = unmaterialized_numeric_storage(y);
+        y_data = unmaterialized_numeric_read_storage(y_root);
+        if (y_data == NULL) y_data = unmaterialized_numeric_read_storage(y);
         if (y_data == NULL) {
             Rf_error("internal numeric gather requires compact `y` storage");
         }
+        y_encoding = *y_data;
+        y_data = &y_encoding;
         if (x_data->kind != y_data->kind ||
             x_data->temporal != y_data->temporal) {
             Rf_error("internal numeric gather requires matching storage");
         }
         if ((x_data->format_version <= 111) !=
             (y_data->format_version <= 111)) {
+            UNPROTECT(2);
             return R_NilValue;
         }
         if (XLENGTH(y_rows) != XLENGTH(x_rows)) {
@@ -2144,7 +2398,7 @@ SEXP C_dtatools_gather_numeric(
     if (gathered_names != R_NilValue) {
         Rf_setAttrib(result, R_NamesSymbol, gathered_names);
     }
-    UNPROTECT(gathered_names == R_NilValue ? 2 : 3);
+    UNPROTECT(gathered_names == R_NilValue ? 4 : 5);
     return result;
 }
 
@@ -2182,7 +2436,7 @@ typedef struct {
 static numeric_gather_source numeric_gather_source_create(
     SEXP value, const char *argument
 ) {
-    numeric_data *compact = unmaterialized_numeric_storage(value);
+    numeric_data *compact = unmaterialized_numeric_read_storage(value);
     if (compact != NULL) {
         numeric_gather_source source = {
             (const unsigned char *) compact->values,
@@ -2221,8 +2475,14 @@ SEXP C_dtatools_gather_numeric_columns(
     }
     R_xlen_t column_count = XLENGTH(x);
     SEXP result = PROTECT(Rf_allocVector(VECSXP, column_count));
+    SEXP read_roots = PROTECT(Rf_allocVector(VECSXP, 2 * column_count));
+    for (R_xlen_t index = 0; index < column_count; index++) {
+        SET_VECTOR_ELT(read_roots, 2 * index, numeric_payload_root(VECTOR_ELT(x, index)));
+        if (y != R_NilValue)
+            SET_VECTOR_ELT(read_roots, 2 * index + 1, numeric_payload_root(VECTOR_ELT(y, index)));
+    }
     if (column_count == 0) {
-        UNPROTECT(1);
+        UNPROTECT(2);
         return result;
     }
 
@@ -2257,12 +2517,15 @@ SEXP C_dtatools_gather_numeric_columns(
         SEXP x_value = VECTOR_ELT(x, index);
         SEXP y_value = y == R_NilValue
             ? R_NilValue : VECTOR_ELT(y, index);
+        SEXP x_read = VECTOR_ELT(read_roots, 2 * index);
+        SEXP y_read = VECTOR_ELT(read_roots, 2 * index + 1);
         numeric_gather_source x_source = numeric_gather_source_create(
-            x_value, "x"
+            unmaterialized_numeric_read_storage(x_read) != NULL ? x_read : x_value, "x"
         );
         numeric_gather_source y_source;
         if (y != R_NilValue) {
-            y_source = numeric_gather_source_create(y_value, "y");
+            y_source = numeric_gather_source_create(
+                unmaterialized_numeric_read_storage(y_read) != NULL ? y_read : y_value, "y");
         }
         if (x_source.length != first_x.length ||
             (y != R_NilValue && y_source.length != first_y.length)) {
@@ -2315,6 +2578,11 @@ SEXP C_dtatools_gather_numeric_columns(
         column->x_values = (uintptr_t) x_source.values;
         column->y_values = y == R_NilValue
             ? (uintptr_t) 0 : (uintptr_t) y_source.values;
+        column->x_owner = x_source.compact == NULL ? 0 : (uintptr_t) x_source.compact->native_owner;
+        column->y_owner = y == R_NilValue || y_source.compact == NULL
+            ? 0 : (uintptr_t) y_source.compact->native_owner;
+        column->x_length = x_source.length;
+        column->y_length = y == R_NilValue ? 0 : y_source.length;
         column->output = x_source.compact == NULL
             ? (uintptr_t) REAL(gathered) : (uintptr_t) RAW(backing);
         column->width = width;
@@ -2363,7 +2631,7 @@ SEXP C_dtatools_gather_numeric_columns(
             UNPROTECT(1);
         }
     }
-    UNPROTECT(1);
+    UNPROTECT(2);
     return result;
 }
 
@@ -2393,7 +2661,8 @@ int dtatools_make_numeric(
     void *data, SEXP backing, int *transferred, SEXP *result
 ) {
     if (data == NULL || transferred == NULL || result == NULL) return 0;
-    if (TYPEOF(backing) != RAWSXP) return 0;
+    if (TYPEOF(backing) != RAWSXP &&
+        !(backing == R_NilValue && ((numeric_data *) data)->native_owner != NULL)) return 0;
     make_numeric_context context = {data, backing, 0, NULL};
     int ok = R_ToplevelExec(make_numeric_call, &context);
     *transferred = context.transferred;
@@ -3270,13 +3539,10 @@ SEXP C_dtatools_metadata(
     return result;
 }
 
-SEXP C_dtatools_read(
-    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
-    SEXP threads, SEXP numeric_altrep, SEXP encoding
+static void validate_dta_read_arguments(
+    SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
+    SEXP threads, SEXP numeric_altrep
 ) {
-    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
-        Rf_error("`file` must be one non-missing path");
-    }
     int all_columns = Rf_isNull(columns);
     if (!all_columns && TYPEOF(columns) != INTSXP) {
         Rf_error("internal column selection must be integer");
@@ -3297,6 +3563,17 @@ SEXP C_dtatools_read(
         LOGICAL(numeric_altrep)[0] == NA_LOGICAL) {
         Rf_error("internal numeric ALTREP selector must be logical");
     }
+}
+
+SEXP C_dtatools_read(
+    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
+    SEXP threads, SEXP numeric_altrep, SEXP encoding
+) {
+    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
+        Rf_error("`file` must be one non-missing path");
+    }
+    validate_dta_read_arguments(columns, skip, n_max, direct_to_r, threads, numeric_altrep);
+    int all_columns = Rf_isNull(columns);
     char *error = NULL;
     SEXP result = dtatools_read_rust(
         Rf_translateCharUTF8(STRING_ELT(path, 0)),
@@ -3313,6 +3590,73 @@ SEXP C_dtatools_read(
     );
     if (result == NULL) fail_from_rust(error);
     return result;
+}
+
+static SEXP prepared_dta_tag = NULL;
+
+static void prepared_dta_finalizer(SEXP prepared) {
+    void *owner = R_ExternalPtrAddr(prepared);
+    if (owner != NULL) {
+        R_ClearExternalPtr(prepared);
+        dtatools_close_prepared_dta_rust(owner);
+    }
+}
+
+static void validate_prepared_dta(SEXP prepared) {
+    if (TYPEOF(prepared) != EXTPTRSXP || prepared_dta_tag == NULL ||
+        R_ExternalPtrTag(prepared) != prepared_dta_tag) {
+        Rf_error("invalid prepared DTA read");
+    }
+}
+
+SEXP C_dtatools_prepare_dta_selection(SEXP path, SEXP encoding) {
+    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
+        Rf_error("`file` must be one non-missing path");
+    }
+    if (prepared_dta_tag == NULL) prepared_dta_tag = Rf_install("dtatools_prepared_dta");
+    // Allocate and register finalization before transferring a Rust owner.
+    // Attaching the returned pointer and metadata below cannot allocate in R.
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+    SEXP prepared = PROTECT(R_MakeExternalPtr(NULL, prepared_dta_tag, R_NilValue));
+    R_RegisterCFinalizerEx(prepared, prepared_dta_finalizer, TRUE);
+    SET_VECTOR_ELT(result, 0, prepared);
+    void *owner = NULL;
+    char *error = NULL;
+    SEXP metadata = dtatools_prepare_dta_rust(
+        Rf_translateCharUTF8(STRING_ELT(path, 0)), optional_encoding(encoding),
+        &owner, &error
+    );
+    if (metadata == NULL) fail_from_rust(error);
+    R_SetExternalPtrAddr(prepared, owner);
+    SET_VECTOR_ELT(result, 1, metadata);
+    UNPROTECT(2);
+    return result;
+}
+
+SEXP C_dtatools_read_prepared_dta(
+    SEXP prepared, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
+    SEXP threads, SEXP numeric_altrep
+) {
+    validate_prepared_dta(prepared);
+    void *owner = R_ExternalPtrAddr(prepared);
+    if (owner == NULL) Rf_error("prepared DTA read is closed");
+    validate_dta_read_arguments(columns, skip, n_max, direct_to_r, threads, numeric_altrep);
+    int all_columns = Rf_isNull(columns);
+    char *error = NULL;
+    SEXP result = dtatools_read_prepared_dta_rust(
+        owner, all_columns ? NULL : INTEGER(columns),
+        all_columns ? 0 : (size_t) XLENGTH(columns), all_columns,
+        REAL(skip)[0], REAL(n_max)[0], LOGICAL(direct_to_r)[0],
+        INTEGER(threads)[0], LOGICAL(numeric_altrep)[0], &error
+    );
+    if (result == NULL) fail_from_rust(error);
+    return result;
+}
+
+SEXP C_dtatools_close_prepared_dta(SEXP prepared) {
+    validate_prepared_dta(prepared);
+    prepared_dta_finalizer(prepared);
+    return R_NilValue;
 }
 
 static const char *write_scalar_string(SEXP value, const char *name) {
@@ -3556,8 +3900,11 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         descriptor->label_values = NULL;
         if (descriptor->label_count > 0) {
             numeric_reader *reader = &label_readers[index];
-            *reader = numeric_reader_create(label_values, XLENGTH(label_values));
-            SET_VECTOR_ELT(payload_roots, (R_xlen_t) index, numeric_payload_root(label_values));
+            SEXP root = numeric_payload_root(label_values);
+            SET_VECTOR_ELT(payload_roots, (R_xlen_t) index, root);
+            *reader = numeric_reader_create(
+                unmaterialized_numeric_read_storage(root) != NULL ? root : label_values,
+                (R_xlen_t) descriptor->label_count);
             if (reader->storage != NULL) {
                 encodings[index] = *reader->storage;
                 reader->storage = &encodings[index];
@@ -3622,8 +3969,11 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         };
         if (descriptor->dta_type <= 4) {
             numeric_reader *reader = &value_readers[value_reader_index++];
-            *reader = numeric_reader_create(values, (R_xlen_t) row_count);
-            SET_VECTOR_ELT(payload_roots, (R_xlen_t) (table_count + index), numeric_payload_root(values));
+            SEXP root = numeric_payload_root(values);
+            SET_VECTOR_ELT(payload_roots, (R_xlen_t) (table_count + index), root);
+            *reader = numeric_reader_create(
+                unmaterialized_numeric_read_storage(root) != NULL ? root : values,
+                (R_xlen_t) row_count);
             if (reader->storage != NULL) {
                 encodings[table_count + index] = *reader->storage;
                 reader->storage = &encodings[table_count + index];
@@ -3631,6 +3981,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
             descriptor->numeric_values = reader;
             if (reader->storage != NULL) {
                 descriptor->direct_numeric_values = reader->storage->values;
+                descriptor->direct_numeric_owner = reader->storage->native_owner;
                 descriptor->direct_numeric_kind =
                     WRITE_NUMERIC_BYTE + reader->storage->kind;
                 descriptor->direct_numeric_format_version =
@@ -3818,9 +4169,10 @@ static void arrow_write_column_descriptor(
         descriptor->string_count = (size_t) XLENGTH(levels);
         break;
     case 9: { /* profiled Stata numeric */
-        numeric_data *compact = unmaterialized_numeric_storage(values);
+        numeric_data *compact = unmaterialized_numeric_read_storage(values);
         if (compact != NULL) {
             descriptor->compact_values = compact->values;
+            descriptor->compact_owner = compact->native_owner;
             descriptor->compact_kind = compact->kind;
             descriptor->compact_format_version = compact->format_version;
             descriptor->compact_temporal = compact->temporal;
@@ -4334,8 +4686,9 @@ static SEXP metadata_proxy_source(SEXP value) {
         ALTREP(source) && R_altrep_inherits(source, dtatools_numeric_class) &&
         R_altrep_data2(source) == R_NilValue) {
         numeric_data *origin = (numeric_data *) R_ExternalPtrAddr(VECTOR_ELT(state, 2));
-        numeric_data *view = numeric_storage(source);
-        if (origin != NULL && origin->values == view->values) {
+        numeric_data *view = numeric_read_storage(source);
+        if (origin != NULL && origin->values == view->values &&
+            origin->native_owner == view->native_owner) {
             view->missing_count = origin->missing_count;
         }
     }
@@ -4583,10 +4936,15 @@ static SEXP metadata_proxy(
     if (isolate && ALTREP(source) &&
         R_altrep_inherits(source, dtatools_numeric_class)) {
         SEXP external = R_altrep_data1(source);
-        alias = PROTECT(R_new_altrep(
-            dtatools_numeric_class, external, R_altrep_data2(source)
-        ));
-        compact_payload_mark_shared(external);
+        if (R_altrep_data2(source) == R_NilValue &&
+            numeric_read_storage(source)->native_owner != NULL) {
+            alias = PROTECT(numeric_handle_copy(source));
+        } else {
+            alias = PROTECT(R_new_altrep(
+                dtatools_numeric_class, external, R_altrep_data2(source)
+            ));
+            compact_payload_mark_shared(external);
+        }
         source = alias;
     } else if (isolate && ALTREP(source) &&
                R_altrep_inherits(source, dtatools_dictstring_class)) {
@@ -4618,8 +4976,8 @@ static SEXP metadata_proxy(
  */
 static SEXP metadata_real_duplicate(SEXP value, Rboolean deep) {
     (void) deep;
-    numeric_data *source = unmaterialized_numeric_storage(value);
-    return source == NULL ? NULL : numeric_compact_copy(source);
+    SEXP source = numeric_base_source(value);
+    return source == R_NilValue ? NULL : numeric_handle_copy(source);
 }
 
 /**
@@ -4691,16 +5049,18 @@ static SEXP mutation_column_view(SEXP value) {
         UNPROTECT(1);
         return view;
     }
-    numeric_data *numeric = unmaterialized_numeric_storage(value);
+    numeric_data *numeric = unmaterialized_numeric_read_storage(value);
     if (numeric != NULL && known_numeric_classes(value, 1)) {
         SEXP source = value;
         while (R_altrep_inherits(source, dtatools_metadata_real_class)) {
             source = metadata_proxy_source(source);
         }
         SEXP origin = R_altrep_data1(source);
-        SEXP descriptor = PROTECT(numeric_from_backing(
-            R_ExternalPtrProtected(origin), numeric->length, numeric->kind,
-            numeric->temporal, numeric->format_version, numeric->missing_count));
+        SEXP descriptor = PROTECT(numeric->native_owner != NULL
+            ? numeric_handle_copy(source)
+            : numeric_from_backing(
+                R_ExternalPtrProtected(origin), numeric->length, numeric->kind,
+                numeric->temporal, numeric->format_version, numeric->missing_count));
         SEXP state = PROTECT(Rf_allocVector(VECSXP, 3));
         SET_VECTOR_ELT(state, 0, descriptor);
         SET_VECTOR_ELT(state, 1, R_NilValue);
@@ -4752,7 +5112,7 @@ static SEXP C_dtatools_release_mutation_views(SEXP columns) {
 
 static SEXP C_dtatools_expose_mutation_column(SEXP value) {
     if (mutation_string_view(value)) return mutation_string_source(value);
-    if (owned_column(value) || unmaterialized_numeric_storage(value) != NULL) {
+    if (owned_column(value) || unmaterialized_numeric_read_storage(value) != NULL) {
         return C_dtatools_metadata_copy(value);
     }
     return value;
@@ -4815,7 +5175,7 @@ static SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count) {
         SEXP value = VECTOR_ELT(data, i);
         if (ALTREP(Rf_getAttrib(value, R_ClassSymbol))) return Rf_ScalarLogical(0);
         int known = owned_supported(value) ||
-            (unmaterialized_numeric_storage(value) != NULL && known_numeric_classes(value, 1)) ||
+            (unmaterialized_numeric_read_storage(value) != NULL && known_numeric_classes(value, 1)) ||
             (!ALTREP(value) && !Rf_isObject(value) &&
              (TYPEOF(value) == REALSXP || TYPEOF(value) == INTSXP ||
               TYPEOF(value) == LGLSXP || TYPEOF(value) == STRSXP));
@@ -5016,9 +5376,9 @@ static SEXP C_dtatools_dictstring_subset(SEXP value, SEXP index) {
 
 SEXP C_dtatools_deep_copy_value(SEXP value) {
     if (owned_column(value)) return owned_capture(value);
-    numeric_data *numeric = unmaterialized_numeric_storage(value);
+    numeric_data *numeric = unmaterialized_numeric_read_storage(value);
     if (numeric != NULL) {
-        SEXP result = PROTECT(numeric_compact_copy(numeric));
+        SEXP result = PROTECT(numeric_handle_copy(numeric_base_source(value)));
         DUPLICATE_ATTRIB(result, value);
         UNPROTECT(1);
         return result;
@@ -5334,8 +5694,8 @@ static int reference_rows_alias_target(SEXP rows, SEXP target) {
     if (rows == R_NilValue) return 0;
     if (rows == target) return 1;
 
-    numeric_data *row_storage = unmaterialized_numeric_storage(rows);
-    numeric_data *target_storage = unmaterialized_numeric_storage(target);
+    numeric_data *row_storage = unmaterialized_numeric_read_storage(rows);
+    numeric_data *target_storage = unmaterialized_numeric_read_storage(target);
     if (row_storage != NULL && row_storage == target_storage) return 1;
 
     const void *row_values = DATAPTR_OR_NULL(rows);
@@ -6354,6 +6714,33 @@ static SEXP patch_vector(
 SEXP C_dtatools_patch_vector(
     SEXP target, SEXP rows, SEXP replacement
 ) {
+    numeric_data *immutable = unmaterialized_numeric_read_storage(target);
+    if (immutable != NULL && immutable->native_owner != NULL) {
+        SEXP entry_data1 = PROTECT(R_altrep_data1(target));
+        SEXP entry_data2 = PROTECT(R_altrep_data2(target));
+        R_xlen_t length = XLENGTH(target);
+        SEXP working = PROTECT(numeric_compact_copy(immutable));
+        SHALLOW_DUPLICATE_ATTRIB(working, target);
+        owned_numeric_compatibility_bytes +=
+            (double) immutable->length * (double) numeric_kind_width(immutable->kind);
+        SEXP result = PROTECT(patch_vector(working, rows, replacement, 0));
+        if (R_altrep_data1(target) != entry_data1 || R_altrep_data2(target) != entry_data2 ||
+            XLENGTH(target) != length) {
+            Rf_error("reference mutation target changed while preparing replacement");
+        }
+        if (length != 0 && (rows == R_NilValue || XLENGTH(rows) != 0)) {
+            if (R_altrep_inherits(target, dtatools_numeric_class)) {
+                R_set_altrep_data1(target, R_altrep_data1(working));
+            } else {
+                SEXP token = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, R_NilValue));
+                compact_payload_claim(R_altrep_data1(working), token);
+                metadata_proxy_set_state(target, working, token);
+                UNPROTECT(1);
+            }
+        }
+        UNPROTECT(4);
+        return result;
+    }
     return patch_vector(target, rows, replacement, 1);
 }
 
@@ -7437,11 +7824,58 @@ SEXP C_dtatools_numeric_storage_matches(
         INTEGER(temporal_value)[0] < 0 || INTEGER(temporal_value)[0] > 2) {
         Rf_error("invalid compact Stata storage probe");
     }
-    numeric_data *storage = unmaterialized_numeric_storage(value);
+    numeric_data *storage = unmaterialized_numeric_read_storage(value);
     return Rf_ScalarLogical(
         storage != NULL && storage->kind == INTEGER(kind_value)[0] &&
         storage->temporal == INTEGER(temporal_value)[0]
     );
+}
+
+/* Test-only R-backed adapter. Copy first: the source may already have escaped
+   through a writable compact consumer. The new raw allocation is immutable. */
+static SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
+    numeric_data *source = unmaterialized_numeric_read_storage(value);
+    double chunk_rows_double = Rf_asReal(chunk_rows_value);
+    if (source == NULL || !R_FINITE(chunk_rows_double) || chunk_rows_double < 1 ||
+        chunk_rows_double != trunc(chunk_rows_double) || chunk_rows_double > (double) R_XLEN_T_MAX) {
+        Rf_error("owned numeric freeze requires compact values and positive chunk rows");
+    }
+    size_t bytes = source->length * numeric_kind_width(source->kind);
+    SEXP backing = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t) bytes));
+    numeric_copy_region(source, 0, source->length, RAW(backing));
+    SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    void *data = dtatools_owned_numeric_from_raw(
+        RAW(backing), source->length, (size_t) chunk_rows_double, source->kind,
+        source->temporal, source->format_version, source->missing_count
+    );
+    if (data == NULL) Rf_error("could not freeze compact numeric storage");
+    R_SetExternalPtrAddr(external, data);
+    SEXP result = PROTECT(R_new_altrep(dtatools_numeric_class, external, R_NilValue));
+    SHALLOW_DUPLICATE_ATTRIB(result, value);
+    UNPROTECT(3);
+    return result;
+}
+
+/* Native bytes count retained Buffer capacities, once per allocation within
+   each owner. Independent handles do not add a charge. Separate owners may
+   share one allocation, so this is charged memory rather than process RSS. */
+static SEXP C_dtatools_owned_numeric_info(SEXP value) {
+    numeric_data *data = unmaterialized_numeric_read_storage(value);
+    int retained = data != NULL && data->native_owner != NULL;
+    const char *labels[] = {"owned", "rows", "chunks", "native_bytes", "live_owners", "compatibility_bytes"};
+    SEXP result = PROTECT(Rf_allocVector(REALSXP, 6));
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, 6));
+    REAL(result)[0] = retained;
+    REAL(result)[1] = data == NULL ? 0 : (double) data->length;
+    REAL(result)[2] = retained ? (double) dtatools_owned_numeric_chunks(data) : 0;
+    REAL(result)[3] = (double) dtatools_owned_numeric_live_bytes();
+    REAL(result)[4] = (double) dtatools_owned_numeric_live_owners();
+    REAL(result)[5] = owned_numeric_compatibility_bytes;
+    for (int i = 0; i < 6; i++) SET_STRING_ELT(names, i, Rf_mkChar(labels[i]));
+    Rf_setAttrib(result, R_NamesSymbol, names);
+    UNPROTECT(2);
+    return result;
 }
 
 SEXP C_dtatools_force_altrep_materialization(SEXP value) {
@@ -7565,7 +7999,7 @@ SEXP C_dtatools_is_tagged_missing(SEXP value, SEXP tag) {
     SEXP result = PROTECT(Rf_allocVector(LGLSXP, length));
     int *output = LOGICAL(result);
     if (TYPEOF(value) == REALSXP) {
-        numeric_data *storage = unmaterialized_numeric_storage(value);
+        numeric_data *storage = unmaterialized_numeric_read_storage(value);
         const double *input = storage == NULL
             ? (const double *) DATAPTR_OR_NULL(value) : NULL;
         if (storage != NULL) {
@@ -7820,7 +8254,7 @@ SEXP C_dtatools_missing_tag(SEXP value) {
             SET_STRING_ELT(tag_names, index, Rf_mkCharLen(&text, 1));
         }
 
-        numeric_data *storage = unmaterialized_numeric_storage(value);
+        numeric_data *storage = unmaterialized_numeric_read_storage(value);
         const double *input = storage == NULL
             ? (const double *) DATAPTR_OR_NULL(value) : NULL;
         if (storage != NULL) {
@@ -7872,23 +8306,30 @@ SEXP C_dtatools_missing_tag(SEXP value) {
 }
 
 static int numeric_compare_operand_create(
-    SEXP value, dtatools_compare_operand *operand, size_t *length
+    SEXP value, dtatools_compare_operand *operand, size_t *length, SEXP *read_root
 ) {
-    numeric_data *compact = unmaterialized_numeric_storage(value);
+    SEXP root = PROTECT(numeric_payload_root(value));
+    *read_root = root;
+    numeric_data *compact = unmaterialized_numeric_read_storage(root);
+    if (compact == NULL) compact = unmaterialized_numeric_read_storage(value);
     if (compact != NULL) {
         operand->values = compact->values;
+        operand->native_owner = compact->native_owner;
         operand->kind = compact->kind;
         operand->temporal = compact->temporal;
         operand->format_version = compact->format_version;
         *length = compact->length;
+        UNPROTECT(1);
         return 1;
     }
-    if (TYPEOF(value) != REALSXP) return 0;
+    if (TYPEOF(value) != REALSXP) { UNPROTECT(1); return 0; }
     operand->values = (void *) DATAPTR_RO(value);
+    operand->native_owner = NULL;
     operand->kind = NUMERIC_DOUBLE;
     operand->temporal = 0;
     operand->format_version = 0;
     *length = (size_t) XLENGTH(value);
+    UNPROTECT(1);
     return 1;
 }
 
@@ -8057,13 +8498,14 @@ static SEXP fused_compare_patch(
     if (threads == NA_INTEGER || threads < 0) threads = 0;
 
     dtatools_compare_operand left;
+    SEXP left_root;
     size_t length = 0;
-    if (!numeric_compare_operand_create(x, &left, &length) ||
+    if (!numeric_compare_operand_create(x, &left, &length, &left_root) ||
         length != encoding.length) {
         UNPROTECT(protect_count);
         return R_NilValue;
     }
-    PROTECT(numeric_payload_root(x));
+    PROTECT(left_root);
     protect_count++;
     dtatools_compare_operand right;
     memset(&right, 0, sizeof(right));
@@ -8072,12 +8514,13 @@ static SEXP fused_compare_patch(
     int scalar_rank = 0;
     if (has_right) {
         size_t right_length = 0;
-        if (!numeric_compare_operand_create(y, &right, &right_length) ||
+        SEXP right_root;
+        if (!numeric_compare_operand_create(y, &right, &right_length, &right_root) ||
             right_length != length) {
             UNPROTECT(protect_count);
             return R_NilValue;
         }
-        PROTECT(numeric_payload_root(y));
+        PROTECT(right_root);
         protect_count++;
     } else {
         numeric_scalar_plan(
@@ -8093,13 +8536,14 @@ static SEXP fused_compare_patch(
     int replacement_scalar_rank = 0;
     if (has_replacement) {
         size_t replacement_length = 0;
+        SEXP replacement_root;
         if (!numeric_compare_operand_create(
-                replacement, &replacement_operand, &replacement_length
+                replacement, &replacement_operand, &replacement_length, &replacement_root
             ) || replacement_length != length) {
             UNPROTECT(protect_count);
             return R_NilValue;
         }
-        PROTECT(numeric_payload_root(replacement));
+        PROTECT(replacement_root);
         protect_count++;
     } else {
         numeric_scalar_plan(
@@ -8217,20 +8661,22 @@ SEXP C_dtatools_dta_compare(
     if (threads == NA_INTEGER || threads < 0) threads = 0;
 
     dtatools_compare_operand left, right;
+    SEXP left_root;
     size_t length;
-    if (!numeric_compare_operand_create(x, &left, &length)) return R_NilValue;
-    PROTECT(numeric_payload_root(x));
+    if (!numeric_compare_operand_create(x, &left, &length, &left_root)) return R_NilValue;
+    PROTECT(left_root);
     int protected = 1;
     const dtatools_compare_operand *right_pointer = NULL;
     double scalar_value = 0;
     int scalar_rank = 0;
     if (y != R_NilValue) {
         size_t right_length;
-        if (!numeric_compare_operand_create(y, &right, &right_length) || right_length != length) {
+        SEXP right_root;
+        if (!numeric_compare_operand_create(y, &right, &right_length, &right_root) || right_length != length) {
             UNPROTECT(protected);
             return R_NilValue;
         }
-        PROTECT(numeric_payload_root(y));
+        PROTECT(right_root);
         protected++;
         right_pointer = &right;
     } else numeric_scalar_plan(scalar, &scalar_value, &scalar_rank,
@@ -8356,6 +8802,8 @@ SEXP C_dtatools_replace_reference_columns(
 #include "egen-groups.h"
 
 static const R_CallMethodDef CallEntries[] = {
+    {"C_dtatools_owned_numeric_freeze", (DL_FUNC) &C_dtatools_owned_numeric_freeze, 2},
+    {"C_dtatools_owned_numeric_info", (DL_FUNC) &C_dtatools_owned_numeric_info, 1},
     {"C_dtatools_native_copy_stats", (DL_FUNC) &C_dtatools_native_copy_stats, 1},
     {"C_dtatools_mutation_views", (DL_FUNC) &C_dtatools_mutation_views, 1},
     {"C_dtatools_replacement_fits", (DL_FUNC) &C_dtatools_replacement_fits, 4},
@@ -8402,6 +8850,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_egen_rows", (DL_FUNC) &C_dtatools_egen_rows, 4},
     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 5},
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
+    {"C_dtatools_prepare_dta_selection", (DL_FUNC) &C_dtatools_prepare_dta_selection, 2},
+    {"C_dtatools_read_prepared_dta", (DL_FUNC) &C_dtatools_read_prepared_dta, 7},
+    {"C_dtatools_close_prepared_dta", (DL_FUNC) &C_dtatools_close_prepared_dta, 1},
     {"C_dtatools_write", (DL_FUNC) &C_dtatools_write, 2},
     {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 5},
     {"C_dtatools_has_bytes_encoding",

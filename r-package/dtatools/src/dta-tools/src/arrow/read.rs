@@ -13,7 +13,11 @@ use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+#[cfg(feature = "r-adapter-internal")]
+use std::sync::{Condvar, Mutex};
 use std::thread;
+#[cfg(feature = "r-adapter-internal")]
+use std::time::Duration;
 
 use arrow_array::types::{ArrowDictionaryKeyType, Int16Type, Int32Type, Int64Type, Int8Type};
 use arrow_array::{make_array, Array, ArrayRef, DictionaryArray, Int32Array, PrimitiveArray};
@@ -136,6 +140,47 @@ pub struct ArrowFileSnapshot {
     path: PathBuf,
     file: File,
 }
+
+/// Private adapter experiment: prepared metadata plus bounded decode/fill.
+///
+/// Metadata owns no observation chunks, except empty dictionary arrays needed
+/// for a zero-row factor. It is sufficient for allocation only when the adapter
+/// knows that classification does not depend on the selected values. Other
+/// columns must use [`Self::read`], which continues this preparation unchanged.
+#[cfg(feature = "r-adapter-internal")]
+pub struct ArrowReadCompletion {
+    decoder: ArrowDecodeCompletion,
+    metadata: ArrowReadResult,
+}
+
+/// Worker-only half of a prepared completion. The adapter owns the metadata
+/// independently and may mutate it while allocating and finalizing output.
+#[cfg(feature = "r-adapter-internal")]
+pub struct ArrowDecodeCompletion {
+    file: File,
+    prepared: PreparedRead,
+    threads: usize,
+}
+
+/// Accounting for the private completion experiment. Reservations are a
+/// scheduling estimate, not an allocator/RSS limit. In particular zstd's
+/// native context/window and allocator rounding are not measured here.
+#[cfg(feature = "r-adapter-internal")]
+#[derive(Debug, Default)]
+pub struct ArrowCompletionReport {
+    pub target_bytes: u64,
+    pub dictionary_capacity_bytes: u64,
+    pub reader_capacity_bytes: u64,
+    pub task_capacity_bytes: u64,
+    pub peak_accounted_bytes: u64,
+    pub oversized_tasks: usize,
+    pub maximum_observed_chunk_capacity: usize,
+    pub uses_compressed_capacity_estimates: bool,
+    pub has_unmeasured_zstd_workspace: bool,
+}
+
+#[cfg(feature = "r-adapter-internal")]
+const COMPLETION_READER_BYTES: usize = 8 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Compression {
@@ -1898,6 +1943,543 @@ fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) 
     }
 }
 
+#[cfg(feature = "r-adapter-internal")]
+fn completion_metadata(prepared: &mut PreparedRead) -> Result<ArrowReadResult, ArrowProfileError> {
+    let mut columns = columns_skeleton(prepared)?;
+    let (profile_version, dataset) = if let Some(profile) = prepared.profile.as_mut() {
+        let mut remaining = HashMap::with_capacity(prepared.selected.len());
+        for &index in &prepared.selected {
+            *remaining.entry(index).or_insert(0_usize) += 1;
+        }
+        for (&index, column) in prepared.selected.iter().zip(&mut columns) {
+            let count = remaining
+                .get_mut(&index)
+                .expect("selected field was counted");
+            *count -= 1;
+            column.field = if *count == 0 {
+                profile.fields.take(index)
+            } else {
+                profile.fields.get(index).cloned()
+            };
+        }
+        // Decoding needs only the version and checksums after preparation.
+        // Move wide field and dataset metadata to the adapter, rather than
+        // keeping a second copy throughout allocation and filling.
+        (
+            Some(profile.version.clone()),
+            Some(std::mem::take(&mut profile.dataset)),
+        )
+    } else {
+        (None, None)
+    };
+    Ok(ArrowReadResult {
+        profile_version,
+        dataset,
+        value_label_reference_counts: std::mem::take(&mut prepared.value_label_reference_counts),
+        row_count: prepared.produced,
+        source_row_count: prepared.source_row_count,
+        columns,
+        stored_signature: prepared.stored_signature.take(),
+    })
+}
+
+#[cfg(feature = "r-adapter-internal")]
+struct CompletionTask {
+    plan: usize,
+    output: usize,
+    row_offset: usize,
+    allocation_bytes: u64,
+}
+
+#[cfg(feature = "r-adapter-internal")]
+fn completion_tasks<R: Read + Seek>(
+    reader: &mut R,
+    prepared: &PreparedRead,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<Vec<CompletionTask>, ArrowProfileError> {
+    let count = prepared
+        .plans
+        .len()
+        .checked_mul(prepared.selected.len())
+        .ok_or_else(|| invalid("completion task count overflows"))?;
+    let mut tasks = Vec::new();
+    tasks
+        .try_reserve_exact(count)
+        .map_err(|_| invalid("could not allocate completion tasks"))?;
+    let mut row_offset = 0_usize;
+    for (plan_index, plan) in prepared.plans.iter().enumerate() {
+        let body_start = plan
+            .block
+            .offset
+            .checked_add(u64::from(plan.block.metadata_length))
+            .ok_or_else(|| invalid("record batch body offset overflows"))?;
+        for (output, &field_index) in prepared.selected.iter().enumerate() {
+            if interrupt() {
+                return Err(ArrowProfileError::Interrupted);
+            }
+            let layout = &prepared.footer.layouts[field_index];
+            let entries = plan
+                .header
+                .buffers
+                .get(layout.buffer..layout.buffer + layout.buffer_count)
+                .ok_or_else(|| invalid("record batch header is missing buffers"))?;
+            let mut allocation_bytes = 0_u64;
+            for &entry in entries {
+                allocation_bytes = allocation_bytes
+                    .checked_add(ipc_buffer_allocation_bytes(
+                        reader,
+                        body_start,
+                        plan.block.body_length,
+                        entry,
+                        plan.header.compression,
+                    )?)
+                    .ok_or_else(|| invalid("completion allocation size overflows"))?;
+            }
+            // read_to_end can retain more capacity than the decompressed
+            // length. This headroom is an estimate, reported as such, not an
+            // assertion about the allocator or zstd's native window state.
+            if plan.header.compression.is_some() {
+                allocation_bytes = allocation_bytes
+                    .checked_mul(2)
+                    .ok_or_else(|| invalid("completion capacity estimate overflows"))?;
+            }
+            let codec_scratch = match plan.header.compression {
+                // lz4_flex 0.14 accepts legacy 8 MiB blocks. Its source
+                // buffer reserves one block; linked output reserves two
+                // blocks plus a 64 KiB window. Allocator rounding is unknown.
+                Some(Compression::Lz4) => 3 * 8 * 1024 * 1024 + 64 * 1024,
+                // Decoder::new adds this BufReader. DCtx/window memory is
+                // not exposed by that reader and is flagged in the report.
+                Some(Compression::Zstd) => zstd::zstd_safe::DCtx::in_size() as u64,
+                None => 0,
+            };
+            // Canonical checksums can copy a trailing bitmap or rebase a
+            // string offset buffer. Reserve both, even if a specific array
+            // ultimately hashes its original buffers without copying.
+            let field = prepared.footer.schema.field(field_index);
+            let checksum_scratch = plan
+                .header
+                .rows
+                .div_ceil(8)
+                .checked_mul(2)
+                .and_then(|bytes| match field.data_type() {
+                    DataType::Utf8 | DataType::LargeUtf8 => {
+                        let width = if field.data_type() == &DataType::Utf8 {
+                            4
+                        } else {
+                            8
+                        };
+                        plan.header
+                            .rows
+                            .checked_add(1)?
+                            .checked_mul(width)?
+                            .checked_add(bytes)
+                    }
+                    _ => Some(bytes),
+                })
+                .ok_or_else(|| invalid("completion checksum scratch overflows"))?;
+            allocation_bytes = allocation_bytes
+                .checked_add(codec_scratch)
+                .and_then(|bytes| bytes.checked_add(checksum_scratch))
+                .ok_or_else(|| invalid("completion scratch estimate overflows"))?;
+            tasks.push(CompletionTask {
+                plan: plan_index,
+                output,
+                row_offset,
+                allocation_bytes,
+            });
+        }
+        row_offset = row_offset
+            .checked_add(plan.slice_length)
+            .ok_or_else(|| invalid("completion row offset overflows"))?;
+    }
+    if u64::try_from(row_offset).ok() != Some(prepared.produced) {
+        return Err(invalid(
+            "completion row count does not match the prepared window",
+        ));
+    }
+    Ok(tasks)
+}
+
+#[cfg(feature = "r-adapter-internal")]
+#[derive(Default)]
+struct CompletionProgress {
+    next: usize,
+    active: usize,
+    bytes: u64,
+    peak_bytes: u64,
+    oversized_tasks: usize,
+}
+
+#[cfg(feature = "r-adapter-internal")]
+struct CompletionQueue<'a> {
+    tasks: &'a [CompletionTask],
+    budget: u64,
+    resident_bytes: u64,
+    progress: Mutex<CompletionProgress>,
+    changed: Condvar,
+    cancelled: AtomicBool,
+    maximum_observed_chunk_capacity: AtomicUsize,
+}
+
+#[cfg(feature = "r-adapter-internal")]
+struct CompletionReservation<'a, 'b> {
+    queue: &'a CompletionQueue<'b>,
+    task: &'b CompletionTask,
+}
+
+#[cfg(feature = "r-adapter-internal")]
+struct CompletionPanicGuard<'a, 'b>(&'a CompletionQueue<'b>);
+
+#[cfg(feature = "r-adapter-internal")]
+impl Drop for CompletionPanicGuard<'_, '_> {
+    fn drop(&mut self) {
+        if thread::panicking() {
+            self.0.cancel();
+        }
+    }
+}
+
+#[cfg(feature = "r-adapter-internal")]
+impl Drop for CompletionReservation<'_, '_> {
+    fn drop(&mut self) {
+        if thread::panicking() {
+            self.queue.cancel();
+        }
+        let mut progress = self
+            .queue
+            .progress
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        progress.active -= 1;
+        progress.bytes -= self.task.allocation_bytes;
+        self.queue.changed.notify_all();
+    }
+}
+
+#[cfg(feature = "r-adapter-internal")]
+impl<'b> CompletionQueue<'b> {
+    fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Relaxed);
+        self.changed.notify_all();
+    }
+
+    fn take(
+        &self,
+        poll: &mut impl FnMut() -> bool,
+    ) -> Result<Option<CompletionReservation<'_, 'b>>, ArrowProfileError> {
+        loop {
+            if poll() {
+                self.cancel();
+                return Err(ArrowProfileError::Interrupted);
+            }
+            let mut progress = self
+                .progress
+                .lock()
+                .map_err(|_| invalid("completion scheduler was poisoned"))?;
+            if self.cancelled.load(Ordering::Relaxed) {
+                return Ok(None);
+            }
+            if let Some(task) = self.tasks.get(progress.next) {
+                let fits = progress
+                    .bytes
+                    .checked_add(task.allocation_bytes)
+                    .and_then(|bytes| bytes.checked_add(self.resident_bytes))
+                    .is_some_and(|bytes| bytes <= self.budget);
+                // An oversized indivisible column is admitted only while no
+                // other decode/fill owns a reservation.
+                if progress.active == 0 || fits {
+                    progress.next += 1;
+                    progress.active += 1;
+                    progress.bytes += task.allocation_bytes;
+                    progress.peak_bytes = progress.peak_bytes.max(progress.bytes);
+                    if !fits {
+                        progress.oversized_tasks += 1;
+                    }
+                    return Ok(Some(CompletionReservation { queue: self, task }));
+                }
+            } else if progress.active == 0 {
+                return Ok(None);
+            }
+            // The coordinator continues polling while workers finish, rather
+            // than entering a blocking join with no interrupt checks.
+            let (progress, _) = self
+                .changed
+                .wait_timeout(progress, Duration::from_millis(10))
+                .map_err(|_| invalid("completion scheduler was poisoned"))?;
+            drop(progress);
+        }
+    }
+}
+
+#[cfg(feature = "r-adapter-internal")]
+fn complete_task_loop<R: Read + Seek, F>(
+    reader: &mut R,
+    context: &DecodeContext<'_>,
+    plans: &[BlockPlan],
+    queue: &CompletionQueue<'_>,
+    fill: &F,
+    mut poll: impl FnMut() -> bool,
+) -> Result<(), ArrowProfileError>
+where
+    F: Fn(usize, usize, ArrayRef) -> Result<(), ArrowProfileError> + Sync,
+{
+    while let Some(reservation) = queue.take(&mut poll)? {
+        let task = reservation.task;
+        let outcome = decode_planned_column(reader, context, &plans[task.plan], task.output)
+            .and_then(|chunk| {
+                let data = chunk.to_data();
+                // Dictionary children are counted once in resident bytes.
+                let capacity = data.buffers().iter().map(Buffer::capacity).sum::<usize>()
+                    + data.nulls().map_or(0, |nulls| nulls.buffer().capacity());
+                queue
+                    .maximum_observed_chunk_capacity
+                    .fetch_max(capacity, Ordering::Relaxed);
+                fill(task.output, task.row_offset, chunk)
+            });
+        if outcome.is_err() {
+            queue.cancel();
+        }
+        drop(reservation);
+        outcome?;
+    }
+    Ok(())
+}
+
+#[cfg(feature = "r-adapter-internal")]
+impl ArrowReadCompletion {
+    /// Validated selection metadata, before observation decoding. Empty
+    /// chunks do not prove null absence or Int32-to-R integer compatibility.
+    pub fn metadata(&self) -> &ArrowReadResult {
+        &self.metadata
+    }
+
+    /// Move selection metadata after the adapter has successfully completed
+    /// and published its own output. This does not return decoded chunks.
+    pub fn into_result(self) -> ArrowReadResult {
+        self.metadata
+    }
+
+    /// Separate owned metadata from the decoder before allocating output.
+    pub fn into_parts(self) -> (ArrowReadResult, ArrowDecodeCompletion) {
+        (self.metadata, self.decoder)
+    }
+
+    /// Continue an unsupported adapter case through the established retained
+    /// chunk read, without reparsing metadata or reopening the source path.
+    pub fn read(
+        mut self,
+        interrupt: &mut dyn FnMut() -> bool,
+    ) -> Result<ArrowReadResult, ArrowProfileError> {
+        let context = DecodeContext {
+            footer: &self.decoder.prepared.footer,
+            profile: self.decoder.prepared.profile.as_ref(),
+            selected: &self.decoder.prepared.selected,
+            dictionaries: &self.decoder.prepared.dictionaries,
+        };
+        if self.decoder.threads > 1 {
+            decode_blocks_parallel(
+                &self.decoder.file,
+                &context,
+                &self.decoder.prepared.plans,
+                &mut self.metadata.columns,
+                self.decoder.threads,
+                interrupt,
+            )?;
+        } else {
+            let mut reader = BufReader::new(PositionedFile::new(self.decoder.file.try_clone()?));
+            decode_blocks_serial(
+                &mut reader,
+                &context,
+                &self.decoder.prepared.plans,
+                &mut self.metadata.columns,
+                interrupt,
+            )?;
+        }
+        Ok(self.metadata)
+    }
+
+    /// Execute without separating metadata. See [`ArrowDecodeCompletion::complete`].
+    pub fn complete<F>(
+        &self,
+        byte_budget: u64,
+        interrupt: &mut dyn FnMut() -> bool,
+        fill: F,
+    ) -> Result<(), ArrowProfileError>
+    where
+        F: Fn(usize, usize, ArrayRef) -> Result<(), ArrowProfileError> + Sync,
+    {
+        self.decoder.complete(byte_budget, interrupt, fill)
+    }
+}
+
+#[cfg(feature = "r-adapter-internal")]
+impl ArrowDecodeCompletion {
+    /// Decode, validate and verify each full touched column buffer, then fill
+    /// its selected rows. The callback runs on workers and the coordinator;
+    /// it must not call R, must write only its disjoint output range, and must
+    /// release the chunk before returning. Output order follows `columns`;
+    /// row offsets refer to the selected output, not absolute source rows.
+    ///
+    /// `byte_budget` includes retained dictionary capacities, reader scratch,
+    /// task storage and conservative per-column buffer/scratch reservations.
+    /// An oversized column runs alone. It is an accounted scheduling target;
+    /// metadata, final output, allocator rounding and zstd native workspace
+    /// are not bounded by it. See [`Self::complete_with_report`].
+    /// Failure joins every worker before returning; partially filled adapter
+    /// destinations must not be published. The source must remain unmodified.
+    pub fn complete<F>(
+        &self,
+        byte_budget: u64,
+        interrupt: &mut dyn FnMut() -> bool,
+        fill: F,
+    ) -> Result<(), ArrowProfileError>
+    where
+        F: Fn(usize, usize, ArrayRef) -> Result<(), ArrowProfileError> + Sync,
+    {
+        self.complete_with_report(byte_budget, interrupt, fill)
+            .map(|_| ())
+    }
+
+    /// Complete with observable memory accounting. The report includes
+    /// allocated dictionary, reader and task capacities, peak reservations,
+    /// oversized work and observed array capacity. Compressed capacity
+    /// headroom is estimated; zstd context memory is explicitly unmeasured.
+    pub fn complete_with_report<F>(
+        &self,
+        byte_budget: u64,
+        interrupt: &mut dyn FnMut() -> bool,
+        fill: F,
+    ) -> Result<ArrowCompletionReport, ArrowProfileError>
+    where
+        F: Fn(usize, usize, ArrayRef) -> Result<(), ArrowProfileError> + Sync,
+    {
+        if byte_budget == 0 {
+            return Err(invalid("completion byte budget must be positive"));
+        }
+        let mut reader = BufReader::with_capacity(
+            COMPLETION_READER_BYTES,
+            PositionedFile::new(self.file.try_clone()?),
+        );
+        let tasks = completion_tasks(&mut reader, &self.prepared, interrupt)?;
+        let dictionary_capacity_bytes =
+            self.prepared
+                .dictionaries
+                .values()
+                .try_fold(0_u64, |bytes, data| {
+                    bytes
+                        .checked_add(data.get_buffer_memory_size() as u64)
+                        .ok_or_else(|| invalid("dictionary capacity accounting overflows"))
+                })?;
+        let reader_capacity_bytes = (reader.capacity() as u64)
+            .checked_mul(self.threads as u64)
+            .ok_or_else(|| invalid("reader capacity accounting overflows"))?;
+        let task_capacity_bytes = (tasks.capacity() as u64)
+            .checked_mul(size_of::<CompletionTask>() as u64)
+            .ok_or_else(|| invalid("task capacity accounting overflows"))?;
+        let resident_bytes = dictionary_capacity_bytes
+            .checked_add(reader_capacity_bytes)
+            .and_then(|bytes| bytes.checked_add(task_capacity_bytes))
+            .ok_or_else(|| invalid("resident completion capacity overflows"))?;
+        let context = DecodeContext {
+            footer: &self.prepared.footer,
+            profile: self.prepared.profile.as_ref(),
+            selected: &self.prepared.selected,
+            dictionaries: &self.prepared.dictionaries,
+        };
+        let queue = CompletionQueue {
+            tasks: &tasks,
+            budget: byte_budget,
+            resident_bytes,
+            progress: Mutex::new(CompletionProgress::default()),
+            changed: Condvar::new(),
+            cancelled: AtomicBool::new(false),
+            maximum_observed_chunk_capacity: AtomicUsize::new(0),
+        };
+        let mut worker_files = Vec::with_capacity(self.threads.saturating_sub(1));
+        for _ in 1..self.threads {
+            worker_files.push(PositionedFile::new(self.file.try_clone()?));
+        }
+        let (own, workers) = thread::scope(|scope| {
+            // Also cancel panics outside an active reservation, including a
+            // coordinator interrupt callback or a worker reader constructor.
+            let _coordinator_panic_guard = CompletionPanicGuard(&queue);
+            let handles: Vec<_> = worker_files
+                .into_iter()
+                .map(|file| {
+                    let context = &context;
+                    let queue = &queue;
+                    let fill = &fill;
+                    scope.spawn(move || {
+                        let _worker_panic_guard = CompletionPanicGuard(queue);
+                        let mut reader = BufReader::with_capacity(COMPLETION_READER_BYTES, file);
+                        complete_task_loop(
+                            &mut reader,
+                            context,
+                            &self.prepared.plans,
+                            queue,
+                            fill,
+                            || false,
+                        )
+                    })
+                })
+                .collect();
+            let own = complete_task_loop(
+                &mut reader,
+                &context,
+                &self.prepared.plans,
+                &queue,
+                &fill,
+                &mut *interrupt,
+            );
+            if own.is_err() {
+                queue.cancel();
+            }
+            let workers: Vec<_> = handles
+                .into_iter()
+                .map(|handle| {
+                    handle
+                        .join()
+                        .unwrap_or_else(|_| Err(invalid("a completion worker panicked")))
+                })
+                .collect();
+            (own, workers)
+        });
+        own?;
+        for worker in workers {
+            worker?;
+        }
+        let progress = queue
+            .progress
+            .lock()
+            .map_err(|_| invalid("completion scheduler was poisoned"))?;
+        let peak_accounted_bytes = resident_bytes
+            .checked_add(progress.peak_bytes)
+            .ok_or_else(|| invalid("peak completion accounting overflows"))?;
+        Ok(ArrowCompletionReport {
+            target_bytes: byte_budget,
+            dictionary_capacity_bytes,
+            reader_capacity_bytes,
+            task_capacity_bytes,
+            peak_accounted_bytes,
+            oversized_tasks: progress.oversized_tasks,
+            maximum_observed_chunk_capacity: queue
+                .maximum_observed_chunk_capacity
+                .load(Ordering::Relaxed),
+            uses_compressed_capacity_estimates: self
+                .prepared
+                .plans
+                .iter()
+                .any(|plan| plan.header.compression.is_some()),
+            has_unmeasured_zstd_workspace: self
+                .prepared
+                .plans
+                .iter()
+                .any(|plan| plan.header.compression == Some(Compression::Zstd)),
+        })
+    }
+}
+
 /// Read a dtatools Arrow profile file or a plain Arrow IPC file. Batch
 /// bodies decode (and verify) in parallel when `options.threads` allows it.
 pub fn read_arrow_file(
@@ -1913,6 +2495,46 @@ impl ArrowFileSnapshot {
         let path = path.as_ref().to_owned();
         let file = File::open(&path)?;
         Ok(Self { path, file })
+    }
+
+    /// Prepare the private bounded completion experiment without changing the
+    /// ordinary read path. Cloned descriptors preserve this snapshot identity.
+    #[cfg(feature = "r-adapter-internal")]
+    pub fn prepare_completion(
+        &self,
+        options: &ArrowReadOptions,
+        count_source_rows: bool,
+        interrupt: &mut dyn FnMut() -> bool,
+    ) -> Result<ArrowReadCompletion, ArrowProfileError> {
+        let mut reader = BufReader::new(PositionedFile::new(self.file.try_clone()?));
+        let mut prepared = prepare_read(&mut reader, options, count_source_rows, interrupt)
+            .map_err(|error| match error {
+                ArrowProfileError::NotAnArrowFile(_) => {
+                    ArrowProfileError::NotAnArrowFile(self.path.display().to_string())
+                }
+                other => other,
+            })?;
+        let context = DecodeContext {
+            footer: &prepared.footer,
+            profile: prepared.profile.as_ref(),
+            selected: &prepared.selected,
+            dictionaries: &prepared.dictionaries,
+        };
+        let threads = decode_thread_count(
+            options.threads,
+            &context,
+            &prepared.plans,
+            prepared.produced,
+        );
+        let metadata = completion_metadata(&mut prepared)?;
+        Ok(ArrowReadCompletion {
+            metadata,
+            decoder: ArrowDecodeCompletion {
+                file: self.file.try_clone()?,
+                prepared,
+                threads,
+            },
+        })
     }
 
     /// Read from the file identity captured by [`Self::open`].
@@ -2461,6 +3083,423 @@ mod tests {
 
     use super::*;
     use crate::arrow::{save_arrow_file, ArrowCompression, ArrowWriteColumn, ArrowWriteDataset};
+
+    #[cfg(feature = "r-adapter-internal")]
+    mod completion_tests {
+        use super::*;
+        use crate::arrow::{
+            ArrowFieldDocument, ArrowMissingEncoding, StataStorage, ARROW_ROWS_PER_BATCH,
+        };
+
+        struct Fixture(PathBuf);
+
+        impl Fixture {
+            fn new(label: &str) -> Self {
+                static NEXT: AtomicUsize = AtomicUsize::new(0);
+                let directory = std::env::temp_dir().join(format!(
+                    "dtatools-arrow-completion-{}-{}-{label}",
+                    std::process::id(),
+                    NEXT.fetch_add(1, Ordering::Relaxed),
+                ));
+                std::fs::create_dir_all(&directory).unwrap();
+                Self(directory)
+            }
+
+            fn write(&self, name: &str, rows: usize, compression: ArrowCompression) -> PathBuf {
+                let path = self.0.join(name);
+                let dataset = ArrowWriteDataset {
+                    dataset: DatasetDocument {
+                        label: "completion fixture".into(),
+                        ..Default::default()
+                    },
+                    columns: (0..3)
+                        .map(|column| ArrowWriteColumn {
+                            name: format!("x{column}"),
+                            field: Some(ArrowFieldDocument {
+                                storage: Some(StataStorage::Long),
+                                missing: Some(ArrowMissingEncoding::Sentinel),
+                                label: format!("label {column}"),
+                                ..Default::default()
+                            }),
+                            array: Arc::new(Int32Array::from_iter_values(
+                                (0..rows).map(|row| 1000 + row as i32 + column * 100),
+                            )),
+                        })
+                        .collect(),
+                };
+                save_arrow_file(&path, &dataset, compression, 1, true, &mut || false).unwrap();
+                path
+            }
+        }
+
+        impl Drop for Fixture {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+
+        fn options() -> ArrowReadOptions {
+            ArrowReadOptions {
+                verify: true,
+                profile: true,
+                threads: 3,
+                ..Default::default()
+            }
+        }
+
+        fn values(column: &ArrowReadColumn) -> Vec<i32> {
+            column
+                .chunks
+                .iter()
+                .flat_map(|chunk| {
+                    chunk
+                        .as_any()
+                        .downcast_ref::<Int32Array>()
+                        .unwrap()
+                        .values()
+                        .to_vec()
+                })
+                .collect()
+        }
+
+        #[test]
+        fn completion_matches_retained_read_across_batches_projection_and_codecs() {
+            for compression in [
+                ArrowCompression::Uncompressed,
+                ArrowCompression::Lz4,
+                ArrowCompression::Zstd,
+            ] {
+                let fixture = Fixture::new("parity");
+                let rows = ARROW_ROWS_PER_BATCH + 5;
+                let path = fixture.write("source.arrow", rows, compression);
+                let snapshot = ArrowFileSnapshot::open(path).unwrap();
+                let options = ArrowReadOptions {
+                    columns: Some(vec![2, 0, 2]),
+                    row_start: (ARROW_ROWS_PER_BATCH - 2) as u64,
+                    row_count: Some(5),
+                    record_signature: true,
+                    ..options()
+                };
+                let expected = snapshot
+                    .read_with_source_row_count(&options, &mut || false)
+                    .unwrap();
+                let completion = snapshot
+                    .prepare_completion(&options, true, &mut || false)
+                    .unwrap();
+                assert_eq!(completion.metadata().row_count, 5);
+                assert_eq!(completion.metadata().source_row_count, Some(rows as u64));
+                assert_eq!(
+                    completion.metadata().stored_signature,
+                    expected.stored_signature
+                );
+                assert_eq!(completion.metadata().dataset, expected.dataset);
+                for (actual, expected) in
+                    completion.metadata().columns.iter().zip(&expected.columns)
+                {
+                    assert_eq!(actual.name, expected.name);
+                    assert_eq!(actual.field, expected.field);
+                    assert!(actual.chunks.is_empty());
+                }
+                let output = Mutex::new(vec![vec![None; 5]; 3]);
+                completion
+                    .complete(64 * 1024, &mut || false, |column, offset, chunk| {
+                        let values = chunk.as_any().downcast_ref::<Int32Array>().unwrap();
+                        let mut output = output.lock().unwrap();
+                        for (index, value) in values.values().iter().enumerate() {
+                            assert!(output[column][offset + index].replace(*value).is_none());
+                        }
+                        Ok(())
+                    })
+                    .unwrap();
+                let output = output.into_inner().unwrap();
+                for (actual, expected) in output.iter().zip(&expected.columns) {
+                    assert_eq!(
+                        actual
+                            .iter()
+                            .map(|value| value.unwrap())
+                            .collect::<Vec<_>>(),
+                        values(expected)
+                    );
+                }
+                let fallback = snapshot
+                    .prepare_completion(&options, true, &mut || false)
+                    .unwrap()
+                    .read(&mut || false)
+                    .unwrap();
+                assert_eq!(fallback.dataset, expected.dataset);
+                assert_eq!(fallback.stored_signature, expected.stored_signature);
+                for (actual, expected) in fallback.columns.iter().zip(&expected.columns) {
+                    assert_eq!(actual.field, expected.field);
+                    assert_eq!(values(actual), values(expected));
+                }
+            }
+        }
+
+        #[test]
+        fn completion_oversized_columns_run_alone_and_empty_windows_keep_metadata() {
+            let fixture = Fixture::new("budget");
+            let path = fixture.write("source.arrow", 64, ArrowCompression::Uncompressed);
+            let snapshot = ArrowFileSnapshot::open(path).unwrap();
+            let completion = snapshot
+                .prepare_completion(&options(), false, &mut || false)
+                .unwrap();
+            let active = AtomicUsize::new(0);
+            let calls = AtomicUsize::new(0);
+            completion
+                .complete(1, &mut || false, |_, _, _chunk| {
+                    assert_eq!(active.fetch_add(1, Ordering::SeqCst), 0);
+                    for _ in 0..1000 {
+                        thread::yield_now();
+                    }
+                    calls.fetch_add(1, Ordering::Relaxed);
+                    assert_eq!(active.fetch_sub(1, Ordering::SeqCst), 1);
+                    Ok(())
+                })
+                .unwrap();
+            assert_eq!(calls.load(Ordering::Relaxed), 3);
+            for options in [
+                ArrowReadOptions {
+                    row_count: Some(0),
+                    ..options()
+                },
+                ArrowReadOptions {
+                    columns: Some(Vec::new()),
+                    ..options()
+                },
+            ] {
+                let expected = snapshot
+                    .read_with_source_row_count(&options, &mut || false)
+                    .unwrap();
+                let completion = snapshot
+                    .prepare_completion(&options, true, &mut || false)
+                    .unwrap();
+                completion
+                    .complete(64 * 1024 * 1024, &mut || false, |_, _, _| {
+                        panic!("an empty window/projection must not emit chunks")
+                    })
+                    .unwrap();
+                let actual = completion.into_result();
+                assert_eq!(actual.row_count, expected.row_count);
+                assert_eq!(actual.source_row_count, expected.source_row_count);
+                assert_eq!(actual.columns.len(), expected.columns.len());
+            }
+        }
+
+        #[test]
+        fn completion_verifies_outside_the_selected_rows_before_filling() {
+            let fixture = Fixture::new("checksum");
+            let path = fixture.write("source.arrow", 64, ArrowCompression::Uncompressed);
+            let mut bytes = std::fs::read(&path).unwrap();
+            let needle = 1003_i32.to_le_bytes();
+            let position = bytes
+                .windows(4)
+                .position(|window| window == needle)
+                .unwrap();
+            bytes[position] ^= 1;
+            std::fs::write(&path, bytes).unwrap();
+            let snapshot = ArrowFileSnapshot::open(path).unwrap();
+            let options = ArrowReadOptions {
+                columns: Some(vec![0]),
+                row_count: Some(1),
+                ..options()
+            };
+            let completion = snapshot
+                .prepare_completion(&options, false, &mut || false)
+                .unwrap();
+            let error = completion
+                .complete(64 * 1024 * 1024, &mut || false, |_, _, _| {
+                    panic!("a corrupt buffer must never reach the fill callback")
+                })
+                .unwrap_err();
+            assert!(matches!(
+                error,
+                ArrowProfileError::ChecksumMismatch { batch: 0, .. }
+            ));
+        }
+
+        #[test]
+        fn completion_cancels_and_joins_before_returning_callback_errors() {
+            let fixture = Fixture::new("cancel");
+            let path = fixture.write("source.arrow", 64, ArrowCompression::Uncompressed);
+            let snapshot = ArrowFileSnapshot::open(path).unwrap();
+            let completion = snapshot
+                .prepare_completion(&options(), false, &mut || false)
+                .unwrap();
+            let error = completion
+                .complete(64 * 1024 * 1024, &mut || true, |_, _, _| {
+                    panic!("interruption must happen before callback execution")
+                })
+                .unwrap_err();
+            assert!(matches!(error, ArrowProfileError::Interrupted));
+            let active = AtomicUsize::new(0);
+            let error = completion
+                .complete(64 * 1024 * 1024, &mut || false, |_, _, _| {
+                    active.fetch_add(1, Ordering::SeqCst);
+                    thread::yield_now();
+                    active.fetch_sub(1, Ordering::SeqCst);
+                    Err(ArrowProfileError::Invalid("fill rejected".into()))
+                })
+                .unwrap_err();
+            assert_eq!(error.to_string(), "fill rejected");
+            assert_eq!(active.load(Ordering::SeqCst), 0);
+            // No failed execution consumes or damages the prepared source.
+            assert_eq!(completion.read(&mut || false).unwrap().row_count, 64);
+        }
+
+        #[test]
+        fn completion_worker_panic_releases_reservation_and_wakes_coordinator() {
+            let (sender, receiver) = std::sync::mpsc::channel();
+            let handle = thread::spawn(move || {
+                let fixture = Fixture::new("worker-panic");
+                let path = fixture.write("source.arrow", 64, ArrowCompression::Uncompressed);
+                let snapshot = ArrowFileSnapshot::open(path).unwrap();
+                let mut completion = snapshot
+                    .prepare_completion(&options(), false, &mut || false)
+                    .unwrap();
+                completion.decoder.threads = 2;
+                let coordinator = thread::current().id();
+                let entered = AtomicBool::new(false);
+                let release = AtomicBool::new(false);
+                let mut polls = 0;
+                let error = completion
+                    .complete(
+                        1,
+                        &mut || {
+                            polls += 1;
+                            // Three task-planning polls precede executor polling.
+                            if polls > 3 {
+                                let deadline = std::time::Instant::now() + Duration::from_secs(2);
+                                while !entered.load(Ordering::SeqCst) {
+                                    assert!(
+                                        std::time::Instant::now() < deadline,
+                                        "worker did not start"
+                                    );
+                                    thread::yield_now();
+                                }
+                                release.store(true, Ordering::SeqCst);
+                            }
+                            false
+                        },
+                        |_, _, _| {
+                            if thread::current().id() != coordinator {
+                                entered.store(true, Ordering::SeqCst);
+                                while !release.load(Ordering::SeqCst) {
+                                    thread::yield_now();
+                                }
+                                panic!("injected completion worker panic");
+                            }
+                            Ok(())
+                        },
+                    )
+                    .unwrap_err();
+                sender.send(error.to_string()).unwrap();
+            });
+            let error = receiver
+                .recv_timeout(Duration::from_secs(5))
+                .expect("worker panic must not deadlock completion");
+            assert!(error.contains("completion worker panicked"));
+            handle.join().unwrap();
+        }
+
+        #[test]
+        fn completion_accounts_for_dictionary_capacities_and_fallback_keeps_values() {
+            use arrow_array::StringArray;
+            let fixture = Fixture::new("dictionary");
+            let path = fixture.0.join("source.arrow");
+            let dictionary = Arc::new(StringArray::from(vec!["alpha", "beta"]));
+            let array = DictionaryArray::<Int32Type>::try_new(
+                Int32Array::from(vec![0, 1, 1, 0]),
+                dictionary,
+            )
+            .unwrap();
+            let dataset = ArrowWriteDataset {
+                dataset: DatasetDocument::default(),
+                columns: vec![ArrowWriteColumn {
+                    name: "group".into(),
+                    field: None,
+                    array: Arc::new(array),
+                }],
+            };
+            save_arrow_file(
+                &path,
+                &dataset,
+                ArrowCompression::Uncompressed,
+                1,
+                true,
+                &mut || false,
+            )
+            .unwrap();
+            let snapshot = ArrowFileSnapshot::open(path).unwrap();
+            let expected = snapshot.read(&options(), &mut || false).unwrap();
+            let completion = snapshot
+                .prepare_completion(&options(), false, &mut || false)
+                .unwrap();
+            let report = completion
+                .decoder
+                .complete_with_report(64 * 1024 * 1024, &mut || false, |_, _, chunk| {
+                    assert_eq!(chunk.to_data(), expected.columns[0].chunks[0].to_data());
+                    Ok(())
+                })
+                .unwrap();
+            assert!(report.dictionary_capacity_bytes > 0);
+            assert_eq!(report.reader_capacity_bytes, COMPLETION_READER_BYTES as u64);
+            assert!(report.task_capacity_bytes >= size_of::<CompletionTask>() as u64);
+            assert!(report.peak_accounted_bytes <= report.target_bytes);
+            assert_eq!(report.oversized_tasks, 0);
+            assert!(report.maximum_observed_chunk_capacity >= 4 * size_of::<i32>());
+            assert!(!report.uses_compressed_capacity_estimates);
+            assert!(!report.has_unmeasured_zstd_workspace);
+            let fallback = completion.read(&mut || false).unwrap();
+            assert_eq!(
+                fallback.columns[0].chunks[0].to_data(),
+                expected.columns[0].chunks[0].to_data()
+            );
+            let empty = snapshot
+                .prepare_completion(
+                    &ArrowReadOptions {
+                        row_count: Some(0),
+                        ..options()
+                    },
+                    false,
+                    &mut || false,
+                )
+                .unwrap()
+                .read(&mut || false)
+                .unwrap();
+            let chunk = empty.columns[0].chunks[0]
+                .as_any()
+                .downcast_ref::<DictionaryArray<Int32Type>>()
+                .unwrap();
+            assert_eq!(chunk.len(), 0);
+            assert_eq!(chunk.values().len(), 2);
+        }
+
+        #[cfg(unix)]
+        #[test]
+        fn completion_and_fallback_keep_the_opened_file_after_path_replacement() {
+            let fixture = Fixture::new("snapshot");
+            let path = fixture.write("source.arrow", 64, ArrowCompression::Uncompressed);
+            let replacement = fixture.write("replacement.arrow", 2, ArrowCompression::Uncompressed);
+            let snapshot = ArrowFileSnapshot::open(&path).unwrap();
+            let completion = snapshot
+                .prepare_completion(&options(), false, &mut || false)
+                .unwrap();
+            let fallback = snapshot
+                .prepare_completion(&options(), false, &mut || false)
+                .unwrap();
+            std::fs::rename(replacement, path).unwrap();
+            let rows = AtomicUsize::new(0);
+            completion
+                .complete(64 * 1024 * 1024, &mut || false, |_, offset, chunk| {
+                    assert_eq!(offset, 0);
+                    rows.fetch_add(chunk.len(), Ordering::Relaxed);
+                    Ok(())
+                })
+                .unwrap();
+            assert_eq!(rows.load(Ordering::Relaxed), 64 * 3);
+            assert_eq!(fallback.read(&mut || false).unwrap().row_count, 64);
+        }
+    }
 
     #[test]
     fn automatic_reader_threads_use_available_cpus_and_honor_explicit_limits() {

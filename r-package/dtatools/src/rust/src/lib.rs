@@ -27,6 +27,7 @@ use dta_tools::{
 };
 
 mod arrow_ffi;
+mod owned_numeric;
 
 type Sexp = *mut c_void;
 type RLen = isize;
@@ -59,8 +60,10 @@ extern "C" {
     static mut R_RowNamesSymbol: Sexp;
     static mut R_NaReal: f64;
     static mut R_NaInt: c_int;
+    static mut R_NilValue: Sexp;
 
     fn dtatools_check_interrupt() -> c_int;
+    fn dtatools_owned_numeric_gc() -> c_int;
     fn dtatools_alloc_vector(kind: c_int, length: RLen, result: *mut Sexp) -> c_int;
     fn dtatools_adopt_atomic(values: Sexp, result: *mut Sexp) -> c_int;
     fn dtatools_preserve_object(object: Sexp) -> c_int;
@@ -235,6 +238,14 @@ struct NumericData {
     temporal: c_int,
     format_version: c_int,
     missing_count: usize,
+    // Opaque immutable owner, or null for the legacy R-rooted writable bytes.
+    native_owner: *const c_void,
+}
+
+impl Drop for NumericData {
+    fn drop(&mut self) {
+        unsafe { owned_numeric::release(self.native_owner) };
+    }
 }
 
 impl NumericData {
@@ -246,6 +257,7 @@ impl NumericData {
             temporal: data.temporal as c_int,
             format_version: c_int::from(data.format_version.as_u16()),
             missing_count: data.missing_count,
+            native_owner: ptr::null(),
         }
     }
 }
@@ -334,6 +346,7 @@ pub unsafe extern "C" fn dtatools_numeric_alloc(
         temporal: temporal as c_int,
         format_version: 119,
         missing_count,
+        native_owner: ptr::null(),
     }))
     .cast::<c_void>()
 }
@@ -350,6 +363,10 @@ pub struct NumericGatherColumn {
     kind: c_int,
     format_version: c_int,
     source_has_missing: c_int,
+    x_owner: usize,
+    y_owner: usize,
+    x_length: usize,
+    y_length: usize,
 }
 
 unsafe fn gathered_numeric_is_missing(column: NumericGatherColumn, value: *const u8) -> bool {
@@ -383,34 +400,46 @@ unsafe fn gather_numeric_column(
     column: NumericGatherColumn,
     x_rows: &[c_int],
     y_rows: Option<&[c_int]>,
-) {
-    let x_values = column.x_values as *const u8;
-    let y_values = column.y_values as *const u8;
+) -> Option<()> {
+    let x_read = owned_numeric::CompactRead::new(
+        column.x_values as *const c_void,
+        column.x_owner as *const c_void,
+        column.width,
+        column.x_length,
+    )?;
+    let y_read = if y_rows.is_some() {
+        Some(owned_numeric::CompactRead::new(
+            column.y_values as *const c_void,
+            column.y_owner as *const c_void,
+            column.width,
+            column.y_length,
+        )?)
+    } else {
+        None
+    };
+    let mut x_cursor = x_read.cursor();
+    let mut y_cursor = y_read.as_ref().map(|read| read.cursor());
     let output = column.output as *mut u8;
     let mut missing_count = 0;
     for (output_index, &x_index) in x_rows.iter().enumerate() {
-        let (source, source_index) = if x_index >= 0 {
-            (x_values, x_index as usize)
-        } else if !y_values.is_null() {
+        let source = if x_index >= 0 {
+            x_cursor.at(x_index as usize)?
+        } else if let Some(cursor) = &mut y_cursor {
             let y_index = y_rows.expect("paired gather requires y rows")[output_index];
             if y_index >= 0 {
-                (y_values, y_index as usize)
+                cursor.at(y_index as usize)?
             } else {
-                (ptr::null(), 0)
+                ptr::null()
             }
         } else {
-            (ptr::null(), 0)
+            ptr::null()
         };
 
         let target = output.add(output_index * column.width);
         if source.is_null() {
             ptr::copy_nonoverlapping(column.missing.as_ptr(), target, column.width);
         } else {
-            ptr::copy_nonoverlapping(
-                source.add(source_index * column.width),
-                target,
-                column.width,
-            );
+            ptr::copy_nonoverlapping(source, target, column.width);
         }
         if column.missing_count != 0
             && (source.is_null()
@@ -422,6 +451,7 @@ unsafe fn gather_numeric_column(
     if column.missing_count != 0 {
         (column.missing_count as *mut usize).write(missing_count);
     }
+    Some(())
 }
 
 #[no_mangle]
@@ -460,16 +490,20 @@ pub unsafe extern "C" fn dtatools_gather_numeric_columns(
             .min(column_count.max(1));
         let columns_per_worker = column_count.div_ceil(workers);
 
+        let ok = std::sync::atomic::AtomicBool::new(true);
         std::thread::scope(|scope| {
             for chunk in columns.chunks(columns_per_worker) {
+                let ok = &ok;
                 scope.spawn(move || {
                     for &column in chunk {
-                        unsafe { gather_numeric_column(column, x_rows, y_rows) };
+                        if unsafe { gather_numeric_column(column, x_rows, y_rows) }.is_none() {
+                            ok.store(false, std::sync::atomic::Ordering::Relaxed);
+                        }
                     }
                 });
             }
         });
-        true
+        ok.load(std::sync::atomic::Ordering::Relaxed)
     };
 
     match catch_unwind(AssertUnwindSafe(call)) {
@@ -485,7 +519,18 @@ pub struct NumericCompareOperand {
     kind: c_int,
     temporal: c_int,
     format_version: c_int,
+    native_owner: *const c_void,
 }
+
+#[cfg(target_pointer_width = "64")]
+const _: () = {
+    assert!(std::mem::offset_of!(NumericCompareOperand, native_owner) == 24);
+    assert!(std::mem::size_of::<NumericCompareOperand>() == 32);
+    assert!(std::mem::offset_of!(NumericGatherColumn, x_owner) == 64);
+    assert!(std::mem::offset_of!(NumericGatherColumn, y_owner) == 72);
+    assert!(std::mem::offset_of!(NumericGatherColumn, x_length) == 80);
+    assert!(std::mem::size_of::<NumericGatherColumn>() == 96);
+};
 
 /// Storage of one comparison operand, validated once so the per-element
 /// loop carries no `try_from` parsing.
@@ -503,6 +548,35 @@ struct CompareOperandView {
     values: usize,
     storage: CompareStorage,
     temporal: c_int,
+    native_owner: usize,
+}
+
+impl CompareOperandView {
+    fn width(self) -> usize {
+        match self.storage {
+            CompareStorage::Byte(_) => 1,
+            CompareStorage::Int(_) => 2,
+            CompareStorage::Long(_) | CompareStorage::Float(_) => 4,
+            CompareStorage::Double => 8,
+        }
+    }
+
+    unsafe fn read(self, length: usize) -> Option<owned_numeric::CompactRead> {
+        owned_numeric::CompactRead::new(
+            self.values as *const c_void,
+            self.native_owner as *const c_void,
+            self.width(),
+            length,
+        )
+    }
+
+    fn contiguous(self, values: *const u8) -> Self {
+        Self {
+            values: values as usize,
+            native_owner: 0,
+            ..self
+        }
+    }
 }
 
 fn compare_operand_view(operand: NumericCompareOperand) -> Option<CompareOperandView> {
@@ -522,6 +596,7 @@ fn compare_operand_view(operand: NumericCompareOperand) -> Option<CompareOperand
         values: operand.values as usize,
         storage,
         temporal: operand.temporal,
+        native_owner: operand.native_owner as usize,
     })
 }
 
@@ -638,7 +713,7 @@ fn compare_decoded(op: c_int, x: ComparedElement, y: ComparedElement) -> c_int {
     c_int::from(result)
 }
 
-unsafe fn compare_numeric_range(
+unsafe fn compare_numeric_contiguous_range(
     op: c_int,
     x: CompareOperandView,
     y: Option<CompareOperandView>,
@@ -659,6 +734,62 @@ unsafe fn compare_numeric_range(
             None => scalar,
         };
         output.add(index).write(compare_decoded(op, left, right));
+    }
+    true
+}
+
+unsafe fn compare_numeric_range(
+    op: c_int,
+    x: CompareOperandView,
+    y: Option<CompareOperandView>,
+    scalar: ComparedElement,
+    output: *mut c_int,
+    start: usize,
+    end: usize,
+) -> bool {
+    let Some(x_read) = x.read(end) else {
+        return false;
+    };
+    let y_read = match y {
+        Some(y) => match y.read(end) {
+            Some(read) => Some(read),
+            None => return false,
+        },
+        None => None,
+    };
+    let mut first = start;
+    while first < end {
+        let Some((x_values, mut count)) = x_read.region(first, end - first) else {
+            return false;
+        };
+        let y_view = match (&y_read, y) {
+            (Some(read), Some(view)) => {
+                let Some((values, available)) = read.region(first, count) else {
+                    return false;
+                };
+                count = count.min(available);
+                Some(view.contiguous(values))
+            }
+            _ => None,
+        };
+        if count == 0 {
+            return false;
+        }
+        let x_view = x.contiguous(x_values);
+        let destination = output.add(first);
+        let done = match compare_raw_int(op, x_view, y_view, scalar, destination, count) {
+            Some(done) => done,
+            None if y_view.is_none() && matches!(x_view.storage, CompareStorage::Double) => {
+                compare_raw_double_scalar(op, x_values.cast(), scalar, destination, count)
+            }
+            None => {
+                compare_numeric_contiguous_range(op, x_view, y_view, scalar, destination, 0, count)
+            }
+        };
+        if !done {
+            return false;
+        }
+        first += count;
     }
     true
 }
@@ -1083,10 +1214,12 @@ pub unsafe extern "C" fn dtatools_numeric_compare(
         if scalar.rank == 0 && scalar.value.is_nan() {
             return false;
         }
-        if let Some(done) = unsafe { compare_raw_int(op, x, y, scalar, output, length) } {
-            return done;
+        if x.native_owner == 0 && y.is_none_or(|view| view.native_owner == 0) {
+            if let Some(done) = unsafe { compare_raw_int(op, x, y, scalar, output, length) } {
+                return done;
+            }
         }
-        if y.is_none() && matches!(x.storage, CompareStorage::Double) {
+        if x.native_owner == 0 && y.is_none() && matches!(x.storage, CompareStorage::Double) {
             // A false return means a noncanonical NaN payload; fall
             // through so the decoding loop reports the failure and the
             // R fallback owns its error.
@@ -1169,6 +1302,7 @@ fn patch_target_view(target: NumericPatchTarget) -> Option<PatchTargetView> {
         kind: target.kind,
         temporal: target.temporal,
         format_version: target.format_version,
+        native_owner: ptr::null(),
     };
     let compared = compare_operand_view(operand)?;
     Some(PatchTargetView {
@@ -1301,7 +1435,7 @@ unsafe fn write_patch_element(
 }
 
 #[allow(clippy::too_many_arguments)]
-unsafe fn compare_patch_range(
+unsafe fn compare_patch_contiguous_range(
     op: c_int,
     x: CompareOperandView,
     y: Option<CompareOperandView>,
@@ -1316,6 +1450,7 @@ unsafe fn compare_patch_range(
         values: target.values,
         storage: target.storage,
         temporal: target.temporal,
+        native_owner: 0,
     };
     let mut matched = 0;
     let mut old_missing = 0;
@@ -1342,6 +1477,96 @@ unsafe fn compare_patch_range(
         new_missing += usize::from(new.rank > 0);
     }
     Some((matched, old_missing, new_missing))
+}
+
+#[allow(clippy::too_many_arguments)]
+unsafe fn compare_patch_range(
+    op: c_int,
+    x: CompareOperandView,
+    y: Option<CompareOperandView>,
+    scalar: ComparedElement,
+    replacement: Option<CompareOperandView>,
+    replacement_scalar: ComparedElement,
+    target: PatchTargetView,
+    start: usize,
+    end: usize,
+) -> Option<(usize, usize, usize)> {
+    if x.native_owner == 0
+        && y.is_none_or(|view| view.native_owner == 0)
+        && replacement.is_none_or(|view| view.native_owner == 0)
+    {
+        return compare_patch_contiguous_range(
+            op,
+            x,
+            y,
+            scalar,
+            replacement,
+            replacement_scalar,
+            target,
+            start,
+            end,
+        );
+    }
+    let x_read = x.read(end)?;
+    let y_read = match y {
+        Some(view) => Some(view.read(end)?),
+        None => None,
+    };
+    let replacement_read = match replacement {
+        Some(view) => Some(view.read(end)?),
+        None => None,
+    };
+    let mut first = start;
+    let mut total = (0, 0, 0);
+    while first < end {
+        let (values, mut count) = x_read.region(first, end - first)?;
+        let x_view = x.contiguous(values);
+        let mut view_at = |read: &Option<owned_numeric::CompactRead>,
+                           view: Option<CompareOperandView>| {
+            match (read, view) {
+                (Some(read), Some(view)) => {
+                    let (values, available) = read.region(first, count)?;
+                    count = count.min(available);
+                    Some(Some(view.contiguous(values)))
+                }
+                _ => Some(None),
+            }
+        };
+        let y_view = view_at(&y_read, y)?;
+        let replacement_view = view_at(&replacement_read, replacement)?;
+        if count == 0 {
+            return None;
+        }
+        let target_view = PatchTargetView {
+            values: (target.values as *mut u8).add(first * owned_numeric_width(target.kind))
+                as usize,
+            ..target
+        };
+        let counts = compare_patch_contiguous_range(
+            op,
+            x_view,
+            y_view,
+            scalar,
+            replacement_view,
+            replacement_scalar,
+            target_view,
+            0,
+            count,
+        )?;
+        total.0 += counts.0;
+        total.1 += counts.1;
+        total.2 += counts.2;
+        first += count;
+    }
+    Some(total)
+}
+
+fn owned_numeric_width(kind: NumericKind) -> usize {
+    match kind {
+        NumericKind::Byte => 1,
+        NumericKind::Int => 2,
+        NumericKind::Long | NumericKind::Float => 4,
+    }
 }
 
 #[no_mangle]
@@ -1727,6 +1952,29 @@ struct ProtectGuard {
 }
 
 impl ProtectGuard {
+    /// Publish a completely prepared native owner on the R thread.
+    unsafe fn publish_owned_numeric(
+        &mut self,
+        prepared: owned_numeric::PreparedOwnedNumeric,
+    ) -> Result<Sexp, String> {
+        self.objects
+            .try_reserve(1)
+            .map_err(|_| "R could not track an owned numeric vector".to_owned())?;
+        let data = prepared.into_descriptor();
+        let storage = Box::into_raw(Box::new(data)).cast::<c_void>();
+        let mut transferred = 0;
+        let mut result = ptr::null_mut();
+        let ok = dtatools_make_numeric(storage, R_NilValue, &mut transferred, &mut result);
+        if ok == 0 || result.is_null() {
+            if transferred == 0 {
+                dtatools_numeric_free(storage);
+            }
+            return Err("R could not allocate an owned compact numeric vector".to_owned());
+        }
+        self.objects.push(result);
+        Ok(result)
+    }
+
     fn new() -> Self {
         Self {
             objects: Vec::new(),
@@ -2997,6 +3245,131 @@ impl RColumn {
 }
 
 impl DtaColumnSink for RColumn {
+    fn try_push_numeric_rows(
+        &mut self,
+        output_start: usize,
+        row_count: usize,
+        source: &[u8],
+        stride: usize,
+        dta_type: DtaType,
+        byte_order: dta_tools::ByteOrder,
+        version: FormatVersion,
+    ) -> Result<bool, DtaError> {
+        let Self::NumericAltRep { data, .. } = self else {
+            return Ok(false);
+        };
+        let (kind, width) = match dta_type {
+            DtaType::Int => (NumericKind::Int, 2),
+            DtaType::Long => (NumericKind::Long, 4),
+            DtaType::Float => (NumericKind::Float, 4),
+            _ => return Ok(false),
+        };
+        if data.kind != kind {
+            return Ok(false);
+        }
+        if data.format_version != version {
+            return Err(DtaError::Output(
+                "numeric batch format version mismatch".to_owned(),
+            ));
+        }
+        let output_end = output_start
+            .checked_add(row_count)
+            .ok_or(DtaError::ArithmeticOverflow("numeric batch output range"))?;
+        if output_end > data.length {
+            return Err(RNumericData::row_error(output_end, data.length));
+        }
+        if row_count == 0 {
+            return Ok(true);
+        }
+        let input_end = (row_count - 1)
+            .checked_mul(stride)
+            .and_then(|last| last.checked_add(width))
+            .ok_or(DtaError::ArithmeticOverflow("numeric batch input range"))?;
+        if stride < width || input_end > source.len() {
+            return Err(DtaError::Output(
+                "numeric batch input range is out of bounds".to_owned(),
+            ));
+        }
+        let output_bytes = data
+            .length
+            .checked_mul(width)
+            .ok_or(DtaError::ArithmeticOverflow("numeric batch output bytes"))?;
+        if output_bytes > isize::MAX as usize {
+            return Err(DtaError::ArithmeticOverflow("numeric batch output bytes"));
+        }
+        let little = byte_order == dta_tools::ByteOrder::Lsf;
+        let mut missing_count = 0;
+        // The complete input and output ranges are checked above. Dispatch
+        // once per storage kind; preserve raw float bits and native byte order.
+        match kind {
+            NumericKind::Int => {
+                for row in 0..row_count {
+                    let bytes = unsafe {
+                        ptr::read_unaligned(source.as_ptr().add(row * stride).cast::<[u8; 2]>())
+                    };
+                    let value = if little {
+                        i16::from_le_bytes(bytes)
+                    } else {
+                        i16::from_be_bytes(bytes)
+                    };
+                    unsafe {
+                        data.values
+                            .add((output_start + row) * 2)
+                            .cast::<i16>()
+                            .write_unaligned(value);
+                    }
+                    missing_count +=
+                        usize::from(classify_int_missing_for_version(value, version).is_some());
+                }
+            }
+            NumericKind::Long => {
+                for row in 0..row_count {
+                    let bytes = unsafe {
+                        ptr::read_unaligned(source.as_ptr().add(row * stride).cast::<[u8; 4]>())
+                    };
+                    let value = if little {
+                        i32::from_le_bytes(bytes)
+                    } else {
+                        i32::from_be_bytes(bytes)
+                    };
+                    unsafe {
+                        data.values
+                            .add((output_start + row) * 4)
+                            .cast::<i32>()
+                            .write_unaligned(value);
+                    }
+                    missing_count +=
+                        usize::from(classify_long_missing_for_version(value, version).is_some());
+                }
+            }
+            NumericKind::Float => {
+                for row in 0..row_count {
+                    let bytes = unsafe {
+                        ptr::read_unaligned(source.as_ptr().add(row * stride).cast::<[u8; 4]>())
+                    };
+                    let bits = if little {
+                        u32::from_le_bytes(bytes)
+                    } else {
+                        u32::from_be_bytes(bytes)
+                    };
+                    unsafe {
+                        data.values
+                            .add((output_start + row) * 4)
+                            .cast::<u32>()
+                            .write_unaligned(bits);
+                    }
+                    missing_count += usize::from(
+                        f32::from_bits(bits).is_nan()
+                            || classify_float_missing_bits_for_version(bits, version).is_some(),
+                    );
+                }
+            }
+            NumericKind::Byte => unreachable!(),
+        }
+        data.missing_count += missing_count;
+        Ok(true)
+    }
+
     fn try_push_byte_rows(
         &mut self,
         output_start: usize,
@@ -3247,7 +3620,7 @@ impl DtaSink for RDataFrameSink {
         let expected_string_rows = usize::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         let value_label_reference_counts = value_label_reference_counts(
-            &metadata,
+            metadata,
             self.source_indices.iter().map(|&index| index as usize),
         );
         let mut value_label_tables_by_name = AHashMap::with_capacity(value_label_tables.len());
@@ -3428,6 +3801,15 @@ unsafe fn metadata_impl(
 ) -> Result<Sexp, String> {
     let mut file =
         DtaFile::open_with_encoding(path, encoding).map_err(|error| error.to_string())?;
+    metadata_from_file(&mut file, column_start, column_count, include_value_labels)
+}
+
+unsafe fn metadata_from_file(
+    file: &mut DtaFile<fs::File>,
+    column_start: u32,
+    column_count: u32,
+    include_value_labels: bool,
+) -> Result<Sexp, String> {
     let metadata = file.metadata();
     let start = usize::try_from(column_start)
         .map_err(|_| "metadata column start is out of range".to_owned())?
@@ -3527,6 +3909,13 @@ unsafe fn read_impl(
     n_max: f64,
     config: RReadConfig,
 ) -> Result<Sexp, String> {
+    let (row_start, row_count) = read_row_window(skip, n_max)?;
+    let file =
+        DtaFile::open_with_encoding(path, config.encoding).map_err(|error| error.to_string())?;
+    read_from_file(file, columns, row_start, row_count, config)
+}
+
+fn read_row_window(skip: f64, n_max: f64) -> Result<(u64, Option<u64>), String> {
     // Public semantics are normalized once by the R wrapper. These checks are
     // only a defensive ABI guard for exact representability and +Inf as the
     // single unlimited sentinel.
@@ -3545,8 +3934,16 @@ unsafe fn read_impl(
     } else {
         Some(n_max as u64)
     };
-    let mut file =
-        DtaFile::open_with_encoding(path, config.encoding).map_err(|error| error.to_string())?;
+    Ok((row_start, row_count))
+}
+
+unsafe fn read_from_file(
+    mut file: DtaFile<fs::File>,
+    columns: Option<Vec<u32>>,
+    row_start: u64,
+    row_count: Option<u64>,
+    config: RReadConfig,
+) -> Result<Sexp, String> {
     let source_rows = file.metadata().nobs;
     validate_r_row_count(source_rows, row_start, row_count)?;
     let options = ReadOptions {
@@ -3554,7 +3951,21 @@ unsafe fn read_impl(
         row_count,
         column_indices: columns,
     };
-    let result = if config.direct_to_r {
+    let result = if config.direct_to_r
+        && std::env::var("DTATOOLS_EXPERIMENT_DTA_PREPARED").as_deref() == Ok("1")
+    {
+        file.read_with_prepared_sink_and_interrupts(
+            &options,
+            config.requested_threads,
+            config.numeric_altrep,
+            |metadata, _row_start, row_count, indices| unsafe {
+                RDataFrameSink::new(metadata, row_count, indices, config.numeric_altrep)
+            },
+            coarse_interrupt,
+            frequent_interrupt_poller(),
+        )
+        .map_err(|error| error.to_string())
+    } else if config.direct_to_r {
         let threads = if config.numeric_altrep {
             file.parallel_thread_count_for_compact_output(&options, config.requested_threads)
         } else {
@@ -3723,26 +4134,7 @@ pub unsafe extern "C" fn dtatools_read_rust(
             .map_err(|_| "file path is not valid UTF-8".to_owned())?;
         let requested_threads = usize::try_from(requested_threads)
             .map_err(|_| "thread count must be non-negative".to_owned())?;
-        let projection = if all_columns != 0 {
-            None
-        } else {
-            if columns.is_null() && column_count != 0 {
-                return Err("column pointer is null".to_owned());
-            }
-            let indices: &[c_int] = if column_count == 0 {
-                &[]
-            } else {
-                std::slice::from_raw_parts(columns, column_count)
-            };
-            Some(
-                indices
-                    .iter()
-                    .map(|index| {
-                        u32::try_from(*index).map_err(|_| "invalid projected column".to_owned())
-                    })
-                    .collect::<Result<Vec<_>, _>>()?,
-            )
-        };
+        let projection = read_projection(columns, column_count, all_columns)?;
         read_impl(
             path,
             projection,
@@ -3756,6 +4148,136 @@ pub unsafe extern "C" fn dtatools_read_rust(
             },
         )
     })
+}
+
+unsafe fn read_projection(
+    columns: *const c_int,
+    column_count: usize,
+    all_columns: c_int,
+) -> Result<Option<Vec<u32>>, String> {
+    if all_columns != 0 {
+        return Ok(None);
+    }
+    if columns.is_null() && column_count != 0 {
+        return Err("column pointer is null".to_owned());
+    }
+    let indices: &[c_int] = if column_count == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(columns, column_count)
+    };
+    indices
+        .iter()
+        .map(|index| u32::try_from(*index).map_err(|_| "invalid projected column".to_owned()))
+        .collect::<Result<Vec<_>, _>>()
+        .map(Some)
+}
+
+// The R external pointer owns this box. A read takes the file before any
+// fallible decode work, so success, ordinary errors and panics all close it.
+// Closing the now-empty box remains the C finalizer's responsibility.
+struct RPreparedDta {
+    file: Option<DtaFile<fs::File>>,
+}
+
+#[no_mangle]
+/// Prepare metadata and retain the same open file for a selected read.
+///
+/// # Safety
+/// `path` and non-null `encoding` must be readable NUL-terminated strings.
+/// `prepared` must address writable pointer storage. If non-null, `error`
+/// must address writable C string pointer storage. The caller must be on R's
+/// main thread and must root the returned metadata without allocating in R.
+/// On success, the caller owns `*prepared` and must close it exactly once.
+pub unsafe extern "C" fn dtatools_prepare_dta_rust(
+    path: *const c_char,
+    encoding: *const c_char,
+    prepared: *mut *mut c_void,
+    error: *mut *mut c_char,
+) -> Sexp {
+    if !prepared.is_null() {
+        *prepared = ptr::null_mut();
+    }
+    boundary(error, ptr::null_mut(), || {
+        if prepared.is_null() {
+            return Err("prepared DTA output pointer is null".to_owned());
+        }
+        if path.is_null() {
+            return Err("file path is null".to_owned());
+        }
+        let path = CStr::from_ptr(path)
+            .to_str()
+            .map_err(|_| "file path is not valid UTF-8".to_owned())?;
+        let mut file = DtaFile::open_with_encoding(path, text_encoding(encoding)?)
+            .map_err(|error| error.to_string())?;
+        let metadata = metadata_from_file(&mut file, 0, u32::MAX, false)?;
+        // No R allocations occur between releasing metadata's guards and
+        // attaching both returned values to the preallocated C result.
+        *prepared = Box::into_raw(Box::new(RPreparedDta { file: Some(file) })).cast();
+        Ok(metadata)
+    })
+}
+
+#[no_mangle]
+/// Consume one prepared DTA read, retaining its original file identity.
+///
+/// # Safety
+/// `prepared` must be a live pointer returned by `dtatools_prepare_dta_rust`
+/// and must not be accessed concurrently. Unless `all_columns` is nonzero,
+/// `columns` must address `column_count` readable integers. If non-null,
+/// `error` must address writable C string pointer storage. Run on R's main
+/// thread. The box remains owned by the caller after the file is consumed.
+pub unsafe extern "C" fn dtatools_read_prepared_dta_rust(
+    prepared: *mut c_void,
+    columns: *const c_int,
+    column_count: usize,
+    all_columns: c_int,
+    skip: f64,
+    n_max: f64,
+    direct_to_r: c_int,
+    requested_threads: c_int,
+    numeric_altrep: c_int,
+    error: *mut *mut c_char,
+) -> Sexp {
+    boundary(error, ptr::null_mut(), || {
+        let prepared = prepared
+            .cast::<RPreparedDta>()
+            .as_mut()
+            .ok_or_else(|| "prepared DTA read is closed".to_owned())?;
+        let file = prepared
+            .file
+            .take()
+            .ok_or_else(|| "prepared DTA read was already consumed".to_owned())?;
+        let requested_threads = usize::try_from(requested_threads)
+            .map_err(|_| "thread count must be non-negative".to_owned())?;
+        let projection = read_projection(columns, column_count, all_columns)?;
+        let (row_start, row_count) = read_row_window(skip, n_max)?;
+        read_from_file(
+            file,
+            projection,
+            row_start,
+            row_count,
+            RReadConfig {
+                direct_to_r: direct_to_r != 0,
+                numeric_altrep: numeric_altrep != 0,
+                // Encoding is already fixed in the retained DtaFile.
+                encoding: TextEncoding::Auto,
+                requested_threads,
+            },
+        )
+    })
+}
+
+#[no_mangle]
+/// Release a prepared read and close its file if it was never consumed.
+///
+/// # Safety
+/// `prepared` must be null or a live pointer from `dtatools_prepare_dta_rust`
+/// that has not previously been closed and is not concurrently accessed.
+pub unsafe extern "C" fn dtatools_close_prepared_dta_rust(prepared: *mut c_void) {
+    if !prepared.is_null() {
+        drop(Box::from_raw(prepared.cast::<RPreparedDta>()));
+    }
 }
 
 #[repr(C)]
@@ -3776,6 +4298,7 @@ pub struct RWriteColumnDescriptor {
     direct_numeric_temporal: c_int,
     direct_numeric_no_na: c_int,
     direct_string_data: *mut c_void,
+    direct_numeric_owner: *const c_void,
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -3796,7 +4319,8 @@ const _: () = {
     assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_temporal) == 96);
     assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_no_na) == 100);
     assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_string_data) == 104);
-    assert!(std::mem::size_of::<RWriteColumnDescriptor>() == 112);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_owner) == 112);
+    assert!(std::mem::size_of::<RWriteColumnDescriptor>() == 120);
 };
 
 #[repr(C)]
@@ -3999,6 +4523,8 @@ struct RWriteSource<'a> {
     direct_numeric_version: Option<FormatVersion>,
     direct_numeric_temporal: TemporalKind,
     direct_numeric_no_na: bool,
+    direct_owned: Option<owned_numeric::CompactRead>,
+    direct_owned_region: Cell<(usize, usize, usize)>,
     raw_numeric: bool,
     numeric_region: Option<Box<RWriteNumericRegionCache>>,
     string_region: Option<Box<RWriteStringRegionCache>>,
@@ -4262,7 +4788,22 @@ unsafe fn direct_compact_at(
     source: &RWriteSource<'_>,
     index: usize,
 ) -> Option<(DirectCompactValue, Option<MissingTag>)> {
-    let values = source.descriptor.direct_numeric_values;
+    let (values, index) = if let Some(read) = &source.direct_owned {
+        let (mut start, mut end, mut address) = source.direct_owned_region.get();
+        if index < start || index >= end {
+            let (values, count) = read.region(index, usize::MAX)?;
+            if count == 0 {
+                return None;
+            }
+            start = index;
+            end = index + count;
+            address = values as usize;
+            source.direct_owned_region.set((start, end, address));
+        }
+        (address as *const c_void, index - start)
+    } else {
+        (source.descriptor.direct_numeric_values, index)
+    };
     let value = match source.direct_numeric_kind {
         DirectNumericKind::Compact(NumericKind::Byte) => {
             DirectCompactValue::Byte(ptr::read(values.cast::<i8>().add(index)))
@@ -4291,7 +4832,9 @@ unsafe fn direct_numeric_at(
     index: usize,
 ) -> Result<Option<(f64, c_int)>, String> {
     let values = source.descriptor.direct_numeric_values;
-    if values.is_null() || matches!(source.direct_numeric_kind, DirectNumericKind::Callback) {
+    if (values.is_null() && source.direct_owned.is_none())
+        || matches!(source.direct_numeric_kind, DirectNumericKind::Callback)
+    {
         return Ok(None);
     }
     let (mut value, missing_code) = match source.direct_numeric_kind {
@@ -4388,8 +4931,27 @@ impl<'a> RWriteSource<'a> {
             None
         };
         let direct_numeric_temporal = TemporalKind::try_from(descriptor.direct_numeric_temporal)?;
+        let direct_owned = if descriptor.direct_numeric_owner.is_null() {
+            None
+        } else {
+            let DirectNumericKind::Compact(kind) = direct_numeric_kind else {
+                return Err("owned writer source must have compact numeric storage".to_owned());
+            };
+            Some(
+                unsafe {
+                    owned_numeric::CompactRead::new(
+                        ptr::null(),
+                        descriptor.direct_numeric_owner,
+                        owned_numeric_width(kind),
+                        usize::try_from(row_count)
+                            .map_err(|_| "owned writer column is too long")?,
+                    )
+                }
+                .ok_or_else(|| "invalid retained numeric writer source".to_owned())?,
+            )
+        };
         let uses_numeric_callback = descriptor.dta_type <= 4
-            && (descriptor.direct_numeric_values.is_null()
+            && ((descriptor.direct_numeric_values.is_null() && direct_owned.is_none())
                 || matches!(direct_numeric_kind, DirectNumericKind::Callback));
         let uses_string_callback =
             descriptor.dta_type >= 5 && descriptor.direct_string_data.is_null();
@@ -4400,6 +4962,8 @@ impl<'a> RWriteSource<'a> {
             direct_numeric_version,
             direct_numeric_temporal,
             direct_numeric_no_na: descriptor.direct_numeric_no_na != 0,
+            direct_owned,
+            direct_owned_region: Cell::new((0, 0, 0)),
             raw_numeric: direct_numeric_is_output_encoded(
                 descriptor,
                 direct_numeric_kind,
@@ -4766,6 +5330,7 @@ impl RWriteObservationSource<'_, '_> {
             .all(|(column, source)| match column.dta_type {
                 DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
                     !source.descriptor.direct_numeric_values.is_null()
+                        || source.direct_owned.is_some()
                 }
                 DtaType::FixedString(_) => !source.descriptor.direct_string_data.is_null(),
                 DtaType::StrL => false,
@@ -5357,6 +5922,7 @@ mod tests {
             direct_numeric_temporal: 0,
             direct_numeric_no_na: 0,
             direct_string_data: ptr::null_mut(),
+            direct_numeric_owner: ptr::null(),
         }
     }
 

@@ -1,11 +1,16 @@
 use std::collections::hash_map::RandomState;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::hash::BuildHasher;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::path::Path;
-use std::sync::{mpsc::sync_channel, Arc};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    mpsc::{sync_channel, RecvTimeoutError},
+    Arc,
+};
 use std::thread;
+use std::time::Duration;
 
 use encoding_rs::CoderResult;
 
@@ -601,6 +606,29 @@ struct ObservationPlan {
     columns: Vec<ObservationColumnPlan>,
 }
 
+// Kept private and moved straight into an executor, so a plan cannot be
+// reused against another file or a different projection/window.
+struct PreparedObservationRead {
+    indices: Vec<u32>,
+    row_start: u64,
+    row_count: u64,
+    plan: ObservationPlan,
+}
+
+impl PreparedObservationRead {
+    fn new(metadata: &DtaMetadata, options: &ReadOptions) -> Result<Self, DtaError> {
+        let indices = resolve_columns(metadata, options)?;
+        let (row_start, row_count) = row_window(metadata, options);
+        let plan = ObservationPlan::new(metadata, &indices)?;
+        Ok(Self {
+            indices,
+            row_start,
+            row_count,
+            plan,
+        })
+    }
+}
+
 trait InterruptChecks {
     fn coarse(&mut self) -> bool;
     fn frequent(&mut self) -> bool;
@@ -993,6 +1021,25 @@ impl ExactSizeIterator for ValueLabelTableIter<'_> {}
 /// written by exactly one worker; deferred `strL` values are written by the
 /// coordinator after workers join. Rows ascend within every column.
 pub trait DtaColumnSink: Send {
+    /// Experimental bulk gather for wider numeric storage. The first source
+    /// byte is this column's first cell; rows are `stride` bytes apart.
+    /// Returning false must leave the destination untouched. Implementations
+    /// must retain the scalar missing-value and endian semantics.
+    #[doc(hidden)]
+    #[allow(clippy::too_many_arguments)]
+    fn try_push_numeric_rows(
+        &mut self,
+        _output_start: usize,
+        _row_count: usize,
+        _source: &[u8],
+        _stride: usize,
+        _dta_type: DtaType,
+        _byte_order: ByteOrder,
+        _version: FormatVersion,
+    ) -> Result<bool, DtaError> {
+        Ok(false)
+    }
+
     /// Optional compact-byte gather. The default retains per-value callbacks.
     #[doc(hidden)]
     fn try_push_byte_rows(
@@ -1202,6 +1249,80 @@ impl ColumnBuilder {
 }
 
 impl DtaColumnSink for ColumnBuilder {
+    fn try_push_numeric_rows(
+        &mut self,
+        output_start: usize,
+        row_count: usize,
+        source: &[u8],
+        stride: usize,
+        dta_type: DtaType,
+        byte_order: ByteOrder,
+        version: FormatVersion,
+    ) -> Result<bool, DtaError> {
+        let width = match dta_type {
+            DtaType::Int => 2,
+            DtaType::Long | DtaType::Float => 4,
+            DtaType::Double => 8,
+            _ => return Ok(false),
+        };
+        let input_end = if row_count == 0 {
+            0
+        } else {
+            (row_count - 1)
+                .checked_mul(stride)
+                .and_then(|last| last.checked_add(width))
+                .ok_or(DtaError::ArithmeticOverflow("numeric batch input range"))?
+        };
+        if stride < width || input_end > source.len() {
+            return Err(DtaError::ArithmeticOverflow("numeric batch input range"));
+        }
+        macro_rules! gather {
+            ($variant:ident, $read:expr, $classify:expr) => {{
+                let Self::$variant {
+                    values,
+                    missing_tags,
+                    ..
+                } = self
+                else {
+                    return Ok(false);
+                };
+                if values.len() != output_start || missing_tags.len() != output_start {
+                    return Err(DtaError::ArithmeticOverflow("numeric batch output range"));
+                }
+                for row in 0..row_count {
+                    // SAFETY: the full strided range was checked above.
+                    let value = ($read)(row * stride);
+                    values.push(value);
+                    missing_tags.push(($classify)(value));
+                }
+                Ok(true)
+            }};
+        }
+        match dta_type {
+            DtaType::Int => gather!(
+                Int,
+                |offset| unsafe { read_unaligned_u16(source, offset, byte_order) } as i16,
+                |value| classify_int_missing_for_version(value, version)
+            ),
+            DtaType::Long => gather!(
+                Long,
+                |offset| unsafe { read_unaligned_u32(source, offset, byte_order) } as i32,
+                |value| classify_long_missing_for_version(value, version)
+            ),
+            DtaType::Float => gather!(
+                Float,
+                |offset| f32::from_bits(unsafe { read_unaligned_u32(source, offset, byte_order) }),
+                |value: f32| classify_float_missing_bits_for_version(value.to_bits(), version)
+            ),
+            DtaType::Double => gather!(
+                Double,
+                |offset| f64::from_bits(unsafe { read_unaligned_u64(source, offset, byte_order) }),
+                |value: f64| classify_double_missing_bits_for_version(value.to_bits(), version)
+            ),
+            _ => Ok(false),
+        }
+    }
+
     fn push_byte(
         &mut self,
         _row: usize,
@@ -1562,6 +1683,67 @@ struct ObservationBlock {
     row_count: usize,
 }
 
+#[derive(Clone, Copy, Default)]
+struct ObservationExperiments {
+    wide_numeric_batches: bool,
+    ring: Option<ObservationRing>,
+}
+
+#[derive(Clone, Copy)]
+struct ObservationRing {
+    slots: usize,
+    budget_bytes: usize,
+    // DTATOOLS_EXPERIMENT_DTA_RING_BLOCK_BYTES may reduce the default 8 MiB
+    // block independently of slots and total budget. For equal-budget runs,
+    // compare 2 * 8 MiB with 4 * 4 MiB at a 16 MiB total budget. Worker policy
+    // continues to use the existing FileOptions limit, not this experiment.
+    block_bytes: usize,
+}
+
+impl ObservationExperiments {
+    fn from_env() -> Self {
+        let slots = std::env::var("DTATOOLS_EXPERIMENT_DTA_RING")
+            .ok()
+            .and_then(|value| value.parse::<usize>().ok())
+            .filter(|slots| matches!(slots, 2 | 4));
+        let block_bytes = std::env::var("DTATOOLS_EXPERIMENT_DTA_RING_BLOCK_BYTES")
+            .ok()
+            .and_then(|value| value.parse::<usize>().ok())
+            .filter(|bytes| *bytes > 0)
+            .unwrap_or(DEFAULT_MAX_BUFFER_BYTES)
+            .min(DEFAULT_MAX_BUFFER_BYTES);
+        Self {
+            wide_numeric_batches: std::env::var("DTATOOLS_EXPERIMENT_DTA_WIDE_BATCH")
+                .is_ok_and(|value| value == "1"),
+            ring: slots.map(|slots| ObservationRing {
+                slots,
+                budget_bytes: std::env::var("DTATOOLS_EXPERIMENT_DTA_RING_BUDGET_BYTES")
+                    .ok()
+                    .and_then(|value| value.parse::<usize>().ok())
+                    .unwrap_or(slots * block_bytes),
+                block_bytes,
+            }),
+        }
+    }
+}
+
+impl ObservationRing {
+    fn geometry(self, plan: &ObservationPlan, scratch_limit: usize) -> Option<(usize, usize)> {
+        if plan.has_strls() || plan.row_width == 0 {
+            return None;
+        }
+        let block_limit = scratch_limit
+            .min(DEFAULT_MAX_BUFFER_BYTES)
+            .min(self.block_bytes);
+        let block_bytes = block_limit / plan.row_width * plan.row_width;
+        if block_bytes == 0 {
+            return None;
+        }
+        let slots = self.slots.min(self.budget_bytes / block_bytes);
+        (slots >= 2).then_some((block_bytes, slots))
+    }
+}
+
 enum WorkerMessage {
     Block(Arc<ObservationBlock>),
     Finish,
@@ -1594,6 +1776,258 @@ fn receive_worker_acks(
         .map_or(Ok(()), |(_, error)| Err(error))
 }
 
+struct ObservationRingExecution {
+    row_width: usize,
+    row_start: u64,
+    row_count: u64,
+    payload_start: u64,
+    block_bytes: usize,
+    slots: usize,
+    wide_numeric_batches: bool,
+}
+
+// Count each shared observation allocation once, including the next read and
+// reusable buffers still retained by the coordinator. This diagnostic counts
+// Vec capacities, not allocator bookkeeping, descriptors or final columns.
+fn observation_ring_capacity(
+    reading_capacity: usize,
+    inflight: &VecDeque<Arc<ObservationBlock>>,
+    reusable: &[Vec<u8>],
+) -> usize {
+    reading_capacity
+        + inflight
+            .iter()
+            .map(|block| block.bytes.capacity())
+            .sum::<usize>()
+        + reusable.iter().map(Vec::capacity).sum::<usize>()
+}
+
+fn receive_ring_acks<F: FnMut() -> bool>(
+    receivers: &[std::sync::mpsc::Receiver<Result<(), DtaError>>],
+    interrupted: &mut bool,
+    should_interrupt: &mut F,
+) -> Result<(), DtaError> {
+    let mut stopped = None;
+    let mut first_error = None;
+    for (worker, receiver) in receivers.iter().enumerate() {
+        loop {
+            if !*interrupted && should_interrupt() {
+                *interrupted = true;
+            }
+            match receiver.recv_timeout(Duration::from_millis(5)) {
+                Ok(Err(error)) => {
+                    if first_error.is_none() {
+                        first_error = Some(error);
+                    }
+                    break;
+                }
+                Ok(Ok(())) => break,
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) => {
+                    if stopped.is_none() {
+                        stopped = Some(DtaError::Output(format!(
+                            "parallel decoder worker {worker} stopped"
+                        )));
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    stopped.or(first_error).map_or(Ok(()), Err)
+}
+
+/// Persistent column owners consume several ordered blocks independently.
+/// A slot includes the coordinator's read buffer, so read-ahead cannot add an
+/// extra full-width allocation beyond `slots * block_bytes` requested bytes.
+fn decode_observation_ring<R, C, F>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    shards: Vec<Vec<ParallelColumn<C>>>,
+    config: ObservationRingExecution,
+    metadata: &DtaMetadata,
+    encoding: TextEncoding,
+    should_interrupt: &mut F,
+) -> Result<Vec<ParallelColumn<C>>, DtaError>
+where
+    R: Read + Seek,
+    C: DtaColumnSink,
+    F: FnMut() -> bool,
+{
+    let cancelled = AtomicBool::new(false);
+    let trace = std::env::var("DTATOOLS_EXPERIMENT_TRACE").is_ok_and(|value| value == "1");
+    thread::scope(|scope| {
+        let mut senders = Vec::with_capacity(shards.len());
+        let mut ack_receivers = Vec::with_capacity(shards.len());
+        let mut handles = Vec::with_capacity(shards.len());
+        for mut shard in shards {
+            let (sender, receiver) = sync_channel::<WorkerMessage>(config.slots);
+            let (ack_sender, ack_receiver) = sync_channel::<Result<(), DtaError>>(config.slots);
+            senders.push(sender);
+            ack_receivers.push(ack_receiver);
+            let cancelled = &cancelled;
+            let config = &config;
+            handles.push(scope.spawn(move || {
+                while let Ok(WorkerMessage::Block(block)) = receiver.recv() {
+                    if cancelled.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    let result = decode_worker_block_with_batches(
+                        &mut shard,
+                        &block,
+                        config.row_width,
+                        metadata,
+                        encoding,
+                        None,
+                        config.wide_numeric_batches,
+                    );
+                    drop(block);
+                    let failed = result.is_err();
+                    if ack_sender.send(result).is_err() || failed {
+                        break;
+                    }
+                }
+                shard
+            }));
+        }
+
+        let mut peak_vec_capacity_bytes = 0;
+        let execution = (|| {
+            let rows_per_block = config.block_bytes / config.row_width;
+            let mut inflight = VecDeque::<Arc<ObservationBlock>>::with_capacity(config.slots);
+            let mut reusable = Vec::<Vec<u8>>::with_capacity(config.slots);
+            let mut row = 0_u64;
+            let mut interrupted = false;
+            let mut pending_error = None;
+            loop {
+                if !interrupted && should_interrupt() {
+                    interrupted = true;
+                }
+                if row < config.row_count
+                    && pending_error.is_none()
+                    && !interrupted
+                    && inflight.len() < config.slots
+                {
+                    let mut bytes = reusable.pop().unwrap_or_default();
+                    let ready = (|| {
+                        let count = (config.row_count - row).min(rows_per_block as u64);
+                        let row_count = usize::try_from(count)
+                            .map_err(|_| DtaError::ArithmeticOverflow("ring row count"))?;
+                        let block_length = config
+                            .row_width
+                            .checked_mul(row_count)
+                            .ok_or(DtaError::ArithmeticOverflow("ring block length"))?;
+                        let source_offset = config
+                            .row_start
+                            .checked_add(row)
+                            .and_then(|start| start.checked_mul(metadata.obs_length))
+                            .and_then(|offset| config.payload_start.checked_add(offset))
+                            .ok_or(DtaError::ArithmeticOverflow("ring source offset"))?;
+                        read_exact_at_into(
+                            reader,
+                            source_offset,
+                            block_length,
+                            scratch,
+                            &mut bytes,
+                            "observation block",
+                        )?;
+                        Ok((count, row_count, source_offset))
+                    })();
+                    if trace {
+                        peak_vec_capacity_bytes = peak_vec_capacity_bytes.max(
+                            observation_ring_capacity(bytes.capacity(), &inflight, &reusable),
+                        );
+                    }
+                    match ready {
+                        Err(error) => {
+                            // Retire earlier dispatched blocks before returning
+                            // a failure from this speculative read.
+                            pending_error = Some(error);
+                            reusable.push(bytes);
+                        }
+                        Ok((count, row_count, source_offset)) => {
+                            if should_interrupt() {
+                                interrupted = true;
+                                reusable.push(bytes);
+                                continue;
+                            }
+                            let block = Arc::new(ObservationBlock {
+                                bytes,
+                                source_offset,
+                                output_row_start: usize::try_from(row)
+                                    .map_err(|_| DtaError::ArithmeticOverflow("ring output row"))?,
+                                row_count,
+                            });
+                            for sender in &senders {
+                                // At most `slots` blocks have been admitted,
+                                // so a live owner's queue always has capacity.
+                                if sender
+                                    .send(WorkerMessage::Block(Arc::clone(&block)))
+                                    .is_err()
+                                {
+                                    pending_error = Some(DtaError::Output(
+                                        "parallel decoder worker stopped".to_owned(),
+                                    ));
+                                    break;
+                                }
+                            }
+                            if pending_error.is_none() {
+                                inflight.push_back(block);
+                                row += count;
+                            }
+                        }
+                    }
+                    continue;
+                }
+
+                if let Some(block) = inflight.pop_front() {
+                    receive_ring_acks(&ack_receivers, &mut interrupted, should_interrupt)?;
+                    let block = Arc::try_unwrap(block).map_err(|_| {
+                        DtaError::Output("parallel input block remained borrowed".to_owned())
+                    })?;
+                    reusable.push(block.bytes);
+                    continue;
+                }
+                if let Some(error) = pending_error {
+                    return Err(error);
+                }
+                return if interrupted {
+                    Err(DtaError::Cancelled)
+                } else {
+                    Ok(())
+                };
+            }
+        })();
+
+        cancelled.store(true, Ordering::Relaxed);
+        drop(senders);
+        // Ack queues can hold every admitted block. Workers cannot be left
+        // blocked on acknowledgement while this thread joins after failure.
+        let mut completed = Vec::new();
+        let mut panicked = false;
+        for handle in handles {
+            match handle.join() {
+                Ok(shard) => completed.extend(shard),
+                Err(_) => panicked = true,
+            }
+        }
+        if trace {
+            eprintln!(
+                "DTATOOLS_EXPERIMENT dta_ring_peak_vec_capacity_bytes={} dta_ring_requested_buffer_bytes={}",
+                peak_vec_capacity_bytes,
+                config.slots * config.block_bytes,
+            );
+        }
+        if panicked {
+            return Err(DtaError::Output(
+                "parallel decoder worker panicked".to_owned(),
+            ));
+        }
+        execution?;
+        Ok(completed)
+    })
+}
+
 #[inline(always)]
 unsafe fn read_unaligned_u16(bytes: &[u8], offset: usize, byte_order: ByteOrder) -> u16 {
     let raw = unsafe { std::ptr::read_unaligned(bytes.as_ptr().add(offset).cast::<u16>()) };
@@ -1621,13 +2055,83 @@ unsafe fn read_unaligned_u64(bytes: &[u8], offset: usize, byte_order: ByteOrder)
     }
 }
 
+#[cfg(test)]
 fn decode_worker_block<C: DtaColumnSink>(
     columns: &mut [ParallelColumn<C>],
     block: &ObservationBlock,
     row_width: usize,
     metadata: &DtaMetadata,
     encoding: TextEncoding,
+    should_interrupt: Option<&mut dyn FnMut() -> bool>,
+) -> Result<(), DtaError> {
+    decode_worker_block_with_batches(
+        columns,
+        block,
+        row_width,
+        metadata,
+        encoding,
+        should_interrupt,
+        false,
+    )
+}
+
+fn decode_wide_numeric_run<C: DtaColumnSink>(
+    column: &mut ParallelColumn<C>,
+    source: &[u8],
+    stride: usize,
+    output_start: usize,
+    count: usize,
+    metadata: &DtaMetadata,
+) -> Result<(), DtaError> {
+    // The caller checked the complete source and output ranges before either
+    // the bulk hook or this scalar fallback touches them.
+    macro_rules! run {
+        ($read:expr, $push:ident, $classify:expr) => {
+            for row in 0..count {
+                let value = ($read)(row * stride);
+                column
+                    .sink
+                    .$push(output_start + row, value, ($classify)(value))?;
+            }
+        };
+    }
+    let order = metadata.byte_order;
+    let version = metadata.format_version;
+    match column.plan.kind {
+        ObservationKind::Int => run!(
+            |offset| unsafe { read_unaligned_u16(source, offset, order) } as i16,
+            push_int,
+            |value| classify_int_missing_for_version(value, version)
+        ),
+        ObservationKind::Long => run!(
+            |offset| unsafe { read_unaligned_u32(source, offset, order) } as i32,
+            push_long,
+            |value| classify_long_missing_for_version(value, version)
+        ),
+        ObservationKind::Float => run!(
+            |offset| f32::from_bits(unsafe { read_unaligned_u32(source, offset, order) }),
+            push_float,
+            |value: f32| classify_float_missing_bits_for_version(value.to_bits(), version)
+        ),
+        ObservationKind::Double => run!(
+            |offset| f64::from_bits(unsafe { read_unaligned_u64(source, offset, order) }),
+            push_double,
+            |value: f64| classify_double_missing_bits_for_version(value.to_bits(), version)
+        ),
+        _ => return Err(DtaError::ArithmeticOverflow("numeric batch storage type")),
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn decode_worker_block_with_batches<C: DtaColumnSink>(
+    columns: &mut [ParallelColumn<C>],
+    block: &ObservationBlock,
+    row_width: usize,
+    metadata: &DtaMetadata,
+    encoding: TextEncoding,
     mut should_interrupt: Option<&mut dyn FnMut() -> bool>,
+    wide_numeric_batches: bool,
 ) -> Result<(), DtaError> {
     if block.row_count == 0 {
         return Ok(());
@@ -1656,6 +2160,54 @@ fn decode_worker_block<C: DtaColumnSink>(
             .output_row_start
             .checked_add(block.row_count)
             .ok_or(DtaError::ArithmeticOverflow("parallel output row"))?;
+
+        let wide_type = if wide_numeric_batches {
+            match column.plan.kind {
+                ObservationKind::Int => Some(DtaType::Int),
+                ObservationKind::Long => Some(DtaType::Long),
+                ObservationKind::Float => Some(DtaType::Float),
+                ObservationKind::Double => Some(DtaType::Double),
+                _ => None,
+            }
+        } else {
+            None
+        };
+        if let Some(dta_type) = wide_type {
+            let run_length = if should_interrupt.is_some() {
+                COLUMNAR_CANCEL_CHECK_INTERVAL
+            } else {
+                block.row_count
+            };
+            for start in (0..block.row_count).step_by(run_length) {
+                if should_interrupt.as_deref_mut().is_some_and(|poll| poll()) {
+                    return Err(DtaError::Cancelled);
+                }
+                let count = (block.row_count - start).min(run_length);
+                let input_start = column.plan.byte_offset + start * row_width;
+                let input_end = input_start + (count - 1) * row_width + column.plan.byte_width;
+                let output_start = block.output_row_start + start;
+                if !column.sink.try_push_numeric_rows(
+                    output_start,
+                    count,
+                    &block.bytes[input_start..input_end],
+                    row_width,
+                    dta_type.clone(),
+                    metadata.byte_order,
+                    metadata.format_version,
+                )? {
+                    // A declined run must never replay an earlier accepted run.
+                    decode_wide_numeric_run(
+                        column,
+                        &block.bytes[input_start..input_end],
+                        row_width,
+                        output_start,
+                        count,
+                        metadata,
+                    )?;
+                }
+            }
+            continue;
+        }
 
         if should_interrupt.is_some() && matches!(column.plan.kind, ObservationKind::Byte) {
             // Keep cancellation on the calling thread and bound the interval
@@ -2079,6 +2631,63 @@ impl<R: Read + Seek> DtaFile<R> {
         Ok(!plan.columns.is_empty() && plan.row_width > 0 && plan.row_width <= self.scratch.limit)
     }
 
+    /// Internal R adapter entry point: prepare once, choose the existing
+    /// output policy, then execute with the same plan and interrupt behavior.
+    #[cfg(feature = "r-adapter-internal")]
+    #[doc(hidden)]
+    pub fn read_with_prepared_sink_and_interrupts<S, B, C, F>(
+        &mut self,
+        options: &ReadOptions,
+        requested_threads: usize,
+        compact_output: bool,
+        build_sink: B,
+        coarse_interrupt: C,
+        frequent_interrupt: F,
+    ) -> Result<<S as DtaSink>::Output, DtaError>
+    where
+        S: DtaSink + ParallelDtaSink<Output = <S as DtaSink>::Output>,
+        B: FnOnce(&DtaMetadata, u64, u64, &[u32]) -> Result<S, DtaError>,
+        C: FnMut() -> bool,
+        F: FnMut() -> bool,
+    {
+        let prepared = PreparedObservationRead::new(&self.metadata, options)?;
+        let plan = &prepared.plan;
+        let threads = if requested_threads == 1 {
+            1
+        } else {
+            observation_worker_count(
+                plan,
+                prepared.row_count,
+                self.scratch.limit,
+                requested_threads,
+                thread::available_parallelism().map_or(1, usize::from),
+                compact_output,
+            )
+        };
+        let columnar =
+            !plan.columns.is_empty() && plan.row_width > 0 && plan.row_width <= self.scratch.limit;
+        if threads > 1 || columnar {
+            self.read_with_parallel_sink_experiments(
+                options,
+                threads,
+                build_sink,
+                coarse_interrupt,
+                ObservationExperiments::from_env(),
+                Some(prepared),
+            )
+        } else {
+            self.read_with_sink_and_interrupt_controller(
+                options,
+                build_sink,
+                SplitInterrupt {
+                    coarse: coarse_interrupt,
+                    frequent: frequent_interrupt,
+                },
+                Some(prepared),
+            )
+        }
+    }
+
     /// Decode a projection into ordinary Rust vectors with the shared parallel
     /// block executor.
     pub fn read_with_parallel_interrupt<F>(
@@ -2112,7 +2721,31 @@ impl<R: Read + Seek> DtaFile<R> {
         options: &ReadOptions,
         thread_count: usize,
         build_sink: B,
+        should_interrupt: F,
+    ) -> Result<S::Output, DtaError>
+    where
+        S: ParallelDtaSink,
+        B: FnOnce(&DtaMetadata, u64, u64, &[u32]) -> Result<S, DtaError>,
+        F: FnMut() -> bool,
+    {
+        self.read_with_parallel_sink_experiments(
+            options,
+            thread_count,
+            build_sink,
+            should_interrupt,
+            ObservationExperiments::from_env(),
+            None,
+        )
+    }
+
+    fn read_with_parallel_sink_experiments<S, B, F>(
+        &mut self,
+        options: &ReadOptions,
+        thread_count: usize,
+        build_sink: B,
         mut should_interrupt: F,
+        experiments: ObservationExperiments,
+        prepared: Option<PreparedObservationRead>,
     ) -> Result<S::Output, DtaError>
     where
         S: ParallelDtaSink,
@@ -2126,9 +2759,15 @@ impl<R: Read + Seek> DtaFile<R> {
             self.file_length,
             &mut self.scratch,
         )?;
-        let indices = resolve_columns(&self.metadata, options)?;
-        let (row_start, row_count) = row_window(&self.metadata, options);
-        let plan = ObservationPlan::new(&self.metadata, &indices)?;
+        let PreparedObservationRead {
+            indices,
+            row_start,
+            row_count,
+            plan,
+        } = match prepared {
+            Some(prepared) => prepared,
+            None => PreparedObservationRead::new(&self.metadata, options)?,
+        };
         if thread_count == 0
             || plan.columns.is_empty()
             || plan.row_width == 0
@@ -2185,8 +2824,41 @@ impl<R: Read + Seek> DtaFile<R> {
         let metadata = &self.metadata;
         let encoding = self.text_encoding;
         let mut observation_buffer = Vec::new();
+        let ring_geometry = experiments
+            .ring
+            .filter(|_| worker_count > 1 && row_count > 0)
+            .and_then(|ring| ring.geometry(&plan, self.scratch.limit));
+        if std::env::var("DTATOOLS_EXPERIMENT_TRACE").is_ok_and(|value| value == "1") {
+            eprintln!(
+                "DTATOOLS_EXPERIMENT dta_wide_batch={} dta_ring_slots={} dta_ring_block_bytes={} workers={} rows={} columns={}",
+                experiments.wide_numeric_batches,
+                ring_geometry.map_or(0, |(_, slots)| slots),
+                ring_geometry.map_or(0, |(bytes, _)| bytes),
+                worker_count,
+                row_count,
+                plan.columns.len(),
+            );
+        }
 
-        let decoded_columns = if worker_count == 1 {
+        let decoded_columns = if let Some((block_bytes, slots)) = ring_geometry {
+            decode_observation_ring(
+                &mut self.reader,
+                &mut self.scratch,
+                shards,
+                ObservationRingExecution {
+                    row_width: plan.row_width,
+                    row_start,
+                    row_count,
+                    payload_start,
+                    block_bytes,
+                    slots,
+                    wide_numeric_batches: experiments.wide_numeric_batches,
+                },
+                metadata,
+                encoding,
+                &mut should_interrupt,
+            )?
+        } else if worker_count == 1 {
             let mut shard = shards
                 .pop()
                 .expect("one worker has exactly one column shard");
@@ -2225,13 +2897,14 @@ impl<R: Read + Seek> DtaFile<R> {
                         .map_err(|_| DtaError::ArithmeticOverflow("columnar output row"))?,
                     row_count: block_row_count,
                 };
-                decode_worker_block(
+                decode_worker_block_with_batches(
                     &mut shard,
                     &block,
                     plan.row_width,
                     metadata,
                     encoding,
                     Some(&mut should_interrupt),
+                    experiments.wide_numeric_batches,
                 )?;
                 observation_buffer = block.bytes;
                 row = row
@@ -2258,13 +2931,14 @@ impl<R: Read + Seek> DtaFile<R> {
                             while let Ok(message) = receiver.recv() {
                                 match message {
                                     WorkerMessage::Block(block) => {
-                                        let result = decode_worker_block(
+                                        let result = decode_worker_block_with_batches(
                                             &mut shard,
                                             &block,
                                             plan.row_width,
                                             metadata,
                                             encoding,
                                             None,
+                                            experiments.wide_numeric_batches,
                                         );
                                         drop(block);
                                         let failed = result.is_err();
@@ -2510,6 +3184,7 @@ impl<R: Read + Seek> DtaFile<R> {
             SharedInterrupt {
                 callback: should_interrupt,
             },
+            None,
         )
     }
 
@@ -2535,6 +3210,7 @@ impl<R: Read + Seek> DtaFile<R> {
                 coarse: coarse_interrupt,
                 frequent: frequent_interrupt,
             },
+            None,
         )
     }
 
@@ -2543,6 +3219,7 @@ impl<R: Read + Seek> DtaFile<R> {
         options: &ReadOptions,
         build_sink: B,
         mut interrupts: I,
+        prepared: Option<PreparedObservationRead>,
     ) -> Result<S::Output, DtaError>
     where
         S: DtaSink,
@@ -2556,9 +3233,15 @@ impl<R: Read + Seek> DtaFile<R> {
             self.file_length,
             &mut self.scratch,
         )?;
-        let indices = resolve_columns(&self.metadata, options)?;
-        let (row_start, row_count) = row_window(&self.metadata, options);
-        let plan = ObservationPlan::new(&self.metadata, &indices)?;
+        let PreparedObservationRead {
+            indices,
+            row_start,
+            row_count,
+            plan,
+        } = match prepared {
+            Some(prepared) => prepared,
+            None => PreparedObservationRead::new(&self.metadata, options)?,
+        };
         let capacity = usize::try_from(row_count)
             .map_err(|_| DtaError::ArithmeticOverflow("projected row count"))?;
         let mut sink = build_sink(&self.metadata, row_start, row_count, &indices)?;
@@ -7648,6 +8331,9 @@ mod tests {
         scalar_count: usize,
         decline_second: bool,
         decline_all: bool,
+        fail_batch: bool,
+        panic_batch: bool,
+        started: Option<Arc<AtomicBool>>,
     }
 
     impl DtaColumnSink for ByteBatchRecorder {
@@ -7659,6 +8345,13 @@ mod tests {
             stride: usize,
             version: FormatVersion,
         ) -> Result<bool, DtaError> {
+            if let Some(started) = &self.started {
+                started.store(true, Ordering::SeqCst);
+            }
+            assert!(!self.panic_batch, "injected ring worker panic");
+            if self.fail_batch {
+                return Err(DtaError::Output("injected ring decode failure".to_owned()));
+            }
             self.batch_lengths.push(row_count);
             if self.decline_all || (self.decline_second && self.batch_lengths.len() == 2) {
                 return Ok(false);
@@ -7929,6 +8622,426 @@ mod tests {
             unreachable!()
         };
         assert_eq!(values.len(), COLUMNAR_CANCEL_CHECK_INTERVAL);
+    }
+
+    #[test]
+    fn experimental_wide_batches_preserve_endian_missing_codes_and_float_bits() {
+        for order in [ByteOrder::Lsf, ByteOrder::Msf] {
+            for version in [
+                FormatVersion::V105,
+                FormatVersion::V115,
+                FormatVersion::V119,
+            ] {
+                let mut metadata = kernel_metadata(order);
+                metadata.format_version = version;
+                let mut bytes = Vec::new();
+                let values =
+                    std::iter::once((-17_i16, -31_i32, 0x8000_0000_u32, 0x8000_0000_0000_0000_u64))
+                        .chain((0..=26).map(|index| {
+                            let tag = crate::MissingTag::from_offset(index).unwrap();
+                            (
+                                tag.int_value(),
+                                tag.long_value(),
+                                tag.float_bits(),
+                                tag.double_bits(),
+                            )
+                        }))
+                        .chain(std::iter::once((7, 9, 0x7fc0_1234, 0x7ff8_0000_0000_1234)));
+                for (int, long, float, double) in values {
+                    bytes.push(0);
+                    match order {
+                        ByteOrder::Lsf => {
+                            bytes.extend_from_slice(&int.to_le_bytes());
+                            bytes.extend_from_slice(&long.to_le_bytes());
+                            bytes.extend_from_slice(&float.to_le_bytes());
+                            bytes.extend_from_slice(&double.to_le_bytes());
+                        }
+                        ByteOrder::Msf => {
+                            bytes.extend_from_slice(&int.to_be_bytes());
+                            bytes.extend_from_slice(&long.to_be_bytes());
+                            bytes.extend_from_slice(&float.to_be_bytes());
+                            bytes.extend_from_slice(&double.to_be_bytes());
+                        }
+                    }
+                }
+                let block = ObservationBlock {
+                    row_count: bytes.len() / 19,
+                    bytes,
+                    source_offset: 0,
+                    output_row_start: 0,
+                };
+                let columns = || {
+                    vec![
+                        kernel_column(ObservationKind::Int, 1, 2),
+                        kernel_column(ObservationKind::Long, 3, 4),
+                        kernel_column(ObservationKind::Float, 7, 4),
+                        kernel_column(ObservationKind::Double, 11, 8),
+                    ]
+                };
+                let mut scalar = columns();
+                let mut batch = columns();
+                decode_worker_block(&mut scalar, &block, 19, &metadata, TextEncoding::Utf8, None)
+                    .unwrap();
+                decode_worker_block_with_batches(
+                    &mut batch,
+                    &block,
+                    19,
+                    &metadata,
+                    TextEncoding::Utf8,
+                    None,
+                    true,
+                )
+                .unwrap();
+                for (scalar, batch) in scalar.into_iter().zip(batch) {
+                    match (scalar.sink.finish().values, batch.sink.finish().values) {
+                        (
+                            ColumnValues::Float {
+                                values: left,
+                                missing_tags: lt,
+                            },
+                            ColumnValues::Float {
+                                values: right,
+                                missing_tags: rt,
+                            },
+                        ) => {
+                            assert_eq!(
+                                left.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                                right.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+                            );
+                            assert_eq!(lt, rt);
+                        }
+                        (
+                            ColumnValues::Double {
+                                values: left,
+                                missing_tags: lt,
+                            },
+                            ColumnValues::Double {
+                                values: right,
+                                missing_tags: rt,
+                            },
+                        ) => {
+                            assert_eq!(
+                                left.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                                right.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+                            );
+                            assert_eq!(lt, rt);
+                        }
+                        (left, right) => assert_eq!(left, right),
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn experimental_wide_batches_poll_before_each_serial_run() {
+        let rows = COLUMNAR_CANCEL_CHECK_INTERVAL * 3;
+        let block = ObservationBlock {
+            bytes: vec![0; rows * 2],
+            source_offset: 0,
+            output_row_start: 0,
+            row_count: rows,
+        };
+        let mut columns = vec![kernel_column(ObservationKind::Int, 0, 2)];
+        let mut polls = 0;
+        let result = decode_worker_block_with_batches(
+            &mut columns,
+            &block,
+            2,
+            &kernel_metadata(ByteOrder::Lsf),
+            TextEncoding::Utf8,
+            Some(&mut || {
+                polls += 1;
+                polls == 2
+            }),
+            true,
+        );
+        assert_eq!(result, Err(DtaError::Cancelled));
+        let ColumnBuilder::Int { values, .. } = &columns[0].sink else {
+            unreachable!()
+        };
+        assert_eq!(values.len(), COLUMNAR_CANCEL_CHECK_INTERVAL);
+    }
+
+    #[cfg(feature = "r-adapter-internal")]
+    #[test]
+    fn prepared_observation_read_matches_full_projected_legacy_and_strl_reads() {
+        let fixtures: &[&[u8]] = &[
+            include_bytes!("../../../inst/extdata/synthetic_v105.dta"),
+            include_bytes!("../../../inst/extdata/all_types_v115.dta"),
+            include_bytes!("../../../inst/extdata/auto_v118.dta"),
+            include_bytes!("../../../inst/extdata/wide_v118.dta"),
+            include_bytes!("../../../inst/extdata/strl_test_v118.dta"),
+        ];
+        for &bytes in fixtures {
+            let source = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+            let reversed = (0..source.metadata.nvar).rev().collect::<Vec<_>>();
+            for columns in [None, Some(reversed), Some(vec![0, 0]), Some(Vec::new())] {
+                for (row_start, row_count) in [(0, None), (1, Some(3)), (0, Some(0))] {
+                    let options = ReadOptions {
+                        row_start,
+                        row_count,
+                        column_indices: columns.clone(),
+                    };
+                    let expected = DtaFile::from_reader(Cursor::new(bytes))
+                        .unwrap()
+                        .read_with_options(&options)
+                        .unwrap();
+                    for compact in [false, true] {
+                        for requested in [0, 1, 4] {
+                            let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+                            let actual = file
+                                .read_with_prepared_sink_and_interrupts(
+                                    &options,
+                                    requested,
+                                    compact,
+                                    |metadata, _, rows, indices| {
+                                        Ok(VecSink::new(metadata, indices, rows as usize))
+                                    },
+                                    || false,
+                                    || false,
+                                )
+                                .unwrap();
+                            assert_eq!(actual, expected);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "r-adapter-internal")]
+    #[test]
+    fn prepared_observation_read_rejects_invalid_selection_before_sink_allocation() {
+        let bytes = include_bytes!("../../../inst/extdata/auto_v118.dta");
+        for indices in [vec![u32::MAX], vec![0, u32::MAX]] {
+            let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+            let options = ReadOptions {
+                column_indices: Some(indices),
+                ..ReadOptions::default()
+            };
+            let expected = file.supports_columnar_sink(&options).unwrap_err();
+            let mut built = false;
+            let actual = file.read_with_prepared_sink_and_interrupts(
+                &options,
+                1,
+                true,
+                |metadata, _, rows, indices| {
+                    built = true;
+                    Ok(VecSink::new(metadata, indices, rows as usize))
+                },
+                || false,
+                || false,
+            );
+            assert_eq!(actual, Err(expected));
+            assert!(!built);
+        }
+    }
+
+    #[cfg(feature = "r-adapter-internal")]
+    #[test]
+    fn prepared_observation_read_keeps_layout_validation_and_interrupts() {
+        let original = include_bytes!("../../../inst/extdata/auto_v118.dta");
+        for columns in [None, Some(Vec::new())] {
+            let options = ReadOptions {
+                column_indices: columns,
+                ..ReadOptions::default()
+            };
+            let mut file = DtaFile::from_reader(Cursor::new(original)).unwrap();
+            let actual = file.read_with_prepared_sink_and_interrupts(
+                &options,
+                0,
+                true,
+                |_, _, _, _| -> Result<VecSink, DtaError> {
+                    panic!("cancelled read must not allocate a sink")
+                },
+                || true,
+                || false,
+            );
+            assert_eq!(actual, Err(DtaError::Cancelled));
+
+            let mut bytes = original.to_vec();
+            bytes[file.metadata.section_offsets.data as usize] = b'!';
+            let mut file = DtaFile::from_reader(Cursor::new(original.to_vec())).unwrap();
+            // Replace the already-open reader contents to exercise execution's
+            // retained layout check after metadata and plan preparation.
+            file.reader = Cursor::new(bytes);
+            let expected = file.read_with_options(&options).unwrap_err();
+            let actual = file.read_with_prepared_sink_and_interrupts(
+                &options,
+                0,
+                true,
+                |_, _, _, _| -> Result<VecSink, DtaError> {
+                    panic!("invalid layout must not allocate a sink")
+                },
+                || false,
+                || false,
+            );
+            assert_eq!(actual, Err(expected));
+        }
+    }
+
+    #[test]
+    fn experimental_ring_geometry_bounds_slots_and_excludes_strls() {
+        let mut plan = policy_plan(100, 2, ObservationKind::Byte, 1);
+        let ring = ObservationRing {
+            slots: 4,
+            budget_bytes: 2048,
+            block_bytes: DEFAULT_MAX_BUFFER_BYTES,
+        };
+        assert_eq!(ring.geometry(&plan, 1024), Some((1000, 2)));
+        assert!(ObservationRing {
+            slots: 4,
+            budget_bytes: 1999,
+            block_bytes: DEFAULT_MAX_BUFFER_BYTES,
+        }
+        .geometry(&plan, 1024)
+        .is_none());
+        plan.columns[0].kind = ObservationKind::StrL;
+        assert!(ring.geometry(&plan, 1024).is_none());
+        plan.columns[0].kind = ObservationKind::Byte;
+        plan.row_width = DEFAULT_MAX_BUFFER_BYTES + 1;
+        assert!(ring.geometry(&plan, plan.row_width * 4).is_none());
+    }
+
+    #[test]
+    fn experimental_ring_geometry_keeps_two_and_four_slots_at_equal_budget() {
+        let plan = policy_plan(64, 2, ObservationKind::Byte, 1);
+        let budget_bytes = 16 * 1024 * 1024;
+        for (slots, block_bytes) in [(2, 8 * 1024 * 1024), (4, 4 * 1024 * 1024)] {
+            let ring = ObservationRing {
+                slots,
+                budget_bytes,
+                block_bytes,
+            };
+            let geometry = ring.geometry(&plan, DEFAULT_MAX_BUFFER_BYTES).unwrap();
+            assert_eq!(geometry, (block_bytes, slots));
+            assert_eq!(geometry.0 * geometry.1, budget_bytes);
+        }
+        let too_small = ObservationRing {
+            slots: 4,
+            budget_bytes,
+            block_bytes: plan.row_width - 1,
+        };
+        assert!(too_small
+            .geometry(&plan, DEFAULT_MAX_BUFFER_BYTES)
+            .is_none());
+    }
+
+    #[test]
+    fn experimental_ring_capacity_counts_reading_reuse_and_shared_blocks_once() {
+        let reading = Vec::<u8>::with_capacity(11);
+        let reusable = vec![Vec::<u8>::with_capacity(13)];
+        let block = Arc::new(ObservationBlock {
+            bytes: Vec::with_capacity(19),
+            source_offset: 0,
+            output_row_start: 0,
+            row_count: 0,
+        });
+        let worker_reference = Arc::clone(&block);
+        let expected = reading.capacity() + reusable[0].capacity() + block.bytes.capacity();
+        let inflight = VecDeque::from([block]);
+        assert_eq!(
+            observation_ring_capacity(reading.capacity(), &inflight, &reusable),
+            expected
+        );
+        assert_eq!(Arc::strong_count(&worker_reference), 2);
+    }
+
+    #[test]
+    fn experimental_ring_reads_mixed_columns_in_requested_row_order() {
+        let bytes = include_bytes!("../../../inst/extdata/auto_v118.dta").to_vec();
+        for slots in [2, 4] {
+            for wide_numeric_batches in [false, true] {
+                let mut file = DtaFile::from_reader_with_options(
+                    Cursor::new(bytes.clone()),
+                    FileOptions {
+                        max_buffer_bytes: 1024,
+                    },
+                )
+                .unwrap();
+                let indices = (0..file.metadata.nvar).rev().collect();
+                let options = ReadOptions {
+                    row_start: 3,
+                    row_count: Some(65),
+                    column_indices: Some(indices),
+                };
+                let expected = DtaFile::from_reader(Cursor::new(bytes.clone()))
+                    .unwrap()
+                    .read_with_options(&options)
+                    .unwrap();
+                let result = file
+                    .read_with_parallel_sink_experiments(
+                        &options,
+                        3,
+                        |metadata, _, rows, indices| {
+                            Ok(VecSink::new(metadata, indices, rows as usize))
+                        },
+                        || false,
+                        ObservationExperiments {
+                            wide_numeric_batches,
+                            ring: Some(ObservationRing {
+                                slots,
+                                budget_bytes: slots * 1024,
+                                block_bytes: DEFAULT_MAX_BUFFER_BYTES,
+                            }),
+                        },
+                        None,
+                    )
+                    .unwrap();
+                assert_eq!(result, expected);
+                assert!(file.max_scratch_bytes_used() <= 1024);
+            }
+        }
+    }
+
+    #[test]
+    fn experimental_ring_joins_workers_on_cancel_decode_failure_and_panic() {
+        for mode in 0..3 {
+            let started = Arc::new(AtomicBool::new(false));
+            let mut first = byte_batch_column(false);
+            first.plan.byte_offset = 0;
+            first.sink.started = Some(Arc::clone(&started));
+            first.sink.fail_batch = mode == 1;
+            first.sink.panic_batch = mode == 2;
+            let mut second = byte_batch_column(false);
+            second.plan.byte_offset = 1;
+            let mut metadata = kernel_metadata(ByteOrder::Lsf);
+            metadata.obs_length = 2;
+            // The second block is truncated. A failure decoding the first
+            // block must take precedence over this speculative I/O failure.
+            let bytes = if mode == 0 {
+                vec![1; 4096]
+            } else {
+                vec![1; 1024]
+            };
+            let result = decode_observation_ring(
+                &mut Cursor::new(bytes),
+                &mut Scratch::new(1024),
+                vec![vec![first], vec![second]],
+                ObservationRingExecution {
+                    row_width: 2,
+                    row_start: 0,
+                    row_count: 2048,
+                    payload_start: 0,
+                    block_bytes: 1024,
+                    slots: 4,
+                    wide_numeric_batches: false,
+                },
+                &metadata,
+                TextEncoding::Utf8,
+                &mut || mode == 0 && started.load(Ordering::SeqCst),
+            );
+            let error = result.err().expect("read must fail without partial output");
+            assert_eq!(
+                error,
+                match mode {
+                    0 => DtaError::Cancelled,
+                    1 => DtaError::Output("injected ring decode failure".to_owned()),
+                    _ => DtaError::Output("parallel decoder worker panicked".to_owned()),
+                }
+            );
+        }
     }
 
     fn policy_plan(

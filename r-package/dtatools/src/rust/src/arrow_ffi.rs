@@ -12,10 +12,11 @@ use std::sync::Arc;
 use std::thread;
 
 use dta_tools::arrow::{
-    arrow_stored_signature, dataset_signature, preflight_arrow_metadata,
-    save_arrow_file_with_preflight, ArrowCompression, ArrowFieldDocument, ArrowFileSnapshot,
-    ArrowMetadataPreflight, ArrowMissingEncoding, ArrowRSemantics, ArrowReadColumn,
-    ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage,
+    arrow_stored_signature, dataset_signature_from_sources, preflight_arrow_metadata,
+    save_arrow_file_from_sources_with_preflight, ArrowCompression, ArrowFieldDocument,
+    ArrowFileSnapshot, ArrowMetadataPreflight, ArrowMissingEncoding, ArrowProfileError,
+    ArrowRSemantics, ArrowReadColumn, ArrowReadOptions, ArrowWriteSource, ArrowWriteSourceColumn,
+    ArrowWriteSourceDataset, DatasetDocument, StataStorage,
 };
 use dta_tools::{
     classify_byte_missing_for_version, classify_double_missing_bits,
@@ -85,6 +86,8 @@ pub struct RArrowColumnDescriptor {
     /// Unmaterialized dictionary-string payload (`DictStringData`), or null
     /// for eager character columns.
     dictstring: *const c_void,
+    /// Retained immutable compact owner, rooted by an independent C handle.
+    compact_owner: *const c_void,
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -109,7 +112,8 @@ const _: () = {
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, dta_metadata) == 112);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, haven_labelled) == 120);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, dictstring) == 128);
-    assert!(std::mem::size_of::<RArrowColumnDescriptor>() == 136);
+    assert!(std::mem::offset_of!(RArrowColumnDescriptor, compact_owner) == 136);
+    assert!(std::mem::size_of::<RArrowColumnDescriptor>() == 144);
 };
 
 #[repr(C)]
@@ -780,6 +784,78 @@ unsafe fn compact_profiled_column(
     Ok((array, storage, None))
 }
 
+/// Retain native Arrow chunks through writing and hashing. Legacy layout is
+/// decided for the entire logical column before any chunk is normalized.
+unsafe fn owned_profiled_column(
+    source: &crate::owned_numeric::RetainedRead,
+    kind: NumericKind,
+    version: FormatVersion,
+) -> Result<(ArrowWriteSource, StataStorage, Option<FormatVersion>), String> {
+    let (data_type, storage) = match kind {
+        NumericKind::Byte => (DataType::Int8, StataStorage::Byte),
+        NumericKind::Int => (DataType::Int16, StataStorage::Int),
+        NumericKind::Long => (DataType::Int32, StataStorage::Long),
+        NumericKind::Float => (DataType::Float32, StataStorage::Float),
+    };
+    let mut chunks = source.arrow_chunks(kind)?;
+    if chunks.is_empty() {
+        chunks.push(arrow_array::new_empty_array(&data_type));
+    }
+    let legacy = matches!(
+        version,
+        FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
+    );
+    let mut missing_release = None;
+    if legacy {
+        // Keep the arrays alive while inspecting their regions. Normalization
+        // allocates new arrays; the conflict path keeps all original buffers.
+        let mut regions = Vec::new();
+        regions
+            .try_reserve_exact(chunks.len())
+            .map_err(|_| "could not reserve owned numeric regions".to_owned())?;
+        let mut conflicts = false;
+        macro_rules! inspect {
+            ($array:expr, $type:ty, $classify:expr) => {{
+                let values = $array
+                    .as_any()
+                    .downcast_ref::<$type>()
+                    .ok_or_else(|| "owned numeric Arrow type mismatch".to_owned())?
+                    .values();
+                conflicts |= legacy_layout_conflicts(values.as_ref(), version, $classify);
+                regions.push((values.as_ptr().cast::<c_void>(), values.len()));
+            }};
+        }
+        for chunk in &chunks {
+            match kind {
+                NumericKind::Byte => inspect!(chunk, Int8Array, classify_byte_missing_for_version),
+                NumericKind::Int => inspect!(chunk, Int16Array, classify_int_missing_for_version),
+                NumericKind::Long => inspect!(chunk, Int32Array, classify_long_missing_for_version),
+                NumericKind::Float => inspect!(chunk, Float32Array, |value: f32, format| {
+                    classify_float_missing_bits_for_version(value.to_bits(), format)
+                }),
+            }
+        }
+        if conflicts {
+            missing_release = Some(FormatVersion::V111);
+        } else {
+            let normalized = regions
+                .into_iter()
+                .map(|(base, length)| {
+                    compact_profiled_column(base, kind, version, length).map(
+                        |(array, _, release)| {
+                            debug_assert!(release.is_none());
+                            array
+                        },
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            chunks = normalized;
+        }
+    }
+    let source = ArrowWriteSource::try_new(chunks).map_err(|error| error.to_string())?;
+    Ok((source, storage, missing_release))
+}
+
 unsafe fn value_label_table(
     descriptor: &RArrowValueLabelTableDescriptor,
     name: &str,
@@ -872,6 +948,11 @@ enum ColumnInput {
         kind: NumericKind,
         version: FormatVersion,
     },
+    ProfiledOwned {
+        source: crate::owned_numeric::RetainedRead,
+        kind: NumericKind,
+        version: FormatVersion,
+    },
 }
 
 struct ColumnMetadata {
@@ -915,17 +996,18 @@ unsafe fn extract_column_metadata(
         Some(required_c_string(descriptor.tz, "a time zone")?)
     };
     let units = optional_c_string(descriptor.units, "difftime units")?;
-    let compact_version =
-        if kind == RArrowKind::StataNumeric && !descriptor.compact_values.is_null() {
-            Some(
-                u16::try_from(descriptor.compact_format_version)
-                    .ok()
-                    .and_then(|value| FormatVersion::try_from(value).ok())
-                    .ok_or_else(|| "invalid compact numeric format version".to_owned())?,
-            )
-        } else {
-            None
-        };
+    let compact_version = if kind == RArrowKind::StataNumeric
+        && (!descriptor.compact_values.is_null() || !descriptor.compact_owner.is_null())
+    {
+        Some(
+            u16::try_from(descriptor.compact_format_version)
+                .ok()
+                .and_then(|value| FormatVersion::try_from(value).ok())
+                .ok_or_else(|| "invalid compact numeric format version".to_owned())?,
+        )
+    } else {
+        None
+    };
     let (notes, characteristics) = parse_dta_metadata_sexp(descriptor.dta_metadata)?;
     let value_label_index = if descriptor.value_label_index == -1 {
         None
@@ -1051,7 +1133,20 @@ unsafe fn extract_column(
             levels: read_strings(descriptor.strings, descriptor.string_count, "factor levels")?,
         },
         RArrowKind::StataNumeric => {
-            if descriptor.compact_values.is_null() {
+            if !descriptor.compact_owner.is_null() {
+                let source =
+                    crate::owned_numeric::RetainedRead::from_owner(descriptor.compact_owner)
+                        .ok_or_else(|| "compact numeric owner is missing".to_owned())?;
+                if source.len() != row_count {
+                    return Err(format!("column `{name}` has an inconsistent owned length"));
+                }
+                ColumnInput::ProfiledOwned {
+                    source,
+                    kind: NumericKind::try_from(descriptor.compact_kind)?,
+                    version: compact_version
+                        .ok_or_else(|| "compact numeric version is missing".to_owned())?,
+                }
+            } else if descriptor.compact_values.is_null() {
                 let storage = storage_from_code(descriptor.storage)?
                     .ok_or_else(|| format!("column `{name}` has no declared Stata storage"))?;
                 ColumnInput::ProfiledEager {
@@ -1090,6 +1185,25 @@ unsafe fn encode_column(mut column: ExtractedColumn) -> Result<EncodedColumn, St
     let base_document = std::mem::take(&mut column.base_document);
     let profiled_temporal = temporal_kind(&base_document.format);
     let needs_document = |document: &ArrowFieldDocument| *document != ArrowFieldDocument::default();
+
+    if let ColumnInput::ProfiledOwned {
+        source,
+        kind,
+        version,
+    } = &column.input
+    {
+        let (source, storage, missing_release) = owned_profiled_column(source, *kind, *version)?;
+        let mut document = base_document;
+        document.storage = Some(storage);
+        document.missing = Some(field_missing_for_storage(storage));
+        document.missing_release = missing_release;
+        return Ok(EncodedColumn {
+            name: column.name,
+            field: Some(document),
+            source,
+            replaced: 0,
+        });
+    }
 
     let (field, array, replaced): (Option<ArrowFieldDocument>, ArrayRef, u64) = match &column.input
     {
@@ -1265,11 +1379,12 @@ unsafe fn encode_column(mut column: ExtractedColumn) -> Result<EncodedColumn, St
             document.missing_release = missing_release;
             (Some(document), array, 0)
         }
+        ColumnInput::ProfiledOwned { .. } => unreachable!("owned columns are encoded above"),
     };
     Ok(EncodedColumn {
         name: column.name,
         field,
-        array,
+        source: ArrowWriteSource::from_array(array),
         replaced,
     })
 }
@@ -1299,7 +1414,7 @@ fn encode_thread_count(requested: usize, task_count: usize, row_count: usize) ->
 struct EncodedColumn {
     name: String,
     field: Option<ArrowFieldDocument>,
-    array: ArrayRef,
+    source: ArrowWriteSource,
     replaced: u64,
 }
 
@@ -1569,6 +1684,7 @@ fn insert_value_label_tables(
 ///
 /// The same descriptor, label, and notes contracts as
 /// [`dtatools_save_arrow_rust`].
+#[allow(clippy::too_many_arguments)] // Matches the two C writer/signature boundaries.
 unsafe fn assemble_write_dataset(
     dataset_label: *const c_char,
     output_container: *const c_char,
@@ -1578,7 +1694,14 @@ unsafe fn assemble_write_dataset(
     row_count: usize,
     requested_threads: usize,
     preflight_footer: bool,
-) -> Result<(ArrowWriteDataset, Vec<u64>, Option<ArrowMetadataPreflight>), String> {
+) -> Result<
+    (
+        ArrowWriteSourceDataset,
+        Vec<u64>,
+        Option<ArrowMetadataPreflight>,
+    ),
+    String,
+> {
     let column_count = descriptors.len();
     let mut dataset = DatasetDocument {
         version: 0,
@@ -1648,15 +1771,15 @@ unsafe fn assemble_write_dataset(
         .map_err(|_| "could not allocate replacement counts".to_owned())?;
     for column in encoded {
         replacements.push(column.replaced);
-        write_columns.push(ArrowWriteColumn {
+        write_columns.push(ArrowWriteSourceColumn {
             name: column.name,
             field: column.field,
-            array: column.array,
+            source: column.source,
         });
     }
 
     Ok((
-        ArrowWriteDataset {
+        ArrowWriteSourceDataset {
             dataset,
             columns: write_columns,
         },
@@ -1727,8 +1850,9 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
                 "cannot compute datasig after lossy numeric replacements in {details}"
             ));
         }
-        let signature = dataset_signature(&dataset, requested_threads, &mut coarse_interrupt)
-            .map_err(|error| error.to_string())?;
+        let signature =
+            dataset_signature_from_sources(&dataset, requested_threads, &mut coarse_interrupt)
+                .map_err(|error| error.to_string())?;
         let mut guard = ProtectGuard::new();
         scalar_string(&signature, &mut guard)
     })
@@ -1800,7 +1924,7 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
         )?;
         let metadata_preflight =
             metadata_preflight.expect("Arrow save assembly requested a metadata preflight");
-        save_arrow_file_with_preflight(
+        save_arrow_file_from_sources_with_preflight(
             &path,
             &dataset,
             metadata_preflight,
@@ -2137,6 +2261,12 @@ fn int32_contains_r_na_sentinel(column: &ArrowReadColumn) -> Result<bool, String
 /// fill code never calls the R API, so moving a fill to a worker thread and
 /// sharing it by reference is sound.
 enum ColumnFill {
+    OwnedCompact {
+        kind: NumericKind,
+        temporal: TemporalKind,
+        version: FormatVersion,
+        expected_rows: usize,
+    },
     ProfiledDouble {
         output: *mut f64,
         temporal: TemporalKind,
@@ -2188,9 +2318,99 @@ enum ColumnFill {
 unsafe impl Send for ColumnFill {}
 unsafe impl Sync for ColumnFill {}
 
+impl ColumnFill {
+    /// The scheduler supplies disjoint checked row ranges within each column.
+    unsafe fn at_row(&self, row: usize) -> Result<Self, ArrowProfileError> {
+        Ok(match *self {
+            Self::ProfiledDouble { output, temporal } => Self::ProfiledDouble {
+                output: output.add(row),
+                temporal,
+            },
+            Self::ProfiledCompact {
+                values,
+                kind,
+                version,
+            } => {
+                let width = match kind {
+                    NumericKind::Byte => 1,
+                    NumericKind::Int => 2,
+                    _ => 4,
+                };
+                Self::ProfiledCompact {
+                    values: values.add(row * width),
+                    kind,
+                    version,
+                }
+            }
+            Self::ProfiledEager {
+                output,
+                storage,
+                temporal,
+                version,
+            } => Self::ProfiledEager {
+                output: output.add(row),
+                storage,
+                temporal,
+                version,
+            },
+            Self::Logical { output } => Self::Logical {
+                output: output.add(row),
+            },
+            Self::Integer { output } => Self::Integer {
+                output: output.add(row),
+            },
+            Self::Raw { output } => Self::Raw {
+                output: output.add(row),
+            },
+            Self::Date32 { output } => Self::Date32 {
+                output: output.add(row),
+            },
+            Self::Timestamp { output } => Self::Timestamp {
+                output: output.add(row),
+            },
+            Self::Duration {
+                output,
+                seconds_per_unit,
+            } => Self::Duration {
+                output: output.add(row),
+                seconds_per_unit,
+            },
+            Self::PayloadDouble { output } => Self::PayloadDouble {
+                output: output.add(row),
+            },
+            Self::SemanticDouble { output } => Self::SemanticDouble {
+                output: output.add(row),
+            },
+            _ => {
+                return Err(ArrowProfileError::Invalid(
+                    "unsupported bounded fill".to_owned(),
+                ))
+            }
+        })
+    }
+}
+
+fn supports_bounded_completion(column: &ArrowReadColumn) -> bool {
+    if column
+        .field
+        .as_ref()
+        .and_then(|field| field.storage)
+        .is_some()
+    {
+        return true;
+    }
+    // Int32 and strings require decoded values to choose their R shape.
+    // Dictionary levels also require the established finalization path.
+    !matches!(
+        column.data_type,
+        DataType::Int32 | DataType::Utf8 | DataType::LargeUtf8 | DataType::Dictionary(_, _)
+    )
+}
+
 /// What a fill hands back to the main thread for finalization.
 enum FillOutcome {
     Plain,
+    OwnedNumeric(crate::owned_numeric::PreparedOwnedNumeric),
     MissingCount(usize),
     Strings(RStringData),
     Levels(Vec<Option<String>>),
@@ -2210,14 +2430,34 @@ struct PlannedColumn {
 }
 
 unsafe fn plan_read_column(
-    column: &ArrowReadColumn,
     shape: ColumnShape,
     attributes: &ColumnAttributes<'_>,
     row_count: usize,
     guard: &mut ProtectGuard,
 ) -> Result<PlannedColumn, String> {
     let length = RLen::try_from(row_count).map_err(|_| "too long".to_owned())?;
-    let _ = column;
+    if experiment_enabled("DTATOOLS_EXPERIMENT_ARROW_OWNED") {
+        if let ColumnShape::ProfiledCompact { storage, version } = &shape {
+            let kind = match storage {
+                StataStorage::Byte => NumericKind::Byte,
+                StataStorage::Int => NumericKind::Int,
+                StataStorage::Long => NumericKind::Long,
+                StataStorage::Float => NumericKind::Float,
+                StataStorage::Double => unreachable!("compact double shape"),
+            };
+            return Ok(PlannedColumn {
+                fill: Some(ColumnFill::OwnedCompact {
+                    kind,
+                    temporal: temporal_kind(attributes.format()),
+                    version: *version,
+                    expected_rows: row_count,
+                }),
+                shape,
+                vector: ptr::null_mut(),
+                compact: None,
+            });
+        }
+    }
     let (vector, compact, fill) = match &shape {
         ColumnShape::ProfiledDouble { temporal } => {
             let vector = guard.alloc(REALSXP, length)?;
@@ -2344,6 +2584,9 @@ unsafe fn fill_profiled_compact(
     kind: NumericKind,
     version: FormatVersion,
 ) -> Result<usize, String> {
+    if experiment_enabled("DTATOOLS_EXPERIMENT_ARROW_BULK_COPY") {
+        return copy_profiled_compact(column, values, kind, version);
+    }
     let mut missing_count = 0;
     match kind {
         NumericKind::Byte => for_each_value::<Int8Array>(column, |row, array, index| {
@@ -2376,6 +2619,61 @@ unsafe fn fill_profiled_compact(
             values.add(row * 4).cast::<f32>().write_unaligned(value);
             Ok(())
         })?,
+    }
+    Ok(missing_count)
+}
+
+fn experiment_enabled(name: &str) -> bool {
+    std::env::var_os(name).as_deref() == Some(std::ffi::OsStr::new("1"))
+}
+
+/// Compare contiguous copy plus a reduction against the original fused loop.
+/// The caller owns a protected destination with exactly the selected length.
+unsafe fn copy_profiled_compact(
+    column: &ArrowReadColumn,
+    output: *mut u8,
+    kind: NumericKind,
+    version: FormatVersion,
+) -> Result<usize, String> {
+    let mut row = 0_usize;
+    let mut missing_count = 0_usize;
+    macro_rules! copy_chunks {
+        ($array:ty, $native:ty, $missing:expr) => {
+            for chunk in &column.chunks {
+                let array = chunk
+                    .as_any()
+                    .downcast_ref::<$array>()
+                    .ok_or_else(|| chunk_error(&column.name))?;
+                let values = array.values().as_ref();
+                let width = std::mem::size_of::<$native>();
+                ptr::copy_nonoverlapping(
+                    values.as_ptr().cast::<u8>(),
+                    output.add(row * width),
+                    values.len() * width,
+                );
+                missing_count += values.iter().copied().filter($missing).count();
+                row += values.len();
+            }
+        };
+    }
+    match kind {
+        NumericKind::Byte => {
+            copy_chunks!(Int8Array, i8, |v: &i8| classify_byte_missing_for_version(
+                *v, version
+            )
+            .is_some())
+        }
+        NumericKind::Int => {
+            copy_chunks!(Int16Array, i16, |v: &i16| classify_int_missing_for_version(
+                *v, version
+            )
+            .is_some())
+        }
+        NumericKind::Long => copy_chunks!(Int32Array, i32, |v: &i32| {
+            classify_long_missing_for_version(*v, version).is_some()
+        }),
+        NumericKind::Float => copy_chunks!(Float32Array, f32, |v: &f32| v.is_nan()
+            || classify_float_missing_bits_for_version(v.to_bits(), version).is_some()),
     }
     Ok(missing_count)
 }
@@ -2874,7 +3172,30 @@ unsafe fn fill_read_column(
     column: &ArrowReadColumn,
     fill: &ColumnFill,
 ) -> Result<FillOutcome, String> {
+    fill_read_column_with_poll(column, fill, || false)
+}
+
+/// Only the coordinator's poll may call R. Worker polls read cancellation.
+unsafe fn fill_read_column_with_poll(
+    column: &ArrowReadColumn,
+    fill: &ColumnFill,
+    poll: impl FnMut() -> bool,
+) -> Result<FillOutcome, String> {
     match fill {
+        ColumnFill::OwnedCompact {
+            kind,
+            temporal,
+            version,
+            expected_rows,
+        } => crate::owned_numeric::prepare_from_arrow(
+            &column.chunks,
+            *kind,
+            *temporal,
+            *version,
+            *expected_rows,
+            poll,
+        )
+        .map(FillOutcome::OwnedNumeric),
         ColumnFill::ProfiledDouble { output, temporal } => {
             let (output, temporal) = (*output, *temporal);
             // Raw Stata missing storage for doubles: classify the stored bits.
@@ -2970,9 +3291,8 @@ fn fill_thread_count(requested: usize, task_count: usize, row_count: usize) -> u
     threads.min(task_count).max(1)
 }
 
-/// Claim fill tasks from the shared queue. `poll` runs between tasks; on the
-/// R thread it checks interrupts, on workers it only observes the cancel
-/// flag set by the other loops.
+/// Claim fill tasks from the shared queue. The R thread polls interrupts
+/// between tasks and owned scan blocks. Workers only observe peer cancellation.
 fn fill_task_loop(
     columns: &[ArrowReadColumn],
     tasks: &[(usize, ColumnFill)],
@@ -2993,8 +3313,23 @@ fn fill_task_loop(
         let Some((column_index, fill)) = tasks.get(task_index) else {
             return Ok(results);
         };
-        match unsafe { fill_read_column(&columns[*column_index], fill) } {
+        let mut peer_cancelled = false;
+        match unsafe {
+            fill_read_column_with_poll(&columns[*column_index], fill, || {
+                if cancelled.load(Ordering::Relaxed) {
+                    peer_cancelled = true;
+                    true
+                } else {
+                    poll()
+                }
+            })
+        } {
             Ok(outcome) => results.push((*column_index, outcome)),
+            // Owned preparation stops immediately when its poll returns true.
+            // Leave a peer's actual failure (or the R thread's interrupt) to
+            // that loop; synthesizing another interrupt could hide its error
+            // when results are collected in coordinator/worker join order.
+            Err(_) if peer_cancelled => return Ok(results),
             Err(error) => {
                 cancelled.store(true, Ordering::Relaxed);
                 return Err(error);
@@ -3015,7 +3350,8 @@ fn run_column_fills(
         for (index, fill) in fills.into_iter().enumerate() {
             let Some(fill) = fill else { continue };
             check_interrupt()?;
-            outcomes[index] = unsafe { fill_read_column(&columns[index], &fill) }?;
+            outcomes[index] =
+                unsafe { fill_read_column_with_poll(&columns[index], &fill, coarse_interrupt) }?;
         }
         return Ok(outcomes);
     }
@@ -3026,6 +3362,9 @@ fn run_column_fills(
         .collect();
     let next = AtomicUsize::new(0);
     let cancelled = AtomicBool::new(false);
+    let has_owned_tasks = tasks
+        .iter()
+        .any(|(_, fill)| matches!(fill, ColumnFill::OwnedCompact { .. }));
     let (own_result, worker_results) = thread::scope(|scope| {
         let handles: Vec<_> = (1..threads)
             .map(|_| {
@@ -3035,9 +3374,20 @@ fn run_column_fills(
                 scope.spawn(move || fill_task_loop(columns, tasks, next, cancelled, || false))
             })
             .collect();
-        let own = fill_task_loop(columns, &tasks, &next, &cancelled, coarse_interrupt);
+        let mut own = fill_task_loop(columns, &tasks, &next, &cancelled, coarse_interrupt);
         if own.is_err() {
             cancelled.store(true, Ordering::Relaxed);
+        }
+        // A single long column may outlive the coordinator's queue work.
+        // Keep polling on the R thread until its bounded worker scan exits.
+        if has_owned_tasks {
+            while handles.iter().any(|handle| !handle.is_finished()) {
+                if own.is_ok() && coarse_interrupt() {
+                    cancelled.store(true, Ordering::Relaxed);
+                    own = Err("Arrow read interrupted".to_owned());
+                }
+                thread::sleep(std::time::Duration::from_millis(1));
+            }
         }
         let worker_results: Vec<_> = handles
             .into_iter()
@@ -3161,14 +3511,15 @@ unsafe fn finalize_read_column(
     let attributes = attribute_cache.for_column(column);
     let mismatch = || format!("column `{}` produced a mismatched fill result", column.name);
     let vector = match &plan.shape {
-        ColumnShape::ProfiledCompact { .. } => {
-            let FillOutcome::MissingCount(missing_count) = outcome else {
-                return Err(mismatch());
-            };
-            let mut data = plan.compact.ok_or_else(mismatch)?;
-            data.missing_count = missing_count;
-            guard.numeric(data)?
-        }
+        ColumnShape::ProfiledCompact { .. } => match outcome {
+            FillOutcome::OwnedNumeric(prepared) => guard.publish_owned_numeric(prepared)?,
+            FillOutcome::MissingCount(missing_count) => {
+                let mut data = plan.compact.ok_or_else(mismatch)?;
+                data.missing_count = missing_count;
+                guard.numeric(data)?
+            }
+            _ => return Err(mismatch()),
+        },
         ColumnShape::Strings { has_nulls: false } => {
             let FillOutcome::Strings(data) = outcome else {
                 return Err(mismatch());
@@ -3311,6 +3662,23 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
     error: *mut *mut c_char,
 ) -> Sexp {
     arrow_boundary(interrupted, error, ptr::null_mut(), || {
+        let trace = experiment_enabled("DTATOOLS_EXPERIMENT_TRACE");
+        let owned_mode = experiment_enabled("DTATOOLS_EXPERIMENT_ARROW_OWNED");
+        if owned_mode {
+            let charged = crate::owned_numeric::dtatools_owned_numeric_live_bytes();
+            if charged > 64 * 1024 * 1024 {
+                check_interrupt()?;
+                if crate::dtatools_owned_numeric_gc() == 0 {
+                    return Err("R could not collect unused owned numeric buffers".to_owned());
+                }
+                if trace {
+                    eprintln!(
+                        "dtatools experiment: Arrow owned_gc before={charged} after={}",
+                        crate::owned_numeric::dtatools_owned_numeric_live_bytes()
+                    );
+                }
+            }
+        }
         let snapshot = required_arrow_snapshot(snapshot)?;
         let projection = if all_columns != 0 {
             None
@@ -3345,12 +3713,59 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             record_signature: record_signature != 0,
             threads: requested,
         };
-        let mut result = if count_source_rows != 0 {
-            snapshot.read_with_source_row_count(&options, &mut coarse_interrupt)
+        let bounded_mode = experiment_enabled("DTATOOLS_EXPERIMENT_ARROW_BOUNDED");
+        let (mut result, completion) = if bounded_mode && !owned_mode {
+            let prepared = snapshot
+                .prepare_completion(&options, count_source_rows != 0, &mut coarse_interrupt)
+                .map_err(|error| error.to_string())?;
+            if prepared
+                .metadata()
+                .columns
+                .iter()
+                .all(supports_bounded_completion)
+            {
+                if trace {
+                    eprintln!("dtatools experiment: Arrow bounded=active owned=false");
+                }
+                let (metadata, completion) = prepared.into_parts();
+                (metadata, Some(completion))
+            } else {
+                if trace {
+                    let unsupported: Vec<_> = prepared
+                        .metadata()
+                        .columns
+                        .iter()
+                        .filter(|column| !supports_bounded_completion(column))
+                        .map(|column| format!("{}:{:?}", column.name, column.data_type))
+                        .collect();
+                    eprintln!("dtatools experiment: Arrow bounded=fallback owned=false unsupported={unsupported:?}");
+                }
+                (
+                    prepared
+                        .read(&mut coarse_interrupt)
+                        .map_err(|error| error.to_string())?,
+                    None,
+                )
+            }
         } else {
-            snapshot.read(&options, &mut coarse_interrupt)
-        }
-        .map_err(|error| error.to_string())?;
+            if trace {
+                eprintln!(
+                    "dtatools experiment: Arrow bounded={} owned={owned_mode}",
+                    if bounded_mode {
+                        "disabled-by-owned"
+                    } else {
+                        "off"
+                    }
+                );
+            }
+            let result = if count_source_rows != 0 {
+                snapshot.read_with_source_row_count(&options, &mut coarse_interrupt)
+            } else {
+                snapshot.read(&options, &mut coarse_interrupt)
+            }
+            .map_err(|error| error.to_string())?;
+            (result, None)
+        };
         let profiled = result.profile_version.is_some();
         let row_count = usize::try_from(result.row_count)
             .map_err(|_| "the selection has too many rows".to_owned())?;
@@ -3443,8 +3858,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             check_interrupt()?;
             let attributes = attribute_cache.for_column(column);
             let shape = classify_read_column(column, &attributes, numeric_altrep != 0)?;
-            let mut plan =
-                plan_read_column(column, shape, &attributes, row_count, &mut result_guard)?;
+            let mut plan = plan_read_column(shape, &attributes, row_count, &mut result_guard)?;
             fills.push(plan.fill.take());
             plans.push(plan);
         }
@@ -3452,7 +3866,75 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
         // Fill: pure conversions, in parallel when worthwhile.
         let task_count = fills.iter().filter(|fill| fill.is_some()).count();
         let threads = fill_thread_count(requested, task_count, row_count);
-        let outcomes = run_column_fills(&result.columns, fills, threads)?;
+        if trace {
+            let owned_columns = fills
+                .iter()
+                .filter(|fill| matches!(fill, Some(ColumnFill::OwnedCompact { .. })))
+                .count();
+            eprintln!("dtatools experiment: Arrow owned_columns={owned_columns} fill_tasks={task_count} fill_threads={threads}");
+        }
+        let outcomes = if let Some(completion) = completion {
+            let missing: Vec<_> = fills.iter().map(|_| AtomicUsize::new(0)).collect();
+            let report = completion
+                .complete_with_report(
+                    64 * 1024 * 1024,
+                    &mut coarse_interrupt,
+                    |index, offset, chunk| {
+                        let column = result.columns.get(index).ok_or_else(|| {
+                            ArrowProfileError::Invalid("invalid completion column".to_owned())
+                        })?;
+                        if offset
+                            .checked_add(chunk.len())
+                            .is_none_or(|end| end > row_count)
+                        {
+                            return Err(ArrowProfileError::Invalid(
+                                "completion exceeds output length".to_owned(),
+                            ));
+                        }
+                        let fill = fills[index].as_ref().ok_or_else(|| {
+                            ArrowProfileError::Invalid("missing bounded fill".to_owned())
+                        })?;
+                        let chunk_column = ArrowReadColumn {
+                            name: column.name.clone(),
+                            data_type: column.data_type.clone(),
+                            nullable: column.nullable,
+                            dictionary_ordered: column.dictionary_ordered,
+                            field: None,
+                            chunks: vec![chunk],
+                        };
+                        match unsafe { fill_read_column(&chunk_column, &fill.at_row(offset)?) }
+                            .map_err(ArrowProfileError::Invalid)?
+                        {
+                            FillOutcome::MissingCount(count) => {
+                                missing[index].fetch_add(count, Ordering::Relaxed);
+                            }
+                            FillOutcome::Plain => {}
+                            _ => {
+                                return Err(ArrowProfileError::Invalid(
+                                    "unexpected bounded fill outcome".to_owned(),
+                                ))
+                            }
+                        }
+                        Ok(())
+                    },
+                )
+                .map_err(|error| error.to_string())?;
+            if trace {
+                eprintln!("dtatools experiment: Arrow completion={report:?}");
+            }
+            fills
+                .iter()
+                .enumerate()
+                .map(|(index, fill)| match fill {
+                    Some(ColumnFill::ProfiledCompact { .. }) => {
+                        FillOutcome::MissingCount(missing[index].load(Ordering::Relaxed))
+                    }
+                    _ => FillOutcome::Plain,
+                })
+                .collect()
+        } else {
+            run_column_fills(&result.columns, fills, threads)?
+        };
 
         // Finalize on the R thread: ALTREP wrapping, classes, attributes.
         for (index, ((column, plan), outcome)) in
@@ -3632,6 +4114,13 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
 mod tests {
     use super::*;
 
+    // The pure fill dispatcher references R's missing-value constants. Supply
+    // their fixed values for Rust tests, which do not initialize the R runtime.
+    #[export_name = "R_NaInt"]
+    static TEST_R_NA_INT: c_int = c_int::MIN;
+    #[export_name = "R_NaReal"]
+    static TEST_R_NA_REAL: f64 = f64::from_bits(0x7ff0_0000_0000_07a2);
+
     #[test]
     fn automatic_reader_threads_use_available_cpus_and_honor_explicit_limits() {
         let available = thread::available_parallelism().map_or(1, usize::from);
@@ -3640,6 +4129,118 @@ mod tests {
         assert_eq!(fill_thread_count(3, 64, 1_000_000), available.min(3));
         assert_eq!(fill_thread_count(0, 64, 1), 1);
         assert_eq!(fill_thread_count(0, 2, 1_000_000), available.min(2));
+    }
+
+    #[test]
+    fn owned_fill_peer_failure_is_not_a_user_interrupt() {
+        let columns = vec![
+            ArrowReadColumn {
+                name: "compact".to_owned(),
+                data_type: DataType::Int16,
+                nullable: false,
+                dictionary_ordered: false,
+                field: None,
+                chunks: vec![Arc::new(Int16Array::from(vec![1]))],
+            },
+            ArrowReadColumn {
+                name: "timestamp".to_owned(),
+                data_type: DataType::Timestamp(TimeUnit::Nanosecond, None),
+                nullable: false,
+                dictionary_ordered: false,
+                field: None,
+                chunks: vec![Arc::new(arrow_array::TimestampNanosecondArray::from(vec![
+                    1_700_000_000_000_000_001,
+                ]))],
+            },
+        ];
+        let mut timestamp = 0.0;
+        let tasks = vec![
+            (
+                0,
+                ColumnFill::OwnedCompact {
+                    kind: NumericKind::Int,
+                    temporal: TemporalKind::None,
+                    version: FormatVersion::V118,
+                    expected_rows: 1,
+                },
+            ),
+            (
+                1,
+                ColumnFill::Timestamp {
+                    output: &mut timestamp,
+                },
+            ),
+        ];
+        let next = AtomicUsize::new(0);
+        let cancelled = AtomicBool::new(false);
+        let (start, started) = std::sync::mpsc::channel();
+        let (done, finished) = std::sync::mpsc::channel();
+        let (own, worker) = thread::scope(|scope| {
+            let (columns, tasks, next, cancelled) = (&columns, &tasks, &next, &cancelled);
+            let worker = scope.spawn(move || {
+                started.recv().expect("owned fill has started");
+                let result = fill_task_loop(columns, tasks, next, cancelled, || false);
+                done.send(()).expect("owned fill is waiting");
+                result
+            });
+            let mut polls = 0;
+            let own = fill_task_loop(columns, tasks, next, cancelled, || {
+                polls += 1;
+                if polls == 2 {
+                    // Fail the timestamp only after the coordinator has
+                    // entered owned preparation, before its next scan poll.
+                    start.send(()).expect("timestamp worker is waiting");
+                    finished.recv().expect("timestamp worker has finished");
+                }
+                false
+            });
+            (own, worker.join().expect("timestamp worker did not panic"))
+        });
+        let error = worker.err().expect("timestamp cannot be represented in R");
+        assert!(error.contains("cannot be represented exactly in R"));
+        assert!(!native_arrow_interrupted(&error));
+        assert!(
+            own.is_ok(),
+            "peer cancellation must leave the timestamp error as the read failure, got {:?}",
+            own.err()
+        );
+    }
+
+    #[test]
+    fn owned_fill_preserves_user_interrupts_between_scan_blocks() {
+        let columns = vec![ArrowReadColumn {
+            name: "compact".to_owned(),
+            data_type: DataType::Int16,
+            nullable: false,
+            dictionary_ordered: false,
+            field: None,
+            chunks: vec![
+                Arc::new(Int16Array::from(vec![1])),
+                Arc::new(Int16Array::from(vec![2])),
+            ],
+        }];
+        let tasks = vec![(
+            0,
+            ColumnFill::OwnedCompact {
+                kind: NumericKind::Int,
+                temporal: TemporalKind::None,
+                version: FormatVersion::V118,
+                expected_rows: 2,
+            },
+        )];
+        // Queue entry, preparation entry, each typed block, and publication.
+        for interrupt_at in 1..=5 {
+            let next = AtomicUsize::new(0);
+            let cancelled = AtomicBool::new(false);
+            let mut polls = 0;
+            let result = fill_task_loop(&columns, &tasks, &next, &cancelled, || {
+                polls += 1;
+                polls == interrupt_at
+            });
+            let error = result.err().expect("user interrupt stops the owned fill");
+            assert!(native_arrow_interrupted(&error));
+            assert!(cancelled.load(Ordering::Relaxed));
+        }
     }
 
     #[test]

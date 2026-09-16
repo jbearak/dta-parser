@@ -75,6 +75,146 @@ pub struct ArrowWriteDataset {
     pub columns: Vec<ArrowWriteColumn>,
 }
 
+/// Private R adapter column backed by checked immutable array chunks.
+#[cfg(feature = "r-adapter-internal")]
+pub struct ArrowWriteSourceColumn {
+    pub name: String,
+    pub field: Option<ArrowFieldDocument>,
+    pub source: super::write_source::ArrowWriteSource,
+}
+
+/// Private R adapter dataset. Source chunk boundaries do not change its file
+/// record batches, buffer checksums, or data signature.
+#[cfg(feature = "r-adapter-internal")]
+pub struct ArrowWriteSourceDataset {
+    pub dataset: DatasetDocument,
+    pub columns: Vec<ArrowWriteSourceColumn>,
+}
+
+// Both actual callers enter the same validation, hashing and writing engine.
+// Views borrow metadata and array handles; they never copy column buffers.
+trait WriteDataset: Sync {
+    fn document(&self) -> &DatasetDocument;
+    fn columns(&self) -> impl ExactSizeIterator<Item = WriteColumn<'_>>;
+    fn column(&self, index: usize) -> WriteColumn<'_>;
+}
+
+struct WriteColumn<'a> {
+    name: &'a String,
+    field: &'a Option<ArrowFieldDocument>,
+    array: WriteArray<'a>,
+}
+
+enum WriteArray<'a> {
+    Single(&'a ArrayRef),
+    #[cfg(feature = "r-adapter-internal")]
+    Source(&'a super::write_source::ArrowWriteSource),
+}
+
+impl<'a> WriteArray<'a> {
+    fn len(&self) -> usize {
+        match self {
+            Self::Single(array) => array.len(),
+            #[cfg(feature = "r-adapter-internal")]
+            Self::Source(source) => source.len(),
+        }
+    }
+
+    fn data_type(&self) -> &'a DataType {
+        match self {
+            Self::Single(array) => (*array).data_type(),
+            #[cfg(feature = "r-adapter-internal")]
+            Self::Source(source) => (*source).data_type(),
+        }
+    }
+
+    fn null_count(&self) -> usize {
+        match self {
+            Self::Single(array) => array.null_count(),
+            #[cfg(feature = "r-adapter-internal")]
+            Self::Source(source) => source.null_count(),
+        }
+    }
+
+    fn slice(&self, offset: usize, length: usize) -> Result<ArrayRef, ArrowProfileError> {
+        match self {
+            Self::Single(array) => Ok(array.slice(offset, length)),
+            #[cfg(feature = "r-adapter-internal")]
+            Self::Source(source) => source.slice(offset, length),
+        }
+    }
+
+    fn dictionary_values(&self) -> Option<ArrayRef> {
+        match self {
+            Self::Single(array) => dictionary_values(array),
+            #[cfg(feature = "r-adapter-internal")]
+            Self::Source(source) => source.dictionary_values(),
+        }
+    }
+
+    fn canonical_hash_count(
+        &self,
+        offset: usize,
+        length: usize,
+    ) -> Result<usize, ArrowProfileError> {
+        match self {
+            Self::Single(array) => canonical_hash_count_for_range(array.as_ref(), offset, length),
+            #[cfg(feature = "r-adapter-internal")]
+            Self::Source(source) => canonical_hash_count_with_validity(
+                source.data_type(),
+                source.has_nulls(offset, length)?,
+            ),
+        }
+    }
+}
+
+impl WriteDataset for ArrowWriteDataset {
+    fn document(&self) -> &DatasetDocument {
+        &self.dataset
+    }
+
+    fn columns(&self) -> impl ExactSizeIterator<Item = WriteColumn<'_>> {
+        self.columns.iter().map(|column| WriteColumn {
+            name: &column.name,
+            field: &column.field,
+            array: WriteArray::Single(&column.array),
+        })
+    }
+
+    fn column(&self, index: usize) -> WriteColumn<'_> {
+        let column = &self.columns[index];
+        WriteColumn {
+            name: &column.name,
+            field: &column.field,
+            array: WriteArray::Single(&column.array),
+        }
+    }
+}
+
+#[cfg(feature = "r-adapter-internal")]
+impl WriteDataset for ArrowWriteSourceDataset {
+    fn document(&self) -> &DatasetDocument {
+        &self.dataset
+    }
+
+    fn columns(&self) -> impl ExactSizeIterator<Item = WriteColumn<'_>> {
+        self.columns.iter().map(|column| WriteColumn {
+            name: &column.name,
+            field: &column.field,
+            array: WriteArray::Source(&column.source),
+        })
+    }
+
+    fn column(&self, index: usize) -> WriteColumn<'_> {
+        let column = &self.columns[index];
+        WriteColumn {
+            name: &column.name,
+            field: &column.field,
+            array: WriteArray::Source(&column.source),
+        }
+    }
+}
+
 /// Reusable result of validating and serializing dataset metadata before any
 /// column arrays are extracted by the R adapter.
 #[derive(Debug)]
@@ -134,7 +274,7 @@ fn supported_write_type(data_type: &DataType) -> bool {
     }
 }
 
-fn dictionary_values(array: &ArrayRef) -> Option<ArrayRef> {
+pub(super) fn dictionary_values(array: &ArrayRef) -> Option<ArrayRef> {
     let data = array.to_data();
     let child = data.child_data().first()?;
     Some(arrow_array::make_array(child.clone()))
@@ -169,7 +309,7 @@ enum HashTask {
 }
 
 fn run_hash_task(
-    dataset: &ArrowWriteDataset,
+    dataset: &impl WriteDataset,
     row_count: usize,
     task: &HashTask,
 ) -> Result<Vec<String>, ArrowProfileError> {
@@ -177,12 +317,12 @@ fn run_hash_task(
         HashTask::Batch { batch, column } => {
             let row_start = batch * ARROW_ROWS_PER_BATCH;
             let batch_rows = ARROW_ROWS_PER_BATCH.min(row_count - row_start);
-            let slice = dataset.columns[*column].array.slice(row_start, batch_rows);
+            let slice = dataset.column(*column).array.slice(row_start, batch_rows)?;
             canonical_array_hashes(slice.as_ref())?
         }
         HashTask::Dictionary { column } => {
-            let column = &dataset.columns[*column];
-            let values = dictionary_values(&column.array).ok_or_else(|| {
+            let column = &dataset.column(*column);
+            let values = column.array.dictionary_values().ok_or_else(|| {
                 ArrowProfileError::Invalid(format!(
                     "dictionary column `{}` has no values array",
                     column.name
@@ -199,7 +339,7 @@ fn run_hash_task(
 /// cancel flag the other loops set.
 #[allow(clippy::type_complexity)]
 fn hash_task_loop(
-    dataset: &ArrowWriteDataset,
+    dataset: &impl WriteDataset,
     row_count: usize,
     tasks: &[HashTask],
     next: &AtomicUsize,
@@ -301,12 +441,31 @@ pub fn dataset_signature(
     threads: usize,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<String, ArrowProfileError> {
+    dataset_signature_impl(dataset, threads, interrupt)
+}
+
+/// Compute the unchanged canonical data signature directly from checked chunks.
+/// Batch hash workers retain at most one canonical window per active task;
+/// dictionary values keep the existing whole-dictionary checksum behavior.
+#[cfg(feature = "r-adapter-internal")]
+pub fn dataset_signature_from_sources(
+    dataset: &ArrowWriteSourceDataset,
+    threads: usize,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<String, ArrowProfileError> {
+    dataset_signature_impl(dataset, threads, interrupt)
+}
+
+fn dataset_signature_impl(
+    dataset: &impl WriteDataset,
+    threads: usize,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<String, ArrowProfileError> {
     let row_count = validated_row_count(dataset)?;
 
-    let column_count = dataset.columns.len();
+    let column_count = dataset.columns().len();
     let dictionary_columns: Vec<usize> = dataset
-        .columns
-        .iter()
+        .columns()
         .enumerate()
         .filter(|(_, column)| matches!(column.array.data_type(), DataType::Dictionary(_, _)))
         .map(|(index, _)| index)
@@ -381,7 +540,7 @@ pub fn dataset_signature(
 
     signature_from_parts(
         row_count as u64,
-        dataset.columns.iter().map(|column| {
+        dataset.columns().map(|column| {
             (
                 column.name.as_str(),
                 column.array.data_type(),
@@ -389,7 +548,7 @@ pub fn dataset_signature(
             )
         }),
         column_count,
-        &dataset.dataset,
+        dataset.document(),
         &checksums,
     )
 }
@@ -541,10 +700,9 @@ thread_local! {
         const { std::cell::Cell::new(0) };
 }
 
-fn dictionary_columns(dataset: &ArrowWriteDataset) -> Vec<usize> {
+fn dictionary_columns(dataset: &impl WriteDataset) -> Vec<usize> {
     dataset
-        .columns
-        .iter()
+        .columns()
         .enumerate()
         .filter(|(_, column)| matches!(column.array.data_type(), DataType::Dictionary(_, _)))
         .map(|(index, _)| index)
@@ -626,26 +784,30 @@ fn serialize_footer_json_length<T: serde::Serialize>(
 }
 
 fn checksums_json_length(
-    dataset: &ArrowWriteDataset,
+    dataset: &impl WriteDataset,
     batch_count: usize,
     dictionary_columns: &[usize],
 ) -> Result<usize, ArrowProfileError> {
     let dictionary_hash_counts: Vec<(usize, usize)> = dictionary_columns
         .iter()
         .map(|&column| {
-            let values = dictionary_values(&dataset.columns[column].array).ok_or_else(|| {
-                ArrowProfileError::Invalid(format!(
-                    "dictionary column `{}` has no values array",
-                    dataset.columns[column].name
-                ))
-            })?;
+            let values = dataset
+                .column(column)
+                .array
+                .dictionary_values()
+                .ok_or_else(|| {
+                    ArrowProfileError::Invalid(format!(
+                        "dictionary column `{}` has no values array",
+                        dataset.column(column).name
+                    ))
+                })?;
             Ok((column, canonical_hash_count(values.as_ref())?))
         })
         .collect::<Result<_, ArrowProfileError>>()?;
 
     let row_count = dataset
-        .columns
-        .first()
+        .columns()
+        .next()
         .map_or(0, |column| column.array.len());
     let mut output = MetadataJsonLength::default();
     output.add_str("{\"version\":")?;
@@ -658,15 +820,15 @@ fn checksums_json_length(
         output.add_str("{\"columns\":[")?;
         let row_start = batch * ARROW_ROWS_PER_BATCH;
         let batch_rows = ARROW_ROWS_PER_BATCH.min(row_count.saturating_sub(row_start));
-        for (column, write_column) in dataset.columns.iter().enumerate() {
+        for (column, write_column) in dataset.columns().enumerate() {
             if column != 0 {
                 output.add(1)?;
             }
-            output.add_hashes(canonical_hash_count_for_range(
-                write_column.array.as_ref(),
-                row_start,
-                batch_rows,
-            )?)?;
+            output.add_hashes(
+                write_column
+                    .array
+                    .canonical_hash_count(row_start, batch_rows)?,
+            )?;
         }
         output.add_str("]}")?;
     }
@@ -873,18 +1035,18 @@ fn validate_footer_size(
 }
 
 fn validate_fields_with(
-    dataset: &ArrowWriteDataset,
+    dataset: &impl WriteDataset,
     dataset_prevalidated: bool,
     mut accept: impl FnMut(Field, Option<&ArrowFieldDocument>) -> Result<(), ArrowProfileError>,
 ) -> Result<usize, ArrowProfileError> {
     if !dataset_prevalidated {
-        validate_write_dataset_document(&dataset.dataset)?;
+        validate_write_dataset_document(dataset.document())?;
     }
     let row_count = dataset
-        .columns
-        .first()
+        .columns()
+        .next()
         .map_or(0, |column| column.array.len());
-    for column in &dataset.columns {
+    for column in dataset.columns() {
         if column.array.len() != row_count {
             return Err(ArrowProfileError::Invalid(format!(
                 "column `{}` has {} rows; expected {row_count}",
@@ -919,7 +1081,7 @@ fn validate_fields_with(
                 ARROW_PROFILE_VERSION,
                 &field,
                 document,
-                &dataset.dataset,
+                dataset.document(),
             )?;
         }
         accept(field, column.field.as_ref())?;
@@ -927,15 +1089,15 @@ fn validate_fields_with(
     Ok(row_count)
 }
 
-fn validated_row_count(dataset: &ArrowWriteDataset) -> Result<usize, ArrowProfileError> {
+fn validated_row_count(dataset: &impl WriteDataset) -> Result<usize, ArrowProfileError> {
     validate_fields_with(dataset, false, |_field, _document| Ok(()))
 }
 
 fn validated_fields(
-    dataset: &ArrowWriteDataset,
+    dataset: &impl WriteDataset,
     dataset_prevalidated: bool,
 ) -> Result<(usize, Vec<Field>, usize), ArrowProfileError> {
-    let mut fields = Vec::with_capacity(dataset.columns.len());
+    let mut fields = Vec::with_capacity(dataset.columns().len());
     let mut metadata_bytes = 0_usize;
     let row_count = validate_fields_with(dataset, dataset_prevalidated, |mut field, document| {
         if let Some(document) = document {
@@ -958,7 +1120,7 @@ struct ValidatedArrowWrite {
 }
 
 fn validated_arrow_write(
-    dataset: &ArrowWriteDataset,
+    dataset: &impl WriteDataset,
     checksums: bool,
 ) -> Result<ValidatedArrowWrite, ArrowProfileError> {
     validated_arrow_write_with_dataset_json(dataset, checksums, None)
@@ -966,7 +1128,7 @@ fn validated_arrow_write(
 
 #[cfg(any(test, feature = "r-adapter-internal"))]
 fn validated_arrow_write_with_preflight(
-    dataset: &ArrowWriteDataset,
+    dataset: &impl WriteDataset,
     checksums: bool,
     preflight: ArrowMetadataPreflight,
 ) -> Result<ValidatedArrowWrite, ArrowProfileError> {
@@ -974,7 +1136,7 @@ fn validated_arrow_write_with_preflight(
 }
 
 fn validated_arrow_write_with_dataset_json(
-    dataset: &ArrowWriteDataset,
+    dataset: &impl WriteDataset,
     checksums: bool,
     preflight: Option<ArrowMetadataPreflight>,
 ) -> Result<ValidatedArrowWrite, ArrowProfileError> {
@@ -984,8 +1146,8 @@ fn validated_arrow_write_with_dataset_json(
     let dataset_json = match preflight.map(|plan| plan.dataset_json) {
         Some(PreflightDatasetJson::Retained(json)) => json,
         Some(PreflightDatasetJson::Deferred { length }) => {
-            validate_write_dataset_document(&dataset.dataset)?;
-            let json = serialize_dataset_footer_json(&dataset.dataset)?;
+            validate_write_dataset_document(dataset.document())?;
+            let json = serialize_dataset_footer_json(dataset.document())?;
             if json.len() != length {
                 return Err(ArrowProfileError::Invalid(
                     "dataset metadata changed after Arrow preflight".to_owned(),
@@ -993,7 +1155,7 @@ fn validated_arrow_write_with_dataset_json(
             }
             json
         }
-        None => serialize_dataset_footer_json(&dataset.dataset)?,
+        None => serialize_dataset_footer_json(dataset.document())?,
     };
     field_metadata_bytes
         .checked_add(dataset_json.len())
@@ -1090,6 +1252,26 @@ pub fn save_arrow_file(
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
     let validated = validated_arrow_write(dataset, checksums)?;
+    save_arrow_path_validated(
+        path,
+        dataset,
+        validated,
+        compression,
+        threads,
+        checksums,
+        interrupt,
+    )
+}
+
+fn save_arrow_path_validated(
+    path: impl AsRef<Path>,
+    dataset: &impl WriteDataset,
+    validated: ValidatedArrowWrite,
+    compression: ArrowCompression,
+    threads: usize,
+    checksums: bool,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<(), ArrowProfileError> {
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);
     save_arrow_file_to_validated(
@@ -1122,23 +1304,64 @@ pub fn save_arrow_file_with_preflight(
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
     let validated = validated_arrow_write_with_preflight(dataset, checksums, preflight)?;
-    let file = File::create(path)?;
-    let mut writer = BufWriter::new(file);
-    save_arrow_file_to_validated(
-        &mut writer,
+    save_arrow_path_validated(
+        path,
         dataset,
         validated,
         compression,
         threads,
         checksums,
         interrupt,
-    )?;
-    writer.flush()?;
-    writer
-        .into_inner()
-        .map_err(|error| ArrowProfileError::Io(error.into_error()))?
-        .sync_all()?;
-    Ok(())
+    )
+}
+
+/// Save checked chunks using the same canonical batches, metadata and checksums
+/// as the single-array writer. Metadata preflight belongs to this dataset and
+/// must precede any mutation of its documents. The caller owns atomic rename.
+#[cfg(feature = "r-adapter-internal")]
+pub fn save_arrow_file_from_sources_with_preflight(
+    path: impl AsRef<Path>,
+    dataset: &ArrowWriteSourceDataset,
+    preflight: ArrowMetadataPreflight,
+    compression: ArrowCompression,
+    threads: usize,
+    checksums: bool,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<(), ArrowProfileError> {
+    let validated = validated_arrow_write_with_preflight(dataset, checksums, preflight)?;
+    save_arrow_path_validated(
+        path,
+        dataset,
+        validated,
+        compression,
+        threads,
+        checksums,
+        interrupt,
+    )
+}
+
+/// Stream checked chunk sources into an in-process output. Temporary array
+/// copies cover one canonical window per hash task and one record batch for
+/// the writer. Compression and IPC encoding retain their existing scratch.
+#[cfg(feature = "r-adapter-internal")]
+pub fn save_arrow_file_from_sources_to<W: Write>(
+    output: W,
+    dataset: &ArrowWriteSourceDataset,
+    compression: ArrowCompression,
+    threads: usize,
+    checksums: bool,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<(), ArrowProfileError> {
+    let validated = validated_arrow_write(dataset, checksums)?;
+    save_arrow_file_to_validated(
+        output,
+        dataset,
+        validated,
+        compression,
+        threads,
+        checksums,
+        interrupt,
+    )
 }
 
 /// Save a dataset as a dtatools Arrow profile file into `output`. `threads`
@@ -1169,7 +1392,7 @@ pub fn save_arrow_file_to<W: Write>(
 
 fn save_arrow_file_to_validated<W: Write>(
     output: W,
-    dataset: &ArrowWriteDataset,
+    dataset: &impl WriteDataset,
     validated: ValidatedArrowWrite,
     compression: ArrowCompression,
     threads: usize,
@@ -1188,7 +1411,7 @@ fn save_arrow_file_to_validated<W: Write>(
         write_batches(&mut writer, &schema, dataset, row_count, interrupt)?;
         None
     } else {
-        let column_count = dataset.columns.len();
+        let column_count = dataset.columns().len();
         let dictionary_columns = dictionary_columns(dataset);
         let batch_count = record_batch_count(row_count, &dictionary_columns);
         let tasks = build_hash_tasks(batch_count, column_count, &dictionary_columns);
@@ -1273,24 +1496,22 @@ fn save_arrow_file_to_validated<W: Write>(
 fn write_batches<W: Write>(
     writer: &mut FileWriter<W>,
     schema: &Arc<Schema>,
-    dataset: &ArrowWriteDataset,
+    dataset: &impl WriteDataset,
     row_count: usize,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
     if row_count == 0
         && dataset
-            .columns
-            .iter()
+            .columns()
             .any(|column| matches!(column.array.data_type(), DataType::Dictionary(_, _)))
     {
         if interrupt() {
             return Err(ArrowProfileError::Interrupted);
         }
         let batch_columns = dataset
-            .columns
-            .iter()
+            .columns()
             .map(|column| column.array.slice(0, 0))
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
         let batch = RecordBatch::try_new(schema.clone(), batch_columns)
             .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?;
         writer
@@ -1304,9 +1525,9 @@ fn write_batches<W: Write>(
             return Err(ArrowProfileError::Interrupted);
         }
         let batch_rows = ARROW_ROWS_PER_BATCH.min(row_count - row_start);
-        let mut batch_columns = Vec::with_capacity(dataset.columns.len());
-        for column in &dataset.columns {
-            batch_columns.push(column.array.slice(row_start, batch_rows));
+        let mut batch_columns = Vec::with_capacity(dataset.columns().len());
+        for column in dataset.columns() {
+            batch_columns.push(column.array.slice(row_start, batch_rows)?);
         }
         let batch = RecordBatch::try_new(schema.clone(), batch_columns)
             .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?;
@@ -1324,6 +1545,388 @@ mod tests {
     use arrow_array::{DictionaryArray, Int32Array, StringArray};
 
     use super::*;
+
+    #[cfg(feature = "r-adapter-internal")]
+    mod sources {
+        use std::io::Cursor;
+
+        use arrow_array::{BooleanArray, Float32Array, Float64Array, Int16Array, Int8Array};
+
+        use super::*;
+        use crate::arrow::{
+            read_arrow_file_from, ArrowMissingEncoding, ArrowReadOptions, ArrowWriteSource,
+        };
+        use crate::FormatVersion;
+
+        fn rechunk(dataset: &ArrowWriteDataset, boundaries: &[usize]) -> ArrowWriteSourceDataset {
+            ArrowWriteSourceDataset {
+                dataset: dataset.dataset.clone(),
+                columns: dataset
+                    .columns
+                    .iter()
+                    .map(|column| {
+                        let chunks = boundaries
+                            .windows(2)
+                            .map(|range| column.array.slice(range[0], range[1] - range[0]))
+                            .collect();
+                        ArrowWriteSourceColumn {
+                            name: column.name.clone(),
+                            field: column.field.clone(),
+                            source: ArrowWriteSource::try_new(chunks).unwrap(),
+                        }
+                    })
+                    .collect(),
+            }
+        }
+
+        fn assert_round_trip(
+            single: &ArrowWriteDataset,
+            sources: &ArrowWriteSourceDataset,
+            compression: ArrowCompression,
+            threads: usize,
+            checksums: bool,
+        ) {
+            let expected = dataset_signature(single, threads, &mut || false).unwrap();
+            assert_eq!(
+                dataset_signature_from_sources(sources, threads, &mut || false).unwrap(),
+                expected
+            );
+            let mut ordinary_bytes = Vec::new();
+            let mut source_bytes = Vec::new();
+            save_arrow_file_to(
+                &mut ordinary_bytes,
+                single,
+                compression,
+                threads,
+                checksums,
+                &mut || false,
+            )
+            .unwrap();
+            save_arrow_file_from_sources_to(
+                &mut source_bytes,
+                sources,
+                compression,
+                threads,
+                checksums,
+                &mut || false,
+            )
+            .unwrap();
+            let options = ArrowReadOptions {
+                profile: true,
+                verify: checksums,
+                record_signature: checksums,
+                ..Default::default()
+            };
+            let ordinary =
+                read_arrow_file_from(&mut Cursor::new(ordinary_bytes), &options, &mut || false)
+                    .unwrap();
+            let observed =
+                read_arrow_file_from(&mut Cursor::new(source_bytes), &options, &mut || false)
+                    .unwrap();
+            assert_eq!(observed.row_count, ordinary.row_count);
+            assert_eq!(observed.dataset, ordinary.dataset);
+            assert_eq!(observed.stored_signature, ordinary.stored_signature);
+            if checksums {
+                assert_eq!(
+                    observed.stored_signature.as_deref(),
+                    Some(expected.as_str())
+                );
+            }
+            assert_eq!(observed.columns.len(), ordinary.columns.len());
+            for (left, right) in observed.columns.iter().zip(&ordinary.columns) {
+                assert_eq!(left.name, right.name);
+                assert_eq!(left.field, right.field);
+                assert_eq!(left.data_type, right.data_type);
+                assert_eq!(left.nullable, right.nullable);
+                assert_eq!(left.dictionary_ordered, right.dictionary_ordered);
+                assert_eq!(left.chunks.len(), right.chunks.len());
+                for (left, right) in left.chunks.iter().zip(&right.chunks) {
+                    assert_eq!(left.len(), right.len());
+                    assert_eq!(
+                        canonical_array_hashes(left.as_ref()).unwrap(),
+                        canonical_array_hashes(right.as_ref()).unwrap()
+                    );
+                    if let Some(left_values) = dictionary_values(left) {
+                        if matches!(left.data_type(), DataType::Dictionary(_, _)) {
+                            assert_eq!(
+                                canonical_array_hashes(left_values.as_ref()).unwrap(),
+                                canonical_array_hashes(dictionary_values(right).unwrap().as_ref())
+                                    .unwrap()
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        #[test]
+        fn source_missing_releases_sign_and_write_identically_across_misaligned_chunks() {
+            use super::super::super::profile::StataStorage;
+            let rows = 2 * ARROW_ROWS_PER_BATCH + 37;
+            let byte = [-100_i8, -1, 0, 100, 101, 102, 126, 127];
+            let int = [-32_767_i16, 0, 32_740, 32_741, 32_742, 32_767];
+            let long = [
+                -2_147_483_647_i32,
+                0,
+                2_147_483_620,
+                2_147_483_621,
+                2_147_483_622,
+                i32::MAX,
+            ];
+            let float = [
+                0x8000_0000_u32,
+                0x3fc0_0000,
+                0x7eff_ffff,
+                0x7f00_0000,
+                0x7f00_0800,
+                0x7f00_d000,
+                0x7fc0_0042,
+            ];
+            let double = [
+                0x8000_0000_0000_0000_u64,
+                0x3ff8_0000_0000_0000,
+                0x7ff0_0000_0000_07a2,
+                0x7ff8_0000_0000_0001,
+                0x7ff8_0000_0000_001a,
+            ];
+            let arrays: Vec<(StataStorage, ArrayRef)> = vec![
+                (
+                    StataStorage::Byte,
+                    Arc::new(Int8Array::from_iter_values(
+                        (0..rows).map(|i| byte[i % byte.len()]),
+                    )),
+                ),
+                (
+                    StataStorage::Int,
+                    Arc::new(Int16Array::from_iter_values(
+                        (0..rows).map(|i| int[i % int.len()]),
+                    )),
+                ),
+                (
+                    StataStorage::Long,
+                    Arc::new(Int32Array::from_iter_values(
+                        (0..rows).map(|i| long[i % long.len()]),
+                    )),
+                ),
+                (
+                    StataStorage::Float,
+                    Arc::new(Float32Array::from_iter_values(
+                        (0..rows).map(|i| f32::from_bits(float[i % float.len()])),
+                    )),
+                ),
+                (
+                    StataStorage::Double,
+                    Arc::new(Float64Array::from_iter_values(
+                        (0..rows).map(|i| f64::from_bits(double[i % double.len()])),
+                    )),
+                ),
+            ];
+            for release in [105, 108, 110, 111, 113, 114, 115, 117, 118, 119] {
+                let release = FormatVersion::try_from(release).unwrap();
+                let single = ArrowWriteDataset {
+                    dataset: DatasetDocument {
+                        label: "chunk source".to_owned(),
+                        ..Default::default()
+                    },
+                    columns: arrays
+                        .iter()
+                        .enumerate()
+                        .map(|(index, (storage, array))| ArrowWriteColumn {
+                            name: format!("x{index}"),
+                            array: array.clone(),
+                            field: Some(ArrowFieldDocument {
+                                storage: Some(*storage),
+                                missing: Some(
+                                    if matches!(storage, StataStorage::Float | StataStorage::Double)
+                                    {
+                                        ArrowMissingEncoding::Payload
+                                    } else {
+                                        ArrowMissingEncoding::Sentinel
+                                    },
+                                ),
+                                missing_release: (*storage != StataStorage::Double)
+                                    .then_some(release),
+                                ..Default::default()
+                            }),
+                        })
+                        .collect(),
+                };
+                let sources = rechunk(
+                    &single,
+                    &[
+                        0,
+                        17,
+                        ARROW_ROWS_PER_BATCH - 3,
+                        ARROW_ROWS_PER_BATCH + 19,
+                        2 * ARROW_ROWS_PER_BATCH + 3,
+                        rows,
+                    ],
+                );
+                assert_round_trip(&single, &sources, ArrowCompression::Uncompressed, 1, true);
+                assert_eq!(
+                    dataset_signature_from_sources(&sources, 3, &mut || false).unwrap(),
+                    dataset_signature(&single, 1, &mut || false).unwrap()
+                );
+                if release == FormatVersion::V118 {
+                    for codec in [ArrowCompression::Lz4, ArrowCompression::Zstd] {
+                        assert_round_trip(&single, &sources, codec, 3, true);
+                    }
+                    assert_round_trip(&single, &sources, ArrowCompression::Uncompressed, 3, false);
+                }
+            }
+        }
+
+        #[test]
+        fn source_null_boolean_string_and_dictionary_windows_preserve_canonical_buffers() {
+            let rows = ARROW_ROWS_PER_BATCH + 51;
+            let keys =
+                Int32Array::from_iter((0..rows).map(|i| (i % 7 != 0).then_some((i % 3) as i32)));
+            let single = ArrowWriteDataset {
+                dataset: DatasetDocument::default(),
+                columns: vec![
+                    ArrowWriteColumn {
+                        name: "nullable".into(),
+                        field: None,
+                        array: Arc::new(Int32Array::from_iter(
+                            (0..rows).map(|i| (i % 11 != 0).then_some(i as i32)),
+                        )),
+                    },
+                    ArrowWriteColumn {
+                        name: "boolean".into(),
+                        field: None,
+                        array: Arc::new(BooleanArray::from_iter(
+                            (0..rows).map(|i| (i % 13 != 0).then_some(i % 3 == 0)),
+                        )),
+                    },
+                    ArrowWriteColumn {
+                        name: "string".into(),
+                        field: None,
+                        array: Arc::new(StringArray::from_iter((0..rows).map(|i| {
+                            (i % 17 != 0).then_some(if i % 2 == 0 { "é" } else { "word" })
+                        }))),
+                    },
+                    ArrowWriteColumn {
+                        name: "dictionary".into(),
+                        field: None,
+                        array: Arc::new(
+                            DictionaryArray::<Int32Type>::try_new(
+                                keys,
+                                Arc::new(StringArray::from(vec![
+                                    "a",
+                                    "bb",
+                                    "unused",
+                                    "unused level",
+                                ])),
+                            )
+                            .unwrap(),
+                        ),
+                    },
+                ],
+            };
+            let mut sources = rechunk(&single, &[0, 17, rows]);
+            // Independent chunks start their own bitmaps at zero. The second
+            // canonical window therefore starts at an unaligned source bit.
+            for (column, source) in single.columns.iter().zip(&mut sources.columns).take(3) {
+                let empty = column.array.slice(0, 0);
+                let chunks = [0..17, 17..rows]
+                    .into_iter()
+                    .map(|range| {
+                        let slice = column.array.slice(range.start, range.end - range.start);
+                        arrow_select::concat::concat(&[slice.as_ref(), empty.as_ref()]).unwrap()
+                    })
+                    .collect();
+                source.source = ArrowWriteSource::try_new(chunks).unwrap();
+            }
+            for threads in [1, 3] {
+                assert_round_trip(
+                    &single,
+                    &sources,
+                    ArrowCompression::Uncompressed,
+                    threads,
+                    true,
+                );
+            }
+            let empty_single = ArrowWriteDataset {
+                dataset: single.dataset.clone(),
+                columns: single
+                    .columns
+                    .iter()
+                    .map(|column| ArrowWriteColumn {
+                        name: column.name.clone(),
+                        field: column.field.clone(),
+                        array: column.array.slice(0, 0),
+                    })
+                    .collect(),
+            };
+            let empty_sources = rechunk(&empty_single, &[0, 0, 0]);
+            assert_round_trip(
+                &empty_single,
+                &empty_sources,
+                ArrowCompression::Uncompressed,
+                1,
+                true,
+            );
+        }
+
+        #[test]
+        fn source_validation_and_interrupts_fail_without_publishing_an_output() {
+            let mut source = ArrowWriteSourceDataset {
+                dataset: DatasetDocument::default(),
+                columns: vec![
+                    ArrowWriteSourceColumn {
+                        name: "x".into(),
+                        field: None,
+                        source: ArrowWriteSource::try_new(vec![Arc::new(Int32Array::from(vec![
+                            1, 2,
+                        ]))])
+                        .unwrap(),
+                    },
+                    ArrowWriteSourceColumn {
+                        name: "y".into(),
+                        field: None,
+                        source: ArrowWriteSource::try_new(vec![Arc::new(Int32Array::from(vec![
+                            1,
+                        ]))])
+                        .unwrap(),
+                    },
+                ],
+            };
+            let mut output = Vec::new();
+            assert!(save_arrow_file_from_sources_to(
+                &mut output,
+                &source,
+                ArrowCompression::Uncompressed,
+                1,
+                true,
+                &mut || false
+            )
+            .is_err());
+            assert!(output.is_empty());
+            source.columns.pop();
+            assert!(matches!(
+                dataset_signature_from_sources(&source, 3, &mut || true),
+                Err(ArrowProfileError::Interrupted)
+            ));
+            source.columns[0].field = Some(ArrowFieldDocument {
+                storage: Some(crate::arrow::StataStorage::Long),
+                missing: Some(ArrowMissingEncoding::Sentinel),
+                ..Default::default()
+            });
+            source.columns[0].source =
+                ArrowWriteSource::try_new(vec![Arc::new(Int32Array::from(vec![Some(1), None]))])
+                    .unwrap();
+            assert!(save_arrow_file_from_sources_to(
+                &mut output,
+                &source,
+                ArrowCompression::Uncompressed,
+                1,
+                true,
+                &mut || false
+            )
+            .is_err());
+            assert!(output.is_empty());
+        }
+    }
 
     fn encoded_footer_size(
         schema: &Schema,

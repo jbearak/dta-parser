@@ -1,0 +1,153 @@
+{
+  "build": {
+    "commit": "d6b0ae454c6ba85b3b22f7574cd828196197cf54",
+    "tree": "853a9f6308e89d952f0b4353636b7aa006104d9b",
+    "installed_inventory": {
+      "files": 133,
+      "sha256": "b7bbff03ea136c8dc01dc9d0671fe6a2f22170edc9bc6c997e1a9d1665759391"
+    }
+  },
+  "inputs": {
+    "dta": {
+      "sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc",
+      "bytes": 5196403097
+    },
+    "arrow": {
+      "sha256": "f1449a871b3fabbeed303b04a2dc0b884e4a76c7f213d7f095e0b25acd76dfcc",
+      "bytes": 5559834970
+    }
+  },
+  "workers": {
+    "india.py": "32476dfe3d6de498d2c307d69e4355bb1a50760517f4f2a71e50021a6f5a4984",
+    "india.R": "189eca34e7754ecdc8fde9b46f188c096f6cc4b95ec9bb3883ca9029cbd76649",
+    "run.py": "f6b09e81ba12874726b048b53a3553d792fd2592d8f98b2406ac801f91efe8cb"
+  },
+  "Rscript_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f",
+  "stata_sha256": "15470e7eeec2fb8870af39aa38318f1c3b0c9fbb109f319d783a67a6b428eee7",
+  "runtime": {
+    "R": "R version 4.6.1 (2026-06-24)",
+    "platform": "aarch64-apple-darwin25.4.0",
+    "packages": {
+      "dtatools": "0.9.0",
+      "haven": "2.5.5",
+      "readr": "2.2.0",
+      "vctrs": "0.7.3",
+      "rlang": "1.3.0",
+      "tibble": "3.3.1",
+      "tidyselect": "1.2.1",
+      "jsonlite": "2.0.0"
+    }
+  },
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "cpu_count": 16,
+  "experiments": {
+    "DTATOOLS_EXPERIMENT_DTA_WIDE_BATCH": "1",
+    "DTATOOLS_EXPERIMENT_DTA_PREPARED": "1",
+    "DTATOOLS_EXPERIMENT_DTA_RING": "4",
+    "DTATOOLS_EXPERIMENT_DTA_RING_BLOCK_BYTES": "4194304",
+    "DTATOOLS_EXPERIMENT_DTA_RING_BUDGET_BYTES": "16777216",
+    "DTATOOLS_EXPERIMENT_ARROW_OWNED": "1"
+  },
+  "dimensions": {
+    "rows": 724115,
+    "columns": 5972
+  },
+  "threads": "dtatools adaptive default; Stata settings recorded per observation",
+  "thread_environment": {},
+  "protocol": {
+    "rounds": 10,
+    "smoke": false,
+    "calls_per_process": 1,
+    "cache": "warm filesystem",
+    "orders": [
+      [
+        "read_dta",
+        "read_arrow",
+        "haven",
+        "stata"
+      ],
+      [
+        "stata",
+        "haven",
+        "read_arrow",
+        "read_dta"
+      ],
+      [
+        "read_arrow",
+        "haven",
+        "stata",
+        "read_dta"
+      ],
+      [
+        "read_dta",
+        "stata",
+        "haven",
+        "read_arrow"
+      ],
+      [
+        "haven",
+        "stata",
+        "read_dta",
+        "read_arrow"
+      ],
+      [
+        "read_arrow",
+        "read_dta",
+        "stata",
+        "haven"
+      ],
+      [
+        "stata",
+        "read_dta",
+        "read_arrow",
+        "haven"
+      ],
+      [
+        "haven",
+        "read_arrow",
+        "read_dta",
+        "stata"
+      ],
+      [
+        "read_dta",
+        "read_arrow",
+        "haven",
+        "stata"
+      ],
+      [
+        "stata",
+        "haven",
+        "read_arrow",
+        "read_dta"
+      ]
+    ],
+    "arrow_verification": true,
+    "read_wall": "read call, including first reader initialization, excluding process startup",
+    "process_cpu": "wait4 user plus system CPU for the whole fresh process",
+    "peak_rss": "wait4 maximum resident bytes for the whole fresh process",
+    "qualification": "dimensions checked each read; canonical DTA/Arrow signatures checked separately"
+  },
+  "haven_inventory": {
+    "files": 43,
+    "sha256": "073763e1a5d7b83a909326300acf19406c08a6f7245ed86fbb7abd2b7ab8ec1a"
+  },
+  "host_details": {
+    "cpu": "Apple M4 Max",
+    "memory_bytes": 137438953472,
+    "logical_cpus": 16,
+    "binding_written_at_unix": 1789557973.5312111,
+    "background_activity": {
+      "during_round": 9,
+      "observed": [
+        "A brief unrelated rustdoc process",
+        "macOS Spotlight indexing"
+      ],
+      "task_local_builds_tests_and_other_benchmarks_paused": true,
+      "isolated_host": false,
+      "all_observations_retained": true
+    }
+  },
+  "completed_at": "2026-09-16T12:47:58.265458+00:00",
+  "final_bindings_matched": true,
+  "worker_commit": "4901f725efb271cea2b1858af3e41c68c3357082"
+}

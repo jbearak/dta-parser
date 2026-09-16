@@ -1,0 +1,7 @@
+[
+  "c(stata_version) = 18",
+  "c(edition) = \"BE\"",
+  "c(MP) = 1",
+  "c(processors) = 8                          (Stata/MP, set processors)",
+  "c(processors_lic) = 8"
+]
