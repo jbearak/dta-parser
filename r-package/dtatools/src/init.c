@@ -597,10 +597,10 @@ static double numeric_observed_value(double value, int temporal) {
         }                                                                     \
     }                                                                         \
                                                                               \
-    static long double numeric_##NAME##_sum(                                  \
-        const numeric_data *data, Rboolean na_rm                              \
+    static void numeric_##NAME##_sum_accumulate(                              \
+        const numeric_data *data, Rboolean na_rm, long double *accumulator    \
     ) {                                                                       \
-        long double sum = 0.0;                                                \
+        long double sum = *accumulator;                                       \
         if (data->missing_count == 0) {                                       \
             for (size_t index = 0; index < data->length; index++) {           \
                 if ((index & 16383) == 0) R_CheckUserInterrupt();             \
@@ -614,24 +614,34 @@ static double numeric_observed_value(double value, int temporal) {
                 if (!na_rm || !ISNAN(element)) sum += element;                \
             }                                                                 \
         }                                                                     \
+        *accumulator = sum;                                                   \
+    }                                                                         \
+                                                                              \
+    static long double numeric_##NAME##_sum(                                  \
+        const numeric_data *data, Rboolean na_rm                              \
+    ) {                                                                       \
+        long double sum = 0.0;                                                \
+        numeric_##NAME##_sum_accumulate(data, na_rm, &sum);                   \
         return sum;                                                           \
     }                                                                         \
                                                                               \
-    static int numeric_##NAME##_extreme(                                      \
-        const numeric_data *data, Rboolean na_rm, int minimum, double *result \
+    static void numeric_##NAME##_extreme_accumulate(                          \
+        const numeric_data *data, Rboolean na_rm, int minimum,               \
+        double *accumulator, int *initialized                                \
     ) {                                                                       \
-        double current = 0.0;                                                 \
-        int updated = 0;                                                      \
+        double current = *accumulator;                                       \
+        int updated = *initialized;                                          \
         if (data->missing_count == 0) {                                       \
-            if (data->length == 0) return 0;                                  \
-            TYPE raw = numeric_##NAME##_raw_at(data, 0);                     \
-            current = numeric_observed_value(                                \
-                (double) raw, data->temporal                                  \
-            );                                                                \
-            updated = 1;                                                      \
-            for (size_t index = 1; index < data->length; index++) {           \
+            size_t first = 0;                                                 \
+            if (!updated && data->length != 0) {                             \
+                TYPE raw = numeric_##NAME##_raw_at(data, 0);                 \
+                current = numeric_observed_value((double) raw, data->temporal);\
+                updated = 1;                                                  \
+                first = 1;                                                    \
+            }                                                                 \
+            for (size_t index = first; index < data->length; index++) {       \
                 if ((index & 16383) == 0) R_CheckUserInterrupt();             \
-                raw = numeric_##NAME##_raw_at(data, index);                   \
+                TYPE raw = numeric_##NAME##_raw_at(data, index);              \
                 double element = numeric_observed_value(                     \
                     (double) raw, data->temporal                              \
                 );                                                            \
@@ -655,6 +665,16 @@ static double numeric_observed_value(double value, int temporal) {
                 }                                                             \
             }                                                                 \
         }                                                                     \
+        *accumulator = current;                                               \
+        *initialized = updated;                                               \
+    }                                                                         \
+                                                                              \
+    static int numeric_##NAME##_extreme(                                      \
+        const numeric_data *data, Rboolean na_rm, int minimum, double *result \
+    ) {                                                                       \
+        double current = 0.0;                                                 \
+        int updated = 0;                                                      \
+        numeric_##NAME##_extreme_accumulate(data, na_rm, minimum, &current, &updated);\
         if (updated) *result = current;                                       \
         return updated;                                                       \
     }
@@ -1773,12 +1793,21 @@ static long double numeric_sum_storage(
 ) {
     if (data->native_owner != NULL) {
         long double sum = 0.0;
-        double values[4096];
         for (size_t start = 0; start < data->length;) {
-            size_t count = data->length - start < 4096 ? data->length - start : 4096;
-            numeric_fill_region(data, start, count, values);
-            for (size_t i = 0; i < count; i++) {
-                if (!na_rm || !ISNAN(values[i])) sum += values[i];
+            R_CheckUserInterrupt();
+            size_t count = 0;
+            numeric_data region = *data;
+            region.values = (void *) numeric_read_span(data, start, data->length - start, &count);
+            region.length = count;
+            region.native_owner = NULL;
+            /* Carry one accumulator through every row. Summing independent
+               chunks and combining their totals changes floating rounding. */
+            switch (data->kind) {
+            case NUMERIC_BYTE: numeric_byte_sum_accumulate(&region, na_rm, &sum); break;
+            case NUMERIC_INT: numeric_int_sum_accumulate(&region, na_rm, &sum); break;
+            case NUMERIC_LONG: numeric_long_sum_accumulate(&region, na_rm, &sum); break;
+            case NUMERIC_FLOAT: numeric_float_sum_accumulate(&region, na_rm, &sum); break;
+            default: Rf_error("invalid dtatools numeric storage kind");
             }
             start += count;
         }
@@ -1802,22 +1831,21 @@ static int numeric_extreme_storage(
     const numeric_data *data, Rboolean na_rm, int minimum, double *result
 ) {
     if (data->native_owner != NULL) {
-        double current = 0.0, values[4096];
+        double current = 0.0;
         int updated = 0;
         for (size_t start = 0; start < data->length;) {
-            size_t count = data->length - start < 4096 ? data->length - start : 4096;
-            numeric_fill_region(data, start, count, values);
-            for (size_t i = 0; i < count; i++) {
-                double element = values[i];
-                if (ISNAN(element)) {
-                    if (!na_rm) {
-                        if (!ISNA(current)) current = element;
-                        updated = 1;
-                    }
-                } else if (!updated || (minimum ? element < current : element > current)) {
-                    current = element;
-                    updated = 1;
-                }
+            R_CheckUserInterrupt();
+            size_t count = 0;
+            numeric_data region = *data;
+            region.values = (void *) numeric_read_span(data, start, data->length - start, &count);
+            region.length = count;
+            region.native_owner = NULL;
+            switch (data->kind) {
+            case NUMERIC_BYTE: numeric_byte_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
+            case NUMERIC_INT: numeric_int_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
+            case NUMERIC_LONG: numeric_long_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
+            case NUMERIC_FLOAT: numeric_float_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
+            default: Rf_error("invalid dtatools numeric storage kind");
             }
             start += count;
         }

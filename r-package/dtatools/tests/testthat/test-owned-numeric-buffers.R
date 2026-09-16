@@ -386,3 +386,58 @@ test_that("legacy writer layout considers an observed conflict in a later chunk"
     expect_equal(owned_numeric_info(retained$b)[["compatibility_bytes"]], before)
     expect_equal(owned_numeric_info(retained$b)[["owned"]], 1)
 })
+
+test_that("owned sums keep one accumulator across cancelling float regions", {
+    # 2^100 makes loss of a unit visible even when long double has an
+    # extended mantissa. Combining independently summed two-row chunks would
+    # produce zero instead of the sequential accumulator's final one.
+    for (large in c(2^55, 2^100)) {
+        for (values in list(c(large, 1, -large, 1),
+                            c(rep(0, 16383), large, 1, -large, 1))) {
+            plain <- dta_float(values)
+            for (chunk_rows in c(1, 2, 3, 4096, 16384)) {
+                owned <- freeze_numeric(plain, chunk_rows)
+                before <- owned_numeric_info(owned)[["compatibility_bytes"]]
+                for (remove in c(FALSE, TRUE)) {
+                    expect_identical(sum(owned, na.rm = remove), sum(plain, na.rm = remove))
+                }
+                expect_equal(owned_numeric_info(owned)[["compatibility_bytes"]], before)
+            }
+        }
+    }
+    expect_identical(as.double(sum(freeze_numeric(dta_float(c(2^100, 1, -2^100, 1)), 2))), 1)
+})
+
+test_that("owned extrema preserve signed zero and missing payload order across regions", {
+    bytes <- function(value) writeBin(as.double(value), raw(), size = 8L, endian = "little")
+    for (values in list(c(-0, 0), c(0, -0), c(3, -0, 0, 2),
+                        c(1, NA_real_, tagged_missing("a"), -1),
+                        c(tagged_missing("a"), NA_real_, 1, -1))) {
+        plain <- dta_float(values)
+        for (chunk_rows in c(1, 2, 3)) {
+            owned <- freeze_numeric(plain, chunk_rows)
+            for (operation in list(sum, min, max)) for (remove in c(FALSE, TRUE)) {
+                expect_identical(bytes(operation(owned, na.rm = remove)),
+                                 bytes(operation(plain, na.rm = remove)))
+            }
+        }
+    }
+
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    patch_numeric_fixture_row(path, 0L,
+                              list(x_float = .raw_little_integer(0x7fc00001, 4L)))
+    patch_numeric_fixture_row(path, 1L,
+                              list(x_float = .raw_little_integer(0x7f000000, 4L)))
+    patch_numeric_fixture_row(path, 3L,
+                              list(x_float = .raw_little_integer(0x3f800000, 4L)))
+    source <- read_dta(path, col_select = "x_float", n_max = 4L)$x_float
+    for (rows in list(c(1L, 2L, 3L, 4L), c(2L, 1L, 3L, 4L), c(3L, 1L, 2L, 4L))) {
+        plain <- source[rows]
+        owned <- freeze_numeric(plain, 1)
+        for (operation in list(sum, min, max)) for (remove in c(FALSE, TRUE)) {
+            expect_identical(bytes(operation(owned, na.rm = remove)),
+                             bytes(operation(plain, na.rm = remove)))
+        }
+    }
+})

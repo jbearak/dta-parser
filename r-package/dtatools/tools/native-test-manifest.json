@@ -3525,7 +3525,7 @@
         },
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
-          "sha256": "2527e7f270f3503168a718e77caceafa90cf28319f97df9089b0139db91d84cd"
+          "sha256": "5800510c9db2d4ef7cbe64c885138d0c597be6faa6e282e2c8a4c4241577ca40"
         }
       ],
       "blocks": [
@@ -4481,50 +4481,10 @@
         },
         {
           "file": "test-owned-numeric-buffers.R",
-          "test": "Arrow writer and signature pins survive later operand callbacks",
+          "test": "immutable compact regions preserve all missing codes and chunk edges",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 10,
-          "warnings": 0
-        },
-        {
-          "file": "test-owned-numeric-buffers.R",
-          "test": "DTA writer pins owned sources while later callbacks materialize them",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 3,
-          "warnings": 0
-        },
-        {
-          "file": "test-owned-numeric-buffers.R",
-          "test": "comparisons and gathers read retained regions without compatibility copies",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 120,
-          "warnings": 0
-        },
-        {
-          "file": "test-owned-numeric-buffers.R",
-          "test": "direct owned compact patches commit only after successful completion",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 16,
-          "warnings": 0
-        },
-        {
-          "file": "test-owned-numeric-buffers.R",
-          "test": "failed and interrupted owned-column mutations leave captured values intact",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 7,
-          "warnings": 0
-        },
-        {
-          "file": "test-owned-numeric-buffers.R",
-          "test": "immutable captures isolate writable pointers and explicit mutations",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 32,
+          "min_pass": 236,
           "warnings": 0
         },
         {
@@ -4537,18 +4497,26 @@
         },
         {
           "file": "test-owned-numeric-buffers.R",
-          "test": "immutable compact regions preserve all missing codes and chunk edges",
+          "test": "immutable captures isolate writable pointers and explicit mutations",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 236,
+          "min_pass": 32,
           "warnings": 0
         },
         {
           "file": "test-owned-numeric-buffers.R",
-          "test": "legacy writer layout considers an observed conflict in a later chunk",
+          "test": "failed and interrupted owned-column mutations leave captured values intact",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "direct owned compact patches commit only after successful completion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
           "warnings": 0
         },
         {
@@ -4569,26 +4537,10 @@
         },
         {
           "file": "test-owned-numeric-buffers.R",
-          "test": "parallel comparison workers split mismatched owned chunk boundaries",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 3,
-          "warnings": 0
-        },
-        {
-          "file": "test-owned-numeric-buffers.R",
           "test": "parallel owned fills finish exact counts before publishing chunked columns",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 24,
-          "warnings": 0
-        },
-        {
-          "file": "test-owned-numeric-buffers.R",
-          "test": "read roots survive foreign operand and gather callbacks",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 9,
           "warnings": 0
         },
         {
@@ -4601,10 +4553,74 @@
         },
         {
           "file": "test-owned-numeric-buffers.R",
+          "test": "comparisons and gathers read retained regions without compatibility copies",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 120,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "read roots survive foreign operand and gather callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "parallel comparison workers split mismatched owned chunk boundaries",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
           "test": "writers and signatures retain modern and legacy compact sources",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 42,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "DTA writer pins owned sources while later callbacks materialize them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "Arrow writer and signature pins survive later operand callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "legacy writer layout considers an observed conflict in a later chunk",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "owned sums keep one accumulator across cancelling float regions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 61,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "owned extrema preserve signed zero and missing payload order across regions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 108,
           "warnings": 0
         }
       ],
