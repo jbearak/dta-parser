@@ -65,3 +65,41 @@ cache diagnostics must be reported separately.
 Local job manifests and logs contain input paths and column names. Publish only
 sanitized observations, summaries and binding records. The controller does not
 publish anything or change the private survey files.
+
+## Four-reader India comparison
+
+`india.py` runs ten fresh processes each for `read_dta()`, verified
+`read_arrow()`, `haven::read_dta()`, and Stata `use`. It selects a full-read
+case from the same case manifest and binds the dtatools installation to its
+build record. Each rotated method order is followed by its reverse, balancing
+which tool runs before another. Input hashing warms the filesystem cache before
+the sequential runs. The controller does not flush or rewarm that cache between
+observations, add an in-process warmup, or request extra garbage collection.
+
+This example enables only owned Arrow buffers:
+
+```sh
+python3 benchmarks/reader-parity/india.py \
+  --cases /absolute/local/cases.json --case india-all \
+  --library /absolute/candidate-library --build /absolute/candidate-build.json \
+  --output /absolute/local/india-results \
+  --experiment DTATOOLS_EXPERIMENT_ARROW_OWNED=1
+```
+
+Supply each experimental control explicitly; the result binding records them.
+The controller removes experimental environment variables from haven and Stata.
+`--smoke` runs one round on a small case to check the worker protocol. Its
+timings are marked as smoke results and should not be published as benchmarks.
+
+Read wall time excludes process startup and includes first-call reader work.
+Process CPU time is user plus system time from `wait4` for every tool. Process
+CPU and peak resident memory cover the whole fresh process, including startup,
+package loading and shutdown. R read-call CPU is also recorded separately.
+These distinct time intervals should not be used to calculate CPU utilization.
+
+The controller checks dimensions after every read and verifies input,
+installation, runtime and worker bindings at completion. Run full semantic
+qualification separately so signature traversal does not inflate resource
+measurements. Observations are saved after each successful read; `COMPLETE`
+appears only after every read and the final binding check succeed. This focused
+comparison does not satisfy the broader reader-parity release gate.

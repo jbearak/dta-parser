@@ -1,0 +1,13 @@
+{
+  "matched": true,
+  "readers": [
+    "read_dta",
+    "read_arrow"
+  ],
+  "result": {
+    "signature": "724115:5972:e404e6f1cf51f55a",
+    "rows": 724115,
+    "columns": 5972,
+    "warnings": []
+  }
+}

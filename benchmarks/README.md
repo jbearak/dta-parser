@@ -63,9 +63,15 @@ original comparator results. The [adaptive-default reader refresh](reader-refres
 updates the dtatools corpus, DTA/Arrow, India, projection and fixture measurements,
 including read-call CPU time and fresh-process peak RSS. The subsequent
 [local-reader startup investigation](reader-startup/results-2026-09-13/README.md)
-supplies the current corpus and fresh-process India comparisons, plus alternating
+supplies default-reader corpus and fresh-process India comparisons, plus alternating
 old/new dtatools measurements on small files. It removes unnecessary dependency
 loading and reports read-call CPU time, whole-process CPU, and peak RSS.
+
+The [September 16 India comparison](reader-parity/results-2026-09-16-india/README.md)
+compares ten full reads each with opt-in dtatools reader optimizations, haven,
+and Stata. It reports read wall time, whole-process CPU and peak RSS for all
+four readers. The [reader-parity controller](reader-parity/) also covers
+projected reads and downstream operations.
 
 The synthetic [`projection-introspection/`](projection-introspection/) suite
 compares a union-safe `any_of()` projection with Stata's full-load-then-keep
@@ -97,7 +103,7 @@ Stata medians on the deterministic 100 MB and 1 GB fixtures and the
 India 2021 DHS women's file, including the additive impact of each write
 optimization and the checksums flag. Its
 [2026-08-29 report](arrow-interchange/results-2026-08-29.md) records the
-original read and conversion results. Current fresh-process India medians are in
+original read and conversion results. Default-reader India medians are in
 the [local-reader report](reader-startup/results-2026-09-13/README.md), and the
 [adaptive-default refresh](reader-refresh/results-2026-09-12-defaults/README.md)
 reports synthetic reader measurements.
