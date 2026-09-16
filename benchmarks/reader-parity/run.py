@@ -17,6 +17,12 @@ import sys
 HERE = Path(__file__).resolve().parent
 
 
+def absolute_path(value):
+    # Workers run in per-job directories, so CLI paths must keep their meaning
+    # after the controller changes the child's working directory.
+    return Path(value).resolve()
+
+
 def sha(path):
     h = hashlib.sha256()
     with Path(path).open('rb') as stream:
@@ -133,12 +139,12 @@ def summaries(observations, eligible):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--cases', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--cases', type=absolute_path, required=True)
+    parser.add_argument('--output', type=absolute_path, required=True)
     for variant in ('baseline', 'candidate'):
-        parser.add_argument('--' + variant + '-library', type=Path, required=variant == 'baseline')
-        parser.add_argument('--' + variant + '-build', type=Path, required=variant == 'baseline')
-    parser.add_argument('--stata', type=Path, default=Path('/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp'))
+        parser.add_argument('--' + variant + '-library', type=absolute_path, required=variant == 'baseline')
+        parser.add_argument('--' + variant + '-build', type=absolute_path, required=variant == 'baseline')
+    parser.add_argument('--stata', type=absolute_path, default=Path('/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp'))
     parser.add_argument('--repetitions', type=int, default=20)
     parser.add_argument('--cohorts', type=int, default=2)
     parser.add_argument('--screen', action='store_true')

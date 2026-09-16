@@ -3291,9 +3291,8 @@ fn fill_thread_count(requested: usize, task_count: usize, row_count: usize) -> u
     threads.min(task_count).max(1)
 }
 
-/// Claim fill tasks from the shared queue. `poll` runs between tasks; on the
-/// R thread it checks interrupts, on workers it only observes the cancel
-/// flag set by the other loops.
+/// Claim fill tasks from the shared queue. The R thread polls interrupts
+/// between tasks and owned scan blocks. Workers only observe peer cancellation.
 fn fill_task_loop(
     columns: &[ArrowReadColumn],
     tasks: &[(usize, ColumnFill)],
@@ -3314,12 +3313,23 @@ fn fill_task_loop(
         let Some((column_index, fill)) = tasks.get(task_index) else {
             return Ok(results);
         };
+        let mut peer_cancelled = false;
         match unsafe {
             fill_read_column_with_poll(&columns[*column_index], fill, || {
-                cancelled.load(Ordering::Relaxed) || poll()
+                if cancelled.load(Ordering::Relaxed) {
+                    peer_cancelled = true;
+                    true
+                } else {
+                    poll()
+                }
             })
         } {
             Ok(outcome) => results.push((*column_index, outcome)),
+            // Owned preparation stops immediately when its poll returns true.
+            // Leave a peer's actual failure (or the R thread's interrupt) to
+            // that loop; synthesizing another interrupt could hide its error
+            // when results are collected in coordinator/worker join order.
+            Err(_) if peer_cancelled => return Ok(results),
             Err(error) => {
                 cancelled.store(true, Ordering::Relaxed);
                 return Err(error);
@@ -4104,6 +4114,13 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
 mod tests {
     use super::*;
 
+    // The pure fill dispatcher references R's missing-value constants. Supply
+    // their fixed values for Rust tests, which do not initialize the R runtime.
+    #[export_name = "R_NaInt"]
+    static TEST_R_NA_INT: c_int = c_int::MIN;
+    #[export_name = "R_NaReal"]
+    static TEST_R_NA_REAL: f64 = f64::from_bits(0x7ff0_0000_0000_07a2);
+
     #[test]
     fn automatic_reader_threads_use_available_cpus_and_honor_explicit_limits() {
         let available = thread::available_parallelism().map_or(1, usize::from);
@@ -4112,6 +4129,118 @@ mod tests {
         assert_eq!(fill_thread_count(3, 64, 1_000_000), available.min(3));
         assert_eq!(fill_thread_count(0, 64, 1), 1);
         assert_eq!(fill_thread_count(0, 2, 1_000_000), available.min(2));
+    }
+
+    #[test]
+    fn owned_fill_peer_failure_is_not_a_user_interrupt() {
+        let columns = vec![
+            ArrowReadColumn {
+                name: "compact".to_owned(),
+                data_type: DataType::Int16,
+                nullable: false,
+                dictionary_ordered: false,
+                field: None,
+                chunks: vec![Arc::new(Int16Array::from(vec![1]))],
+            },
+            ArrowReadColumn {
+                name: "timestamp".to_owned(),
+                data_type: DataType::Timestamp(TimeUnit::Nanosecond, None),
+                nullable: false,
+                dictionary_ordered: false,
+                field: None,
+                chunks: vec![Arc::new(arrow_array::TimestampNanosecondArray::from(vec![
+                    1_700_000_000_000_000_001,
+                ]))],
+            },
+        ];
+        let mut timestamp = 0.0;
+        let tasks = vec![
+            (
+                0,
+                ColumnFill::OwnedCompact {
+                    kind: NumericKind::Int,
+                    temporal: TemporalKind::None,
+                    version: FormatVersion::V118,
+                    expected_rows: 1,
+                },
+            ),
+            (
+                1,
+                ColumnFill::Timestamp {
+                    output: &mut timestamp,
+                },
+            ),
+        ];
+        let next = AtomicUsize::new(0);
+        let cancelled = AtomicBool::new(false);
+        let (start, started) = std::sync::mpsc::channel();
+        let (done, finished) = std::sync::mpsc::channel();
+        let (own, worker) = thread::scope(|scope| {
+            let (columns, tasks, next, cancelled) = (&columns, &tasks, &next, &cancelled);
+            let worker = scope.spawn(move || {
+                started.recv().expect("owned fill has started");
+                let result = fill_task_loop(columns, tasks, next, cancelled, || false);
+                done.send(()).expect("owned fill is waiting");
+                result
+            });
+            let mut polls = 0;
+            let own = fill_task_loop(columns, tasks, next, cancelled, || {
+                polls += 1;
+                if polls == 2 {
+                    // Fail the timestamp only after the coordinator has
+                    // entered owned preparation, before its next scan poll.
+                    start.send(()).expect("timestamp worker is waiting");
+                    finished.recv().expect("timestamp worker has finished");
+                }
+                false
+            });
+            (own, worker.join().expect("timestamp worker did not panic"))
+        });
+        let error = worker.err().expect("timestamp cannot be represented in R");
+        assert!(error.contains("cannot be represented exactly in R"));
+        assert!(!native_arrow_interrupted(&error));
+        assert!(
+            own.is_ok(),
+            "peer cancellation must leave the timestamp error as the read failure, got {:?}",
+            own.err()
+        );
+    }
+
+    #[test]
+    fn owned_fill_preserves_user_interrupts_between_scan_blocks() {
+        let columns = vec![ArrowReadColumn {
+            name: "compact".to_owned(),
+            data_type: DataType::Int16,
+            nullable: false,
+            dictionary_ordered: false,
+            field: None,
+            chunks: vec![
+                Arc::new(Int16Array::from(vec![1])),
+                Arc::new(Int16Array::from(vec![2])),
+            ],
+        }];
+        let tasks = vec![(
+            0,
+            ColumnFill::OwnedCompact {
+                kind: NumericKind::Int,
+                temporal: TemporalKind::None,
+                version: FormatVersion::V118,
+                expected_rows: 2,
+            },
+        )];
+        // Queue entry, preparation entry, each typed block, and publication.
+        for interrupt_at in 1..=5 {
+            let next = AtomicUsize::new(0);
+            let cancelled = AtomicBool::new(false);
+            let mut polls = 0;
+            let result = fill_task_loop(&columns, &tasks, &next, &cancelled, || {
+                polls += 1;
+                polls == interrupt_at
+            });
+            let error = result.err().expect("user interrupt stops the owned fill");
+            assert!(native_arrow_interrupted(&error));
+            assert!(cancelled.load(Ordering::Relaxed));
+        }
     }
 
     #[test]

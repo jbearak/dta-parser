@@ -71,4 +71,12 @@ Focused final-summary validation also passed 1,433 assertions, including 743 own
 - Both final 209-case qualification passes matched baseline values, metadata, dimensions and warnings: combined DTA/owned Arrow controls, and bounded Arrow plus bulk copying. All 384 final downstream observations matched results and passed captured-copy checks where applicable.
 - The full corpus matched all **1,826 inputs**: 1,823 DTA files and three retained older Arrow files. Both builds rejected the same two malformed DTA files with identical errors. Successful reads matched signatures, dimensions and warnings. Controllers rechecked input, worker and installed-file hashes after every final run.
 
+## Pre-merge corrections
+
+Review found that row and group calculations could retain a numeric descriptor after a foreign R callback materialized the source and released its backing. These consumers now retain independent payload roots, and numeric readers snapshot compact descriptors. Regression tests cover native and R-backed columns, copied handles, and cleanup after callback errors and interrupts.
+
+Parallel Arrow completion now distinguishes peer cancellation from a user interrupt, preserving the conversion error that stopped another worker. Its regression uses an unrepresentable timestamp alongside owned-column preparation. Benchmark controllers also resolve command-line paths before starting workers in separate directories; all three controllers have a subprocess regression in CI.
+
+These corrections follow the measured build. The timing tables and archived validation above remain bound to `9ac470bb`; they are not measurements of the subsequent fixes.
+
 Keep all experiments disabled by default. Before enabling one, close the full-read Stata gaps, remove material projection and downstream regressions, resolve timing uncertainty, and complete the independent timing and memory gates. The current screens identify useful improvements; they do not meet the accepted general parity target.

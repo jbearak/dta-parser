@@ -4,13 +4,13 @@ import argparse
 import json
 import os
 from pathlib import Path
-from run import HERE, child, installed_binding, sha
+from run import HERE, absolute_path, child, installed_binding, sha
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for field in ('inputs', 'output', 'baseline_library', 'baseline_build', 'candidate_library', 'candidate_build'):
-        parser.add_argument('--' + field.replace('_', '-'), type=Path, required=True)
+        parser.add_argument('--' + field.replace('_', '-'), type=absolute_path, required=True)
     parser.add_argument('--experiment', action='append', default=[])
     args = parser.parse_args()
     variants = ('baseline', 'candidate')

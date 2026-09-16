@@ -256,6 +256,94 @@ test_that("read roots survive foreign operand and gather callbacks", {
     }
 })
 
+test_that("row calculations retain owned inputs across foreign element callbacks", {
+    source <- freeze_numeric(dta_int(c(1, 2, 3)), 1)
+    calls <- 0L
+    later <- .Call(C_dtatools_callback_double, c(4, 5, 6), function() {
+        calls <<- calls + 1L
+        .force_altrep_materialization(source)
+        gc()
+    }, TRUE)
+    expect_identical(as.double(dta_row_total(source, later)), c(5, 7, 9))
+    expect_identical(calls, 1L)
+    expect_identical(as.double(source), c(1, 2, 3))
+})
+
+test_that("row calculations and groups retain compact and proxy backing", {
+    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
+        for (owned in c(FALSE, TRUE)) {
+            for (proxy in c(FALSE, TRUE)) {
+                for (operation in c("total", "maximum", "group", "tag")) {
+                    source <- constructor(c(2, 1, 2))
+                    if (owned) source <- freeze_numeric(source, 1)
+                    if (proxy) source <- .Call(C_dtatools_metadata_copy, source)
+                    calls <- 0L
+                    callback <- function() {
+                        calls <<- calls + 1L
+                        .force_altrep_materialization(source)
+                        gc()
+                    }
+                    if (operation %in% c("total", "maximum")) {
+                        later <- .Call(C_dtatools_callback_double, c(4, 5, 4),
+                                       callback, TRUE)
+                        result <- if (operation == "total") dta_row_total(source, later)
+                            else dta_row_max(source, later)
+                        expected <- if (operation == "total") c(6, 6, 6) else c(4, 5, 4)
+                    } else {
+                        later <- .Call(C_dtatools_callback_character, c("b", "a", "b"),
+                                       callback)
+                        result <- if (operation == "group") dta_group_id(source, later)
+                            else dta_group_tag(source, later)
+                        expected <- if (operation == "group") c(2, 1, 2) else c(1, 1, 0)
+                    }
+                    expect_identical(as.double(result), expected)
+                    expect_identical(calls, 1L)
+                    expect_identical(as.double(source), c(2, 1, 2))
+                }
+            }
+        }
+    }
+})
+
+test_that("calculation read roots are released after callback errors and interrupts", {
+    for (operation in c("total", "group")) {
+        for (kind in c("error", "interrupt")) {
+            gc()
+            before <- owned_numeric_info(NULL)
+            local({
+                source <- freeze_numeric(dta_int(c(2, 1, 2)), 1)
+                later <- .Call(C_dtatools_callback_double, c(4, 5, 4), function() {
+                    .force_altrep_materialization(source)
+                    gc()
+                    stop(structure(list(message = "calculation callback stopped", call = NULL),
+                                   class = c(kind, "condition")))
+                }, TRUE)
+                actual <- tryCatch({
+                    if (operation == "total") dta_row_total(source, later)
+                    else dta_group_id(source, later)
+                }, error = identity, interrupt = identity)
+                expect_s3_class(actual, kind)
+                expect_identical(conditionMessage(actual), "calculation callback stopped")
+                expect_identical(as.double(source), c(2, 1, 2))
+            })
+            gc()
+            after <- owned_numeric_info(NULL)
+            expect_equal(after[["native_bytes"]], before[["native_bytes"]])
+            expect_equal(after[["live_owners"]], before[["live_owners"]])
+        }
+    }
+})
+
+test_that("calculation callbacks cannot change captured immutable input values", {
+    source <- freeze_numeric(dta_int(c(1, 2, 3)), 1)
+    later <- .Call(C_dtatools_callback_double, c(4, 5, 6), function() {
+        .Call(C_dtatools_mutate_first_numeric_altrep, source, 9)
+        gc()
+    }, TRUE)
+    expect_identical(as.double(dta_row_total(later, source)), c(5, 7, 9))
+    expect_identical(as.double(source), c(9, 2, 3))
+})
+
 test_that("parallel comparison workers split mismatched owned chunk boundaries", {
     values <- rep(c(-1, 0, 1, NA_real_, tagged_missing("a")), 60001)
     plain_x <- dta_int(values)

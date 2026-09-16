@@ -3525,7 +3525,7 @@
         },
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
-          "sha256": "5800510c9db2d4ef7cbe64c885138d0c597be6faa6e282e2c8a4c4241577ca40"
+          "sha256": "a33efce247451fba606bdc5414e3c4004d0ebc165e0d00013fdfa5b4974d7b8e"
         }
       ],
       "blocks": [
@@ -4565,6 +4565,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "row calculations retain owned inputs across foreign element callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "row calculations and groups retain compact and proxy backing",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 192,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "calculation read roots are released after callback errors and interrupts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "calculation callbacks cannot change captured immutable input values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
           "warnings": 0
         },
         {

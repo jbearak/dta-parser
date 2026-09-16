@@ -781,12 +781,15 @@ static SEXP numeric_payload_root(SEXP value) {
 static numeric_reader numeric_reader_create(
     SEXP value, R_xlen_t expected_length
 ) {
+    /* Callers that keep this reader across callbacks must also protect
+       numeric_payload_root(value). Snapshot the descriptor because public
+       handle materialization can free it even while its backing is rooted. */
     numeric_reader reader = {
         value, NULL, NULL, NULL, TYPEOF(value)
     };
     if (reader.type == REALSXP) {
         reader.storage = unmaterialized_numeric_read_storage(value);
-        if (reader.storage != NULL && reader.storage->native_owner != NULL) {
+        if (reader.storage != NULL) {
             numeric_data encoding = *reader.storage;
             reader.storage = (numeric_data *) R_alloc(1, sizeof(numeric_data));
             *reader.storage = encoding;

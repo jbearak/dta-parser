@@ -94,6 +94,7 @@ jobs:
         run: |
           python3 -m unittest discover -s benchmarks/reader-refresh -p 'test_*.py'
           python3 -m unittest discover -s benchmarks/dta-reader-performance -p 'test_*.py'
+          python3 -m unittest discover -s benchmarks/reader-parity -p 'test_*.py'
       - run: scripts/check-r-cargo-vendor.sh
       - run: scripts/rebuild-r-vendor.sh
       - run: git diff --exit-code -- r-package/dtatools/src/rust/vendor.tar.gz

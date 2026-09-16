@@ -5,13 +5,13 @@ import json
 import os
 from pathlib import Path
 import statistics
-from run import HERE, child, installed_binding, write_csv, sha
+from run import HERE, absolute_path, child, installed_binding, write_csv, sha
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('cases', 'output', 'baseline_library', 'baseline_build', 'candidate_library', 'candidate_build'):
-        parser.add_argument('--' + name.replace('_', '-'), type=Path, required=True)
+        parser.add_argument('--' + name.replace('_', '-'), type=absolute_path, required=True)
     parser.add_argument('--case', action='append', required=True)
     parser.add_argument('--repetitions', type=int, default=6)
     parser.add_argument('--experiment', action='append', default=[])

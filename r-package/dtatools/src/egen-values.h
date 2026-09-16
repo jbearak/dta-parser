@@ -30,6 +30,7 @@ SEXP C_dtatools_egen_summary(SEXP input, SEXP operation, SEXP missing,
                            SEXP allow_nan) {
     int op = Rf_asInteger(operation), include = Rf_asLogical(missing);
     R_xlen_t size = XLENGTH(input), observed = 0;
+    PROTECT(numeric_payload_root(input));
     numeric_reader reader = numeric_reader_create(input, size);
     /* Stata accumulates in input order at double precision. In particular,
        1e16 + 1 - 1e16 is zero. Extended precision varies by architecture. */
@@ -61,7 +62,9 @@ SEXP C_dtatools_egen_summary(SEXP input, SEXP operation, SEXP missing,
         result = egen_missing_result(extreme_missing);
     } else result = observed ? extreme : NA_REAL;
     if (!ISNAN(result) && !R_FINITE(result)) result = NA_REAL;
-    return Rf_ScalarReal(result);
+    SEXP scalar = PROTECT(Rf_ScalarReal(result));
+    UNPROTECT(2);
+    return scalar;
 }
 
 SEXP C_dtatools_egen_rows(SEXP columns, SEXP operation, SEXP missing,
@@ -69,6 +72,14 @@ SEXP C_dtatools_egen_rows(SEXP columns, SEXP operation, SEXP missing,
     R_xlen_t count = XLENGTH(columns);
     if (TYPEOF(columns) != VECSXP || count == 0) {
         Rf_error("At least one numeric column is required");
+    }
+    /* Later Length/Dataptr_or_null/Elt methods can materialize an earlier
+       public handle. Keep each allocation alive independently of that handle;
+       the protection stack releases these roots on errors and interrupts. */
+    SEXP read_roots = PROTECT(Rf_allocVector(VECSXP, count));
+    for (R_xlen_t column = 0; column < count; column++) {
+        SET_VECTOR_ELT(read_roots, column,
+                       numeric_payload_root(VECTOR_ELT(columns, column)));
     }
     R_xlen_t size = XLENGTH(VECTOR_ELT(columns, 0));
     int op = Rf_asInteger(operation), include = Rf_asLogical(missing);
@@ -99,6 +110,6 @@ SEXP C_dtatools_egen_rows(SEXP columns, SEXP operation, SEXP missing,
         REAL(result)[row] = value;
     }
     SEXP owned = PROTECT(owned_adopt_real(result));
-    UNPROTECT(2);
+    UNPROTECT(3);
     return owned;
 }

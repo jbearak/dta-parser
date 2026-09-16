@@ -31,7 +31,15 @@ static SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
                                SEXP allow_nan) {
     if (TYPEOF(columns) != VECSXP || XLENGTH(columns) == 0)
         Rf_error("Supply at least one grouping column");
-    R_xlen_t count = XLENGTH(columns), n = XLENGTH(VECTOR_ELT(columns, 0));
+    R_xlen_t count = XLENGTH(columns);
+    /* Numeric readers survive callbacks from every other key, including
+       foreign string Elt methods during admission and numeric Elt in sort. */
+    SEXP read_roots = PROTECT(Rf_allocVector(VECSXP, count));
+    for (R_xlen_t k = 0; k < count; k++) {
+        SET_VECTOR_ELT(read_roots, k,
+                       numeric_payload_root(VECTOR_ELT(columns, k)));
+    }
+    R_xlen_t n = XLENGTH(VECTOR_ELT(columns, 0));
     if (n > INT_MAX) Rf_error("Grouping currently supports at most INT_MAX rows");
     egen_key_reader *keys = (egen_key_reader *) R_alloc(count, sizeof(egen_key_reader));
     /* Root every cached CHARSXP, including strings produced by an ALTREP
@@ -126,6 +134,6 @@ static SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
     SET_STRING_ELT(names, 0, Rf_mkChar("codes"));
     SET_STRING_ELT(names, 1, Rf_mkChar("first"));
     Rf_setAttrib(result, R_NamesSymbol, names);
-    UNPROTECT(6);
+    UNPROTECT(7);
     return result;
 }
