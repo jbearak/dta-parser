@@ -6891,21 +6891,6 @@ static SEXP C_dtatools_patch_slot(SEXP data, SEXP location, SEXP rows,
     return data;
 }
 
-static SEXP C_dtatools_identical_slot_names(SEXP data, SEXP location) {
-    R_xlen_t slot = mutation_slot(data, location);
-    SEXP target = VECTOR_ELT(data, slot);
-    R_xlen_t count = 0;
-    for (R_xlen_t i = 0; i < XLENGTH(data); i++) if (VECTOR_ELT(data, i) == target) count++;
-    SEXP result = PROTECT(Rf_allocVector(STRSXP, count));
-    SEXP names = Rf_getAttrib(data, R_NamesSymbol);
-    R_xlen_t out = 0;
-    for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
-        if (VECTOR_ELT(data, i) == target) SET_STRING_ELT(result, out++, STRING_ELT(names, i));
-    }
-    UNPROTECT(1);
-    return result;
-}
-
 static void resize_reference_vector(SEXP value, R_xlen_t length) {
     R_resizeVector(value, length);
 
@@ -6951,11 +6936,6 @@ static int data_table_reference_valid(SEXP data) {
         R_ExternalPtrTag(selfref) == Rf_getAttrib(data, R_NamesSymbol) &&
         TYPEOF(R_ExternalPtrProtected(selfref)) == EXTPTRSXP &&
         R_ExternalPtrAddr(R_ExternalPtrProtected(selfref)) == data;
-}
-
-/* Expose the read-only data.table identity check to R preflight code. */
-SEXP C_dtatools_data_table_reference_valid(SEXP data) {
-    return Rf_ScalarLogical(data_table_reference_valid(data));
 }
 
 /* Report the usable physical column allocation, or -1 if it cannot resize.
@@ -8828,7 +8808,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_owned_no_na", (DL_FUNC) &C_dtatools_owned_no_na, 1},
     {"C_dtatools_patch_slot", (DL_FUNC) &C_dtatools_patch_slot, 5},
     {"C_dtatools_fused_patch_slot", (DL_FUNC) &C_dtatools_fused_patch_slot, 10},
-    {"C_dtatools_identical_slot_names", (DL_FUNC) &C_dtatools_identical_slot_names, 2},
     {"C_dtatools_capture_column", (DL_FUNC) &C_dtatools_capture_column, 1},
     {"C_dtatools_owned_string_fits", (DL_FUNC) &C_dtatools_owned_string_fits, 2},
     {"C_dtatools_owned_string_width", (DL_FUNC) &C_dtatools_owned_string_width, 1},
@@ -8914,8 +8893,6 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_reference_state_valid, 1},
     {"C_dtatools_shared_columns", (DL_FUNC) &C_dtatools_shared_columns, 1},
     {"C_dtatools_column_capacity", (DL_FUNC) &C_dtatools_column_capacity, 1},
-    {"C_dtatools_data_table_reference_valid",
-     (DL_FUNC) &C_dtatools_data_table_reference_valid, 1},
     {"C_dtatools_reserve_column_capacity",
      (DL_FUNC) &C_dtatools_reserve_column_capacity, 2},
     {"C_dtatools_inject_column_append_failure",

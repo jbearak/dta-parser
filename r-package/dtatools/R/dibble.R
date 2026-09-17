@@ -433,7 +433,6 @@ NULL
     } else {
         rlang::enquo(i)
     }
-    .reject_data_table_subclass(x)
     .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE,
                       private_views = TRUE)
     # A whole-j injection can retain a bare-symbol destination. Extraction
@@ -443,7 +442,7 @@ NULL
                          names(x))
     if (length(new_names)) {
         x <- .prepare_column_growth(x, length(x) + length(new_names), auto_grow)
-    } else .prepare_column_operation(x, length(x), names_change = FALSE)
+    } else .prepare_column_operation(x, length(x))
     selection <- .mutation_selection(
         x, where,
         by = by_quo,

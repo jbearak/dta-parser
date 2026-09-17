@@ -4,13 +4,11 @@
 #' `reserve_columns()` returns an isolated table with `n` spare column
 #' pointer slots. Compact columns and owned ordinary doubles share backing
 #' until a write needs isolation. Other ordinary columns are copied. Assign the returned
-#' table. The container and column storage are preserved. Legacy tables with
-#' columns stored outside their physical list are rebuilt into one complete
-#' list, and serialized dibbles get fresh current-object bookkeeping.
+#' table. The column storage is preserved, and a serialized dibble gets
+#' fresh current-object bookkeeping.
 #'
 #' Package-controlled allocation reserves 1,024 spare slots by default.
 #' Set `options(dtatools.alloccol = 2048L)` to request a different default.
-#' Paths that delegate allocation to data.table use its own allocation option.
 #' By default, [gen()], [egen()] and dibble `:=` automatically call this
 #' preparation when adding columns needs more room. They warn when rebuilding,
 #' and reserve all requested additions plus the configured spare slots. The
@@ -25,8 +23,6 @@
 #' selections first, then check capacity before a commit. A validated keep-all
 #' selection does not resize the table. Renaming, ordering,
 #' and overwriting existing columns and editing metadata need no spare slots.
-#' Column-name edits on a data.table also need its valid self-reference;
-#' assign preparation after copying or serialization if that check fails.
 #' Inspect [column_capacity()] and [can_add_columns()] before growth.
 #'
 #' Base R serialization discards spare capacity. After `readRDS()` or
@@ -48,13 +44,6 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
     .as_mutation_data(data, allow_grouped = TRUE)
     n <- .validate_alloccol(n, length(data))
     snapshot <- .isolate_shared_columns(.reference_snapshot(data), NULL)
-    if (.ordinary_data_table(data)) {
-        # Remove runtime self-reference on a shallow attribute copy. setalloccol
-        # rebuilds both the list and its resizable names, retaining payloads.
-        snapshot <- .Call(C_dtatools_metadata_copy, snapshot)
-        attr(snapshot, ".internal.selfref") <- NULL
-        return(data.table::setalloccol(snapshot, n = n))
-    }
     result <- .reserve_column_capacity(snapshot, n)
     .mark_reference_data(result, .new_reference_state(result))
 }
@@ -68,16 +57,14 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
     as.double(n)
 }
 
-.column_operation_ready <- function(data, columns, names_change = TRUE) {
-    if (.ordinary_data_table(data)) .require_data_table()
-    (!(names_change && .ordinary_data_table(data)) || .data_table_reference_ready(data)) &&
-        (columns == length(data) || .column_resize_ready(data)) && isTRUE(.Call(
+.column_operation_ready <- function(data, columns) {
+    (columns == length(data) || .column_resize_ready(data)) && isTRUE(.Call(
         C_dtatools_can_select_data_columns, data, as.double(columns)
     ))
 }
 
-.prepare_column_operation <- function(data, columns, names_change = TRUE) {
-    if (.column_operation_ready(data, columns, names_change)) return(invisible(data))
+.prepare_column_operation <- function(data, columns) {
+    if (.column_operation_ready(data, columns)) return(invisible(data))
     extra <- max(0, columns - length(data))
     stop(sprintf(
         paste0("The supplied table needs column preparation for this operation. ",
@@ -239,19 +226,16 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
 #'
 #' `column_capacity()` reports the total number of columns the supplied table
 #' can hold in its current resizable allocation. It returns `NA_real_` when
-#' that allocation is absent, including after base R serialization. For a
-#' data.table both its list and its names must have resizable capacity and
-#' its self-reference must be valid. A zero-column table reserved with
+#' that allocation is absent, including after base R serialization. A
+#' zero-column table reserved with
 #' `n = 0` has no resizable allocation and also reports `NA_real_`.
 #'
 #' `can_add_columns(data, n)` reports whether an explicit helper can append
 #' `n` columns without rebuilding the supplied table. A prepared table with
 #' zero spare slots accepts `n = 0` but rejects `n = 1`. An ordinary unprepared
 #' table also accepts `n = 0`, because no additions are requested. This does
-#' not promise readiness for every structural helper: column-name edits on
-#' a data.table also need its valid self-reference. Nor does it promise that
-#' columns can be dropped. Shrinking requires a resizable allocation too. Legacy tables
-#' with columns outside their physical list always return `FALSE`.
+#' not promise that columns can be dropped: shrinking requires a resizable
+#' allocation too.
 #'
 #' These queries do not repair a table, test its dibble type, or validate its
 #' dibble reference-ownership bookkeeping. A copied or serialized dibble can retain
@@ -294,14 +278,5 @@ can_add_columns <- function(data, n = 1L) {
 }
 
 .column_resize_ready <- function(data) {
-    if (.ordinary_data_table(data)) {
-        # A staged data.table column commit requires matching table and names
-        # identities, even when the physical list still has spare slots.
-        if (!.data_table_reference_ready(data)) return(FALSE)
-    }
     .Call(C_dtatools_column_capacity, data) >= 0
-}
-
-.data_table_reference_ready <- function(data) {
-    isTRUE(.Call(C_dtatools_data_table_reference_valid, data))
 }

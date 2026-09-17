@@ -166,9 +166,9 @@ profile_memory <- function(code, prefix) {
 # Preparation is assigned before measuring the operation. These checks inspect
 # the physical table without exporting a column or requesting a writable pointer.
 native <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
-assert_frame <- function(data, extra = 0L) {
-    stopifnot(is.data.frame(data), !is_dibble(data),
-              !inherits(data, "tbl_df"), !inherits(data, "data.table"))
+# Every fixture is a dibble, the package's only mutation target (ADR 0036).
+assert_dibble <- function(data, extra = 0L) {
+    stopifnot(is_dibble(data), is.data.frame(data))
     if (extra > 0L) stopifnot(can_add_columns(data, extra))
     invisible(data)
 }
@@ -179,7 +179,7 @@ assert_private <- function(data, location) {
     invisible(info)
 }
 capture_private <- function(data, name, value, row, metric) {
-    assert_frame(data)
+    assert_dibble(data)
     profile <- profile_memory(
         replace_values(data, !!rlang::sym(name), .env$value, where = .env$row),
         paste0("dtatools-capture-", metric, "-")
@@ -194,24 +194,24 @@ capture_private <- function(data, name, value, row, metric) {
 rows <- 5000000L
 small_rows <- 50000L
 repetitions <- 100L
-warmup <- data.frame(compact = dta_byte(1:2))
+warmup <- dibble(compact = dta_byte(1:2))
 capture_private(warmup, "compact", 1, 1L, "warmup")
 for (iteration in seq_len(5L)) {
     replace_values(warmup, compact, 2, where = 1)
 }
-small <- data.frame(compact = dta_byte(rep(1, small_rows)))
+small <- dibble(compact = dta_byte(rep(1, small_rows)))
 capture_private(small, "compact", 1, 1L, "small")
 small_replacement_time <- system.time(
     for (iteration in seq_len(repetitions)) {
         replace_values(small, compact, 2, where = small_rows)
     }
 )[["elapsed"]] / repetitions
-data <- data.frame(
+data <- dibble(
     compact = dta_byte(rep(1, rows)),
     untouched = runif(rows)
 )
 data <- reserve_columns(data, n = 1L)
-assert_frame(data, 1L)
+assert_dibble(data, 1L)
 capture_private(data, "compact", 1, 1L, "main")
 untouched_trace <- tracemem(data$untouched)
 
@@ -373,7 +373,7 @@ stopifnot(
     compact_vector_replacement_time < 0.3
 )
 
-ordinary_data <- data.frame(value = rep(1, rows))
+ordinary_data <- dibble(value = rep(1, rows))
 capture_private(ordinary_data, "value", 1, 1L, "ordinary")
 ordinary_values <- rep(2, rows)
 ordinary_sparse_profile <- profile_memory(
@@ -384,13 +384,13 @@ ordinary_sparse_time <- ordinary_sparse_profile$elapsed
 total_ordinary_sparse_allocation <- ordinary_sparse_profile$total
 largest_ordinary_sparse_allocation <- ordinary_sparse_profile$largest
 stopifnot(
-    identical(ordinary_data$value[[rows]], 2),
+    identical(as.double(ordinary_data$value[[rows]]), 2),
     largest_ordinary_sparse_allocation < compact_byte_bytes,
     total_ordinary_sparse_allocation < compact_byte_bytes,
     ordinary_sparse_time < 0.1
 )
 
-late_missing <- data.frame(
+late_missing <- dibble(
     compact = dta_byte(c(rep(1, rows - 1L), NA_real_))
 )
 capture_private(late_missing, "compact", 1, 1L, "late_missing")
@@ -405,7 +405,7 @@ stopifnot(
     late_missing_time < max(0.002, replacement_time * 10)
 )
 
-cleared_missing <- data.frame(
+cleared_missing <- dibble(
     compact = dta_byte(c(rep(1, rows - 1L), NA_real_))
 )
 capture_private(cleared_missing, "compact", 1, 1L, "cleared_missing")
@@ -423,7 +423,7 @@ stopifnot(
 )
 
 proxy_source <- dta_byte(rep(1, rows))
-proxy <- data.frame(compact = dtatools:::.metadata_copy(proxy_source))
+proxy <- dibble(compact = dtatools:::.metadata_copy(proxy_source))
 proxy_profile <- profile_memory(
     replace_values(proxy, compact, 2, where = rows),
     "dtatools-reference-proxy-"
@@ -469,9 +469,9 @@ direct_float_profile <- profile_memory(
     "dtatools-reference-direct-float-construction-"
 )
 direct_float_time <- direct_float_profile$elapsed
-integer_generation_data <- data.frame(anchor = dta_byte(rep(1, rows)))
+integer_generation_data <- dibble(anchor = dta_byte(rep(1, rows)))
 integer_generation_data <- reserve_columns(integer_generation_data, n = 1L)
-assert_frame(integer_generation_data, 1L)
+assert_dibble(integer_generation_data, 1L)
 integer_generation_trace <- tracemem(integer_generation_data$anchor)
 integer_generation_profile <- profile_memory(
     gen(integer_generation_data, generated, integer_generation_values),
@@ -480,9 +480,9 @@ integer_generation_profile <- profile_memory(
 integer_generation_time <- integer_generation_profile$elapsed
 largest_integer_generation_allocation <- integer_generation_profile$largest
 
-position_generation_data <- data.frame(anchor = dta_byte(rep(1, rows)))
+position_generation_data <- dibble(anchor = dta_byte(rep(1, rows)))
 position_generation_data <- reserve_columns(position_generation_data, n = 1L)
-assert_frame(position_generation_data, 1L)
+assert_dibble(position_generation_data, 1L)
 position_generation_profile <- profile_memory(
     gen(
         position_generation_data, generated, integer_generation_values,
@@ -495,9 +495,9 @@ largest_position_generation_allocation <- position_generation_profile$largest
 total_position_generation_allocation <- position_generation_profile$total
 
 compact_generation_values <- dta_byte(rep(2, rows))
-compact_generation_data <- data.frame(anchor = dta_byte(rep(1, rows)))
+compact_generation_data <- dibble(anchor = dta_byte(rep(1, rows)))
 compact_generation_data <- reserve_columns(compact_generation_data, n = 1L)
-assert_frame(compact_generation_data, 1L)
+assert_dibble(compact_generation_data, 1L)
 compact_generation_profile <- profile_memory(
     gen(compact_generation_data, generated, compact_generation_values),
     "dtatools-reference-compact-vector-generation-"
@@ -545,9 +545,9 @@ stopifnot(
 temporal_generation_values <- as.POSIXct(
     "2000-01-01", tz = "UTC"
 ) + seq_len(rows)
-temporal_generation_data <- data.frame(anchor = dta_byte(.size = rows))
+temporal_generation_data <- dibble(anchor = dta_byte(.size = rows))
 temporal_generation_data <- reserve_columns(temporal_generation_data, n = 1L)
-assert_frame(temporal_generation_data, 1L)
+assert_dibble(temporal_generation_data, 1L)
 temporal_generation_profile <- profile_memory(
     gen(
         temporal_generation_data, generated,
@@ -572,11 +572,11 @@ stopifnot(
     temporal_generation_time < 0.5
 )
 
-character_generation_data <- data.frame(
+character_generation_data <- dibble(
     anchor = dta_byte(rep(1, rows))
 )
 character_generation_data <- reserve_columns(character_generation_data, n = 1L)
-assert_frame(character_generation_data, 1L)
+assert_dibble(character_generation_data, 1L)
 character_generation_profile <- profile_memory(
     gen(character_generation_data, generated, "x"),
     "dtatools-reference-character-generation-"
@@ -607,11 +607,11 @@ full_character_fill_time <- median(vapply(
     })[["elapsed"]],
     double(1)
 ))
-full_character_data <- data.frame(
+full_character_data <- dibble(
     anchor = dta_byte(rep(1, rows))
 )
 full_character_data <- reserve_columns(full_character_data, n = 1L)
-assert_frame(full_character_data, 1L)
+assert_dibble(full_character_data, 1L)
 full_character_profile <- profile_memory(
     gen(full_character_data, generated, .env$full_character_values),
     "dtatools-reference-full-character-generation-"
@@ -619,9 +619,9 @@ full_character_profile <- profile_memory(
 full_character_generation_time <- median(vapply(
     seq_len(full_character_timing_repetitions),
     function(iteration) {
-        timed_data <- data.frame(anchor = dta_byte(.size = rows))
+        timed_data <- dibble(anchor = dta_byte(.size = rows))
         timed_data <- reserve_columns(timed_data, n = 1L)
-        assert_frame(timed_data, 1L)
+        assert_dibble(timed_data, 1L)
         system.time(
             gen(timed_data, generated, .env$full_character_values)
         )[["elapsed"]]
@@ -647,11 +647,11 @@ stopifnot(
         max(0.05, full_character_fill_time * 3.75)
 )
 
-sparse_character_data <- data.frame(
+sparse_character_data <- dibble(
     anchor = dta_byte(rep(1, rows))
 )
 sparse_character_data <- reserve_columns(sparse_character_data, n = 1L)
-assert_frame(sparse_character_data, 1L)
+assert_dibble(sparse_character_data, 1L)
 sparse_character_profile <- profile_memory(
     gen(sparse_character_data, generated, "wide", where = rows),
     "dtatools-reference-sparse-character-generation-"
@@ -681,11 +681,11 @@ stopifnot(
 selected_character_values <- rep(
     c("x", "wide"), length.out = selected_count
 )
-selected_character_data <- data.frame(
+selected_character_data <- dibble(
     anchor = dta_byte(rep(1, rows))
 )
 selected_character_data <- reserve_columns(selected_character_data, n = 1L)
-assert_frame(selected_character_data, 1L)
+assert_dibble(selected_character_data, 1L)
 invisible(dtatools:::.reference_row_reads(TRUE))
 selected_character_profile <- profile_memory(
     gen(
@@ -741,11 +741,11 @@ dictionary_cache_before <- dtatools:::.dictstring_cached_count(
 scalar_dictionary_cache <- dtatools:::.dictstring_cached_count(
     scalar_dictionary_source
 )
-scalar_dictionary_generation_data <- data.frame(
+scalar_dictionary_generation_data <- dibble(
     anchor = dta_byte(.size = rows)
 )
 scalar_dictionary_generation_data <- reserve_columns(scalar_dictionary_generation_data, n = 1L)
-assert_frame(scalar_dictionary_generation_data, 1L)
+assert_dibble(scalar_dictionary_generation_data, 1L)
 scalar_dictionary_generation_profile <- profile_memory(
     gen(
         scalar_dictionary_generation_data, generated,
@@ -776,7 +776,7 @@ stopifnot(
         full_double_bytes * 1.01,
     scalar_dictionary_generation_time < character_generation_time * 2
 )
-ordinary_scalar_target <- data.frame(text = rep.int("", rows))
+ordinary_scalar_target <- dibble(text = dta_string(rep.int("", rows), "str12"))
 ordinary_scalar_profile <- profile_memory(
     replace_values(
         ordinary_scalar_target, text, dictionary_values[[1L]]
@@ -784,7 +784,7 @@ ordinary_scalar_profile <- profile_memory(
     "dtatools-reference-ordinary-scalar-character-source-"
 )
 ordinary_scalar_replacement_time <- ordinary_scalar_profile$elapsed
-scalar_dictionary_target <- data.frame(text = rep.int("", rows))
+scalar_dictionary_target <- dibble(text = dta_string(rep.int("", rows), "str12"))
 scalar_dictionary_replacement_profile <- profile_memory(
     replace_values(
         scalar_dictionary_target, text,
@@ -804,7 +804,7 @@ stopifnot(
         scalar_dictionary_cache
     ),
     identical(
-        scalar_dictionary_target$text[c(1L, rows)],
+        as.character(scalar_dictionary_target$text[c(1L, rows)]),
         rep(dictionary_values[[1L]], 2)
     ),
     largest_scalar_dictionary_replacement_allocation <=
@@ -814,11 +814,11 @@ stopifnot(
     scalar_dictionary_replacement_time <
         ordinary_scalar_replacement_time * 1.75
 )
-dictionary_generation_data <- data.frame(
+dictionary_generation_data <- dibble(
     anchor = dta_byte(.size = rows)
 )
 dictionary_generation_data <- reserve_columns(dictionary_generation_data, n = 1L)
-assert_frame(dictionary_generation_data, 1L)
+assert_dibble(dictionary_generation_data, 1L)
 dictionary_generation_profile <- profile_memory(
     gen(
         dictionary_generation_data, generated,
@@ -847,7 +847,7 @@ stopifnot(
     dictionary_generation_time < full_character_generation_time * 3
 )
 
-ordinary_source_target <- data.frame(text = rep.int("", rows))
+ordinary_source_target <- dibble(text = dta_string(rep.int("", rows), "str12"))
 ordinary_source_profile <- profile_memory(
     replace_values(
         ordinary_source_target, text, .env$full_character_values
@@ -855,7 +855,7 @@ ordinary_source_profile <- profile_memory(
     "dtatools-reference-ordinary-character-source-"
 )
 ordinary_source_replacement_time <- ordinary_source_profile$elapsed
-dictionary_source_target <- data.frame(text = rep.int("", rows))
+dictionary_source_target <- dibble(text = dta_string(rep.int("", rows), "str12"))
 dictionary_source_profile <- profile_memory(
     replace_values(
         dictionary_source_target, text, .env$dictionary_alias$text
@@ -889,11 +889,11 @@ rm(
 
 near_unique_rows <- min(rows, 1000000L)
 near_unique_values <- sprintf("unique-%07d", seq_len(near_unique_rows))
-near_unique_ordinary_data <- data.frame(
+near_unique_ordinary_data <- dibble(
     anchor = dta_byte(.size = near_unique_rows)
 )
 near_unique_ordinary_data <- reserve_columns(near_unique_ordinary_data, n = 1L)
-assert_frame(near_unique_ordinary_data, 1L)
+assert_dibble(near_unique_ordinary_data, 1L)
 near_unique_ordinary_profile <- profile_memory(
     gen(
         near_unique_ordinary_data, generated,
@@ -920,11 +920,11 @@ stopifnot(typeof(near_unique_source) == "character", is.null(attributes(near_uni
 unlink(near_unique_path)
 stopifnot(dtatools:::.is_unmaterialized_dictstring(near_unique_source))
 near_unique_cache <- dtatools:::.dictstring_cached_count(near_unique_source)
-near_unique_dictionary_data <- data.frame(
+near_unique_dictionary_data <- dibble(
     anchor = dta_byte(.size = near_unique_rows)
 )
 near_unique_dictionary_data <- reserve_columns(near_unique_dictionary_data, n = 1L)
-assert_frame(near_unique_dictionary_data, 1L)
+assert_dibble(near_unique_dictionary_data, 1L)
 near_unique_dictionary_profile <- profile_memory(
     gen(
         near_unique_dictionary_data, generated,
@@ -960,7 +960,7 @@ stopifnot(
 )
 
 near_unique_target_bytes <- as.double(near_unique_rows) * 8
-direct_sparse_dictionary_target <- copy_data(data.frame(
+direct_sparse_dictionary_target <- copy_data(dibble(
     text = near_unique_source
 ))
 direct_sparse_dictionary_cache <- dtatools:::.dictstring_cached_count(
@@ -980,7 +980,7 @@ total_direct_sparse_dictionary_target_allocation <-
 largest_direct_sparse_dictionary_target_allocation <-
     direct_sparse_dictionary_target_profile$largest
 
-shared_sparse_dictionary_target <- copy_data(data.frame(
+shared_sparse_dictionary_target <- copy_data(dibble(
     text = near_unique_source
 ))
 shared_sparse_dictionary_alias <- shared_sparse_dictionary_target
@@ -1005,11 +1005,11 @@ largest_shared_sparse_dictionary_target_allocation <-
     shared_sparse_dictionary_target_profile$largest
 stopifnot(
     identical(
-        direct_sparse_dictionary_target$text[c(1L, near_unique_rows)],
+        as.character(direct_sparse_dictionary_target$text[c(1L, near_unique_rows)]),
         c(near_unique_expected[[1L]], "changed")
     ),
     identical(
-        shared_sparse_dictionary_target$text[c(1L, near_unique_rows)],
+        as.character(shared_sparse_dictionary_target$text[c(1L, near_unique_rows)]),
         c(near_unique_expected[[1L]], "changed")
     ),
     identical(
@@ -1070,14 +1070,14 @@ stopifnot(
     dictionary_replacement_time < max(0.03, character_fill_time * 4)
 )
 
-sparse_dictionary_data <- data.frame(text = rep.int("", rows))
+sparse_dictionary_data <- dibble(text = dta_string(rep.int("", rows), "str12"))
 sparse_dictionary_cache <- dtatools:::.dictstring_cached_count(
     dictionary_alias$text
 )
 # The RHS handle is fixture setup. Timing starts with the same untouched
 # dictionary source; arbitrary expression snapshots are measured separately.
 sparse_dictionary_values <- dictionary_alias$text
-assert_frame(sparse_dictionary_data)
+assert_dibble(sparse_dictionary_data)
 # R's ordinary character constructor enters shared. Report its first isolation
 # capture separately, then measure sparse decoding into that private target.
 sparse_dictionary_capture <- profile_memory(
@@ -1103,9 +1103,9 @@ sparse_dictionary_expected <- dictionary_values[[
     ((rows - 1L) %% dictionary_cardinality) + 1L
 ]]
 stopifnot(
-    identical(sparse_dictionary_data$text[[1L]], ""),
+    identical(as.character(sparse_dictionary_data$text[[1L]]), ""),
     identical(
-        sparse_dictionary_data$text[[rows]], sparse_dictionary_expected
+        as.character(sparse_dictionary_data$text[[rows]]), sparse_dictionary_expected
     ),
     dtatools:::.is_unmaterialized_dictstring(dictionary_alias$text),
     identical(
@@ -1122,7 +1122,8 @@ integer_fill_time <- system.time(
         fill_result <- rep.int(2L, rows)
     }
 )[["elapsed"]] / fill_repetitions
-generic_altrep_data <- data.frame(value = seq_len(rows))
+# A base integer ALTREP sequence enters the dibble as a compact `long`.
+generic_altrep_data <- dibble(value = seq_len(rows))
 generic_altrep_alias <- generic_altrep_data
 generic_altrep_column_alias <- generic_altrep_data$value
 generic_altrep_profile <- profile_memory(
@@ -1134,17 +1135,17 @@ total_generic_altrep_allocation <- generic_altrep_profile$total
 largest_generic_altrep_allocation <- generic_altrep_profile$largest
 integer_bytes <- as.double(rows) * 4
 stopifnot(
-    !dtatools:::.is_altrep(generic_altrep_data$value),
-    identical(range(generic_altrep_data$value), c(2L, 2L)),
-    identical(generic_altrep_alias$value, generic_altrep_data$value),
+    dtatools:::.is_unmaterialized_numeric_altrep(generic_altrep_data$value),
+    identical(range(as.integer(generic_altrep_data$value)), c(2L, 2L)),
+    identical(as.integer(generic_altrep_alias$value), as.integer(generic_altrep_data$value)),
     identical(
-        range(generic_altrep_column_alias), c(1L, rows)
+        range(as.integer(generic_altrep_column_alias)), c(1L, rows)
     ),
     largest_generic_altrep_allocation <= integer_bytes * 1.01,
     total_generic_altrep_allocation < integer_bytes * 1.1
 )
 
-sparse_generic_altrep_data <- data.frame(value = seq_len(rows))
+sparse_generic_altrep_data <- dibble(value = seq_len(rows))
 sparse_generic_altrep_alias <- sparse_generic_altrep_data
 sparse_generic_altrep_column_alias <- sparse_generic_altrep_data$value
 sparse_generic_altrep_profile <- profile_memory(
@@ -1158,16 +1159,16 @@ total_sparse_generic_altrep_allocation <-
 largest_sparse_generic_altrep_allocation <-
     sparse_generic_altrep_profile$largest
 stopifnot(
-    !dtatools:::.is_altrep(sparse_generic_altrep_data$value),
+    dtatools:::.is_unmaterialized_numeric_altrep(sparse_generic_altrep_data$value),
     identical(
-        sparse_generic_altrep_data$value[c(1L, rows)], c(1L, 2L)
+        as.integer(sparse_generic_altrep_data$value[c(1L, rows)]), c(1L, 2L)
     ),
     identical(
-        sparse_generic_altrep_alias$value,
-        sparse_generic_altrep_data$value
+        as.integer(sparse_generic_altrep_alias$value),
+        as.integer(sparse_generic_altrep_data$value)
     ),
     identical(
-        range(sparse_generic_altrep_column_alias), c(1L, rows)
+        range(as.integer(sparse_generic_altrep_column_alias)), c(1L, rows)
     ),
     largest_sparse_generic_altrep_allocation <= integer_bytes * 1.01,
     total_sparse_generic_altrep_allocation < integer_bytes * 1.5,
@@ -1184,23 +1185,23 @@ append_generated_columns <- function(data, count) {
     }
     invisible(data)
 }
-generation_warmup <- reserve_columns(data.frame(anchor = 1L), n = 5L)
-assert_frame(generation_warmup, 5L)
+generation_warmup <- reserve_columns(dibble(anchor = 1L), n = 5L)
+assert_dibble(generation_warmup, 5L)
 invisible(append_generated_columns(generation_warmup, 5L))
 small_repeated_generation_count <- 400L
 large_repeated_generation_count <- 1600L
-small_generated_data <- data.frame(anchor = 1L)
+small_generated_data <- dibble(anchor = 1L)
 small_generated_data <- reserve_columns(small_generated_data, n = small_repeated_generation_count)
-assert_frame(small_generated_data, small_repeated_generation_count)
+assert_dibble(small_generated_data, small_repeated_generation_count)
 small_repeated_generation_profile <- profile_memory(
     append_generated_columns(
         small_generated_data, small_repeated_generation_count
     ),
     "dtatools-reference-small-repeated-generation-"
 )
-large_generated_data <- data.frame(anchor = 1L)
+large_generated_data <- dibble(anchor = 1L)
 large_generated_data <- reserve_columns(large_generated_data, n = large_repeated_generation_count)
-assert_frame(large_generated_data, large_repeated_generation_count)
+assert_dibble(large_generated_data, large_repeated_generation_count)
 large_repeated_generation_profile <- profile_memory(
     append_generated_columns(
         large_generated_data, large_repeated_generation_count

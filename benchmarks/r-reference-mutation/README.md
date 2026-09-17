@@ -40,18 +40,23 @@ admitted empty-directory control before any measured workload. Rejected cases
 must leave every fixture byte and mode unchanged; child logs and a manifest are
 retained. This is a preflight test, not native performance qualification.
 
-Stage 3 retains all 159 original assertion expressions and every numerical
-bound. Fixtures now assign `reserve_columns()` before generation, outside the
-measured operation, and verify the original base-frame dispatch and capacity.
+Every fixture is a dibble, the package's only mutation target since
+[ADR 0036](../../docs/adr/0036-mutate-by-reference-only-on-dibbles.md);
+the assertions check dibble identity and capacity where they once checked
+base-frame dispatch, and compare values through `as.double()` and
+`as.character()` because dibble columns carry Stata storage classes. String
+targets declare the width their replacement needs so no measured write pays
+for storage promotion. Fixtures assign `reserve_columns()` before generation,
+outside the measured operation.
 Borrowed numeric fixtures measure a same-value capture separately before the
 strict private-write gates. Native diagnostics verify that those physical
 handles and backing are private without exporting or serializing a column.
 The first write after native generation remains cold. Shared proxy/dictionary
 and foreign integer ALTREP cases retain their original first-write aliases.
-The ordinary character target for sparse dictionary RHS decoding also reports
-its borrowed first capture separately. That fixture retains its plain frame
-and character representation and checks physical handle privacy before the
-sparse write; numeric backing-ownership checks do not apply to ordinary strings.
+The declared string target for sparse dictionary RHS decoding also reports
+its borrowed first capture separately. That fixture retains its character
+representation and checks physical handle privacy before the sparse write;
+numeric backing-ownership checks do not apply to strings.
 
 Two operand fixtures move outside timing: the second proxy row index and the
 sparse dictionary RHS column handle. Their measured operations begin with
@@ -133,15 +138,14 @@ character result once, but neither may allocate a full-cardinality cache, and
 sharing cannot trigger a private clone of the old compact payload. The shared
 alias must remain compact and unchanged.
 
-A base R integer ALTREP sequence is also replaced, with a corresponding
-integer-fill baseline. That path deliberately allocates one ordinary integer
-vector, patches it while it is still private without a rollback journal,
-installs it into dataset aliases, leaves the former standalone column alias
-unchanged, and verifies the detached result's aggregate semantics. The full
-replacement caps total allocation at one result and must remain materially
-faster than the one-row variant, which has to copy the old source. Together
-those gates reject a restored full-source scan. The one-row variant likewise
-permits only one result allocation.
+A column built from a base R integer ALTREP sequence, which the dibble types
+as a compact `long`, is also replaced, with a corresponding integer-fill
+baseline. The full replacement caps total allocation at one compact result,
+leaves the former standalone column alias unchanged, keeps the column
+compact, and must remain materially faster than the one-row variant, which
+has to copy the old source. Together those gates reject a restored
+full-source scan. The one-row variant likewise permits only one result
+allocation.
 One row is also replaced from a five-million-row dictionary-backed values
 vector with 250,000 distinct strings. That path must leave the source cache
 unchanged and allocate less than two megabytes in total, preventing cache space

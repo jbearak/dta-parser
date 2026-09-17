@@ -910,3 +910,44 @@ test_that("owned doubles preserve metadata and ordinary serialized values", {
     expect_identical(attr(value, "label"), "Codes")
     expect_identical(owned_info(data$x)$backing, owned_info(value)$backing)
 })
+
+test_that("reading a column with $ or [[ leaves its handle private for the next write", {
+    data <- dibble(compact = dta_byte(rep(1, 8)), plain = rep(1, 8))
+    repl(data, compact, 1, where = 1L)
+    repl(data, plain, 1, where = 1L)
+    for (location in 1:2) expect_false(mutation_info(data, location)$handle_shared)
+    invisible(dtatools:::.is_unmaterialized_numeric_altrep(data$compact))
+    invisible(as.double(data[["plain"]]))
+    invisible(as.double(data[[2L]]))
+    for (location in 1:2) expect_false(mutation_info(data, location)$handle_shared)
+    # A retained handle is shared, and the next write must detach from it.
+    kept <- data$compact
+    expect_true(mutation_info(data, 1L)$handle_shared)
+    repl(data, compact, 2, where = 8L)
+    expect_identical(as.double(kept[[8L]]), 1)
+    expect_identical(as.double(data$compact[[8L]]), 2)
+    expect_null(data$missing)
+    expect_error(data[["missing", exact = TRUE]], NA)
+})
+
+test_that("a sparse write into a dictionary-backed Stata string allocates only its result", {
+    skip_if_not(capabilities("profmem"))
+    rows <- 200000L
+    path <- withr::local_tempfile(fileext = ".arrow")
+    save_arrow(data.frame(text = sprintf("value-%06d", seq_len(rows))), path)
+    source <- read_arrow(path, output = "tibble")$text
+    expect_true(dtatools:::.is_unmaterialized_dictstring(source))
+    target <- copy_data(dibble(text = source))
+    expect_s3_class(target$text, "dta_string")
+    profile <- withr::local_tempfile(fileext = ".out")
+    Rprofmem(profile, threshold = 1000)
+    repl(target, text, "changed", where = rows)
+    Rprofmem(NULL)
+    records <- readLines(profile, warn = FALSE)
+    bytes <- suppressWarnings(as.numeric(sub(" .*", "", records)))
+    bytes <- bytes[is.finite(bytes)]
+    # One decoded character result of the column's size, and nothing of
+    # that size besides it: the empty cast prototype must not copy the column.
+    expect_lt(sum(bytes), rows * 8 * 1.1)
+    expect_identical(as.character(target$text[c(1L, rows)]), c("value-000001", "changed"))
+})

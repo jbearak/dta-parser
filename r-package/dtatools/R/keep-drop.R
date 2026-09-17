@@ -161,7 +161,7 @@ rename_vars <- function(data, ..., .names = NULL) {
     source_names <- names(columns)
     if (identical(new_names, source_names)) return(invisible(data))
     names(columns) <- new_names
-    .install_column_selection(data, original, columns, source_names)
+    .install_column_selection(data, original, columns)
 }
 
 .rename_vars_by_reference <- function(data, replacements) {
@@ -204,7 +204,7 @@ rename_vars <- function(data, ..., .names = NULL) {
     }
     if (identical(final_names, current_names)) return(invisible(data))
     names(columns) <- final_names
-    .install_column_selection(data, original, columns, current_names)
+    .install_column_selection(data, original, columns)
 }
 
 .selection_call_is <- function(
@@ -398,9 +398,7 @@ rename_vars <- function(data, ..., .names = NULL) {
 # reference. The caller has already resolved which columns survive and
 # in which order. Recheck capacity in case selection code changed it, then
 # install one complete physical list.
-.install_column_selection <- function(
-    data, original, retained_columns, source_names = names(retained_columns)
-) {
+.install_column_selection <- function(data, original, retained_columns) {
     source_classes <- .reference_base_classes(class(data))
     .prepare_column_operation(data, length(retained_columns))
     planned <- retained_columns
@@ -413,41 +411,7 @@ rename_vars <- function(data, ..., .names = NULL) {
         C_dtatools_select_data_columns, data, unname(retained_columns),
         names(retained_columns), final_state, source_classes, reference_classes
     )
-    if (.ordinary_data_table(data)) {
-        # The native selection clears `sorted` and `index`, so the key
-        # and indices are reinstated afterwards. They are recorded
-        # under the column names the table had on entry, which a
-        # rename replaces, so translate them to the surviving names.
-        renamed <- names(retained_columns)
-        # The selection renames by reference and may write through the
-        # very vector `source_names` points at, so the translation is
-        # resolved into fresh vectors before `select()` runs.
-        names(renamed) <- as.character(source_names)
-        key_columns <- data.table::key(data)
-        new_key <- if (length(key_columns) > 0L &&
-            all(key_columns %in% names(renamed))) {
-            unname(renamed[key_columns])
-        } else {
-            NULL
-        }
-        the_indexes <- data.table::indices(data, vectors = TRUE)
-        new_indexes <- list()
-        for (my_columns in the_indexes) {
-            if (all(my_columns %in% names(renamed))) {
-                new_indexes[[length(new_indexes) + 1L]] <-
-                    unname(renamed[my_columns])
-            }
-        }
-        suspendInterrupts({
-            select()
-            if (!is.null(new_key)) data.table::setkeyv(data, new_key)
-            for (my_columns in new_indexes) {
-                data.table::setindexv(data, my_columns)
-            }
-        })
-    } else {
-        select()
-    }
+    select()
     .mark_reference_data(data, final_state)
     invisible(data)
 }

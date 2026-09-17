@@ -9,22 +9,19 @@
 #' gathered columns are installed without copying, so compact numeric
 #' columns stay unmaterialized.
 #'
-#' Legacy tables with columns outside their physical list require assigned
-#' [reserve_columns()] before this call. Reordering needs no spare slots.
+#' Reordering needs no spare slots.
 #'
 #' @param data A dibble, modified by reference.
 #' @param rows A permutation of `seq_len(nrow(data))` following
 #'   [vctrs::vec_as_location()] semantics, without missing locations.
 #'   Every row must be selected exactly once: an in-place reorder
 #'   cannot change the row count.
-#' @return `data`, invisibly. For a data.table the `sorted` marker and
-#'   secondary indexes are cleared because a permutation invalidates
-#'   them.
+#' @return `data`, invisibly.
 #' @export
 reorder_dta_rows <- function(data, rows) {
     .require_mutation_target(data)
     plan <- .reorder_column_plan(data)
-    .prepare_column_operation(data, length(data), names_change = FALSE)
+    .prepare_column_operation(data, length(data))
     count <- plan$nrow
     locations <- vctrs::vec_as_location(
         rows, n = count, missing = "error", arg = "rows"
@@ -40,10 +37,6 @@ reorder_dta_rows <- function(data, rows) {
         C_dtatools_replace_reference_columns, data, plan$store,
         plan$locations, plan$names, unname(columns)
     )
-    if (plan$data_table) {
-        data.table::setattr(data, "sorted", NULL)
-        data.table::setattr(data, "index", NULL)
-    }
     invisible(data)
 }
 
@@ -52,14 +45,12 @@ reorder_dta_rows <- function(data, rows) {
 .reorder_column_plan <- function(data) {
     original <- .as_mutation_data(data)
     columns <- original$columns
-    data_table <- .data_table_container(data)
     count <- length(columns)
     list(
         columns = columns,
         store = NULL,
         locations = seq_len(count),
         names = rep(NA_character_, count),
-        nrow = original$nrow,
-        data_table = data_table
+        nrow = original$nrow
     )
 }
