@@ -77,9 +77,13 @@ result <- tryCatch({
         }
         data <- dtatools::reserve_columns(dtatools::copy_data(base), n = 2L)
         alias <- data
-        eval(body, list(data = data), environment())
+        returned <- eval(body, list(data = data), environment())
+        # The documented return value is the mutated dataset itself.
+        if (!identical(rlang::obj_address(returned), rlang::obj_address(alias))) {
+            stop(verb, " returned a different object from the dataset it mutated")
+        }
         emit(verb, "dibble", signature(alias))
-        rm(data, alias)
+        rm(data, alias, returned)
         gc()
         invisible(NULL)
     }
@@ -127,8 +131,16 @@ result <- tryCatch({
     using <- dtatools::dibble(.gate_id = seq_len(rows), .gate_flag = rep(1, rows))
     edge_rows <- unique(c(1L, rows))[seq_len(min(rows, 2L))]
     half <- rows %/% 2L
+    # A copying verb must leave its input as it found it; the input is signed
+    # before and after the calls, and a difference is a worker failure.
+    unchanged <- function(label, source, before) {
+        if (!identical(signature(source), before)) {
+            stop(label, " changed its ", container_of(source), " input")
+        }
+    }
     for (container in containers) {
         data <- as_container(base, container)
+        data_before <- signature(data)
         emit("slice_dta_rows", container, signature(
             dtatools::slice_dta_rows(data, edge_rows)
         ))
@@ -147,11 +159,16 @@ result <- tryCatch({
         } else {
             "not-applicable"
         })
+        unchanged("a copying verb", data, data_before)
         rm(data)
         merge_x <- as_container(keyed, container)
+        merge_before <- signature(merge_x)
+        using_before <- signature(using)
         emit("dta_merge", container, signature(dtatools::dta_merge(
             merge_x, using, by = ".gate_id", relationship = "1:1"
         )))
+        unchanged("dta_merge()", merge_x, merge_before)
+        unchanged("dta_merge()", using, using_before)
         rm(merge_x)
         gc()
     }
