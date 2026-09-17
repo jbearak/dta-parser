@@ -146,7 +146,7 @@ result <- tryCatch({
             )))
         })
         emit("dplyr-filter", container, signature(
-            dplyr::filter(data, dplyr::row_number() <= half)
+            dplyr::filter(data, dplyr::row_number() <= .env$half)
         ))
         emit("dplyr-select", container, if (ncol(data) > 1L) {
             signature(dplyr::select(data, -1L))

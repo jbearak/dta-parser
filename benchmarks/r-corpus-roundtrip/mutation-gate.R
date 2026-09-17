@@ -109,7 +109,7 @@ run_worker <- function(item) {
         ),
         error_on_status = FALSE, echo = FALSE
     )
-    lines <- strsplit(process$stdout, "\n", fixed = TRUE)[[1L]]
+    lines <- strsplit(process$stdout, "\r?\n")[[1L]]
     markers <- grep("^DTATOOLS_MUTATION_GATE\t", lines, value = TRUE)
     fields <- strsplit(markers, "\t", fixed = TRUE)
     rows <- data.frame(
