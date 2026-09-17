@@ -369,7 +369,7 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     if (is.data.frame(value) && "data.table" %in% classes) {
         # data.table's `[` evaluates `i` and `j` with its own non-standard
         # evaluation, so the frame marker's `[` method must never intercept
-        # it, and the mutation functions require ordinary data.tables.
+        # it, and the copying operations accept only ordinary data.tables.
         # Dataset metadata stays in plain attributes on the container.
         present <- FALSE
     }

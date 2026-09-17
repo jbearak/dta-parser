@@ -11,10 +11,12 @@
 #' New ungrouped dibbles have class
 #' `c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")`.
 #' Grouping and metadata classes follow those two. The `dibble` class is
-#' the dataset's identity: `is_dibble()` tests for it, and it survives
-#' serialization even when bookkeeping or spare capacity is lost. The
-#' predicate does not validate ownership or capacity; assign
-#' [reserve_columns()] when preparation is needed.
+#' the dataset's identity: `is_dibble()` tests for it, every method
+#' dispatches on it, and it survives serialization even when bookkeeping
+#' or spare capacity is lost. `dtatools_ref_data` is an internal companion
+#' class that only a dibble carries; it names the reference bookkeeping and
+#' has no methods of its own. The predicate does not validate ownership or
+#' capacity; assign [reserve_columns()] when preparation is needed.
 #'
 #' [gen()], \code{\link[=replace_values]{replace_values()}}, [keep_vars()],
 #' and the other by-reference operations change a prepared dibble in place.

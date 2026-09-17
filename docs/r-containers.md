@@ -13,8 +13,9 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 
 data.table support requires version 1.18.2.1 or newer, which uses the resizable
 allocation protocol required by R 4.6. If an older version is installed, update
-it with `install.packages("data.table")`; dtatools rejects its tables before
-mutation. The other supported containers do not require data.table.
+it with `install.packages("data.table")`; the readers and copying operations
+refuse to build or accept a data table until then. The other supported
+containers do not require data.table.
 
 ## Where the write lands
 
@@ -57,9 +58,11 @@ Grouping works the same way in every helper: `by = ` groups in current row order
 
 An ungrouped dibble has class
 `c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")`.
-Grouping and metadata classes follow the first two classes. Only a dibble
-carries `dtatools_ref_data`; the explicit helpers reject other containers, so
-an ordinary tibble or base frame never acquires it.
+Grouping and metadata classes follow the first two classes. Every method
+dispatches on `dibble`. `dtatools_ref_data` is an internal companion class
+with no methods of its own: it marks the reference bookkeeping, only a dibble
+carries it, and the explicit helpers reject other containers, so an ordinary
+tibble or base frame never acquires it.
 
 Use `is_dibble(data)` for recognition. It tests the `dibble` class, which
 survives serialization. Older serialized objects that recorded dibble identity

@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: proposed; the compatibility-method sentence is withdrawn by ADR-0036
 ---
 
 # Evaluate dibble expressions with call-local group context

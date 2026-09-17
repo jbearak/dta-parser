@@ -1,3 +1,7 @@
+---
+status: accepted; table forms narrowed to dibbles by ADR-0036
+---
+
 # Edit metadata on the supplied table
 
 Explicit metadata setters mutate the supplied table by reference on every
