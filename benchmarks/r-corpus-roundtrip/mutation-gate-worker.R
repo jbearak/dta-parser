@@ -20,7 +20,20 @@ emit <- function(verb, container, value) {
     cat(sprintf("DTATOOLS_MUTATION_GATE\t%s\t%s\t%s\n", verb, container, value))
 }
 
-signature <- function(data) dtatools::datasig(data, threads = 1L)
+# The recorded value is the result's container followed by its data
+# signature, because `datasig()` deliberately ignores container identity and
+# a copying verb that returned the right values in the wrong class would
+# otherwise still match.
+container_of <- function(data) {
+    if (dtatools::is_dibble(data)) "dibble"
+    else if (inherits(data, "data.table")) "data.table"
+    else if (inherits(data, "tbl_df")) "tibble"
+    else if (is.data.frame(data)) "data.frame"
+    else class(data)[[1L]]
+}
+signature <- function(data) {
+    paste0(container_of(data), ":", dtatools::datasig(data, threads = 1L))
+}
 
 first_column <- function(data, predicate) {
     for (name in names(data)) {
@@ -51,20 +64,22 @@ result <- tryCatch({
     numeric_symbol <- if (!is.null(numeric_target)) as.name(numeric_target)
     string_symbol <- if (!is.null(string_target)) as.name(string_target)
 
-    # Each by-reference verb runs on its own copy of the dataset so the verbs
-    # do not observe one another. The copy is a dibble, the only mutation
-    # target.
+    # Each by-reference verb runs on its own prepared copy of the dataset so
+    # the verbs do not observe one another. The verb's return value is
+    # discarded and an alias taken before the call is signed, so a helper
+    # that regressed to returning a modified copy would leave the alias
+    # unchanged and fail the gate. Capacity is reserved up front so the one
+    # generated column never forces growth onto a new table.
     on_copy <- function(verb, applicable, body) {
         if (!applicable) {
             emit(verb, "dibble", "not-applicable")
             return(invisible(NULL))
         }
-        data <- dtatools::copy_data(base)
-        # Every verb returns the dataset, so a table that had to grow past
-        # its capacity is still the one whose signature is recorded.
-        data <- eval(body, list(data = data), environment())
-        emit(verb, "dibble", signature(data))
-        rm(data)
+        data <- dtatools::reserve_columns(dtatools::copy_data(base), n = 2L)
+        alias <- data
+        eval(body, list(data = data), environment())
+        emit(verb, "dibble", signature(alias))
+        rm(data, alias)
         gc()
         invisible(NULL)
     }
