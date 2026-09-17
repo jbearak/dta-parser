@@ -29,26 +29,6 @@ installed_package <- benchmark_installed_package_path(benchmark_library)
 rscript <- normalizePath(Sys.which("Rscript"), winslash = "/", mustWork = TRUE)
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-baseline_path <- file.path(script_dir, "mutation-gate-baseline.tsv")
-baseline_columns <- c("id", "verb", "container", "datasig")
-read_baseline <- function() {
-    if (!file.exists(baseline_path)) {
-        return(stats::setNames(
-            data.frame(character(), character(), character(), character(),
-                       stringsAsFactors = FALSE),
-            baseline_columns
-        ))
-    }
-    baseline <- read.delim(
-        baseline_path, colClasses = "character", check.names = FALSE,
-        na.strings = character(), quote = ""
-    )
-    if (!identical(names(baseline), baseline_columns)) {
-        stop("mutation gate baseline has unexpected columns")
-    }
-    baseline
-}
-
 # MAX_FILES keeps the smallest files of each corpus: a signature gate needs
 # every verb's code path, not the corpus' largest inputs, and a smoke pass
 # should finish in minutes. Selection happens before hashing so a smoke pass
@@ -79,6 +59,43 @@ inventory <- data.frame(
     stringsAsFactors = FALSE
 )
 if (anyDuplicated(inventory$id)) stop("stable corpus ID collision")
+
+baseline_path <- file.path(script_dir, "mutation-gate-baseline.tsv")
+baseline_columns <- c("id", "verb", "container", "datasig")
+read_baseline <- function() {
+    if (!file.exists(baseline_path)) {
+        return(stats::setNames(
+            data.frame(character(), character(), character(), character(),
+                       stringsAsFactors = FALSE),
+            baseline_columns
+        ))
+    }
+    baseline <- read.delim(
+        baseline_path, colClasses = "character", check.names = FALSE,
+        na.strings = character(), quote = ""
+    )
+    if (!identical(names(baseline), baseline_columns)) {
+        stop("mutation gate baseline has unexpected columns")
+    }
+    baseline
+}
+
+
+baseline <- read_baseline()
+if (!(identical(mode, "record") && update_baseline)) {
+    # Fail before any worker runs when the baseline cannot cover the
+    # selection; a full-corpus compare against a smoke baseline would
+    # otherwise sign every file and fail only at the end.
+    missing_ids <- setdiff(inventory$id, baseline$id)
+    if (length(missing_ids)) {
+        stop(
+            length(missing_ids), " of ", nrow(inventory),
+            " selected datasets have no baseline rows; run ",
+            "`record --update-baseline` on the reference build with the ",
+            "same MAX_FILES first"
+        )
+    }
+}
 message(nrow(inventory), " corpus files selected")
 
 worker_script <- file.path(script_dir, "mutation-gate-worker.R")
@@ -133,6 +150,9 @@ signature_one <- function(index) {
     })
 }
 
+# mclapply() forks, which Windows R does not support; there each wave runs
+# its workers one after another.
+fork_available <- !identical(.Platform$OS.type, "windows")
 limits <- roundtrip_verification_limits()
 waves <- roundtrip_verification_waves(
     inventory$bytes, limits$jobs, limits$memory_bytes
@@ -146,8 +166,8 @@ completed <- 0L
 partial_path <- file.path(output_dir, "signatures.partial.tsv")
 for (wave_number in seq_along(waves)) {
     indices <- waves[[wave_number]]
-    wave_rows <- if (length(indices) == 1L) {
-        list(signature_one(indices[[1L]]))
+    wave_rows <- if (length(indices) == 1L || !fork_available) {
+        lapply(indices, signature_one)
     } else {
         parallel::mclapply(
             indices, signature_one, mc.cores = length(indices),
@@ -185,7 +205,6 @@ if (nrow(errors)) {
     stop("mutation gate worker failures; see *.stderr in ", output_dir)
 }
 
-baseline <- read_baseline()
 if (identical(mode, "record") && update_baseline) {
     kept <- baseline[!(baseline$id %in% observed$id), , drop = FALSE]
     merged <- rbind(kept, observed)
@@ -202,13 +221,6 @@ if (identical(mode, "record") && update_baseline) {
 
 key <- function(table) paste(table$id, table$verb, table$container, sep = "\t")
 expected <- baseline[baseline$id %in% inventory$id, , drop = FALSE]
-missing_ids <- setdiff(inventory$id, baseline$id)
-if (length(missing_ids)) {
-    stop(
-        length(missing_ids), " selected datasets have no baseline rows; ",
-        "run `record --update-baseline` on the reference build first"
-    )
-}
 expected_lookup <- stats::setNames(expected$datasig, key(expected))
 observed_lookup <- stats::setNames(observed$datasig, key(observed))
 all_keys <- sort(union(names(expected_lookup), names(observed_lookup)))
@@ -217,8 +229,9 @@ differences <- all_keys[
         expected_lookup[all_keys] != observed_lookup[all_keys]
 ]
 if (length(differences)) {
+    parts <- do.call(rbind, strsplit(differences, "\t", fixed = TRUE))
     report <- data.frame(
-        key = differences,
+        id = parts[, 1L], verb = parts[, 2L], container = parts[, 3L],
         baseline = unname(expected_lookup[differences]),
         observed = unname(observed_lookup[differences]),
         stringsAsFactors = FALSE

@@ -105,6 +105,9 @@ result <- tryCatch({
     # Copying verbs run once per output container. The dibble input is a
     # fresh copy; the other containers are conversions of the base dibble.
     keyed <- dtatools::copy_data(base)
+    # Stata's `_merge` is a common corpus variable, and `dta_merge()` refuses
+    # an input that already carries it.
+    if ("_merge" %in% names(keyed)) dtatools::drop_vars(keyed, tidyselect::all_of("_merge"))
     dtatools::gen(keyed, .gate_id = .n)
     using <- dtatools::dibble(.gate_id = seq_len(rows), .gate_flag = rep(1, rows))
     edge_rows <- unique(c(1L, rows))[seq_len(min(rows, 2L))]
