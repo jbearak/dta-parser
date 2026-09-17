@@ -483,6 +483,10 @@ NULL
     if (!is.call(expression) || !identical(expression[[1L]], quote(`:=`))) {
         return(NULL)
     }
+    # Injection can run a callback after dispatch that strips the dibble
+    # class by reference and then supplies the complete `:=` call, so the
+    # mutation target is rechecked before any of its targets or values run.
+    .require_mutation_target(data)
     environment <- rlang::quo_get_env(j_quo)
     arguments <- as.list(expression)[-1L]
     tags <- names(arguments)

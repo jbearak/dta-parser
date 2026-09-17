@@ -378,3 +378,18 @@ test_that("bracket assignments keep the supplied object when bindings change", {
     expect_identical(rlang::obj_address(result), rlang::obj_address(original))
     expect_identical(names(result), c("x", "y", "z"))
 })
+
+test_that("an injected := recheck rejects a target whose dibble class was stripped after dispatch", {
+    d <- dibble(x = 1:3)
+    alias <- d
+    payload <- function() {
+        .Call(dtatools:::C_dtatools_set_attribute, d, "class", c("tbl_df", "tbl", "data.frame"))
+        quote(y := x + 1L)
+    }
+    # testthat's quasi-capture would expand `!!` itself, so the injection
+    # is wrapped where only the bracket method's `enquo()` sees it.
+    run <- function() d[, !!payload()]
+    expect_error(run(), "must be a dibble")
+    expect_identical(names(alias), "x")
+    expect_identical(class(alias), c("tbl_df", "tbl", "data.frame"))
+})
