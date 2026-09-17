@@ -3525,7 +3525,7 @@
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
-          "sha256": "838bbd18a3e7f01e5993757003e636541013e394b14902bf95aea01ebe830fc5"
+          "sha256": "22532eeb2b22ba68ab94f461caab340c679d4d776ea63a52f055319cf6fc4844"
         },
         {
           "path": "tests/testthat/test-owned-reads.R",
@@ -4365,6 +4365,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "reading a column with $ or [[ leaves its handle private for the next write",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 1
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "a sparse write into a dictionary-backed Stata string allocates only its result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
           "warnings": 0
         },
         {
@@ -11060,6 +11076,16 @@
           "reason": "capabilities(profmem) is FALSE",
           "min_pass_before_skip": 0,
           "skip_message": "Reason: R was built without memory profiling",
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "a sparse write into a dictionary-backed Stata string allocates only its result",
+          "occurrence": 1,
+          "skip": "require",
+          "reason": "capabilities(profmem) is FALSE",
+          "min_pass_before_skip": 0,
+          "skip_message": "Reason: capabilities(\"profmem\") is not TRUE",
           "warnings": 0
         }
       ],

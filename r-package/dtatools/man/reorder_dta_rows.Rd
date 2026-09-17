@@ -15,9 +15,7 @@ Every row must be selected exactly once: an in-place reorder
 cannot change the row count.}
 }
 \value{
-\code{data}, invisibly. For a data.table the \code{sorted} marker and
-secondary indexes are cleared because a permutation invalidates
-them.
+\code{data}, invisibly.
 }
 \description{
 See \link{mutation-containers} for supported classes, grouping and conversion.
@@ -30,6 +28,5 @@ gathered columns are installed without copying, so compact numeric
 columns stay unmaterialized.
 }
 \details{
-Legacy tables with columns outside their physical list require assigned
-\code{\link[=reserve_columns]{reserve_columns()}} before this call. Reordering needs no spare slots.
+Reordering needs no spare slots.
 }
