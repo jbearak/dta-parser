@@ -81,6 +81,7 @@ slice_dta_rows <- function(data, rows) {
     structural <- c("names", "row.names", "class")
 
     if (data_table) {
+        .require_data_table()
         custom <- source_attributes[setdiff(
             names(source_attributes),
             c(structural, ".internal.selfref", "sorted", "index")
