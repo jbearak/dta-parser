@@ -175,9 +175,9 @@ fertility_first_result <- function(mismatches, internal = FALSE) {
          component = mismatches$component[[1L]], mismatches = mismatches)
 }
 
-fertility_compare_internal <- function(direct, rust_vectors, tolerance = 0) {
+fertility_compare_internal <- function(direct, eager, tolerance = 0) {
     fertility_first_result(
-        fertility_compare_pair(direct, rust_vectors, tolerance), internal = TRUE
+        fertility_compare_pair(direct, eager, tolerance), internal = TRUE
     )
 }
 

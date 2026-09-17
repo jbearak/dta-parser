@@ -368,10 +368,12 @@ test_that("all bundled fixtures agree with haven", {
     expect_gt(length(paths), 20L)
 
     for (path in paths) {
-        # The Rust-vector collector builds a tibble, so compare against a
-        # tibble read; the default dibble carries reference state on top.
+        # Compare against a tibble read; the default dibble carries reference
+        # state on top. The serial eager read is the storage-mode oracle.
         actual <- read_dta(path, output = "tibble")
-        rust_vectors <- dtatools:::.read_dta_rust_vectors(path)
+        eager <- read_dta(
+            path, output = "tibble", threads = 1L, use_numeric_altrep = FALSE
+        )
         expected <- without_haven_note_count(haven::read_dta(path))
         info <- basename(path)
         metadata <- dtatools:::.dta_metadata(normalizePath(path))
@@ -380,8 +382,7 @@ test_that("all bundled fixtures agree with haven", {
             as.character(metadata)
         )
 
-        expect_identical(actual, rust_vectors,
-                         info = paste(info, "direct and Rust-vector collectors"))
+        expect_identical(actual, eager, info = paste(info, "compact and eager"))
         expect_identical(dim(actual), dim(expected), info = info)
         expect_identical(names(actual), names(expected), info = info)
         expect_identical(attr(actual, "label", exact = TRUE),
@@ -465,11 +466,12 @@ test_that("dataset-note cardinality, ordering, and empty values are semantic", {
             variant, col_select = make, skip = 2, n_max = 3,
             output = "tibble"
         )
-        rust_vectors <- dtatools:::.read_dta_rust_vectors(
-            variant, col_select = make, skip = 2, n_max = 3
+        eager <- read_dta(
+            variant, col_select = make, skip = 2, n_max = 3,
+            output = "tibble", threads = 1L, use_numeric_altrep = FALSE
         )
 
-        expect_identical(actual, rust_vectors)
+        expect_identical(actual, eager)
         expect_identical(
             attr(actual, "notes", exact = TRUE), expected_notes[[name]]
         )
@@ -493,17 +495,18 @@ test_that("projection, renaming, and row bounds match haven", {
         n_max = 4,
         output = "tibble"
     )
-    rust_vectors <- dtatools:::.read_dta_rust_vectors(
+    eager <- read_dta(
         path,
         col_select = c(origin = foreign, make, price),
         skip = 5,
-        n_max = 4
+        n_max = 4,
+        output = "tibble", threads = 1L, use_numeric_altrep = FALSE
     )
     expected <- without_haven_note_count(
         haven::read_dta(path, skip = 5, n_max = 4)
     )
 
-    expect_identical(actual, rust_vectors)
+    expect_identical(actual, eager)
     expect_identical(names(actual), c("origin", "make", "price"))
     expect_equal(without_dta_storage(actual$origin), expected$foreign)
     expect_equal(without_dta_storage(actual$make), expected$make)
@@ -537,15 +540,13 @@ test_that("safe row-window inputs align with haven in both collectors", {
         actual <- do.call(
             read_dta, c(arguments, list(output = "tibble"))
         )
-        rust_vectors <- do.call(
-            dtatools:::.read_dta_rust_vectors, arguments
-        )
+        eager <- do.call(read_dta, c(arguments, list(output = "tibble", threads = 1L, use_numeric_altrep = FALSE)))
         expected <- without_haven_note_count(
             do.call(haven::read_dta, arguments)
         )
 
-        expect_identical(actual, rust_vectors,
-                         info = paste(name, "materialization"))
+        expect_identical(actual, eager,
+                         info = paste(name, "compact and eager"))
         expect_identical(
             without_dta_storage_data(actual), expected, info = name
         )
@@ -560,11 +561,11 @@ test_that("normalized windows cover empty data and zero-column projections", {
 
     for (n_max in list(0L, NA, Inf, -Inf, -1)) {
         actual <- read_dta(empty, n_max = n_max, output = "tibble")
-        rust_vectors <- dtatools:::.read_dta_rust_vectors(
-            empty, n_max = n_max
+        eager <- read_dta(
+            empty, n_max = n_max, output = "tibble", threads = 1L, use_numeric_altrep = FALSE
         )
         expected <- haven::read_dta(empty, n_max = n_max)
-        expect_identical(actual, rust_vectors)
+        expect_identical(actual, eager)
         expect_identical(without_dta_storage_data(actual), expected)
     }
 
@@ -581,13 +582,11 @@ test_that("normalized windows cover empty data and zero-column projections", {
         actual <- do.call(
             read_dta, c(arguments, list(output = "tibble"))
         )
-        rust_vectors <- do.call(
-            dtatools:::.read_dta_rust_vectors, arguments
-        )
+        eager <- do.call(read_dta, c(arguments, list(output = "tibble", threads = 1L, use_numeric_altrep = FALSE)))
         expected_rows <- do.call(
             haven::read_dta, c(list(path), windows[[name]])
         )
-        expect_identical(actual, rust_vectors, info = name)
+        expect_identical(actual, eager, info = name)
         expect_identical(nrow(actual), nrow(expected_rows), info = name)
         expect_identical(ncol(actual), 0L, info = name)
     }
@@ -603,7 +602,7 @@ test_that("repeated string patterns can diverge without changing values", {
 
     actual <- read_dta(path, output = "tibble")
     expect_identical(as.vector(actual$value), values)
-    expect_identical(actual, dtatools:::.read_dta_rust_vectors(path))
+    expect_identical(actual, read_dta(path, output = "tibble", threads = 1L, use_numeric_altrep = FALSE))
 })
 
 test_that("wide materialization uses bounded native protection", {
@@ -695,10 +694,10 @@ test_that("legacy and custom daily-date formats match haven", {
     haven::write_dta(input, path, version = 15)
 
     actual <- read_dta(path, output = "tibble")
-    rust_vectors <- dtatools:::.read_dta_rust_vectors(path)
+    eager <- read_dta(path, output = "tibble", threads = 1L, use_numeric_altrep = FALSE)
     expected <- haven::read_dta(path)
 
-    expect_identical(actual, rust_vectors)
+    expect_identical(actual, eager)
     for (name in names(formats)) {
         expect_identical(
             without_dta_storage(actual[[name]]), expected[[name]], info = name
@@ -732,11 +731,12 @@ test_that("legacy and custom daily-date formats match haven", {
         n_max = 2,
         output = "tibble"
     )
-    selected_rust_vectors <- dtatools:::.read_dta_rust_vectors(
+    selected_eager <- read_dta(
         path,
         col_select = all_of(selected_names),
         skip = 1,
-        n_max = 2
+        n_max = 2,
+        output = "tibble", threads = 1L, use_numeric_altrep = FALSE
     )
     selected_expected <- haven::read_dta(
         path,
@@ -744,7 +744,7 @@ test_that("legacy and custom daily-date formats match haven", {
         skip = 1,
         n_max = 2
     )
-    expect_identical(selected, selected_rust_vectors)
+    expect_identical(selected, selected_eager)
     expect_identical(
         without_dta_storage_data(selected), selected_expected
     )
@@ -768,14 +768,14 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
             actual <- read_dta(
                 path, encoding = encoding, output = "tibble"
             )
-            rust_vectors <- dtatools:::.read_dta_rust_vectors(
-                path, encoding = encoding
+            eager <- read_dta(
+                path, encoding = encoding, output = "tibble", threads = 1L, use_numeric_altrep = FALSE
             )
             expected <- haven::read_dta(path, encoding = encoding)
             info <- paste("release", version, encoding)
 
-            expect_identical(actual, rust_vectors,
-                             info = paste(info, "materialization"))
+            expect_identical(actual, eager,
+                             info = paste(info, "compact and eager"))
             expect_identical(without_dta_storage(actual$make), expected$make,
                              info = paste(info, "fixed string"))
             expect_identical(attr(actual, "label"), attr(expected, "label"),
@@ -807,11 +807,11 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
     latin1 <- read_dta(
         note_bytes, encoding = "ISO-8859-1", output = "tibble"
     )
-    expect_identical(cp1252, dtatools:::.read_dta_rust_vectors(
-        note_bytes, encoding = "CP1252"
+    expect_identical(cp1252, read_dta(
+        note_bytes, encoding = "CP1252", output = "tibble", threads = 1L, use_numeric_altrep = FALSE
     ))
-    expect_identical(latin1, dtatools:::.read_dta_rust_vectors(
-        note_bytes, encoding = "latin1"
+    expect_identical(latin1, read_dta(
+        note_bytes, encoding = "latin1", output = "tibble", threads = 1L, use_numeric_altrep = FALSE
     ))
     expect_true(startsWith(attr(cp1252, "notes")[[1L]], "\u20ac"))
     expect_true(startsWith(attr(latin1, "notes")[[1L]], "\u0080"))

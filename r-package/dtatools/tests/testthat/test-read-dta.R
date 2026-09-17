@@ -34,10 +34,8 @@ test_that("read_dta extends the haven-compatible public signature", {
 
 test_that("numeric ALTREP can be disabled explicitly or by option", {
     path <- fixture("all_types_v118.dta")
-    # The rust-vectors collector builds a tibble, and a dibble's reference
-    # state is never identical() across two reads, so the direct collector
-    # is compared as a tibble throughout this file.
-    reference <- dtatools:::.read_dta_rust_vectors(path)
+    # A dibble's reference state is never identical() across two reads, so
+    # reads are compared as tibbles throughout this file.
     explicit <- read_dta(
         path, use_numeric_altrep = FALSE, threads = 1L, output = "tibble"
     )
@@ -45,7 +43,6 @@ test_that("numeric ALTREP can be disabled explicitly or by option", {
         path, use_numeric_altrep = FALSE, threads = 4L, output = "tibble"
     )
 
-    expect_identical(explicit, reference)
     expect_identical(parallel, explicit)
     numeric_columns <- vapply(explicit, is.numeric, logical(1))
     expect_false(any(vapply(
@@ -71,9 +68,12 @@ test_that("numeric ALTREP can be disabled explicitly or by option", {
         use_numeric_altrep = FALSE,
         output = "tibble"
     )
-    expect_identical(empty, dtatools:::.read_dta_rust_vectors(
-        path, col_select = c(v_byte, v_double), n_max = 0
-    ))
+    expect_identical(names(empty), c("v_byte", "v_double"))
+    expect_identical(dim(empty), c(0L, 2L))
+    expect_identical(
+        vapply(empty, dta_storage_type, character(1)),
+        c(v_byte = "byte", v_double = "double")
+    )
     expect_false(any(vapply(
         empty, dtatools:::.is_numeric_altrep, logical(1)
     )))
@@ -719,26 +719,26 @@ test_that("an empty projection retains the selected row count", {
         path, col_select = character(), skip = 2, n_max = 3,
         output = "tibble"
     )
-    rust_vectors <- dtatools:::.read_dta_rust_vectors(
-        path, col_select = character(), skip = 2, n_max = 3
-    )
-    expect_identical(result, rust_vectors)
     expect_identical(dim(result), c(3L, 0L))
+    expect_identical(names(result), character())
+    expect_identical(attr(result, "label", exact = TRUE), "1978 automobile data")
 })
 
 
-test_that("the largest exact skip is deterministic in both collectors", {
+test_that("the largest exact skip is deterministic", {
     path <- fixture("auto_v118.dta")
     actual <- read_dta(
         path, col_select = c("make", "price"), skip = 2^53, n_max = 3,
         output = "tibble"
     )
-    rust_vectors <- dtatools:::.read_dta_rust_vectors(
-        path, col_select = c("make", "price"), skip = 2^53, n_max = 3
+    eager <- read_dta(
+        path, col_select = c("make", "price"), skip = 2^53, n_max = 3,
+        use_numeric_altrep = FALSE, output = "tibble"
     )
 
-    expect_identical(actual, rust_vectors)
+    expect_identical(actual, eager)
     expect_identical(dim(actual), c(0L, 2L))
+    expect_identical(names(actual), c("make", "price"))
 })
 
 
@@ -778,7 +778,7 @@ test_that("native materialization survives forced garbage collection", {
 
 test_that("native strings serialize and preserve copy-on-modify semantics", {
     path <- normalizePath(fixture("auto_v118.dta"))
-    reference <- dtatools:::.read_dta_rust_vectors(path)
+    reference <- read_dta(path, use_numeric_altrep = FALSE, output = "tibble")
 
     encoded <- serialize(read_dta(path, output = "tibble"), NULL)
     invisible(gc())
@@ -815,7 +815,7 @@ test_that("native strings serialize and preserve copy-on-modify semantics", {
 
 test_that("native numerics use width-aware storage with R value semantics", {
     path <- normalizePath(fixture("auto_v118.dta"))
-    reference <- dtatools:::.read_dta_rust_vectors(path)
+    reference <- read_dta(path, use_numeric_altrep = FALSE, output = "tibble")
     actual <- read_dta(path)
 
     numeric_columns <- vapply(reference, is.numeric, logical(1))
@@ -876,8 +876,7 @@ test_that("native numerics use width-aware storage with R value semantics", {
         path <- normalizePath(paths[[case]])
         actual <- read_dta(path)
         eager <- read_dta(path, use_numeric_altrep = FALSE, output = "tibble")
-        reference <- dtatools:::.read_dta_rust_vectors(path)
-        expect_identical(eager, reference, info = paste(name, "eager"))
+        reference <- eager
         storage <- attr(dtatools:::.dta_metadata(path), "dta_storage")
         numeric_indices <- which(storage != "character")
         if (startsWith(name, "missing_values_")) {
@@ -1028,17 +1027,19 @@ test_that("explicit encodings apply consistently to strL text", {
 
     cp1252 <- read_dta(path, encoding = "CP1252", output = "tibble")
     latin1 <- read_dta(path, encoding = "latin-1", output = "tibble")
-    expect_identical(cp1252, dtatools:::.read_dta_rust_vectors(
-        path, encoding = "windows_1252"
+    expect_identical(cp1252, read_dta(
+        path, encoding = "windows_1252", use_numeric_altrep = FALSE,
+        output = "tibble"
     ))
-    expect_identical(latin1, dtatools:::.read_dta_rust_vectors(
-        path, encoding = "ISO 8859 1"
+    expect_identical(latin1, read_dta(
+        path, encoding = "ISO 8859 1", use_numeric_altrep = FALSE,
+        output = "tibble"
     ))
     expect_true(startsWith(cp1252$long_text[[1L]], "\u20ac"))
     expect_true(startsWith(latin1$long_text[[1L]], "\u0080"))
 })
 
-test_that("explicit UTF-8 replaces malformed sequences in both collectors", {
+test_that("explicit UTF-8 replaces malformed sequences", {
     source <- fixture("auto_v118.dta")
     bytes <- readBin(source, "raw", file.info(source)$size)
     bytes <- replace_first_byte(bytes, "1978 automobile data", 0xff)
@@ -1048,10 +1049,10 @@ test_that("explicit UTF-8 replaces malformed sequences in both collectors", {
     writeBin(bytes, path)
 
     direct <- read_dta(path, encoding = "UTF-8", output = "tibble")
-    rust_vectors <- dtatools:::.read_dta_rust_vectors(
-        path, encoding = "UTF8"
+    eager <- read_dta(
+        path, encoding = "UTF8", use_numeric_altrep = FALSE, output = "tibble"
     )
-    expect_identical(direct, rust_vectors)
+    expect_identical(direct, eager)
     expect_true(startsWith(attr(direct, "label"), "\ufffd"))
     expect_true(startsWith(direct$make[[1L]], "\ufffd"))
 })
@@ -1081,8 +1082,6 @@ test_that("argument and native parse failures are ordinary R errors", {
     on.exit(unlink(corrupt), add = TRUE)
     writeBin(as.raw(1:8), corrupt)
     expect_error(read_dta(corrupt), "header|format|small|read|I/O", ignore.case = TRUE)
-    expect_error(dtatools:::.read_dta_rust_vectors(corrupt),
-                 "header|format|small|read|I/O", ignore.case = TRUE)
 })
 
 test_that("unsafe row-window coercions fail before parsing", {
@@ -1105,15 +1104,11 @@ test_that("unsafe row-window coercions fail before parsing", {
         list(arguments = list(n_max = TRUE), error = "integer or double"),
         list(arguments = list(n_max = NA_character_), error = "integer or double")
     )
-    readers <- list(read_dta, dtatools:::.read_dta_rust_vectors)
-
-    for (reader in readers) {
-        for (case in invalid) {
-            expect_error(
-                do.call(reader, c(list(missing_path), case$arguments)),
-                case$error
-            )
-        }
+    for (case in invalid) {
+        expect_error(
+            do.call(read_dta, c(list(missing_path), case$arguments)),
+            case$error
+        )
     }
 })
 

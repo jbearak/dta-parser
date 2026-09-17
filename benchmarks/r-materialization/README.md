@@ -1,11 +1,12 @@
 # R materialization benchmark
 
-This benchmark compares the two output collectors built into the same package:
+This benchmark compares the two materializations of one native read:
 
-- `dta-tools`: numeric cells are decoded into their final R vectors; distinct
-  strings are interned once and compact row indices are exposed through ALTREP.
-- `rust-vectors`: the reference path builds a complete `DtaData` value before
-  converting it into R vectors.
+- `compact`: the default `read_dta()`. Profiled byte, int, long, and float
+  columns retain their Stata storage through ALTREP; distinct strings are
+  interned once and compact row indices are exposed through ALTREP.
+- `eager`: `read_dta(use_numeric_altrep = FALSE)`, which creates eager R
+  double vectors while reading. The two reads must be `identical()`.
 
 The timing runner checks exact output identity, warms both paths, alternates
 execution order, runs garbage collection outside the timed region, and writes
@@ -35,7 +36,7 @@ Peak memory must be measured in fresh processes. On macOS:
 /usr/bin/time -l Rscript benchmarks/r-materialization/memory-worker.R \
   input.dta dtatools dimensions full
 /usr/bin/time -l Rscript benchmarks/r-materialization/memory-worker.R \
-  input.dta rust-vectors dimensions full
+  input.dta eager dimensions full
 /usr/bin/time -l Rscript benchmarks/r-materialization/memory-worker.R \
   input.dta haven dimensions full
 ```
@@ -50,7 +51,7 @@ row-level string-pointer vectors, or replace `full` with
 dimensions only, a distributed 1,024-row subset of every character column, a
 numeric-column scan, an all-character scan, and `object.size()`. It validates
 dimensions for every workload and validates non-`object.size()` checksums
-against the eager Rust-vector collector. Object size is intentionally allowed
+against the eager read. Object size is intentionally allowed
 to differ between representations. The runner writes every measured
 observation to TSV:
 

@@ -1,4 +1,9 @@
 .read_dta_default <- function(path, ...) read_dta(path, output = "tibble", ...)
+# The serial eager read is the oracle for every other thread count and
+# storage mode: compact and eager reads compare identical() as tibbles.
+.read_dta_eager <- function(path, ...) {
+    read_dta(path, output = "tibble", threads = 1L, use_numeric_altrep = FALSE, ...)
+}
 
 test_that("DTA default fills retain every storage width and missing code", {
     paths <- character()
@@ -6,7 +11,7 @@ test_that("DTA default fills retain every storage width and missing code", {
     for (name in c("missing_values_v115.dta", "missing_values_v118.dta")) {
         path <- fixture_with_all_numeric_missing_codes(name)
         paths <- c(paths, path)
-        expected <- dtatools:::.read_dta_rust_vectors(path, n_max = 27)
+        expected <- .read_dta_eager(path, n_max = 27)
         numeric_names <- names(expected)[vapply(expected, is.numeric, logical(1))]
         widths <- vapply(expected[numeric_names], dta_storage_type, character(1))
         for (compact in c(TRUE, FALSE)) {
@@ -35,13 +40,13 @@ test_that("DTA defaults preserve projected legacy and strL reads", {
                    "all_types_v115.dta", "all_types_v118.dta",
                    "strl_test_v118.dta")) {
         path <- fixture(name)
-        all <- dtatools:::.read_dta_rust_vectors(path)
+        all <- .read_dta_eager(path)
         selected <- rev(names(all))
-        expected <- dtatools:::.read_dta_rust_vectors(
+        expected <- .read_dta_eager(
             path, col_select = tidyselect::all_of(selected), skip = 1, n_max = 3
         )
-        expected_empty_rows <- dtatools:::.read_dta_rust_vectors(path, n_max = 0)
-        expected_empty_columns <- dtatools:::.read_dta_rust_vectors(
+        expected_empty_rows <- .read_dta_eager(path, n_max = 0)
+        expected_empty_columns <- .read_dta_eager(
             path, col_select = tidyselect::any_of("absent_column")
         )
         for (threads in c(0L, 1L, 4L)) {
@@ -74,8 +79,8 @@ test_that("DTA default ring completes multiple blocks with ordered strings", {
     path <- withr::local_tempfile(fileext = ".dta")
     save_dta(data, path)
     expect_gt(file.info(path)$size, 32 * 1024^2)
-    expected <- dtatools:::.read_dta_rust_vectors(path)
-    window <- dtatools:::.read_dta_rust_vectors(
+    expected <- .read_dta_eager(path)
+    window <- .read_dta_eager(
         path, col_select = c(f, s, l, i), skip = 8000, n_max = 10000
     )
     for (threads in c(1L, 4L)) {

@@ -1,8 +1,8 @@
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 2L || length(args) > 4L ||
-        !args[[2L]] %in% c("dtatools", "rust-vectors", "haven")) {
+        !args[[2L]] %in% c("dtatools", "eager", "haven")) {
     stop(paste(
-        "usage: Rscript memory-worker.R INPUT_DTA dtatools|rust-vectors|haven",
+        "usage: Rscript memory-worker.R INPUT_DTA dtatools|eager|haven",
         "[dimensions|object-size] [full|projected-eight-columns]"
     ))
 }
@@ -50,7 +50,7 @@ result <- if (identical(materialization, "dtatools")) {
 } else if (identical(materialization, "haven")) {
     do.call(haven::read_dta, read_arguments)
 } else {
-    do.call(dtatools:::.read_dta_rust_vectors, read_arguments)
+    do.call(dtatools::read_dta, c(read_arguments, list(use_numeric_altrep = FALSE)))
 }
 if (identical(workload, "object-size")) {
     cat(sprintf(

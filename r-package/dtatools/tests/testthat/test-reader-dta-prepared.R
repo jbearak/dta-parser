@@ -3,9 +3,9 @@
 }
 
 .read_prepared_dta_test <- function(prepared, columns = NULL, skip = 0,
-                                    n_max = Inf, direct = TRUE, compact = TRUE) {
+                                    n_max = Inf, compact = TRUE) {
     .Call(dtatools:::C_dtatools_read_prepared_dta, prepared, columns,
-          as.double(skip), as.double(n_max), direct, 1L, compact)
+          as.double(skip), as.double(n_max), 1L, compact)
 }
 
 test_that("prepared DTA metadata and observations retain one file identity", {
@@ -123,8 +123,9 @@ test_that("prepared selection preserves selector warnings and errors", {
         list(result = result, warnings = warnings)
     }
     actual <- capture_read()
-    expect_identical(actual$result, dtatools:::.read_dta_rust_vectors(
-        path, col_select = c(price, mpg)
+    expect_identical(actual$result, read_dta(
+        path, col_select = c(price, mpg), use_numeric_altrep = FALSE,
+        output = "tibble"
     ))
     expect_length(actual$warnings, 1L)
     expect_identical(actual$warnings[[1L]]$message, "selector diagnostic")
@@ -179,8 +180,9 @@ test_that("full DTA reads reuse decode plans without selection metadata discover
                     fixture(name), skip = window[[1L]], n_max = window[[2L]],
                     threads = 4L, use_numeric_altrep = compact, output = "tibble"
                 )
-                expected <- dtatools:::.read_dta_rust_vectors(
-                    fixture(name), skip = window[[1L]], n_max = window[[2L]]
+                expected <- read_dta(
+                    fixture(name), skip = window[[1L]], n_max = window[[2L]],
+                    threads = 1L, use_numeric_altrep = FALSE, output = "tibble"
                 )
                 expect_identical(read_full(), expected, info = paste(name, compact))
             }
@@ -206,9 +208,10 @@ test_that("prepared selections preserve legacy, wide, empty and labelled reads",
                         skip = window[[1L]], n_max = window[[2L]],
                         use_numeric_altrep = compact, threads = 4L, output = "tibble"
                     )
-                    expected <- dtatools:::.read_dta_rust_vectors(
+                    expected <- read_dta(
                         path, col_select = tidyselect::all_of(selected),
-                        skip = window[[1L]], n_max = window[[2L]]
+                        skip = window[[1L]], n_max = window[[2L]],
+                        threads = 1L, use_numeric_altrep = FALSE, output = "tibble"
                     )
                     actual <- read_selected()
                     expect_identical(actual, expected,
@@ -223,10 +226,11 @@ test_that("prepared selections preserve legacy, wide, empty and labelled reads",
 test_that("prepared proxies and renaming preserve collector labels", {
     for (name in c("auto_v118.dta", "all_types_v115.dta", "value_labels_v118.dta")) {
         path <- fixture(name)
-        expected <- dtatools:::.read_dta_rust_vectors(
+        expected <- read_dta(
             path, col_select = c(tidyselect::where(is.numeric),
                                  renamed = tidyselect::last_col()),
-            skip = 1, n_max = 3
+            skip = 1, n_max = 3, threads = 1L, use_numeric_altrep = FALSE,
+            output = "tibble"
         )
         for (compact in c(FALSE, TRUE)) {
             actual <- read_dta(

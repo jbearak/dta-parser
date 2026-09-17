@@ -4548,14 +4548,15 @@ if (dir.exists(file.path(checkout_library, "dtatools"))) {
             fertility_tile_read("direct", bounded_path, default_tile),
             dtatools::read_dta(
                 bounded_path, col_select = tidyselect::all_of("text"),
-                skip = 0L, n_max = 1L, .name_repair = "minimal"
+                skip = 0L, n_max = 1L, .name_repair = "minimal", output = "tibble"
             )
         ),
         identical(
             fertility_tile_read("rust", bounded_path, default_tile),
-            dtatools:::.read_dta_rust_vectors(
+            dtatools::read_dta(
                 bounded_path, col_select = tidyselect::all_of("text"),
-                skip = 0L, n_max = 1L, .name_repair = "minimal"
+                skip = 0L, n_max = 1L, .name_repair = "minimal",
+                output = "tibble", threads = 1L, use_numeric_altrep = FALSE
             )
         ),
         identical(

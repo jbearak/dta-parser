@@ -41,8 +41,7 @@ SEXP C_dtatools_metadata(
 }
 
 static void validate_dta_read_arguments(
-    SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
-    SEXP threads, SEXP numeric_altrep
+    SEXP columns, SEXP skip, SEXP n_max, SEXP threads, SEXP numeric_altrep
 ) {
     int all_columns = Rf_isNull(columns);
     if (!all_columns && TYPEOF(columns) != INTSXP) {
@@ -51,10 +50,6 @@ static void validate_dta_read_arguments(
     if (TYPEOF(skip) != REALSXP || XLENGTH(skip) != 1 ||
         TYPEOF(n_max) != REALSXP || XLENGTH(n_max) != 1) {
         Rf_error("internal row bounds must be numeric scalars");
-    }
-    if (TYPEOF(direct_to_r) != LGLSXP || XLENGTH(direct_to_r) != 1 ||
-        LOGICAL(direct_to_r)[0] == NA_LOGICAL) {
-        Rf_error("internal materialization selector must be logical");
     }
     if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
         INTEGER(threads)[0] < 0) {
@@ -67,13 +62,13 @@ static void validate_dta_read_arguments(
 }
 
 SEXP C_dtatools_read(
-    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
-    SEXP threads, SEXP numeric_altrep, SEXP encoding
+    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP threads,
+    SEXP numeric_altrep, SEXP encoding
 ) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
         Rf_error("`file` must be one non-missing path");
     }
-    validate_dta_read_arguments(columns, skip, n_max, direct_to_r, threads, numeric_altrep);
+    validate_dta_read_arguments(columns, skip, n_max, threads, numeric_altrep);
     int all_columns = Rf_isNull(columns);
     char *error = NULL;
     SEXP result = dtatools_read_rust(
@@ -83,7 +78,6 @@ SEXP C_dtatools_read(
         all_columns,
         REAL(skip)[0],
         REAL(n_max)[0],
-        LOGICAL(direct_to_r)[0],
         INTEGER(threads)[0],
         LOGICAL(numeric_altrep)[0],
         optional_encoding(encoding),
@@ -135,20 +129,20 @@ SEXP C_dtatools_prepare_dta_selection(SEXP path, SEXP encoding) {
 }
 
 SEXP C_dtatools_read_prepared_dta(
-    SEXP prepared, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
-    SEXP threads, SEXP numeric_altrep
+    SEXP prepared, SEXP columns, SEXP skip, SEXP n_max, SEXP threads,
+    SEXP numeric_altrep
 ) {
     validate_prepared_dta(prepared);
     void *owner = R_ExternalPtrAddr(prepared);
     if (owner == NULL) Rf_error("prepared DTA read is closed");
-    validate_dta_read_arguments(columns, skip, n_max, direct_to_r, threads, numeric_altrep);
+    validate_dta_read_arguments(columns, skip, n_max, threads, numeric_altrep);
     int all_columns = Rf_isNull(columns);
     char *error = NULL;
     SEXP result = dtatools_read_prepared_dta_rust(
         owner, all_columns ? NULL : INTEGER(columns),
         all_columns ? 0 : (size_t) XLENGTH(columns), all_columns,
-        REAL(skip)[0], REAL(n_max)[0], LOGICAL(direct_to_r)[0],
-        INTEGER(threads)[0], LOGICAL(numeric_altrep)[0], &error
+        REAL(skip)[0], REAL(n_max)[0], INTEGER(threads)[0],
+        LOGICAL(numeric_altrep)[0], &error
     );
     if (result == NULL) fail_from_rust(error);
     return result;

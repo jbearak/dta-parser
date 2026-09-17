@@ -28,28 +28,30 @@ if (!identical(loaded_library, benchmark_library)) {
     stop("dtatools was not loaded from DTATOOLS_BENCH_LIB")
 }
 
+# Both arms read as tibbles: a dibble's reference state is never identical()
+# across two reads, and the comparison here is the numeric materialization.
 read_one <- function(materialization) {
-    if (identical(materialization, "direct-r")) {
-        dtatools::read_dta(path)
+    if (identical(materialization, "compact")) {
+        dtatools::read_dta(path, output = "tibble")
     } else {
-        dtatools:::.read_dta_rust_vectors(path)
+        dtatools::read_dta(path, output = "tibble", use_numeric_altrep = FALSE)
     }
 }
 
-direct <- read_one("direct-r")
-rust_vectors <- read_one("rust-vectors")
-stopifnot(identical(direct, rust_vectors))
-expected_dim <- dim(direct)
-rm(direct, rust_vectors)
+compact <- read_one("compact")
+eager <- read_one("eager")
+stopifnot(identical(compact, eager))
+expected_dim <- dim(compact)
+rm(compact, eager)
 invisible(gc())
 
 rows <- vector("list", iterations * 2L)
 position <- 1L
 for (iteration in seq_len(iterations)) {
     order <- if (iteration %% 2L) {
-        c("direct-r", "rust-vectors")
+        c("compact", "eager")
     } else {
-        c("rust-vectors", "direct-r")
+        c("eager", "compact")
     }
     for (materialization in order) {
         invisible(gc())

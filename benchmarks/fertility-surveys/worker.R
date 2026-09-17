@@ -45,11 +45,13 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
     if (identical(tile$type, "metadata")) {
         frame <- if (identical(reader, "direct")) {
             dtatools::read_dta(
-                path, encoding = encoding, n_max = 0L, .name_repair = "minimal"
+                path, encoding = encoding, n_max = 0L, .name_repair = "minimal",
+                output = "tibble"
             )
         } else if (identical(reader, "rust")) {
-            dtatools:::.read_dta_rust_vectors(
-                path, encoding = encoding, n_max = 0L, .name_repair = "minimal"
+            dtatools::read_dta(
+                path, encoding = encoding, n_max = 0L, .name_repair = "minimal",
+                output = "tibble", threads = 1L, use_numeric_altrep = FALSE
             )
         } else {
             haven::read_dta(
@@ -60,12 +62,13 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
         shape <- if (identical(reader, "direct")) {
             dtatools::read_dta(
                 path, encoding = encoding, col_select = character(),
-                .name_repair = "minimal"
+                .name_repair = "minimal", output = "tibble"
             )
         } else if (identical(reader, "rust")) {
-            dtatools:::.read_dta_rust_vectors(
+            dtatools::read_dta(
                 path, encoding = encoding, col_select = character(),
-                .name_repair = "minimal"
+                .name_repair = "minimal",
+                output = "tibble", threads = 1L, use_numeric_altrep = FALSE
             )
         } else {
             NULL
@@ -81,13 +84,14 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
         if (identical(reader, "direct")) {
             return(dtatools::read_dta(
                 path, encoding = encoding, skip = tile$skip, n_max = tile$n_max,
-                .name_repair = "minimal"
+                .name_repair = "minimal", output = "tibble"
             ))
         }
         if (identical(reader, "rust")) {
-            return(dtatools:::.read_dta_rust_vectors(
+            return(dtatools::read_dta(
                 path, encoding = encoding, skip = tile$skip, n_max = tile$n_max,
-                .name_repair = "minimal"
+                .name_repair = "minimal",
+                output = "tibble", threads = 1L, use_numeric_altrep = FALSE
             ))
         }
         return(haven::read_dta(
@@ -98,12 +102,14 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
     if (identical(reader, "direct")) {
         dtatools::read_dta(
             path, encoding = encoding, col_select = tidyselect::all_of(columns),
-            skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal"
+            skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal",
+            output = "tibble"
         )
     } else if (identical(reader, "rust")) {
-        dtatools:::.read_dta_rust_vectors(
+        dtatools::read_dta(
             path, encoding = encoding, col_select = tidyselect::all_of(columns),
-            skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal"
+            skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal",
+            output = "tibble", threads = 1L, use_numeric_altrep = FALSE
         )
     } else {
         haven::read_dta(

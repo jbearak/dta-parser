@@ -42,7 +42,7 @@ keys <- c(
     "dataset", "target_bytes", "actual_bytes", "dataset_sha256", "rows",
     "columns", "workload", "provenance_id", "build_provenance_id"
 )
-implementations <- c("direct-r", "rust-vectors", "haven")
+implementations <- c("direct-r", "eager-r", "haven")
 workloads <- c("full", "projected-eight-columns")
 datasets <- c("100mb", "1gb")
 required <- c(
@@ -172,20 +172,20 @@ rows <- lapply(groups, function(group) {
         direct_r_p05_s = statistics[["direct-r"]][["p05_s"]],
         direct_r_p95_s = statistics[["direct-r"]][["p95_s"]],
         direct_r_median_gb_s = statistics[["direct-r"]][["median_gb_s"]],
-        rust_vectors_median_s = statistics[["rust-vectors"]][["median_s"]],
-        rust_vectors_p05_s = statistics[["rust-vectors"]][["p05_s"]],
-        rust_vectors_p95_s = statistics[["rust-vectors"]][["p95_s"]],
-        rust_vectors_median_gb_s = statistics[["rust-vectors"]][["median_gb_s"]],
+        eager_r_median_s = statistics[["eager-r"]][["median_s"]],
+        eager_r_p05_s = statistics[["eager-r"]][["p05_s"]],
+        eager_r_p95_s = statistics[["eager-r"]][["p95_s"]],
+        eager_r_median_gb_s = statistics[["eager-r"]][["median_gb_s"]],
         haven_median_s = statistics[["haven"]][["median_s"]],
         haven_p05_s = statistics[["haven"]][["p05_s"]],
         haven_p95_s = statistics[["haven"]][["p95_s"]],
         haven_median_gb_s = statistics[["haven"]][["median_gb_s"]],
-        direct_r_to_rust_vectors_time_ratio =
+        direct_r_to_eager_r_time_ratio =
             statistics[["direct-r"]][["median_s"]] /
-            statistics[["rust-vectors"]][["median_s"]],
+            statistics[["eager-r"]][["median_s"]],
         direct_r_to_haven_time_ratio = statistics[["direct-r"]][["median_s"]] /
             statistics[["haven"]][["median_s"]],
-        rust_vectors_to_haven_time_ratio = statistics[["rust-vectors"]][["median_s"]] /
+        eager_r_to_haven_time_ratio = statistics[["eager-r"]][["median_s"]] /
             statistics[["haven"]][["median_s"]],
         check.names = FALSE
     )
