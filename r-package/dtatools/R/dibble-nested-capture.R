@@ -22,7 +22,6 @@
         }
         frame <- is.data.frame(value)
         dibble <- frame && is_dibble(value)
-        reference <- frame && inherits(value, "dtatools_ref_data")
         if (dibble) .as_mutation_data(value, allow_grouped = TRUE)
         columns <- if (frame) .data_columns(value) else .plain_data_columns(value)
         metadata <- attributes(value)
@@ -38,9 +37,7 @@
         # All slots are replaced through the existing native setter.
         result <- .Call(C_dtatools_metadata_copy, columns)
         attributes(result) <- metadata
-        if (dibble || (reference && !inherits(result, "data.table"))) {
-            result <- .reserve_column_capacity(result)
-        }
+        if (dibble) result <- .reserve_column_capacity(result)
         if (frame && inherits(result, "data.table")) result <- data.table::setalloccol(result)
         entry <- new.env(parent = emptyenv())
         entry$source <- value
@@ -60,8 +57,7 @@
             .Call(C_dtatools_set_attribute, result, name, capture(metadata[[name]]))
         }
         if (dibble) .validate_group_metadata(result)
-        if (dibble || reference) .mark_reference_data(result,
-            .new_reference_state(result, dibble = dibble))
+        if (dibble) .mark_reference_data(result, .new_reference_state(result))
         entry$active <- FALSE
         result
     }

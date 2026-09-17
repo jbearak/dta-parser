@@ -547,21 +547,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     physical
 }
 
-.reference_names <- function(data) {
-    state <- .reference_state(data)
-    physical <- attr(data, "names", exact = TRUE)
-    if (!.has_column_overlay(data)) return(physical)
-    if (isTRUE(state$physical_overlay)) physical <- state$physical_names
-    if (state$generated_count == 0L) return(physical)
-    result <- c(physical, character(state$generated_count))
-    node <- state$generated_head
-    for (index in seq_len(state$generated_count)) {
-        result[[state$physical_count + index]] <- node$name
-        node <- node$following
-    }
-    result
-}
-
 .column_access <- function(data) {
     list(data = data, names = attr(data, "names", exact = TRUE))
 }
@@ -576,90 +561,25 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 .native_data_column_location <- function(access, index) index
 
 .data_columns <- function(data) {
-    state <- .reference_state(data)
-    if (!.has_column_overlay(data)) {
-        physical <- .plain_data_columns(data)
-        names(physical) <- attr(data, "names", exact = TRUE)
-        return(physical)
-    }
-    columns <- vector("list", state$physical_count + state$generated_count)
-    if (isTRUE(state$physical_overlay)) {
-        physical_names <- state$physical_names
-        for (index in seq_len(state$physical_count)) {
-            columns[[index]] <- state$columns[[physical_names[[index]]]]
-        }
-    } else {
-        physical_names <- attr(data, "names", exact = TRUE)
-        columns[seq_len(state$physical_count)] <- .plain_data_columns(data)
-    }
-    names <- c(physical_names, character(state$generated_count))
-    node <- state$generated_head
-    for (index in seq_len(state$generated_count)) {
-        location <- state$physical_count + index
-        names[[location]] <- node$name
-        columns[[location]] <- state$columns[[node$name]]
-        node <- node$following
-    }
-    names(columns) <- names
-    columns
+    physical <- .plain_data_columns(data)
+    names(physical) <- attr(data, "names", exact = TRUE)
+    physical
 }
 
-.new_reference_state <- function(data, dibble = FALSE) {
+# Every dibble's columns are physical: the reference state records only
+# the shape and base classes the next snapshot needs.
+.new_reference_state <- function(data) {
     state <- new.env(parent = emptyenv())
     # Do not retain column vectors. Extra references would hide whether a
     # physical vector is shared with an ordinary R copy at the write boundary.
-    state$physical_overlay <- FALSE
     state$physical_count <- length(data)
-    state$generated_count <- 0L
     state$nrow <- abs(.row_names_info(data, 2L))
     state$classes <- .reference_base_classes(class(data))
-    state$dibble <- dibble
     state
 }
 
 .reference_state_valid <- function(data) {
     isTRUE(.Call(C_dtatools_reference_state_valid, data))
-}
-
-.new_structural_reference_state <- function(columns, row_count, classes,
-                                            dibble = FALSE) {
-    state <- new.env(parent = emptyenv())
-    column_store <- new.env(hash = TRUE, parent = emptyenv())
-    column_names <- names(columns)
-    for (index in seq_along(column_names)) {
-        column_store[[column_names[[index]]]] <- columns[[index]]
-    }
-    state$columns <- column_store
-    state$locations <- NULL
-    state$physical_names <- column_names
-    state$physical_overlay <- TRUE
-    state$physical_count <- length(columns)
-    state$generated_count <- 0L
-    state$generated_head <- NULL
-    state$generated_tail <- NULL
-    state$nrow <- row_count
-    state$classes <- .reference_base_classes(classes)
-    state$dibble <- dibble
-    state
-}
-
-.append_generated_column <- function(state, name, column) {
-    node <- new.env(parent = emptyenv())
-    node$name <- name
-    node$following <- NULL
-    if (state$generated_count == 0L) {
-        state$generated_head <- node
-    } else {
-        state$generated_tail$following <- node
-    }
-    state$generated_tail <- node
-    state$generated_count <- state$generated_count + 1L
-    if (is.null(state$columns)) state$columns <- new.env(parent = emptyenv())
-    state$columns[[name]] <- column
-    if (is.environment(state$locations)) {
-        state$locations[[name]] <- state$physical_count + state$generated_count
-    }
-    invisible(NULL)
 }
 
 .reserve_column_capacity <- function(x, n = getOption("dtatools.alloccol", 1024L)) {
@@ -673,41 +593,25 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     setdiff(classes, c("dibble", "dtatools_ref_data"))
 }
 
-.reference_classes <- function(classes, dibble = FALSE) {
-    c(if (dibble) "dibble", "dtatools_ref_data",
-      .reference_base_classes(classes))
+.reference_classes <- function(classes) {
+    c("dibble", "dtatools_ref_data", .reference_base_classes(classes))
 }
 
 # The native marker records a non-owning identity token. Serialization clears
 # it; validation never follows it or repairs a shared environment in place.
 .mark_reference_data <- function(data, state) {
-    classes <- .reference_classes(state$classes, isTRUE(state$dibble))
+    classes <- .reference_classes(state$classes)
     .Call(C_dtatools_mark_reference_data, data, state, classes)
 }
 
 .reference_snapshot <- function(data) {
-    state <- .reference_state(data)
-    if (is.null(state) && !any(class(data) %in%
-        c("dibble", "dtatools_ref_data"))) return(data)
-    if (!.has_column_overlay(data)) {
-        # A fresh dibble: every column is physical, so the snapshot is the
-        # object minus its mark. Dropping the attribute shallow-copies the
-        # list, which is what every `[` and dplyr call on a read result pays.
-        attr(data, ".dtatools_ref_state") <- NULL
-        class(data) <- .reference_base_classes(class(data))
-        return(data)
-    }
-    result <- .data_columns(data)
-    source_attributes <- attributes(data)
-    source_attributes$.dtatools_ref_state <- NULL
-    source_attributes$class <- .reference_base_classes(state$classes)
-    source_attributes$names <- names(result)
-    automatic_rows <- .row_names_info(data, 1L) < 0L
-    attributes(result) <- source_attributes
-    if (automatic_rows) {
-        attr(result, "row.names") <- .set_row_names(state$nrow)
-    }
-    result
+    if (!any(class(data) %in% c("dibble", "dtatools_ref_data"))) return(data)
+    # Every column is physical, so the snapshot is the object minus its
+    # mark. Dropping the attribute shallow-copies the list, which is what
+    # every `[` and dplyr call on a read result pays.
+    attr(data, ".dtatools_ref_state") <- NULL
+    class(data) <- .reference_base_classes(class(data))
+    data
 }
 
 # Value helpers accept grouped tibbles; structural helpers require ungrouped
@@ -718,17 +622,17 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                               private_views = FALSE) {
     .validate_mutation_container(data, allow_grouped, allow_rowwise)
     state <- .reference_state(data)
-    names <- .reference_names(data)
+    names <- attr(data, "names", exact = TRUE)
     if (is.null(names) || anyNA(names) || any(names == "") ||
         anyDuplicated(names)) {
         stop("`data` must have unique, non-missing column names; duplicated names are ambiguous", call. = FALSE)
     }
-    row_count <- if (.has_column_overlay(data)) state$nrow else abs(.row_names_info(data, 2L))
+    row_count <- abs(.row_names_info(data, 2L))
     if (.data_table_container(data) && length(data) == 0L && row_count != 0L) {
         stop("An empty data.table must have zero rows; assign `data <- as_dibble(data)` to convert its public contents",
              call. = FALSE)
     }
-    columns <- if (private_views && !.has_column_overlay(data)) {
+    columns <- if (private_views) {
         .Call(C_dtatools_mutation_views, data)
     } else .data_columns(data)
     sizes <- attr(columns, ".dtatools_mutation_sizes", exact = TRUE)
@@ -759,8 +663,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # execute quasiquotation callbacks between those two validation moments.
 .mutation_fast_shape <- function(data) {
     .validate_mutation_container(data, allow_grouped = TRUE, allow_rowwise = FALSE)
-    if (.ordinary_data_table(data) || inherits(data, "grouped_df") ||
-        .has_column_overlay(data)) return(NULL)
+    if (.ordinary_data_table(data) || inherits(data, "grouped_df")) return(NULL)
     rows <- abs(.row_names_info(data, 2L))
     if (isTRUE(.Call(C_dtatools_mutation_shape, data, rows))) rows else NULL
 }
@@ -823,7 +726,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (!.Call(C_dtatools_append_data_column, data, name, column)) {
             stop("internal error: prepared table cannot append a column")
         }
-        .mark_reference_data(data, .new_reference_state(data, dibble = is_dibble(data)))
+        .mark_reference_data(data, .new_reference_state(data))
     })
     data
 }
@@ -2120,7 +2023,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (!appended) {
             stop("internal error: prepared table cannot append a column")
         }
-        .mark_reference_data(data, .new_reference_state(data, dibble = is_dibble(data)))
+        .mark_reference_data(data, .new_reference_state(data))
     })
     invisible(data)
 }
@@ -2412,17 +2315,16 @@ copy_data <- function(data) {
     attributes(columns) <- copied_attributes
     if (data_table) return(data.table::setalloccol(columns,
         n = .validate_alloccol(getOption("dtatools.alloccol", 1024L), length(columns))))
-    if (is_dibble(data)) return(.as_dibble(columns, "copy_data()"))
-    .reserve_column_capacity(columns)
+    .as_dibble(columns, "copy_data()")
 }
 
 .reference_column <- function(data, name) {
-    value <- if (.has_column_overlay(data)) .data_columns(data)[[name]] else .subset2(data, name)
+    value <- .subset2(data, name)
     if (is.null(value)) NULL else list(value)
 }
 
 #' @export
-`$.dtatools_ref_data` <- function(x, name) {
+`$.dibble` <- function(x, name) {
     found <- .reference_column(x, as.character(name))
     if (!is.null(found)) return(found[[1L]])
     call <- sys.call()
@@ -2432,12 +2334,12 @@ copy_data <- function(data) {
 }
 
 #' @export
-`[[.dtatools_ref_data` <- function(x, i, ..., exact = TRUE) {
+`[[.dibble` <- function(x, i, ..., exact = TRUE) {
     if (...length() == 0L && isTRUE(exact) && length(i) == 1L) {
         name <- if (is.character(i)) {
             i
         } else if (is.numeric(i) && !is.na(i)) {
-            names <- .reference_names(x)
+            names <- attr(x, "names", exact = TRUE)
             if (i >= 1 && i <= length(names)) names[[i]] else NULL
         } else {
             NULL
@@ -2450,43 +2352,36 @@ copy_data <- function(data) {
     .reference_snapshot(x)[[i, ..., exact = exact]]
 }
 
-# `[.dtatools_ref_data` is defined in dibble.R beside its documentation:
-# it is the bracket mutation entry as well as the snapshot delegate.
+# `[.dibble` is defined in dibble.R beside its documentation: it is the
+# bracket mutation entry as well as the snapshot delegate.
 
 #' @export
-names.dtatools_ref_data <- function(x) {
-    .reference_names(x)
+length.dibble <- function(x) {
+    .Call(C_dtatools_physical_column_count, x)
 }
 
 #' @export
-length.dtatools_ref_data <- function(x) {
-    if (.has_column_overlay(x)) length(.reference_names(x)) else
-        .Call(C_dtatools_physical_column_count, x)
+dim.dibble <- function(x) {
+    c(abs(.row_names_info(x, 2L)), length(x))
 }
 
 #' @export
-dim.dtatools_ref_data <- function(x) {
-    rows <- if (.has_column_overlay(x)) .reference_state(x)$nrow else abs(.row_names_info(x, 2L))
-    c(rows, length(x))
-}
-
-#' @export
-dimnames.dtatools_ref_data <- function(x) {
+dimnames.dibble <- function(x) {
     list(row.names(.reference_snapshot(x)), names(x))
 }
 
 #' @export
-as.data.frame.dtatools_ref_data <- function(x, ...) {
+as.data.frame.dibble <- function(x, ...) {
     as.data.frame(.reference_snapshot(x), ...)
 }
 
 #' @export
-as.matrix.dtatools_ref_data <- function(x, ...) {
+as.matrix.dibble <- function(x, ...) {
     as.matrix(.reference_snapshot(x), ...)
 }
 
 #' @export
-as.list.dtatools_ref_data <- function(x, ...) {
+as.list.dibble <- function(x, ...) {
     as.list(.data_columns(x), ...)
 }
 
@@ -2537,37 +2432,24 @@ as.list.dtatools_ref_data <- function(x, ...) {
         is.call(call) && is.function(call[[1L]])
 }
 
-#' @export
-print.dtatools_ref_data <- function(x, ...) {
-    if (.skip_bracket_autoprint(x, sys.nframe(), sys.call(1L))) {
-        return(invisible(x))
-    }
-    if (is_dibble(x)) {
-        .print_dibble(x, ...)
-    } else {
-        print(.reference_snapshot(x), ...)
-    }
-    invisible(x)
-}
-
 # Ordinary replacement follows R's copy-and-rebind semantics. Type and
 # validate the snapshot, then isolate every column before closing the result.
 #' @export
-`$<-.dtatools_ref_data` <- function(x, name, value) {
+`$<-.dibble` <- function(x, name, value) {
     result <- .reference_snapshot(x)
     result[[name]] <- value
     .install_replacement(x, result, value, "`$<-`")
 }
 
 #' @export
-`[[<-.dtatools_ref_data` <- function(x, i, ..., value) {
+`[[<-.dibble` <- function(x, i, ..., value) {
     result <- .reference_snapshot(x)
     result[[i, ...]] <- value
     .install_replacement(x, result, value, "`[[<-`")
 }
 
 #' @export
-`[<-.dtatools_ref_data` <- function(x, i, j, ..., value) {
+`[<-.dibble` <- function(x, i, j, ..., value) {
     call <- sys.call()
     call[[1L]] <- quote(`[<-`)
     # `data["s"] <- NULL` deletes a column; `call$value <- NULL` would
@@ -2588,16 +2470,12 @@ print.dtatools_ref_data <- function(x, ...) {
         empty <- is.symbol(call[[index]]) && !nzchar(as.character(call[[index]]))
         if (!empty) call[index] <- list(eval(call[[index]], parent.frame()))
     }
-    result <- if (is_dibble(x)) {
-        .bracket_replace_promoting(snapshot, call, parent.frame())
-    } else {
-        eval(call, parent.frame())
-    }
+    result <- .bracket_replace_promoting(snapshot, call, parent.frame())
     .install_replacement(x, result, value, "`[<-`", envir = parent.frame())
 }
 
 .install_replacement <- function(x, result, value, caller, envir = parent.frame()) {
-    if (!is_dibble(x) || !is.data.frame(result)) return(result)
+    if (!is.data.frame(result)) return(result)
     if (nrow(result) != nrow(x)) {
         stop(sprintf("%s cannot change a dibble's row count", caller), call. = FALSE)
     }
@@ -2704,40 +2582,39 @@ print.dtatools_ref_data <- function(x, ...) {
 
 # `names(d)[1] <- "k"` returns a renamed copy.
 #' @export
-`names<-.dtatools_ref_data` <- function(x, value) {
+`names<-.dibble` <- function(x, value) {
     result <- .reference_snapshot(x)
     names(result) <- value
     .install_replacement(x, result, NULL, "`names<-`")
 }
 
 #' @export
-`dimnames<-.dtatools_ref_data` <- function(x, value) {
+`dimnames<-.dibble` <- function(x, value) {
     result <- .reference_snapshot(x)
     dimnames(result) <- value
     .install_replacement(x, result, NULL, "`dimnames<-`")
 }
 
 #' @export
-`row.names<-.dtatools_ref_data` <- function(x, value) {
+`row.names<-.dibble` <- function(x, value) {
     result <- .reference_snapshot(x)
     row.names(result) <- value
     .install_replacement(x, result, NULL, "`row.names<-`")
 }
 
 #' @export
-as_tibble.dtatools_ref_data <- function(x, ...) {
+as_tibble.dibble <- function(x, ...) {
     tibble::as_tibble(.reference_snapshot(x), ...)
 }
 
 #' @export
-vec_proxy.dtatools_ref_data <- function(x, ...) {
+vec_proxy.dibble <- function(x, ...) {
     vctrs::vec_proxy(.reference_snapshot(x), ...)
 }
 
 #' @export
-#' @export
-vec_restore.dtatools_ref_data <- function(x, to, ...) {
-    grouping <- if (is_dibble(to)) .native_group_method_missing(
+vec_restore.dibble <- function(x, to, ...) {
+    grouping <- .native_group_method_missing(
         to, "vec_restore", envir = environment(), registry = asNamespace("vctrs"))
     if (is.null(grouping)) {
         return(.close_dibble(to, vctrs::vec_restore(x, .reference_snapshot(to), ...)))
@@ -2769,39 +2646,25 @@ vec_restore.dtatools_ref_data <- function(x, to, ...) {
 }
 
 #' @export
-dplyr_reconstruct.dtatools_ref_data <- function(data, template) {
-    if (is_dibble(template)) return(.reconstruct_dibble(data, template))
-    metadata <- attributes(.reference_snapshot(template))
-    metadata$names <- names(data)
-    metadata$row.names <- .row_names_info(data, 0L)
-    result <- .data_columns(data)
-    attributes(result) <- metadata
-    .restore_group_metadata(result, template)
+dplyr_reconstruct.dibble <- function(data, template) {
+    .reconstruct_dibble(data, template)
 }
 
 # dplyr's grouped and rowwise row slicing, which `semi_join()`,
 # `anti_join()`, and the `rows_*()` verbs use, builds its result without
 # passing through `dplyr_reconstruct()`, so the dibble closes here.
 #' @export
-dplyr_row_slice.dtatools_ref_data <- function(data, i, ..., preserve = FALSE) {
+dplyr_row_slice.dibble <- function(data, i, ..., preserve = FALSE) {
     .as_mutation_data(data, allow_grouped = TRUE)
     locations <- vctrs::vec_as_location(i, n = nrow(data), missing = "propagate", arg = "i")
     context <- .begin_dibble_result(data, "dplyr_row_slice()", "rows")
     row_names <- .row_slice_names(context, locations)
-    if (!is_dibble(data)) {
-        result <- .ungrouped_result_frame(
-            .gather_dta_columns(context$columns, locations), context$metadata, row_names)
-        return(.restore_group_metadata(result, data, "slice", locations, preserve))
-    }
     .dibble_take_rows(context, locations, data, "slice", preserve, row_names)
 
 }
 
 #' @export
-select.dtatools_ref_data <- function(.data, ...) {
-    if (!is_dibble(.data)) {
-        return(dplyr::select(.reference_snapshot(.data), ...))
-    }
+select.dibble <- function(.data, ...) {
     context <- .begin_dibble_result(.data, "select()", "columns")
     locations <- tidyselect::eval_select(rlang::expr(c(...)), .data)
     locations <- .dibble_ensure_group_columns(context, locations)
@@ -2814,126 +2677,101 @@ select.dtatools_ref_data <- function(.data, ...) {
     eval(call, environment)
 }
 
-# Base and dplyr methods share one boundary: reference state is
-# materialized to a shallow, complete data-frame snapshot before the
-# ordinary implementation runs. The result follows copy-on-modify. A
-# dibble input closes the result back into a dibble, so a dataset
-# operation on a dibble yields a dibble; any other reference frame gets
-# the ordinary result.
-.closed_reference_verb <- function(data, call, generic, environment) {
-    .close_dibble(data, .reference_delegate(data, call, generic, environment))
-}
-
+# Base and dplyr methods share one boundary: the dibble is materialized
+# to a shallow, complete data-frame snapshot before the ordinary
+# implementation runs. The result follows copy-on-modify and is closed
+# back into a dibble, so a dataset operation on a dibble yields a dibble.
 #' @export
-with.dtatools_ref_data <- function(data, expr, ...) {
+with.dibble <- function(data, expr, ...) {
     .reference_delegate(data, sys.call(), base::with, parent.frame())
 }
 
 #' @export
-within.dtatools_ref_data <- function(data, expr, ...) {
+within.dibble <- function(data, expr, ...) {
     .typed_reference_verb(
         data, sys.call(), base::within, parent.frame(), "`within()`"
     )
 }
 
 #' @export
-subset.dtatools_ref_data <- function(x, ...) {
-    .closed_reference_verb(x, sys.call(), base::subset, parent.frame())
+subset.dibble <- function(x, ...) {
+    .close_dibble(x, .reference_delegate(x, sys.call(), base::subset, parent.frame()))
 }
 
 #' @export
-transform.dtatools_ref_data <- function(`_data`, ...) {
+transform.dibble <- function(`_data`, ...) {
     .typed_reference_verb(
         `_data`, sys.call(), base::transform, parent.frame(), "`transform()`"
     )
 }
 
 #' @export
-arrange.dtatools_ref_data <- function(.data, ..., .by_group = FALSE, .locale = NULL) {
-    if (is_dibble(.data)) return(.dibble_arrange(
-        .data, rlang::enquos(...), .by_group, .locale))
-    .closed_reference_verb(.data, sys.call(), dplyr::arrange, parent.frame())
+arrange.dibble <- function(.data, ..., .by_group = FALSE, .locale = NULL) {
+    .dibble_arrange(
+        .data, rlang::enquos(...), .by_group, .locale)
 }
 
 #' @export
-filter.dtatools_ref_data <- function(
+filter.dibble <- function(
     .data, ..., .by = NULL, .preserve = FALSE
 ) {
-    if (is_dibble(.data)) return(.dibble_filter(.data,
-        rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by), .preserve))
-    .closed_reference_verb(.data, sys.call(), dplyr::filter, parent.frame())
+    .dibble_filter(.data,
+        rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by), .preserve)
 }
 
 #' @export
-filter_out.dtatools_ref_data <- function(.data, ..., .by = NULL, .preserve = FALSE) {
-    if (is_dibble(.data)) return(.dibble_filter(.data,
+filter_out.dibble <- function(.data, ..., .by = NULL, .preserve = FALSE) {
+    .dibble_filter(.data,
         rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by), .preserve,
-        invert = TRUE))
-    .closed_reference_verb(.data, sys.call(), dplyr::filter_out, parent.frame())
+        invert = TRUE)
 }
 
 #' @export
-slice.dtatools_ref_data <- function(.data, ..., .by = NULL, .preserve = FALSE) {
-    if (is_dibble(.data)) return(.dibble_slice(
-        .data, rlang::enquos(...), rlang::enquo(.by), .preserve))
-    .closed_reference_verb(.data, sys.call(), dplyr::slice, parent.frame())
+slice.dibble <- function(.data, ..., .by = NULL, .preserve = FALSE) {
+    .dibble_slice(
+        .data, rlang::enquos(...), rlang::enquo(.by), .preserve)
 }
 
 #' @export
-slice_head.dtatools_ref_data <- function(.data, ..., n, prop, by = NULL) {
-    if (!is_dibble(.data)) return(.closed_reference_verb(
-        .data, sys.call(), dplyr::slice_head, parent.frame()))
+slice_head.dibble <- function(.data, ..., n, prop, by = NULL) {
     rlang::check_dots_empty()
     .dibble_slice_helper(.data, rlang::enquo(by), .dibble_slice_size(n, prop), "head")
 }
 
 #' @export
-slice_tail.dtatools_ref_data <- function(.data, ..., n, prop, by = NULL) {
-    if (!is_dibble(.data)) return(.closed_reference_verb(
-        .data, sys.call(), dplyr::slice_tail, parent.frame()))
+slice_tail.dibble <- function(.data, ..., n, prop, by = NULL) {
     rlang::check_dots_empty()
     .dibble_slice_helper(.data, rlang::enquo(by), .dibble_slice_size(n, prop), "tail")
 }
 
 #' @export
-slice_min.dtatools_ref_data <- function(.data, order_by, ..., n, prop, by = NULL,
+slice_min.dibble <- function(.data, order_by, ..., n, prop, by = NULL,
                                        with_ties = TRUE, na_rm = FALSE) {
-    if (!is_dibble(.data)) return(.closed_reference_verb(
-        .data, sys.call(), dplyr::slice_min, parent.frame()))
     rlang::check_dots_empty()
     .dibble_slice_helper(.data, rlang::enquo(by), .dibble_slice_size(n, prop), "min",
         order_by = rlang::enquo(order_by), with_ties = with_ties, na_rm = na_rm)
 }
 
 #' @export
-slice_max.dtatools_ref_data <- function(.data, order_by, ..., n, prop, by = NULL,
+slice_max.dibble <- function(.data, order_by, ..., n, prop, by = NULL,
                                        with_ties = TRUE, na_rm = FALSE) {
-    if (!is_dibble(.data)) return(.closed_reference_verb(
-        .data, sys.call(), dplyr::slice_max, parent.frame()))
     rlang::check_dots_empty()
     .dibble_slice_helper(.data, rlang::enquo(by), .dibble_slice_size(n, prop), "max",
         order_by = rlang::enquo(order_by), with_ties = with_ties, na_rm = na_rm)
 }
 
 #' @export
-slice_sample.dtatools_ref_data <- function(.data, ..., n, prop, by = NULL,
+slice_sample.dibble <- function(.data, ..., n, prop, by = NULL,
                                           weight_by = NULL, replace = FALSE) {
-    if (!is_dibble(.data)) return(.closed_reference_verb(
-        .data, sys.call(), dplyr::slice_sample, parent.frame()))
     rlang::check_dots_empty()
     .dibble_slice_helper(.data, rlang::enquo(by), .dibble_slice_size(n, prop, replace),
         "sample", weight_by = rlang::enquo(weight_by), replace = replace)
 }
 
 #' @export
-relocate.dtatools_ref_data <- function(
+relocate.dibble <- function(
     .data, ..., .before = NULL, .after = NULL
 ) {
-    if (!is_dibble(.data)) {
-        return(.reference_delegate(
-            .data, sys.call(), dplyr::relocate, parent.frame()
-        ))
-    }
     context <- .begin_dibble_result(.data, "relocate()", "columns")
     locations <- .dibble_relocate_locations(
         .data, rlang::expr(c(...)), rlang::enquo(.before),
@@ -2943,12 +2781,7 @@ relocate.dtatools_ref_data <- function(
 }
 
 #' @export
-rename.dtatools_ref_data <- function(.data, ...) {
-    if (!is_dibble(.data)) {
-        return(.reference_delegate(
-            .data, sys.call(), dplyr::rename, parent.frame()
-        ))
-    }
+rename.dibble <- function(.data, ...) {
     context <- .begin_dibble_result(.data, "rename()", "columns")
     changes <- tidyselect::eval_rename(rlang::expr(c(...)), .data)
     names <- names(context$columns)
@@ -2957,36 +2790,22 @@ rename.dtatools_ref_data <- function(.data, ...) {
 }
 
 #' @export
-mutate.dtatools_ref_data <- function(
+mutate.dibble <- function(
     .data, ..., .by = NULL, .keep = c("all", "used", "unused", "none"),
     .before = NULL, .after = NULL
 ) {
-    if (is_dibble(.data)) return(.dibble_mutate(
+    .dibble_mutate(
         .data, rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by),
-        .keep, rlang::enquo(.before), rlang::enquo(.after)))
-    .typed_mask_verb(
-        .data, "mutate", rlang::enquos(..., .ignore_empty = "all"),
-        list(
-            .by = rlang::enquo(.by), .keep = .keep,
-            .before = rlang::enquo(.before), .after = rlang::enquo(.after)
-        ),
-        "mutate()"
-    )
+        .keep, rlang::enquo(.before), rlang::enquo(.after))
 }
 
 #' @export
-transmute.dtatools_ref_data <- function(.data, ...) {
-    if (is_dibble(.data)) {
-        dots <- rlang::enquos(..., .ignore_empty = "all")
-        unsupported <- intersect(names(dots), c(".keep", ".before", ".after"))
-        if (length(unsupported)) rlang::abort(paste0(
-            "The `", unsupported[[1L]], "` argument is not supported."))
-        return(.dibble_mutate(.data, dots, transmute = TRUE))
-    }
-    .typed_mask_verb(
-        .data, "transmute", rlang::enquos(..., .ignore_empty = "all"),
-        list(), "transmute()"
-    )
+transmute.dibble <- function(.data, ...) {
+    dots <- rlang::enquos(..., .ignore_empty = "all")
+    unsupported <- intersect(names(dots), c(".keep", ".before", ".after"))
+    if (length(unsupported)) rlang::abort(paste0(
+        "The `", unsupported[[1L]], "` argument is not supported."))
+    .dibble_mutate(.data, dots, transmute = TRUE)
 }
 
 # The container mapping from a bare R vector to Stata storage, shared by
@@ -3431,9 +3250,10 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     result
 }
 
-# A dataset operation on a dibble returns a dibble; on any other
-# reference frame it returns what the ordinary implementation did. A
-# non-data-frame result, such as `with()`'s, is returned as is.
+# A dataset operation on a dibble returns a dibble; the copying helpers
+# that accept every container, such as the label replacement operators,
+# pass their plain result through. A non-data-frame result, such as
+# `with()`'s, is returned as is.
 .close_dibble <- function(data, result, caller = "as_dibble()",
                           sources = NULL) {
     if (!is_dibble(data) || !is.data.frame(result) || is_dibble(result)) {
@@ -3492,12 +3312,9 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # `transform()`, `within()`, `group_modify()`, and the replacement
 # operators on a dibble: the ordinary implementation runs on the
 # snapshot, then changed columns are typed and the result is closed back
-# into a dibble. Other reference frames get the plain result.
+# into a dibble.
 .typed_reference_verb <- function(data, call, generic, environment,
                                   caller) {
-    if (!is_dibble(data)) {
-        return(.reference_delegate(data, call, generic, environment))
-    }
     before <- .data_columns(data)
     result <- .reference_delegate(data, call, generic, environment)
     .close_dibble(
@@ -3505,36 +3322,15 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     )
 }
 
-# The data-masking verbs: each `...` expression is typed as its result
-# enters the data mask, so a later expression, the row comparison of
+# The data-masking verbs type each `...` expression as its result enters
+# the data mask, so a later expression, the row comparison of
 # `distinct()`, or the grouping of `group_by()` and `nest_by()` sees the
 # Stata column the result will hold. A bare double `y = c(NA, 1)` is a
 # Stata `double` when `z = y > 0` reads it, so `z` is `TRUE` where Stata's
 # missing order says so, and `NA` and `""` in a computed string key form
-# one group.
-#
-# The hook is a `(` call around each expression, evaluated in an
-# environment where `(` is the typer; `(` is the one call head R's
-# deparser does not show as a function, so `mutate(d, x + 1)` still names
-# its column `x + 1` through the one-column frame below, and dplyr's
-# "In argument" bullets are relabelled. Existing-column symbols, `.data`
-# references, and `NULL` are left alone: they select or remove columns
-# rather than compute them. Caller-backed symbols and `across()` results
-# are typed before later expressions use them. An unnamed vector is returned
-# as a one-column frame under its original expression name, so dplyr sees
-# collisions and overwrites during mask evaluation, before closing the result.
+# one group. Existing-column symbols, `.data` references, and `NULL` are
+# left alone: they select or remove columns rather than compute them.
 # `if_any()` and `if_all()` return logicals and keep dplyr's expansion.
-.typed_mask_verb <- function(data, generic, dots, arguments, caller) {
-    # The call is evaluated where `generic` names the dplyr function, so
-    # dplyr reports errors as "Error in `mutate()`" rather than against
-    # an inlined function object.
-    environment <- new.env(parent = baseenv())
-    environment[[generic]] <- getExportedValue("dplyr", generic)
-    call <- rlang::call2(generic, .reference_snapshot(data), !!!dots,
-                         !!!arguments)
-    eval(call, environment)
-}
-
 .mask_expression_typable <- function(quosure, before) {
     if (rlang::quo_is_missing(quosure) || rlang::quo_is_null(quosure)) {
         return(FALSE)
@@ -3569,136 +3365,83 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 }
 
 .typed_reference_replacement <- function(data, result, caller) {
-    if (!is_dibble(data)) return(result)
     before <- .data_columns(data)
     .close_dibble(
         data, .retype_changed_columns(result, before, caller), caller
     )
 }
 
-# Grouping changes only dplyr metadata, so a dibble stays a dibble: the
-# grouped or ungrouped snapshot is closed again, and `state$classes` then
-# records the grouping for later snapshots. The result is a fresh object
-# either way, so the mark never touches the caller's dataset.
-.regroup_reference_data <- function(data, result) {
-    .close_dibble(data, result)
-}
-
 #' @export
-group_by.dtatools_ref_data <- function(
+group_by.dibble <- function(
     .data, ..., .add = FALSE,
     .drop = .group_drop_default(.data)
 ) {
-    if (is_dibble(.data)) return(.dibble_group_by(
-        .data, rlang::enquos(..., .ignore_empty = "all"), .add, .drop))
-    # `group_by(d, g = x > 1)` computes a key as `mutate()` would, and
-    # the key is typed before the groups form, so `NA` and `""` in a
-    # computed string key make one group.
-    .typed_mask_verb(
-        .data, "group_by", rlang::enquos(..., .ignore_empty = "all"),
-        list(.add = .add, .drop = .drop), "`group_by()`"
-    )
+    .dibble_group_by(
+        .data, rlang::enquos(..., .ignore_empty = "all"), .add, .drop)
 }
 
 #' @export
-summarise.dtatools_ref_data <- function(
+summarise.dibble <- function(
     .data, ..., .by = NULL, .groups = NULL
 ) {
-    if (is_dibble(.data)) return(.dibble_summary(.data,
+    .dibble_summary(.data,
         rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by), .groups,
-        caller_env = parent.frame()))
-    .typed_mask_verb(
-        .data, "summarise", rlang::enquos(..., .ignore_empty = "all"),
-        list(.by = rlang::enquo(.by), .groups = .groups), "`summarise()`"
-    )
+        caller_env = parent.frame())
 }
 
 #' @export
-distinct.dtatools_ref_data <- function(.data, ..., .keep_all = FALSE) {
-    if (is_dibble(.data)) return(.dibble_distinct(.data,
-        rlang::enquos(..., .ignore_empty = "all"), .keep_all))
-    # `distinct(d, y = x * 2)` computes as `mutate()` does; the computed
-    # key is typed before rows are compared.
-    .typed_mask_verb(
-        .data, "distinct", rlang::enquos(..., .ignore_empty = "all"),
-        list(.keep_all = .keep_all), "`distinct()`"
-    )
+distinct.dibble <- function(.data, ..., .keep_all = FALSE) {
+    .dibble_distinct(.data,
+        rlang::enquos(..., .ignore_empty = "all"), .keep_all)
 }
 
 #' @export
-reframe.dtatools_ref_data <- function(.data, ..., .by = NULL) {
-    if (is_dibble(.data)) return(.dibble_summary(.data,
-        rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by), reframe = TRUE))
-    .typed_mask_verb(
-        .data, "reframe", rlang::enquos(..., .ignore_empty = "all"),
-        list(.by = rlang::enquo(.by)), "`reframe()`"
-    )
+reframe.dibble <- function(.data, ..., .by = NULL) {
+    .dibble_summary(.data,
+        rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by), reframe = TRUE)
 }
 
 #' @export
-group_modify.dtatools_ref_data <- function(.data, .f, ..., .keep = FALSE) {
-    if (is_dibble(.data)) return(.dibble_group_modify(.data, .f, ..., .keep = .keep))
-    .typed_reference_verb(
-        .data, sys.call(), dplyr::group_modify, parent.frame(),
-        "`group_modify()`"
-    )
+group_modify.dibble <- function(.data, .f, ..., .keep = FALSE) {
+    .dibble_group_modify(.data, .f, ..., .keep = .keep)
 }
 
 #' @export
-nest_by.dtatools_ref_data <- function(.data, ..., .key = "data",
+nest_by.dibble <- function(.data, ..., .key = "data",
                                       .keep = FALSE) {
-    if (is_dibble(.data)) return(.dibble_nest(.data,
+    .dibble_nest(.data,
         rlang::enquos(..., .ignore_empty = "all"), .key, .keep,
-        rowwise = TRUE, dots_supplied = !missing(...)))
-    .typed_mask_verb(
-        .data, "nest_by", rlang::enquos(..., .ignore_empty = "all"),
-        list(.key = .key, .keep = .keep), "`nest_by()`"
-    )
+        rowwise = TRUE, dots_supplied = !missing(...))
 }
 
 #' @export
-group_nest.dtatools_ref_data <- function(.tbl, ..., .key = "data",
+group_nest.dibble <- function(.tbl, ..., .key = "data",
                                          keep = FALSE) {
-    if (is_dibble(.tbl)) return(.dibble_nest(.tbl,
-        rlang::enquos(..., .ignore_empty = "all"), .key, keep))
-    .typed_mask_verb(
-        .tbl, "group_nest", rlang::enquos(..., .ignore_empty = "all"),
-        list(.key = .key, keep = keep), "`group_nest()`"
-    )
+    .dibble_nest(.tbl,
+        rlang::enquos(..., .ignore_empty = "all"), .key, keep)
 }
 
 #' @export
-ungroup.dtatools_ref_data <- function(x, ...) {
-    if (is_dibble(x)) {
-        context <- .begin_dibble_result(x, "ungroup()", "columns")
-        keys <- character()
-        if (inherits(x, "grouped_df") && !missing(...)) {
-            removed <- names(tidyselect::eval_select(rlang::expr(c(...)), x, allow_rename = FALSE))
-            keys <- setdiff(.group_vars(x), removed)
-        } else rlang::check_dots_empty()
-        return(.dibble_group_result(x, context, context$columns, keys,
-                                    .group_drop_default(x)))
-    }
-    .regroup_reference_data(x, .reference_delegate(
-        x, sys.call(), dplyr::ungroup, parent.frame()
-    ))
+ungroup.dibble <- function(x, ...) {
+    context <- .begin_dibble_result(x, "ungroup()", "columns")
+    keys <- character()
+    if (inherits(x, "grouped_df") && !missing(...)) {
+        removed <- names(tidyselect::eval_select(rlang::expr(c(...)), x, allow_rename = FALSE))
+        keys <- setdiff(.group_vars(x), removed)
+    } else rlang::check_dots_empty()
+    .dibble_group_result(x, context, context$columns, keys, .group_drop_default(x))
 }
 
 #' @export
-rowwise.dtatools_ref_data <- function(data, ...) {
-    if (is_dibble(data)) {
-        context <- .begin_dibble_result(data, "rowwise()", "columns")
-        if (inherits(data, "grouped_df")) {
-            if (!missing(...)) rlang::abort(c("Can't re-group when creating rowwise data.",
-                i = "Either first `ungroup()` or call `rowwise()` without arguments."))
-            keys <- .group_vars(data)
-        } else {
-            locations <- tidyselect::eval_select(rlang::expr(c(...)), data)
-            keys <- names(context$columns)[unname(locations)]
-        }
-        return(.dibble_group_result(data, context, context$columns, keys, rowwise = TRUE))
+rowwise.dibble <- function(data, ...) {
+    context <- .begin_dibble_result(data, "rowwise()", "columns")
+    if (inherits(data, "grouped_df")) {
+        if (!missing(...)) rlang::abort(c("Can't re-group when creating rowwise data.",
+            i = "Either first `ungroup()` or call `rowwise()` without arguments."))
+        keys <- .group_vars(data)
+    } else {
+        locations <- tidyselect::eval_select(rlang::expr(c(...)), data)
+        keys <- names(context$columns)[unname(locations)]
     }
-    .regroup_reference_data(data, .reference_delegate(
-        data, sys.call(), dplyr::rowwise, parent.frame()
-    ))
+    .dibble_group_result(data, context, context$columns, keys, rowwise = TRUE)
 }

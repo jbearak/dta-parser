@@ -159,7 +159,7 @@ rename_vars <- function(data, ..., .names = NULL) {
         stop("`.names` must be distinct", call. = FALSE)
     }
     source_names <- names(columns)
-    if (identical(new_names, source_names) && !.has_column_overlay(data)) return(invisible(data))
+    if (identical(new_names, source_names)) return(invisible(data))
     names(columns) <- new_names
     .install_column_selection(data, original, columns, source_names)
 }
@@ -202,7 +202,7 @@ rename_vars <- function(data, ..., .names = NULL) {
             call. = FALSE
         )
     }
-    if (identical(final_names, current_names) && !.has_column_overlay(data)) return(invisible(data))
+    if (identical(final_names, current_names)) return(invisible(data))
     names(columns) <- final_names
     .install_column_selection(data, original, columns, current_names)
 }
@@ -365,8 +365,7 @@ rename_vars <- function(data, ..., .names = NULL) {
         .data_columns(data)
     }
     selected_locations <- .resolve_selections(selections, names(columns))
-    if (keep && length(selected_locations) == length(columns) &&
-        !.has_column_overlay(data)) {
+    if (keep && length(selected_locations) == length(columns)) {
         return(invisible(data))
     }
     locations <- seq_along(columns)
@@ -391,29 +390,24 @@ rename_vars <- function(data, ..., .names = NULL) {
     ordered_locations <- c(
         moved_locations, locations[!locations %in% moved_locations]
     )
-    if (identical(ordered_locations, locations) && !.has_column_overlay(data)) return(invisible(data))
+    if (identical(ordered_locations, locations)) return(invisible(data))
     .install_column_selection(data, original, columns[ordered_locations])
 }
 
 # Commits `retained_columns` as the table's complete column set, by
 # reference. The caller has already resolved which columns survive and
 # in which order. Recheck capacity in case selection code changed it, then
-# install one complete physical list. Legacy overlays need assigned preparation.
+# install one complete physical list.
 .install_column_selection <- function(
     data, original, retained_columns, source_names = names(retained_columns)
 ) {
-    state <- original$state
-    dibble_input <- is_dibble(data)
     source_classes <- .reference_base_classes(class(data))
     .prepare_column_operation(data, length(retained_columns))
-    final_state <- NULL
-    if (!is.null(state) || dibble_input) {
-        planned <- retained_columns
-        attr(planned, "row.names") <- .set_row_names(original$nrow)
-        class(planned) <- source_classes
-        final_state <- .new_reference_state(planned, dibble = dibble_input)
-    }
-    reference_classes <- .reference_classes(source_classes, dibble_input)
+    planned <- retained_columns
+    attr(planned, "row.names") <- .set_row_names(original$nrow)
+    class(planned) <- source_classes
+    final_state <- .new_reference_state(planned)
+    reference_classes <- .reference_classes(source_classes)
 
     select <- function() .Call(
         C_dtatools_select_data_columns, data, unname(retained_columns),
@@ -454,6 +448,6 @@ rename_vars <- function(data, ..., .names = NULL) {
     } else {
         select()
     }
-    if (!is.null(final_state)) .mark_reference_data(data, final_state)
+    .mark_reference_data(data, final_state)
     invisible(data)
 }

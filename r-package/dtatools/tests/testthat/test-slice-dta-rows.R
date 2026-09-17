@@ -326,8 +326,6 @@ test_that("reorder_dta_rows permutes a physically complete generated table", {
     gen(data, tripled, v_byte * 3)
     # Structural operations keep all surviving columns physically present.
     drop_vars(data, v_int)
-    state <- attr(data, ".dtatools_ref_state", exact = TRUE)
-    expect_false(isTRUE(state$physical_overlay))
     names_before <- names(data)
 
     reorder_dta_rows(data, rows)

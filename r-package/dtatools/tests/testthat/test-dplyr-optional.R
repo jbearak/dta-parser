@@ -181,9 +181,9 @@ test_that("failed optional registration restores slots and preserves unrelated h
         .libPaths(libraries)
         namespace <- loadNamespace("dplyr")
         table <- get(".__S3MethodsTable__.", namespace)
-        key <- "distinct.dtatools_ref_data"
+        key <- "distinct.dibble"
         sentinel <- function(.data, ...) "unrelated method"
-        registerS3method("distinct", "dtatools_ref_data", sentinel,
+        registerS3method("distinct", "dibble", sentinel,
             envir = new.env(parent = namespace))
         # Fail the real registry write after earlier recode/arrange writes.
         # No generic or namespace function body is replaced.

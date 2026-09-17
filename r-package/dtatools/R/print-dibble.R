@@ -2,7 +2,6 @@
 # its public identity, plus temporary string views; stored columns are unchanged.
 .dibble_display_snapshot <- function(x) {
     result <- .reference_snapshot(x)
-    if (!is_dibble(x)) return(result)
     for (index in seq_along(result)) {
         column <- .subset2(result, index)
         classes <- setdiff(class(column), .dta_metadata_vector_class)
@@ -54,12 +53,6 @@ print.dibble <- function(x, ...) {
 #' @export
 format.dibble <- function(x, ...) {
     utils::getS3method("format", "tbl")(.dibble_display_snapshot(x), ...)
-}
-
-# Legacy dibbles still dispatch through shared reference support.
-#' @export
-format.dtatools_ref_data <- function(x, ...) {
-    if (is_dibble(x)) format.dibble(x, ...) else format(.reference_snapshot(x), ...)
 }
 
 # These labels read declarations only, including for empty vectors and

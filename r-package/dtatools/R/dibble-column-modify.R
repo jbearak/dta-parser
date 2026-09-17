@@ -54,7 +54,6 @@
 }
 
 #' @export
-dplyr_col_modify.dtatools_ref_data <- function(data, cols) {
-    if (!is_dibble(data)) return(dplyr::dplyr_col_modify(.reference_snapshot(data), cols))
+dplyr_col_modify.dibble <- function(data, cols) {
     .dibble_col_modify(data, cols)
 }

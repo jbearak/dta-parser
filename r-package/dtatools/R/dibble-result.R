@@ -8,12 +8,6 @@
     metadata$.dtatools_ref_state <- NULL
     metadata$class <- .reference_base_classes(class(data))
     metadata$row.names <- .row_names_info(data, 0L)
-    if (.has_column_overlay(data)) {
-        if (.row_names_info(data, 1L) < 0L) {
-            metadata$row.names <- .set_row_names(.reference_state(data)$nrow)
-        }
-        metadata$names <- names(columns)
-    }
     list(columns = columns, metadata = metadata, caller = caller,
          operation = operation)
 }

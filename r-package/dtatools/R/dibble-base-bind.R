@@ -17,7 +17,7 @@
 }
 
 #' @export
-rbind.dtatools_ref_data <- function(..., deparse.level = 1) {
+rbind.dibble <- function(..., deparse.level = 1) {
     inputs <- list(...)
     values <- lapply(inputs, .reference_snapshot)
     constructor <- if (.dibble_base_bind_dispatch(values, "rbind")) base::rbind else
@@ -27,7 +27,7 @@ rbind.dtatools_ref_data <- function(..., deparse.level = 1) {
 }
 
 #' @export
-cbind.dtatools_ref_data <- function(..., deparse.level = 1) {
+cbind.dibble <- function(..., deparse.level = 1) {
     inputs <- list(...)
     values <- lapply(inputs, .reference_snapshot)
     constructor <- if (.dibble_base_bind_dispatch(values, "cbind")) base::cbind else

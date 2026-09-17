@@ -3533,7 +3533,7 @@
         },
         {
           "path": "tests/testthat/test-reference-copy.R",
-          "sha256": "53764f4b89c48eb36cc213434d0509d6e6d313c0c46a303110ed7ab4ae5cf619"
+          "sha256": "c366ec4510c46f0279a6ff407e6372efff86f1ebb7ce04731d76abf7f1bc4884"
         },
         {
           "path": "tests/testthat/test-copy-data.R",
@@ -4453,14 +4453,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 22,
-          "warnings": 0
-        },
-        {
-          "file": "test-reference-copy.R",
-          "test": "legacy generated columns can be explicitly replaced after preparation",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 4,
           "warnings": 0
         },
         {
@@ -6281,11 +6273,11 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "7411bc0f33ba552c81b3130a4228183e66a604cc15d6b6cfb4ff89e8bcd5236c"
+          "sha256": "6057795f2bc2bfe523ab133f70d887a27c7eba1bcde4153428303b0a72188ec7"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
-          "sha256": "6a2048c2b441a8f023ca7cada84852531f61a748b3f515584649791429e3fbca"
+          "sha256": "d07a80a77b590e7fe7cbd0ee953cbe9dd1fb861201793b0f73235eb33cad0474"
         },
         {
           "path": "tests/testthat/test-dibble-print.R",
@@ -6293,11 +6285,11 @@
         },
         {
           "path": "tests/testthat/test-dibble-bracket.R",
-          "sha256": "7dcffa471d73f6969d4024ba57f481aa7cb1cdad5a510892c87dfedde832a741"
+          "sha256": "e8b82b3ea3ba45df848fc606e7a8a42e8d5fc90df5b4fef8c390bf71eda54fbc"
         },
         {
           "path": "tests/testthat/test-dibble-columns.R",
-          "sha256": "b697758939bcbd4d9183c95ee14ac0c1eb756629f5ec26d1e348c03c6992ab13"
+          "sha256": "43a1d2226b53ccf91f8ff2ce23ac5a8d7e0dc9ae0af67e63c1617ed680948dc8"
         },
         {
           "path": "tests/testthat/test-dibble-result-history.R",
@@ -6305,7 +6297,7 @@
         },
         {
           "path": "tests/testthat/test-dplyr-optional.R",
-          "sha256": "ec21934e3403c4e021696ef3a81b94bab57c40c0eb1baaec7d30c1b2303a5b16"
+          "sha256": "bd19a0482fe7977477afa832fd2d2152967fea50e3b2355aba41f2a30ee236e2"
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
@@ -6450,11 +6442,19 @@
           "warnings": 0
         },
         {
+          "file": "test-dibble-bracket.R",
+          "test": "an injected := recheck rejects a target whose dibble class was stripped after dispatch",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
           "file": "test-dibble-class.R",
           "test": "dibble class is public identity independently of reference ownership",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 14,
+          "min_pass": 13,
           "warnings": 0
         },
         {
@@ -6471,25 +6471,6 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 66,
-          "warnings": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-dibble-class.R",
-          "test": "legacy flags recognize type and assigned upgrade isolates aliases",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 52,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble-class.R",
-          "test": "legacy assigned upgrade through dplyr",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 62,
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
@@ -6536,6 +6517,25 @@
           "warnings": 0
         },
         {
+          "file": "test-dibble-class.R",
+          "test": "serialized dibbles keep identity and assigned upgrade isolates aliases",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 25,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "serialized dibble upgrade through dplyr",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 30,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
           "file": "test-dibble-columns.R",
           "test": "direct column selectors match typed tibble selections",
           "occurrence": 1,
@@ -6562,7 +6562,7 @@
           "test": "selectors retain established tibble row-name policies",
           "occurrence": 1,
           "skip": "require",
-          "min_pass": 287,
+          "min_pass": 175,
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
@@ -6647,7 +6647,7 @@
           "test": "column results preserve metadata, compact columns and legacy recognition",
           "occurrence": 1,
           "skip": "require",
-          "min_pass": 9,
+          "min_pass": 7,
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
@@ -6768,7 +6768,7 @@
           "test": "dibble() builds a tibble that carries reference state",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 18,
+          "min_pass": 17,
           "warnings": 0
         },
         {
@@ -7168,7 +7168,7 @@
           "test": "generated columns reach consumers that read the column list",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 16,
+          "min_pass": 14,
           "warnings": 0
         },
         {
@@ -7176,7 +7176,7 @@
           "test": "generated column consumers through dplyr",
           "occurrence": 1,
           "skip": "require",
-          "min_pass": 21,
+          "min_pass": 19,
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
@@ -7271,25 +7271,6 @@
         },
         {
           "file": "test-dibble.R",
-          "test": "serialized legacy dibbles retain typing and closure",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 10,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble.R",
-          "test": "serialized legacy closure through dplyr",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 12,
-          "warnings": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-dibble.R",
           "test": "across results are typed before later mask expressions",
           "occurrence": 1,
           "skip": "require",
@@ -7341,6 +7322,25 @@
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble.R",
+          "test": "serialized dibbles retain typing and closure",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble.R",
+          "test": "serialized dibble closure through dplyr",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 13,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {
@@ -7485,7 +7485,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble-rows.R",
-          "sha256": "b64aca47127c2a7f5e2f8e9dd1e6f99ab657aa57cc7efda5e7f7e7e28805cb6a"
+          "sha256": "0836fcf6ad450c37619a2e8f74ccae8a458f353e045e8b2805d5da7f9edf406f"
         },
         {
           "path": "tests/testthat/test-dibble-row-filter.R",
@@ -7505,7 +7505,7 @@
         },
         {
           "path": "tests/testthat/test-slice-dta-rows.R",
-          "sha256": "110898c8c61cffd07e6dd4e67f5f1da5d31f4560146ed1017f741aeb835298b9"
+          "sha256": "60b0d5e4faab6ac1a572925e37a146bf9a063c9cd483d56d7871a40b6987519f"
         }
       ],
       "blocks": [
@@ -7563,14 +7563,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 20,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble-rows.R",
-          "test": "escaped read masks protect unread owned compact and overlay columns",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 150,
           "warnings": 0
         },
         {
@@ -8247,6 +8239,14 @@
           "warnings": 0
         },
         {
+          "file": "test-dibble-rows.R",
+          "test": "escaped read masks protect unread owned and compact columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 84,
+          "warnings": 0
+        },
+        {
           "file": "test-slice-dta-rows.R",
           "test": "slice_dta_rows matches imported Stata column slicing",
           "occurrence": 1,
@@ -8315,7 +8315,7 @@
           "test": "reorder_dta_rows permutes a physically complete generated table",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 6,
+          "min_pass": 5,
           "warnings": 0
         },
         {
@@ -9138,7 +9138,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-bindings.R",
-          "sha256": "aae7d38c8c06c25f8928c36564771f1254d9193b5c222659776510f7d1d98671"
+          "sha256": "de70f00e6804a7ec25232efa505bd12197d1fe1099c853a7b065aaa145bbef99"
         }
       ],
       "blocks": [

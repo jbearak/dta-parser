@@ -47,8 +47,6 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
     .require_mutation_target(data)
     .as_mutation_data(data, allow_grouped = TRUE)
     n <- .validate_alloccol(n, length(data))
-    dibble <- is_dibble(data)
-    marked <- !is.null(.reference_state(data))
     snapshot <- .isolate_shared_columns(.reference_snapshot(data), NULL)
     if (.ordinary_data_table(data)) {
         # Remove runtime self-reference on a shallow attribute copy. setalloccol
@@ -58,12 +56,7 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
         return(data.table::setalloccol(snapshot, n = n))
     }
     result <- .reserve_column_capacity(snapshot, n)
-    if (marked || dibble) {
-        result <- .mark_reference_data(
-            result, .new_reference_state(result, dibble = dibble)
-        )
-    }
-    result
+    .mark_reference_data(result, .new_reference_state(result))
 }
 
 .validate_alloccol <- function(n, columns = 0) {
@@ -75,16 +68,9 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
     as.double(n)
 }
 
-.has_column_overlay <- function(data) {
-    state <- .reference_state(data)
-    !is.null(state) &&
-        (isTRUE(state$physical_overlay) || state$generated_count > 0L)
-}
-
 .column_operation_ready <- function(data, columns, names_change = TRUE) {
     if (.ordinary_data_table(data)) .require_data_table()
-    !.has_column_overlay(data) &&
-        (!(names_change && .ordinary_data_table(data)) || .data_table_reference_ready(data)) &&
+    (!(names_change && .ordinary_data_table(data)) || .data_table_reference_ready(data)) &&
         (columns == length(data) || .column_resize_ready(data)) && isTRUE(.Call(
         C_dtatools_can_select_data_columns, data, as.double(columns)
     ))
@@ -302,7 +288,7 @@ can_add_columns <- function(data, n = 1L) {
     .require_mutation_target(data)
     .as_mutation_data(data, allow_grouped = TRUE)
     n <- .validate_alloccol(n, length(data))
-    !.has_column_overlay(data) && (n == 0 || .column_resize_ready(data)) && isTRUE(.Call(
+    (n == 0 || .column_resize_ready(data)) && isTRUE(.Call(
         C_dtatools_can_select_data_columns, data, length(data) + n
     ))
 }

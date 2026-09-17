@@ -9,8 +9,11 @@
   error naming the recovery, `data <- as_dibble(data)`. Data.table users who
   want by-reference mutation without Stata typing use data.table's own
   operators. Plain containers no longer acquire the `dtatools_ref_data` class,
-  and legacy overlay reference state is no longer read. Copying operations,
-  the readers and the writers accept every container as before. See ADR 0036.
+  and legacy overlay reference state is no longer read. `is_dibble()` now
+  tests the `dibble` class alone, so serialized objects from before that
+  class existed are ordinary tibbles until `as_dibble()` rebuilds them.
+  Copying operations, the readers and the writers accept every container as
+  before. See ADR 0036.
 * Reader optimizations are now enabled by default. `read_dta()` reuses prepared
   decode plans and selected-file handles, batches all numeric storage widths,
   and overlaps eligible parallel reads through four bounded input buffers.

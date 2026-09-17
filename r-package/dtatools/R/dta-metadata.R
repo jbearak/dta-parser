@@ -379,12 +379,12 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
         present <- FALSE
     }
     classes <- if (present) c(marker, classes) else classes
-    if (is.data.frame(value) && "dtatools_ref_data" %in% classes) {
+    if (is.data.frame(value) && "dibble" %in% classes) {
         # Dibble identity and reference dispatch stay before metadata
-        # dispatch; the marker's `[` runs from the ordinary snapshot.
+        # dispatch; the dibble's `[` runs from the ordinary snapshot.
         # The state's own class vector carries the marker so a snapshot
         # keeps dataset metadata behavior.
-        classes <- .reference_classes(classes, inherits(value, "dibble"))
+        classes <- .reference_classes(classes)
     }
     if (!is.data.frame(value)) {
         # A shared metadata proxy needs another compact wrapper before class

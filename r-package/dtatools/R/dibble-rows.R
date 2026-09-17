@@ -121,7 +121,7 @@
         call[[2L]] <- snapshot
         return(.close_dibble(data, eval(call, environment)))
     }
-    read_syntax <- is_dibble(data) && !one_dimension && inherits(snapshot, "tbl_df")
+    read_syntax <- !one_dimension && inherits(snapshot, "tbl_df")
     metadata_selected <- NULL
     if (inherits(snapshot, "dtatools_dta_metadata")) {
         # The metadata wrapper selects indices before NextMethod matches the
@@ -205,15 +205,11 @@
     if (grouped && drop) {
         policy_template <- snapshot
     }
-    if (is_dibble(data)) {
-        context <- .begin_dibble_result(data, "`[`", "rows")
-        # With no row subscript, the selected columns still belong to the source.
-        return(.finish_dibble_result(context, result, sources = list(data),
-            grouping = function(value) .restore_group_metadata(value, policy_template,
-                if (supplied_i) "bracket" else "columns")))
-    }
-    .restore_group_metadata(result, policy_template,
-                            if (supplied_i) "bracket" else "columns")
+    context <- .begin_dibble_result(data, "`[`", "rows")
+    # With no row subscript, the selected columns still belong to the source.
+    .finish_dibble_result(context, result, sources = list(data),
+        grouping = function(value) .restore_group_metadata(value, policy_template,
+            if (supplied_i) "bracket" else "columns"))
 }
 
 

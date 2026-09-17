@@ -101,20 +101,6 @@ test_that("selectors retain established tibble row-name policies", {
     skip_if_not_installed("dplyr", "1.2.1")
     plain <- dibble(a = 1:3, b = c("a", "b", "c"))
     containers <- list(plain, dplyr::group_by(plain, a), dplyr::rowwise(plain, a))
-    for (structural in c(FALSE, TRUE)) {
-        legacy <- dibble(a = 1:3, b = c("a", "b", "c"))
-        state <- dtatools:::.reference_state(legacy)
-        if (structural) {
-            state <- dtatools:::.new_structural_reference_state(
-                list(b = legacy$b, a = legacy$a, extra = dta_int(4:6)),
-                3L, state$classes, dibble = TRUE)
-            legacy <- dtatools:::.mark_reference_data(legacy, state)
-        } else {
-            dtatools:::.append_generated_column(state, "extra", dta_int(4:6))
-        }
-        expect_true(dtatools:::.has_column_overlay(legacy))
-        containers[[length(containers) + 1L]] <- legacy
-    }
     operations <- list(
         select = function(x) dplyr::select(x, b, a),
         select_all = function(x) dplyr::select(x, dplyr::everything()),
@@ -344,10 +330,6 @@ test_that("column results preserve metadata, compact columns and legacy recognit
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(out$cost))
     repl(data, price = 1, where = 1L)
     expect_false(identical(as.double(out$cost), as.double(data$price)))
-    legacy <- data
-    class(legacy) <- setdiff(class(legacy), "dibble")
-    expect_true(is_dibble(legacy))
-    expect_s3_class(dplyr::select(legacy, price), "dibble")
     frame <- data.frame(x = c(1, 2), y = 3L)
     plain <- dplyr::rename(frame, value = x)
     expect_false(is_dibble(plain))

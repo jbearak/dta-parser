@@ -35,24 +35,17 @@ table you already have into a dibble behind your back.
 \details{
 New ungrouped dibbles have class
 \code{c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")}.
-Grouping and metadata classes follow \code{dibble} and shared reference support.
-The \code{dibble} class identifies current objects even after bookkeeping or
-spare capacity is lost. \code{is_dibble()} also recognizes legacy serialized
-objects without that class: their reference-state flag must be \code{TRUE},
-or absent with stored tibble classes. An explicit legacy \code{FALSE} stays
-ordinary. Prefer \code{is_dibble()} to exact class comparisons for recognition
-across package versions. This predicate does not validate ownership or
-capacity. Assign \code{\link[=reserve_columns]{reserve_columns()}} when preparation is needed.
-Assigned \code{as_dibble()}, \code{copy_data()}, and \code{reserve_columns()} upgrade
-legacy dibbles to the current class on a fresh object, leaving aliases
-and their shared bookkeeping unchanged.
+Grouping and metadata classes follow those two. The \code{dibble} class is
+the dataset's identity: \code{is_dibble()} tests for it, and it survives
+serialization even when bookkeeping or spare capacity is lost. The
+predicate does not validate ownership or capacity; assign
+\code{\link[=reserve_columns]{reserve_columns()}} when preparation is needed.
 
 \code{\link[=gen]{gen()}}, \code{\link[=replace_values]{replace_values()}}, \code{\link[=keep_vars]{keep_vars()}},
-and the other by-reference operations change a prepared dataset in place.
-Within capacity, every binding sees the change. \code{\link[=gen]{gen()}} keeps an ordinary
-tibble or data frame's existing columns unchanged and types only its new
-column; \code{is_dibble()} remains \code{FALSE}. Call \code{as_dibble()} to type the
-whole dataset. Conversion does not make function-local replacement reach its caller.
+and the other by-reference operations change a prepared dibble in place.
+Within capacity, every binding sees the change. They reject an ordinary
+tibble, data frame, or data table; assign \code{data <- as_dibble(data)} first.
+Conversion does not make function-local replacement reach its caller.
 
 A dibble is a Stata dataset held in a tibble, and two invariants follow.
 Every numeric and string column carries Stata storage: \code{dibble()} and

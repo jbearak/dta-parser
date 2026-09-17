@@ -3,12 +3,6 @@
 # at commit. R copies and serialized tables may still share an old state.
 .metadata_table_snapshot <- function(data) {
     .validate_metadata_input(data)
-    state <- .reference_state(data)
-    if (!is.null(state) && (isTRUE(state$physical_overlay) ||
-        !identical(state$generated_count, 0L))) {
-        stop("Assign `data <- reserve_columns(data)` before editing metadata on a legacy table",
-             call. = FALSE)
-    }
     result <- .metadata_copy(data)
     attr(result, ".dtatools_ref_state") <- NULL
     class(result) <- .reference_base_classes(class(data))
@@ -17,12 +11,10 @@
 
 .commit_metadata_table <- function(data, staged, locations = integer(),
                                    attributes = character()) {
-    old_state <- .reference_state(data)
     # Construct all bookkeeping before the first write. No shared environment
     # is updated, including when the supplied table is the old state's owner.
-    state <- if (!is.null(old_state) || is_dibble(data)) {
-        .new_reference_state(staged, dibble = is_dibble(data))
-    } else NULL
+    # The label replacement operators commit into a plain copy as well.
+    state <- if (is_dibble(data)) .new_reference_state(staged)
     for (location in locations) {
         .Call(C_dtatools_set_data_column, data, as.integer(location),
               .subset2(staged, location))

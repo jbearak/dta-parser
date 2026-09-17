@@ -2,10 +2,10 @@
 % Please edit documentation in R/dibble.R
 \name{dibble-bracket}
 \alias{dibble-bracket}
-\alias{[.dtatools_ref_data}
+\alias{[.dibble}
 \title{Bracket mutation on a dibble}
 \usage{
-\method{[}{dtatools_ref_data}(x, i, j, ..., by = NULL, bysort = NULL, drop)
+\method{[}{dibble}(x, i, j, ..., by = NULL, bysort = NULL, drop)
 }
 \arguments{
 \item{x}{A dibble.}

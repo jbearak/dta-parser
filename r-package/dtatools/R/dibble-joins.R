@@ -2,9 +2,6 @@
 # collecting columns through dtatools' shared gather/publication boundaries.
 # No whole-table join implementation is called on the dibble path.
 .dibble_join_publish <- function(columns, size, template, caller, sources = NULL) {
-    if (!is_dibble(template)) {
-        return(dplyr::dplyr_reconstruct(vctrs::new_data_frame(columns, n = size), template))
-    }
     context <- .begin_dibble_result(template, caller, "unknown")
     result <- .ungrouped_result_frame(columns, context$metadata, .set_row_names(size))
     .finish_dibble_result(context, result, sources = sources,
@@ -80,64 +77,57 @@
 }
 
 #' @export
-inner_join.dtatools_ref_data <- function(x, y, by = NULL, copy = FALSE,
+inner_join.dibble <- function(x, y, by = NULL, copy = FALSE,
     suffix = c(".x", ".y"), ..., keep = NULL, na_matches = c("na", "never"),
     multiple = "all", unmatched = "drop", relationship = NULL) {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     y <- dplyr::auto_copy(x, y, copy = copy)
     .dibble_join_mutate(x, y, by, "inner", suffix, keep, na_matches,
         multiple, unmatched, relationship, rlang::current_env(), rlang::caller_env())
 }
 #' @export
-left_join.dtatools_ref_data <- function(x, y, by = NULL, copy = FALSE,
+left_join.dibble <- function(x, y, by = NULL, copy = FALSE,
     suffix = c(".x", ".y"), ..., keep = NULL, na_matches = c("na", "never"),
     multiple = "all", unmatched = "drop", relationship = NULL) {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     y <- dplyr::auto_copy(x, y, copy = copy)
     .dibble_join_mutate(x, y, by, "left", suffix, keep, na_matches,
         multiple, unmatched, relationship, rlang::current_env(), rlang::caller_env())
 }
 #' @export
-right_join.dtatools_ref_data <- function(x, y, by = NULL, copy = FALSE,
+right_join.dibble <- function(x, y, by = NULL, copy = FALSE,
     suffix = c(".x", ".y"), ..., keep = NULL, na_matches = c("na", "never"),
     multiple = "all", unmatched = "drop", relationship = NULL) {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     y <- dplyr::auto_copy(x, y, copy = copy)
     .dibble_join_mutate(x, y, by, "right", suffix, keep, na_matches,
         multiple, unmatched, relationship, rlang::current_env(), rlang::caller_env())
 }
 #' @export
-full_join.dtatools_ref_data <- function(x, y, by = NULL, copy = FALSE,
+full_join.dibble <- function(x, y, by = NULL, copy = FALSE,
     suffix = c(".x", ".y"), ..., keep = NULL, na_matches = c("na", "never"),
     multiple = "all", relationship = NULL) {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     y <- dplyr::auto_copy(x, y, copy = copy)
     .dibble_join_mutate(x, y, by, "full", suffix, keep, na_matches,
         multiple, "drop", relationship, rlang::current_env(), rlang::caller_env())
 }
 #' @export
-semi_join.dtatools_ref_data <- function(x, y, by = NULL, copy = FALSE, ...,
+semi_join.dibble <- function(x, y, by = NULL, copy = FALSE, ...,
                                        na_matches = c("na", "never")) {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     y <- dplyr::auto_copy(x, y, copy = copy)
     .dibble_join_filter(x, y, by, "semi", na_matches, rlang::current_env(), rlang::caller_env())
 }
 #' @export
-anti_join.dtatools_ref_data <- function(x, y, by = NULL, copy = FALSE, ...,
+anti_join.dibble <- function(x, y, by = NULL, copy = FALSE, ...,
                                        na_matches = c("na", "never")) {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     y <- dplyr::auto_copy(x, y, copy = copy)
     .dibble_join_filter(x, y, by, "anti", na_matches, rlang::current_env(), rlang::caller_env())
 }
 #' @export
-cross_join.dtatools_ref_data <- function(x, y, ..., copy = FALSE, suffix = c(".x", ".y")) {
-    if (!is_dibble(x)) return(NextMethod())
+cross_join.dibble <- function(x, y, ..., copy = FALSE, suffix = c(".x", ".y")) {
     rlang::check_dots_empty()
     y <- dplyr::auto_copy(x, y, copy = copy)
     call <- rlang::current_env()
@@ -156,9 +146,8 @@ cross_join.dtatools_ref_data <- function(x, y, ..., copy = FALSE, suffix = c(".x
     .dibble_join_publish(out, length(x_rows), x, "cross_join()", list(x, y))
 }
 #' @export
-nest_join.dtatools_ref_data <- function(x, y, by = NULL, copy = FALSE, keep = NULL,
+nest_join.dibble <- function(x, y, by = NULL, copy = FALSE, keep = NULL,
     name = NULL, ..., na_matches = c("na", "never"), unmatched = "drop") {
-    if (!is_dibble(x)) return(NextMethod())
     rlang::check_dots_empty()
     call <- rlang::current_env()
     user_env <- rlang::caller_env()
