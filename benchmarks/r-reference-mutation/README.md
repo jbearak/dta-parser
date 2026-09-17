@@ -169,8 +169,11 @@ proxy reuses its private native storage. Direct targets do not pay the initial
 detachment cost.
 
 Finally, the benchmark profiles 400 and 1,600 consecutive `gen()` calls on the
-same dataset. The larger run must remain within the original eightfold time
-and allocation budgets. This qualifies the stated 400/1,600-column fixtures,
+same dataset. The larger run must remain within the original eightfold
+allocation budget and a sixteenfold time budget: a per-call cost linear in
+the column count stays under sixteenfold whatever the fixed per-call cost, and
+a quadratic per-call cost reaches sixty-fourfold. This qualifies the stated
+400/1,600-column fixtures,
 not arbitrary widths: the direct scalar shape check has a fixed 2,048-name
 bound and uses the complete R path beyond it.
 

@@ -1247,8 +1247,14 @@ stopifnot(
     large_repeated_generation_allocation < max(
         500000, small_repeated_generation_allocation * 8
     ),
+    # With a fixed cost a and a per-existing-column cost b, 400 calls take
+    # about 400a + 80,000b and 1,600 calls about 1,600a + 1,280,000b, so a
+    # per-call cost linear in column count stays under sixteenfold however
+    # small a is, while a quadratic per-call cost reaches sixty-fourfold.
+    # The dibble-only paths cut a, which is why the old eightfold budget
+    # measured overhead rather than scaling.
     large_repeated_generation_time < max(
-        0.1, small_repeated_generation_time * 8
+        0.1, small_repeated_generation_time * 16
     )
 )
 
