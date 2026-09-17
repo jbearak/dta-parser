@@ -57,7 +57,7 @@
             .Call(C_dtatools_set_attribute, result, name, capture(metadata[[name]]))
         }
         if (dibble) .validate_group_metadata(result)
-        if (dibble) .mark_reference_data(result, .new_reference_state(result))
+        if (dibble) .mark_fresh_reference(result)
         entry$active <- FALSE
         result
     }

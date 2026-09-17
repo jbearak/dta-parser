@@ -240,3 +240,33 @@ test_that("egen grouped calculations leave compact source columns untouched", {
     expected <- ave(as.double(price), as.double(d$foreign), FUN = mean)
     expect_equal(as.double(d$average), as.double(dta_float(expected)))
 })
+
+test_that("egen calculations read private views, so a retained column cannot alias the dataset", {
+    data <- dibble(x = dta_double(c(1, 2, 3)))
+    escaped <- NULL
+    keep <- function(value) { escaped <<- value; value }
+    egen(data, total = dta_total(keep(x)))
+    expect_identical(as.double(data$total), c(6, 6, 6))
+    expect_false(is.null(escaped))
+    expect_identical(as.double(escaped), c(1, 2, 3))
+    # The retained handle is a view, not the column's own vector: a later
+    # write reaches the dataset and leaves the retained value alone.
+    expect_false(identical(rlang::obj_address(escaped), rlang::obj_address(.subset2(data, "x"))))
+    replace_values(data, x, 9, where = 1L)
+    expect_identical(as.double(data$x), c(9, 2, 3))
+    expect_identical(as.double(escaped), c(1, 2, 3))
+})
+
+test_that("egen growth rebuilds its view on the new table and keeps aliases on the old one", {
+    withr::local_options(dtatools.auto_grow = TRUE)
+    data <- dibble(x = dta_double(c(1, 2)))
+    data <- reserve_columns(data, n = 0L)
+    alias <- data
+    expect_false(can_add_columns(data))
+    expect_warning(result <- egen(data, y = dta_total(x)), "isolated table")
+    expect_true(is_dibble(result))
+    expect_identical(names(result), c("x", "y"))
+    expect_identical(as.double(result$y), c(3, 3))
+    expect_identical(names(alias), "x")
+})
+

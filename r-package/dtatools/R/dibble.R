@@ -233,8 +233,7 @@ is_dibble <- function(x) {
 .new_validated_dibble <- function(x) {
     # Spare column slots let `gen()` append in place, so the physical
     # list stays the complete dataset for every reader.
-    x <- .reserve_column_capacity(x)
-    .mark_reference_data(x, .new_reference_state(x))
+    .new_prepared_table(x)
 }
 
 # `tibble::as_tibble()` on a data.table goes through data.table's own
