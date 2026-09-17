@@ -59,6 +59,7 @@ slice_dta_rows <- function(data, rows) {
             call. = FALSE
         )
     }
+    if (data_table) .require_data_table()
 
     row_names <- if (is.character(rows)) row.names(data) else NULL
     locations <- vctrs::vec_as_location(

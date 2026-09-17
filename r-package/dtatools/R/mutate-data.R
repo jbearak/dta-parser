@@ -529,9 +529,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     result
 }
 
-# Stored type and legacy information are separate from current ownership.
-# Readers use the supplied physical table, never a cached owner or column.
-# An in-place conversion that removes the marker also removes its meaning.
+# Stored type information is separate from current ownership. Readers use
+# the supplied physical table, never a cached owner or column. An in-place
+# conversion that removes the marker also removes its meaning.
 .reference_state <- function(data) {
     if (!inherits(data, "dtatools_ref_data")) return(NULL)
     state <- attr(data, ".dtatools_ref_state", exact = TRUE)
