@@ -40,12 +40,10 @@
 #' data <- reserve_columns(dibble(x = 1:3))
 #' gen(data, y = x + 1)
 reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
-    .require_mutation_target(data)
-    .as_mutation_data(data, allow_grouped = TRUE)
+    .open_mutation_target(data, allow_grouped = TRUE)
     n <- .validate_alloccol(n, length(data))
     snapshot <- .isolate_shared_columns(.reference_snapshot(data), NULL)
-    result <- .reserve_column_capacity(snapshot, n)
-    .mark_reference_data(result, .new_reference_state(result))
+    .new_prepared_table(snapshot, n)
 }
 
 .validate_alloccol <- function(n, columns = 0) {
@@ -97,6 +95,23 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
         "Return the updated table from functions and assign it in the caller."),
         call. = FALSE)
     result
+}
+
+# The growth guard shared by every column-adding writer. When growth built
+# an isolated table, the column view taken from the old table is stale:
+# release its private handles and open the new table the same way. Both
+# results must be assigned, as growth itself must be.
+.grow_mutation_target <- function(data, original, columns, auto_grow,
+                                  private_views = FALSE) {
+    prepared <- .prepare_column_growth(data, columns, auto_grow)
+    if (.same_mutation_object(data, prepared)) {
+        return(list(data = data, original = original))
+    }
+    if (private_views) .Call(C_dtatools_release_mutation_views, original$columns)
+    list(data = prepared, original = .as_mutation_data(
+        prepared, allow_grouped = TRUE, allow_rowwise = FALSE,
+        private_views = private_views
+    ))
 }
 
 .mutation_binding_environment <- function(name, env, inherits = TRUE) {
@@ -260,8 +275,7 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
 #' gen(data, y = x + 1)
 #' can_add_columns(data, 2) # FALSE
 column_capacity <- function(data) {
-    .require_mutation_target(data)
-    .as_mutation_data(data, allow_grouped = TRUE)
+    .open_mutation_target(data, allow_grouped = TRUE)
     capacity <- .Call(C_dtatools_column_capacity, data)
     if (capacity < 0 || !.column_resize_ready(data)) NA_real_ else capacity
 }
@@ -269,8 +283,7 @@ column_capacity <- function(data) {
 #' @rdname column_capacity
 #' @export
 can_add_columns <- function(data, n = 1L) {
-    .require_mutation_target(data)
-    .as_mutation_data(data, allow_grouped = TRUE)
+    .open_mutation_target(data, allow_grouped = TRUE)
     n <- .validate_alloccol(n, length(data))
     (n == 0 || .column_resize_ready(data)) && isTRUE(.Call(
         C_dtatools_can_select_data_columns, data, length(data) + n

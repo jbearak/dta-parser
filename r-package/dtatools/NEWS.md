@@ -1,5 +1,10 @@
 # dtatools (development version)
 
+* `egen()` now evaluates its calculation on private column views, as `gen()`
+  and `repl()` do, so an expression that retains a column keeps a copy rather
+  than an alias of the dataset. The reference bookkeeping a dibble carries
+  now records only its base classes and owner; the unread column and row
+  counts are gone.
 * Breaking: mutation by reference now requires a dibble. `gen()`, `egen()`,
   `repl()`, `replace_values()`, dibble `:=`, `keep_vars()`, `drop_vars()`,
   `rename_vars()`, `order_vars()`, `reorder_dta_rows()`, the table forms of

@@ -74,7 +74,7 @@ test_that("base copies read physical columns and never rewrite source bookkeepin
         expect_identical(serialize(other, NULL), before)
         expect_identical(names(source), c("x", "y"))
         expect_identical(dtatools:::.reference_state(source), original_state)
-        expect_identical(original_state$physical_count, 2L)
+        expect_identical(sort(ls(original_state, all.names = TRUE)), c("classes", "owner"))
         expect_null(original_state$physical_names)
         expect_null(original_state$object)
     }

@@ -3533,7 +3533,7 @@
         },
         {
           "path": "tests/testthat/test-reference-copy.R",
-          "sha256": "c366ec4510c46f0279a6ff407e6372efff86f1ebb7ce04731d76abf7f1bc4884"
+          "sha256": "04638572817abfa386710b75f6c24d8f8c9eca4429c01a74bcab6231ddce58a0"
         },
         {
           "path": "tests/testthat/test-copy-data.R",
@@ -6297,7 +6297,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "6057795f2bc2bfe523ab133f70d887a27c7eba1bcde4153428303b0a72188ec7"
+          "sha256": "2dff5564925fd8f800da349b13d984024fb904ca8c9a7a6dec04a3de8139c9f3"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
@@ -10234,7 +10234,7 @@
       "files": [
         {
           "path": "tests/testthat/test-egen-command.R",
-          "sha256": "b79d9de0d31553b40b699922d25978ef9faa09f4e56bfa3281b7c48e7c74dadc"
+          "sha256": "2baf9cfe94a2129fc4cf43c0a7bab1bdfccc690ac04e7749d4b1706bab111092"
         },
         {
           "path": "tests/testthat/test-egen-groups.R",
@@ -10564,6 +10564,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-command.R",
+          "test": "egen calculations read private views, so a retained column cannot alias the dataset",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-command.R",
+          "test": "egen growth rebuilds its view on the new table and keeps aliases on the old one",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
           "warnings": 0
         },
         {

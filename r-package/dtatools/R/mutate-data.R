@@ -340,8 +340,8 @@ replace_values <- function(data, ..., where = NULL, by = NULL,
                            bysort = NULL, promote = TRUE) {
     .require_mutation_target(data)
     shared <- .Call(C_dtatools_shared_columns, data)
-    preflight <- .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE,
-                                   private_views = TRUE)
+    preflight <- .open_mutation_target(data, allow_grouped = TRUE,
+                                       allow_rowwise = FALSE, private_views = TRUE)
     .Call(C_dtatools_release_mutation_views, preflight$columns)
     preflight <- NULL
 
@@ -385,8 +385,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     .require_mutation_target(data)
     auto_grow <- .mutation_auto_grow()
     if (is.null(.mutation_fast_shape(data))) {
-        preflight <- .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE,
-                                       private_views = TRUE)
+        preflight <- .open_mutation_target(data, allow_grouped = TRUE,
+                                           allow_rowwise = FALSE, private_views = TRUE)
         .Call(C_dtatools_release_mutation_views, preflight$columns)
         preflight <- NULL
     }
@@ -567,13 +567,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 }
 
 # Every dibble's columns are physical: the reference state records only
-# the shape and base classes the next snapshot needs.
+# the base classes the next mark restores. The native marker adds `owner`,
+# a non-owning identity token. Do not retain column vectors here: extra
+# references would hide whether a physical vector is shared with an
+# ordinary R copy at the write boundary.
 .new_reference_state <- function(data) {
     state <- new.env(parent = emptyenv())
-    # Do not retain column vectors. Extra references would hide whether a
-    # physical vector is shared with an ordinary R copy at the write boundary.
-    state$physical_count <- length(data)
-    state$nrow <- abs(.row_names_info(data, 2L))
     state$classes <- .reference_base_classes(class(data))
     state
 }
@@ -604,6 +603,34 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     .Call(C_dtatools_mark_reference_data, data, state, classes)
 }
 
+# Fresh bookkeeping for a table whose physical shape is final. Every write
+# that changes the column set or the backing ends here.
+.mark_fresh_reference <- function(data) {
+    .mark_reference_data(data, .new_reference_state(data))
+}
+
+# A prepared table: spare column slots, then fresh bookkeeping. Assign the
+# result; the input is left as it was.
+.new_prepared_table <- function(x, n = getOption("dtatools.alloccol", 1024L)) {
+    .mark_fresh_reference(.reserve_column_capacity(x, n))
+}
+
+# Commit shapes. Each by-reference writer ends in one native commit; the
+# table records what follows it, so the decision is not re-derived per
+# writer. A write remarks when it changes the column set or the backing,
+# because the mark records the base classes and the owner of that shape;
+# a value or row-order write leaves both alone. A grouped input regroups
+# after any value write, since a target may share its vector with a key.
+#
+#   writer                          native commit                  remark  regroup  interrupt guard
+#   gen(), :=, direct scalar        append_data_column             yes     no       suspendInterrupts
+#   repl(), := on existing column   patch_slot / fused_patch_slot  no      grouped  none (C stages first)
+#   repl() storage promotion        set_data_column                no      grouped  none
+#   keep/drop/rename/order, egen()  select_data_columns            yes     no       none (C validates first)
+#   metadata table setters          set_data_column, set_attribute yes     no       none
+#   reorder_dta_rows()              replace_reference_columns      no      no       none (C validates first)
+#   reserve_columns(), constructors reserve_column_capacity         yes     no       none (fresh table)
+
 .reference_snapshot <- function(data) {
     if (!any(class(data) %in% c("dibble", "dtatools_ref_data"))) return(data)
     # Every column is physical, so the snapshot is the object minus its
@@ -621,7 +648,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                               allow_rowwise = allow_grouped,
                               private_views = FALSE) {
     .validate_mutation_container(data, allow_grouped, allow_rowwise)
-    state <- .reference_state(data)
     names <- attr(data, "names", exact = TRUE)
     if (is.null(names) || anyNA(names) || any(names == "") ||
         anyDuplicated(names)) {
@@ -653,9 +679,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         grouping_columns[keys] <- lapply(columns[keys], .metadata_copy)
     }
     .validate_group_metadata(data, grouping_columns, names, row_count)
-    list(
-        columns = columns, names = names, nrow = row_count, state = state
-    )
+    list(columns = columns, names = names, nrow = row_count)
 }
 
 # Validate supported physical shapes without retaining their columns or names.
@@ -726,7 +750,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (!.Call(C_dtatools_append_data_column, data, name, column)) {
             stop("internal error: prepared table cannot append a column")
         }
-        .mark_reference_data(data, .new_reference_state(data))
+        .mark_fresh_reference(data)
     })
     data
 }
@@ -1650,7 +1674,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # metadata describing the old values. Rebuild it in place from the
 # current columns, keeping the `.drop` setting, so a following dplyr verb
 # or `.N` assignment partitions the rows the way the data now reads.
-.regroup_after_replacement <- function(data, state) {
+.regroup_after_replacement <- function(data) {
     groups <- .build_group_metadata(.data_columns(data), .group_vars(data),
                                     nrow(data), drop = .group_drop_default(data))
     .Call(C_dtatools_set_attribute, data, "groups", groups)
@@ -1830,13 +1854,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     )
     target <- .mutation_name(variable, generate, original)
     if (generate) {
-        prepared <- .prepare_column_growth(data, length(data) + 1L, auto_grow)
-        if (!.same_mutation_object(data, prepared)) {
-            .Call(C_dtatools_release_mutation_views, original$columns)
-            data <- prepared
-            original <- .as_mutation_data(data, allow_grouped = TRUE,
-                allow_rowwise = FALSE, private_views = TRUE)
-        }
+        grown <- .grow_mutation_target(data, original, length(data) + 1L,
+                                       auto_grow, private_views = TRUE)
+        data <- grown$data
+        original <- grown$original
     } else {
         .prepare_column_operation(data, length(data))
     }
@@ -1848,7 +1869,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         NULL
     }
     if (is.null(selection) && !is.null(groups)) original <- groups$original
-    state <- .reference_state(data)
     access <- NULL
     column <- NULL
 
@@ -1929,8 +1949,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             values, rows, original$nrow, generate = TRUE
         )
         .prepare_column_operation(data, length(data) + 1L)
-        state <- .reference_state(data)
-        if (is.null(state)) state <- .new_reference_state(data)
     } else {
         if (is.null(access)) access <- .column_access(data)
         if (is.null(column)) {
@@ -1967,7 +1985,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                 .report_storage_promotion(target$name, column, promoted)
             }
             .set_data_column_at(access, target$location, promoted)
-            if (grouped_input) .regroup_after_replacement(data, state)
+            if (grouped_input) .regroup_after_replacement(data)
             return(invisible(data))
         }
         replacement <- .cast_replacement(
@@ -1997,14 +2015,14 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         # a grouping column: a target can share its vector with a key
         # under the package's alias semantics, so the key may have changed
         # without being named.
-        if (grouped_input) .regroup_after_replacement(data, state)
+        if (grouped_input) .regroup_after_replacement(data)
     }
     if (generate) suspendInterrupts({
         appended <- .Call(C_dtatools_append_data_column, data, target$name, column)
         if (!appended) {
             stop("internal error: prepared table cannot append a column")
         }
-        .mark_reference_data(data, .new_reference_state(data))
+        .mark_fresh_reference(data)
     })
     invisible(data)
 }
@@ -2226,8 +2244,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 #' @rdname replace_values
 #' @export
 copy_data <- function(data) {
-    .require_mutation_target(data)
-    .as_mutation_data(data, allow_grouped = TRUE)
+    .open_mutation_target(data, allow_grouped = TRUE)
     snapshot <- .reference_snapshot(data)
     source <- .as_mutation_data(snapshot, allow_grouped = TRUE)
     snapshot_columns <- source$columns

@@ -82,11 +82,12 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     target_expr <- substitute(data)
     destination <- if (is.call(target_expr)) .capture_mutation_binding(target_expr, parent.frame()) else NULL
     if (!is.null(destination)) data <- destination$data
-    .require_mutation_target(data)
     original_data <- data
     auto_grow <- .mutation_auto_grow()
-    original <- .as_mutation_data(data, allow_grouped = TRUE,
-                                  allow_rowwise = FALSE)
+    # Private views, as gen() takes: the calculation reads isolated handles,
+    # so an expression that retains a column cannot alias the dataset.
+    original <- .open_mutation_target(data, allow_grouped = TRUE,
+                                      allow_rowwise = FALSE, private_views = TRUE)
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
         function() .capture_positional_pair(...),
@@ -95,12 +96,10 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         function() rlang::enquos0(...)
     )
     target <- .mutation_name(arguments$variable, TRUE, original)$name
-    prepared <- .prepare_column_growth(data, length(data) + 1L, auto_grow)
-    if (!.same_mutation_object(data, prepared)) {
-        data <- prepared
-        original <- .as_mutation_data(data, allow_grouped = TRUE,
-                                      allow_rowwise = FALSE)
-    }
+    grown <- .grow_mutation_target(data, original, length(data) + 1L,
+                                   auto_grow, private_views = TRUE)
+    data <- grown$data
+    original <- grown$original
     storage <- .egen_storage(type)
     placement <- .egen_placement(rlang::enquo(before), rlang::enquo(after),
                                  names(data), target)
@@ -125,6 +124,8 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         excluded <- setdiff(seq_len(original$nrow), evaluated$rows)
         column[excluded] <- 0
     }
+    # Evaluation is complete: release the private handles before the commit.
+    .Call(C_dtatools_release_mutation_views, original$columns)
     columns <- .data_columns(data)
     columns[[target]] <- column
     columns <- columns[placement]

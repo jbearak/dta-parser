@@ -35,8 +35,7 @@
 #' names(survey)
 #' @export
 keep_vars <- function(data, ...) {
-    .require_mutation_target(data)
-    .as_mutation_data(data)
+    .open_mutation_target(data)
 
     dots <- rlang::enquos(...)
     result <- .select_vars_by_reference(data, dots, keep = TRUE)
@@ -46,8 +45,7 @@ keep_vars <- function(data, ...) {
 #' @rdname keep_vars
 #' @export
 drop_vars <- function(data, ...) {
-    .require_mutation_target(data)
-    .as_mutation_data(data)
+    .open_mutation_target(data)
 
     dots <- rlang::enquos(...)
     result <- .select_vars_by_reference(data, dots, keep = FALSE)
@@ -78,8 +76,7 @@ drop_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 order_vars <- function(data, ...) {
-    .require_mutation_target(data)
-    .as_mutation_data(data)
+    .open_mutation_target(data)
 
     dots <- rlang::enquos(...)
     result <- .order_vars_by_reference(data, dots)
@@ -117,8 +114,7 @@ order_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 rename_vars <- function(data, ..., .names = NULL) {
-    .require_mutation_target(data)
-    .as_mutation_data(data)
+    .open_mutation_target(data)
     .prepare_column_operation(data, length(data))
 
     dots <- rlang::enquos(...)
@@ -138,11 +134,7 @@ rename_vars <- function(data, ..., .names = NULL) {
 .rename_all_vars_by_reference <- function(data, new_names) {
     original <- .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
-    columns <- if (is.null(original$state)) {
-        original$columns
-    } else {
-        .data_columns(data)
-    }
+    columns <- original$columns
     if (!is.character(new_names) || anyNA(new_names)) {
         stop("`.names` must be a character vector", call. = FALSE)
     }
@@ -177,11 +169,7 @@ rename_vars <- function(data, ..., .names = NULL) {
     }
     original <- .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
-    columns <- if (is.null(original$state)) {
-        original$columns
-    } else {
-        .data_columns(data)
-    }
+    columns <- original$columns
     current_names <- names(columns)
     locations <- vapply(
         replacements,
@@ -359,11 +347,7 @@ rename_vars <- function(data, ..., .names = NULL) {
 
 .select_vars_by_reference <- function(data, selections, keep) {
     original <- .as_mutation_data(data)
-    columns <- if (is.null(original$state)) {
-        original$columns
-    } else {
-        .data_columns(data)
-    }
+    columns <- original$columns
     selected_locations <- .resolve_selections(selections, names(columns))
     if (keep && length(selected_locations) == length(columns)) {
         return(invisible(data))
@@ -380,11 +364,7 @@ rename_vars <- function(data, ..., .names = NULL) {
 .order_vars_by_reference <- function(data, selections) {
     original <- .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
-    columns <- if (is.null(original$state)) {
-        original$columns
-    } else {
-        .data_columns(data)
-    }
+    columns <- original$columns
     moved_locations <- .resolve_selections(selections, names(columns))
     locations <- seq_along(columns)
     ordered_locations <- c(

@@ -8,7 +8,7 @@ test_that("dibble() builds a tibble that carries reference state", {
     expect_true(is_dibble(data))
     expect_false(is.null(state))
     expect_identical(state$classes, c("tbl_df", "tbl", "data.frame"))
-    expect_identical(state$physical_count, 2L)
+    expect_identical(sort(ls(state, all.names = TRUE)), c("classes", "owner"))
     expect_identical(names(data), c("x", "y"))
     expect_identical(dim(data), c(3L, 2L))
     # Every column of a dibble carries Stata storage from construction.

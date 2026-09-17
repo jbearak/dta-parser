@@ -181,6 +181,18 @@
     invisible(NULL)
 }
 
+# Every explicit by-reference helper opens its target the same way: the
+# dibble gate, then the validated column view. Callers that only need the
+# gate keep calling `.require_mutation_target()`.
+.open_mutation_target <- function(data, allow_grouped = FALSE,
+                                  allow_rowwise = allow_grouped,
+                                  private_views = FALSE) {
+    .require_mutation_target(data)
+    .as_mutation_data(data, allow_grouped = allow_grouped,
+                      allow_rowwise = allow_rowwise,
+                      private_views = private_views)
+}
+
 # Shape and grouping rules shared by mutation targets and by frames on their
 # way to becoming one inside as_dibble(). The mutation-target gate itself runs
 # at each public helper's entry.
