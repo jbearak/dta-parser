@@ -2527,33 +2527,42 @@ unsafe fn cached_owned_label_attribute(
     Ok(Some(labels))
 }
 
-unsafe fn cached_borrowed_label_attribute<'a>(
-    table_name: &'a str,
-    tables: &AHashMap<&'a str, &'a ValueLabelTable>,
-    cache: &mut AHashMap<&'a str, Sexp>,
+/// Convert every value-label table that a selected column references into
+/// its R `labels` attribute once, before any column is finished. Every
+/// referring column then shares one protected vector, and the per-column
+/// loop only looks the table up. The Arrow reader builds its cache the same
+/// way before planning.
+unsafe fn value_label_attributes<'a>(
+    tables: &'a ValueLabelTableView<'_>,
+    reference_counts: &AHashMap<&str, usize>,
     guard: &mut ProtectGuard,
-) -> Result<Option<Sexp>, String> {
-    if let Some(&labels) = cache.get(table_name) {
-        return Ok(Some(labels));
+) -> Result<AHashMap<&'a str, Sexp>, String> {
+    let mut attributes = AHashMap::with_capacity(reference_counts.len());
+    for (index, table) in tables.iter().enumerate() {
+        // Entries poll as they convert; a wide file of small tables must
+        // still see an interrupt between tables.
+        poll_interrupt(index)?;
+        if !reference_counts.contains_key(table.name.as_str())
+            || attributes.contains_key(table.name.as_str())
+        {
+            continue;
+        }
+        let labels = label_attribute_from_entries(
+            table.entries.len(),
+            table.entries.iter().map(|entry| {
+                Ok((
+                    entry
+                        .missing_tag
+                        .map(r_missing)
+                        .unwrap_or_else(|| f64::from(entry.value)),
+                    entry.label.as_str(),
+                ))
+            }),
+            guard,
+        )?;
+        attributes.insert(table.name.as_str(), labels);
     }
-    let Some(table) = tables.get(table_name) else {
-        return Ok(None);
-    };
-    let labels = label_attribute_from_entries(
-        table.entries.len(),
-        table.entries.iter().map(|entry| {
-            Ok((
-                entry
-                    .missing_tag
-                    .map(r_missing)
-                    .unwrap_or_else(|| f64::from(entry.value)),
-                entry.label.as_str(),
-            ))
-        }),
-        guard,
-    )?;
-    cache.insert(table_name, labels);
-    Ok(Some(labels))
+    Ok(attributes)
 }
 
 unsafe fn numeric_column<T: Copy + Into<f64>>(
@@ -3623,16 +3632,13 @@ impl DtaSink for RDataFrameSink {
             metadata,
             self.source_indices.iter().map(|&index| index as usize),
         );
-        let mut value_label_tables_by_name = AHashMap::with_capacity(value_label_tables.len());
-        for table in value_label_tables.iter() {
-            if value_label_reference_counts.contains_key(table.name.as_str()) {
-                value_label_tables_by_name
-                    .entry(table.name.as_str())
-                    .or_insert(table);
-            }
-        }
         unsafe {
-            let mut value_label_attributes = AHashMap::new();
+            let value_label_attributes = value_label_attributes(
+                &value_label_tables,
+                &value_label_reference_counts,
+                &mut self._guard,
+            )
+            .map_err(DtaError::Output)?;
             for (output_index, column) in self.columns.iter_mut().enumerate() {
                 check_interrupt().map_err(DtaError::Output)?;
                 let vector = match column {
@@ -3671,22 +3677,13 @@ impl DtaSink for RDataFrameSink {
                     .variables
                     .get(source_index as usize)
                     .ok_or(DtaError::ArithmeticOverflow("output source column"))?;
-                let table_name = (!variable.value_label_name.is_empty()
-                    && (value_label_attributes.contains_key(variable.value_label_name.as_str())
-                        || value_label_tables_by_name
-                            .contains_key(variable.value_label_name.as_str())))
-                .then_some(variable.value_label_name.as_str());
+                let labels_attribute = value_label_attributes
+                    .get(variable.value_label_name.as_str())
+                    .copied();
+                let table_name = labels_attribute
+                    .is_some()
+                    .then_some(variable.value_label_name.as_str());
                 let mut attribute_guard = ProtectGuard::new();
-                let labels_attribute = match table_name {
-                    Some(table_name) => cached_borrowed_label_attribute(
-                        table_name,
-                        &value_label_tables_by_name,
-                        &mut value_label_attributes,
-                        &mut self._guard,
-                    )
-                    .map_err(DtaError::Output)?,
-                    None => None,
-                };
                 attach_variable_attributes(
                     vector,
                     variable,
