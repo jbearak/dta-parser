@@ -5693,9 +5693,12 @@
           "file": "test-mutate-data.R",
           "test": "dibble consumers through dplyr",
           "occurrence": 1,
-          "skip": "forbid",
+          "skip": "require",
           "min_pass": 35,
-          "warnings": 0
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-mutate-data.R",
@@ -7768,9 +7771,12 @@
           "file": "test-dibble-row-lifetime.R",
           "test": "S6-L04 plain frames are never mutation targets and keep their container policy",
           "occurrence": 1,
-          "skip": "forbid",
+          "skip": "require",
           "min_pass": 48,
-          "warnings": 0
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-dibble-row-order.R",
@@ -9340,9 +9346,12 @@
           "file": "test-dibble-joins.R",
           "test": "J11 ordinary frames join as copies and are never mutation targets",
           "occurrence": 1,
-          "skip": "forbid",
+          "skip": "require",
           "min_pass": 14,
-          "warnings": 0
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-dta-append.R",

@@ -34,6 +34,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -81,6 +82,31 @@ def observe(package, library, observations):
             "warnings": int(row["warning"]),
         })
     return observed
+
+
+# The native lanes install every optional package except these (see
+# scripts/provision-r-native-libraries.R), so only a guard naming one of
+# them turns a new block into a `require` block.
+NATIVE_FORBIDDEN = {"dplyr", "labelled", "dtplyr", "tidyr", "haven"}
+
+TEST_START = re.compile(r'^test_that\(\s*"((?:[^"\\]|\\.)*)"', re.M)
+OPTIONAL_GUARD = re.compile(r'skip_if_not_installed\(\s*"([^"]+)"')
+
+
+def optional_package(path, title):
+    """The forbidden package a test's skip_if_not_installed() guard names, if any.
+
+    The guard is looked for between the test's opening line and the next
+    test_that() call, so a file-level guard does not count."""
+    text = path.read_text(encoding="utf-8")
+    starts = list(TEST_START.finditer(text))
+    for index, match in enumerate(starts):
+        if match.group(1).encode().decode("unicode_escape") != title:
+            continue
+        end = starts[index + 1].start() if index + 1 < len(starts) else len(text)
+        guard = OPTIONAL_GUARD.search(text, match.end(), end)
+        return guard.group(1) if guard and guard.group(1) in NATIVE_FORBIDDEN else None
+    return None
 
 
 def block_key(block):
@@ -133,6 +159,11 @@ def main():
             if o is None:
                 removed.append(key)
                 continue
+            if o["skipped"]:
+                # A skipped run reports no assertions; the counts it would
+                # lower belong to the run where the capability is present.
+                blocks.append(block)
+                continue
             before = (block["min_pass"], block["warnings"])
             block["min_pass"] = min(block["min_pass"], o["passed"])
             if block["skip"] == "forbid":
@@ -143,11 +174,18 @@ def main():
         for key, o in observed_keys.items():
             if o["file"] not in changed_files:
                 continue
-            if o["skipped"]:
+            guard = optional_package(package / "tests/testthat" / o["file"], o["test"])
+            if o["skipped"] and guard is None:
                 unresolved.append(key)
                 continue
             block = {"file": o["file"], "test": o["test"], "occurrence": o["occurrence"],
                      "skip": "forbid", "min_pass": o["passed"], "warnings": o["warnings"]}
+            if guard is not None:
+                # The native lanes run without optional packages, so a test
+                # that skips without one must be allowed, and required, to skip.
+                block.update(skip="require", min_pass_before_skip=0,
+                             reason=f"Optional {guard} comparison retained in the present-dependency suite.",
+                             skip_message=f"Reason: {{{guard}}} is not installed")
             last = max((i for i, b in enumerate(blocks) if b["file"] == o["file"]), default=None)
             blocks.insert(len(blocks) if last is None else last + 1, block)
             added.append(key)
