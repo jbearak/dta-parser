@@ -20,17 +20,11 @@ emit <- function(verb, container, value) {
     cat(sprintf("DTATOOLS_MUTATION_GATE\t%s\t%s\t%s\n", verb, container, value))
 }
 
-# The recorded value is the result's container followed by its data
-# signature, because `datasig()` deliberately ignores container identity and
-# a copying verb that returned the right values in the wrong class would
-# otherwise still match.
-container_of <- function(data) {
-    if (dtatools::is_dibble(data)) "dibble"
-    else if (inherits(data, "data.table")) "data.table"
-    else if (inherits(data, "tbl_df")) "tibble"
-    else if (is.data.frame(data)) "data.frame"
-    else class(data)[[1L]]
-}
+# The recorded value is the result's complete class vector followed by its
+# data signature, because `datasig()` deliberately ignores classes and a verb
+# that returned the right values in the wrong class, or dropped one of the
+# dibble's classes, would otherwise still match.
+container_of <- function(data) paste(class(data), collapse = "/")
 signature <- function(data) {
     paste0(container_of(data), ":", dtatools::datasig(data, threads = 1L))
 }

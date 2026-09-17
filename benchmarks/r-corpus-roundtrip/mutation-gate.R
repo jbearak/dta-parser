@@ -219,6 +219,8 @@ if (identical(mode, "record") && update_baseline) {
     quit(status = 0L)
 }
 
+differences_path <- file.path(output_dir, "differences.tsv")
+unlink(differences_path)
 key <- function(table) paste(table$id, table$verb, table$container, sep = "\t")
 expected <- baseline[baseline$id %in% inventory$id, , drop = FALSE]
 expected_lookup <- stats::setNames(expected$datasig, key(expected))
@@ -236,7 +238,7 @@ if (length(differences)) {
         observed = unname(observed_lookup[differences]),
         stringsAsFactors = FALSE
     )
-    atomic_tsv(report, file.path(output_dir, "differences.tsv"))
+    atomic_tsv(report, differences_path)
     message(nrow(report), " signature differences; first rows:")
     message(paste(utils::capture.output(print(utils::head(report, 20L))),
                   collapse = "\n"))

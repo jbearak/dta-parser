@@ -81,7 +81,8 @@ with no applicable column records `not-applicable` rather than a gap, so the
 baseline has the same rows on every run.
 
 `mutation-gate-baseline.tsv` is committed. Its rows are the stable corpus ID,
-verb, input container, and the result's container followed by its signature;
+verb, input container, and the result's complete class vector followed by its
+signature;
 it contains no paths, labels, or values. The by-reference verbs are signed
 through an alias taken before the call, so a helper that returned a modified
 copy instead of writing in place would fail the gate.
