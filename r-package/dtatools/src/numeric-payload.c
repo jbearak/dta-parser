@@ -86,7 +86,7 @@ numeric_data *numeric_read_storage(SEXP value) {
    writable bytes. No immutable owner ever enters those pointer interfaces. */
 numeric_data *numeric_storage(SEXP value) {
     numeric_data *data = numeric_read_storage(value);
-    if (data->native_owner != NULL) {
+    if (numeric_payload_retained(data)) {
         SEXP detached = PROTECT(numeric_compact_copy(data));
         owned_numeric_compatibility_bytes +=
             (double) data->length * (double) numeric_kind_width(data->kind);
@@ -239,7 +239,7 @@ static const void *numeric_read_span(
     const numeric_data *data, size_t start, size_t requested, size_t *count
 ) {
     if (start > data->length) Rf_error("invalid compact numeric region");
-    if (data->native_owner == NULL) {
+    if (!numeric_payload_retained(data)) {
         *count = requested < data->length - start ? requested : data->length - start;
         return (const unsigned char *) data->values + start * numeric_kind_width(data->kind);
     }
@@ -251,26 +251,57 @@ static const void *numeric_read_span(
     return values;
 }
 
+/* Visit [start, start + length) as contiguous plain spans. A plain payload is
+   one span; a retained payload yields the owner's chunks in order, cut to
+   blocks of at most 65536 rows so a visitor that does not poll on its own
+   still leaves the loop interruptible. Kernels written for plain bytes run
+   unchanged on each span. */
+void numeric_for_each_span(
+    const numeric_data *data, size_t start, size_t length,
+    numeric_span_visitor visit, void *context
+) {
+    if (start > data->length || length > data->length - start) {
+        Rf_error("invalid compact numeric region");
+    }
+    if (!numeric_payload_retained(data)) {
+        numeric_data span = *data;
+        span.values = (unsigned char *) data->values +
+            start * numeric_kind_width(data->kind);
+        span.length = length;
+        visit(&span, 0, context);
+        return;
+    }
+    size_t visited = 0;
+    while (visited < length) {
+        if (length >= 16384) R_CheckUserInterrupt();
+        size_t count = 0;
+        size_t wanted = length - visited < 65536 ? length - visited : 65536;
+        numeric_data span = *data;
+        span.values = (void *) numeric_read_span(
+            data, start + visited, wanted, &count
+        );
+        span.length = count;
+        span.native_owner = NULL;
+        visit(&span, visited, context);
+        visited += count;
+    }
+}
+
+static void copy_span_bytes(const numeric_data *span, size_t offset, void *context) {
+    size_t width = numeric_kind_width(span->kind);
+    if (span->length != 0) {
+        memcpy((unsigned char *) context + offset * width, span->values,
+               span->length * width);
+    }
+}
+
 void numeric_copy_region(
     const numeric_data *data, size_t start, size_t length, void *output
 ) {
-    size_t width = numeric_kind_width(data->kind);
     if (start > data->length || length > data->length - start) {
         Rf_error("invalid compact numeric copy range");
     }
-    if (data->native_owner == NULL) {
-        if (length != 0) memcpy(output, (const unsigned char *) data->values + start * width, length * width);
-        return;
-    }
-    size_t copied = 0;
-    while (copied < length) {
-        if (length >= 16384) R_CheckUserInterrupt();
-        size_t count = 0;
-        size_t wanted = length - copied < 65536 ? length - copied : 65536;
-        const void *values = numeric_read_span(data, start + copied, wanted, &count);
-        memcpy((unsigned char *) output + copied * width, values, count * width);
-        copied += count;
-    }
+    numeric_for_each_span(data, start, length, copy_span_bytes, output);
 }
 
 int materialized_numeric_storage(
@@ -309,7 +340,7 @@ double numeric_observed_value(double value, int temporal) {
         const numeric_data *data, size_t index                               \
     ) {                                                                       \
         TYPE raw;                                                             \
-        if (data->native_owner == NULL) {                                     \
+        if (!numeric_payload_retained(data)) {                                \
             memcpy(&raw, (const char *) data->values + index * sizeof(raw),   \
                    sizeof(raw));                                              \
         } else {                                                              \
@@ -509,7 +540,7 @@ SEXP numeric_payload_root(SEXP value) {
         SEXP source = numeric_base_source(value);
         /* A private handle cannot be materialized or cleared by a callback
            that holds the public vector. It also retains frozen R raw roots. */
-        if (numeric_read_storage(source)->native_owner != NULL)
+        if (numeric_payload_retained(numeric_read_storage(source)))
             return numeric_handle_copy(source);
         return R_ExternalPtrProtected(R_altrep_data1(source));
     }
@@ -1464,117 +1495,85 @@ SEXP C_dtatools_factorize_numeric(
     );
 }
 
-static void numeric_fill_region(
-    const numeric_data *data, size_t index, size_t length, double *output
-) {
-    if (data->native_owner != NULL) {
-        size_t copied = 0;
-        while (copied < length) {
-            size_t count = 0;
-            const void *values = numeric_read_span(data, index + copied, length - copied, &count);
-            numeric_data region = *data;
-            region.values = (void *) values;
-            region.length = count;
-            region.native_owner = NULL;
-            numeric_fill_region(&region, 0, count, output + copied);
-            copied += count;
-        }
-        return;
-    }
-    switch (data->kind) {
+static void fill_span_doubles(const numeric_data *span, size_t offset, void *context) {
+    double *output = (double *) context + offset;
+    switch (span->kind) {
     case NUMERIC_BYTE:
-        numeric_byte_region(data, index, length, output);
+        numeric_byte_region(span, 0, span->length, output);
         return;
     case NUMERIC_INT:
-        numeric_int_region(data, index, length, output);
+        numeric_int_region(span, 0, span->length, output);
         return;
     case NUMERIC_LONG:
-        numeric_long_region(data, index, length, output);
+        numeric_long_region(span, 0, span->length, output);
         return;
     case NUMERIC_FLOAT:
-        numeric_float_region(data, index, length, output);
+        numeric_float_region(span, 0, span->length, output);
         return;
     default:
         Rf_error("invalid dtatools numeric storage kind");
+    }
+}
+
+static void numeric_fill_region(
+    const numeric_data *data, size_t index, size_t length, double *output
+) {
+    numeric_for_each_span(data, index, length, fill_span_doubles, output);
+}
+
+typedef struct {
+    Rboolean na_rm;
+    long double sum;
+} numeric_sum_context;
+
+static void sum_span(const numeric_data *span, size_t offset, void *context) {
+    (void) offset;
+    numeric_sum_context *state = (numeric_sum_context *) context;
+    /* Carry one accumulator through every row. Summing independent
+       chunks and combining their totals changes floating rounding. */
+    switch (span->kind) {
+    case NUMERIC_BYTE: numeric_byte_sum_accumulate(span, state->na_rm, &state->sum); break;
+    case NUMERIC_INT: numeric_int_sum_accumulate(span, state->na_rm, &state->sum); break;
+    case NUMERIC_LONG: numeric_long_sum_accumulate(span, state->na_rm, &state->sum); break;
+    case NUMERIC_FLOAT: numeric_float_sum_accumulate(span, state->na_rm, &state->sum); break;
+    default: Rf_error("invalid dtatools numeric storage kind");
     }
 }
 
 static long double numeric_sum_storage(
     const numeric_data *data, Rboolean na_rm
 ) {
-    if (data->native_owner != NULL) {
-        long double sum = 0.0;
-        for (size_t start = 0; start < data->length;) {
-            R_CheckUserInterrupt();
-            size_t count = 0;
-            numeric_data region = *data;
-            region.values = (void *) numeric_read_span(data, start, data->length - start, &count);
-            region.length = count;
-            region.native_owner = NULL;
-            /* Carry one accumulator through every row. Summing independent
-               chunks and combining their totals changes floating rounding. */
-            switch (data->kind) {
-            case NUMERIC_BYTE: numeric_byte_sum_accumulate(&region, na_rm, &sum); break;
-            case NUMERIC_INT: numeric_int_sum_accumulate(&region, na_rm, &sum); break;
-            case NUMERIC_LONG: numeric_long_sum_accumulate(&region, na_rm, &sum); break;
-            case NUMERIC_FLOAT: numeric_float_sum_accumulate(&region, na_rm, &sum); break;
-            default: Rf_error("invalid dtatools numeric storage kind");
-            }
-            start += count;
-        }
-        return sum;
-    }
-    switch (data->kind) {
-    case NUMERIC_BYTE:
-        return numeric_byte_sum(data, na_rm);
-    case NUMERIC_INT:
-        return numeric_int_sum(data, na_rm);
-    case NUMERIC_LONG:
-        return numeric_long_sum(data, na_rm);
-    case NUMERIC_FLOAT:
-        return numeric_float_sum(data, na_rm);
-    default:
-        Rf_error("invalid dtatools numeric storage kind");
+    numeric_sum_context state = {na_rm, 0.0};
+    numeric_for_each_span(data, 0, data->length, sum_span, &state);
+    return state.sum;
+}
+
+typedef struct {
+    Rboolean na_rm;
+    int minimum;
+    double current;
+    int updated;
+} numeric_extreme_context;
+
+static void extreme_span(const numeric_data *span, size_t offset, void *context) {
+    (void) offset;
+    numeric_extreme_context *state = (numeric_extreme_context *) context;
+    switch (span->kind) {
+    case NUMERIC_BYTE: numeric_byte_extreme_accumulate(span, state->na_rm, state->minimum, &state->current, &state->updated); break;
+    case NUMERIC_INT: numeric_int_extreme_accumulate(span, state->na_rm, state->minimum, &state->current, &state->updated); break;
+    case NUMERIC_LONG: numeric_long_extreme_accumulate(span, state->na_rm, state->minimum, &state->current, &state->updated); break;
+    case NUMERIC_FLOAT: numeric_float_extreme_accumulate(span, state->na_rm, state->minimum, &state->current, &state->updated); break;
+    default: Rf_error("invalid dtatools numeric storage kind");
     }
 }
 
 static int numeric_extreme_storage(
     const numeric_data *data, Rboolean na_rm, int minimum, double *result
 ) {
-    if (data->native_owner != NULL) {
-        double current = 0.0;
-        int updated = 0;
-        for (size_t start = 0; start < data->length;) {
-            R_CheckUserInterrupt();
-            size_t count = 0;
-            numeric_data region = *data;
-            region.values = (void *) numeric_read_span(data, start, data->length - start, &count);
-            region.length = count;
-            region.native_owner = NULL;
-            switch (data->kind) {
-            case NUMERIC_BYTE: numeric_byte_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
-            case NUMERIC_INT: numeric_int_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
-            case NUMERIC_LONG: numeric_long_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
-            case NUMERIC_FLOAT: numeric_float_extreme_accumulate(&region, na_rm, minimum, &current, &updated); break;
-            default: Rf_error("invalid dtatools numeric storage kind");
-            }
-            start += count;
-        }
-        if (updated) *result = current;
-        return updated;
-    }
-    switch (data->kind) {
-    case NUMERIC_BYTE:
-        return numeric_byte_extreme(data, na_rm, minimum, result);
-    case NUMERIC_INT:
-        return numeric_int_extreme(data, na_rm, minimum, result);
-    case NUMERIC_LONG:
-        return numeric_long_extreme(data, na_rm, minimum, result);
-    case NUMERIC_FLOAT:
-        return numeric_float_extreme(data, na_rm, minimum, result);
-    default:
-        Rf_error("invalid dtatools numeric storage kind");
-    }
+    numeric_extreme_context state = {na_rm, minimum, 0.0, 0};
+    numeric_for_each_span(data, 0, data->length, extreme_span, &state);
+    if (state.updated) *result = state.current;
+    return state.updated;
 }
 
 double numeric_value(SEXP value, R_xlen_t index) {
@@ -1616,7 +1615,7 @@ static SEXP numeric_materialize(SEXP value, Rboolean writeable) {
             ? detach_shared_materialized_payload(value) : materialized;
     }
     numeric_data *data = numeric_read_storage(value);
-    if (data->native_owner != NULL) {
+    if (numeric_payload_retained(data)) {
         SEXP detached = PROTECT(numeric_handle_copy(value));
         R_set_altrep_data1(value, R_altrep_data1(detached));
         data = numeric_read_storage(value);
@@ -1737,7 +1736,7 @@ SEXP numeric_compact_copy(const numeric_data *data) {
    external pointer and materialization state, plus the original R roots. */
 SEXP numeric_handle_copy(SEXP source) {
     numeric_data *data = numeric_read_storage(source);
-    if (data->native_owner == NULL) return numeric_compact_copy(data);
+    if (!numeric_payload_retained(data)) return numeric_compact_copy(data);
     SEXP external = PROTECT(R_MakeExternalPtr(
         NULL, R_NilValue, R_ExternalPtrProtected(R_altrep_data1(source))
     ));
@@ -1877,7 +1876,7 @@ SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
        Freeze the descriptor and retain its raw payload for this read loop. */
     /* The independent immutable handle keeps the owner alive even when an
        index callback materializes or mutates the original value. */
-    SEXP read_handle = PROTECT(numeric_read_storage(value)->native_owner != NULL
+    SEXP read_handle = PROTECT(numeric_payload_retained(numeric_read_storage(value))
         ? numeric_handle_copy(value) : value);
     numeric_data snapshot = *numeric_read_storage(read_handle);
     const numeric_data *data = &snapshot;
@@ -1981,7 +1980,7 @@ static void numeric_gather_element(
     unsigned char *output, R_xlen_t output_index,
     const numeric_data *source, R_xlen_t source_index, size_t width
 ) {
-    if (source->native_owner != NULL) {
+    if (numeric_payload_retained(source)) {
         size_t available;
         const void *input = numeric_read_span(source, (size_t) source_index, 1, &available);
         memcpy(output + (size_t) output_index * width, input, width);
@@ -2370,7 +2369,7 @@ int dtatools_make_numeric(
 ) {
     if (data == NULL || transferred == NULL || result == NULL) return 0;
     if (TYPEOF(backing) != RAWSXP &&
-        !(backing == R_NilValue && ((numeric_data *) data)->native_owner != NULL)) return 0;
+        !(backing == R_NilValue && numeric_payload_retained((numeric_data *) data))) return 0;
     make_numeric_context context = {data, backing, 0, NULL};
     int ok = R_ToplevelExec(make_numeric_call, &context);
     *transferred = context.transferred;

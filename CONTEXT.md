@@ -32,6 +32,10 @@ _Avoid_: Labelled string, metadata-bearing character vector
 A read-mostly in-memory backing that stores a numeric column at its Stata storage type's width while presenting values to R as doubles. The column's storage type persists through supported mutations; operations that strip it require re-encoding with a storage-named constructor.
 _Avoid_: ALTREP column, packed vector
 
+**Retained payload**:
+A compact representation whose bytes stay with the reader's immutable native owner instead of being copied into R-managed memory. It is read span by span and never written in place; a mutation that needs writable bytes first detaches a plain copy.
+_Avoid_: Owned numeric, native-owned column, zero-copy payload
+
 **Stata import**:
 Reading a Stata DTA file into R. Use dtatools for this operation, including in projects that use haven for file writing or other statistical formats.
 _Avoid_: Default Stata reader, Haven replacement

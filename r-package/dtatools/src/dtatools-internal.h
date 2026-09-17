@@ -269,6 +269,20 @@ typedef struct {
     const void *native_owner;
 } numeric_data;
 
+/* A retained payload keeps its bytes behind the immutable Rust owner and is
+   read span by span; a plain payload keeps them contiguous in values. Every
+   ownership decision asks this rather than testing the field. */
+static inline int numeric_payload_retained(const numeric_data *data) {
+    return data->native_owner != NULL;
+}
+
+/* One contiguous plain span of a payload. span->values addresses the bytes,
+   span->length counts them, and offset is the span's start relative to the
+   region being visited. The span descriptor is valid only during the call. */
+typedef void (*numeric_span_visitor)(
+    const numeric_data *span, size_t offset, void *context
+);
+
 typedef struct {
     SEXP value;
     numeric_data *storage;
@@ -380,6 +394,10 @@ DTATOOLS_INTERNAL void copy_shape_attributes(SEXP target, SEXP source);
 DTATOOLS_INTERNAL numeric_data *unmaterialized_numeric_storage(SEXP value);
 DTATOOLS_INTERNAL SEXP numeric_base_source(SEXP value);
 DTATOOLS_INTERNAL numeric_data *unmaterialized_numeric_read_storage(SEXP value);
+DTATOOLS_INTERNAL void numeric_for_each_span(
+    const numeric_data *data, size_t start, size_t length,
+    numeric_span_visitor visit, void *context
+);
 DTATOOLS_INTERNAL void numeric_copy_region(
     const numeric_data *data, size_t start, size_t length, void *output
 );
