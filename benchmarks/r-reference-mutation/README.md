@@ -141,11 +141,12 @@ alias must remain compact and unchanged.
 A column built from a base R integer ALTREP sequence, which the dibble types
 as a compact `long`, is also replaced, with a corresponding integer-fill
 baseline. The full replacement caps total allocation at one compact result,
-leaves the former standalone column alias unchanged, keeps the column
-compact, and must remain materially faster than the one-row variant, which
-has to copy the old source. Together those gates reject a restored
-full-source scan. The one-row variant likewise permits only one result
-allocation.
+leaves the former standalone column alias unchanged, and keeps the column
+compact; the one-row variant likewise permits only one result allocation.
+Because both writes finish below `system.time()`'s resolution, each is then
+repeated fifty times on the owned column and the per-write time must stay
+under a quarter of one integer fill pass. A restored full-source scan costs
+about one fill per write, so it cannot pass either timing gate.
 One row is also replaced from a five-million-row dictionary-backed values
 vector with 250,000 distinct strings. That path must leave the source cache
 unchanged and allocate less than two megabytes in total, preventing cache space
