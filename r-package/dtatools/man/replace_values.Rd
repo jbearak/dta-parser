@@ -23,9 +23,10 @@ gen(data, ..., where = NULL, by = NULL, bysort = NULL)
 copy_data(data)
 }
 \arguments{
-\item{data}{A data frame or tibble to mutate. A grouped tibble's groups
-become the assignment groups. Rowwise tibbles are rejected;
-\code{copy_data()} accepts them.}
+\item{data}{A dibble to mutate; assign \code{data <- as_dibble(data)} to
+convert another container first. A grouped dibble's groups become the
+assignment groups. Rowwise dibbles are rejected; \code{copy_data()} accepts
+them.}
 
 \item{...}{The target and its values, as one tagged pair
 \code{variable = values} or as the two positional arguments \verb{variable, values}, optionally followed by one untagged \code{where}. \code{variable} is
@@ -62,11 +63,11 @@ the column and so has no prior storage to widen.}
 capacity is sufficient, or an isolated table after automatic growth.
 Return the updated table from functions and assign it in the caller.
 \code{replace_values()} returns \code{data} invisibly.
-\code{copy_data()} returns an independent data frame or tibble.
+\code{copy_data()} returns an independent dibble.
 }
 \description{
 See \link{mutation-containers} for supported classes, grouping and conversion.
-\code{gen()} and \code{replace_values()} modify a data frame or tibble by reference.
+\code{gen()} and \code{replace_values()} modify a dibble by reference.
 \code{repl()} is a direct alias for \code{replace_values()}. The return value is the
 updated dataset, invisibly. Within spare capacity, aliases observe generation
 and replacement. When generation needs more room, it creates an isolated
@@ -336,7 +337,7 @@ repl(fraction, x = 0.1)
 dta_storage_type(fraction$x)  # "double"
 identical(as.double(fraction$x), 0.1)  # TRUE
 
-survey <- reserve_columns(data.frame(income = c(10, 20), eligible = c(TRUE, FALSE)))
+survey <- dibble(income = c(10, 20), eligible = c(TRUE, FALSE))
 gen(survey, adjusted = income + 5)
 replace_values(survey, income = income * 2, where = eligible)
 # The positional, Stata-shaped spelling means the same thing
@@ -355,7 +356,7 @@ gen(survey, doubled = .data[[source_name]] * 2)
 repl(survey, doubled = 0, where = .data[[source_name]] > 15)
 
 # Group-wise assignment in Stata's `by varlist:` order
-panel <- reserve_columns(data.frame(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4))
+panel <- dibble(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4)
 gen(panel, rows = .N, by = id)               # each group's row count
 gen(panel, last = .n == .N, by = id)         # each group's last row
 gen(panel, above = x - mean(x), by = id)     # centred within group

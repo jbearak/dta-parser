@@ -1,12 +1,10 @@
 test_that("slice_dta_rows matches imported Stata column slicing", {
     data <- read_dta(fixture("all_types_v118.dta"))
+    set_dta_note(data, 4, "dataset note")
+    set_dta_characteristic(data, "source", "fixture")
+    set_dta_note(data, 7, "variable note", variable = "v_double")
+    set_dta_characteristic(data, "role", "measure", variable = "v_double")
     class(data) <- "data.frame"
-    data <- set_dta_note(data, 4, "dataset note")
-    data <- set_dta_characteristic(data, "source", "fixture")
-    data <- set_dta_note(data, 7, "variable note", variable = "v_double")
-    data <- set_dta_characteristic(
-        data, "role", "measure", variable = "v_double"
-    )
     row.names(data) <- paste0("row", seq_len(nrow(data)))
 
     compact_names <- c("v_byte", "v_int", "v_long", "v_float")
@@ -67,17 +65,16 @@ test_that("slice_dta_rows matches imported Stata column slicing", {
 
 test_that("slice_dta_rows preserves every numeric storage and missing tag", {
     values <- c(1, NA_real_, tagged_missing("a"), tagged_missing("z"), -1)
-    data <- data.frame(
+    data <- dibble(
         byte = dta_byte(values),
         int = dta_int(values),
         long = dta_long(values),
         float = dta_float(values),
         double = dta_double(values)
     )
-    data <- set_dta_note(data, 3, "numeric note", variable = "int")
-    data <- set_dta_characteristic(
-        data, "source", "generated", variable = "int"
-    )
+    set_dta_note(data, 3, "numeric note", variable = "int")
+    set_dta_characteristic(data, "source", "generated", variable = "int")
+    class(data) <- "data.frame"
     attr(data$float, "label") <- "Float value"
     attr(data$float, "labels") <- c(One = 1, Minus_one = -1)
     attr(data$float, "format.stata") <- "%9.2f"
@@ -173,10 +170,11 @@ test_that("slice_dta_rows handles named and empty columns", {
 
 test_that("slice_dta_rows slices ordinary data.tables", {
     skip_if_not_installed("data.table")
-    data <- read_dta(fixture("all_types_v118.dta"), output = "data.table")
-    data <- set_dta_note(data, 4, "dataset note")
-    data <- set_dta_characteristic(data, "source", "fixture")
-    data <- set_dta_note(data, 7, "variable note", variable = "v_double")
+    source <- read_dta(fixture("all_types_v118.dta"))
+    set_dta_note(source, 4, "dataset note")
+    set_dta_characteristic(source, "source", "fixture")
+    set_dta_note(source, 7, "variable note", variable = "v_double")
+    data <- data.table::as.data.table(source)
     data.table::setattr(data, "sorted", "v_byte")
 
     frame <- as.data.frame(data)
@@ -269,59 +267,34 @@ test_that("slice_dta_rows rejects data.table subclasses", {
     )
 })
 
-test_that("reorder_dta_rows permutes a data.table in place", {
-    skip_if_not_installed("data.table")
-    data <- read_dta(fixture("all_types_v118.dta"), output = "data.table")
-    data.table::setattr(data, "sorted", "v_byte")
-    frame <- as.data.frame(data)
-    class(frame) <- "data.frame"
-    rows <- rev(seq_len(nrow(data)))
-    expected <- frame[rows, , drop = FALSE]
-    compact_names <- c("v_byte", "v_int", "v_long", "v_float")
-
-    before <- data.table::address(data)
-    result <- withVisible(reorder_dta_rows(data, rows))
-    expect_false(result$visible)
-    expect_identical(data.table::address(data), before)
-    # Checked before any content comparison: base identical() reads
-    # column DATAPTRs, which materializes compact ALTREP columns.
-    expect_true(all(vapply(
-        as.list(data)[compact_names],
-        dtatools:::.is_unmaterialized_numeric_altrep,
-        logical(1)
-    )))
-    expect_identical(as.list(data), as.list(expected))
-    expect_null(attr(data, "sorted"))
-    expect_null(attr(data, "index"))
-    expect_silent(data.table::set(
-        data, j = "v_str5", value = as.list(data)$v_str5
-    ))
-
-    tagged_table <- data.table::data.table(
-        value = dta_int(c(1, NA_real_, tagged_missing("a")))
-    )
-    reorder_dta_rows(tagged_table, c(3L, 1L, 2L))
-    expect_identical(missing_tag(tagged_table$value), c("a", NA, NA))
-    expect_identical(dta_storage_type(tagged_table$value), "int")
-})
-
-test_that("reorder_dta_rows permutes other ordinary containers", {
+test_that("reorder_dta_rows permutes a dibble without generated columns", {
     rows <- c(3L, 1L, 2L)
-    frame <- data.frame(x = dta_int(1:3), label = c("a", "b", "c"))
-    reorder_dta_rows(frame, rows)
-    expect_identical(as.double(vctrs::vec_data(frame$x)), c(3, 1, 2))
-    expect_identical(frame$label, c("c", "a", "b"))
-    expect_identical(row.names(frame), c("1", "2", "3"))
-
-    table <- tibble::tibble(x = dta_int(1:3), label = c("a", "b", "c"))
+    table <- dibble(x = dta_int(1:3), label = c("a", "b", "c"))
+    alias <- table
     reorder_dta_rows(table, rows)
     expect_identical(as.double(vctrs::vec_data(table$x)), c(3, 1, 2))
-    expect_identical(table$label, c("c", "a", "b"))
-    expect_s3_class(table, "tbl_df")
+    expect_identical(as.vector(table$label), c("c", "a", "b"))
+    expect_identical(as.vector(alias$label), c("c", "a", "b"))
+    expect_identical(row.names(table), c("1", "2", "3"))
+    expect_true(is_dibble(table))
+})
+
+test_that("reorder_dta_rows rejects plain containers", {
+    plain <- list(
+        data.frame(x = 1:3),
+        tibble::tibble(x = 1:3)
+    )
+    if (requireNamespace("data.table", quietly = TRUE)) {
+        plain <- append(plain, list(data.table::data.table(x = 1:3)))
+    }
+    for (data in plain) {
+        expect_error(reorder_dta_rows(data, 3:1), "must be a dibble")
+        expect_identical(as.integer(data$x), 1:3)
+    }
 })
 
 test_that("reorder_dta_rows permutes reference-state columns", {
-    data <- read_dta(fixture("all_types_v118.dta"), output = "tibble")
+    data <- read_dta(fixture("all_types_v118.dta"), output = "dibble")
     rows <- rev(seq_len(nrow(data)))
     expected <- vctrs::vec_slice(
         as.double(vctrs::vec_data(data$v_byte)), rows
@@ -344,7 +317,7 @@ test_that("reorder_dta_rows permutes reference-state columns", {
 })
 
 test_that("reorder_dta_rows permutes a physically complete generated table", {
-    data <- read_dta(fixture("all_types_v118.dta"), output = "tibble")
+    data <- read_dta(fixture("all_types_v118.dta"), output = "dibble")
     rows <- rev(seq_len(nrow(data)))
     expected <- vctrs::vec_slice(
         as.double(vctrs::vec_data(data$v_byte)), rows
@@ -368,21 +341,17 @@ test_that("reorder_dta_rows permutes a physically complete generated table", {
 })
 
 test_that("reorder_dta_rows validates its container", {
-    expect_error(
-        reorder_dta_rows(1:3, 1:3),
-        "base data frame, tibble, or data.table"
-    )
+    expect_error(reorder_dta_rows(1:3, 1:3), "must be a dibble")
     expect_error(
         reorder_dta_rows(
-            .group_fixture("x123")$data, 1:3
+            as_dibble(.group_fixture("x123")$data), 1:3
         ),
         "ungrouped.*assign `data <- dplyr::ungroup"
     )
 })
 
-test_that("reorder_dta_rows validates data.table permutations", {
-    skip_if_not_installed("data.table")
-    data <- data.table::data.table(x = 1:3)
+test_that("reorder_dta_rows validates permutations", {
+    data <- dibble(x = 1:3)
     expect_error(
         reorder_dta_rows(data, c(1L, 1L, 2L)),
         "every row exactly once"
@@ -393,5 +362,5 @@ test_that("reorder_dta_rows validates data.table permutations", {
     )
     expect_error(reorder_dta_rows(data, c(NA_integer_, 2L, 3L)))
     expect_error(reorder_dta_rows(data, c(1L, 2L, 4L)))
-    expect_identical(data$x, 1:3)
+    expect_identical(as.integer(data$x), 1:3)
 })

@@ -12,8 +12,7 @@
 #' Legacy tables with columns outside their physical list require assigned
 #' [reserve_columns()] before this call. Reordering needs no spare slots.
 #'
-#' @param data An ordinary base data frame, tibble, dibble, or data.table,
-#'   modified by reference.
+#' @param data A dibble, modified by reference.
 #' @param rows A permutation of `seq_len(nrow(data))` following
 #'   [vctrs::vec_as_location()] semantics, without missing locations.
 #'   Every row must be selected exactly once: an in-place reorder
@@ -23,6 +22,7 @@
 #'   them.
 #' @export
 reorder_dta_rows <- function(data, rows) {
+    .require_mutation_target(data)
     plan <- .reorder_column_plan(data)
     .prepare_column_operation(data, length(data), names_change = FALSE)
     count <- plan$nrow

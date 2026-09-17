@@ -36,19 +36,13 @@ slice_dta_rows <- function(data, rows) {
             call. = FALSE
         )
     }
-    if (inherits(data, "dtatools_ref_data")) {
+    if (is_dibble(data)) {
         .as_mutation_data(data, allow_grouped = TRUE)
-        if (is_dibble(data)) {
-            context <- .begin_dibble_result(data, "slice_dta_rows()", "rows")
-            locations <- vctrs::vec_as_location(rows, n = nrow(data),
-                names = if (is.character(rows)) row.names(data) else NULL,
-                missing = "propagate", arg = "rows")
-            return(.dibble_take_rows(context, locations, data))
-        }
-        snapshot <- .reference_snapshot(data)
-        attr(snapshot, "groups") <- NULL
-        class(snapshot) <- setdiff(class(snapshot), c("grouped_df", "rowwise_df"))
-        return(.restore_group_metadata(slice_dta_rows(snapshot, rows), data))
+        context <- .begin_dibble_result(data, "slice_dta_rows()", "rows")
+        locations <- vctrs::vec_as_location(rows, n = nrow(data),
+            names = if (is.character(rows)) row.names(data) else NULL,
+            missing = "propagate", arg = "rows")
+        return(.dibble_take_rows(context, locations, data))
     }
 
     base_classes <- setdiff(class(data), "dtatools_dta_metadata")

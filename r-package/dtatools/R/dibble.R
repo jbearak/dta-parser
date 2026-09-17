@@ -138,16 +138,20 @@ dibble <- function(...) {
 #' @rdname dibble
 #' @export
 as_dibble <- function(x) {
-    if (inherits(x, "dibble") && .supported_mutation_container(x)) return(x)
+    if (inherits(x, "dibble") && .plain_dibble_classes(x)) return(x)
     if (!is.data.frame(x)) {
         stop("`x` must be a data frame, tibble, or data table", call. = FALSE)
     }
-    if (inherits(x, "dtatools_ref_data") && !inherits(x, "data.table")) {
-        # A base data frame that went through gen() carries reference state
-        # without being a tibble; its current contents become the dibble.
-        x <- .reference_snapshot(x)
-    }
     .as_dibble(x)
+}
+
+# A dibble whose class vector carries nothing beyond the package, grouping
+# and tibble classes. Custom subclasses convert again so the result is closed.
+.plain_dibble_classes <- function(x) {
+    classes <- setdiff(.reference_base_classes(class(x)), "dtatools_dta_metadata")
+    identical(classes, c("tbl_df", "tbl", "data.frame")) ||
+        identical(classes, c("grouped_df", "tbl_df", "tbl", "data.frame")) ||
+        identical(classes, c("rowwise_df", "tbl_df", "tbl", "data.frame"))
 }
 
 #' @rdname dibble
@@ -172,7 +176,7 @@ is_dibble <- function(x) {
 # and dplyr sees it again on the snapshot. The shallow copy leaves the
 # caller's object untouched by the in-place mark.
 .prepare_dibble_frame <- function(x) {
-    if (is.data.frame(x) && !.supported_mutation_container(x)) {
+    if (is.data.frame(x) && !.ordinary_container_classes(x)) {
         x <- .metadata_copy(x)
         class(x) <- if (inherits(x, "data.table")) {
             c("data.table", "data.frame")

@@ -108,10 +108,12 @@
 #' `labelled`.
 #'
 #' @param x A vector or data frame.
-#' @param data A data frame or tibble.
+#' @param data A dibble for `set_var_label()`; a data frame or tibble for the
+#'   getters.
 #' @param value New label metadata. Data-frame replacement forms require a
 #'   named list or `NULL`.
-#' @param .data A vector or data frame to update.
+#' @param .data A vector, or a dibble for the table forms of `set_var_labels()`
+#'   and `set_val_labels()`.
 #' @param ... Named column updates for a data frame. A column named at run
 #'   time takes a `.(name) := value` tag. For a vector, supply one variable
 #'   label or one or more named value-label codes.
@@ -133,9 +135,9 @@
 #' var_label(status) <- "Interview status"
 #' val_labels(status) <- c(Complete = 1, Refused = 2)
 #'
-#' survey <- data.frame(status = status, stratum = c(1, 1, 2))
+#' survey <- dibble(status = status, stratum = c(1, 1, 2))
 #' dataset_label(survey) <- "Baseline survey"
-#' survey <- set_var_labels(
+#' set_var_labels(
 #'     survey,
 #'     status = "Interview status",
 #'     .labels = list(stratum = "Sampling stratum")
@@ -623,7 +625,7 @@ dataset_label <- function(data) {
 #' @rdname var_label
 #' @export
 set_var_label <- function(data, variable, label) {
-    .validate_metadata_input(data)
+    .require_metadata_target(data)
     if (!is.data.frame(data)) {
         # `set_var_label(x, label)`: the vector shape, mirroring the
         # non-data-frame branch of `set_var_labels()`. Any other
@@ -740,7 +742,7 @@ set_var_label <- function(data, variable, label) {
 #' @rdname var_label
 #' @export
 set_var_labels <- function(.data, ..., .labels = NULL) {
-    .validate_metadata_input(.data)
+    .require_metadata_target(.data)
     quoted <- substitute(...())
     dots <- if (is.data.frame(.data) && is.null(.labels) &&
         .is_positional_label_dots(quoted)) {
@@ -793,7 +795,7 @@ set_var_labels <- function(.data, ..., .labels = NULL) {
 #' @rdname var_label
 #' @export
 set_val_labels <- function(.data, ..., .labels = NULL) {
-    .validate_metadata_input(.data)
+    .require_metadata_target(.data)
     quoted <- substitute(...())
     dots <- if (is.data.frame(.data) && is.null(.labels) &&
         .is_positional_label_dots(quoted)) {

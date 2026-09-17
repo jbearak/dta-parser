@@ -64,7 +64,7 @@ defensive approach.
 
 ## Which operations write by reference
 
-By reference, on any supported container (dibble, tibble, base data frame, data table):
+By reference, on a dibble, the package's mutation target:
 
 - `gen()`, `egen()`, `replace_values()` / `repl()`
 - `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`
@@ -72,12 +72,17 @@ By reference, on any supported container (dibble, tibble, base data frame, data 
 - table metadata setters: `set_var_label()`, `set_var_labels()`, `set_val_labels()`,
   `set_var_format()`, `set_var_formats()`, `set_dta_metadata()`, and the note and
   characteristic setters
+- `reserve_columns()`, `column_capacity()`, `can_add_columns()`, which prepare or
+  inspect the mutation target rather than change its values
 
-These are ordinary containers, without additional subclass invariants. Unknown subclasses fail before runtime names, selectors, or updates are evaluated. Assign `data <- as_dibble(data)` to request conversion: it removes additional container classes, retains recognized grouping and metadata, and types numeric/string columns. Existing ordinary containers never undergo that conversion inside a helper.
+`copy_data()` also requires a dibble but returns an independent copy; it is a
+copying operation, listed below.
 
-Grouped tibbles and dibbles support `gen()`, `egen()`, and `repl()` using their dplyr groups. Metadata setters also support rowwise tables and retain the grouping. Structural helpers and `reorder_dta_rows()` require `data <- dplyr::ungroup(data)` first; assign preparation afterwards if needed. Rowwise tables do not support value mutation. See the complete [helper and grouping matrix](r-containers.md#restrictions).
+A base data frame, tibble, or data table is not a mutation target. Each of these helpers rejects it before runtime names, selectors, or updates are evaluated, with an error naming the recovery: assign `data <- as_dibble(data)`. Conversion removes additional container classes, retains recognized grouping and metadata, and types numeric and string columns. A data.table user who wants by-reference mutation without Stata typing uses data.table's own `:=` and `set()`. Mutation by reference predates the dibble; restricting it to the container built for it is [ADR 0036](adr/0036-mutate-by-reference-only-on-dibbles.md).
 
-By reference, on a dibble only:
+Grouped dibbles support `gen()`, `egen()`, and `repl()` using their dplyr groups. Metadata setters also support rowwise dibbles and retain the grouping. Structural helpers and `reorder_dta_rows()` require `data <- dplyr::ungroup(data)` first; assign preparation afterwards if needed. Rowwise tables do not support value mutation. See the complete [helper and grouping matrix](r-containers.md#restrictions).
+
+Also by reference, on a dibble only:
 
 - `data[i, y := value]`, the bracket assignment shape
 
@@ -106,7 +111,7 @@ column attributes without copying their values. A first write to a borrowed or
 shared column can copy that column; subsequent private sparse writes reuse its
 backing. A full replacement installs the new values without copying the old
 values first. These choices preserve the existing column classes and the helper
-contract on base data frames, tibbles, dibbles and data tables.
+contract on dibbles.
 
 **Explicit metadata setters reach the dataset.** `set_var_label(data, x, "Age")` labels the supplied table's column, so every binding sees the label, including the caller when the setter runs inside a function. Use `set_var_format(data, x, "%9.0g")` for display formats and the note or characteristic setters for those attributes.
 
@@ -191,9 +196,9 @@ values again.
 
 `keep_vars()` and `drop_vars()` resolve and validate their column selections before checking capacity for the resulting table. Invalid selections keep their usual diagnostics, and a validated keep-all selection is a no-op even without preparation. A selection that removes columns needs a resizable allocation. Column-selector expressions can therefore run before a capacity error; no table changes have been committed. `rename_vars()`, `order_vars()`, `reorder_dta_rows()`, value replacements, and metadata setters need no spare slots. A bracket call checks all distinct new names before its first write, so insufficient capacity cannot leave an earlier assignment committed. After that check, assignments still run sequentially; an error in a later expression does not roll back earlier successful values.
 
-Assign `data <- reserve_columns(data, n = 10L)` to allow ten extra columns on a base data frame, tibble, dibble, or data table. This preserves container and column classes, isolates columns, rebuilds legacy overlays, and creates fresh dibble bookkeeping without modifying another table's state. It creates an isolated table even when the input already has enough capacity, so use `can_add_columns()` to avoid unnecessary preparation before additions. A data.table also needs a valid self-reference for column-name edits, even without growth; the same preparation repairs it. Structural commits give that table isolated names and matching bookkeeping so another table created by ordinary R copying remains complete. Base `readRDS()`, `unserialize()`, and ordinary table copies can discard capacity. Additions prepare these tables automatically by default. Removing columns still requires assigned preparation when the table lacks a resizable allocation. For computed targets that cannot be rebound, assign the helper's returned table explicitly.
+Assign `data <- reserve_columns(data, n = 10L)` to allow ten extra columns on a dibble. This preserves column classes, isolates columns, and creates fresh dibble bookkeeping without modifying another table's state. It creates an isolated table even when the input already has enough capacity, so use `can_add_columns()` to avoid unnecessary preparation before additions. Structural commits give that table isolated names and matching bookkeeping so another table created by ordinary R copying remains complete. Base `readRDS()`, `unserialize()`, and ordinary table copies can discard capacity. Additions prepare these tables automatically by default. Removing columns still requires assigned preparation when the table lacks a resizable allocation. For computed targets that cannot be rebound, assign the helper's returned table explicitly.
 
-Dropping the last column preserves the row count of a base data frame, tibble, or dibble. A data.table follows its own empty-table convention and becomes a zero-row, zero-column table. Its stored row names are cleared too, so later generation cannot restore rows that its public shape had lost.
+Dropping the last column preserves the dibble's row count.
 
 **ALTREP columns from elsewhere are detached.** A generic ALTREP column created by base R or another package is converted to an ordinary vector before replacement, because its private caches cannot be safely invalidated. A standalone alias to that former column keeps the old values.
 
@@ -209,7 +214,7 @@ or when subsequent operations need a resizable allocation to remove columns.
 
 If you know `data.table`, the model is familiar: `DT[, x := 1]` and `set()` modify in place, and `DT2 <- DT` gives a second name rather than a copy. dtatools' `:=` is deliberately the same shape. Three differences are worth knowing.
 
-The bracket shape belongs to the dibble. `data[i, y := value]` works on a dibble; on a data table it runs data.table's own `:=`, which knows nothing about declared Stata storage; on a tibble or data frame it is whatever error their `[` raises. `gen()` and `repl()` work on all four containers, so they are the portable spelling.
+The bracket shape belongs to the dibble. `data[i, y := value]` works on a dibble; on a data table it runs data.table's own `:=`, which knows nothing about declared Stata storage; on a tibble or data frame it is whatever error their `[` raises. `gen()` and `repl()` are the explicit spellings of the same dibble operations.
 
 The order of operations is Stata's, not data.table's. In `DT[i, j, by]`, data.table applies `i` first and groups only the surviving rows, so `.N` counts selected rows and a group emptied by `i` disappears. Here the groups are formed first, then `where` and the values are evaluated on each group's rows, so `.N` is the group's row count whatever `where` selects, and `where = .n == .N` marks each group's last row — which is what `bysort id: replace last = _n == _N` means in Stata.
 

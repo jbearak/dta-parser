@@ -1,5 +1,5 @@
 test_that("a runtime string names the target through `!!`", {
-    data <- reserve_columns(data.frame(income = c(10, 20)))
+    data <- dibble(income = c(10, 20))
     target_name <- paste0("adj", "usted")
 
     gen(data, !!target_name, income + 5)
@@ -18,7 +18,7 @@ test_that("a runtime string names the target through `!!`", {
 })
 
 test_that("a string literal names the target", {
-    data <- reserve_columns(data.frame(income = c(10, 20)))
+    data <- dibble(income = c(10, 20))
     gen(data, "adjusted", income + 5)
     expect_identical(names(data), c("income", "adjusted"))
     repl(data, "adjusted", 0)
@@ -26,7 +26,7 @@ test_that("a string literal names the target", {
 })
 
 test_that("an unquoted string reads as a name, not a caller variable", {
-    data <- data.frame(income = c(10, 20), adjusted = c(1, 2))
+    data <- dibble(income = c(10, 20), adjusted = c(1, 2))
     adjusted <- "income"
 
     repl(data, !!adjusted, 99)
@@ -35,7 +35,7 @@ test_that("an unquoted string reads as a name, not a caller variable", {
 })
 
 test_that("a column named like the caller variable is not selected", {
-    data <- data.frame(target_name = c(1, 2), income = c(10, 20))
+    data <- dibble(target_name = c(1, 2), income = c(10, 20))
     target_name <- "income"
 
     repl(data, !!target_name, 7)
@@ -49,7 +49,7 @@ test_that("a column named like the caller variable is not selected", {
 })
 
 test_that("empty, missing, and non-scalar strings are rejected", {
-    data <- data.frame(income = c(10, 20))
+    data <- dibble(income = c(10, 20))
     the_bad_names <- list(
         character(), c("income", "income"), NA_character_, ""
     )
@@ -67,7 +67,7 @@ test_that("empty, missing, and non-scalar strings are rejected", {
 })
 
 test_that("a string target keeps the existence checks", {
-    data <- data.frame(income = c(10, 20))
+    data <- dibble(income = c(10, 20))
     expect_error(
         repl(data, !!"absent", 0), "Column `absent` does not exist"
     )
@@ -77,7 +77,7 @@ test_that("a string target keeps the existence checks", {
 })
 
 test_that("invalid non-string targets still error as before", {
-    data <- data.frame(income = c(10, 20))
+    data <- dibble(income = c(10, 20))
     expect_error(replace_values(data, , 0), "unquoted")
     expect_error(replace_values(data, income + 1, 0), "unquoted")
     expect_error(replace_values(data, !!1, 0), "unquoted")
@@ -85,7 +85,7 @@ test_that("invalid non-string targets still error as before", {
 })
 
 test_that("existing unquoted forms are untouched", {
-    data <- reserve_columns(data.frame(income = c(10, 20), eligible = c(TRUE, FALSE)))
+    data <- dibble(income = c(10, 20), eligible = c(TRUE, FALSE))
     repl(data, income, income * 2, where = eligible)
     expect_equal(as.double(data$income), c(20, 20))
 
@@ -97,7 +97,7 @@ test_that("existing unquoted forms are untouched", {
 })
 
 test_that("the `.data` pronoun reaches a runtime name in values and where", {
-    data <- reserve_columns(data.frame(cluster = c(1, 2), hh1 = c(5, NA)))
+    data <- dibble(cluster = c(1, 2), hh1 = c(5, NA))
     hh1_name <- "hh1"
 
     repl(data, cluster, .data[[hh1_name]])
@@ -111,7 +111,7 @@ test_that("the `.data` pronoun reaches a runtime name in values and where", {
 })
 
 test_that("the `.data` pronoun does not name a target", {
-    data <- data.frame(income = c(10, 20))
+    data <- dibble(income = c(10, 20))
     target_name <- "income"
     expect_error(repl(data, .data[[target_name]], 0), "unquoted")
 })
@@ -119,7 +119,7 @@ test_that("the `.data` pronoun does not name a target", {
 test_that("the downstream call shapes work without inject or sym", {
     # Shape one: a resolved runtime name in both the target and the value
     # source, formerly `inject(repl(data, cluster, !!sym(name)))`.
-    data <- reserve_columns(data.frame(cluster = c(1, 2), hh1 = c(5, 6)))
+    data <- dibble(cluster = c(1, 2), hh1 = c(5, 6))
     hh1_name <- resolve_var_name(data, "hh1")
     target_name <- resolve_var_name(data, "cluster")
     repl(data, !!target_name, .data[[hh1_name]])
@@ -140,7 +140,7 @@ test_that("the downstream call shapes work without inject or sym", {
 })
 
 test_that("`set_var_label()` accepts a runtime string name", {
-    data <- data.frame(income = c(10, 20))
+    data <- dibble(income = c(10, 20))
     label_target <- "income"
 
     set_var_label(data, !!label_target, "Income")
@@ -163,7 +163,7 @@ test_that("`set_var_label()` accepts a runtime string name", {
 })
 
 test_that("a string target leaves a compact column unmaterialized", {
-    data <- reserve_columns(data.frame(income = c(10, 20)))
+    data <- dibble(income = c(10, 20))
     gen(data, !!"compact", dta_float(income))
     expect_true(
         dtatools:::.is_unmaterialized_numeric_altrep(data$compact)
@@ -176,7 +176,7 @@ test_that("a string target leaves a compact column unmaterialized", {
 })
 
 test_that("`.()` names the target and reads columns at run time", {
-    data <- reserve_columns(data.frame(income = c(10, 20), hh1 = c(5, 6)))
+    data <- dibble(income = c(10, 20), hh1 = c(5, 6))
     target <- "income"
     origin <- "hh1"
 
@@ -192,7 +192,7 @@ test_that("`.()` names the target and reads columns at run time", {
 })
 
 test_that("`.()` rejects invalid runtime names", {
-    data <- data.frame(income = c(10, 20))
+    data <- dibble(income = c(10, 20))
     expect_error(
         repl(data, .(1), 0),
         "takes one nonempty, non-missing string"
@@ -211,14 +211,14 @@ test_that("`.()` rejects invalid runtime names", {
 })
 
 test_that("`set_var_label()` accepts a `.()` runtime name", {
-    data <- data.frame(income = c(10, 20))
+    data <- dibble(income = c(10, 20))
     target <- "income"
     set_var_label(data, .(target), "Income")
     expect_identical(var_label(data$income), "Income")
 })
 
 test_that("`.()` tags name columns in the plural label setters", {
-    data <- data.frame(a = c(1, 2), b = c(3, 4))
+    data <- dibble(a = c(1, 2), b = c(3, 4))
     first <- "a"
     set_var_labels(data, .(first) := "First", b = "Second")
     expect_identical(var_label(data$a), "First")
@@ -230,7 +230,7 @@ test_that("`.()` tags name columns in the plural label setters", {
 })
 
 test_that("`.()` tags coexist with splices and `:=` names", {
-    data <- data.frame(a = c(1, 2), b = c(3, 4), c = c(5, 6))
+    data <- dibble(a = c(1, 2), b = c(3, 4), c = c(5, 6))
     tag <- "a"
     others <- list(b = "Second")
     third <- "c"
@@ -250,7 +250,7 @@ test_that("`.()` tags coexist with splices and `:=` names", {
 })
 
 test_that("`.()` tags keep a spliced value's own frame and reject empties", {
-    data <- data.frame(a = c(1, 2), b = c(3, 4))
+    data <- dibble(a = c(1, 2), b = c(3, 4))
     tag <- "a"
     relabel <- function(data, ...) set_var_labels(data, ...)
     from_caller <- function(data) {
@@ -276,7 +276,7 @@ test_that("forwarded dots keep their own frames alongside a `.()` tag", {
         relabel(data, .(tag_name) := "Tagged", b = caller_label)
         revalue(data, .(tag_name) := c(low = 1))
     }
-    data <- data.frame(a = c(1, 2), b = c(3, 4))
+    data <- dibble(a = c(1, 2), b = c(3, 4))
     from_caller(data)
     expect_identical(var_label(data$a), "Tagged")
     expect_identical(var_label(data$b), "From the caller")

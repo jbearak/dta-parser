@@ -393,7 +393,7 @@ test_that("metadata operations preserve or clear table identity deliberately", {
 
     cleared <- set_val_labels(source)
     expect_null(value_label_name(cleared))
-    data <- data.frame(x = source, y = source)
+    data <- dibble(x = source, y = source)
     val_labels(data) <- list(x = c(No = 0, Yes = 1), y = NULL)
     expect_identical(value_label_name(data$x), "foreign_lbl")
     expect_null(value_label_name(data$y))

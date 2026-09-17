@@ -39,7 +39,8 @@ character string, which is what \code{!!name} unquotes to and what a
 \code{val_labels()}: when supplied, \code{x} must be a data frame and only that
 column's metadata is returned.}
 
-\item{data}{A data frame or tibble.}
+\item{data}{A dibble for \code{set_var_label()}; a data frame or tibble for the
+getters.}
 
 \item{value}{New label metadata. Data-frame replacement forms require a
 named list or \code{NULL}.}
@@ -47,7 +48,8 @@ named list or \code{NULL}.}
 \item{label}{One variable label, or \code{NULL} to remove it. In the vector
 shape \code{set_var_label(x, label)} the label is the second argument.}
 
-\item{.data}{A vector or data frame to update.}
+\item{.data}{A vector, or a dibble for the table forms of \code{set_var_labels()}
+and \code{set_val_labels()}.}
 
 \item{...}{Named column updates for a data frame. A column named at run
 time takes a \code{.(name) := value} tag. For a vector, supply one variable
@@ -181,9 +183,9 @@ status <- c(1, 2, 1)
 var_label(status) <- "Interview status"
 val_labels(status) <- c(Complete = 1, Refused = 2)
 
-survey <- data.frame(status = status, stratum = c(1, 1, 2))
+survey <- dibble(status = status, stratum = c(1, 1, 2))
 dataset_label(survey) <- "Baseline survey"
-survey <- set_var_labels(
+set_var_labels(
     survey,
     status = "Interview status",
     .labels = list(stratum = "Sampling stratum")

@@ -4,40 +4,35 @@
 \alias{mutation-containers}
 \title{Containers supported by explicit mutation helpers}
 \description{
-Explicit table helpers mutate the supplied physical table on ordinary
-base data frames, tibbles, dibbles and data.tables. Additional container
-subclasses are rejected before runtime targets or updates are evaluated.
-Assign \code{data <- as_dibble(data)} for an explicit conversion that removes
-additional classes and applies Stata column typing. Helpers never perform
-that conversion themselves. Package metadata and reference markers are
-supported, except a reference marker on data.table.
+Explicit table helpers mutate a dibble, the package's mutation target, so
+every binding to that table sees the change. A base data frame, tibble or
+data.table is rejected before any runtime target or update is evaluated;
+assign \code{data <- as_dibble(data)} first for the Stata-typed conversion, or
+use data.table's own operators on a data.table. Copying operations such as
+\code{\link[=slice_dta_rows]{slice_dta_rows()}}, \code{\link[=dta_merge]{dta_merge()}}, the readers, the writers and the dplyr
+verbs accept every output container.
 }
 \details{
-\code{\link[=gen]{gen()}}, \code{\link[=egen]{egen()}} and \code{\link[=repl]{repl()}} accept grouped tibbles and dibbles, using
-their validated dplyr groups. Rowwise value mutation is unsupported.
-\code{\link[=keep_vars]{keep_vars()}}, \code{\link[=drop_vars]{drop_vars()}}, \code{\link[=order_vars]{order_vars()}}, \code{\link[=rename_vars]{rename_vars()}} and
-\code{\link[=reorder_dta_rows]{reorder_dta_rows()}} require ungrouped input. Assign
-\code{data <- dplyr::ungroup(data)} first, then assign \code{\link[=reserve_columns]{reserve_columns()}} if
-the structural change needs preparation.
+\code{\link[=gen]{gen()}}, \code{\link[=egen]{egen()}} and \code{\link[=repl]{repl()}} accept grouped dibbles, using their validated
+dplyr groups. Rowwise value mutation is unsupported. \code{\link[=keep_vars]{keep_vars()}},
+\code{\link[=drop_vars]{drop_vars()}}, \code{\link[=order_vars]{order_vars()}}, \code{\link[=rename_vars]{rename_vars()}} and \code{\link[=reorder_dta_rows]{reorder_dta_rows()}}
+require ungrouped input. Assign \code{data <- dplyr::ungroup(data)} first, then
+assign \code{\link[=reserve_columns]{reserve_columns()}} if the structural change needs preparation.
 
 All table label, format, generic metadata, note and characteristic setters
-support grouped and rowwise inputs without changing their groups. This
+support grouped and rowwise dibbles without changing their groups. This
 includes their add, drop and renumber variants. Vector forms of metadata
-setters return copies that must be assigned.
+setters return copies that must be assigned and accept any vector.
 
-\code{\link[=copy_data]{copy_data()}} and \code{\link[=reserve_columns]{reserve_columns()}} return isolated, assigned results
+\code{\link[=copy_data]{copy_data()}} and \code{\link[=reserve_columns]{reserve_columns()}} return isolated, assigned dibbles
 and retain valid grouping. \code{\link[=column_capacity]{column_capacity()}} and \code{\link[=can_add_columns]{can_add_columns()}}
-inspect all supported containers without changing them. Only a dibble
-has dtatools' bracket \verb{:=}; a data.table uses its own bracket semantics.
+inspect a dibble without changing it. Only a dibble has dtatools' bracket
+\verb{:=}; a data.table uses its own bracket semantics.
 
 Same-size values and metadata need no spare capacity. Growth is checked
 before row selection, RHS evaluation or sorting. Keep/drop validate their
 column selectors first and then check the resulting size before committing.
 Copying, subsetting and serialization can require assigned preparation.
-
-A data.table needs data.table 1.18.2.1 or newer. Dropping its last column
-leaves zero rows, including stored row names. Base data frames, tibbles and
-dibbles retain their row count when all columns are dropped.
 }
 \seealso{
 \link{dibble}, \code{\link[=reserve_columns]{reserve_columns()}}, \code{\link[=set_dta_metadata]{set_dta_metadata()}}

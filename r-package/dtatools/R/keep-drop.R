@@ -23,18 +23,19 @@
 #' [reserve_columns()] after base serialization, copying, or subsetting when
 #' needed. Helpers never rebuild a table or rebind a function parameter.
 #'
-#' @param data An ungrouped data frame or tibble to mutate.
+#' @param data An ungrouped dibble to mutate.
 #' @param ... Column names, name ranges, `c()`, or
 #'   `tidyselect::all_of()` character vectors to keep or drop.
 #' @return `data`, invisibly.
 #' @examples
-#' survey <- reserve_columns(data.frame(id = 1:2, age = c(20, 30), temporary = 0))
+#' survey <- dibble(id = 1:2, age = c(20, 30), temporary = 0)
 #' gen(survey, age_next_year, age + 1)
 #' drop_vars(survey, temporary)
 #' keep_vars(survey, age_next_year, id)
 #' names(survey)
 #' @export
 keep_vars <- function(data, ...) {
+    .require_mutation_target(data)
     .as_mutation_data(data)
 
     dots <- rlang::enquos(...)
@@ -45,6 +46,7 @@ keep_vars <- function(data, ...) {
 #' @rdname keep_vars
 #' @export
 drop_vars <- function(data, ...) {
+    .require_mutation_target(data)
     .as_mutation_data(data)
 
     dots <- rlang::enquos(...)
@@ -66,16 +68,17 @@ drop_vars <- function(data, ...) {
 #' values, labels, and compact representations all survive the move.
 #' Columns created by `gen()` may be reordered alongside physical ones.
 #'
-#' @param data An ungrouped data frame or tibble to mutate.
+#' @param data An ungrouped dibble to mutate.
 #' @param ... Column names, name ranges, `c()`, or
 #'   `tidyselect::all_of()` character vectors to move to the front.
 #' @return `data`, invisibly.
 #' @examples
-#' survey <- data.frame(id = 1:2, age = c(20, 30), region = c("n", "s"))
+#' survey <- dibble(id = 1:2, age = c(20, 30), region = c("n", "s"))
 #' order_vars(survey, region)
 #' names(survey)
 #' @export
 order_vars <- function(data, ...) {
+    .require_mutation_target(data)
     .as_mutation_data(data)
 
     dots <- rlang::enquos(...)
@@ -100,20 +103,21 @@ order_vars <- function(data, ...) {
 #' `names<-` would, but by reference. The vector must give one name per
 #' visible column, in order.
 #'
-#' @param data An ungrouped data frame or tibble to mutate.
+#' @param data An ungrouped dibble to mutate.
 #' @param ... Replacements of the form `new_name = old_name`, where
 #'   `old_name` is a bare name or a string.
 #' @param .names A character vector of replacement names, one per column,
 #'   used instead of `...`.
 #' @return `data`, invisibly.
 #' @examples
-#' survey <- data.frame(id = 1:2, v1 = c(20, 30))
+#' survey <- dibble(id = 1:2, v1 = c(20, 30))
 #' rename_vars(survey, age_years = v1)
 #' names(survey)
 #' rename_vars(survey, .names = toupper(names(survey)))
 #' names(survey)
 #' @export
 rename_vars <- function(data, ..., .names = NULL) {
+    .require_mutation_target(data)
     .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
 

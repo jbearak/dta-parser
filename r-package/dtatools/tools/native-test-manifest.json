@@ -115,7 +115,7 @@
     },
     {
       "path": "tests/testthat/helper-generation-interrupt.R",
-      "sha256": "9d8a5338af8c5c136416c877e0cc6e25dd8338557c438ad6a7ec1d6ebf4682ff"
+      "sha256": "ed8c88f9c5bdd93585fa121ea0417046d69f8d848d837e4a7d3c5a15fbf4c240"
     },
     {
       "path": "tests/testthat/helper-group-fixtures.R",
@@ -146,7 +146,7 @@
       "files": [
         {
           "path": "tests/testthat/test-arrow.R",
-          "sha256": "aa4ea4d8e1ca3498d610cc2367460c423cc53c55e8fa8a740894c2cbe3c784fd"
+          "sha256": "14364d30a97e34068a79ce276640fcfb91a77d41d6c32cdc09e0893b6bf31557"
         },
         {
           "path": "tests/testthat/test-read-dta.R",
@@ -1368,7 +1368,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-numeric.R",
-          "sha256": "d5247acb7caed619b2de30dbfbe411108642e1f63252a675e11dfe2fb12582e2"
+          "sha256": "e5cac5a8ff0e25754c1d9ea948493be6299ad153727410ef68ce0b2cfeecafa0"
         },
         {
           "path": "tests/testthat/test-dta-string.R",
@@ -2301,11 +2301,11 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-metadata.R",
-          "sha256": "2dff2e6da855571ed45f7aff7ae3d8fa241a23527194a02cc3ad7f58c493f8de"
+          "sha256": "e2720430960993b81f4f7fe42178eebd66bd46d1840fa21b60af64a4007d3d8e"
         },
         {
           "path": "tests/testthat/test-explicit-metadata.R",
-          "sha256": "8a954e71acfc01bfd22b0e3e0daf6ee31cb391d3ace2551449e9b6fe9fb07a18"
+          "sha256": "16408056632d1e3403c36f0aa2515ebcbe183e74b63372b097b514d23ad44f18"
         },
         {
           "path": "tests/testthat/test-factor-from-labels.R",
@@ -2313,23 +2313,23 @@
         },
         {
           "path": "tests/testthat/test-label-dual-shape.R",
-          "sha256": "eb738bba6f0f8cbfc5f48f9d780e9f0337adfbf7816804617592408ea19c93b3"
+          "sha256": "48d1f78f28cd37424a04afd3698354d8d9f754e1252de74658ebaa4568718356"
         },
         {
           "path": "tests/testthat/test-label-metadata.R",
-          "sha256": "ad0603958382736a38eb946f056678e2a91f9ee731d7fc502d85c8fea7288902"
+          "sha256": "2f03f7b5738e897a0cfb6ad7973508e76f000861b172afee710bd4fca41f733b"
         },
         {
           "path": "tests/testthat/test-value-label-table-names.R",
-          "sha256": "376317cadbcb9b5814972df99ac115e6327b480e5c8ce5c58ad1beb683f98842"
+          "sha256": "5fb11a7281bb9faa245373f14b95ec3ac208aa6c0a3a19aed36ddd9a0c20f049"
         },
         {
           "path": "tests/testthat/test-name-strings.R",
-          "sha256": "fc74ec0c45f29cae13193287db085af3855a6ba5616d9d9c4e7b14978a4a17a0"
+          "sha256": "a8932b14ce0f21486df389fdff927fd27ce74c28f1210c9db88586fee15932dd"
         },
         {
           "path": "tests/testthat/test-variable-names.R",
-          "sha256": "26ea884386abb2d7aa86612d0e49ccc1baded688752a2c58a03faf8682a5a5d6"
+          "sha256": "4dc1692fdba8dd61e46c5a910fe55aec9238024fc318e7e5d5755b8a1bb7ce46"
         }
       ],
       "blocks": [
@@ -2493,7 +2493,7 @@
           "test": "all table metadata setters reach aliases and function callers",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 84,
+          "min_pass": 21,
           "warnings": 0
         },
         {
@@ -2501,7 +2501,7 @@
           "test": "format setters support literal and runtime target forms",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 31,
+          "min_pass": 10,
           "warnings": 0
         },
         {
@@ -2525,7 +2525,7 @@
           "test": "table labels preserve container classes alongside notes and characteristics",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 64,
+          "min_pass": 16,
           "warnings": 0
         },
         {
@@ -2533,7 +2533,7 @@
           "test": "table metadata commits repair markers left by base attribute copies",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 81,
+          "min_pass": 27,
           "warnings": 0
         },
         {
@@ -2541,7 +2541,7 @@
           "test": "metadata bundles restore downstream runtime column metadata atomically",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 48,
+          "min_pass": 12,
           "warnings": 0
         },
         {
@@ -2565,7 +2565,7 @@
           "test": "metadata bundles preserve complete raw value-label mappings",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 44,
+          "min_pass": 11,
           "warnings": 0
         },
         {
@@ -2578,10 +2578,18 @@
         },
         {
           "file": "test-explicit-metadata.R",
-          "test": "metadata edits preserve compact storage, capacity, and data.table indexes",
+          "test": "table metadata setters reject plain containers before any update",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 13,
+          "min_pass": 33,
+          "warnings": 0
+        },
+        {
+          "file": "test-explicit-metadata.R",
+          "test": "metadata edits preserve compact storage and capacity",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
           "warnings": 0
         },
         {
@@ -2850,26 +2858,10 @@
         },
         {
           "file": "test-label-metadata.R",
-          "test": "data-frame replacement syntax follows R copy semantics",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 11,
-          "warnings": 0
-        },
-        {
-          "file": "test-label-metadata.R",
           "test": "label replacement isolates metadata and later value writes",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
-          "warnings": 0
-        },
-        {
-          "file": "test-label-metadata.R",
-          "test": "dataset-label replacement detaches reference state",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 7,
           "warnings": 0
         },
         {
@@ -3058,14 +3050,6 @@
         },
         {
           "file": "test-label-metadata.R",
-          "test": "named updates reject duplicated data-frame column names",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 4,
-          "warnings": 0
-        },
-        {
-          "file": "test-label-metadata.R",
           "test": "value labels can only be attached to numeric Stata variables",
           "occurrence": 1,
           "skip": "forbid",
@@ -3098,30 +3082,6 @@
         },
         {
           "file": "test-label-metadata.R",
-          "test": "data frame set functions mutate by reference",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 6,
-          "warnings": 0
-        },
-        {
-          "file": "test-label-metadata.R",
-          "test": "label setters still return the data frame for pipeline use",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 2,
-          "warnings": 0
-        },
-        {
-          "file": "test-label-metadata.R",
-          "test": "copy_data isolates a data frame from later label setters",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 2,
-          "warnings": 0
-        },
-        {
-          "file": "test-label-metadata.R",
           "test": "vector label setters keep copy semantics",
           "occurrence": 1,
           "skip": "forbid",
@@ -3139,6 +3099,62 @@
         {
           "file": "test-label-metadata.R",
           "test": "set_var_label labels a generated reference column",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "replacement syntax follows R copy semantics",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "dataset-label replacement detaches a dibble from its aliases",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "table label setters reject plain containers before any update",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "whole-table label clearing handles duplicated column names",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "dibble set functions mutate by reference",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "label setters still return the dibble for pipeline use",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "copy_data isolates a dibble from later label setters",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 2,
@@ -3505,11 +3521,11 @@
       "files": [
         {
           "path": "tests/testthat/test-owned-atoms.R",
-          "sha256": "bfa99edc530d1764f5e08c14360e0b93297cad4e2242f2ed4da11341fa234042"
+          "sha256": "0c606f579d22b96453d6263ff328ed2756d62ef886fcdf737cbedaed4a7e6660"
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
-          "sha256": "cb7f24fda58dbce38ad816e92597b2da2d7c35cfcbdabc575d370848715ceabd"
+          "sha256": "838bbd18a3e7f01e5993757003e636541013e394b14902bf95aea01ebe830fc5"
         },
         {
           "path": "tests/testthat/test-owned-reads.R",
@@ -3517,11 +3533,11 @@
         },
         {
           "path": "tests/testthat/test-reference-copy.R",
-          "sha256": "7382f561752b3cb6171cfdf88b397237a35c32e86b31d1430910d0a5d4f859a0"
+          "sha256": "53764f4b89c48eb36cc213434d0509d6e6d313c0c46a303110ed7ab4ae5cf619"
         },
         {
           "path": "tests/testthat/test-copy-data.R",
-          "sha256": "cbd704afda0f4c07333653e13084817667f57a2d556410cde010a3abf18a7d73"
+          "sha256": "d1b04a7b8cd151e87e9232ec933533c5c71d9a50c185d5b1c2a49a69a0a73e41"
         },
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
@@ -3547,10 +3563,10 @@
         },
         {
           "file": "test-copy-data.R",
-          "test": "copy_data preserves ordinary containers and their column types",
+          "test": "copy_data rejects ordinary containers and leaves them unchanged",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 6,
+          "min_pass": 9,
           "warnings": 0
         },
         {
@@ -4030,7 +4046,7 @@
           "test": "journaled append restores shape and metadata after errors and interrupts",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 432,
+          "min_pass": 288,
           "warnings": 0
         },
         {
@@ -4046,7 +4062,7 @@
           "test": "private append reuses names without a collection or prior names read",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 192,
+          "min_pass": 128,
           "warnings": 0
         },
         {
@@ -4054,7 +4070,7 @@
           "test": "generation preserves saved names, attributes and shallow table copies",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 21,
+          "min_pass": 14,
           "warnings": 0
         },
         {
@@ -4420,7 +4436,7 @@
           "test": "explicit helpers isolate distinct tables while preserving table and slot aliases",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 20,
+          "min_pass": 6,
           "warnings": 0
         },
         {
@@ -4457,14 +4473,6 @@
         },
         {
           "file": "test-reference-copy.R",
-          "test": "all changed same-vector data.table columns invalidate lookup state",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 10,
-          "warnings": 0
-        },
-        {
-          "file": "test-reference-copy.R",
           "test": "promotion replaces its named column without promoting other slots",
           "occurrence": 1,
           "skip": "forbid",
@@ -4477,6 +4485,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-reference-copy.R",
+          "test": "explicit helpers reject ordinary containers without touching them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
           "warnings": 0
         },
         {
@@ -4688,27 +4704,27 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "2d42387d0856f0cf9f1d614b00e72b2984551106535d6297ed3e729bd25063a3"
+          "sha256": "f15cc910d5fff30ea43da77c0074bf9cc2dd96dfa167faaccd8739c75fdcb2a6"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
-          "sha256": "013c8986cbbd49b6f0c1478df5fafdbd692cc381695d4d20528b85af529f887d"
+          "sha256": "2dcdba66290720b00c1841f1d98953954f45b7af22e5ab191696b2ba021cc5f8"
         },
         {
           "path": "tests/testthat/test-reserve-columns.R",
-          "sha256": "98ebd9fe64839080c039d76a6a8587121d7fcbe909ce17da3150b98e76f5313c"
+          "sha256": "1a06bc12b147fba8a06885ba5505b10372043d70b92cd4afa113915825a655cc"
         },
         {
           "path": "tests/testthat/test-data-table-compatibility.R",
-          "sha256": "1bd35095356c578c2931ff99b0122efc3f988970b835ff9350a4ad447ddaface"
+          "sha256": "130e6c9688f85c6e049fa2ac794de5557088657ce942eb8658368a31d4999413"
         },
         {
           "path": "tests/testthat/test-keep-drop.R",
-          "sha256": "280a280804c110b28a4e16377b95fb45ec0af8ca62d35735e0fe4cbd0b96d862"
+          "sha256": "e5e0ab4d8ad5c1b6f2c5c9a7964389706c7dff50167bd085cf1014e1fca4db50"
         },
         {
           "path": "tests/testthat/test-order-rename-vars.R",
-          "sha256": "86a30926e84d032082b72b19552bfc3f798664c320220f13b55de72d642c68cc"
+          "sha256": "3d32f0438be3f7027898b99df9fb45ac0d34a637b20223774232e95f1511fe78"
         },
         {
           "path": "tests/testthat/test-raven-nse.R",
@@ -4716,7 +4732,7 @@
         },
         {
           "path": "tests/testthat/test-auto-grow.R",
-          "sha256": "0bdcec9da303ca99644846eec3171f32a87fffc723a9292b482321e0a4fb90df"
+          "sha256": "b710d9aa3ff4d12a38be6861ff2399a8831d2bf4c1cd27e65d1d5268f69c5f16"
         }
       ],
       "blocks": [
@@ -4754,62 +4770,6 @@
         },
         {
           "file": "test-data-table-compatibility.R",
-          "test": "gen installs a physical data-table column",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 8,
-          "warnings": 0
-        },
-        {
-          "file": "test-data-table-compatibility.R",
-          "test": "repl invalidates only affected data-table lookup state",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 5,
-          "warnings": 0
-        },
-        {
-          "file": "test-data-table-compatibility.R",
-          "test": "repl retains aliases and copy_data isolates data tables",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 5,
-          "warnings": 0
-        },
-        {
-          "file": "test-data-table-compatibility.R",
-          "test": "whole-table mutations reject data-table subclasses",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 4,
-          "warnings": 0
-        },
-        {
-          "file": "test-data-table-compatibility.R",
-          "test": "metadata changes preserve data-table lookup state",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 6,
-          "warnings": 0
-        },
-        {
-          "file": "test-data-table-compatibility.R",
-          "test": "keep and drop preserve unaffected data-table lookup state",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 3,
-          "warnings": 0
-        },
-        {
-          "file": "test-data-table-compatibility.R",
-          "test": "repaired and edge-shaped data tables remain usable",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 5,
-          "warnings": 0
-        },
-        {
-          "file": "test-data-table-compatibility.R",
           "test": "writers and read-only operations do not mutate data tables",
           "occurrence": 1,
           "skip": "forbid",
@@ -4842,34 +4802,18 @@
         },
         {
           "file": "test-data-table-compatibility.R",
-          "test": "setDT() on a read result drops the stale reference state",
+          "test": "a data.table is never a mutation target",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 8,
+          "min_pass": 13,
           "warnings": 0
         },
         {
           "file": "test-data-table-compatibility.R",
-          "test": "promotion invalidates affected data-table keys and indexes",
+          "test": "edge-shaped data-table output containers keep their dimensions",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 9,
-          "warnings": 0
-        },
-        {
-          "file": "test-data-table-compatibility.R",
-          "test": "clearing a replaced data-table key preserves unrelated indexes",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 12,
-          "warnings": 0
-        },
-        {
-          "file": "test-data-table-compatibility.R",
-          "test": "strict zero-row replacement preserves data-table lookup state",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 16,
+          "min_pass": 2,
           "warnings": 0
         },
         {
@@ -4890,14 +4834,6 @@
         },
         {
           "file": "test-keep-drop.R",
-          "test": "physical-only selection mutates ordinary data aliases",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 4,
-          "warnings": 0
-        },
-        {
-          "file": "test-keep-drop.R",
           "test": "structural mutation does not alter shared names vectors",
           "occurrence": 1,
           "skip": "forbid",
@@ -4910,22 +4846,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
-          "warnings": 0
-        },
-        {
-          "file": "test-keep-drop.R",
-          "test": "ordinary gen keeps physical columns authoritative",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 3,
-          "warnings": 0
-        },
-        {
-          "file": "test-keep-drop.R",
-          "test": "legacy serialized reference state remains readable",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 3,
           "warnings": 0
         },
         {
@@ -4970,26 +4890,10 @@
         },
         {
           "file": "test-keep-drop.R",
-          "test": "data.table materialization clears keys and indexes",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 5,
-          "warnings": 0
-        },
-        {
-          "file": "test-keep-drop.R",
           "test": "validated keep-all is a structural no-op",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 3,
-          "warnings": 0
-        },
-        {
-          "file": "test-keep-drop.R",
-          "test": "serialized data.tables require assigned repair and preserve old aliases",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 8,
+          "min_pass": 2,
           "warnings": 0
         },
         {
@@ -5026,18 +4930,10 @@
         },
         {
           "file": "test-keep-drop.R",
-          "test": "renaming a data.table carries its key and indexes over",
+          "test": "keep_vars and drop_vars reject plain containers",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 3,
-          "warnings": 0
-        },
-        {
-          "file": "test-keep-drop.R",
-          "test": "renaming every data.table column carries its key over",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 2,
+          "min_pass": 9,
           "warnings": 0
         },
         {
@@ -5046,14 +4942,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
-          "warnings": 0
-        },
-        {
-          "file": "test-mutate-data.R",
-          "test": "matrix columns use data-frame row sizes",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 6,
           "warnings": 0
         },
         {
@@ -5085,7 +4973,7 @@
           "test": "where has documented logical and position semantics",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 34,
+          "min_pass": 32,
           "warnings": 0
         },
         {
@@ -5130,18 +5018,10 @@
         },
         {
           "file": "test-mutate-data.R",
-          "test": "validation errors leave an unmarked dataset unchanged",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 25,
-          "warnings": 0
-        },
-        {
-          "file": "test-mutate-data.R",
           "test": "gen rejects unsupported classed numeric results atomically",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 8,
+          "min_pass": 6,
           "warnings": 0
         },
         {
@@ -5378,25 +5258,6 @@
         },
         {
           "file": "test-mutate-data.R",
-          "test": "reference data preserves base and tibble access semantics",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 20,
-          "warnings": 0
-        },
-        {
-          "file": "test-mutate-data.R",
-          "test": "reference data consumers through dplyr",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 34,
-          "warnings": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-mutate-data.R",
           "test": "explicit replacement isolates separate tables sharing target vectors",
           "occurrence": 1,
           "skip": "forbid",
@@ -5500,14 +5361,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 13,
-          "warnings": 0
-        },
-        {
-          "file": "test-mutate-data.R",
-          "test": "data.table containers support by and bysort",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 9,
           "warnings": 0
         },
         {
@@ -5640,14 +5493,6 @@
         },
         {
           "file": "test-mutate-data.R",
-          "test": "tagged pairs reach reference, data.table, and compact targets",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 10,
-          "warnings": 0
-        },
-        {
-          "file": "test-mutate-data.R",
           "test": "mutation dots must be one target pair and at most one where",
           "occurrence": 1,
           "skip": "forbid",
@@ -5705,7 +5550,7 @@
           "test": "row counters mask a column named .n or .N",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 5,
+          "min_pass": 4,
           "warnings": 0
         },
         {
@@ -5813,11 +5658,54 @@
           "warnings": 0
         },
         {
-          "file": "test-mutation-containers.R",
-          "test": "explicit helper boundaries reject subclasses before evaluating updates",
+          "file": "test-mutate-data.R",
+          "test": "by-reference mutation rejects containers that are not dibbles",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 281,
+          "min_pass": 21,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "matrix columns use dataset row sizes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "validation errors leave the dataset unchanged",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "a dibble preserves base and tibble access semantics",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 21,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "dibble consumers through dplyr",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 35,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "tagged pairs reach dibble and compact targets",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         },
         {
@@ -5830,18 +5718,10 @@
         },
         {
           "file": "test-mutation-containers.R",
-          "test": "supported containers preserve existing column classes and true aliases",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 44,
-          "warnings": 0
-        },
-        {
-          "file": "test-mutation-containers.R",
           "test": "grouped and rowwise metadata writes preserve grouping",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 64,
+          "min_pass": 32,
           "warnings": 0
         },
         {
@@ -5850,22 +5730,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
-          "warnings": 0
-        },
-        {
-          "file": "test-mutation-containers.R",
-          "test": "dropping the last column keeps each container's public empty shape",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 30,
-          "warnings": 0
-        },
-        {
-          "file": "test-mutation-containers.R",
-          "test": "a stray reference marker on data.table requires explicit conversion",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 7,
           "warnings": 0
         },
         {
@@ -5910,10 +5774,34 @@
         },
         {
           "file": "test-mutation-containers.R",
-          "test": "non-dibble reference markers do not enable bracket assignment",
+          "test": "every mutation helper rejects plain containers before evaluating arguments",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 100,
+          "min_pass": 276,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-containers.R",
+          "test": "explicit helper boundaries reject dibble subclasses before evaluating updates",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 74,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-containers.R",
+          "test": "a dibble preserves existing column classes and true aliases",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-containers.R",
+          "test": "dropping the last column keeps the dibble's public empty shape",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         },
         {
@@ -5922,14 +5810,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
-          "warnings": 0
-        },
-        {
-          "file": "test-order-rename-vars.R",
-          "test": "order_vars permutes a tibble and a data.table by reference",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 6,
           "warnings": 0
         },
         {
@@ -6029,6 +5909,22 @@
           "warnings": 0
         },
         {
+          "file": "test-order-rename-vars.R",
+          "test": "order_vars permutes a dibble by reference",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-order-rename-vars.R",
+          "test": "order_vars and rename_vars reject plain containers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
           "file": "test-raven-nse.R",
           "test": "the [subset] table names exported dibble constructors",
           "occurrence": 1,
@@ -6073,15 +5969,7 @@
           "test": "public capacity separates type, preparation, and spare slots",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 63,
-          "warnings": 0
-        },
-        {
-          "file": "test-reserve-columns.R",
-          "test": "preparation preserves containers and isolates column values",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 80,
+          "min_pass": 57,
           "warnings": 0
         },
         {
@@ -6113,7 +6001,7 @@
           "test": "growth rejects row selection and sorting before they run",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 48,
+          "min_pass": 16,
           "warnings": 0
         },
         {
@@ -6129,7 +6017,7 @@
           "test": "same-size writes need no spare capacity but shrinking needs preparation",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 87,
+          "min_pass": 29,
           "warnings": 0
         },
         {
@@ -6137,15 +6025,7 @@
           "test": "copying, subsetting, and serialization have assigned preparation paths",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 186,
-          "warnings": 0
-        },
-        {
-          "file": "test-reserve-columns.R",
-          "test": "legacy overlays require assigned preparation even for no-op helpers",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 304,
+          "min_pass": 64,
           "warnings": 0
         },
         {
@@ -6153,7 +6033,7 @@
           "test": "zero-column tables can reserve and consume their first slot",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 36,
+          "min_pass": 12,
           "warnings": 0
         },
         {
@@ -6177,34 +6057,10 @@
         },
         {
           "file": "test-reserve-columns.R",
-          "test": "data.table readiness requires valid self-reference and preserves lookups on failure",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 72,
-          "warnings": 0
-        },
-        {
-          "file": "test-reserve-columns.R",
           "test": "assigned repair preserves identical column slots without sharing another table",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 12,
-          "warnings": 0
-        },
-        {
-          "file": "test-reserve-columns.R",
-          "test": "data.table structural commits isolate names shared by ordinary copies",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 360,
-          "warnings": 0
-        },
-        {
-          "file": "test-reserve-columns.R",
-          "test": "rename preflight runs before a computed names selection",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 6,
+          "min_pass": 4,
           "warnings": 0
         },
         {
@@ -6212,7 +6068,7 @@
           "test": "unprepared keep-all is a validated no-op and invalid selectors keep their diagnostics",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 16,
+          "min_pass": 8,
           "warnings": 0
         },
         {
@@ -6224,11 +6080,35 @@
           "warnings": 0
         },
         {
+          "file": "test-reserve-columns.R",
+          "test": "preparation preserves the dibble and isolates column values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-reserve-columns.R",
+          "test": "explicit helpers reject plain containers before evaluating their arguments",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 33,
+          "warnings": 0
+        },
+        {
+          "file": "test-reserve-columns.R",
+          "test": "rename of an unprepared dibble accepts a computed names selection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
           "file": "test-auto-grow.R",
           "test": "automatic growth defaults to 1024 spare slots and isolates old tables",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 54,
+          "min_pass": 18,
           "warnings": 0
         },
         {
@@ -6313,14 +6193,6 @@
         },
         {
           "file": "test-auto-grow.R",
-          "test": "automatic growth repairs serialized data.table only for new columns",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 12,
-          "warnings": 0
-        },
-        {
-          "file": "test-auto-grow.R",
           "test": "unsupported lazy target lookups are left to the original call",
           "occurrence": 1,
           "skip": "forbid",
@@ -6341,6 +6213,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-auto-grow.R",
+          "test": "automatic growth never rescues an ordinary container",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
           "warnings": 0
         }
       ],
@@ -6401,23 +6281,23 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "88018b58b4049fe687d435e8e942fb5856e8a7dc40f6d3e19dfe90b7199a22a5"
+          "sha256": "7411bc0f33ba552c81b3130a4228183e66a604cc15d6b6cfb4ff89e8bcd5236c"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
-          "sha256": "8338a43a21176eced9a5fd2dcc9b5536d51613480aa1d8041f9afad17040b00f"
+          "sha256": "6a2048c2b441a8f023ca7cada84852531f61a748b3f515584649791429e3fbca"
         },
         {
           "path": "tests/testthat/test-dibble-print.R",
-          "sha256": "8858a23269dbdb7f2919b7a45502de42c690bb50809a9a57694fa11e2702796f"
+          "sha256": "88ab1ecf909732a29214f115a4ddba7085c794735eeb2e42c88671408222ede8"
         },
         {
           "path": "tests/testthat/test-dibble-bracket.R",
-          "sha256": "b0b6272f3849f17ccb5640b1c34671c5b361792ade23a039810307215594360a"
+          "sha256": "7dcffa471d73f6969d4024ba57f481aa7cb1cdad5a510892c87dfedde832a741"
         },
         {
           "path": "tests/testthat/test-dibble-columns.R",
-          "sha256": "c8fa8635082cb138e1870093279c9935b23e900fe75a0f8f4b80df8e81323ec4"
+          "sha256": "b697758939bcbd4d9183c95ee14ac0c1eb756629f5ec26d1e348c03c6992ab13"
         },
         {
           "path": "tests/testthat/test-dibble-result-history.R",
@@ -6429,7 +6309,7 @@
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
-          "sha256": "f071dbea70357b7c01abfc7453793fe75ec031fff0293c0dc126942c5012e170"
+          "sha256": "5154deac1fae513351405fa3bbe57aabbdf60885f5b9732f22837b6b16c39508"
         }
       ],
       "blocks": [
@@ -6579,14 +6459,6 @@
         },
         {
           "file": "test-dibble-class.R",
-          "test": "reference support does not grant ordinary containers dibble identity",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 18,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble-class.R",
           "test": "grouping and metadata classes follow dibble identity",
           "occurrence": 1,
           "skip": "forbid",
@@ -6653,6 +6525,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "ordinary containers are never mutation targets and never gain dibble identity",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 27,
           "warnings": 0
         },
         {
@@ -6842,18 +6722,18 @@
         },
         {
           "file": "test-dibble-print.R",
-          "test": "ordinary reference containers keep their usual display",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 6,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble-print.R",
           "test": "printing preserves cells metadata aliases and compact backing",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-print.R",
+          "test": "ordinary containers keep their usual display and reject by-reference helpers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
           "warnings": 0
         },
         {
@@ -7063,7 +6943,7 @@
           "test": "replacement operators type their columns and keep the dibble",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 16,
+          "min_pass": 9,
           "warnings": 0
         },
         {
@@ -7217,14 +7097,6 @@
         },
         {
           "file": "test-dibble.R",
-          "test": "the first gen on a tibble leaves its columns alone",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 8,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble.R",
           "test": "a stale string declaration is redone on entering a dibble",
           "occurrence": 1,
           "skip": "forbid",
@@ -7328,14 +7200,6 @@
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
           "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-dibble.R",
-          "test": "gen on a tibble evaluates against the tibble's own columns",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 18,
-          "warnings": 0
         },
         {
           "file": "test-dibble.R",
@@ -7621,7 +7485,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble-rows.R",
-          "sha256": "806556513ae27baaa8be1d465f810cbf0dc9cb3bbaacb0e185fc14c38fac9ff9"
+          "sha256": "b64aca47127c2a7f5e2f8e9dd1e6f99ab657aa57cc7efda5e7f7e7e28805cb6a"
         },
         {
           "path": "tests/testthat/test-dibble-row-filter.R",
@@ -7629,7 +7493,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-row-lifetime.R",
-          "sha256": "afe5f6fdbdade755778bafecdac2acda35d4c777c4893a70c151500991b37fce"
+          "sha256": "e4c52069d1fa2dd68377062ff0c97ce443a5e93f7cfe9c55bcf69fd6fb87bb90"
         },
         {
           "path": "tests/testthat/test-dibble-row-order.R",
@@ -7641,7 +7505,7 @@
         },
         {
           "path": "tests/testthat/test-slice-dta-rows.R",
-          "sha256": "95dba9824d8f4c16acf1d687debdedf72d45eb6ae1407d412e78d412df087c63"
+          "sha256": "110898c8c61cffd07e6dd4e67f5f1da5d31f4560146ed1017f741aeb835298b9"
         }
       ],
       "blocks": [
@@ -7894,17 +7758,6 @@
         },
         {
           "file": "test-dibble-row-lifetime.R",
-          "test": "S6-L04 plain reference-marked frame fallback preserves its container policy",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 80,
-          "warnings": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-dibble-row-lifetime.R",
           "test": "S6-L05 foreign data.table input cannot mutate a gathered dibble result",
           "occurrence": 1,
           "skip": "require",
@@ -7912,6 +7765,17 @@
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-row-lifetime.R",
+          "test": "S6-L04 plain frames are never mutation targets and keep their container policy",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 48,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {
@@ -8141,14 +8005,6 @@
         },
         {
           "file": "test-dibble-rows.R",
-          "test": "plain reference containers retain base and tibble row rules",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 18,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble-rows.R",
           "test": "group metadata rebuild matches sorted factor expansion",
           "occurrence": 1,
           "skip": "forbid",
@@ -8257,29 +8113,10 @@
         },
         {
           "file": "test-dibble-rows.R",
-          "test": "plain grouped reference frames retain row slicing support",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 4,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble-rows.R",
-          "test": "plain grouped reference slicing through dplyr",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 8,
-          "warnings": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-dibble-rows.R",
           "test": "drop and unused-argument validation follows each bracket container",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 34,
+          "min_pass": 26,
           "warnings": 0
         },
         {
@@ -8287,7 +8124,7 @@
           "test": "bracket container argument validation through dplyr",
           "occurrence": 1,
           "skip": "require",
-          "min_pass": 34,
+          "min_pass": 26,
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
@@ -8325,7 +8162,7 @@
           "test": "the dplyr row hook keeps vctrs row-name repair",
           "occurrence": 1,
           "skip": "require",
-          "min_pass": 12,
+          "min_pass": 6,
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
@@ -8360,46 +8197,11 @@
         },
         {
           "file": "test-dibble-rows.R",
-          "test": "base reference gathers retain base observation metadata and drop shapes",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 9,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble-rows.R",
-          "test": "reference row subsets preserve the metadata wrapper's policies",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 72,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble-rows.R",
           "test": "metadata subscript forcing precedes container argument validation",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 15,
+          "min_pass": 12,
           "warnings": 0
-        },
-        {
-          "file": "test-dibble-rows.R",
-          "test": "legacy factor expansion retains contiguous missing-value prefixes",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 2,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble-rows.R",
-          "test": "legacy missing prefix expansion through dplyr",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 2,
-          "warnings": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-dibble-rows.R",
@@ -8422,17 +8224,6 @@
         },
         {
           "file": "test-dibble-rows.R",
-          "test": "plain-reference reconstruction preserves raw payload row names",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 8,
-          "warnings": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-dibble-rows.R",
           "test": "the row helper retains its shell's raw row-name policy",
           "occurrence": 1,
           "skip": "forbid",
@@ -8445,6 +8236,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-rows.R",
+          "test": "row helpers never mark a plain container as a mutation target",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
           "warnings": 0
         },
         {
@@ -8505,22 +8304,6 @@
         },
         {
           "file": "test-slice-dta-rows.R",
-          "test": "reorder_dta_rows permutes a data.table in place",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 9,
-          "warnings": 0
-        },
-        {
-          "file": "test-slice-dta-rows.R",
-          "test": "reorder_dta_rows permutes other ordinary containers",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 6,
-          "warnings": 0
-        },
-        {
-          "file": "test-slice-dta-rows.R",
           "test": "reorder_dta_rows permutes reference-state columns",
           "occurrence": 1,
           "skip": "forbid",
@@ -8545,7 +8328,23 @@
         },
         {
           "file": "test-slice-dta-rows.R",
-          "test": "reorder_dta_rows validates data.table permutations",
+          "test": "reorder_dta_rows permutes a dibble without generated columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-slice-dta-rows.R",
+          "test": "reorder_dta_rows rejects plain containers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-slice-dta-rows.R",
+          "test": "reorder_dta_rows validates permutations",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 5,
@@ -9319,7 +9118,7 @@
         },
         {
           "path": "tests/testthat/test-dta-merge.R",
-          "sha256": "4bdfc7cd8c75f9c2381c3571134b79862b5782755d9581b7d36ab3095da23156"
+          "sha256": "90c595ddb848bba3adf4d1b3bbf7da8bb4d9f0e181691eaae0ec8ac321782dc3"
         },
         {
           "path": "tests/testthat/test-dta-compare-native.R",
@@ -9335,7 +9134,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-joins.R",
-          "sha256": "2faeada3c030338166588003e7781fae7fc5d50d7469591e26eb09b5e2323017"
+          "sha256": "58c7e30eb5a207ee1d8164e858e90015e9d5919408b6444bde3b21e1a4ead60c"
         },
         {
           "path": "tests/testthat/test-dibble-bindings.R",
@@ -9428,17 +9227,6 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 120,
-          "warnings": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-dibble-joins.R",
-          "test": "J11 ordinary reference frames retain their next-method routes",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 66,
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
@@ -9552,6 +9340,17 @@
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-joins.R",
+          "test": "J11 ordinary frames join as copies and are never mutation targets",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 14,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {
@@ -10411,11 +10210,11 @@
       "files": [
         {
           "path": "tests/testthat/test-egen-command.R",
-          "sha256": "c46bad98a81e2cbc29730e88917c2c8fd3d5898e4c67e4028c966c8612eab7d4"
+          "sha256": "b79d9de0d31553b40b699922d25978ef9faa09f4e56bfa3281b7c48e7c74dadc"
         },
         {
           "path": "tests/testthat/test-egen-groups.R",
-          "sha256": "472c77124887ea6941b5fad5cb6fc388622fe0434813734cbe7bdc6bbcad79b8"
+          "sha256": "df0e83c2f2e81f9dce911dea145346e74791183c349d4b7887dc7e605457b689"
         },
         {
           "path": "tests/testthat/test-egen-stata-fixture.R",
@@ -10435,7 +10234,7 @@
         },
         {
           "path": "tests/testthat/test-datasig.R",
-          "sha256": "b0cbd5aa049670ca5d1890196ac4749d0e5ed25aa483dca95dfd5ef0c2a6b5fd"
+          "sha256": "4f1737cff069b05e5b7fb459d57652e508916b40e426579ec53fd18aca54bdfd"
         }
       ],
       "blocks": [
@@ -10729,18 +10528,18 @@
         },
         {
           "file": "test-egen-command.R",
-          "test": "egen keeps data.table keys unless bysort changes row order",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 4,
-          "warnings": 0
-        },
-        {
-          "file": "test-egen-command.R",
           "test": "egen grouped calculations leave compact source columns untouched",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-command.R",
+          "test": "egen rejects containers that are not dibbles",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
           "warnings": 0
         },
         {

@@ -7,7 +7,7 @@
 order_vars(data, ...)
 }
 \arguments{
-\item{data}{An ungrouped data frame or tibble to mutate.}
+\item{data}{An ungrouped dibble to mutate.}
 
 \item{...}{Column names, name ranges, \code{c()}, or
 \code{tidyselect::all_of()} character vectors to move to the front.}
@@ -30,7 +30,7 @@ values, labels, and compact representations all survive the move.
 Columns created by \code{gen()} may be reordered alongside physical ones.
 }
 \examples{
-survey <- data.frame(id = 1:2, age = c(20, 30), region = c("n", "s"))
+survey <- dibble(id = 1:2, age = c(20, 30), region = c("n", "s"))
 order_vars(survey, region)
 names(survey)
 }

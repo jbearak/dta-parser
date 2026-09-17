@@ -37,18 +37,18 @@ test_that("is_dibble distinguishes dibbles from other reference frames", {
     expect_false(is_dibble(1:3))
     expect_false(is_dibble(NULL))
 
-    frame <- reserve_columns(data.frame(x = 1:2))
-    gen(frame, y = x + 1)
-    expect_s3_class(frame, "dtatools_ref_data")
+    # A plain frame never gains the reference marker: only a dibble is a
+    # mutation target.
+    frame <- data.frame(x = 1:2)
+    expect_error(gen(frame, y = x + 1), "must be a dibble")
+    expect_false(inherits(frame, "dtatools_ref_data"))
     expect_false(is_dibble(frame))
+    expect_identical(names(frame), "x")
 
-    marked <- reserve_columns(tibble::tibble(x = 1:2))
-    gen(marked, y = x + 1)
-    expect_s3_class(marked, "dtatools_ref_data")
+    marked <- tibble::tibble(x = 1:2)
+    expect_error(gen(marked, y = x + 1), "must be a dibble")
     expect_false(is_dibble(marked))
-    expect_identical(
-        class(marked), c("dtatools_ref_data", "tbl_df", "tbl", "data.frame")
-    )
+    expect_identical(class(marked), c("tbl_df", "tbl", "data.frame"))
 })
 
 test_that("as_dibble converts frames, tibbles, and data tables", {
@@ -69,7 +69,7 @@ test_that("as_dibble converts frames, tibbles, and data tables", {
     expect_identical(class(tbl), c("tbl_df", "tbl", "data.frame"))
     expect_identical(from_tibble, as_dibble(from_tibble))
 
-    reference_frame <- reserve_columns(data.frame(x = 1:2))
+    reference_frame <- as_dibble(data.frame(x = 1:2))
     gen(reference_frame, y = x + 1L)
     from_reference <- as_dibble(reference_frame)
     expect_true(is_dibble(from_reference))
@@ -421,8 +421,7 @@ test_that("slice_dta_rows accepts the default read container", {
     )
     expect_identical(dta_notes(sliced), dta_notes(data))
     gen(data, flag = 1)
-    marked <- reserve_columns(data.frame(x = 1:3))
-    gen(marked, y = x)
+    marked <- data.frame(x = 1:3, y = c(1, 2, 3))
     plain <- slice_dta_rows(marked, 2:3)
     expect_identical(class(plain), "data.frame")
     expect_identical(as.double(plain$y), c(2, 3))
@@ -627,10 +626,8 @@ test_that("mutate and transmute type new columns by the container mapping", {
     expect_identical(as.double(per_group$total), c(3, 3, 3))
     expect_identical(dta_storage_type(per_group$total), "double")
 
-    # A base frame carrying reference state is not a dibble and gets the
-    # ordinary result.
-    frame <- reserve_columns(data.frame(x = 1:2))
-    gen(frame, y = x + 1L)
+    # A base frame is not a dibble and gets the ordinary result.
+    frame <- data.frame(x = 1:2, y = c(2L, 3L))
     plain <- dplyr::mutate(frame, z = 1)
     expect_identical(class(plain), "data.frame")
     expect_identical(plain$z, c(1, 1))
@@ -718,18 +715,6 @@ test_that("replacement operators type their columns and keep the dibble", {
     names(data)[1] <- "key"
     expect_true(is_dibble(data))
     expect_identical(names(data)[1], "key")
-    # gen() on a tibble leaves the tibble a tibble and its existing
-    # columns bare; only the generated column is typed.
-    tbl <- reserve_columns(tibble::tibble(n = 1:2, s = c("a", "b"), keep = c(TRUE, FALSE)))
-    alias <- tbl
-    gen(tbl, y = n * 2L)
-    expect_false(is_dibble(tbl))
-    expect_s3_class(tbl, "tbl_df")
-    expect_identical(alias$n, 1:2)
-    expect_null(attr(alias$s, "stata.string.storage", exact = TRUE))
-    expect_identical(alias$keep, c(TRUE, FALSE))
-    expect_true("y" %in% names(alias))
-    expect_identical(dta_storage_type(tbl$y), "long")
 })
 
 .check_optional_split_dibble_711 <- function(include_dplyr) {
@@ -1108,21 +1093,6 @@ test_that("difftime arithmetic through dplyr", {
     skip_if_not_installed("dplyr", "1.2.1")
     .check_optional_split_dibble_1030(TRUE)
 })
-test_that("the first gen on a tibble leaves its columns alone", {
-    tbl <- reserve_columns(tibble::tibble(ok = 1:2, bad = c(Inf, Inf), typed = dta_byte(1:2)))
-    alias <- tbl
-    gen(tbl, y = 1)
-    # `bad` holds values no Stata storage can carry, and gen() never
-    # looks at it: existing columns are not the subject of the call.
-    expect_identical(tbl$ok, 1:2)
-    expect_identical(alias$ok, 1:2)
-    expect_identical(alias$bad, c(Inf, Inf))
-    expect_false(is_dibble(tbl))
-    expect_identical(dta_storage_type(alias$typed), "byte")
-    expect_identical(as.integer(alias$typed), 1:2)
-    expect_identical(names(tbl), c("ok", "bad", "typed", "y"))
-    expect_identical(dta_storage_type(tbl$y), "float")
-})
 
 .check_optional_split_dibble_1058 <- function(include_dplyr) {
     left <- dibble(id = 1:2, s = c("a", "b"))
@@ -1378,7 +1348,7 @@ test_that("compact dictionary subsetting through dplyr", {
     expect_identical(length(unclass(wide)), 4L)
     expect_identical(names(wide), c("x", "v1", "v2", "v3"))
     expect_identical(names(alias), c("x", "v1", "v2"))
-    tbl <- reserve_columns(tibble::tibble(a = 1:2))
+    tbl <- reserve_columns(dibble(a = 1:2))
     expect_silent(gen(tbl, b = a))
     gen(tbl, c = a)
     expect_identical(names(unclass(tbl)), c("a", "b", "c"))
@@ -1497,49 +1467,6 @@ test_that("column binding isolates every input, not only the first", {
 test_that("multi-input binding isolation through dplyr", {
     skip_if_not_installed("dplyr", "1.2.1")
     .check_optional_split_dibble_1279(TRUE)
-})
-test_that("gen on a tibble evaluates against the tibble's own columns", {
-    # Stata's collation of `NA` with "" applies where a Stata dataset is.
-    # A tibble is not one, so R's own semantics hold and the two are two
-    # groups, exactly as on a base data frame.
-    tbl <- reserve_columns(tibble::tibble(g = c(NA_character_, ""), v = 1:2))
-    gen(tbl, n = .N, by = g)
-    expect_false(is_dibble(tbl))
-    expect_identical(as.integer(tbl$n), c(1L, 1L))
-    expect_identical(tbl$g, c(NA_character_, ""))
-    grouped <- reserve_columns(.group_fixture("ordinary_na_empty")$data)
-    gen(grouped, n = .N)
-    expect_identical(as.integer(grouped$n), c(1L, 1L))
-    expect_identical(nrow(attr(grouped, "groups")), 2L)
-    flagged <- reserve_columns(tibble::tibble(g = c(NA_character_, ""), v = 1:2))
-    gen(flagged, empty = g == "")
-    expect_identical(flagged$empty, c(NA, TRUE))
-    # `as_dibble()` is what makes it a Stata dataset; then Stata's
-    # collation applies.
-    typed <- as_dibble(tibble::tibble(g = c(NA_character_, ""), v = 1:2))
-    gen(typed, n = .N, by = g)
-    expect_identical(as.integer(typed$n), c(2L, 2L))
-    # `bysort` sorts by reference before the values are computed, and a
-    # later failure does not undo the sort. Rows stay aligned across
-    # every column, and a tibble behaves here as a data frame and a
-    # dibble do.
-    sorted <- reserve_columns(tibble::tibble(
-        k = c(2L, 1L), flag = c(TRUE, FALSE), f = factor(c("b", "a"))
-    ))
-    expect_error(gen(sorted, y = Inf, bysort = k))
-    expect_false(is_dibble(sorted))
-    expect_identical(names(sorted), c("k", "flag", "f"))
-    expect_identical(sorted$k, c(1L, 2L))
-    expect_identical(sorted$flag, c(FALSE, TRUE))
-    expect_identical(as.character(sorted$f), c("a", "b"))
-    # A failing gen leaves the tibble as it was, grouping included.
-    bad <- reserve_columns(.group_fixture("ordinary_na_b")$data)
-    alias <- bad
-    expect_error(gen(bad, y = stop("boom")), "boom")
-    expect_false(is_dibble(bad))
-    expect_identical(bad$g, c(NA_character_, "b"))
-    expect_identical(alias$g, c(NA_character_, "b"))
-    expect_identical(nrow(attr(bad, "groups")), 2L)
 })
 
 test_that("data-masking verbs type each result as it enters the mask", {
@@ -1833,9 +1760,9 @@ test_that("copying replacement and regrouping through dplyr", {
     expect_identical(dta_storage_type(restored$z), "float")
     # This checks the restored mutation target, not aliases across serialization.
 
-    ordinary <- reserve_columns(tibble::tibble(x = 1:3))
-    gen(ordinary, y = 1)
-    expect_identical(dtatools:::.reference_state(ordinary)$dibble, FALSE)
+    ordinary <- tibble::tibble(x = 1:3)
+    expect_error(gen(ordinary, y = 1), "must be a dibble")
+    expect_null(dtatools:::.reference_state(ordinary))
     expect_false(is_dibble(unserialize(serialize(ordinary, NULL))))
 }
 

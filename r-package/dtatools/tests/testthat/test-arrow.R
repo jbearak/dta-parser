@@ -49,9 +49,11 @@ standard_arrow_fixture <- function() {
         dt = as.difftime(c(1.5, NA, -2, 0), units = "hours")
     )
     attr(data, "label") <- "standard fixture"
-    data <- set_dta_note(data, 1L, "first note")
-    data <- set_dta_note(data, 2L, "second note")
-    attr(data, "stata.note.numbers") <- NULL
+    # Dataset notes as the table setter records them on a plain tibble
+    # once it has been read back: contiguous notes carry no numbering
+    # attribute, and the marker class flags the metadata.
+    attr(data, "notes") <- c("first note", "second note")
+    class(data) <- c("dtatools_dta_metadata", class(data))
     attr(data$x, "label") <- "a double"
     data
 }
@@ -1258,7 +1260,7 @@ test_that("Arrow selection parses profile metadata only for predicates", {
 test_that("predicate and datasig projections validate every field document", {
     marker <- "unselected-profile-corruption-marker"
     data <- tibble::tibble(selected = 1:2, unselected = 3:4)
-    data <- set_dta_note(data, 1L, marker, variable = "unselected")
+    data$unselected <- set_dta_note(data$unselected, 1L, marker)
     path <- arrow_tempfile()
     save_arrow(data, path)
 

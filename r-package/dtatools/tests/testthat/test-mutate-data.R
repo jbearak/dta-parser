@@ -17,25 +17,41 @@ test_that("reference mutation exports one coherent API", {
         ))
     )
 
-    data <- data.frame(x = c(1, 2, 3), eligible = c(TRUE, FALSE, TRUE))
+    data <- dibble(x = c(1, 2, 3), eligible = c(TRUE, FALSE, TRUE))
     alias <- data
     result <- withVisible(replace_values(data, x, 0, where = eligible))
 
     expect_false(result$visible)
     expect_identical(result$value, data)
-    expect_identical(data$x, c(0, 2, 0))
+    expect_identical(as.double(data$x), c(0, 2, 0))
     expect_identical(alias$x, data$x)
-    expect_false(inherits(data, "dtatools_ref_data"))
+    expect_true(inherits(data, "dtatools_ref_data"))
 })
 
-test_that("matrix columns use data-frame row sizes", {
+test_that("by-reference mutation rejects containers that are not dibbles", {
+    for (data in list(
+        data.frame(x = 1:3),
+        tibble::tibble(x = 1:3),
+        data.table::data.table(x = 1:3)
+    )) {
+        expect_error(gen(data, y, x + 1L), "must be a dibble")
+        expect_error(repl(data, x, 0L), "must be a dibble")
+        expect_error(replace_values(data, x, 0L, where = 1), "must be a dibble")
+        expect_error(reserve_columns(data), "must be a dibble")
+        expect_error(copy_data(data), "must be a dibble")
+        expect_false(inherits(data, "dtatools_ref_data"))
+        expect_identical(names(data), "x")
+    }
+})
+
+test_that("matrix columns use dataset row sizes", {
     make_frame <- function() {
-        reserve_columns(data.frame(x = 1:3, matrix = I(matrix(1:6, nrow = 3))))
+        dibble(x = 1:3, matrix = I(matrix(1:6, nrow = 3)))
     }
 
     replaced <- make_frame()
     replace_values(replaced, x, 9L, where = 1)
-    expect_identical(replaced$x, c(9L, 2L, 3L))
+    expect_identical(as.integer(replaced$x), c(9L, 2L, 3L))
     expect_identical(replaced$matrix, I(matrix(1:6, nrow = 3)))
 
     generated <- make_frame()
@@ -45,24 +61,25 @@ test_that("matrix columns use data-frame row sizes", {
 
     original <- make_frame()
     copied <- copy_data(original)
-    expect_identical(copied, original)
+    expect_true(is_dibble(copied))
+    expect_identical(as.data.frame(copied), as.data.frame(original))
     expect_identical(dim(copied$matrix), c(3L, 2L))
 })
 
 test_that("targets are bare names and support tidy injection", {
-    data <- reserve_columns(data.frame(x = 1:2))
+    data <- dibble(x = 1:2)
     expect_error(replace_values(data, , 0), "unquoted")
     expect_error(replace_values(data, unknown, 0), "does not exist")
 
     # One string names a column, because `!!name` unquotes to one.
     expect_silent(replace_values(data, "x", 0L))
-    expect_identical(data$x, c(0L, 0L))
+    expect_identical(as.integer(data$x), c(0L, 0L))
     expect_silent(gen(data, "quoted", 0))
     expect_identical(as.double(data$quoted), c(0, 0))
 
     target <- rlang::sym("x")
     expect_silent(replace_values(data, !!target, 4L))
-    expect_identical(data$x, c(4L, 4L))
+    expect_identical(as.integer(data$x), c(4L, 4L))
 
     generated <- rlang::sym("new")
     expect_silent(gen(data, !!generated, 5))
@@ -70,18 +87,18 @@ test_that("targets are bare names and support tidy injection", {
 })
 
 test_that("data masks, formulas, and alias calls use the right environments", {
-    data <- reserve_columns(data.frame(
+    data <- dibble(
         x = c(1L, 2L, 3L),
         adjustment = c(2L, 3L, 4L),
         eligible = c(TRUE, FALSE, TRUE),
         constant = c(10L, 20L, 30L)
-    ))
+    )
     constant <- 100L
     value_rule <- ~ x * adjustment + .env$constant
     selection_rule <- ~ eligible
 
     repl(data, x, value_rule, where = selection_rule)
-    expect_identical(data$x, c(102L, 2L, 112L))
+    expect_identical(as.integer(data$x), c(102L, 2L, 112L))
 
     expect_error(
         gen(data, from_column, constant),
@@ -97,37 +114,39 @@ test_that("data masks, formulas, and alias calls use the right environments", {
         rep(100, 3)
     )
     cutoff <- 2L
-    selection_data <- data.frame(x = 1:3)
+    selection_data <- dibble(x = 1:3)
     replace_values(selection_data, x, 0L, where = ~ x >= .env$cutoff)
-    expect_identical(selection_data$x, c(1L, 0L, 0L))
+    expect_identical(as.integer(selection_data$x), c(1L, 0L, 0L))
 
     local_repl <- function(data) {
         offset <- 7L
         repl(data, x, x + .env$offset, where = eligible)
     }
     local_repl(data)
-    expect_identical(data$x, c(109L, 2L, 119L))
+    expect_identical(as.integer(data$x), c(109L, 2L, 119L))
 
     expect_error(repl(data, x, x ~ x + 1), "one-sided")
     expect_error(repl(data, x, 1, where = x ~ eligible), "one-sided")
 })
 
 test_that("values and selection see the unchanged dataset", {
-    data <- reserve_columns(data.frame(x = 1:4, source = 11:14))
+    data <- dibble(x = 1:4, source = 11:14)
     replace_values(data, x, x + source, where = x <= 2)
-    expect_identical(data$x, c(12L, 14L, 3L, 4L))
+    expect_identical(as.integer(data$x), c(12L, 14L, 3L, 4L))
 
     gen(data, created, source * 2)
     expect_identical(as.double(data$created), c(22, 24, 26, 28))
 
-    for (constructor in list(identity, dta_byte)) {
+    # Typed columns enter the dibble as they are, so one vector can back
+    # both the target and the selector.
+    for (constructor in list(dta_long, dta_byte)) {
         target <- constructor(c(2L, 1L, 1L))
-        direct <- data.frame(x = target)
+        direct <- dibble(x = target)
         replace_values(direct, x, 9, where = x)
         expect_identical(as.double(direct$x), c(9, 9, 1))
 
         target <- constructor(c(2L, 1L, 1L))
-        aliased <- data.frame(x = target, selector = target)
+        aliased <- dibble(x = target, selector = target)
         replace_values(aliased, x, 7, where = selector)
         expect_identical(as.double(aliased$x), c(7, 7, 1))
         expect_identical(as.double(aliased$selector), c(7, 7, 1))
@@ -135,30 +154,30 @@ test_that("values and selection see the unchanged dataset", {
 })
 
 test_that("where has documented logical and position semantics", {
-    data <- data.frame(x = 1:5)
+    data <- dibble(x = 1:5)
     replace_values(data, x, 8L, where = TRUE)
-    expect_identical(data$x, rep(8L, 5))
+    expect_identical(as.integer(data$x), rep(8L, 5))
 
     replace_values(data, x, 1:5, where = c(TRUE, NA, FALSE, FALSE, TRUE))
-    expect_identical(data$x, c(1L, 8L, 8L, 8L, 5L))
+    expect_identical(as.integer(data$x), c(1L, 8L, 8L, 8L, 5L))
 
     replace_values(data, x, c(20L, 30L, 40L), where = c(2, 2, 4))
-    expect_identical(data$x, c(1L, 30L, 8L, 40L, 5L))
+    expect_identical(as.integer(data$x), c(1L, 30L, 8L, 40L, 5L))
 
-    compact_positions <- data.frame(x = 1:3)
+    compact_positions <- dibble(x = 1:3)
     replace_values(
         compact_positions, x, c(8L, 9L),
         where = dta_byte(c(3, 1))
     )
-    expect_identical(compact_positions$x, c(9L, 2L, 8L))
+    expect_identical(as.integer(compact_positions$x), c(9L, 2L, 8L))
 
     replace_values(
         compact_positions, x, c(6L, 7L, 5L),
         where = dta_long(c(3, 1, 3))
     )
-    expect_identical(compact_positions$x, c(6L, 2L, 5L))
+    expect_identical(as.integer(compact_positions$x), c(6L, 2L, 5L))
 
-    all_rows <- data.frame(x = dta_byte(1:3))
+    all_rows <- dibble(x = dta_byte(1:3))
     replace_values(all_rows, x, 4, where = rep(TRUE, 3))
     expect_identical(as.double(all_rows$x), rep(4, 3))
 
@@ -166,16 +185,15 @@ test_that("where has documented logical and position semantics", {
     replace_values(data, x, integer(), where = integer())
     expect_identical(data$x, unchanged)
 
-    all_false <- data.frame(x = 1:3)
+    all_false <- dibble(x = 1:3)
     replace_values(all_false, x, 9L, where = rep(FALSE, 3))
-    expect_identical(all_false$x, 1:3)
+    expect_identical(as.integer(all_false$x), 1:3)
 
     for (selection in list(FALSE, integer())) {
-        fresh <- data.frame(x = 1:3)
+        fresh <- dibble(x = 1:3)
         before <- serialize(fresh, NULL)
         replace_values(fresh, x, 9L, where = selection)
         expect_identical(serialize(fresh, NULL), before)
-        expect_false(inherits(fresh, "dtatools_ref_data"))
     }
 
     for (bad in list(0, -1, NA_real_, Inf, 1.5, 6)) {
@@ -190,7 +208,7 @@ test_that("where has documented logical and position semantics", {
         matrix(c(TRUE, FALSE, TRUE, FALSE), nrow = 2),
         array(c(TRUE, FALSE, TRUE, FALSE), dim = c(2, 1, 2))
     )) {
-        replace_target <- data.frame(x = 1:4)
+        replace_target <- dibble(x = 1:4)
         replace_before <- serialize(replace_target, NULL)
         expect_error(
             replace_values(replace_target, x, 0L, where = shaped),
@@ -198,7 +216,7 @@ test_that("where has documented logical and position semantics", {
         )
         expect_identical(serialize(replace_target, NULL), replace_before)
 
-        generate_target <- reserve_columns(data.frame(x = 1:4))
+        generate_target <- dibble(x = 1:4)
         generate_before <- serialize(generate_target, NULL)
         expect_error(
             gen(generate_target, y, 0L, where = shaped),
@@ -212,17 +230,17 @@ test_that("full-dataset values are gathered by selected row", {
     rows <- dta_long(c(5, 2, 5))
     values <- 11:15
 
-    replaced <- data.frame(x = dta_byte(1:5))
+    replaced <- dibble(x = dta_byte(1:5))
     replace_values(replaced, x, values, where = rows)
     expect_identical(as.double(replaced$x), c(1, 12, 3, 4, 15))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(replaced$x))
 
-    generated <- reserve_columns(data.frame(x = 1:5))
+    generated <- dibble(x = 1:5)
     gen(generated, y, values, where = rows)
     expect_identical(as.double(generated$y), c(NA, 12, NA, NA, 15))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(generated$y))
 
-    strings <- reserve_columns(data.frame(x = 1:5))
+    strings <- dibble(x = 1:5)
     string_values <- structure(letters[1:5], label = "letters")
     gen(strings, y, string_values, where = dta_long(c(3, 1)))
     expect_identical(as.character(strings$y), c("a", "", "c", "", ""))
@@ -232,20 +250,20 @@ test_that("full-dataset values are gathered by selected row", {
 
 test_that("metadata-bearing numerics remain valid row positions", {
     rows <- set_dta_note(c(3, 1), 2L, "selection note")
-    data <- data.frame(value = 1:3)
+    data <- dibble(value = 1:3)
 
     replace_values(data, value, c(30L, 10L), where = rows)
 
-    expect_identical(data$value, c(10L, 2L, 30L))
+    expect_identical(as.integer(data$value), c(10L, 2L, 30L))
 
-    full_values <- data.frame(value = 1:3)
+    full_values <- dibble(value = 1:3)
     replace_values(full_values, value, c(10L, 20L, 30L), where = rows)
 
-    expect_identical(full_values$value, c(10L, 2L, 30L))
+    expect_identical(as.integer(full_values$value), c(10L, 2L, 30L))
 })
 
 test_that("compact selected positions use one native patch plan", {
-    data <- data.frame(value = dta_byte(rep(1, 10)))
+    data <- dibble(value = dta_byte(rep(1, 10)))
     rows <- dta_long(c(2, 5, 9))
     expect_identical(dtatools:::.reference_row_reads(TRUE), 0)
     replace_values(data, value, c(3, 4, 5), where = rows)
@@ -256,16 +274,16 @@ test_that("compact selected positions use one native patch plan", {
 })
 
 test_that("excluded full-dataset values do not affect validation", {
-    ordinary <- data.frame(x = 1:3)
+    ordinary <- dibble(x = 1:3)
     replace_values(ordinary, x, c(1.5, 9, Inf), where = 2L)
-    expect_identical(ordinary$x, c(1L, 9L, 3L))
+    expect_identical(as.integer(ordinary$x), c(1L, 9L, 3L))
 
-    materialized <- data.frame(x = dta_byte(1:3))
+    materialized <- dibble(x = dta_byte(1:3))
     invisible(dtatools:::.force_altrep_materialization(materialized$x))
     replace_values(materialized, x, c(101, 9, 101), where = 2L)
     expect_identical(as.double(materialized$x), c(1, 9, 3))
 
-    strings <- data.frame(text = structure(
+    strings <- dibble(text = structure(
         c("a", "b", "c"), stata.string.storage = "str1"
     ))
     replace_values(
@@ -273,7 +291,7 @@ test_that("excluded full-dataset values do not affect validation", {
     )
     expect_identical(as.character(strings$text), c("a", "z", "c"))
 
-    zero_selection <- data.frame(text = structure(
+    zero_selection <- dibble(text = structure(
         "a", stata.string.storage = "str1"
     ))
     zero_before <- serialize(zero_selection, NULL)
@@ -285,13 +303,13 @@ test_that("excluded full-dataset values do not affect validation", {
     )
     expect_identical(serialize(zero_selection, NULL), zero_before)
 
-    zero_altrep <- data.frame(x = 1:3)
+    zero_altrep <- dibble(x = 1:3)
     zero_altrep_before <- serialize(zero_altrep, NULL)
     replace_values(zero_altrep, x, 1L, where = FALSE)
     expect_identical(serialize(zero_altrep, NULL), zero_altrep_before)
     expect_true(dtatools:::.is_altrep(zero_altrep$x))
 
-    generated <- reserve_columns(data.frame(x = 1:3))
+    generated <- dibble(x = 1:3)
     declared <- structure(
         c("too wide", "z", "also too wide"),
         stata.string.storage = "str1"
@@ -332,8 +350,7 @@ test_that("native mutation writers reject untrusted row plans", {
     )
 })
 
-test_that("validation errors leave an unmarked dataset unchanged", {
-    withr::local_options(dtatools.auto_grow = TRUE)
+test_that("validation errors leave the dataset unchanged", {
     cases <- list(
         quote(replace_values(data, x, 1:2)),
         quote(replace_values(data, x, "bad")),
@@ -345,14 +362,10 @@ test_that("validation errors leave an unmarked dataset unchanged", {
         quote(gen(data, new, list(1, 2, 3)))
     )
     for (call in cases) {
-        data <- data.frame(x = 1:3, text = letters[1:3])
+        data <- dibble(x = 1:3, text = letters[1:3])
         before <- serialize(data, NULL)
-        if (identical(call, cases[[length(cases)]])) {
-            expect_warning(expect_error(eval(call)),
-                "Column reallocation created an isolated table")
-        } else expect_error(eval(call))
+        expect_error(eval(call))
         expect_identical(serialize(data, NULL), before)
-        expect_false(inherits(data, "dtatools_ref_data"))
     }
 })
 
@@ -362,7 +375,7 @@ test_that("gen rejects unsupported classed numeric results atomically", {
         integer64 = structure(as.double(1:3), class = "integer64")
     )
     for (name in names(cases)) {
-        data <- reserve_columns(data.frame(x = 1:3))
+        data <- dibble(x = 1:3)
         before <- serialize(data, NULL)
         values <- cases[[name]]
         expect_error(
@@ -371,13 +384,12 @@ test_that("gen rejects unsupported classed numeric results atomically", {
             info = name
         )
         expect_identical(serialize(data, NULL), before, info = name)
-        expect_false(inherits(data, "dtatools_ref_data"), info = name)
         expect_identical(names(data), "x", info = name)
     }
 })
 
 test_that("evaluation interrupts leave the dataset unchanged", {
-    data <- reserve_columns(data.frame(x = 1:3))
+    data <- dibble(x = 1:3)
     before <- serialize(data, NULL)
     condition <- rlang::catch_cnd(
         replace_values(data, x, rlang::interrupt())
@@ -406,7 +418,7 @@ test_that("native write interrupts roll back values and compact state", {
                 } else {
                     rep(1, size)
                 }
-                data <- data.frame(target = target)
+                data <- dibble(target = target)
                 condition <- tryCatch(
                     {
                         dtatools:::.inject_reference_write_interrupt(TRUE)
@@ -458,7 +470,10 @@ test_that("native write interrupts roll back values and compact state", {
             interrupt_dictionary <- function(
                 shared, mutate_proxy = FALSE, source_values = FALSE
             ) {
-                source <- read_arrow(dictionary_path, output = "tibble")
+                source <- read_arrow(dictionary_path)
+                # Declare the width up front so the replacement is a
+                # patch rather than a widening rebuild.
+                attr(source$target, "stata.string.storage") <- "str11"
                 if (mutate_proxy) {
                     alias <- source
                     data <- source
@@ -643,7 +658,7 @@ test_that("POSIX generation checkpoints tolerate a full child stderr pipe", {
 
 test_that("generation interrupt controls disarm after validation errors", {
     withr::defer(.Call(C_dtatools_inject_generation_interrupt, 0L))
-    data <- reserve_columns(data.frame(x = 1:2))
+    data <- dibble(x = 1:2)
     .Call(C_dtatools_inject_generation_interrupt, 1L)
     expect_error(.Call(C_dtatools_generate_numeric,
         1, NULL, 2, -1L, 0L, list()), "invalid reference generation storage")
@@ -678,7 +693,7 @@ test_that("generic ALTREP detachment interrupts before installation", {
             on.exit(dtatools:::.inject_reference_write_interrupt(FALSE),
                 add = TRUE)
             size <- 100000L
-            data <- data.frame(x = seq_len(size))
+            data <- dibble(x = seq_len(size))
             before <- serialize(data, NULL)
             condition <- tryCatch(
                 {
@@ -696,8 +711,8 @@ test_that("generic ALTREP detachment interrupts before installation", {
                 consumed = consumed,
                 unchanged = identical(serialize(data, NULL), before),
                 altrep = dtatools:::.is_altrep(data$x),
-                range = range(data$x),
-                sum = sum(data$x),
+                range = as.integer(range(data$x)),
+                sum = as.double(sum(data$x)),
                 size = size
             )
         },
@@ -731,7 +746,7 @@ test_that("compact replacement patches every storage without materializing", {
         attr(target, "label") <- paste(storage, "label")
         attr(target, "format.stata") <- "%9.0g"
         attr(target, "labels") <- c(One = 1)
-        data <- data.frame(target = target)
+        data <- dibble(target = target)
 
         expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$target))
         replace_values(
@@ -754,7 +769,7 @@ test_that("compact replacement patches every storage without materializing", {
 test_that("compact validation is strict and atomic", {
     # `promote = FALSE` asks for the strict contract; the promoting
     # default is covered by the `repl()` promotion tests below.
-    data <- data.frame(x = dta_byte(c(1, 2, 3)))
+    data <- dibble(x = dta_byte(c(1, 2, 3)))
     for (bad in list(101, 1.5, NaN, Inf)) {
         before <- serialize(data$x, NULL)
         expect_error(
@@ -770,7 +785,7 @@ test_that("compact validation is strict and atomic", {
 })
 
 test_that("compact replacement updates the missing-value cache", {
-    data <- data.frame(x = dta_byte(1:3))
+    data <- dibble(x = dta_byte(1:3))
     expect_false(anyNA(data$x))
     replace_values(data, x, NA_real_, where = 2)
     expect_true(anyNA(data$x))
@@ -778,26 +793,26 @@ test_that("compact replacement updates the missing-value cache", {
     expect_false(anyNA(data$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
 
-    late_missing <- data.frame(x = dta_byte(c(1, 2, NA_real_)))
+    late_missing <- dibble(x = dta_byte(c(1, 2, NA_real_)))
     replace_values(late_missing, x, 9, where = 1)
     expect_true(anyNA(late_missing$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(late_missing$x))
 
-    duplicate <- data.frame(x = dta_byte(1:3))
+    duplicate <- dibble(x = dta_byte(1:3))
     replace_values(
         duplicate, x, c(NA_real_, 2), where = c(1, 1)
     )
     expect_false(anyNA(duplicate$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(duplicate$x))
 
-    generated <- reserve_columns(data.frame(x = 1:3))
+    generated <- dibble(x = 1:3)
     gen(generated, y, dta_byte(1), where = 2)
     expect_true(anyNA(generated$y))
     replace_values(generated, y, 1, where = c(1, 3))
     expect_false(anyNA(generated$y))
 
     restored <- unserialize(serialize(
-        data.frame(x = dta_byte(c(NA_real_, 1))), NULL
+        dibble(x = dta_byte(c(NA_real_, 1))), NULL
     ))
     replace_values(restored, x, 1, where = 1)
     expect_false(anyNA(restored$x))
@@ -852,7 +867,7 @@ test_that("legacy compact columns reject scalar extended missing values", {
 })
 
 test_that("ordinary, materialized, temporal, and character columns mutate", {
-    data <- data.frame(
+    data <- dibble(
         doubles = c(1, 2, 3),
         integers = 1:3,
         logicals = c(TRUE, FALSE, TRUE),
@@ -865,24 +880,26 @@ test_that("ordinary, materialized, temporal, and character columns mutate", {
     replace_values(data, strings, "z", where = 3)
     replace_values(data, strings, NA_character_, where = 1)
     replace_values(data, dates, as.Date("2021-01-01"), where = 2)
-    expect_identical(data$doubles, c(1, 4, 3))
-    expect_identical(data$integers, c(1L, 8L, 3L))
+    expect_identical(as.double(data$doubles), c(1, 4, 3))
+    expect_identical(as.integer(data$integers), c(1L, 8L, 3L))
     expect_identical(data$logicals, c(FALSE, FALSE, TRUE))
-    expect_identical(data$strings, c("", "b", "z"))
-    expect_identical(data$dates[[2]], as.Date("2021-01-01"))
+    expect_identical(as.character(data$strings), c("", "b", "z"))
+    expect_identical(
+        as.double(data$dates[[2]]), as.double(as.Date("2021-01-01"))
+    )
 
-    self_replacement <- data.frame(text = c(NA_character_, "value"))
+    self_replacement <- dibble(text = c(NA_character_, "value"))
     replace_values(self_replacement, text, text)
-    expect_identical(self_replacement$text, c("", "value"))
+    expect_identical(as.character(self_replacement$text), c("", "value"))
 
     compact <- dta_int(1:3)
     dtatools:::.force_altrep_materialization(compact)
-    materialized <- data.frame(x = compact)
+    materialized <- dibble(x = compact)
     replace_values(materialized, x, 7, where = 1)
     expect_false(dtatools:::.is_unmaterialized_numeric_altrep(materialized$x))
     expect_identical(as.double(materialized$x), c(7, 2, 3))
 
-    fixed <- data.frame(text = c("a", "b"))
+    fixed <- dibble(text = c("a", "b"))
     attr(fixed$text, "stata.string.storage") <- "str2"
     before <- serialize(fixed, NULL)
     expect_error(
@@ -897,38 +914,40 @@ test_that("base numeric ALTREP columns remain internally consistent", {
         double = as.double(seq_len(1000L))
     )
     for (name in names(columns)) {
-        data <- data.frame(x = columns[[name]])
+        data <- dibble(x = columns[[name]])
         data_alias <- data
         column_alias <- data$x
         subset_alias <- data["x"]
         expect_true(dtatools:::.is_altrep(data$x), info = name)
         replacement <- if (name == "integer") 2L else 2
         replace_values(data, x, replacement)
-        expect_identical(range(data$x), c(replacement, replacement), info = name)
-        expect_equal(sum(data$x), 2000, info = name)
+        expect_identical(as.double(range(data$x)), c(2, 2), info = name)
+        expect_equal(as.double(sum(data$x)), 2000, info = name)
         expect_identical(data_alias$x, data$x, info = name)
-        expect_identical(column_alias, columns[[name]], info = name)
-        expect_identical(subset_alias$x, columns[[name]], info = name)
+        expect_identical(
+            as.double(column_alias), as.double(columns[[name]]), info = name
+        )
+        expect_identical(
+            as.double(subset_alias$x), as.double(columns[[name]]), info = name
+        )
         restored <- unserialize(serialize(data, NULL))
         expect_identical(
-            range(restored$x), c(replacement, replacement), info = name
+            as.double(range(restored$x)), c(2, 2), info = name
         )
-        expect_equal(sum(restored$x), 2000, info = name)
+        expect_equal(as.double(sum(restored$x)), 2000, info = name)
     }
 })
 
 test_that("gen appends one variable with Stata missing and storage rules", {
-    data <- reserve_columns(tibble::tibble(x = c(1, 2, 3), eligible = c(TRUE, FALSE, TRUE)))
-    data <- reserve_columns(data)
+    data <- dibble(x = c(1, 2, 3), eligible = c(TRUE, FALSE, TRUE))
     alias <- data
     result <- withVisible(gen(data, generated, x * 2, where = eligible))
     expect_false(result$visible)
     expect_identical(names(data), c("x", "eligible", "generated"))
     expect_identical(names(alias), names(data))
     expect_identical(as.double(data$generated), c(2, NA, 6))
-    # `x` is a bare double, so `x * 2` is one too and takes Stata's
-    # `generate` default.
-    expect_identical(dta_storage_type(data$generated), "float")
+    # `x` is a dibble `double`, so `x * 2` keeps that storage.
+    expect_identical(dta_storage_type(data$generated), "double")
     expect_s3_class(data, "tbl_df")
     expect_equal(dim(data), c(3L, 3L))
     expect_error(gen(data, generated, 1), "already exists")
@@ -942,7 +961,7 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     datetimes <- as.POSIXct(
         "2020-01-01 00:00:01", tz = "UTC"
     ) + 0:2
-    temporal <- reserve_columns(data.frame(x = 1:3))
+    temporal <- dibble(x = 1:3)
     gen(temporal, date, dates)
     gen(temporal, datetime, datetimes)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(temporal$date))
@@ -956,14 +975,14 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(dta_storage_type(temporal$date), "float")
     expect_identical(dta_storage_type(temporal$datetime), "double")
 
-    compact_source <- reserve_columns(data.frame(x = dta_byte(1:3)))
+    compact_source <- dibble(x = dta_byte(1:3))
     gen(compact_source, y, x)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact_source$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact_source$y))
     expect_identical(dta_storage_type(compact_source$y), "byte")
     expect_identical(as.double(compact_source$y), c(1, 2, 3))
 
-    integer_source <- reserve_columns(data.frame(x = 1:3))
+    integer_source <- dibble(x = 1:3)
     gen(integer_source, y, x)
     expect_identical(dtatools:::.metadata_proxy_depth(integer_source$y), 0L)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(integer_source$y))
@@ -1007,7 +1026,7 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(as.vector(data$string), c("a", "", "z"))
     expect_identical(attr(data$string, "stata.string.storage"), "str1")
 
-    strings <- reserve_columns(data.frame(x = 1:3))
+    strings <- dibble(x = 1:3)
     authored_string <- structure(
         c("one", NA_character_, "three"),
         label = "Authored string",
@@ -1018,14 +1037,14 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(attr(strings$y, "label"), "Authored string")
     expect_identical(attr(strings$y, "stata.string.storage"), "str5")
 
-    full_strings <- reserve_columns(data.frame(x = 1:3))
+    full_strings <- dibble(x = 1:3)
     gen(full_strings, y, c("one", "long", NA_character_))
     expect_identical(as.character(full_strings$y), c("one", "long", ""))
     expect_identical(
         attr(full_strings$y, "stata.string.storage"), "str4"
     )
 
-    duplicate <- reserve_columns(data.frame(x = 1:3))
+    duplicate <- dibble(x = 1:3)
     invisible(dtatools:::.reference_row_reads(TRUE))
     gen(
         duplicate, y, c("overwritten", "x"),
@@ -1055,7 +1074,7 @@ test_that("gen preserves metadata on otherwise supported numeric classes", {
     for (kind in names(sources)) {
         source <- set_dta_note(sources[[kind]], 3L, "source note")
         source <- set_dta_characteristic(source, "source", kind)
-        data <- reserve_columns(data.frame(anchor = 1:3))
+        data <- dibble(anchor = 1:3)
 
         gen(data, copied, .env$source)
 
@@ -1075,18 +1094,18 @@ test_that("gen preserves metadata on otherwise supported numeric classes", {
 })
 
 test_that("gen handles zero rows and evaluates before insertion", {
-    empty <- reserve_columns(data.frame(x = integer()))
+    empty <- dibble(x = integer())
     gen(empty, y, x + 1L)
     expect_equal(dim(empty), c(0L, 2L))
     expect_identical(length(empty$y), 0L)
 
-    data <- reserve_columns(data.frame(x = 1:2))
+    data <- dibble(x = 1:2)
     expect_error(gen(data, y, y + 1), "object 'y' not found")
     expect_identical(names(data), "x")
 })
 
 test_that("repeated gen appends ordered reference-state bindings", {
-    data <- reserve_columns(data.frame(anchor = 1:2))
+    data <- dibble(anchor = 1:2)
     for (index in seq_len(100L)) {
         name <- rlang::sym(sprintf("generated_%03d", index))
         gen(data, !!name, anchor + .env$index)
@@ -1102,7 +1121,7 @@ test_that("repeated gen appends ordered reference-state bindings", {
 })
 
 test_that("copy_data isolates every mutable column backing", {
-    data <- data.frame(
+    data <- dibble(
         compact = dta_long(c(1, tagged_missing("a"), 3)),
         ordinary = c(4, 5, 6),
         string = c("a", "b", "c")
@@ -1114,7 +1133,7 @@ test_that("copy_data isolates every mutable column backing", {
     isolated <- copy_data(data)
 
     expect_s3_class(isolated, "data.frame")
-    expect_false(inherits(isolated, "dtatools_ref_data"))
+    expect_true(is_dibble(isolated))
     expect_identical(attr(isolated, "label"), "source")
     expect_identical(attr(isolated, "notes"), c("first note", "second note"))
     expect_identical(
@@ -1128,13 +1147,12 @@ test_that("copy_data isolates every mutable column backing", {
     replace_values(isolated, ordinary, 9, where = 1)
     replace_values(isolated, string, "z", where = 1)
     expect_equal(as.double(data$compact)[[1]], 1)
-    expect_identical(data$ordinary[[1]], 4)
-    expect_identical(data$string[[1]], "a")
+    expect_identical(as.double(data$ordinary[[1]]), 4)
+    expect_identical(as.character(data$string[[1]]), "a")
 
     replace_values(data, compact, 8, where = 3)
     expect_equal(as.double(isolated$compact)[[3]], 3)
 
-    data <- reserve_columns(data)
     gen(data, generated, compact + ordinary)
     generated_copy <- copy_data(data)
     replace_values(generated_copy, generated, 0, where = 1)
@@ -1143,27 +1161,28 @@ test_that("copy_data isolates every mutable column backing", {
         as.double(generated_copy$generated)[[1]]
     ))
 
-    names_alias <- data.frame(name = names(isolated))
+    names_alias <- dibble(name = names(isolated))
     replace_values(names_alias, name, "changed", where = 1)
     expect_identical(
         names(data), c("compact", "ordinary", "string", "generated")
     )
     expect_identical(names(isolated), c("compact", "ordinary", "string"))
 
-    grouped <- .group_fixture("group_ab")$data
+    grouped <- as_dibble(.group_fixture("group_ab")$data)
     grouped_copy <- copy_data(grouped)
+    source_groups <- attr(grouped, "groups", exact = TRUE)
     copied_groups <- attr(grouped_copy, "groups", exact = TRUE)
-    replace_values(copied_groups, group, "changed", where = 1)
-    expect_identical(
-        attr(grouped, "groups", exact = TRUE)$group,
-        c("a", "b")
-    )
-    expect_identical(
-        attr(grouped_copy, "groups", exact = TRUE)$group,
-        c("changed", "b")
-    )
+    expect_identical(as.character(copied_groups$group), c("a", "b"))
+    expect_false(identical(
+        rlang::obj_address(source_groups$group),
+        rlang::obj_address(copied_groups$group)
+    ))
+    expect_false(identical(
+        rlang::obj_address(source_groups$.rows),
+        rlang::obj_address(copied_groups$.rows)
+    ))
 
-    reference_attribute <- data.frame(value = 1)
+    reference_attribute <- dibble(value = 1)
     attr(reference_attribute, "owner") <- list(new.env(parent = emptyenv()))
     expect_error(
         copy_data(reference_attribute),
@@ -1174,7 +1193,7 @@ test_that("copy_data isolates every mutable column backing", {
     reference_call <- as.call(list(
         as.name("identity"), embedded_environment
     ))
-    reference_column <- data.frame(
+    reference_column <- dibble(
         value = I(list(reference_call))
     )
     expect_error(
@@ -1186,7 +1205,7 @@ test_that("copy_data isolates every mutable column backing", {
     hidden_contents_list <- structure(
         list(embedded_environment), class = "hidden_contents"
     )
-    hidden_contents_column <- data.frame(
+    hidden_contents_column <- dibble(
         value = I(list(hidden_contents_list))
     )
     expect_error(
@@ -1196,7 +1215,7 @@ test_that("copy_data isolates every mutable column backing", {
     hidden_contents_call <- structure(
         reference_call, class = "hidden_contents"
     )
-    hidden_contents_call_column <- data.frame(
+    hidden_contents_call_column <- dibble(
         value = I(list(hidden_contents_call))
     )
     expect_error(
@@ -1208,14 +1227,14 @@ test_that("copy_data isolates every mutable column backing", {
     hidden_length_list <- structure(
         list(embedded_environment), class = "hidden_length"
     )
-    hidden_length_column <- data.frame(value = I(list(hidden_length_list)))
+    hidden_length_column <- dibble(value = I(list(hidden_length_list)))
     expect_error(
         copy_data(hidden_length_column),
         "cannot isolate environments"
     )
 
     hidden_length_call <- structure(reference_call, class = "hidden_length")
-    hidden_length_call_column <- data.frame(
+    hidden_length_call_column <- dibble(
         value = I(list(hidden_length_call))
     )
     expect_error(
@@ -1227,7 +1246,7 @@ test_that("copy_data isolates every mutable column backing", {
         as.name("identity"), embedded_environment
     )))
     expect_identical(typeof(embedded_bytecode), "bytecode")
-    bytecode_column <- data.frame(value = I(list(embedded_bytecode)))
+    bytecode_column <- dibble(value = I(list(embedded_bytecode)))
     expect_error(
         copy_data(bytecode_column),
         "cannot isolate environments"
@@ -1235,12 +1254,12 @@ test_that("copy_data isolates every mutable column backing", {
 })
 
 test_that("subsets, metadata proxies, and serialized data stay isolated", {
-    source <- data.frame(x = dta_int(c(1, 2, 3)))
+    source <- dibble(x = dta_int(c(1, 2, 3)))
     subset <- source[1:2, , drop = FALSE]
     replace_values(subset, x, 9, where = 1)
     expect_identical(as.double(source$x), c(1, 2, 3))
 
-    proxy <- data.frame(x = dtatools:::.metadata_copy(source$x))
+    proxy <- dibble(x = dtatools:::.metadata_copy(source$x))
     replace_values(proxy, x, 8, where = 1)
     replace_values(proxy, x, 6, where = 2)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(proxy$x))
@@ -1252,7 +1271,6 @@ test_that("subsets, metadata proxies, and serialized data stay isolated", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(restored$x))
     expect_identical(as.double(source$x), c(1, 2, 3))
 
-    source <- reserve_columns(source)
     gen(source, generated, x + 1)
     generated_subset <- source[1:2, c("x", "generated")]
     replace_values(generated_subset, generated, 0, where = 1)
@@ -1272,7 +1290,7 @@ test_that("detached metadata payloads do not retain former proxy owners", {
             onexit = FALSE
         )
         attr(proxy, "tracker") <- tracker
-        data <- data.frame(x = proxy)
+        data <- dibble(x = proxy)
         replace_values(data, x, 2, where = 1)
         proxy <- data$x
         downstream <- dtatools:::.metadata_copy(proxy)
@@ -1290,9 +1308,9 @@ test_that("detached metadata payloads do not retain former proxy owners", {
 })
 
 test_that("downstream metadata proxies revoke exclusive patch ownership", {
-    first <- data.frame(x = dtatools:::.metadata_copy(dta_byte(1:3)))
+    first <- dibble(x = dtatools:::.metadata_copy(dta_byte(1:3)))
     replace_values(first, x, 4, where = 1)
-    second <- data.frame(x = dtatools:::.metadata_copy(first$x))
+    second <- dibble(x = dtatools:::.metadata_copy(first$x))
 
     replace_values(first, x, 7, where = 1)
 
@@ -1302,14 +1320,14 @@ test_that("downstream metadata proxies revoke exclusive patch ownership", {
 })
 
 test_that("metadata copies remain isolated from later source patches", {
-    compact_source <- data.frame(x = dta_byte(1:3))
+    compact_source <- dibble(x = dta_byte(1:3))
     compact_copy <- copy_data(compact_source)
     set_var_labels(compact_copy, x = "Copy")
     replace_values(compact_source, x, 9, where = 1)
     expect_identical(as.double(compact_source$x), c(9, 2, 3))
     expect_identical(as.double(compact_copy$x), c(1, 2, 3))
 
-    materialized_source <- data.frame(x = dta_byte(1:3))
+    materialized_source <- dibble(x = dta_byte(1:3))
     materialized_copy <- copy_data(materialized_source)
     set_var_labels(materialized_copy, x = "Copy")
     invisible(dtatools:::.force_altrep_materialization(
@@ -1322,7 +1340,9 @@ test_that("metadata copies remain isolated from later source patches", {
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(data.frame(text = c("a", "b", "a")), path)
-    string_source <- read_arrow(path, output = "tibble")
+    string_source <- read_arrow(path)
+    # Declare the width up front so the replacement patches in place.
+    attr(string_source$text, "stata.string.storage") <- "str7"
     expect_true(dtatools:::.is_unmaterialized_dictstring(
         string_source$text
     ))
@@ -1340,19 +1360,22 @@ test_that("metadata copies remain isolated from later source patches", {
     expect_identical(as.character(missing_source$text), c("a", "", "a"))
     expect_identical(as.character(missing_alias$text), c("a", "b", "a"))
 
-    # A dibble declares the Arrow string as str1 and replace_values()
-    # holds it to that width, so the widening cases use a tibble.
-    full_source <- read_arrow(path, output = "tibble")
+    # A dibble declares the Arrow string as str1; a wider replacement
+    # promotes the column and reports the storage change.
+    full_source <- read_arrow(path)
     full_copy <- copy_data(full_source)
     set_var_labels(full_copy, text = "Copy")
-    replace_values(full_source, text, "changed")
+    expect_message(
+        replace_values(full_source, text, "changed"),
+        "was str1 now str7"
+    )
     expect_identical(
         as.character(full_source$text), rep("changed", 3)
     )
     expect_true(dtatools:::.is_unmaterialized_dictstring(full_copy$text))
     expect_identical(as.character(full_copy$text), c("a", "b", "a"))
 
-    direct_identity <- read_arrow(path, output = "tibble")
+    direct_identity <- read_arrow(path)
     direct_cache <- dtatools:::.dictstring_cached_count(direct_identity$text)
     replace_values(direct_identity, text, text)
     expect_identical(
@@ -1361,7 +1384,7 @@ test_that("metadata copies remain isolated from later source patches", {
     )
     expect_identical(as.character(direct_identity$text), c("a", "b", "a"))
 
-    proxy_identity <- data.frame(
+    proxy_identity <- dibble(
         text = dtatools:::.metadata_copy(
             read_arrow(path, output = "tibble")$text
         )
@@ -1391,7 +1414,7 @@ test_that("metadata copies remain isolated from later source patches", {
     save_arrow(data.frame(text = c("wide", "x", "wide")), wide_path)
     dictionary_values <- read_arrow(wide_path)$text
     values_cache <- dtatools:::.dictstring_cached_count(dictionary_values)
-    narrow <- data.frame(text = structure(
+    narrow <- dibble(text = structure(
         c("a", "b", "c"), stata.string.storage = "str1"
     ))
     narrow_before <- serialize(narrow, NULL)
@@ -1418,7 +1441,7 @@ test_that("metadata copies remain isolated from later source patches", {
     # does, so a `str4` value widens a `str1` target whatever rows it
     # reaches. Rebuilding the column reads the values, which is what
     # populates the source cache.
-    widened <- data.frame(text = structure(
+    widened <- dibble(text = structure(
         c("a", "b", "c"), stata.string.storage = "str1"
     ))
     expect_message(
@@ -1430,7 +1453,7 @@ test_that("metadata copies remain isolated from later source patches", {
 
     generated_values <- read_arrow(wide_path)$text
     generated_cache <- dtatools:::.dictstring_cached_count(generated_values)
-    generated <- reserve_columns(data.frame(anchor = 1:3))
+    generated <- dibble(anchor = 1:3)
     gen(generated, text, .env$generated_values)
     expect_identical(
         dtatools:::.dictstring_cached_count(generated_values),
@@ -1440,9 +1463,11 @@ test_that("metadata copies remain isolated from later source patches", {
 
     scalar_values <- read_arrow(wide_path, n_max = 1)$text
     scalar_cache <- dtatools:::.dictstring_cached_count(scalar_values)
-    scalar_generated <- reserve_columns(data.frame(anchor = 1:3))
+    scalar_generated <- dibble(anchor = 1:3)
     gen(scalar_generated, text, .env$scalar_values)
-    scalar_replaced <- data.frame(text = rep("", 3))
+    scalar_replaced <- dibble(
+        text = structure(rep("", 3), stata.string.storage = "str4")
+    )
     replace_values(scalar_replaced, text, .env$scalar_values)
     expect_identical(
         dtatools:::.dictstring_cached_count(scalar_values), scalar_cache
@@ -1500,7 +1525,7 @@ test_that("is_missing masks preserve dictionary-string caches and aliases", {
         target = seq_len(6L)
     ), path)
 
-    replaced <- read_arrow(path, output = "tibble")
+    replaced <- read_arrow(path)
     replaced_alias <- replaced
     replaced_text_alias <- replaced$text
     replaced_cache <- dtatools:::.dictstring_cached_count(replaced$text)
@@ -1508,7 +1533,7 @@ test_that("is_missing masks preserve dictionary-string caches and aliases", {
         replaced, target, 99L, where = is_missing(text, nullable)
     )
     expect_identical(
-        replaced$target, c(99L, 99L, 3L, 99L, 5L, 6L)
+        as.integer(replaced$target), c(99L, 99L, 3L, 99L, 5L, 6L)
     )
     expect_identical(replaced_alias$target, replaced$target)
     expect_identical(
@@ -1558,7 +1583,7 @@ test_that("materialized metadata-proxy copies remain independent", {
     numeric <- dtatools:::.metadata_copy(dta_byte(1:3))
     invisible(dtatools:::.force_altrep_materialization(numeric))
     numeric_copy <- dtatools:::.metadata_copy(numeric)
-    numeric_data <- data.frame(x = numeric)
+    numeric_data <- dibble(x = numeric)
     replace_values(numeric_data, x, 9, where = 1)
     expect_identical(as.double(numeric_data$x), c(9, 2, 3))
     expect_identical(as.double(numeric_copy), c(1, 2, 3))
@@ -1569,9 +1594,10 @@ test_that("materialized metadata-proxy copies remain independent", {
     string <- dtatools:::.metadata_copy(
         read_arrow(path, output = "tibble")$text
     )
+    attr(string, "stata.string.storage") <- "str7"
     invisible(dtatools:::.force_altrep_materialization(string))
     string_copy <- dtatools:::.metadata_copy(string)
-    string_data <- data.frame(text = string)
+    string_data <- dibble(text = string)
     replace_values(string_data, text, "changed", where = 1)
     expect_identical(
         as.character(string_data$text), c("changed", "b", "a")
@@ -1622,7 +1648,7 @@ test_that("copy_data keeps Arrow dictionary strings independent and compact", {
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(data.frame(text = rep(c("alpha", "beta"), 50)), path)
-    source <- read_arrow(path, output = "tibble")
+    source <- read_arrow(path)
     dictionary <- which(vapply(
         source, dtatools:::.is_unmaterialized_dictstring, logical(1)
     ))
@@ -1631,12 +1657,12 @@ test_that("copy_data keeps Arrow dictionary strings independent and compact", {
     target <- rlang::sym(name)
     isolated <- copy_data(source)
     expect_true(dtatools:::.is_unmaterialized_dictstring(isolated[[name]]))
-    replace_values(isolated, !!target, "changed", where = 1)
+    replace_values(isolated, !!target, "gamma", where = 1)
     expect_false(identical(isolated[[name]][[1]], source[[name]][[1]]))
 })
 
 test_that("generated variables participate in package writes", {
-    data <- reserve_columns(data.frame(x = dta_byte(1:3)))
+    data <- dibble(x = dta_byte(1:3))
     gen(data, y, dta_int(x * 10))
     path <- tempfile(fileext = ".dta")
     arrow_path <- tempfile(fileext = ".arrow")
@@ -1657,20 +1683,18 @@ test_that("generated variables participate in package writes", {
 })
 
 .check_optional_split_mutate_data_1667 <- function(include_dplyr) {
-    frame <- data.frame(x = 1:3, y = 4:6, foobar = 7:9)
-    row.names(frame) <- c("a", "b", "c")
-    frame <- reserve_columns(frame)
+    frame <- dibble(x = 1:3, y = 4:6, foobar = 7:9)
     gen(frame, z, x + y)
-    expected_x <- data.frame(x = 1:3, row.names = c("a", "b", "c"))
-    expect_identical(frame[1], expected_x)
-    expect_identical(frame$foo, 7:9)
+    expect_true(is_dibble(frame[1]))
+    expect_identical(names(frame[1]), "x")
+    expect_identical(as.integer(frame[1]$x), 1:3)
+    expect_warning(frame$foo, "Unknown or uninitialised column")
     rows <- frame[1:2, ]
-    expect_identical(rows$x, 1:2)
-    expect_identical(rows$y, 4:5)
+    expect_identical(as.integer(rows$x), 1:2)
+    expect_identical(as.integer(rows$y), 4:5)
     expect_identical(as.double(rows$z), c(5, 7))
-    expect_identical(row.names(rows), c("a", "b"))
-    expect_identical(frame[, "x"], 1:3)
-    expect_identical(as.double(frame[2, "z"]), 7)
+    expect_identical(as.integer(frame[, "x"]$x), 1:3)
+    expect_identical(as.double(frame[2, "z"]$z), 7)
     expect_identical(
         as.double(frame[, "z", drop = FALSE]$z),
         c(5, 7, 9)
@@ -1685,7 +1709,7 @@ test_that("generated variables participate in package writes", {
     plain <- as.data.frame(frame)
     expect_equal(dim(rbind(plain, as.data.frame(frame))), c(6L, 4L))
 
-    tbl <- reserve_columns(tibble::tibble(x = 1:3))
+    tbl <- dibble(x = 1:3)
     gen(tbl, y, x * 2)
     expect_warning(tbl$missing, "Unknown or uninitialised column")
     expect_s3_class(tbl[, "x"], "tbl_df")
@@ -1719,18 +1743,18 @@ test_that("generated variables participate in package writes", {
     }
 }
 
-test_that("reference data preserves base and tibble access semantics", {
+test_that("a dibble preserves base and tibble access semantics", {
     .check_optional_split_mutate_data_1667(FALSE)
 })
 
-test_that("reference data consumers through dplyr", {
+test_that("dibble consumers through dplyr", {
     skip_if_not_installed("dplyr", "1.2.1")
     .check_optional_split_mutate_data_1667(TRUE)
 })
 test_that("explicit replacement isolates separate tables sharing target vectors", {
     column <- dta_int(1:3)
-    left <- data.frame(x = column)
-    right <- data.frame(x = column)
+    left <- dibble(x = column)
+    right <- dibble(x = column)
     replace_values(left, x, 9, where = 1)
     expect_identical(as.double(right$x), c(1, 2, 3))
 
@@ -1744,7 +1768,7 @@ test_that("explicit replacement isolates separate tables sharing target vectors"
 })
 
 test_that("rowwise inputs fail before reference mutation", {
-    rowwise <- .group_fixture("rowwise_x2")$data
+    rowwise <- as_dibble(.group_fixture("rowwise_x2")$data)
     before <- serialize(rowwise, NULL)
     expect_error(replace_values(rowwise, x, 1L), "ungrouped")
     expect_error(gen(rowwise, y, 1L), "ungrouped")
@@ -1756,16 +1780,16 @@ test_that("rowwise inputs fail before reference mutation", {
 })
 
 test_that(".n and .N describe the whole dataset without groups", {
-    data <- reserve_columns(data.frame(x = c(5, 6, 7)))
+    data <- dibble(x = c(5, 6, 7))
     gen(data, row = .n)
     gen(data, count = .N)
     expect_identical(as.double(data$row), c(1, 2, 3))
     expect_identical(as.double(data$count), c(3, 3, 3))
 
     repl(data, x = 0, where = .n == .N)
-    expect_identical(data$x, c(5, 6, 0))
+    expect_identical(as.double(data$x), c(5, 6, 0))
     repl(data, x = -1, where = ~ .n == 1)
-    expect_identical(data$x, c(-1, 6, 0))
+    expect_identical(as.double(data$x), c(-1, 6, 0))
 
     # A caller object named `.N` is not a shadowing conflict.
     .N <- 99
@@ -1774,13 +1798,13 @@ test_that(".n and .N describe the whole dataset without groups", {
 
     # `.N` on the right of a comparison stays off the fused patch path
     # and still selects correctly.
-    compact <- data.frame(x = dta_int(1:4))
+    compact <- dibble(x = dta_int(1:4))
     repl(compact, x = 0L, where = x == .N)
     expect_identical(as.double(compact$x), c(1, 2, 3, 0))
 })
 
 test_that("by evaluates where and values within each group", {
-    data <- reserve_columns(data.frame(id = c(2, 1, 2, 1, 3), x = c(1, 2, 3, 4, 5)))
+    data <- dibble(id = c(2, 1, 2, 1, 3), x = c(1, 2, 3, 4, 5))
     gen(data, n = .n, by = id)
     gen(data, count = .N, by = id)
     expect_identical(as.double(data$n), c(1, 1, 2, 2, 1))
@@ -1794,23 +1818,23 @@ test_that("by evaluates where and values within each group", {
     gen(data, high = x, where = x > 2, by = id)
     expect_identical(as.double(data$high), c(NA, NA, 3, 4, 5))
     repl(data, x = 0, where = x == max(x), by = id)
-    expect_identical(data$x, c(1, 2, 0, 0, 0))
+    expect_identical(as.double(data$x), c(1, 2, 0, 0, 0))
 
     # Numeric positions count within the group.
     gen(data, first = 1, where = 1, by = id)
     expect_identical(as.double(data$first), c(1, 1, NA, NA, 1))
 
     # Row order is the dataset's own; nothing was sorted.
-    expect_identical(data$id, c(2, 1, 2, 1, 3))
+    expect_identical(as.double(data$id), c(2, 1, 2, 1, 3))
     expect_identical(names(data), c(
         "id", "x", "n", "count", "centred", "high", "first"
     ))
 })
 
 test_that("by accepts every column-name spelling", {
-    make <- function() reserve_columns(data.frame(
+    make <- function() dibble(
         g1 = c(1, 1, 2, 2), g2 = c("a", "b", "a", "a"), x = 1:4
-    ))
+    )
     # (1,a) (1,b) (2,a) (2,a): the fourth row is the second of its group.
     expected_pair <- c(1, 1, 1, 2)
 
@@ -1853,7 +1877,7 @@ test_that("groups follow Stata's by order, not data.table's", {
     # `.n == .N` would mark the last *selected* row of each group. Stata
     # forms the group first: `.N` is the group's size and the row must be
     # the group's last row *and* pass the condition.
-    data <- reserve_columns(data.frame(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5)))
+    data <- dibble(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5))
     gen(data, last = 0)
     repl(data, last = 1, where = .n == .N & v < 3, by = id)
     expect_identical(as.double(data$last), c(0, 1, 0, 0))
@@ -1867,13 +1891,13 @@ test_that("groups follow Stata's by order, not data.table's", {
     expect_false(identical(as.double(data$last), reference$last))
 
     # `.N` under a `where` is still the group's row count.
-    counts <- reserve_columns(data.frame(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5)))
+    counts <- dibble(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5))
     gen(counts, n = .N, where = v < 3, by = id)
     expect_identical(as.double(counts$n), c(NA, 2, 2, NA))
 })
 
 test_that("per-group value sizes must be 1, the selection, or .N", {
-    data <- reserve_columns(data.frame(id = c(1, 1, 2), x = 1:3))
+    data <- dibble(id = c(1, 1, 2), x = 1:3)
     expect_error(
         gen(data, y = 1:3, by = id),
         paste0(
@@ -1887,30 +1911,29 @@ test_that("per-group value sizes must be 1, the selection, or .N", {
         repl(data, x = c(1L, 2L), where = x == 3, by = id),
         "size 2 in group id = 2"
     )
-    expect_identical(data$x, 1:3)
+    expect_identical(as.integer(data$x), 1:3)
 
     # A group that selects no rows may evaluate `values` to `NULL`; the
     # empty piece must stay aligned with its rows rather than vanish.
-    sparse <- data.frame(id = c(1, 1, 2, 2), x = c(1, 2, 3, 4))
+    sparse <- dibble(id = c(1, 1, 2, 2), x = c(1, 2, 3, 4))
     repl(sparse, x = if (.N == 2 && any(x > 2)) 0 else NULL,
          where = x > 2, by = id)
-    expect_identical(sparse$x, c(1, 2, 0, 0))
+    expect_identical(as.double(sparse$x), c(1, 2, 0, 0))
 
     # Within a group, a `.N`-length value is indexed by the selection.
-    pairs <- reserve_columns(data.frame(id = c(1, 1, 2, 2), x = 1:4))
+    pairs <- dibble(id = c(1, 1, 2, 2), x = 1:4)
     gen(pairs, z = c(10, 20), where = .n == 2, by = id)
     expect_identical(as.double(pairs$z), c(NA, 20, NA, 20))
 
-    strings <- reserve_columns(data.frame(id = c("a", "a", "b"), x = 1:3))
+    strings <- dibble(id = c("a", "a", "b"), x = 1:3)
     expect_error(gen(strings, y = 1:3, by = id), 'group id = "a"')
 })
 
 test_that("missing values in a by column form their own groups", {
-    data <- data.frame(
+    data <- dibble(
         id = dta_byte(c(1, NA, 1, NA, 2, NA)), x = dta_int(1:6)
     )
     data$id[4] <- tagged_missing("a")
-    data <- reserve_columns(data)
     gen(data, n = .N, by = id)
     # `.` and `.a` are distinct groups, as in Stata.
     expect_identical(as.double(data$n), c(2, 2, 2, 1, 1, 2))
@@ -1919,19 +1942,19 @@ test_that("missing values in a by column form their own groups", {
     # is the first group two values do not fit.
     expect_error(gen(data, y = 1:2, by = id), "group id = \\.a;")
 
-    plain <- reserve_columns(data.frame(id = c(NA, 1, NA, 1), x = 1:4))
+    plain <- dibble(id = c(NA, 1, NA, 1), x = 1:4)
     gen(plain, n = .N, by = id)
     expect_identical(as.double(plain$n), c(2, 2, 2, 2))
     expect_error(gen(plain, y = 1:3, by = id), "group id = \\.;")
 })
 
 test_that("bysort sorts by reference and then groups", {
-    data <- reserve_columns(data.frame(id = c(2, 1, 2, 1), t = c(1, 2, 2, 1), x = 1:4))
+    data <- dibble(id = c(2, 1, 2, 1), t = c(1, 2, 2, 1), x = 1:4)
     alias <- data
     repl(data, x = 0L, where = t == 1, bysort = c(id, t))
-    expect_identical(data$id, c(1, 1, 2, 2))
-    expect_identical(data$t, c(1, 2, 1, 2))
-    expect_identical(data$x, c(0L, 2L, 0L, 3L))
+    expect_identical(as.double(data$id), c(1, 1, 2, 2))
+    expect_identical(as.double(data$t), c(1, 2, 1, 2))
+    expect_identical(as.integer(data$x), c(0L, 2L, 0L, 3L))
     # Sorting on both keys and then grouping by both leaves one row per
     # group here, so `.n == 1` everywhere; grouping by `id` alone after a
     # two-key sort is a preceding sort plus `by`.
@@ -1941,39 +1964,38 @@ test_that("bysort sorts by reference and then groups", {
     expect_identical(alias$id, data$id)
 
     # Stata total order puts `.` and `.a` after every finite value.
-    compact <- data.frame(
+    compact <- dibble(
         id = dta_byte(c(NA, 2, 1, NA)), x = dta_int(1:4)
     )
     compact$id[1] <- tagged_missing("a")
-    compact <- reserve_columns(compact)
     gen(compact, n = .n, bysort = id)
     expect_identical(as.double(compact$x), c(3, 2, 4, 1))
     expect_identical(as.double(compact$n), c(1, 1, 1, 1))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact$x))
 
     # An already sorted dataset is left alone, and `by` never sorts.
-    sorted <- reserve_columns(data.frame(id = c(1, 1, 2), x = 1:3))
+    sorted <- dibble(id = c(1, 1, 2), x = 1:3)
     gen(sorted, n = .n, bysort = id)
-    expect_identical(sorted$x, 1:3)
-    unsorted <- reserve_columns(data.frame(id = c(2, 1), x = 1:2))
+    expect_identical(as.integer(sorted$x), 1:3)
+    unsorted <- dibble(id = c(2, 1), x = 1:2)
     gen(unsorted, n = .n, by = id)
-    expect_identical(unsorted$id, c(2, 1))
+    expect_identical(as.double(unsorted$id), c(2, 1))
 
     name <- "id"
-    runtime <- reserve_columns(data.frame(id = c(2, 1), x = 1:2))
+    runtime <- dibble(id = c(2, 1), x = 1:2)
     gen(runtime, n = .n, bysort = .(name))
-    expect_identical(runtime$id, c(1, 2))
-    injected <- reserve_columns(data.frame(id = c(2, 1), x = 1:2))
+    expect_identical(as.double(runtime$id), c(1, 2))
+    injected <- dibble(id = c(2, 1), x = 1:2)
     gen(injected, n = .n, bysort = !!name)
-    expect_identical(injected$id, c(1, 2))
+    expect_identical(as.double(injected$id), c(1, 2))
 })
 
 test_that("by and bysort are exclusive and reject a grouped input", {
-    data <- reserve_columns(data.frame(id = c(1, 2), x = 1:2))
+    data <- dibble(id = c(1, 2), x = 1:2)
     expect_error(gen(data, y = 1, by = id, bysort = id), "not both")
     expect_error(repl(data, x = 1L, by = id, bysort = id), "not both")
 
-    grouped <- reserve_columns(.group_fixture("id_12")$data)
+    grouped <- as_dibble(.group_fixture("id_12")$data)
     before <- serialize(grouped, NULL)
     expect_error(
         gen(grouped, y = 1, by = id),
@@ -1984,7 +2006,7 @@ test_that("by and bysort are exclusive and reject a grouped input", {
 })
 
 .check_optional_split_mutate_data_1983 <- function(include_dplyr) {
-    grouped <- reserve_columns(if (include_dplyr) dplyr::group_by(
+    grouped <- as_dibble(if (include_dplyr) dplyr::group_by(
         tibble::tibble(id = c(1, 2, 1, 3), x = c(1, 2, 3, 4)), id
     ) else .group_fixture("id_1213")$data)
     gen(grouped, total = sum(x))
@@ -2004,7 +2026,7 @@ test_that("by and bysort are exclusive and reject a grouped input", {
     }
 
     # `.drop = FALSE` may record empty groups; they contribute nothing.
-    factor_grouped <- reserve_columns(if (include_dplyr) dplyr::group_by(
+    factor_grouped <- as_dibble(if (include_dplyr) dplyr::group_by(
         tibble::tibble(f = factor(c("a", "a"), levels = c("a", "b")), x = 1:2),
         f, .drop = FALSE
     ) else .group_fixture("factor_unused")$data)
@@ -2026,7 +2048,7 @@ test_that("grouped native assignment consumers through dplyr", {
     .check_optional_split_mutate_data_1983(TRUE)
 })
 test_that("compact targets stay compact under by", {
-    data <- data.frame(id = c(1, 1, 2, 2), x = dta_int(1:4))
+    data <- dibble(id = c(1, 1, 2, 2), x = dta_int(1:4))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
     repl(data, x = 0L, where = .n == .N, by = id)
     expect_identical(as.double(data$x), c(1, 0, 3, 0))
@@ -2049,42 +2071,19 @@ test_that("compact targets stay compact under by", {
     expect_identical(as.double(widened$x), c(1e6, 9, 1e6, 9))
     expect_identical(dta_storage_type(widened$x), "long")
 
-    data <- reserve_columns(data)
     gen(data, y = dta_byte(.n), by = id)
     expect_identical(dta_storage_type(data$y), "byte")
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$y))
 })
 
-test_that("data.table containers support by and bysort", {
-    table <- data.table::data.table(id = c(2, 1, 2), x = c(1, 2, 3))
-    gen(table, total = sum(x), by = id)
-    expect_identical(as.double(table$total), c(4, 2, 4))
-    # Group 2 is rows 1 and 3, group 1 is row 2 alone.
-    repl(table, x = 0, where = .n == .N, by = id)
-    expect_identical(table$x, c(1, 0, 0))
-    expect_s3_class(table, "data.table")
-    expect_false(inherits(table, "dtatools_ref_data"))
-
-    data.table::setkey(table, id)
-    repl(table, x = 9, where = .n == 1, by = id)
-    expect_identical(table$x, c(9, 9, 0))
-    expect_identical(data.table::key(table), "id")
-
-    sorted <- data.table::data.table(id = c(2, 1, 2), x = 1:3)
-    gen(sorted, n = .n, bysort = id)
-    expect_identical(sorted$id, c(1, 2, 2))
-    expect_identical(as.double(sorted$n), c(1, 1, 2))
-    expect_null(data.table::key(sorted))
-})
-
 test_that("the shadow check still fires inside grouped expressions", {
     x <- 5
-    data <- reserve_columns(data.frame(id = c(1, 1, 2), x = 1:3))
+    data <- dibble(id = c(1, 1, 2), x = 1:3)
     expect_error(gen(data, y = x + 1, by = id), "both a column and an object")
     expect_error(repl(data, x = 0L, where = x > 1, by = id),
                  "both a column and an object")
     expect_false("y" %in% names(data))
-    expect_identical(data$x, 1:3)
+    expect_identical(as.integer(data$x), 1:3)
 
     gen(data, y = .data$x + .env$x, by = id)
     expect_identical(as.double(data$y), c(6, 7, 8))
@@ -2095,7 +2094,7 @@ test_that("the shadow check still fires inside grouped expressions", {
 })
 
 test_that("grouped gen keeps value attributes and string storage", {
-    data <- reserve_columns(data.frame(id = c(1, 2, 1), x = c(1, 2, 3)))
+    data <- dibble(id = c(1, 2, 1), x = c(1, 2, 3))
     gen(data, labelled = structure(x, label = "L"), by = id)
     expect_identical(attr(data$labelled, "label"), "L")
 
@@ -2106,15 +2105,15 @@ test_that("grouped gen keeps value attributes and string storage", {
 })
 
 test_that("ordinary assignments and metadata helpers materialize current state", {
-    data <- reserve_columns(data.frame(x = 1:3))
+    data <- dibble(x = 1:3)
     alias <- data
     gen(data, y, x + 1)
 
     data$x <- 4:6
-    expect_false(inherits(data, "dtatools_ref_data"))
-    expect_identical(data$x, 4:6)
+    expect_true(is_dibble(data))
+    expect_identical(as.integer(data$x), 4:6)
     expect_identical(as.double(data$y), c(2, 3, 4))
-    expect_identical(alias$x, 1:3)
+    expect_identical(as.integer(alias$x), 1:3)
 
     gen(alias, z, y + 1)
     labelled <- set_var_labels(alias, x = "X", y = "Y", z = "Z")
@@ -2130,8 +2129,9 @@ test_that("ordinary assignments and metadata helpers materialize current state",
 
     renamed <- alias
     names(renamed) <- c("a", "b", "c")
-    expect_false(inherits(renamed, "dtatools_ref_data"))
+    expect_true(is_dibble(renamed))
     expect_identical(names(renamed), c("a", "b", "c"))
+    expect_identical(names(alias), c("x", "y", "z"))
 })
 
 test_that("sparse compact replacement and generation keep existing payloads", {
@@ -2140,7 +2140,7 @@ test_that("sparse compact replacement and generation keep existing payloads", {
         "R was built without memory profiling"
     )
     size <- 1000000L
-    data <- data.frame(x = dta_byte(rep(1, size)), keep = runif(size))
+    data <- dibble(x = dta_byte(rep(1, size)), keep = runif(size))
     keep_trace <- tracemem(data$keep)
     on.exit(untracemem(data$keep), add = TRUE)
     before <- object.size(data$x)
@@ -2152,8 +2152,6 @@ test_that("sparse compact replacement and generation keep existing payloads", {
 
     x_trace <- tracemem(data$x)
     on.exit(untracemem(data$x), add = TRUE)
-    data <- reserve_columns(data)
-    x_trace <- tracemem(data$x)
     gen(data, added, 3L)
     expect_identical(tracemem(data$x), x_trace)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
@@ -2161,7 +2159,7 @@ test_that("sparse compact replacement and generation keep existing payloads", {
 })
 
 test_that("plain-expression evaluation matches tidy-eval semantics", {
-    data <- reserve_columns(data.frame(x = dta_byte(c(1, 2, 3)), y = c(10, 20, 30)))
+    data <- dibble(x = dta_byte(c(1, 2, 3)), y = c(10, 20, 30))
 
     # A symbol that is both a column and a local is an error; the pronouns
     # pick one.
@@ -2201,7 +2199,7 @@ test_that("plain-expression evaluation matches tidy-eval semantics", {
 })
 
 test_that("plain expressions evaluate against reference-state columns", {
-    data <- reserve_columns(data.frame(x = dta_byte(c(1, 2, 3))))
+    data <- dibble(x = dta_byte(c(1, 2, 3)))
     offset <- 5
     gen(data, seed_column, x)
     expect_false(is.null(attr(data, ".dtatools_ref_state", exact = TRUE)))
@@ -2225,7 +2223,7 @@ test_that("materialized compact replacements retain Stata semantics", {
         attr(target, "label") <- paste(storage, "label")
         attr(target, "format.stata") <- "%9.0g"
         attr(target, "labels") <- c(One = 1)
-        data <- data.frame(target = target)
+        data <- dibble(target = target)
         independent <- copy_data(data)
         invisible(dtatools:::.force_altrep_materialization(data$target))
 
@@ -2266,7 +2264,7 @@ test_that("materialized compact replacement keeps fallback errors atomic", {
         list(value = 101, message = "cannot represent `x`; use `dta_int")
     )
     for (case in cases) {
-        data <- data.frame(x = dta_byte(1:3))
+        data <- dibble(x = dta_byte(1:3))
         invisible(dtatools:::.force_altrep_materialization(data$x))
         before <- serialize(data, NULL)
 
@@ -2277,7 +2275,7 @@ test_that("materialized compact replacement keeps fallback errors atomic", {
         expect_identical(serialize(data, NULL), before)
     }
 
-    data <- data.frame(x = dta_byte(1:3))
+    data <- dibble(x = dta_byte(1:3))
     invisible(dtatools:::.force_altrep_materialization(data$x))
     before <- serialize(data, NULL)
     expect_error(replace_values(data, x, 1:2), "has size")
@@ -2285,7 +2283,7 @@ test_that("materialized compact replacement keeps fallback errors atomic", {
 })
 
 test_that("fused comparison replacement matches the general path", {
-    make_data <- function() data.frame(
+    make_data <- function() dibble(
         x = dta_byte(c(1, 2, 3, 4, 5, 6)),
         y = dta_byte(c(
             -1, 0, 1, NA_real_, tagged_missing("a"),
@@ -2332,7 +2330,7 @@ test_that("fused comparison replacement matches the general path", {
 
 test_that("fused comparison replacement handles full-row values", {
     replacement <- c(9, NaN, 7, 6, 5, 4)
-    fused <- data.frame(
+    fused <- dibble(
         x = dta_byte(1:6),
         y = dta_byte(c(1, 0, 1, 0, 1, 0))
     )
@@ -2347,19 +2345,19 @@ test_that("fused comparison replacement handles full-row values", {
 })
 
 test_that("fused comparison replacement handles empty and full matches", {
-    empty <- data.frame(x = dta_byte(1:3), y = dta_byte(1:3))
+    empty <- dibble(x = dta_byte(1:3), y = dta_byte(1:3))
     before <- serialize(empty, NULL)
     replace_values(empty, x, 9, where = y < 0)
     expect_identical(serialize(empty, NULL), before)
 
-    full <- data.frame(x = dta_byte(1:3), y = dta_byte(1:3))
+    full <- dibble(x = dta_byte(1:3), y = dta_byte(1:3))
     replace_values(full, x, tagged_missing("c"), where = y >= 1)
     expect_true(all(is_tagged_missing(full$x, "c")))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(full$x))
 })
 
 test_that("fused replacement preserves recycling errors and shared data", {
-    bad <- data.frame(
+    bad <- dibble(
         x = dta_byte(1:4),
         y = dta_byte(c(1, 0, 1, 0))
     )
@@ -2370,7 +2368,7 @@ test_that("fused replacement preserves recycling errors and shared data", {
     )
     expect_identical(serialize(bad, NULL), before)
 
-    source <- data.frame(
+    source <- dibble(
         x = dta_byte(1:4),
         y = dta_byte(c(1, 0, 1, 0))
     )
@@ -2386,7 +2384,7 @@ test_that("fused replacement preserves recycling errors and shared data", {
 
 test_that("threaded fused replacement matches the general path", {
     size <- 600000L
-    fused <- data.frame(
+    fused <- dibble(
         x = dta_byte(rep(1, size)),
         y = dta_long(seq_len(size))
     )
@@ -2407,7 +2405,7 @@ test_that("fused comparison evaluates scalar operands once", {
         calls <<- calls + 1L
         1
     }
-    data <- data.frame(x = dta_byte(1:3), y = dta_byte(1:3))
+    data <- dibble(x = dta_byte(1:3), y = dta_byte(1:3))
 
     replace_values(data, x, 9, where = y > cutoff())
 
@@ -2415,14 +2413,14 @@ test_that("fused comparison evaluates scalar operands once", {
     expect_identical(as.double(data$x), c(1, 9, 9))
 
     calls <- 0L
-    ordinary <- data.frame(x = 1:3, y = 1:3)
+    ordinary <- dibble(x = 1:3, y = 1:3)
     replace_values(ordinary, x, 9L, where = y > cutoff())
     expect_identical(calls, 1L)
 })
 
 test_that("fused row-value errors roll back before the fallback error", {
     values <- c(9, NaN, 7)
-    data <- data.frame(
+    data <- dibble(
         x = dta_byte(1:3),
         y = dta_byte(c(1, 1, 0))
     )
@@ -2445,7 +2443,7 @@ test_that("fused row-value errors roll back before the fallback error", {
 })
 
 test_that("targets and values arrive as one tagged pair", {
-    data <- reserve_columns(data.frame(income = c(10, 20), eligible = c(TRUE, FALSE)))
+    data <- dibble(income = c(10, 20), eligible = c(TRUE, FALSE))
     expect_silent(gen(data, adjusted = income + 5))
     expect_identical(as.double(data$adjusted), c(15, 25))
     expect_silent(repl(data, adjusted = 0, where = eligible))
@@ -2474,18 +2472,13 @@ test_that("targets and values arrive as one tagged pair", {
     expect_identical(as.double(data$variable), c(2, NA))
 })
 
-test_that("tagged pairs reach reference, data.table, and compact targets", {
-    referenced <- reserve_columns(data.frame(x = 1:2))
+test_that("tagged pairs reach dibble and compact targets", {
+    referenced <- dibble(x = 1:2)
     gen(referenced, y = x * 2L)
     expect_silent(gen(referenced, z = y + 1L))
     expect_identical(as.double(referenced$z), c(3, 5))
     expect_silent(repl(referenced, z = 0L, where = x == 1L))
     expect_identical(as.double(referenced$z), c(0, 5))
-
-    table <- data.table::data.table(x = 1:2)
-    expect_silent(gen(table, y = x + 1L))
-    expect_silent(repl(table, y = 0L, x == 2L))
-    expect_identical(as.double(table$y), c(2, 0))
 
     compact <- read_dta(fixture("all_types_v118.dta"))
     target <- names(compact)[vapply(
@@ -2502,7 +2495,7 @@ test_that("tagged pairs reach reference, data.table, and compact targets", {
 })
 
 test_that("mutation dots must be one target pair and at most one where", {
-    data <- reserve_columns(data.frame(x = 1:2, y = 3:4))
+    data <- dibble(x = 1:2, y = 3:4)
     shape <- "`...` must be `variable, values` or one `variable = values`"
     expect_error(gen(data), shape)
     expect_error(gen(data, x, y = 1), shape)
@@ -2520,11 +2513,13 @@ test_that("mutation dots must be one target pair and at most one where", {
     expect_error(gen(data, variable = a, values = 1), shape)
     expect_error(gen(data, .("") := 1), "nonempty")
     expect_error(gen(data, .(1) := 1), "nonempty")
-    expect_identical(data, data.frame(x = 1:2, y = 3:4))
+    expect_identical(
+        as.data.frame(data), as.data.frame(dibble(x = 1:2, y = 3:4))
+    )
 })
 
 test_that("a symbol bound as both column and object is an error", {
-    data <- reserve_columns(data.frame(x = c(1, 2, 3), rows = c(0, 0, 0)))
+    data <- dibble(x = c(1, 2, 3), rows = c(0, 0, 0))
     rows <- c(TRUE, FALSE, TRUE)
     message <- "`rows` is both a column and an object"
 
@@ -2532,11 +2527,11 @@ test_that("a symbol bound as both column and object is an error", {
     expect_error(repl(data, x, rows), message)
     expect_error(gen(data, y, x + rows), message)
     expect_error(repl(data, x, 9, where = rows == 0), message)
-    expect_identical(data$x, c(1, 2, 3))
+    expect_identical(as.double(data$x), c(1, 2, 3))
 
     # The fused comparison path, which reads columns without evaluating
     # the expression, is checked too.
-    fused <- data.frame(
+    fused <- dibble(
         x = dta_byte(c(1, 2, 3)), rows = dta_byte(c(0, 0, 0))
     )
     expect_error(repl(fused, x, 9, where = rows == 0), message)
@@ -2547,63 +2542,63 @@ test_that("a symbol bound as both column and object is an error", {
     expect_identical(as.double(fused$x), c(1, 2, 3))
 
     # Namespace qualifiers are not column reads.
-    namespace_data <- data.frame(x = c(1, 2, 3), stats = c(0, 0, 0))
+    namespace_data <- dibble(x = c(1, 2, 3), stats = c(0, 0, 0))
     stats <- 5
     repl(namespace_data, x, stats::median(x))
-    expect_identical(namespace_data$x, c(2, 2, 2))
+    expect_identical(as.double(namespace_data$x), c(2, 2, 2))
 
     # Both explicit spellings pass, and each reads what it names.
     repl(data, x, 9, where = .env$rows)
-    expect_identical(data$x, c(9, 2, 9))
+    expect_identical(as.double(data$x), c(9, 2, 9))
     repl(data, x, 5, where = .data$rows == 0)
-    expect_identical(data$x, c(5, 5, 5))
+    expect_identical(as.double(data$x), c(5, 5, 5))
     repl(data, x, .data$rows + 1)
-    expect_identical(data$x, c(1, 1, 1))
+    expect_identical(as.double(data$x), c(1, 1, 1))
     repl(data, x, .env$rows)
-    expect_identical(data$x, c(1, 0, 1))
+    expect_identical(as.double(data$x), c(1, 0, 1))
 
     # `.()` is evaluated in the caller's environment, never as a column read.
     name <- "x"
-    data <- data.frame(x = c(1, 2), name = c("a", "b"))
+    data <- dibble(x = c(1, 2), name = c("a", "b"))
     repl(data, x, .(name) + 1)
-    expect_identical(data$x, c(2, 3))
+    expect_identical(as.double(data$x), c(2, 3))
 
     # Function positions and `$` right-hand sides are not column reads.
-    data <- data.frame(x = c(1, 2), sum = c(0, 0), value = c(5, 6))
+    data <- dibble(x = c(1, 2), sum = c(0, 0), value = c(5, 6))
     sum <- 3
     holder <- list(value = 7)
     repl(data, x, sum(value))
-    expect_identical(data$x, c(11, 11))
+    expect_identical(as.double(data$x), c(11, 11))
     repl(data, x, holder$value)
-    expect_identical(data$x, c(7, 7))
+    expect_identical(as.double(data$x), c(7, 7))
 
     # Bindings in base and attached packages are not consulted, even when
     # the capture frame sits inside a package namespace.
-    data <- data.frame(x = c(1, 2), pi = c(3, 3), T = c(1, 1))
+    data <- dibble(x = c(1, 2), pi = c(3, 3), T = c(1, 1))
     repl(data, x, pi + T)
-    expect_identical(data$x, c(4, 4))
+    expect_identical(as.double(data$x), c(4, 4))
     in_namespace <- function(data) repl(data, x, pi + T)
     environment(in_namespace) <- asNamespace("stats")
     in_namespace(data)
-    expect_identical(data$x, c(4, 4))
+    expect_identical(as.double(data$x), c(4, 4))
 
     # A one-sided formula asks for the data mask outright, so its body is
     # exempt on the fused `where` path and the general path alike.
-    data <- data.frame(x = c(1, 2), rows = c(0, 1), y = c(5, 5))
+    data <- dibble(x = c(1, 2), rows = c(0, 1), y = c(5, 5))
     rows <- c(TRUE, TRUE)
     y <- 100
     expect_error(repl(data, x, 0, where = rows == 1), "`rows` is both")
     repl(data, x, 0, where = ~ rows == 1)
-    expect_identical(data$x, c(1, 0))
+    expect_identical(as.double(data$x), c(1, 0))
     repl(data, x, ~ y + 1)
-    expect_identical(data$x, c(6, 6))
+    expect_identical(as.double(data$x), c(6, 6))
     stored <- ~ y + 2
     repl(data, x, stored)
-    expect_identical(data$x, c(7, 7))
+    expect_identical(as.double(data$x), c(7, 7))
     rm(rows, y)
 
     # The fused plan's scalar operand is exempt under a formula too.
-    compact <- data.frame(x = dta_byte(c(1, 5, 9)), cutoff = c(4, 4, 4))
+    compact <- dibble(x = dta_byte(c(1, 5, 9)), cutoff = c(4, 4, 4))
     cutoff <- 100
     expect_error(repl(compact, x, 0, where = x > cutoff), "`cutoff` is both")
     repl(compact, x, 0, where = ~ x > cutoff)
@@ -2611,13 +2606,13 @@ test_that("a symbol bound as both column and object is an error", {
     rm(cutoff)
 
     # A function binding does not count: a script may share its column's name.
-    data <- data.frame(x = c(1, 2), income = c(5, 6))
+    data <- dibble(x = c(1, 2), income = c(5, 6))
     income <- function(data) repl(data, x, income * 2)
     income(data)
-    expect_identical(data$x, c(10, 12))
+    expect_identical(as.double(data$x), c(10, 12))
 
     # The check follows the capture frame up to the global environment.
-    data <- data.frame(x = c(1, 2), offset = c(10, 20))
+    data <- dibble(x = c(1, 2), offset = c(10, 20))
     outer <- function(data) {
         offset <- 1
         inner <- function(data) repl(data, x, x + offset)
@@ -2626,28 +2621,30 @@ test_that("a symbol bound as both column and object is an error", {
     expect_error(outer(data), "`offset` is both a column")
     no_local <- function(data) repl(data, x, x + offset)
     no_local(data)
-    expect_identical(data$x, c(11, 22))
+    expect_identical(as.double(data$x), c(11, 22))
 
     # The option turns the check off, and columns win as before.
-    data <- data.frame(x = c(1, 2, 3), rows = c(0, 0, 0))
+    data <- dibble(x = c(1, 2, 3), rows = c(0, 0, 0))
     rows <- c(TRUE, FALSE, TRUE)
     withr::with_options(list(dtatools.shadow_check = FALSE), {
         repl(data, x, rows)
     })
-    expect_identical(data$x, c(0, 0, 0))
+    expect_identical(as.double(data$x), c(0, 0, 0))
 })
 
 .check_optional_split_mutate_data_2626 <- function(include_dplyr) {
-    grouped <- reserve_columns(if (include_dplyr) dplyr::group_by(
+    grouped <- as_dibble(if (include_dplyr) dplyr::group_by(
         tibble::tibble(id = c(1, 1, 2), x = 1:3), id
     ) else .group_fixture("id_112")$data)
     repl(grouped, id = 1)
     expect_identical(if (include_dplyr) dplyr::group_vars(grouped) else setdiff(names(attr(grouped, "groups", exact = TRUE)), ".rows"), "id")
     groups <- attr(grouped, "groups", exact = TRUE)
-    expect_identical(groups$id, 1)
+    expect_identical(as.double(groups$id), 1)
     expect_identical(as.integer(groups$.rows[[1L]]), 1:3)
     if (include_dplyr) {
-        expect_identical(dplyr::summarise(grouped, n = dplyr::n())$n, 3L)
+        expect_identical(
+            as.integer(dplyr::summarise(grouped, n = dplyr::n())$n), 3L
+        )
     }
     gen(grouped, size = .N)
     expect_identical(as.double(grouped$size), c(3, 3, 3))
@@ -2678,8 +2675,8 @@ test_that("native regrouping consumers through dplyr", {
     plain_spec <- if (!include_dplyr) .group_fixture_spec(tibble::tibble(
         id = dta_int(c(1L, 1L, 2L)), x = dta_int(c(1L, 1L, 2L))))
     shared <- dta_int(c(1L, 1L, 2L))
-    grouped <- if (include_dplyr) dplyr::group_by(tibble::tibble(id = shared, x = shared), id) else
-        .group_fixture_attach("id_112_shared", tibble::tibble(id = shared, x = shared), plain_spec)
+    grouped <- as_dibble(if (include_dplyr) dplyr::group_by(tibble::tibble(id = shared, x = shared), id) else
+        .group_fixture_attach("id_112_shared", tibble::tibble(id = shared, x = shared), plain_spec))
     # `x` and `id` share one compact vector; replacing `x` rewrites `id`.
     repl(grouped, x = 1L)
     expect_identical(as.double(grouped$id), c(1, 1, 1))
@@ -2688,7 +2685,9 @@ test_that("native regrouping consumers through dplyr", {
     )
     expect_identical(lengths(attr(grouped, "groups", exact = TRUE)$.rows), 3L)
     if (include_dplyr) {
-        expect_identical(dplyr::summarise(grouped, n = dplyr::n())$n, 3L)
+        expect_identical(
+            as.integer(dplyr::summarise(grouped, n = dplyr::n())$n), 3L
+        )
     }
 }
 
@@ -2701,7 +2700,7 @@ test_that("aliased key regrouping consumers through dplyr", {
     .check_optional_split_mutate_data_2649(TRUE)
 })
 test_that("row counters mask a column named .n or .N", {
-    data <- reserve_columns(data.frame(.n = c(100, 200), .N = c(7, 7), x = 1:2))
+    data <- dibble(.n = c(100, 200), .N = c(7, 7), x = 1:2)
     gen(data, row = .n)
     gen(data, count = .N)
     expect_identical(as.double(data$row), c(1, 2))
@@ -2710,12 +2709,7 @@ test_that("row counters mask a column named .n or .N", {
     gen(data, from_column = .data$.n)
     expect_identical(as.double(data$from_column), c(100, 200))
     repl(data, x = 0L, where = .data$.N == 7 & .n == 2)
-    expect_identical(data$x, c(1L, 0L))
-
-    skip_if_not_installed("data.table")
-    table <- data.table::data.table(.n = c(100, 200), x = 1:2)
-    gen(table, row = .n)
-    expect_identical(as.double(table$row), c(1, 2))
+    expect_identical(as.integer(data$x), c(1L, 0L))
 })
 
 test_that("`repl()` widens typed columns and reports the storage change", {

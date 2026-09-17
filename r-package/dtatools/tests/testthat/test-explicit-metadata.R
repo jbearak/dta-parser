@@ -1,10 +1,36 @@
+# Table metadata setters mutate by reference, so a dibble is their only
+# container (ADR 0036). Plain frames are rejected below.
 metadata_containers <- function() {
-    makers <- list(dibble = dibble, tibble = tibble::tibble, frame = data.frame)
+    list(dibble = dibble)
+}
+
+plain_containers <- function() {
+    makers <- list(tibble = tibble::tibble, frame = data.frame)
     if (requireNamespace("data.table", quietly = TRUE)) {
         makers$table <- data.table::data.table
     }
     makers
 }
+
+test_that("table metadata setters reject plain containers before any update", {
+    for (make in plain_containers()) {
+        data <- make(x = 1:2, y = c("a", "b"))
+        before <- make(x = 1:2, y = c("a", "b"))
+        expect_error(set_var_format(data, x, "%9.0g"), "must be a dibble")
+        expect_error(set_var_formats(data, x = "%9.0g"), "must be a dibble")
+        expect_error(set_dta_metadata(data, label = "Label"), "must be a dibble")
+        expect_error(set_dta_note(data, 1L, "note"), "must be a dibble")
+        expect_error(add_dta_note(data, "note", "x"), "must be a dibble")
+        expect_error(
+            set_dta_characteristic(data, "source", "survey"), "must be a dibble"
+        )
+        expect_error(drop_dta_notes(data), "must be a dibble")
+        expect_error(drop_dta_characteristics(data), "must be a dibble")
+        expect_error(renumber_dta_notes(data), "must be a dibble")
+        expect_false(inherits(data, "dtatools_ref_data"))
+        expect_identical(data, before)
+    }
+})
 
 test_that("all table metadata setters reach aliases and function callers", {
     for (make in metadata_containers()) {
@@ -141,7 +167,7 @@ test_that("table labels preserve container classes alongside notes and character
 })
 
 test_that("table metadata commits repair markers left by base attribute copies", {
-    for (make in list(dibble, tibble::tibble, data.frame)) {
+    for (make in metadata_containers()) {
         for (updates in list(list(label = "Dataset label"), list(label = NULL), list())) {
             original <- make(x = 1:2)
             original_classes <- class(original)
@@ -224,14 +250,15 @@ test_that("failed metadata bundles and plural formats leave all state unchanged"
 test_that("declared empty label tables reject nonnumeric targets atomically", {
     empty <- stats::setNames(double(), character())
     for (column in list(c("a", "b"), factor(c("a", "b")), c(TRUE, FALSE))) {
-        data <- data.frame(x = column)
+        data <- dibble(x = column)
         before <- copy_data(data)
         expect_error(set_dta_metadata(data, variable = "x", label = "changed",
                                       labels = empty, value.label.name = "empty"),
                      "numeric Stata variable")
-        expect_identical(data, before)
+        expect_identical(as.data.frame(data), as.data.frame(before))
+        expect_null(var_label(data$x))
     }
-    data <- data.frame(x = 1:2)
+    data <- dibble(x = 1:2)
     set_dta_metadata(data, variable = "x", labels = c(One = 1), value.label.name = "named")
     set_dta_metadata(data, variable = "x", labels = empty)
     expect_identical(val_labels(data$x), empty)
@@ -314,7 +341,7 @@ test_that("metadata setters isolate copied and serialized bookkeeping both ways"
     }
 })
 
-test_that("metadata edits preserve compact storage, capacity, and data.table indexes", {
+test_that("metadata edits preserve compact storage and capacity", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
     save_dta(dibble(x = dta_float(1:2), y = dta_string(c("a", "b"))), path)
@@ -338,19 +365,4 @@ test_that("metadata edits preserve compact storage, capacity, and data.table ind
     expect_identical(.Call(dtatools:::C_dtatools_column_capacity, data), capacity)
     expect_silent((function(x) gen(x, added = 1))(data))
     expect_identical(names(alias), c("x", "y", "added"))
-    skip_if_not_installed("data.table")
-    dt <- data.table::data.table(x = 1:2, y = c("a", "b"))
-    data.table::setkeyv(dt, "x")
-    data.table::setindexv(dt, "y")
-    key <- data.table::key(dt)
-    index <- data.table::indices(dt)
-    selfref <- attr(dt, ".internal.selfref")
-    set_var_format(dt, x, "%9.0g")
-    set_dta_note(dt, 1L, "note", "x")
-    expect_identical(data.table::key(dt), key)
-    expect_identical(data.table::indices(dt), index)
-    expect_identical(attr(dt, ".internal.selfref"), selfref)
-    # Run data.table NSE in a user frame; this package deliberately is not
-    # marked data.table-aware and package-namespace calls use frame semantics.
-    expect_identical(eval(quote(dt[list(1L), y]), list(dt = dt), globalenv()), "a")
 })

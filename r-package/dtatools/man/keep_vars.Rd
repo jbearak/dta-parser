@@ -10,7 +10,7 @@ keep_vars(data, ...)
 drop_vars(data, ...)
 }
 \arguments{
-\item{data}{An ungrouped data frame or tibble to mutate.}
+\item{data}{An ungrouped dibble to mutate.}
 
 \item{...}{Column names, name ranges, \code{c()}, or
 \code{tidyselect::all_of()} character vectors to keep or drop.}
@@ -44,7 +44,7 @@ allocation; a validated keep-all selection needs no resize. Assign
 needed. Helpers never rebuild a table or rebind a function parameter.
 }
 \examples{
-survey <- reserve_columns(data.frame(id = 1:2, age = c(20, 30), temporary = 0))
+survey <- dibble(id = 1:2, age = c(20, 30), temporary = 0)
 gen(survey, age_next_year, age + 1)
 drop_vars(survey, temporary)
 keep_vars(survey, age_next_year, id)

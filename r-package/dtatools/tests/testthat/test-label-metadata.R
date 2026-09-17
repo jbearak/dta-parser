@@ -74,7 +74,7 @@ test_that("dataset_label replacement sets and removes dataset metadata", {
     )
 })
 
-test_that("data-frame replacement syntax follows R copy semantics", {
+test_that("replacement syntax follows R copy semantics", {
     data <- data.frame(x = c(0, 1))
     alias <- data
 
@@ -89,13 +89,13 @@ test_that("data-frame replacement syntax follows R copy semantics", {
     expect_null(var_label(alias$x))
     expect_null(val_labels(alias$x))
 
-    reference <- reserve_columns(data.frame(x = c(0, 1)))
+    reference <- dibble(x = c(0, 1))
     gen(reference, y, x + 1)
     reference_alias <- reference
     var_label(reference) <- list(x = "X", y = "Y")
     val_labels(reference) <- list(x = c(No = 0, Yes = 1))
 
-    expect_false(inherits(reference, "dtatools_ref_data"))
+    expect_true(is_dibble(reference))
     expect_identical(var_label(reference), list(x = "X", y = "Y"))
     expect_identical(val_labels(reference$x), c(No = 0, Yes = 1))
     expect_identical(
@@ -105,7 +105,7 @@ test_that("data-frame replacement syntax follows R copy semantics", {
 })
 
 test_that("label replacement isolates metadata and later value writes", {
-    data <- data.frame(
+    data <- dibble(
         labelled = dta_byte(1:3),
         untouched = dta_byte(4:6)
     )
@@ -121,8 +121,8 @@ test_that("label replacement isolates metadata and later value writes", {
     expect_identical(as.double(alias$labelled), c(1, 2, 3))
 })
 
-test_that("dataset-label replacement detaches reference state", {
-    data <- reserve_columns(data.frame(x = dta_byte(1:3)))
+test_that("dataset-label replacement detaches a dibble from its aliases", {
+    data <- dibble(x = dta_byte(1:3))
     gen(data, y, x + 1)
     alias <- data
 
@@ -130,7 +130,7 @@ test_that("dataset-label replacement detaches reference state", {
     replace_values(data, x, 9, where = 1)
     replace_values(alias, x, 8, where = 2)
 
-    expect_false(inherits(data, "dtatools_ref_data"))
+    expect_true(is_dibble(data))
     expect_identical(as.double(data$x), c(9, 2, 3))
     expect_identical(as.double(alias$x), c(1, 8, 3))
     expect_identical(as.double(data$y), c(2, 3, 4))
@@ -158,7 +158,7 @@ test_that("var_label replacement updates named columns and can clear all", {
 })
 
 test_that("set_var_labels combines named dots and .labels", {
-    data <- data.frame(x = 1, y = 2)
+    data <- dibble(x = 1, y = 2)
 
     updated <- set_var_labels(
         data,
@@ -184,7 +184,7 @@ test_that("set_var_labels supports vector pipelines", {
 })
 
 test_that("bulk variable-label limits produce one complete portability warning", {
-    data <- data.frame(x = 1, y = 2)
+    data <- dibble(x = 1, y = 2)
     over_limit <- paste(rep("é", 81), collapse = "")
     messages <- character()
 
@@ -301,7 +301,7 @@ test_that("val_labels replacement updates named columns and can clear all", {
 })
 
 test_that("set_val_labels combines named dots and .labels", {
-    data <- data.frame(x = c(0, 1), y = c(1, 2))
+    data <- dibble(x = c(0, 1), y = c(1, 2))
 
     updated <- set_val_labels(
         data,
@@ -330,7 +330,7 @@ test_that("set_val_labels supports vector pipelines", {
 })
 
 test_that("bulk value-label limits produce one complete portability warning", {
-    data <- data.frame(x = 1, y = 1)
+    data <- dibble(x = 1, y = 1)
     overlong_text <- iconv(
         paste(rep("é", 16001), collapse = ""),
         from = "UTF-8",
@@ -384,7 +384,7 @@ test_that("bulk value-label limits produce one complete portability warning", {
 })
 
 test_that("Stata 19 metadata boundaries do not warn", {
-    data <- data.frame(x = 1, y = 1)
+    data <- dibble(x = 1, y = 1)
     exact_variable <- paste(rep("é", 80), collapse = "")
     exact_text <- paste(rep("é", 16000), collapse = "")
     exact_table <- seq_len(65536L) - 1
@@ -688,9 +688,9 @@ test_that("tab consumes value labels created by dtatools helpers", {
 })
 
 test_that("bulk setters reject ambiguous column updates atomically", {
-    data <- data.frame(x = c(0, 1), y = c(1, 2))
+    data <- dibble(x = c(0, 1), y = c(1, 2))
     attr(data$x, "label") <- "Original x"
-    original <- data
+    original <- copy_data(data)
 
     calls <- list(
         function() set_var_labels(
@@ -709,22 +709,33 @@ test_that("bulk setters reject ambiguous column updates atomically", {
     }, logical(1))
 
     expect_identical(
-        list(rejected = rejected, data = data),
-        list(rejected = rep(TRUE, length(calls)), data = original)
+        list(rejected = rejected, data = as.data.frame(data)),
+        list(rejected = rep(TRUE, length(calls)), data = as.data.frame(original))
     )
 })
 
-test_that("named updates reject duplicated data-frame column names", {
+test_that("table label setters reject plain containers before any update", {
+    makers <- list(data.frame, tibble::tibble)
+    if (requireNamespace("data.table", quietly = TRUE)) {
+        makers <- c(makers, data.table::data.table)
+    }
+    for (make in makers) {
+        data <- make(x = c(0, 1))
+        expect_error(set_var_labels(data, x = "Label"), "must be a dibble")
+        expect_error(set_var_label(data, x, "Label"), "must be a dibble")
+        expect_error(set_val_labels(data, x = c(No = 0)), "must be a dibble")
+        expect_false(inherits(data, "dtatools_ref_data"))
+        expect_null(var_label(data$x))
+        expect_null(val_labels(data$x))
+    }
+})
+
+test_that("whole-table label clearing handles duplicated column names", {
     data <- data.frame(x = c(0, 1), x = c(1, 2), check.names = FALSE)
     attr(data[[1L]], "label") <- "First"
     attr(data[[2L]], "label") <- "Second"
     attr(data[[1L]], "labels") <- c(No = 0, Yes = 1)
     attr(data[[2L]], "labels") <- c(First = 1, Second = 2)
-    original <- data
-
-    expect_error(set_var_labels(data, x = "Ambiguous"), "ambiguous")
-    expect_error(set_val_labels(data, x = c(Zero = 0)), "ambiguous")
-    expect_identical(data, original)
 
     var_label(data) <- NULL
     val_labels(data) <- NULL
@@ -815,7 +826,7 @@ test_that("bulk value-label setters normalize each table once", {
     )), add = TRUE)
 
     updated <- set_val_labels(
-        data.frame(x = c(0, 1)), x = c(No = 0, Yes = 1)
+        dibble(x = c(0, 1)), x = c(No = 0, Yes = 1)
     )
 
     expect_identical(
@@ -824,8 +835,8 @@ test_that("bulk value-label setters normalize each table once", {
     )
 })
 
-test_that("data frame set functions mutate by reference", {
-    data <- data.frame(a = 1:3, b = c(10, 20, 30))
+test_that("dibble set functions mutate by reference", {
+    data <- dibble(a = 1:3, b = c(10, 20, 30))
     alias <- data
 
     set_var_labels(data, a = "Alpha")
@@ -841,14 +852,14 @@ test_that("data frame set functions mutate by reference", {
     expect_identical(var_label(alias$b), "Beta")
 })
 
-test_that("label setters still return the data frame for pipeline use", {
-    data <- data.frame(a = 1:3)
+test_that("label setters still return the dibble for pipeline use", {
+    data <- dibble(a = 1:3)
     expect_identical(var_label(set_var_labels(data, a = "Alpha")$a), "Alpha")
     expect_identical(var_label(set_var_label(data, a, "Beta")$a), "Beta")
 })
 
-test_that("copy_data isolates a data frame from later label setters", {
-    source <- data.frame(a = 1:3)
+test_that("copy_data isolates a dibble from later label setters", {
+    source <- dibble(a = 1:3)
     isolated <- copy_data(source)
     set_var_labels(source, a = "Alpha")
     expect_identical(var_label(source$a), "Alpha")
@@ -864,7 +875,7 @@ test_that("vector label setters keep copy semantics", {
 })
 
 test_that("set_var_label requires one unquoted existing column", {
-    data <- data.frame(a = 1:3)
+    data <- dibble(a = 1:3)
     expect_error(set_var_label(data, missing_column, "Alpha"),
                  "Unknown column")
     expect_error(set_var_label(data, a + 1, "Alpha"),
@@ -873,7 +884,7 @@ test_that("set_var_label requires one unquoted existing column", {
 })
 
 test_that("set_var_label labels a generated reference column", {
-    data <- reserve_columns(data.frame(a = 1:3))
+    data <- dibble(a = 1:3)
     gen(data, doubled, a * 2)
 
     set_var_label(data, doubled, "Doubled")

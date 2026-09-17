@@ -1,7 +1,7 @@
 #' Generate and replace variables by reference
 #'
 #' See [mutation-containers] for supported classes, grouping and conversion.
-#' `gen()` and `replace_values()` modify a data frame or tibble by reference.
+#' `gen()` and `replace_values()` modify a dibble by reference.
 #' `repl()` is a direct alias for `replace_values()`. The return value is the
 #' updated dataset, invisibly. Within spare capacity, aliases observe generation
 #' and replacement. When generation needs more room, it creates an isolated
@@ -255,9 +255,10 @@
 #' or weak references because those objects cannot be isolated by ordinary R
 #' copying.
 #'
-#' @param data A data frame or tibble to mutate. A grouped tibble's groups
-#'   become the assignment groups. Rowwise tibbles are rejected;
-#'   `copy_data()` accepts them.
+#' @param data A dibble to mutate; assign `data <- as_dibble(data)` to
+#'   convert another container first. A grouped dibble's groups become the
+#'   assignment groups. Rowwise dibbles are rejected; `copy_data()` accepts
+#'   them.
 #' @param ... The target and its values, as one tagged pair
 #'   `variable = values` or as the two positional arguments `variable,
 #'   values`, optionally followed by one untagged `where`. `variable` is
@@ -288,7 +289,7 @@
 #'   capacity is sufficient, or an isolated table after automatic growth.
 #'   Return the updated table from functions and assign it in the caller.
 #'   `replace_values()` returns `data` invisibly.
-#'   `copy_data()` returns an independent data frame or tibble.
+#'   `copy_data()` returns an independent dibble.
 #' @references
 #' StataCorp, \href{https://www.stata.com/manuals/dgenerate.pdf}{generate manual}.
 #' @seealso [dibble-bracket] for `data[i, y := value]` on a [dibble], which
@@ -310,7 +311,7 @@
 #' dta_storage_type(fraction$x)  # "double"
 #' identical(as.double(fraction$x), 0.1)  # TRUE
 #'
-#' survey <- reserve_columns(data.frame(income = c(10, 20), eligible = c(TRUE, FALSE)))
+#' survey <- dibble(income = c(10, 20), eligible = c(TRUE, FALSE))
 #' gen(survey, adjusted = income + 5)
 #' replace_values(survey, income = income * 2, where = eligible)
 #' # The positional, Stata-shaped spelling means the same thing
@@ -329,7 +330,7 @@
 #' repl(survey, doubled = 0, where = .data[[source_name]] > 15)
 #'
 #' # Group-wise assignment in Stata's `by varlist:` order
-#' panel <- reserve_columns(data.frame(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4))
+#' panel <- dibble(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4)
 #' gen(panel, rows = .N, by = id)               # each group's row count
 #' gen(panel, last = .n == .N, by = id)         # each group's last row
 #' gen(panel, above = x - mean(x), by = id)     # centred within group
@@ -337,7 +338,8 @@
 #' @export
 replace_values <- function(data, ..., where = NULL, by = NULL,
                            bysort = NULL, promote = TRUE) {
-    shared <- if (is.data.frame(data)) .Call(C_dtatools_shared_columns, data) else NULL
+    .require_mutation_target(data)
+    shared <- .Call(C_dtatools_shared_columns, data)
     preflight <- .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE,
                                    private_views = TRUE)
     .Call(C_dtatools_release_mutation_views, preflight$columns)
@@ -380,6 +382,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     target_expr <- substitute(data)
     destination <- if (is.call(target_expr)) .capture_mutation_binding(target_expr, parent.frame()) else NULL
     if (!is.null(destination)) data <- destination$data
+    .require_mutation_target(data)
     auto_grow <- .mutation_auto_grow()
     if (is.null(.mutation_fast_shape(data))) {
         preflight <- .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE,
@@ -2382,6 +2385,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 #' @rdname replace_values
 #' @export
 copy_data <- function(data) {
+    .require_mutation_target(data)
     .as_mutation_data(data, allow_grouped = TRUE)
     data_table <- .ordinary_data_table(data)
     snapshot <- .reference_snapshot(data)

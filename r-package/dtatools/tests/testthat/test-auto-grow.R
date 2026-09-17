@@ -2,7 +2,7 @@
 
 test_that("automatic growth defaults to 1024 spare slots and isolates old tables", {
     withr::local_options(dtatools.auto_grow = NULL, dtatools.alloccol = NULL)
-    for (make in list(data.frame, tibble::tibble, dibble)) {
+    for (make in list(dibble)) {
         for (damage in list(function(x) reserve_columns(x, 0),
                             function(x) unserialize(serialize(x, NULL)))) {
             x <- damage(make(x = 1:3))
@@ -64,7 +64,7 @@ test_that("strict and invalid growth options reject callbacks before preparation
 
 test_that("growth respects spare overrides and leaves nongrowth preparation strict", {
     withr::local_options(dtatools.auto_grow = TRUE, dtatools.alloccol = 3L)
-    x <- data.frame(x = 1:2)
+    x <- reserve_columns(dibble(x = 1:2), 0)
     expect_warning(gen(x, y = 1L), .growth_warning)
     expect_equal(column_capacity(x) - ncol(x), 3)
     x <- unserialize(serialize(dibble(x = 1:2, y = 3:4), NULL))
@@ -79,7 +79,7 @@ test_that("growth respects spare overrides and leaves nongrowth preparation stri
 test_that("captured generation targets and getter arguments run exactly once", {
     withr::local_options(dtatools.auto_grow = TRUE)
     for (getter in c("get", "get0")) {
-        e <- new.env(); e$data <- data.frame(x = 1:2)
+        e <- new.env(); e$data <- reserve_columns(dibble(x = 1:2), 0)
         old <- e$data
         nc <- ec <- 0L
         name <- function() { nc <<- nc + 1L; "data" }
@@ -90,7 +90,7 @@ test_that("captured generation targets and getter arguments run exactly once", {
         expect_identical(names(e$data), c("x", "y"))
         expect_identical(names(old), "x")
     }
-    box <- list(a = data.frame(x = 1:2), b = data.frame(z = 3:4))
+    box <- list(a = reserve_columns(dibble(x = 1:2), 0), b = data.frame(z = 3:4))
     old <- box$a; calls <- 0L
     key <- function() { calls <<- calls + 1L; "a" }
     expect_warning(gen(box[[key()]], y = 1L), .growth_warning)
@@ -102,7 +102,7 @@ test_that("captured generation targets and getter arguments run exactly once", {
 
 test_that("growth never overwrites a target changed by a callback", {
     withr::local_options(dtatools.auto_grow = TRUE)
-    x <- data.frame(x = 1:2)
+    x <- reserve_columns(dibble(x = 1:2), 0)
     replacement <- data.frame(other = 3:4)
     warnings <- character()
     change_x <- function() { x <<- replacement; 1L }
@@ -114,7 +114,7 @@ test_that("growth never overwrites a target changed by a callback", {
     expect_match(warnings[[2L]], "Mutation target changed")
     expect_identical(x, replacement)
     expect_identical(names(result), c("x", "y"))
-    box <- list(data = data.frame(x = 1:2))
+    box <- list(data = reserve_columns(dibble(x = 1:2), 0))
     replacement_box <- list(other = 4L)
     warnings <- character()
     change_box <- function() { box <<- replacement_box; 1L }
@@ -166,7 +166,7 @@ test_that("egen and grouped generation evaluate on the rebuilt table", {
 test_that("implicit publication never forces changed lazy or active bindings", {
     withr::local_options(dtatools.auto_grow = TRUE)
     for (kind in c("lazy", "active")) {
-        e <- new.env(); e$x <- data.frame(x = 1:2)
+        e <- new.env(); e$x <- reserve_columns(dibble(x = 1:2), 0)
         reads <- writes <- 0L
         change <- function() {
             rm("x", envir = e)
@@ -181,7 +181,7 @@ test_that("implicit publication never forces changed lazy or active bindings", {
         expect_identical(writes, 0L)
         expect_identical(names(result), c("x", "y"))
     }
-    e <- new.env(); calls <- 0L; target <- data.frame(x = 1:2)
+    e <- new.env(); calls <- 0L; target <- reserve_columns(dibble(x = 1:2), 0)
     makeActiveBinding("x", function(value) {
         if (!missing(value)) stop("implicit setter")
         calls <<- calls + 1L; target
@@ -231,30 +231,25 @@ test_that("metadata and forwarded functions preserve explicit result assignment"
     expect_identical(dta_notes(x), dta_notes(before))
 })
 
-test_that("automatic growth repairs serialized data.table only for new columns", {
-    skip_if_not_installed("data.table")
-    .datatable.aware <- TRUE
-    withr::local_options(dtatools.auto_grow = TRUE, dtatools.alloccol = 4L)
-    for (verb in c("gen", "egen")) {
-        x <- data.table::data.table(id = c(2L, 1L), x = 3:4)
-        data.table::setkeyv(x, "id")
-        x <- unserialize(serialize(x, NULL))
-        old <- x
-        call <- if (verb == "gen") quote(gen(x, y = .data$x + 1L)) else quote(egen(x, y = dta_mean(.data$x)))
-        expect_warning(eval(call), .growth_warning)
-        expect_true(data.table::is.data.table(x))
-        expect_identical(names(x), c("id", "x", "y"))
-        expect_identical(names(old), c("id", "x"))
-        expect_true(can_add_columns(x, 4L))
-        repl(x, x = 0L)
-        expect_identical(as.integer(old$x), c(4L, 3L))
+test_that("automatic growth never rescues an ordinary container", {
+    withr::local_options(dtatools.auto_grow = TRUE)
+    containers <- list(data.frame(x = 1:2), tibble::tibble(x = 1:2))
+    if (requireNamespace("data.table", quietly = TRUE)) {
+        containers <- c(containers, list(data.table::data.table(x = 1:2)))
+    }
+    for (x in containers) {
+        before <- serialize(x, NULL)
+        expect_error(expect_no_warning(gen(x, y = stop("RHS ran"))), "must be a dibble")
+        expect_error(expect_no_warning(egen(x, y = stop("RHS ran"))), "must be a dibble")
+        expect_identical(serialize(x, NULL), before)
+        expect_false(inherits(x, "dtatools_ref_data"))
     }
 })
 
 test_that("unsupported lazy target lookups are left to the original call", {
     withr::local_options(dtatools.auto_grow = TRUE)
     e <- new.env(parent = environment())
-    original <- data.frame(x = 1:2)
+    original <- reserve_columns(dibble(x = 1:2), 0)
     other <- data.frame(other = 3:4)
     tracker <- new.env(); tracker$forces <- 0L; tracker$getters <- 0L
     e$original <- original; e$other <- other

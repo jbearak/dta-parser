@@ -34,11 +34,11 @@ test_that("1:1 merges match keys under Stata missing-code identity", {
 })
 
 test_that("compact gathers retain exact missing counts", {
-    master <- tibble::tibble(
+    master <- dibble(
         id = c(1L, 2L),
         master_value = dta_byte(c(NA_real_, 20))
     )
-    using <- tibble::tibble(
+    using <- dibble(
         id = c(2L, 3L),
         using_value = dta_byte(c(NA_real_, 40))
     )
@@ -688,7 +688,7 @@ test_that("dataset notes append master then using with stable numbering", {
 })
 
 test_that("dataset-note merge preserves one side and renumbers using notes", {
-    empty <- tibble::tibble(id = 1)
+    empty <- dibble(id = 1)
     master <- set_dta_note(copy_data(empty), 3, "master three")
     master <- set_dta_note(master, 7, "same text")
     using <- set_dta_note(copy_data(empty), 2, "same text")
@@ -730,8 +730,8 @@ test_that("dataset-note merge preserves one side and renumbers using notes", {
 })
 
 test_that("dataset-note merge rejects Stata note-number exhaustion", {
-    master <- set_dta_note(tibble::tibble(id = 1), 9999, "last")
-    using <- set_dta_note(tibble::tibble(id = 1), 1, "using")
+    master <- set_dta_note(dibble(id = 1), 9999, "last")
+    using <- set_dta_note(dibble(id = 1), 1, "using")
 
     expect_error(
         dta_merge(master, using, by = "id", relationship = "1:1"),
@@ -743,28 +743,27 @@ test_that("base, tibble, and data.table inputs merge identically", {
     skip_if_not_installed("data.table")
     make_input <- function(side, kind) {
         data <- if (identical(side, "x")) {
-            data.frame(
+            dibble(
                 id = c(1L, 2L), shared = c("x1", "x2"),
                 x_only = c(10L, 20L)
             )
         } else {
-            data.frame(
+            dibble(
                 id = c(2L, 3L), shared = c("y2", "y3"),
                 y_only = c(30L, 40L)
             )
         }
-        data <- switch(kind,
-            base = data,
-            tibble = tibble::as_tibble(data),
-            data.table = data.table::as.data.table(data)
-        )
         dataset_label(data) <- paste(side, "dataset")
         data <- set_dta_note(data, 2, paste(side, "note"))
         data <- set_dta_characteristic(data, "source", side)
         data[["shared"]] <- set_dta_note(
             data[["shared"]], 4, paste(side, "variable note")
         )
-        data
+        switch(kind,
+            base = as.data.frame(data),
+            tibble = tibble::as_tibble(data),
+            data.table = data.table::as.data.table(data)
+        )
     }
     kinds <- c("base", "tibble", "data.table")
     reference <- suppressWarnings(dta_merge(

@@ -52,19 +52,15 @@ test_that("copied dibbles share explicit metadata writes with aliases, including
     }
 })
 
-test_that("copy_data preserves ordinary containers and their column types", {
-    for (make in list(data.frame, tibble::tibble)) {
-        original <- make(
-            integer = 1:2,
-            double = c(1.5, 2.5),
-            string = c("a", "b"),
-            logical = c(TRUE, FALSE),
-            date = as.Date(c("2026-01-01", "2026-01-02")),
-            factor = factor(c("a", "b"))
-        )
-        copied <- copy_data(original)
-        expect_false(is_dibble(copied))
-        expect_identical(class(copied), class(original))
-        expect_identical(copied, original)
+test_that("copy_data rejects ordinary containers and leaves them unchanged", {
+    containers <- list(data.frame(x = 1:2), tibble::tibble(x = 1:2))
+    if (requireNamespace("data.table", quietly = TRUE)) {
+        containers <- c(containers, list(data.table::data.table(x = 1:2)))
+    }
+    for (original in containers) {
+        before <- serialize(original, NULL)
+        expect_error(copy_data(original), "must be a dibble")
+        expect_identical(serialize(original, NULL), before)
+        expect_false(inherits(original, "dtatools_ref_data"))
     }
 })

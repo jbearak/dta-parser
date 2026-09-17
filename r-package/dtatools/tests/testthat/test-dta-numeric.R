@@ -263,7 +263,7 @@ test_that("serialization preserves writable materialized values", {
 })
 
 test_that("stored public coercions are isolated from reference mutation", {
-    source <- data.frame(x = dta_byte(1:3))
+    source <- dibble(x = dta_byte(1:3))
     eager <- as.double(source$x)
     invisible(eager[[1]])
     lazy <- as.double(source$x)
@@ -277,14 +277,14 @@ test_that("stored public coercions are isolated from reference mutation", {
 })
 
 test_that("stored vctrs proxies are isolated from reference mutation", {
-    numeric_source <- data.frame(x = dta_byte(1:3))
+    numeric_source <- dibble(x = dta_byte(1:3))
     numeric_proxy <- vctrs::vec_proxy(numeric_source$x)
     replace_values(numeric_source, x, 9, where = 1)
     expect_identical(as.double(numeric_proxy), c(1, 2, 3))
 
     path <- fixture_with_temporal_storage("price")
     on.exit(unlink(path), add = TRUE)
-    temporal_source <- data.frame(x = read_dta(path)$price)
+    temporal_source <- dibble(x = read_dta(path)$price)
     before <- as.double(temporal_source$x)
     temporal_proxy <- vctrs::vec_proxy(temporal_source$x)
     replacement <- temporal_source$x[[2]]

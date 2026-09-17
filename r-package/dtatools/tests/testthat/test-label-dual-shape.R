@@ -39,8 +39,8 @@ test_that("the accessors read one column in the (data, variable) shape", {
 })
 
 test_that("a symbol names the column literally, not a caller variable", {
-    survey <- data.frame(status = c(1, 2), stratum = c(1, 1))
-    var_label(survey) <- list(status = "Interview status")
+    survey <- dibble(status = c(1, 2), stratum = c(1, 1))
+    set_var_labels(survey, status = "Interview status")
     status <- "stratum"
 
     expect_identical(var_label(survey, status), "Interview status")
@@ -88,7 +88,7 @@ test_that("set_var_label still rejects other non-data-frame calls", {
 })
 
 test_that("set_var_labels accepts the positional (data, variable) shape", {
-    survey <- data.frame(status = c(1, 2), stratum = c(1, 1))
+    survey <- dibble(status = c(1, 2), stratum = c(1, 1))
     status_name <- paste0("sta", "tus")
 
     set_var_labels(survey, status, "Interview status")
@@ -104,7 +104,7 @@ test_that("set_var_labels accepts the positional (data, variable) shape", {
 })
 
 test_that("set_val_labels accepts the positional (data, variable) shape", {
-    survey <- data.frame(status = c(1, 2), stratum = c(1, 1))
+    survey <- dibble(status = c(1, 2), stratum = c(1, 1))
     status_name <- paste0("sta", "tus")
     codes <- c(yes = 1, no = 2)
 
@@ -124,7 +124,7 @@ test_that("set_val_labels accepts the positional (data, variable) shape", {
 })
 
 test_that("the positional labels argument evaluates in the caller", {
-    survey <- data.frame(status = c(1, 2))
+    survey <- dibble(status = c(1, 2))
     status <- c(yes = 1, no = 2)
 
     # `status` on the right is the caller's vector, not the column.
@@ -133,7 +133,7 @@ test_that("the positional labels argument evaluates in the caller", {
 })
 
 test_that("every pre-existing setter convention still works", {
-    survey <- data.frame(status = c(1, 2), stratum = c(1, 1))
+    survey <- dibble(status = c(1, 2), stratum = c(1, 1))
     stratum_name <- "stratum"
 
     # Tagged dots.
@@ -173,7 +173,7 @@ test_that("every pre-existing setter convention still works", {
 })
 
 test_that("dots forwarded from a wrapper keep the tagged path", {
-    survey <- data.frame(status = c(1, 2))
+    survey <- dibble(status = c(1, 2))
     label_through_wrapper <- function(data, ...) {
         set_var_labels(data, ...)
     }
@@ -182,7 +182,7 @@ test_that("dots forwarded from a wrapper keep the tagged path", {
 })
 
 test_that("dots forwarded from a wrapper keep the positional shape", {
-    survey <- data.frame(status = c(1, 2))
+    survey <- dibble(status = c(1, 2))
     codes_through_wrapper <- function(data, ...) {
         set_val_labels(data, ...)
     }
@@ -191,7 +191,7 @@ test_that("dots forwarded from a wrapper keep the positional shape", {
 })
 
 test_that("a computed first argument still errors as before", {
-    survey <- data.frame(status = c(1, 2))
+    survey <- dibble(status = c(1, 2))
     expect_error(
         set_val_labels(survey, paste0("sta", "tus"), c(yes = 1)),
         "must have one non-empty name per update"
@@ -205,7 +205,7 @@ test_that("a computed first argument still errors as before", {
 })
 
 test_that("the positional shape validates the column and the labels", {
-    survey <- data.frame(status = c(1, 2))
+    survey <- dibble(status = c(1, 2))
     expect_error(
         set_var_labels(survey, absent, "Nope"), "Unknown column: absent"
     )

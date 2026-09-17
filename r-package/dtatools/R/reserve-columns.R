@@ -35,15 +35,16 @@
 #' prepares a separate table and therefore does not preserve those aliases. `read_dta()` and `read_arrow()` return
 #' prepared tables.
 #'
-#' @param data A dibble, tibble, base data frame, or data table. data.table
-#'   support requires data.table 1.18.2.1 or newer.
+#' @param data A dibble. Assign `data <- as_dibble(data)` to convert another
+#'   container first.
 #' @param n A finite, nonnegative whole number of spare column-pointer slots.
 #' @return A rebuilt table with the same container and `n` spare slots.
 #' @export
 #' @examples
-#' data <- reserve_columns(data.frame(x = 1:3))
+#' data <- reserve_columns(dibble(x = 1:3))
 #' gen(data, y = x + 1)
 reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
+    .require_mutation_target(data)
     .as_mutation_data(data, allow_grouped = TRUE)
     n <- .validate_alloccol(n, length(data))
     dibble <- is_dibble(data)
@@ -275,20 +276,21 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 1024L)) {
 #' from other containers; an ordinary dibble without additional container
 #' classes is returned as is.
 #'
-#' @param data A dibble, tibble, base data frame, or data table. data.table
-#'   support requires data.table 1.18.2.1 or newer.
+#' @param data A dibble. Assign `data <- as_dibble(data)` to convert another
+#'   container first.
 #' @param n A finite, nonnegative whole number of additional columns.
 #' @return `column_capacity()` returns one double, the total usable column
 #'   capacity or `NA_real_` for an unprepared allocation. Subtract `ncol(data)`
 #'   for spare slots. `can_add_columns()` returns one logical value.
 #' @export
 #' @examples
-#' data <- reserve_columns(data.frame(x = 1:3), n = 2)
+#' data <- reserve_columns(dibble(x = 1:3), n = 2)
 #' column_capacity(data) # three total slots
 #' can_add_columns(data, 2) # TRUE
 #' gen(data, y = x + 1)
 #' can_add_columns(data, 2) # FALSE
 column_capacity <- function(data) {
+    .require_mutation_target(data)
     .as_mutation_data(data, allow_grouped = TRUE)
     capacity <- .Call(C_dtatools_column_capacity, data)
     if (capacity < 0 || !.column_resize_ready(data)) NA_real_ else capacity
@@ -297,6 +299,7 @@ column_capacity <- function(data) {
 #' @rdname column_capacity
 #' @export
 can_add_columns <- function(data, n = 1L) {
+    .require_mutation_target(data)
     .as_mutation_data(data, allow_grouped = TRUE)
     n <- .validate_alloccol(n, length(data))
     !.has_column_overlay(data) && (n == 0 || .column_resize_ready(data)) && isTRUE(.Call(

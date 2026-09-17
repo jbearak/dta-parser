@@ -7,7 +7,7 @@
 rename_vars(data, ..., .names = NULL)
 }
 \arguments{
-\item{data}{An ungrouped data frame or tibble to mutate.}
+\item{data}{An ungrouped dibble to mutate.}
 
 \item{...}{Replacements of the form \code{new_name = old_name}, where
 \code{old_name} is a bare name or a string.}
@@ -36,7 +36,7 @@ Pass \code{.names} instead of \code{...} to replace every name at once, as
 visible column, in order.
 }
 \examples{
-survey <- data.frame(id = 1:2, v1 = c(20, 30))
+survey <- dibble(id = 1:2, v1 = c(20, 30))
 rename_vars(survey, age_years = v1)
 names(survey)
 rename_vars(survey, .names = toupper(names(survey)))
