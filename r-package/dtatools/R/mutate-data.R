@@ -116,8 +116,8 @@
 #' the group's selected-row count, or `.N`; anything else is an error
 #' naming the group's key values. The per-group results are gathered into
 #' one full-length assignment and written through the same path as an
-#' ungrouped call, so storage validation, compact patching, transactions,
-#' and data.table handling are unchanged. Rows a group's `where` does not
+#' ungrouped call, so storage validation, compact patching, and
+#' transactions are unchanged. Rows a group's `where` does not
 #' select are left alone by `replace_values()` and hold missing after
 #' `gen()`, which still appends the new column once.
 #'
@@ -663,7 +663,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # execute quasiquotation callbacks between those two validation moments.
 .mutation_fast_shape <- function(data) {
     .validate_mutation_container(data, allow_grouped = TRUE, allow_rowwise = FALSE)
-    if (.ordinary_data_table(data) || inherits(data, "grouped_df")) return(NULL)
+    if (inherits(data, "grouped_df")) return(NULL)
     rows <- abs(.row_names_info(data, 2L))
     if (isTRUE(.Call(C_dtatools_mutation_shape, data, rows))) rows else NULL
 }
@@ -1753,6 +1753,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         .dta_temporal_ptype(.declared_dta_storage(target), target)
     } else if (inherits(target, "dta_numeric")) {
         .dta_ptype(.declared_dta_storage(target), target)
+    } else if (inherits(target, "dta_string")) {
+        # Built from the declaration and metadata alone: subsetting a
+        # metadata copy of a dictionary-backed column would decode and copy
+        # the whole column to produce an empty prototype.
+        .new_dta_string(character(),
+            attr(target, "stata.string.storage", exact = TRUE), target)
     } else {
         # A supported owned prototype needs attributes, not the target values.
         # Forking its full read view would make every later private write copy.
@@ -1771,7 +1777,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # `selection`. `bysort` sorts the dataset here, once, as the grouped
 # `gen()` path does.
 .mutation_selection <- function(data, where, by, bysort) {
-    .reject_data_table_subclass(data)
     grouped_input <- inherits(data, "grouped_df")
     original <- .as_mutation_data(
         data, allow_grouped = TRUE, allow_rowwise = FALSE, private_views = TRUE
@@ -1812,7 +1817,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                          by = NULL, bysort = NULL, selection = NULL,
                          promote = FALSE, report_promotion = FALSE,
                          entry_shared = NULL, auto_grow = FALSE) {
-    .reject_data_table_subclass(data)
     if (generate && is.null(by) && is.null(bysort) && is.null(selection)) {
         direct <- .generate_direct_scalar(data, variable, values, where, auto_grow)
         if (!is.null(direct)) return(invisible(direct))
@@ -1834,7 +1838,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                 allow_rowwise = FALSE, private_views = TRUE)
         }
     } else {
-        .prepare_column_operation(data, length(data), names_change = FALSE)
+        .prepare_column_operation(data, length(data))
     }
     groups <- if (!is.null(selection)) {
         selection$groups
@@ -1909,11 +1913,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                 fused$scalar, replacement_plan$values,
                 replacement_plan$scalar, .mutation_threads()
             )
-            patched <- if (.ordinary_data_table(data)) {
-                .data_table_fused_replace_commit(data, .physical_alias_names(data, target$location), patch)
-            } else {
-                patch()
-            }
+            patched <- patch()
             if (!is.null(patched)) {
                 return(invisible(data))
             }
@@ -1930,11 +1930,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         )
         .prepare_column_operation(data, length(data) + 1L)
         state <- .reference_state(data)
-        if (.ordinary_data_table(data)) {
-            columns <- .data_columns(data)
-            columns[[target$name]] <- column
-            return(.install_column_selection(data, original, columns))
-        }
         if (is.null(state)) state <- .new_reference_state(data)
     } else {
         if (is.null(access)) access <- .column_access(data)
@@ -1971,14 +1966,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             if (report_promotion) {
                 .report_storage_promotion(target$name, column, promoted)
             }
-            commit <- function() {
-                .set_data_column_at(access, target$location, promoted)
-            }
-            if (.ordinary_data_table(data)) {
-                .data_table_replace_commit(data, target$name, commit)
-            } else {
-                commit()
-            }
+            .set_data_column_at(access, target$location, promoted)
             if (grouped_input) .regroup_after_replacement(data, state)
             return(invisible(data))
         }
@@ -2004,14 +1992,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             C_dtatools_patch_slot, data, as.integer(target$location),
             rows, replacement, shared[[target$location]]
         )
-        # The native patcher still validates strict scalar replacements for
-        # an empty selection; do not invalidate lookup state without a write.
-        if (.ordinary_data_table(data) &&
-                      .mutation_selected_count(rows, original$nrow) > 0L) {
-            .data_table_replace_commit(data, .physical_alias_names(data, target$location), patch)
-        } else {
-            patch()
-        }
+        patch()
         # Rebuild after every grouped replacement, not only one that names
         # a grouping column: a target can share its vector with a key
         # under the package's alias semantics, so the key may have changed
@@ -2036,10 +2017,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     if (.is_unmaterialized_numeric_altrep(column)) .deep_copy_value(column) else .metadata_copy(column)
 }
 
-.physical_alias_names <- function(data, location) {
-    .Call(C_dtatools_identical_slot_names, data, as.integer(location))
-}
-
 .aliased_column_names <- function(data, column) {
     address <- rlang::obj_address(column)
     matches <- vapply(seq_along(data), function(index) {
@@ -2055,45 +2032,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     .Call(C_dtatools_replace_reference_columns, data, NULL, locations,
           rep(NA_character_, length(locations)), rep(list(after), length(locations)))
     invisible(NULL)
-}
-
-.data_table_fused_replace_commit <- function(data, target, patch) {
-    key_columns <- data.table::key(data)
-    index_columns <- data.table::indices(data, vectors = TRUE)
-    affected_indexes <- vapply(
-        index_columns, function(columns) any(target %in% columns), logical(1)
-    )
-    suspendInterrupts({
-        result <- patch()
-        if (!isTRUE(result)) return(result)
-        key_changed <- any(target %in% key_columns)
-        if (key_changed) data.table::setkeyv(data, NULL)
-        if (key_changed || any(affected_indexes)) {
-            retained <- index_columns[!affected_indexes]
-            data.table::setindexv(data, NULL)
-            for (columns in retained) data.table::setindexv(data, columns)
-        }
-        result
-    })
-}
-
-.data_table_replace_commit <- function(data, target, patch) {
-    key_columns <- data.table::key(data)
-    index_columns <- data.table::indices(data, vectors = TRUE)
-    affected_indexes <- vapply(
-        index_columns, function(columns) any(target %in% columns), logical(1)
-    )
-    suspendInterrupts({
-        result <- patch()
-        key_changed <- any(target %in% key_columns)
-        if (key_changed) data.table::setkeyv(data, NULL)
-        if (key_changed || any(affected_indexes)) {
-            retained <- index_columns[!affected_indexes]
-            data.table::setindexv(data, NULL)
-            for (columns in retained) data.table::setindexv(data, columns)
-        }
-        result
-    })
 }
 
 .generated_numeric_class_supported <- function(values) {
@@ -2290,12 +2228,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 copy_data <- function(data) {
     .require_mutation_target(data)
     .as_mutation_data(data, allow_grouped = TRUE)
-    data_table <- .ordinary_data_table(data)
     snapshot <- .reference_snapshot(data)
     source <- .as_mutation_data(snapshot, allow_grouped = TRUE)
     snapshot_columns <- source$columns
     snapshot_attributes <- attributes(snapshot)
-    if (data_table) snapshot_attributes$.internal.selfref <- NULL
     reference_values <- c(snapshot_columns, unname(snapshot_attributes))
     if (any(vapply(
         reference_values, .contains_reference_object, logical(1)
@@ -2313,20 +2249,23 @@ copy_data <- function(data) {
         snapshot_attributes, .deep_copy_value
     )
     attributes(columns) <- copied_attributes
-    if (data_table) return(data.table::setalloccol(columns,
-        n = .validate_alloccol(getOption("dtatools.alloccol", 1024L), length(columns))))
     .as_dibble(columns, "copy_data()")
 }
 
+# A column read must not make the next by-reference write copy: wrapping
+# the vector in `list()` on the way out would mark its handle shared, so
+# the absent case is signalled with a sentinel instead.
+.absent_column <- new.env(parent = emptyenv())
+
 .reference_column <- function(data, name) {
     value <- .subset2(data, name)
-    if (is.null(value)) NULL else list(value)
+    if (is.null(value)) .absent_column else value
 }
 
 #' @export
 `$.dibble` <- function(x, name) {
     found <- .reference_column(x, as.character(name))
-    if (!is.null(found)) return(found[[1L]])
+    if (!identical(found, .absent_column)) return(found)
     call <- sys.call()
     call[[1L]] <- quote(`$`)
     call[[2L]] <- .reference_snapshot(x)
@@ -2346,7 +2285,7 @@ copy_data <- function(data) {
         }
         if (!is.null(name)) {
             found <- .reference_column(x, name)
-            if (!is.null(found)) return(found[[1L]])
+            if (!identical(found, .absent_column)) return(found)
         }
     }
     .reference_snapshot(x)[[i, ..., exact = exact]]

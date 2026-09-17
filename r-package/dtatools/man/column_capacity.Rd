@@ -23,9 +23,8 @@ for spare slots. \code{can_add_columns()} returns one logical value.
 \description{
 \code{column_capacity()} reports the total number of columns the supplied table
 can hold in its current resizable allocation. It returns \code{NA_real_} when
-that allocation is absent, including after base R serialization. For a
-data.table both its list and its names must have resizable capacity and
-its self-reference must be valid. A zero-column table reserved with
+that allocation is absent, including after base R serialization. A
+zero-column table reserved with
 \code{n = 0} has no resizable allocation and also reports \code{NA_real_}.
 }
 \details{
@@ -33,10 +32,8 @@ its self-reference must be valid. A zero-column table reserved with
 \code{n} columns without rebuilding the supplied table. A prepared table with
 zero spare slots accepts \code{n = 0} but rejects \code{n = 1}. An ordinary unprepared
 table also accepts \code{n = 0}, because no additions are requested. This does
-not promise readiness for every structural helper: column-name edits on
-a data.table also need its valid self-reference. Nor does it promise that
-columns can be dropped. Shrinking requires a resizable allocation too. Legacy tables
-with columns outside their physical list always return \code{FALSE}.
+not promise that columns can be dropped: shrinking requires a resizable
+allocation too.
 
 These queries do not repair a table, test its dibble type, or validate its
 dibble reference-ownership bookkeeping. A copied or serialized dibble can retain

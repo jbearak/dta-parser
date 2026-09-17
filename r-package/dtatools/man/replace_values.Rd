@@ -183,8 +183,8 @@ the within-group row number. Per group, \code{values} must have size one,
 the group's selected-row count, or \code{.N}; anything else is an error
 naming the group's key values. The per-group results are gathered into
 one full-length assignment and written through the same path as an
-ungrouped call, so storage validation, compact patching, transactions,
-and data.table handling are unchanged. Rows a group's \code{where} does not
+ungrouped call, so storage validation, compact patching, and
+transactions are unchanged. Rows a group's \code{where} does not
 select are left alone by \code{replace_values()} and hold missing after
 \code{gen()}, which still appends the new column once.
 

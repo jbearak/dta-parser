@@ -109,13 +109,14 @@ tbl2 <- dplyr::mutate(tbl, adjusted = income * 1.1)   # a copy; `adjusted` is a 
 tbl$region <- 1:nrow(tbl)                             # a copy; nothing else sees it
 tbl[income < 0, income := NA]                         # error: tibbles have no `:=`
 
-tbl <- reserve_columns(tbl)             # assign preparation before growth
-gen(tbl, flag = income > 0)               # by reference — and `tbl` is still a tibble
+gen(tbl, flag = income > 0)                           # error: `data` must be a dibble
+tbl <- as_dibble(tbl)                                 # explicit conversion
+gen(tbl, flag = income > 0)                           # by reference on the new dibble
 ```
 
-This example reserves capacity before `gen()`. `tbl` remains a tibble and includes `flag`; existing columns keep their classes and `flag` keeps the logical type of its expression. `is_dibble(tbl)` remains `FALSE`. `tbl <- as_dibble(tbl)` explicitly asks for a Stata-typed dataset. Without prior reservation, generation prepares a new table automatically by default and warns about alias separation. Strict mode requires assigned preparation instead.
+The tibble half of the example never mutates anything: dplyr verbs and `$<-` return copies, and the by-reference helpers refuse the tibble with an error that names the recovery. Assigning `tbl <- as_dibble(tbl)` is the explicit step that asks for a Stata-typed dataset; from then on `is_dibble(tbl)` is `TRUE`, `gen()` writes in place, and `flag` keeps the logical type of its expression. The conversion is a copy, so `survey` and the original snapshot are unchanged.
 
-One consequence to expect: the expressions `gen()` evaluates on a tibble see the tibble's own columns, so `gen(tbl, n = .N, by = g)` on a bare character `g` treats `NA` and `""` as two groups. In a dibble they are one Stata string value and one group. Stata's collation applies where a Stata dataset is.
+One consequence of conversion to expect: bare character columns become Stata strings, so `gen(tbl, n = .N, by = g)` treats `NA` and `""` in `g` as one Stata string value and one group, where dplyr on the tibble would have counted two. Stata's collation applies where a Stata dataset is.
 
 ## Restrictions
 
@@ -125,10 +126,10 @@ Explicit helpers accept complete ordinary class chains plus dtatools' metadata a
 
 Assign `data <- as_dibble(data)` to explicitly convert an unsupported subclass. Conversion removes additional container classes, keeps recognized grouped or rowwise structure and dataset metadata, and gives bare numeric/string columns Stata storage. It leaves the source unchanged and does not claim to preserve the removed subclass's invariants. An ordinary dibble is returned as is. A data.table is copied into a fresh tibble with its keys, indexes, allocation capacity, and self-reference left behind. Those properties are runtime state and are never stored in `.arrow` files.
 
-| Explicit helper family | Ungrouped ordinary containers | Grouped tibble or dibble | Rowwise tibble or dibble |
+| Explicit helper family | Ungrouped dibble | Grouped dibble | Rowwise dibble |
 | --- | --- | --- | --- |
 | `gen()`, `egen()`, `replace_values()` / `repl()` | By reference | By reference, using dplyr groups | Error |
-| Dibble bracket `:=` | By reference on dibbles | By reference on dibbles | Error |
+| Dibble bracket `:=` | By reference | By reference | Error |
 | `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()` | By reference | Error; ungroup first | Error; ungroup first |
 | `reorder_dta_rows()` | By reference | Error; ungroup first | Error; ungroup first |
 | Label, display-format, generic metadata, note and characteristic setters, including add/drop/renumber variants | By reference | By reference; groups retained | By reference; groups retained |
@@ -137,7 +138,7 @@ Assign `data <- as_dibble(data)` to explicitly convert an unsupported subclass. 
 
 Group rows must form a valid partition in physical row order and match distinct stored group keys. Rowwise identifiers may repeat. When ordinary edits have made that metadata stale, assign `data <- dplyr::ungroup(data)` and group again. For structural edits, assign ungrouping first and then `data <- reserve_columns(data)` if preparation is needed. No helper silently drops grouping.
 
-Dropping a data.table's last column produces a zero-row, zero-column data.table, matching its own empty-table convention. Stored row names, serialization, conversion, and later generation all use zero rows. Dropping the last column of a base data frame, tibble, or dibble retains its row count; later generation fills that many rows.
+Dropping a dibble's last column retains its row count; later generation fills that many rows.
 
 ## See also
 
@@ -156,9 +157,7 @@ before calling it. Set `options(dtatools.auto_grow = FALSE)` to make insufficien
 capacity an error instead. `column_capacity(data)` reports current usable slots;
 base serialization and ordinary copies can discard capacity. `keep_vars()` and
 `drop_vars()` still require a resizable allocation to shrink. Renaming, ordering,
-value replacement, and metadata edits need no spare slots. A copied or serialized
-data.table needs valid self-reference for column-name edits; assigned preparation
-repairs it when the operation does not add columns. See
+value replacement, and metadata edits need no spare slots. See
 [column capacity and aliases](r-mutation-by-reference.md) for the query and
 preparation contracts.
 

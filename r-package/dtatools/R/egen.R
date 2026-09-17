@@ -135,9 +135,7 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         )
         columns <- as.list(columns)
     }
-    result <- .install_column_selection(data, original, columns,
-        source_names = if (is.null(group_plan$order)) names(columns) else
-            rep(NA_character_, length(columns)))
+    result <- .install_column_selection(data, original, columns)
     .return_mutation(original_data, result, if (is.null(destination)) target_expr else destination, parent.frame())
 }
 

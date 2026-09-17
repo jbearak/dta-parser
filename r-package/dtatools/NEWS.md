@@ -12,8 +12,17 @@
   and legacy overlay reference state is no longer read. `is_dibble()` now
   tests the `dibble` class alone, so serialized objects from before that
   class existed are ordinary tibbles until `as_dibble()` rebuilds them.
-  Copying operations, the readers and the writers accept every container as
-  before. See ADR 0036.
+  Copying operations such as `slice_dta_rows()` and `dta_merge()`, the
+  readers and the writers accept every container as before; `copy_data()`
+  is the exception, because it copies a dibble's reference state. The data.table-specific mutation paths (key and index maintenance
+  after a write, self-reference repair, `setalloccol()` preparation) are
+  removed with the behaviour they supported. See ADR 0036.
+* Reading a dibble column with `$` or `[[` no longer makes the next
+  by-reference write to that column copy its payload. The accessors handed
+  the column back inside a temporary list, which marked its handle shared;
+  a `repl()` after `data$x` therefore paid a full copy of a compact column.
+* A sparse `repl()` into a dictionary-backed Stata string column no longer
+  decodes and copies the whole column to build the empty cast prototype.
 * Reader optimizations are now enabled by default. `read_dta()` reuses prepared
   decode plans and selected-file handles, batches all numeric storage widths,
   and overlaps eligible parallel reads through four bounded input buffers.

@@ -20,14 +20,12 @@ See \link{mutation-containers} for supported classes, grouping and conversion.
 \code{reserve_columns()} returns an isolated table with \code{n} spare column
 pointer slots. Compact columns and owned ordinary doubles share backing
 until a write needs isolation. Other ordinary columns are copied. Assign the returned
-table. The container and column storage are preserved. Legacy tables with
-columns stored outside their physical list are rebuilt into one complete
-list, and serialized dibbles get fresh current-object bookkeeping.
+table. The column storage is preserved, and a serialized dibble gets
+fresh current-object bookkeeping.
 }
 \details{
 Package-controlled allocation reserves 1,024 spare slots by default.
 Set \code{options(dtatools.alloccol = 2048L)} to request a different default.
-Paths that delegate allocation to data.table use its own allocation option.
 By default, \code{\link[=gen]{gen()}}, \code{\link[=egen]{egen()}} and dibble \verb{:=} automatically call this
 preparation when adding columns needs more room. They warn when rebuilding,
 and reserve all requested additions plus the configured spare slots. The
@@ -42,8 +40,6 @@ resizable allocation. \code{keep_vars()} and \code{drop_vars()} validate their c
 selections first, then check capacity before a commit. A validated keep-all
 selection does not resize the table. Renaming, ordering,
 and overwriting existing columns and editing metadata need no spare slots.
-Column-name edits on a data.table also need its valid self-reference;
-assign preparation after copying or serialization if that check fails.
 Inspect \code{\link[=column_capacity]{column_capacity()}} and \code{\link[=can_add_columns]{can_add_columns()}} before growth.
 
 Base R serialization discards spare capacity. After \code{readRDS()} or

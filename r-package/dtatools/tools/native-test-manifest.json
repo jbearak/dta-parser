@@ -3525,7 +3525,7 @@
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
-          "sha256": "838bbd18a3e7f01e5993757003e636541013e394b14902bf95aea01ebe830fc5"
+          "sha256": "22532eeb2b22ba68ab94f461caab340c679d4d776ea63a52f055319cf6fc4844"
         },
         {
           "path": "tests/testthat/test-owned-reads.R",
@@ -4368,6 +4368,22 @@
           "warnings": 0
         },
         {
+          "file": "test-owned-columns.R",
+          "test": "reading a column with $ or [[ leaves its handle private for the next write",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 1
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "a sparse write into a dictionary-backed Stata string allocates only its result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
           "file": "test-owned-reads.R",
           "test": "owned integer and logical exports preserve base values and argument evaluation",
           "occurrence": 1,
@@ -4700,7 +4716,7 @@
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
-          "sha256": "2dcdba66290720b00c1841f1d98953954f45b7af22e5ab191696b2ba021cc5f8"
+          "sha256": "ea355738130d0cc41e409d06982b51e49edc7ef192a2121a1a6383d01ccb6a0a"
         },
         {
           "path": "tests/testthat/test-reserve-columns.R",
@@ -5794,6 +5810,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-containers.R",
+          "test": "a data.table carrying the dibble classes is rejected before any write",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
           "warnings": 0
         },
         {
@@ -11060,6 +11084,16 @@
           "reason": "capabilities(profmem) is FALSE",
           "min_pass_before_skip": 0,
           "skip_message": "Reason: R was built without memory profiling",
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "a sparse write into a dictionary-backed Stata string allocates only its result",
+          "occurrence": 1,
+          "skip": "require",
+          "reason": "capabilities(profmem) is FALSE",
+          "min_pass_before_skip": 0,
+          "skip_message": "Reason: capabilities(\"profmem\") is not TRUE",
           "warnings": 0
         }
       ],
