@@ -25,6 +25,9 @@
 
 /* Internal linkage across units, invisible outside the shared object: a
    foreign library exporting the same generic name must not preempt these. */
+/* Hidden visibility keeps these ELF/Mach-O symbols out of the dynamic table.
+   Windows ignores the attribute and would export every external symbol, so
+   dtatools-win.def restricts the DLL export table to R_init_dtatools. */
 #define DTATOOLS_INTERNAL attribute_hidden
 
 /* Descriptors shared across units, including the layouts mirrored in Rust. */
