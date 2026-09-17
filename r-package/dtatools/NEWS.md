@@ -12,8 +12,9 @@
   and legacy overlay reference state is no longer read. `is_dibble()` now
   tests the `dibble` class alone, so serialized objects from before that
   class existed are ordinary tibbles until `as_dibble()` rebuilds them.
-  Copying operations, the readers and the writers accept every container as
-  before. The data.table-specific mutation paths (key and index maintenance
+  Copying operations such as `slice_dta_rows()` and `dta_merge()`, the
+  readers and the writers accept every container as before; `copy_data()`
+  is the exception, because it copies a dibble's reference state. The data.table-specific mutation paths (key and index maintenance
   after a write, self-reference repair, `setalloccol()` preparation) are
   removed with the behaviour they supported. See ADR 0036.
 * Reading a dibble column with `$` or `[[` no longer makes the next

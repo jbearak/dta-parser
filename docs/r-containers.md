@@ -109,13 +109,14 @@ tbl2 <- dplyr::mutate(tbl, adjusted = income * 1.1)   # a copy; `adjusted` is a 
 tbl$region <- 1:nrow(tbl)                             # a copy; nothing else sees it
 tbl[income < 0, income := NA]                         # error: tibbles have no `:=`
 
-tbl <- reserve_columns(tbl)             # assign preparation before growth
-gen(tbl, flag = income > 0)               # by reference — and `tbl` is still a tibble
+gen(tbl, flag = income > 0)                           # error: `data` must be a dibble
+tbl <- as_dibble(tbl)                                 # explicit conversion
+gen(tbl, flag = income > 0)                           # by reference on the new dibble
 ```
 
-This example reserves capacity before `gen()`. `tbl` remains a tibble and includes `flag`; existing columns keep their classes and `flag` keeps the logical type of its expression. `is_dibble(tbl)` remains `FALSE`. `tbl <- as_dibble(tbl)` explicitly asks for a Stata-typed dataset. Without prior reservation, generation prepares a new table automatically by default and warns about alias separation. Strict mode requires assigned preparation instead.
+The tibble half of the example never mutates anything: dplyr verbs and `$<-` return copies, and the by-reference helpers refuse the tibble with an error that names the recovery. Assigning `tbl <- as_dibble(tbl)` is the explicit step that asks for a Stata-typed dataset; from then on `is_dibble(tbl)` is `TRUE`, `gen()` writes in place, and `flag` keeps the logical type of its expression. The conversion is a copy, so `survey` and the original snapshot are unchanged.
 
-One consequence to expect: the expressions `gen()` evaluates on a tibble see the tibble's own columns, so `gen(tbl, n = .N, by = g)` on a bare character `g` treats `NA` and `""` as two groups. In a dibble they are one Stata string value and one group. Stata's collation applies where a Stata dataset is.
+One consequence of conversion to expect: bare character columns become Stata strings, so `gen(tbl, n = .N, by = g)` treats `NA` and `""` in `g` as one Stata string value and one group, where dplyr on the tibble would have counted two. Stata's collation applies where a Stata dataset is.
 
 ## Restrictions
 
