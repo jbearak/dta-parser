@@ -1,3 +1,8 @@
+#ifndef DTATOOLS_EGEN_GROUPS_H
+#define DTATOOLS_EGEN_GROUPS_H
+
+#include "dtatools-internal.h"
+
 /* Stable multicolumn ordering over compact readers. Scratch space contains
  * row positions and cached UTF-8 references. Source columns stay compact. */
 #include <R_ext/Memory.h>
@@ -27,7 +32,7 @@ static int egen_key_compare(egen_key_reader *keys, R_xlen_t count,
     return 0;
 }
 
-static SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
+SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
                                SEXP allow_nan) {
     if (TYPEOF(columns) != VECSXP || XLENGTH(columns) == 0)
         Rf_error("Supply at least one grouping column");
@@ -137,3 +142,5 @@ static SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
     UNPROTECT(7);
     return result;
 }
+
+#endif /* DTATOOLS_EGEN_GROUPS_H */

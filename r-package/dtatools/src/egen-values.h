@@ -1,3 +1,8 @@
+#ifndef DTATOOLS_EGEN_VALUES_H
+#define DTATOOLS_EGEN_VALUES_H
+
+#include "dtatools-internal.h"
+
 /* Numeric egen calculations share the compact reader with mutation. Readers
    use element access for foreign ALTREP inputs and never request DATAPTR. */
 static double egen_numeric_at(const numeric_reader *reader, R_xlen_t index,
@@ -113,3 +118,5 @@ SEXP C_dtatools_egen_rows(SEXP columns, SEXP operation, SEXP missing,
     UNPROTECT(3);
     return owned;
 }
+
+#endif /* DTATOOLS_EGEN_VALUES_H */

@@ -1,3 +1,8 @@
+#ifndef DTATOOLS_OWNED_COLUMNS_H
+#define DTATOOLS_OWNED_COLUMNS_H
+
+#include "dtatools-internal.h"
+
 /* Ordinary atomic backing. Included by init.c so capture, forks and private
    writes share the same implementation. The payload stays on R's vector heap;
    handles retain it through their backing record, without a global registry.
@@ -12,26 +17,25 @@ static double owned_string_scanned_values = 0;
 /* Non-owning measurement counters. Durable payload is on R's heap; these
    counters also expose native scratch/journal costs that Rprofmem cannot see. */
 static double owned_capture_bytes = 0;
-static double compact_copy_bytes = 0;
-static double mutation_target_copy_bytes = 0;
-static double staged_new_bytes = 0;
-static double old_journal_bytes = 0;
-static double native_scratch_allocated = 0;
+double compact_copy_bytes = 0;
+double mutation_target_copy_bytes = 0;
+double staged_new_bytes = 0;
+double old_journal_bytes = 0;
+double native_scratch_allocated = 0;
 
-enum { OWNED_SHARED, OWNED_EXPOSED, OWNED_NO_NA, OWNED_MAX_WIDTH, OWNED_WIDTH_EXACT, OWNED_FLAGS_SIZE };
 
-static int owned_real(SEXP value) {
+int owned_real(SEXP value) {
     return ALTREP(value) && R_altrep_inherits(value, dtatools_owned_real_class);
 }
 
-static int owned_column(SEXP value) {
+int owned_column(SEXP value) {
     return owned_real(value) || (ALTREP(value) &&
         (R_altrep_inherits(value, dtatools_owned_integer_class) ||
          R_altrep_inherits(value, dtatools_owned_logical_class) ||
          R_altrep_inherits(value, dtatools_owned_string_class)));
 }
 
-static R_altrep_class_t owned_class(SEXPTYPE type) {
+R_altrep_class_t owned_class(SEXPTYPE type) {
     switch (type) {
     case REALSXP: return dtatools_owned_real_class;
     case INTSXP: return dtatools_owned_integer_class;
@@ -47,11 +51,11 @@ static size_t owned_width(SEXP value) {
         TYPEOF(value) == STRSXP ? sizeof(SEXP) : sizeof(int);
 }
 
-static SEXP owned_values(SEXP value) {
+SEXP owned_values(SEXP value) {
     return R_ExternalPtrProtected(R_altrep_data1(value));
 }
 
-static int *owned_flags(SEXP value) {
+int *owned_flags(SEXP value) {
     return INTEGER(R_ExternalPtrTag(R_altrep_data1(value)));
 }
 
@@ -76,7 +80,7 @@ static SEXP owned_record(SEXP values) {
 
 /* Call only at a native allocation's completion, before publishing values or
    retaining a writer. R callers must use capture; they cannot assert freshness. */
-static SEXP owned_adopt(SEXP values) {
+SEXP owned_adopt(SEXP values) {
     if (ALTREP(values) || (TYPEOF(values) != REALSXP && TYPEOF(values) != INTSXP &&
         TYPEOF(values) != LGLSXP && TYPEOF(values) != STRSXP)) {
         Rf_error("invalid native ordinary-column adoption");
@@ -89,12 +93,12 @@ static SEXP owned_adopt(SEXP values) {
     return result;
 }
 
-static SEXP owned_adopt_real(SEXP values) {
+SEXP owned_adopt_real(SEXP values) {
     if (TYPEOF(values) != REALSXP) Rf_error("invalid native ordinary-double adoption");
     return owned_adopt(values);
 }
 
-static int known_numeric_classes(SEXP value, int compact) {
+int known_numeric_classes(SEXP value, int compact) {
     if (TYPEOF(value) != REALSXP || Rf_getAttrib(value, R_DimSymbol) != R_NilValue) return 0;
     SEXP classes = Rf_getAttrib(value, R_ClassSymbol);
     if (classes == R_NilValue) return 1;
@@ -118,11 +122,11 @@ static int known_numeric_classes(SEXP value, int compact) {
     return 1;
 }
 
-static int owned_real_supported(SEXP value) {
+int owned_real_supported(SEXP value) {
     return known_numeric_classes(value, 0) && (!ALTREP(value) || owned_real(value));
 }
 
-static int owned_supported(SEXP value) {
+int owned_supported(SEXP value) {
     if (TYPEOF(value) == REALSXP) return owned_real_supported(value);
     if (Rf_getAttrib(value, R_DimSymbol) != R_NilValue ||
         (ALTREP(value) && !owned_column(value))) return 0;
@@ -155,7 +159,7 @@ static int owned_string_width(SEXP value) {
     return width;
 }
 
-static void owned_scan_strings(SEXP value) {
+void owned_scan_strings(SEXP value) {
     SEXP record = PROTECT(R_altrep_data1(value));
     SEXP payload = R_ExternalPtrProtected(record);
     int no_na = 1, maximum = 0;
@@ -177,7 +181,7 @@ static void owned_scan_strings(SEXP value) {
 /* Copy values into a new private record, retaining metadata only on its handle.
    Foreign element/region readers may call R; the source remains rooted by the
    caller and facts are inherited only from unexposed internal owned storage. */
-static SEXP owned_capture(SEXP value) {
+SEXP owned_capture(SEXP value) {
     R_xlen_t length = XLENGTH(value);
     SEXP values = PROTECT(Rf_allocVector(TYPEOF(value), length));
     switch (TYPEOF(value)) {
@@ -212,12 +216,12 @@ static SEXP owned_capture(SEXP value) {
     return result;
 }
 
-static SEXP owned_capture_real(SEXP value) { return owned_capture(value); }
+SEXP owned_capture_real(SEXP value) { return owned_capture(value); }
 
 /* Return an isolated metadata handle. Share only tracked, unexposed backing and
    permanently mark that record shared; otherwise capture values. Dropping a
    temporary fork cannot prove that every other handle has disappeared. */
-static SEXP owned_fork(SEXP value) {
+SEXP owned_fork(SEXP value) {
     if (!owned_column(value) || owned_flags(value)[OWNED_EXPOSED]) return owned_capture(value);
     SEXP result = PROTECT(R_new_altrep(owned_class(TYPEOF(value)), R_altrep_data1(value), R_NilValue));
     SHALLOW_DUPLICATE_ATTRIB(result, value);
@@ -228,7 +232,7 @@ static SEXP owned_fork(SEXP value) {
 
 static SEXP owned_fork_real(SEXP value) { return owned_fork(value); }
 
-static SEXP C_dtatools_capture_column(SEXP value) {
+SEXP C_dtatools_capture_column(SEXP value) {
     if (!owned_supported(value)) return value;
     SEXP result = PROTECT(owned_fork(value));
     /* Public ingress has already normalized declarations. Prime facts on the
@@ -245,7 +249,7 @@ static SEXP C_dtatools_capture_column(SEXP value) {
 /* R's attribute-only copy may wrap a large ALTREP in a generic metadata
    wrapper. Package string construction already owns its copy boundary; keep
    that independent handle here so restoration retains the backing facts. */
-static SEXP C_dtatools_owned_string_attribute(SEXP value, SEXP name, SEXP replacement) {
+SEXP C_dtatools_owned_string_attribute(SEXP value, SEXP name, SEXP replacement) {
     if (TYPEOF(value) != STRSXP || !owned_column(value)) return R_NilValue;
     if (TYPEOF(name) != STRSXP || ALTREP(name) || ANY_ATTRIB(name) ||
         XLENGTH(name) != 1 || STRING_ELT(name, 0) == NA_STRING) return R_NilValue;
@@ -263,7 +267,7 @@ static SEXP C_dtatools_owned_string_attribute(SEXP value, SEXP name, SEXP replac
 
 /* A subset upper bound proves wide declarations, but a narrow declaration
    needs an exact maximum before it can be rejected. Exposed backing is rescanned. */
-static SEXP C_dtatools_owned_string_fits(SEXP value, SEXP width) {
+SEXP C_dtatools_owned_string_fits(SEXP value, SEXP width) {
     if (TYPEOF(value) != STRSXP || !owned_column(value) || !owned_supported(value)) return R_NilValue;
     double limit = Rf_asReal(width);
     int *flags = owned_flags(value);
@@ -272,14 +276,14 @@ static SEXP C_dtatools_owned_string_fits(SEXP value, SEXP width) {
     return Rf_ScalarLogical(flags[OWNED_NO_NA] && flags[OWNED_MAX_WIDTH] <= limit);
 }
 
-static SEXP C_dtatools_owned_string_width(SEXP value) {
+SEXP C_dtatools_owned_string_width(SEXP value) {
     if (TYPEOF(value) != STRSXP || !owned_column(value) || !owned_supported(value)) return R_NilValue;
     int *flags = owned_flags(value);
     if (flags[OWNED_EXPOSED] || flags[OWNED_NO_NA] < 0 || !flags[OWNED_WIDTH_EXACT]) owned_scan_strings(value);
     return Rf_ScalarInteger(flags[OWNED_NO_NA] ? (flags[OWNED_MAX_WIDTH] > 1 ? flags[OWNED_MAX_WIDTH] : 1) : NA_INTEGER);
 }
 
-static SEXP C_dtatools_owned_scan_stats(SEXP reset) {
+SEXP C_dtatools_owned_scan_stats(SEXP reset) {
     SEXP result = PROTECT(Rf_allocVector(REALSXP, 2));
     REAL(result)[0] = owned_string_scans;
     REAL(result)[1] = owned_string_scanned_values;
@@ -288,7 +292,7 @@ static SEXP C_dtatools_owned_scan_stats(SEXP reset) {
     return result;
 }
 
-static SEXP C_dtatools_is_owned_double(SEXP value) {
+SEXP C_dtatools_is_owned_double(SEXP value) {
     return Rf_ScalarLogical(owned_real(value) && owned_real_supported(value));
 }
 
@@ -296,13 +300,13 @@ static int owned_bare_real(SEXP value) {
     return owned_real(value) && !Rf_isObject(value) && !ANY_ATTRIB(value);
 }
 
-static SEXP C_dtatools_owned_bare(SEXP value) {
+SEXP C_dtatools_owned_bare(SEXP value) {
     return Rf_ScalarLogical(owned_bare_real(value));
 }
 
 /* R's range argument flattening repeatedly requests a writable pointer.
    Give that R call an independent ordinary snapshot, never the owned payload. */
-static SEXP C_dtatools_owned_plain_snapshot(SEXP value) {
+SEXP C_dtatools_owned_plain_snapshot(SEXP value) {
     if (!owned_real(value)) return R_NilValue;
     SEXP payload = PROTECT(owned_values(value));
     R_xlen_t length = XLENGTH(payload);
@@ -317,7 +321,7 @@ static SEXP C_dtatools_owned_plain_snapshot(SEXP value) {
 /* Public integer/logical exports discard attributes. Using an explicit seam
    keeps generic ALTREP coercion's attribute and warning order unchanged.
    R allocates a fresh ordinary result for these two target types. */
-static SEXP C_dtatools_owned_coerce(SEXP value, SEXP logical) {
+SEXP C_dtatools_owned_coerce(SEXP value, SEXP logical) {
     if (!owned_real(value)) return R_NilValue;
     SEXPTYPE type = Rf_asLogical(logical) == TRUE ? LGLSXP : INTSXP;
     SEXP payload = PROTECT(owned_values(value));
@@ -328,7 +332,7 @@ static SEXP C_dtatools_owned_coerce(SEXP value, SEXP logical) {
 
 /* Only bare handles qualify. Named, shaped and classed values keep base R's
    attribute and method dispatch behavior in the R fallback. */
-static SEXP C_dtatools_owned_missing_mask(SEXP value) {
+SEXP C_dtatools_owned_missing_mask(SEXP value) {
     if (!owned_bare_real(value)) return R_NilValue;
     SEXP payload = PROTECT(owned_values(value));
     R_xlen_t length = XLENGTH(payload);
@@ -432,7 +436,7 @@ static SEXP owned_real_subset(SEXP value, SEXP index, SEXP call) {
     return result;
 }
 
-static SEXP C_dtatools_owned_info(SEXP value) {
+SEXP C_dtatools_owned_info(SEXP value) {
     if (!owned_column(value)) return R_NilValue;
     SEXP result = PROTECT(Rf_allocVector(VECSXP, 5));
     SEXP names = PROTECT(Rf_allocVector(STRSXP, 5));
@@ -450,7 +454,7 @@ static SEXP C_dtatools_owned_info(SEXP value) {
     return result;
 }
 
-static SEXP C_dtatools_native_copy_stats(SEXP reset) {
+SEXP C_dtatools_native_copy_stats(SEXP reset) {
     SEXP result = PROTECT(Rf_allocVector(REALSXP, 6));
     SEXP names = PROTECT(Rf_allocVector(STRSXP, 6));
     const char *fields[] = {"owned_capture", "compact_copy", "staged_new",
@@ -471,7 +475,7 @@ static SEXP C_dtatools_native_copy_stats(SEXP reset) {
     return result;
 }
 
-static SEXP C_dtatools_owned_pointer(SEXP value, SEXP writable) {
+SEXP C_dtatools_owned_pointer(SEXP value, SEXP writable) {
     if (!owned_column(value)) Rf_error("owned column required for pointer probe");
     int write = Rf_asLogical(writable);
     if (write == NA_LOGICAL) Rf_error("pointer access must be read-only or writable");
@@ -479,7 +483,7 @@ static SEXP C_dtatools_owned_pointer(SEXP value, SEXP writable) {
     return R_MakeExternalPtr(pointer, write ? R_BaseEnv : R_EmptyEnv, owned_values(value));
 }
 
-static SEXP C_dtatools_owned_pointer_write(SEXP pointer, SEXP index, SEXP replacement) {
+SEXP C_dtatools_owned_pointer_write(SEXP pointer, SEXP index, SEXP replacement) {
     if (TYPEOF(pointer) != EXTPTRSXP || R_ExternalPtrTag(pointer) != R_BaseEnv ||
         R_ExternalPtrAddr(pointer) == NULL) Rf_error("writable pointer required");
     double position = Rf_asReal(index);
@@ -538,7 +542,7 @@ static int owned_string_no_na(SEXP value) {
     UNPROTECT(1);
     return no_na;
 }
-static SEXP C_dtatools_owned_no_na(SEXP value) {
+SEXP C_dtatools_owned_no_na(SEXP value) {
     if (!owned_column(value)) Rf_error("owned column required for missingness probe");
     int result = TYPEOF(value) == STRSXP ? STRING_NO_NA(value) :
         TYPEOF(value) == REALSXP ? REAL_NO_NA(value) :
@@ -551,7 +555,7 @@ static void owned_string_set_elt(SEXP value, R_xlen_t i, SEXP replacement) {
     SET_STRING_ELT(owned_values(value), i, replacement);
     UNPROTECT(1);
 }
-static SEXP C_dtatools_owned_set_string(SEXP value, SEXP index, SEXP replacement) {
+SEXP C_dtatools_owned_set_string(SEXP value, SEXP index, SEXP replacement) {
     if (TYPEOF(value) != STRSXP || !owned_column(value) || TYPEOF(replacement) != STRSXP ||
         XLENGTH(replacement) != 1) Rf_error("owned string and one replacement required");
     double position = Rf_asReal(index);
@@ -627,7 +631,7 @@ static SEXP owned_logical_subset(SEXP value, SEXP index, SEXP call) {
     return owned_atomic_gather(value, index, 0);
 }
 
-static SEXP C_dtatools_owned_subset(SEXP value, SEXP index) {
+SEXP C_dtatools_owned_subset(SEXP value, SEXP index) {
     if (!owned_column(value)) Rf_error("owned column required");
     SEXP result = owned_real(value) ? owned_real_subset(value, index, R_NilValue) :
         owned_atomic_subset(value, index, R_NilValue);
@@ -666,7 +670,7 @@ static int owned_discrete_gather_supported(SEXP value) {
     return R_mapAttrib(value, owned_discrete_gather_attribute, NULL) == NULL;
 }
 
-static SEXP C_dtatools_gather_owned_discrete(SEXP columns, SEXP locations) {
+SEXP C_dtatools_gather_owned_discrete(SEXP columns, SEXP locations) {
     if (TYPEOF(columns) != VECSXP || ALTREP(columns) ||
         TYPEOF(locations) != INTSXP || ALTREP(locations) || ANY_ATTRIB(locations)) return R_NilValue;
     R_xlen_t count = XLENGTH(columns);
@@ -741,7 +745,7 @@ static void *callback_real_dataptr(SEXP value, Rboolean writable) {
     return writable ? DATAPTR_RW(callback_values(value)) : (void *) DATAPTR_RO(callback_values(value));
 }
 static const void *callback_real_dataptr_or_null(SEXP value) { (void) value; return NULL; }
-static SEXP C_dtatools_callback_double(SEXP values, SEXP callback, SEXP element) {
+SEXP C_dtatools_callback_double(SEXP values, SEXP callback, SEXP element) {
     if (TYPEOF(values) != REALSXP || ALTREP(values) || !Rf_isFunction(callback) ||
         Rf_asLogical(element) == NA_LOGICAL) Rf_error("invalid callback-double probe");
     SEXP payload = PROTECT(Rf_duplicate(values));
@@ -754,7 +758,7 @@ static SEXP C_dtatools_callback_double(SEXP values, SEXP callback, SEXP element)
     return result;
 }
 
-static SEXP C_dtatools_callback_integer(SEXP values, SEXP callback) {
+SEXP C_dtatools_callback_integer(SEXP values, SEXP callback) {
     if (TYPEOF(values) != INTSXP || ALTREP(values) || !Rf_isFunction(callback)) {
         Rf_error("invalid callback-integer probe");
     }
@@ -768,7 +772,7 @@ static SEXP C_dtatools_callback_integer(SEXP values, SEXP callback) {
     return result;
 }
 
-static SEXP C_dtatools_callback_character(SEXP values, SEXP callback) {
+SEXP C_dtatools_callback_character(SEXP values, SEXP callback) {
     if (TYPEOF(values) != STRSXP || ALTREP(values) || !Rf_isFunction(callback)) {
         Rf_error("invalid callback-character probe");
     }
@@ -782,7 +786,7 @@ static SEXP C_dtatools_callback_character(SEXP values, SEXP callback) {
     return result;
 }
 
-static SEXP C_dtatools_callback_integer_after(SEXP values, SEXP callback, SEXP after) {
+SEXP C_dtatools_callback_integer_after(SEXP values, SEXP callback, SEXP after) {
     if (TYPEOF(values) != INTSXP || ALTREP(values) || !Rf_isFunction(callback) ||
         TYPEOF(after) != INTSXP || XLENGTH(after) != 1 || INTEGER_ELT(after, 0) < 0) {
         Rf_error("invalid delayed callback-integer probe");
@@ -798,7 +802,7 @@ static SEXP C_dtatools_callback_integer_after(SEXP values, SEXP callback, SEXP a
     return result;
 }
 
-static SEXP C_dtatools_callback_length(SEXP values, SEXP callback) {
+SEXP C_dtatools_callback_length(SEXP values, SEXP callback) {
     SEXP element = PROTECT(Rf_ScalarLogical(0));
     SEXP result = PROTECT(TYPEOF(values) == REALSXP ? C_dtatools_callback_double(values, callback, element) :
         TYPEOF(values) == INTSXP ? C_dtatools_callback_integer(values, callback) :
@@ -809,14 +813,14 @@ static SEXP C_dtatools_callback_length(SEXP values, SEXP callback) {
     return result;
 }
 
-static SEXP C_dtatools_arm_callback_character(SEXP value, SEXP callback) {
+SEXP C_dtatools_arm_callback_character(SEXP value, SEXP callback) {
     if (!ALTREP(value) || !R_altrep_inherits(value, dtatools_callback_character_class) ||
         !Rf_isFunction(callback)) Rf_error("invalid callback-character probe arm");
     SET_VECTOR_ELT(R_altrep_data1(value), 1, callback);
     return R_NilValue;
 }
 
-static void initialize_owned_columns(DllInfo *dll) {
+void initialize_owned_columns(DllInfo *dll) {
     dtatools_owned_real_class = R_make_altreal_class("dtatools_owned_real", "dtatools", dll);
     R_set_altrep_Length_method(dtatools_owned_real_class, owned_real_length);
     R_set_altrep_Duplicate_method(dtatools_owned_real_class, owned_real_duplicate);
@@ -861,3 +865,5 @@ static void initialize_owned_columns(DllInfo *dll) {
     R_set_altvec_Dataptr_method(dtatools_callback_integer_class, callback_real_dataptr);
     R_set_altvec_Dataptr_or_null_method(dtatools_callback_integer_class, callback_real_dataptr_or_null);
 }
+
+#endif /* DTATOOLS_OWNED_COLUMNS_H */

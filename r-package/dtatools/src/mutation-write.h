@@ -1,6 +1,11 @@
+#ifndef DTATOOLS_MUTATION_WRITE_H
+#define DTATOOLS_MUTATION_WRITE_H
+
+#include "dtatools-internal.h"
+
 /* Promotion fit checks read selected values directly. R's general fallback
    remains responsible for unsupported classes and their vctrs methods. */
-static SEXP C_dtatools_replacement_fits(SEXP values, SEXP rows, SEXP row_mode, SEXP kind_value) {
+SEXP C_dtatools_replacement_fits(SEXP values, SEXP rows, SEXP row_mode, SEXP kind_value) {
     int type = TYPEOF(values);
     if ((type != REALSXP && type != INTSXP && type != LGLSXP) ||
         Rf_getAttrib(values, R_DimSymbol) != R_NilValue ||
@@ -532,7 +537,7 @@ static SEXP patch_owned_vector(SEXP target, SEXP rows, SEXP replacement) {
 
 /* Inspect through the table so qualification does not itself retain a column
    handle or request a writable pointer. This is an internal validation seam. */
-static SEXP C_dtatools_mutation_info(SEXP data, SEXP location) {
+SEXP C_dtatools_mutation_info(SEXP data, SEXP location) {
     SEXP target = VECTOR_ELT(data, mutation_slot(data, location));
     SEXP result = PROTECT(Rf_allocVector(VECSXP, 7));
     SEXP names = PROTECT(Rf_allocVector(STRSXP, 7));
@@ -573,3 +578,5 @@ static SEXP C_dtatools_mutation_info(SEXP data, SEXP location) {
     UNPROTECT(2);
     return result;
 }
+
+#endif /* DTATOOLS_MUTATION_WRITE_H */

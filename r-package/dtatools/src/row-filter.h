@@ -1,3 +1,8 @@
+#ifndef DTATOOLS_ROW_FILTER_H
+#define DTATOOLS_ROW_FILTER_H
+
+#include "dtatools-internal.h"
+
 /* TRUE-only filter reduction adapts dplyr 1.2.1 src/filter.cpp at 95740975.
    See installed NOTICE. R retains predicate evaluation, validation and warning
    order. This private call-local buffer only reduces payloads and emits rows.
@@ -107,3 +112,5 @@ SEXP C_dtatools_filter_finish(SEXP state, SEXP inverse) {
     UNPROTECT(2);
     return result;
 }
+
+#endif /* DTATOOLS_ROW_FILTER_H */

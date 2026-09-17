@@ -1,54 +1,8 @@
-#include <R.h>
-#include <Rversion.h>
-#include <Rinternals.h>
-#include <R_ext/Rdynload.h>
-#include <R_ext/Altrep.h>
-#include <R_ext/Memory.h>
-#include <R_ext/GraphicsEngine.h>
-#include <R_ext/Utils.h>
-#include <R_ext/Visibility.h>
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include "dtatools-internal.h"
 
 #include "owned-columns.h"
 #include "row-filter.h"
 
-extern SEXP dtatools_metadata_rust(
-    const char *, uint32_t, uint32_t, const char *, int, char **
-);
-extern SEXP dtatools_read_rust(
-    const char *, const int *, size_t, int, double, double, int, int, int,
-    const char *, char **
-);
-extern SEXP dtatools_prepare_dta_rust(const char *, const char *, void **, char **);
-extern SEXP dtatools_read_prepared_dta_rust(
-    void *, const int *, size_t, int, double, double, int, int, int, char **
-);
-extern void dtatools_close_prepared_dta_rust(void *);
-extern int dtatools_write_rust(
-    const char *, const char *, SEXP, const void *,
-    size_t, const void *, size_t, double *, size_t, const char *, char **
-);
-extern int dtatools_write_path_kind(const char *, char **);
-extern void dtatools_free_error(char *);
-extern void dtatools_numeric_free(void *);
-extern void *dtatools_numeric_alloc(void *, size_t, int, int, size_t);
-extern void *dtatools_owned_numeric_from_raw(
-    const unsigned char *, size_t, size_t, int, int, int, size_t
-);
-extern void *dtatools_owned_numeric_clone(const void *);
-extern int dtatools_owned_numeric_region(
-    const void *, size_t, size_t, const void **, size_t *
-);
-extern size_t dtatools_owned_numeric_live_bytes(void);
-extern size_t dtatools_owned_numeric_live_owners(void);
-extern size_t dtatools_owned_numeric_chunks(const void *);
 
 static void owned_numeric_gc_call(void *unused) {
     (void) unused;
@@ -60,187 +14,29 @@ static void owned_numeric_gc_call(void *unused) {
 int dtatools_owned_numeric_gc(void) {
     return R_ToplevelExec(owned_numeric_gc_call, NULL);
 }
-typedef struct {
-    void *values;
-    int kind;
-    int temporal;
-    int format_version;
-    const void *native_owner;
-} dtatools_compare_operand;
-extern int dtatools_numeric_compare(
-    int, const dtatools_compare_operand *, const dtatools_compare_operand *,
-    double, int, int *, size_t, int
-);
-typedef struct {
-    void *values;
-    int kind;
-    int temporal;
-    int format_version;
-} dtatools_patch_target;
-extern int dtatools_numeric_compare_patch(
-    int, const dtatools_compare_operand *, const dtatools_compare_operand *,
-    double, int, const dtatools_compare_operand *, double, int,
-    const dtatools_patch_target *, size_t, int,
-    size_t *, size_t *, size_t *
-);
-extern int dtatools_gather_numeric_columns(
-    const void *, size_t, const int *, const int *, size_t
-);
-extern void dtatools_dictstring_free(void *);
-extern int dtatools_dictstring_retain(void *);
-extern int dtatools_dictstring_bytes(
-    void *, uint32_t, const char **, int *
-);
-extern void *dtatools_dictstring_clone(const void *);
-extern void *dtatools_dictstring_gather(
-    const void *, const uint32_t *, size_t
-);
 
-typedef struct {
-    const char *name;
-    const double *label_values;
-    SEXP label_texts;
-    size_t label_count;
-} dtatools_arrow_value_label_table;
 
-typedef struct {
-    const char *name;
-    int kind;
-    const char *label;
-    const char *format;
-    int storage;
-    int string_storage;
-    int ordered;
-    const char *tz;
-    const char *units;
-    const void *values;
-    SEXP strings;
-    size_t string_count;
-    const void *compact_values;
-    int compact_kind;
-    int compact_format_version;
-    int compact_temporal;
-    int value_label_index;
-    SEXP dta_metadata;
-    int haven_labelled;
-    /* Unmaterialized dictionary-string payload, or NULL for eager columns. */
-    const void *dictstring;
-    const void *compact_owner;
-} dtatools_arrow_column;
 
-enum dtatools_arrow_specification_slot {
-    DTATOOLS_ARROW_SPECIFICATION_DATASET_LABEL = 0,
-    DTATOOLS_ARROW_SPECIFICATION_DTA_METADATA = 1,
-    DTATOOLS_ARROW_SPECIFICATION_COLUMNS = 2,
-    DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES = 3,
-    DTATOOLS_ARROW_SPECIFICATION_OUTPUT_CONTAINER = 4,
-    DTATOOLS_ARROW_SPECIFICATION_SLOT_COUNT = 5
-};
 
-enum dtatools_arrow_column_slot {
-    DTATOOLS_ARROW_COLUMN_NAME = 0,
-    DTATOOLS_ARROW_COLUMN_KIND = 1,
-    DTATOOLS_ARROW_COLUMN_VALUES = 2,
-    DTATOOLS_ARROW_COLUMN_LEVELS = 3,
-    DTATOOLS_ARROW_COLUMN_ORDERED = 4,
-    DTATOOLS_ARROW_COLUMN_LABEL = 5,
-    DTATOOLS_ARROW_COLUMN_FORMAT = 6,
-    DTATOOLS_ARROW_COLUMN_STORAGE = 7,
-    DTATOOLS_ARROW_COLUMN_TIME_ZONE = 8,
-    DTATOOLS_ARROW_COLUMN_UNITS = 9,
-    DTATOOLS_ARROW_COLUMN_HAVEN_LABELLED = 10,
-    DTATOOLS_ARROW_COLUMN_STRING_STORAGE = 11,
-    DTATOOLS_ARROW_COLUMN_VALUE_LABEL_INDEX = 12,
-    DTATOOLS_ARROW_COLUMN_DTA_METADATA = 13,
-    DTATOOLS_ARROW_COLUMN_SLOT_COUNT = 14
-};
 
-enum dtatools_arrow_value_label_table_slot {
-    DTATOOLS_ARROW_VALUE_LABEL_TABLE_NAME = 0,
-    DTATOOLS_ARROW_VALUE_LABEL_TABLE_VALUES = 1,
-    DTATOOLS_ARROW_VALUE_LABEL_TABLE_TEXTS = 2,
-    DTATOOLS_ARROW_VALUE_LABEL_TABLE_SLOT_COUNT = 3
-};
 
-extern SEXP dtatools_save_arrow_rust(
-    const char *, const char *, const char *, SEXP, const dtatools_arrow_column *,
-    size_t, const dtatools_arrow_value_label_table *, size_t, size_t,
-    const char *, int, int, int *, char **
-);
-extern SEXP dtatools_datasig_rust(
-    const char *, SEXP, const dtatools_arrow_column *, size_t,
-    const dtatools_arrow_value_label_table *, size_t, size_t,
-    int, int *, char **
-);
-extern void *dtatools_open_arrow_rust(const char *, char **);
-extern void dtatools_close_arrow_rust(void *);
-extern SEXP dtatools_read_arrow_rust(
-    const void *, const int *, size_t, int, double, double, int, int, int,
-    int, int, int, int *, char **
-);
-extern SEXP dtatools_arrow_metadata_rust(
-    const void *, int, int, double, double, int *, char **
-);
-extern SEXP dtatools_arrow_datasig_rust(const char *, char **);
 
-typedef struct {
-    const char *name;
-    void *label_values;
-    SEXP label_texts;
-    size_t label_count;
-} dtatools_write_value_label_table;
 
-typedef struct {
-    uint32_t *value_ids;
-    size_t length;
-} dictstring_data;
 
-static R_altrep_class_t dtatools_dictstring_class;
-static R_altrep_class_t dtatools_numeric_class;
-static R_altrep_class_t dtatools_metadata_real_class;
-static R_altrep_class_t dtatools_metadata_string_class;
-static R_altrep_class_t dtatools_ephemeral_string_class;
-static R_altrep_class_t dtatools_mutation_string_class;
-static SEXP write_callback_condition_classes;
-static int metadata_real_aggregate_mask_enabled;
-static int metadata_real_aggregate_mask;
+R_altrep_class_t dtatools_dictstring_class;
+R_altrep_class_t dtatools_numeric_class;
+R_altrep_class_t dtatools_metadata_real_class;
+R_altrep_class_t dtatools_metadata_string_class;
+R_altrep_class_t dtatools_ephemeral_string_class;
+R_altrep_class_t dtatools_mutation_string_class;
+SEXP write_callback_condition_classes;
+int metadata_real_aggregate_mask_enabled;
+int metadata_real_aggregate_mask;
 
-static dictstring_data *dictstring_storage(SEXP value);
-static SEXP dictstring_cache(SEXP value);
-static SEXP unmaterialized_dictstring_source(SEXP value);
-static SEXP metadata_proxy_source(SEXP value);
-static SEXP metadata_proxy_owner(SEXP value);
-static void metadata_proxy_set_state(SEXP value, SEXP source, SEXP owner);
-static SEXP dictstring_compact_copy(SEXP value);
-static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call);
-static size_t numeric_kind_width(int kind);
-static int string_declared_width(SEXP declared, const char *message);
-static size_t reference_string_width(SEXP value, const char *operation);
-static void write_numeric_missing(
-    unsigned char *output, R_xlen_t index, int kind, int offset
-);
 
-enum {
-    METADATA_AGGREGATE_NO_NA = 1,
-    METADATA_AGGREGATE_SUM = 2,
-    METADATA_AGGREGATE_MIN = 4,
-    METADATA_AGGREGATE_MAX = 8
-};
 
-typedef struct {
-    void *values;
-    size_t length;
-    int kind;
-    int temporal;
-    int format_version;
-    size_t missing_count;
-    /* Opaque immutable Rust owner. values is NULL when this is non-NULL. */
-    const void *native_owner;
-} numeric_data;
 
-static SEXP numeric_compact_copy(const numeric_data *data);
-static SEXP numeric_handle_copy(SEXP source);
-static double owned_numeric_compatibility_bytes = 0.0;
+double owned_numeric_compatibility_bytes = 0.0;
 
 /* Compact ALTREP payload ownership lives in the external-pointer tag. A NULL
    tag is directly writable. A non-NULL tag means an alias exists and ordinary
@@ -248,27 +44,27 @@ static double owned_numeric_compatibility_bytes = 0.0;
    their owner claim; R_BaseEnv is the anonymous shared marker. Keep those
    states behind these helpers rather than spreading tag policy across ALTREP
    materialization and reference mutation. */
-static int compact_payload_is_shared(SEXP external) {
+int compact_payload_is_shared(SEXP external) {
     return R_ExternalPtrTag(external) != R_NilValue;
 }
 
-static void compact_payload_mark_shared(SEXP external) {
+void compact_payload_mark_shared(SEXP external) {
     R_SetExternalPtrTag(external, R_BaseEnv);
 }
 
-static int compact_payload_is_owned_by(SEXP external, SEXP owner) {
+int compact_payload_is_owned_by(SEXP external, SEXP owner) {
     return owner != R_NilValue && R_ExternalPtrTag(external) == owner;
 }
 
-static void compact_payload_claim(SEXP external, SEXP owner) {
+void compact_payload_claim(SEXP external, SEXP owner) {
     R_SetExternalPtrTag(external, owner);
 }
 
-static void compact_payload_revoke_claim(SEXP external) {
+void compact_payload_revoke_claim(SEXP external) {
     R_SetExternalPtrTag(external, R_NilValue);
 }
 
-static SEXP detach_shared_materialized_payload(SEXP value) {
+SEXP detach_shared_materialized_payload(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     SEXP external = R_altrep_data1(value);
     if (materialized == R_NilValue || TYPEOF(external) != EXTPTRSXP ||
@@ -302,15 +98,8 @@ typedef struct {
     size_t y_length;
 } numeric_gather_column;
 
-enum {
-    NUMERIC_BYTE = 0,
-    NUMERIC_INT = 1,
-    NUMERIC_LONG = 2,
-    NUMERIC_FLOAT = 3,
-    NUMERIC_DOUBLE = 4
-};
 
-static void numeric_finalize(SEXP external) {
+void numeric_finalize(SEXP external) {
     void *data = R_ExternalPtrAddr(external);
     if (data != NULL) {
         R_ClearExternalPtr(external);
@@ -319,7 +108,7 @@ static void numeric_finalize(SEXP external) {
     R_SetExternalPtrProtected(external, R_NilValue);
 }
 
-static numeric_data *numeric_read_storage(SEXP value) {
+numeric_data *numeric_read_storage(SEXP value) {
     numeric_data *data = (numeric_data *) R_ExternalPtrAddr(
         R_altrep_data1(value)
     );
@@ -329,7 +118,7 @@ static numeric_data *numeric_read_storage(SEXP value) {
 
 /* Conservative adapter for legacy consumers which require contiguous,
    writable bytes. No immutable owner ever enters those pointer interfaces. */
-static numeric_data *numeric_storage(SEXP value) {
+numeric_data *numeric_storage(SEXP value) {
     numeric_data *data = numeric_read_storage(value);
     if (data->native_owner != NULL) {
         SEXP detached = PROTECT(numeric_compact_copy(data));
@@ -342,7 +131,7 @@ static numeric_data *numeric_storage(SEXP value) {
     return data;
 }
 
-static R_xlen_t numeric_length(SEXP value) {
+R_xlen_t numeric_length(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return XLENGTH(materialized);
     size_t length = numeric_read_storage(value)->length;
@@ -383,7 +172,7 @@ static int float_missing_offset(float value, int format_version) {
         ? (int) (delta / UINT32_C(0x00000800)) : -1;
 }
 
-static double numeric_missing_value(int offset) {
+double numeric_missing_value(int offset) {
     if (offset == 0) return NA_REAL;
     uint64_t letter = (uint64_t) ('a' + offset - 1);
     uint64_t bits = UINT64_C(0x7ff00000000007a2) | (letter << 32);
@@ -392,7 +181,7 @@ static double numeric_missing_value(int offset) {
     return value;
 }
 
-static int tagged_na_tag_value(double value) {
+int tagged_na_tag_value(double value) {
     uint64_t bits;
     memcpy(&bits, &value, sizeof(bits));
     const uint64_t sign_bit = UINT64_C(0x8000000000000000);
@@ -408,20 +197,20 @@ static int tagged_na_tag_value(double value) {
         ? (int) tag : 0;
 }
 
-static int is_tagged_na_value(double value) {
+int is_tagged_na_value(double value) {
     return tagged_na_tag_value(value) != 0;
 }
 
-static int dta_expression_string_is_missing(SEXP value) {
+int dta_expression_string_is_missing(SEXP value) {
     return value == NA_STRING || LENGTH(value) == 0;
 }
 
-static int dta_missing_tag_value(double value) {
+int dta_missing_tag_value(double value) {
     int tag = tagged_na_tag_value(value);
     return tag >= 'a' && tag <= 'z' ? tag : 0;
 }
 
-static int normalized_dta_missing_tag(SEXP value, const char *argument) {
+int normalized_dta_missing_tag(SEXP value, const char *argument) {
     if (value == NA_STRING) {
         Rf_error("`%s` must contain only letters `a` through `z`", argument);
     }
@@ -435,7 +224,7 @@ static int normalized_dta_missing_tag(SEXP value, const char *argument) {
         ? text[0] - 'A' + 'a' : text[0];
 }
 
-static void copy_shape_attributes(SEXP target, SEXP source) {
+void copy_shape_attributes(SEXP target, SEXP source) {
     SEXP dimensions = Rf_getAttrib(source, R_DimSymbol);
     if (dimensions != R_NilValue) {
         Rf_setAttrib(target, R_DimSymbol, dimensions);
@@ -449,7 +238,7 @@ static void copy_shape_attributes(SEXP target, SEXP source) {
     if (names != R_NilValue) Rf_setAttrib(target, R_NamesSymbol, names);
 }
 
-static numeric_data *unmaterialized_numeric_storage(SEXP value) {
+numeric_data *unmaterialized_numeric_storage(SEXP value) {
     while (ALTREP(value) &&
            R_altrep_inherits(value, dtatools_metadata_real_class)) {
         if (R_altrep_data2(value) != R_NilValue) return NULL;
@@ -463,7 +252,7 @@ static numeric_data *unmaterialized_numeric_storage(SEXP value) {
     return numeric_storage(value);
 }
 
-static SEXP numeric_base_source(SEXP value) {
+SEXP numeric_base_source(SEXP value) {
     while (ALTREP(value) &&
            R_altrep_inherits(value, dtatools_metadata_real_class)) {
         if (R_altrep_data2(value) != R_NilValue) return R_NilValue;
@@ -473,7 +262,7 @@ static SEXP numeric_base_source(SEXP value) {
         R_altrep_data2(value) == R_NilValue ? value : R_NilValue;
 }
 
-static numeric_data *unmaterialized_numeric_read_storage(SEXP value) {
+numeric_data *unmaterialized_numeric_read_storage(SEXP value) {
     SEXP source = numeric_base_source(value);
     return source == R_NilValue ? NULL : numeric_read_storage(source);
 }
@@ -496,7 +285,7 @@ static const void *numeric_read_span(
     return values;
 }
 
-static void numeric_copy_region(
+void numeric_copy_region(
     const numeric_data *data, size_t start, size_t length, void *output
 ) {
     size_t width = numeric_kind_width(data->kind);
@@ -518,7 +307,7 @@ static void numeric_copy_region(
     }
 }
 
-static int materialized_numeric_storage(
+int materialized_numeric_storage(
     SEXP value, numeric_data *storage
 ) {
     if (!ALTREP(value) || R_altrep_data2(value) == R_NilValue ||
@@ -543,7 +332,7 @@ static int materialized_numeric_storage(
     return 1;
 }
 
-static double numeric_observed_value(double value, int temporal) {
+double numeric_observed_value(double value, int temporal) {
     if (temporal == 1) return value - 3653.0;
     if (temporal == 2) return value / 1000.0 - 315619200.0;
     return value;
@@ -701,7 +490,7 @@ static double numeric_value_at(const numeric_data *data, size_t index) {
     }
 }
 
-static int numeric_missing_offset_at(
+int numeric_missing_offset_at(
     const numeric_data *data, size_t index
 ) {
     switch (data->kind) {
@@ -726,7 +515,7 @@ static int numeric_missing_offset_at(
     }
 }
 
-static int numeric_value_is_missing_at(
+int numeric_value_is_missing_at(
     const numeric_data *data, size_t index
 ) {
     if (numeric_missing_offset_at(data, index) >= 0) return 1;
@@ -743,28 +532,12 @@ static size_t numeric_count_missing(const numeric_data *data) {
     return count;
 }
 
-typedef struct {
-    SEXP value;
-    numeric_data *storage;
-    const double *real_values;
-    const int *integer_values;
-    int type;
-} numeric_reader;
 
-enum {
-    WRITE_NUMERIC_CALLBACK = 0,
-    WRITE_NUMERIC_INTEGER = 1,
-    WRITE_NUMERIC_DOUBLE = 2,
-    WRITE_NUMERIC_BYTE = 3,
-    WRITE_NUMERIC_INT = 4,
-    WRITE_NUMERIC_LONG = 5,
-    WRITE_NUMERIC_FLOAT = 6
-};
 
 /* Retain the allocation behind a native read pointer across later R callbacks.
    Retaining only an ALTREP handle is insufficient if the callback changes its
    data1/data2 state. This function neither copies nor marks backing shared. */
-static SEXP numeric_payload_root(SEXP value) {
+SEXP numeric_payload_root(SEXP value) {
     if (owned_column(value)) return owned_values(value);
     if (unmaterialized_numeric_read_storage(value) != NULL) {
         SEXP source = numeric_base_source(value);
@@ -778,7 +551,7 @@ static SEXP numeric_payload_root(SEXP value) {
     return value;
 }
 
-static numeric_reader numeric_reader_create(
+numeric_reader numeric_reader_create(
     SEXP value, R_xlen_t expected_length
 ) {
     /* Callers that keep this reader across callbacks must also protect
@@ -833,7 +606,7 @@ static double numeric_real_value(double value, int *missing_code) {
     return 0.0;
 }
 
-static double numeric_reader_at(
+double numeric_reader_at(
     const numeric_reader *reader, R_xlen_t index, int *missing_code
 ) {
     if (reader->storage != NULL) {
@@ -873,7 +646,7 @@ static int reference_row_reads_enabled = 0;
    SIGINT delivery can terminate Windows R instead of unwinding its contexts. */
 static int reference_write_interrupt_enabled = 0;
 
-static void record_reference_row_read(void) {
+void record_reference_row_read(void) {
     if (reference_row_reads_enabled) reference_row_reads += 1.0;
 }
 
@@ -901,7 +674,7 @@ SEXP C_dtatools_inject_reference_write_interrupt(SEXP enabled) {
     return Rf_ScalarLogical(previous);
 }
 
-static void maybe_inject_reference_write_interrupt(void) {
+void maybe_inject_reference_write_interrupt(void) {
     if (!reference_write_interrupt_enabled) return;
     reference_write_interrupt_enabled = 0;
     Rf_onintr();
@@ -984,38 +757,7 @@ SEXP C_dtatools_mutation_rows(SEXP value, SEXP row_count_value) {
     return value;
 }
 
-typedef struct {
-    const char *name;
-    int dta_type;
-    const char *format;
-    const char *label;
-    void *numeric_values;
-    SEXP string_values;
-    int value_label_index;
-    SEXP dta_metadata;
-    double numeric_shift;
-    double numeric_scale;
-    const void *direct_numeric_values;
-    int direct_numeric_kind;
-    int direct_numeric_format_version;
-    int direct_numeric_temporal;
-    int direct_numeric_no_na;
-    void *direct_string_data;
-    const void *direct_numeric_owner;
-} dtatools_write_column;
 
-enum dtatools_dta_column_slot {
-    DTATOOLS_DTA_COLUMN_NAME = 0,
-    DTATOOLS_DTA_COLUMN_TYPE = 1,
-    DTATOOLS_DTA_COLUMN_FORMAT = 2,
-    DTATOOLS_DTA_COLUMN_LABEL = 3,
-    DTATOOLS_DTA_COLUMN_VALUES = 4,
-    DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT = 5,
-    DTATOOLS_DTA_COLUMN_NUMERIC_SCALE = 6,
-    DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX = 7,
-    DTATOOLS_DTA_COLUMN_DTA_METADATA = 8,
-    DTATOOLS_DTA_COLUMN_SLOT_COUNT = 9
-};
 
 #define DTATOOLS_LAYOUT_ASSERT(name, condition) \
     typedef char dtatools_layout_assert_##name[(condition) ? 1 : -1]
@@ -1081,7 +823,7 @@ DTATOOLS_LAYOUT_ASSERT(arrow_table_count, offsetof(dtatools_arrow_value_label_ta
 DTATOOLS_LAYOUT_ASSERT(arrow_table_size, sizeof(dtatools_arrow_value_label_table) == 32);
 #endif
 
-static int write_string_utf8_status(SEXP value) {
+int write_string_utf8_status(SEXP value) {
     int utf8 = Rf_getCharCE(value) == CE_UTF8;
     int ascii = 1;
     const unsigned char *bytes = (const unsigned char *) CHAR(value);
@@ -1869,7 +1611,7 @@ static int numeric_extreme_storage(
     }
 }
 
-static double numeric_value(SEXP value, R_xlen_t index) {
+double numeric_value(SEXP value, R_xlen_t index) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return REAL_ELT(materialized, index);
     numeric_data *data = numeric_read_storage(value);
@@ -1879,7 +1621,7 @@ static double numeric_value(SEXP value, R_xlen_t index) {
     return numeric_value_at(data, (size_t) index);
 }
 
-static R_xlen_t numeric_region(
+R_xlen_t numeric_region(
     SEXP value, R_xlen_t index, R_xlen_t count, double *output
 ) {
     SEXP materialized = R_altrep_data2(value);
@@ -1928,18 +1670,18 @@ static SEXP numeric_materialize(SEXP value, Rboolean writeable) {
     return materialized;
 }
 
-static void *numeric_dataptr(SEXP value, Rboolean writeable) {
+void *numeric_dataptr(SEXP value, Rboolean writeable) {
     SEXP materialized = numeric_materialize(value, writeable);
     return writeable ? DATAPTR_RW(materialized) : (void *) DATAPTR_RO(materialized);
 
 }
 
-static const void *numeric_dataptr_or_null(SEXP value) {
+const void *numeric_dataptr_or_null(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
 }
 
-static int numeric_no_na(SEXP value) {
+int numeric_no_na(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) {
         R_xlen_t length = XLENGTH(materialized);
@@ -1952,7 +1694,7 @@ static int numeric_no_na(SEXP value) {
     return numeric_read_storage(value)->missing_count == 0;
 }
 
-static SEXP numeric_sum(SEXP value, Rboolean na_rm) {
+SEXP numeric_sum(SEXP value, Rboolean na_rm) {
     if (R_altrep_data2(value) != R_NilValue) return NULL;
     numeric_data *data = numeric_read_storage(value);
     long double sum = numeric_sum_storage(data, na_rm);
@@ -1974,15 +1716,15 @@ static SEXP numeric_extreme(
     return Rf_ScalarReal(result);
 }
 
-static SEXP numeric_min(SEXP value, Rboolean na_rm) {
+SEXP numeric_min(SEXP value, Rboolean na_rm) {
     return numeric_extreme(value, na_rm, 1);
 }
 
-static SEXP numeric_max(SEXP value, Rboolean na_rm) {
+SEXP numeric_max(SEXP value, Rboolean na_rm) {
     return numeric_extreme(value, na_rm, 0);
 }
 
-static SEXP numeric_from_backing(
+SEXP numeric_from_backing(
     SEXP backing, size_t length, int kind, int temporal,
     int format_version, size_t missing_count
 ) {
@@ -2007,7 +1749,7 @@ static SEXP numeric_from_backing(
     return result;
 }
 
-static SEXP numeric_compact_copy(const numeric_data *data) {
+SEXP numeric_compact_copy(const numeric_data *data) {
     size_t width = numeric_kind_width(data->kind);
     if (data->length > SIZE_MAX / width ||
         data->length * width > (size_t) R_XLEN_T_MAX) {
@@ -2027,7 +1769,7 @@ static SEXP numeric_compact_copy(const numeric_data *data) {
 
 /* Share only immutable bytes. Every returned vector has its own descriptor,
    external pointer and materialization state, plus the original R roots. */
-static SEXP numeric_handle_copy(SEXP source) {
+SEXP numeric_handle_copy(SEXP source) {
     numeric_data *data = numeric_read_storage(source);
     if (data->native_owner == NULL) return numeric_compact_copy(data);
     SEXP external = PROTECT(R_MakeExternalPtr(
@@ -2062,7 +1804,7 @@ static void swap_compact_numeric_bytes(
     }
 }
 
-static SEXP numeric_serialized_state(SEXP value) {
+SEXP numeric_serialized_state(SEXP value) {
     if (R_altrep_data2(value) != R_NilValue) return NULL;
     numeric_data *data = numeric_read_storage(value);
     SEXP backing = PROTECT(Rf_allocVector(
@@ -2087,7 +1829,7 @@ static SEXP numeric_serialized_state(SEXP value) {
     return state;
 }
 
-static SEXP numeric_unserialize(SEXP class, SEXP state) {
+SEXP numeric_unserialize(SEXP class, SEXP state) {
     (void) class;
     if (TYPEOF(state) != VECSXP || XLENGTH(state) != 2) {
         Rf_error("invalid serialized dtatools numeric state");
@@ -2118,13 +1860,13 @@ static SEXP numeric_unserialize(SEXP class, SEXP state) {
     return result;
 }
 
-static SEXP numeric_duplicate(SEXP value, Rboolean deep) {
+SEXP numeric_duplicate(SEXP value, Rboolean deep) {
     (void) deep;
     if (R_altrep_data2(value) != R_NilValue) return NULL;
     return numeric_handle_copy(value);
 }
 
-static void write_numeric_system_missing_raw(
+void write_numeric_system_missing_raw(
     unsigned char *output, R_xlen_t index, int kind, int format_version
 ) {
     if (format_version > 111) {
@@ -2159,7 +1901,7 @@ static void write_numeric_system_missing_raw(
     }
 }
 
-static SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
+SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
     (void) call;
     if (R_altrep_data2(value) != R_NilValue ||
         (TYPEOF(index) != INTSXP && TYPEOF(index) != REALSXP)) {
@@ -2670,7 +2412,7 @@ int dtatools_make_numeric(
     return ok;
 }
 
-static size_t numeric_kind_width(int kind) {
+size_t numeric_kind_width(int kind) {
     switch (kind) {
     case NUMERIC_BYTE:
         return sizeof(int8_t);
@@ -2685,7 +2427,7 @@ static size_t numeric_kind_width(int kind) {
     }
 }
 
-static void write_numeric_missing(
+void write_numeric_missing(
     unsigned char *output, R_xlen_t index, int kind, int offset
 ) {
     switch (kind) {
@@ -2721,7 +2463,7 @@ static void write_numeric_missing(
     }
 }
 
-static void write_numeric_observed(
+void write_numeric_observed(
     unsigned char *output, R_xlen_t index, int kind, double value
 ) {
     switch (kind) {
@@ -3034,7 +2776,7 @@ SEXP C_dtatools_construct_numeric_trusted(
     return result;
 }
 
-static void dictstring_finalize(SEXP external) {
+void dictstring_finalize(SEXP external) {
     void *data = R_ExternalPtrAddr(external);
     if (data != NULL) {
         R_ClearExternalPtr(external);
@@ -3043,14 +2785,14 @@ static void dictstring_finalize(SEXP external) {
     R_SetExternalPtrProtected(external, R_NilValue);
 }
 
-static dictstring_data *dictstring_storage(SEXP value) {
+dictstring_data *dictstring_storage(SEXP value) {
     SEXP external = R_altrep_data1(value);
     dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(external);
     if (data == NULL) Rf_error("dtatools string indices are no longer available");
     return data;
 }
 
-static SEXP dictstring_cache(SEXP value) {
+SEXP dictstring_cache(SEXP value) {
     SEXP cache = R_ExternalPtrProtected(R_altrep_data1(value));
     if (TYPEOF(cache) != VECSXP) {
         Rf_error("dtatools string cache is no longer available");
@@ -3058,7 +2800,7 @@ static SEXP dictstring_cache(SEXP value) {
     return cache;
 }
 
-static SEXP unmaterialized_dictstring_source(SEXP value) {
+SEXP unmaterialized_dictstring_source(SEXP value) {
     while (ALTREP(value) &&
            R_altrep_inherits(value, dtatools_metadata_string_class) &&
            R_altrep_data2(value) == R_NilValue) {
@@ -3074,7 +2816,7 @@ static SEXP unmaterialized_dictstring_source(SEXP value) {
    exact cache. Materialization may release the original external pointer while
    a later callback runs, but cannot free this pinned allocation. A finalizer
    releases the pin on normal return or unwind, without changing sharing flags. */
-static SEXP dictstring_read_root(SEXP value) {
+SEXP dictstring_read_root(SEXP value) {
     SEXP source = unmaterialized_dictstring_source(value);
     if (source == R_NilValue) return R_NilValue;
     SEXP root = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, dictstring_cache(source)));
@@ -3106,16 +2848,8 @@ static SEXP dictstring_cached_value(
     return cached;
 }
 
-typedef struct {
-    SEXP values;
-    SEXP source;
-    SEXP cache;
-    SEXP private_cache;
-    SEXP scalar;
-    dictstring_data *data;
-} reference_string_reader;
 
-static SEXP reference_string_reader_private_cache(
+SEXP reference_string_reader_private_cache(
     SEXP values, R_xlen_t read_count
 ) {
     SEXP source = unmaterialized_dictstring_source(values);
@@ -3125,7 +2859,7 @@ static SEXP reference_string_reader_private_cache(
         ? Rf_allocVector(VECSXP, cardinality) : R_NilValue;
 }
 
-static reference_string_reader reference_string_reader_create(
+reference_string_reader reference_string_reader_create(
     SEXP values, SEXP private_cache
 ) {
     reference_string_reader reader = {
@@ -3143,7 +2877,7 @@ static reference_string_reader reference_string_reader_create(
     return reader;
 }
 
-static SEXP reference_string_reader_at(
+SEXP reference_string_reader_at(
     const reference_string_reader *reader, R_xlen_t index
 ) {
     if (reader->scalar != R_NilValue) return reader->scalar;
@@ -3177,7 +2911,7 @@ static SEXP reference_string_reader_at(
     return cached;
 }
 
-static int reference_string_reader_is_missing_at(
+int reference_string_reader_is_missing_at(
     const reference_string_reader *reader, R_xlen_t index
 ) {
     if (reader->scalar != R_NilValue) {
@@ -3205,7 +2939,7 @@ static int reference_string_reader_is_missing_at(
     return length == 0;
 }
 
-static R_xlen_t dictstring_length(SEXP value) {
+R_xlen_t dictstring_length(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return XLENGTH(materialized);
     size_t length = dictstring_storage(value)->length;
@@ -3215,7 +2949,7 @@ static R_xlen_t dictstring_length(SEXP value) {
     return (R_xlen_t) length;
 }
 
-static SEXP dictstring_value(SEXP value, R_xlen_t index) {
+SEXP dictstring_value(SEXP value, R_xlen_t index) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return STRING_ELT(materialized, index);
     dictstring_data *data = dictstring_storage(value);
@@ -3252,7 +2986,7 @@ static SEXP dictstring_materialized_values(SEXP value, SEXP cache) {
     return materialized;
 }
 
-static SEXP dictstring_patch_values(SEXP value, SEXP private_cache) {
+SEXP dictstring_patch_values(SEXP value, SEXP private_cache) {
     reference_string_reader reader = reference_string_reader_create(
         value, private_cache
     );
@@ -3289,7 +3023,7 @@ static SEXP dictstring_materialize(SEXP value, Rboolean writeable) {
     return materialized;
 }
 
-static SEXP dictstring_materialize_for_patch(SEXP value, SEXP private_cache) {
+SEXP dictstring_materialize_for_patch(SEXP value, SEXP private_cache) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) {
         return detach_shared_materialized_payload(value);
@@ -3300,24 +3034,24 @@ static SEXP dictstring_materialize_for_patch(SEXP value, SEXP private_cache) {
     return materialized;
 }
 
-static void *dictstring_dataptr(SEXP value, Rboolean writeable) {
+void *dictstring_dataptr(SEXP value, Rboolean writeable) {
     SEXP materialized = dictstring_materialize(value, writeable);
     return DATAPTR_RW(materialized);
 
 }
 
-static const void *dictstring_dataptr_or_null(SEXP value) {
+const void *dictstring_dataptr_or_null(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
 }
 
-static void dictstring_set_elt(SEXP value, R_xlen_t index, SEXP replacement) {
+void dictstring_set_elt(SEXP value, R_xlen_t index, SEXP replacement) {
     SET_STRING_ELT(
         dictstring_materialize(value, TRUE), index, replacement
     );
 }
 
-static int dictstring_no_na(SEXP value) {
+int dictstring_no_na(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized == R_NilValue) return 1;
     R_xlen_t length = XLENGTH(materialized);
@@ -3327,12 +3061,6 @@ static int dictstring_no_na(SEXP value) {
     return 1;
 }
 
-typedef struct {
-    void *data;
-    size_t value_count;
-    int transferred;
-    SEXP result;
-} make_dictstring_context;
 
 static void make_dictstring_call(void *payload) {
     make_dictstring_context *context = (make_dictstring_context *) payload;
@@ -3483,7 +3211,7 @@ int dtatools_check_interrupt(void) {
     return R_ToplevelExec(check_interrupt, NULL) ? 0 : 1;
 }
 
-static void fail_from_rust(char *message) {
+void fail_from_rust(char *message) {
     char local[4096];
     if (message == NULL) {
         Rf_error("native dtatools call failed");
@@ -3502,7 +3230,7 @@ static void fail_from_rust(char *message) {
     Rf_error("%s", local);
 }
 
-static const char *optional_encoding(SEXP encoding) {
+const char *optional_encoding(SEXP encoding) {
     if (Rf_isNull(encoding)) return NULL;
     if (TYPEOF(encoding) != STRSXP || XLENGTH(encoding) != 1 ||
         STRING_ELT(encoding, 0) == NA_STRING) {
@@ -4601,16 +4329,16 @@ static SEXP mutation_string_source(SEXP value) {
     return source;
 }
 
-static R_xlen_t mutation_string_length(SEXP value) { return XLENGTH(mutation_string_source(value)); }
-static SEXP mutation_string_elt(SEXP value, R_xlen_t i) { return STRING_ELT(mutation_string_source(value), i); }
-static SEXP mutation_string_duplicate(SEXP value, Rboolean deep) {
+R_xlen_t mutation_string_length(SEXP value) { return XLENGTH(mutation_string_source(value)); }
+SEXP mutation_string_elt(SEXP value, R_xlen_t i) { return STRING_ELT(mutation_string_source(value), i); }
+SEXP mutation_string_duplicate(SEXP value, Rboolean deep) {
     (void) deep;
     SEXP result = PROTECT(Rf_shallow_duplicate(mutation_string_source(value)));
     SHALLOW_DUPLICATE_ATTRIB(result, value);
     UNPROTECT(1);
     return result;
 }
-static void *mutation_string_dataptr(SEXP value, Rboolean writable) {
+void *mutation_string_dataptr(SEXP value, Rboolean writable) {
     if (R_altrep_data2(value) == R_NilValue) {
         SEXP copy = PROTECT(mutation_string_duplicate(value, FALSE));
         R_set_altrep_data2(value, copy);
@@ -4619,14 +4347,14 @@ static void *mutation_string_dataptr(SEXP value, Rboolean writable) {
     SEXP copy = R_altrep_data2(value); /* Always an ordinary private STRSXP. */
     return writable ? DATAPTR_RW(copy) : (void *) DATAPTR_RO(copy);
 }
-static const void *mutation_string_dataptr_or_null(SEXP value) {
+const void *mutation_string_dataptr_or_null(SEXP value) {
     /* The constructor admits only ordinary contiguous strings. Borrowing this
        read-only pointer cannot allocate or invoke a callback; Dataptr isolates
        a separate copy if requested. The call-local view roots either source.
        Element assignment is unsupported; public exposure uses ordinary strings. */
     return DATAPTR_RO(mutation_string_source(value));
 }
-static SEXP C_dtatools_mutation_prototype(SEXP value) {
+SEXP C_dtatools_mutation_prototype(SEXP value) {
     int ordinary_discrete = (TYPEOF(value) == INTSXP || TYPEOF(value) == LGLSXP) &&
         Rf_getAttrib(value, R_DimSymbol) == R_NilValue && !Rf_isObject(value);
     int ordinary_string = TYPEOF(value) == STRSXP &&
@@ -4645,11 +4373,11 @@ static SEXP C_dtatools_mutation_prototype(SEXP value) {
 }
 
 
-static R_xlen_t ephemeral_string_length(SEXP value) {
+R_xlen_t ephemeral_string_length(SEXP value) {
     return XLENGTH(R_altrep_data1(value));
 }
 
-static SEXP ephemeral_string_value(SEXP value, R_xlen_t index) {
+SEXP ephemeral_string_value(SEXP value, R_xlen_t index) {
     SEXP source = STRING_ELT(R_altrep_data1(value), index);
     if (source == NA_STRING) return NA_STRING;
     return Rf_mkCharLenCE(CHAR(source), LENGTH(source), Rf_getCharCE(source));
@@ -4672,13 +4400,13 @@ SEXP C_dtatools_is_altrep(SEXP value) {
     return Rf_ScalarLogical(ALTREP(value));
 }
 
-static SEXP metadata_proxy_state(SEXP value) {
+SEXP metadata_proxy_state(SEXP value) {
     SEXP state = R_altrep_data1(value);
     return TYPEOF(state) == VECSXP && (XLENGTH(state) == 2 || XLENGTH(state) == 3)
         ? state : R_NilValue;
 }
 
-static SEXP metadata_proxy_source(SEXP value) {
+SEXP metadata_proxy_source(SEXP value) {
     SEXP state = metadata_proxy_state(value);
     SEXP source = state == R_NilValue
         ? R_altrep_data1(value) : VECTOR_ELT(state, 0);
@@ -4695,12 +4423,12 @@ static SEXP metadata_proxy_source(SEXP value) {
     return source;
 }
 
-static SEXP metadata_proxy_owner(SEXP value) {
+SEXP metadata_proxy_owner(SEXP value) {
     SEXP state = metadata_proxy_state(value);
     return state == R_NilValue ? R_NilValue : VECTOR_ELT(state, 1);
 }
 
-static void metadata_proxy_set_state(
+void metadata_proxy_set_state(
     SEXP value, SEXP source, SEXP owner
 ) {
     SEXP state = PROTECT(Rf_allocVector(VECSXP, 2));
@@ -4710,13 +4438,13 @@ static void metadata_proxy_set_state(
     UNPROTECT(1);
 }
 
-static R_xlen_t metadata_proxy_length(SEXP value) {
+R_xlen_t metadata_proxy_length(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     return materialized == R_NilValue
         ? XLENGTH(metadata_proxy_source(value)) : XLENGTH(materialized);
 }
 
-static double metadata_real_value(SEXP value, R_xlen_t index) {
+double metadata_real_value(SEXP value, R_xlen_t index) {
     SEXP materialized = R_altrep_data2(value);
     return REAL_ELT(
         materialized == R_NilValue ? metadata_proxy_source(value) : materialized,
@@ -4724,7 +4452,7 @@ static double metadata_real_value(SEXP value, R_xlen_t index) {
     );
 }
 
-static R_xlen_t metadata_real_region(
+R_xlen_t metadata_real_region(
     SEXP value, R_xlen_t index, R_xlen_t count, double *output
 ) {
     SEXP materialized = R_altrep_data2(value);
@@ -4752,18 +4480,18 @@ static SEXP metadata_real_materialize(SEXP value) {
     return materialized;
 }
 
-static void *metadata_real_dataptr(SEXP value, Rboolean writeable) {
+void *metadata_real_dataptr(SEXP value, Rboolean writeable) {
     SEXP materialized = metadata_real_materialize(value);
     return writeable ? DATAPTR_RW(materialized) : (void *) DATAPTR_RO(materialized);
 
 }
 
-static const void *metadata_real_dataptr_or_null(SEXP value) {
+const void *metadata_real_dataptr_or_null(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
 }
 
-static SEXP metadata_real_extract_subset(
+SEXP metadata_real_extract_subset(
     SEXP value, SEXP index, SEXP call
 ) {
     if (R_altrep_data2(value) != R_NilValue) return NULL;
@@ -4775,7 +4503,7 @@ static SEXP metadata_real_extract_subset(
     return numeric_extract_subset(source, index, call);
 }
 
-static int metadata_real_no_na(SEXP value) {
+int metadata_real_no_na(SEXP value) {
     if (metadata_real_aggregate_mask_enabled) {
         metadata_real_aggregate_mask |= METADATA_AGGREGATE_NO_NA;
     }
@@ -4786,7 +4514,7 @@ static int metadata_real_no_na(SEXP value) {
         ? numeric_no_na(source) : 0;
 }
 
-static SEXP metadata_real_sum(SEXP value, Rboolean na_rm) {
+SEXP metadata_real_sum(SEXP value, Rboolean na_rm) {
     if (metadata_real_aggregate_mask_enabled) {
         metadata_real_aggregate_mask |= METADATA_AGGREGATE_SUM;
     }
@@ -4797,7 +4525,7 @@ static SEXP metadata_real_sum(SEXP value, Rboolean na_rm) {
         ? numeric_sum(source, na_rm) : NULL;
 }
 
-static SEXP metadata_real_min(SEXP value, Rboolean na_rm) {
+SEXP metadata_real_min(SEXP value, Rboolean na_rm) {
     if (metadata_real_aggregate_mask_enabled) {
         metadata_real_aggregate_mask |= METADATA_AGGREGATE_MIN;
     }
@@ -4808,7 +4536,7 @@ static SEXP metadata_real_min(SEXP value, Rboolean na_rm) {
         ? numeric_min(source, na_rm) : NULL;
 }
 
-static SEXP metadata_real_max(SEXP value, Rboolean na_rm) {
+SEXP metadata_real_max(SEXP value, Rboolean na_rm) {
     if (metadata_real_aggregate_mask_enabled) {
         metadata_real_aggregate_mask |= METADATA_AGGREGATE_MAX;
     }
@@ -4819,7 +4547,7 @@ static SEXP metadata_real_max(SEXP value, Rboolean na_rm) {
         ? numeric_max(source, na_rm) : NULL;
 }
 
-static SEXP metadata_string_value(SEXP value, R_xlen_t index) {
+SEXP metadata_string_value(SEXP value, R_xlen_t index) {
     SEXP materialized = R_altrep_data2(value);
     return STRING_ELT(
         materialized == R_NilValue ? metadata_proxy_source(value) : materialized,
@@ -4844,7 +4572,7 @@ static SEXP metadata_string_materialize(SEXP value) {
     return materialized;
 }
 
-static SEXP metadata_string_materialize_for_patch(
+SEXP metadata_string_materialize_for_patch(
     SEXP value, SEXP dictionary, SEXP private_cache
 ) {
     SEXP materialized = R_altrep_data2(value);
@@ -4861,7 +4589,7 @@ static SEXP metadata_string_materialize_for_patch(
 }
 
 /** Expose this proxy's decoded payload, materializing it on demand. */
-static void *metadata_string_dataptr(SEXP value, Rboolean writeable) {
+void *metadata_string_dataptr(SEXP value, Rboolean writeable) {
     (void) writeable;
     SEXP materialized = metadata_string_materialize(value);
     return DATAPTR_RW(materialized);
@@ -4869,13 +4597,13 @@ static void *metadata_string_dataptr(SEXP value, Rboolean writeable) {
 }
 
 /** Return an already decoded data pointer without forcing materialization. */
-static const void *metadata_string_dataptr_or_null(SEXP value) {
+const void *metadata_string_dataptr_or_null(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
 }
 
 /** Replace one string in this proxy's decoded payload after materialization. */
-static void metadata_string_set_elt(
+void metadata_string_set_elt(
     SEXP value, R_xlen_t index, SEXP replacement
 ) {
     SET_STRING_ELT(metadata_string_materialize(value), index, replacement);
@@ -4885,7 +4613,7 @@ static void metadata_string_set_elt(
  * Delegate supported subsets to compact dictionary storage.
  * Return NULL for decoded or unavailable backing so R handles the fallback.
  */
-static SEXP metadata_string_extract_subset(
+SEXP metadata_string_extract_subset(
     SEXP value, SEXP index, SEXP call
 ) {
     if (R_altrep_data2(value) != R_NilValue) return NULL;
@@ -4899,7 +4627,7 @@ static SEXP metadata_string_extract_subset(
  * When isolate is nonzero, mark compact backing as shared or snapshot decoded
  * backing so a later explicit patch cannot change the source vector.
  */
-static SEXP metadata_proxy(
+SEXP metadata_proxy(
     SEXP value, R_altrep_class_t proxy_class, int isolate
 ) {
     SEXP source = value;
@@ -4974,7 +4702,7 @@ static SEXP metadata_proxy(
  * Both R duplication depths use an independent compact payload. Return NULL
  * for decoded proxies so R can perform its ordinary duplication fallback.
  */
-static SEXP metadata_real_duplicate(SEXP value, Rboolean deep) {
+SEXP metadata_real_duplicate(SEXP value, Rboolean deep) {
     (void) deep;
     SEXP source = numeric_base_source(value);
     return source == R_NilValue ? NULL : numeric_handle_copy(source);
@@ -4985,7 +4713,7 @@ static SEXP metadata_real_duplicate(SEXP value, Rboolean deep) {
  * The compact copy isolates later writes at either R duplication depth.
  * Return NULL for decoded proxies to request R's duplication fallback.
  */
-static SEXP metadata_string_duplicate(SEXP value, Rboolean deep) {
+SEXP metadata_string_duplicate(SEXP value, Rboolean deep) {
     (void) deep;
     if (unmaterialized_dictstring_source(value) == R_NilValue) return NULL;
     return dictstring_compact_copy(value);
@@ -5075,7 +4803,7 @@ static SEXP mutation_column_view(SEXP value) {
     return value;
 }
 
-static SEXP C_dtatools_mutation_views(SEXP data) {
+SEXP C_dtatools_mutation_views(SEXP data) {
     if (TYPEOF(data) != VECSXP) Rf_error("mutation views need a physical table");
     SEXP result = PROTECT(Rf_allocVector(VECSXP, XLENGTH(data)));
     SEXP sizes = PROTECT(Rf_allocVector(REALSXP, XLENGTH(data)));
@@ -5097,7 +4825,7 @@ static SEXP C_dtatools_mutation_views(SEXP data) {
 /* These lists belong solely to a finished mutation evaluation. Drop their
    physical fallback references before the late sharing check; genuine aliases
    retained by user callbacks remain counted. No view is used after release. */
-static SEXP C_dtatools_release_mutation_views(SEXP columns) {
+SEXP C_dtatools_release_mutation_views(SEXP columns) {
     if (TYPEOF(columns) != VECSXP ||
         Rf_asLogical(Rf_getAttrib(columns, Rf_install(".dtatools_mutation_views"))) != TRUE) {
         return R_NilValue;
@@ -5110,7 +4838,7 @@ static SEXP C_dtatools_release_mutation_views(SEXP columns) {
     return R_NilValue;
 }
 
-static SEXP C_dtatools_expose_mutation_column(SEXP value) {
+SEXP C_dtatools_expose_mutation_column(SEXP value) {
     if (mutation_string_view(value)) return mutation_string_source(value);
     if (owned_column(value) || unmaterialized_numeric_read_storage(value) != NULL) {
         return C_dtatools_metadata_copy(value);
@@ -5127,14 +4855,14 @@ static SEXP mutation_names_attribute(SEXP tag, SEXP value, void *context) {
     return tag == R_NamesSymbol ? value : NULL;
 }
 
-static SEXP mutation_physical_names(SEXP data) {
+SEXP mutation_physical_names(SEXP data) {
     if (Rf_getAttrib(data, R_DimSymbol) != R_NilValue) return Rf_getAttrib(data, R_NamesSymbol);
     SEXP names = R_mapAttrib(data, mutation_names_attribute, NULL);
     return names == NULL ? R_NilValue : names;
 }
 
 /* Diagnostic scalars only: do not export names or affect their sharing. */
-static SEXP C_dtatools_column_names_info(SEXP data) {
+SEXP C_dtatools_column_names_info(SEXP data) {
     if (TYPEOF(data) != VECSXP || ALTREP(data)) Rf_error("physical table required");
     SEXP names = mutation_physical_names(data);
     if (TYPEOF(names) != STRSXP || ALTREP(names)) Rf_error("ordinary physical column names required");
@@ -5161,7 +4889,7 @@ static int mutation_ascii_name(SEXP name) {
     return 1;
 }
 
-static SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count) {
+SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count) {
     if (ALTREP(row_count) || (TYPEOF(row_count) != INTSXP && TYPEOF(row_count) != REALSXP) ||
         XLENGTH(row_count) != 1) return Rf_ScalarLogical(0);
     if (TYPEOF(data) != VECSXP || ALTREP(data) ||
@@ -5208,7 +4936,7 @@ static SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count) {
 
 /* Only used after the ASCII shape certificate above. A non-ASCII query
    declines so R's complete encoding-aware matching remains authoritative. */
-static SEXP C_dtatools_mutation_name_location(SEXP data, SEXP name) {
+SEXP C_dtatools_mutation_name_location(SEXP data, SEXP name) {
     if (TYPEOF(name) != STRSXP || XLENGTH(name) != 1 ||
         !mutation_ascii_name(STRING_ELT(name, 0))) return R_NilValue;
     SEXP names = mutation_physical_names(data);
@@ -5220,7 +4948,7 @@ static SEXP C_dtatools_mutation_name_location(SEXP data, SEXP name) {
     return Rf_ScalarInteger(NA_INTEGER);
 }
 
-static SEXP C_dtatools_physical_column_count(SEXP data) {
+SEXP C_dtatools_physical_column_count(SEXP data) {
     if (TYPEOF(data) != VECSXP) Rf_error("physical column count needs a list");
     return XLENGTH(data) <= INT_MAX ? Rf_ScalarInteger((int) XLENGTH(data))
         : Rf_ScalarReal((double) XLENGTH(data));
@@ -5277,13 +5005,13 @@ SEXP C_dtatools_set_attribute(SEXP object, SEXP name, SEXP value) {
 /* R's duplicate of a compact dictionary string that several bindings
    share, as `attr(x, "label") <- ...` on a read column or a fresh subset
    asks for. Without this method R would materialize the copy. */
-static SEXP dictstring_duplicate(SEXP value, Rboolean deep) {
+SEXP dictstring_duplicate(SEXP value, Rboolean deep) {
     (void) deep;
     if (R_altrep_data2(value) != R_NilValue) return NULL;
     return dictstring_compact_copy(value);
 }
 
-static SEXP dictstring_compact_copy(SEXP value) {
+SEXP dictstring_compact_copy(SEXP value) {
     SEXP source = unmaterialized_dictstring_source(value);
     if (source == R_NilValue) return R_NilValue;
     dictstring_data *source_data = dictstring_storage(source);
@@ -5309,7 +5037,7 @@ static SEXP dictstring_compact_copy(SEXP value) {
    owns its payload and the source is untouched. An index outside the
    vector would need `NA`, which the dictionary cannot hold, so such a
    subset falls back to R's default and materializes. */
-static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
+SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
     (void) call;
     if (R_altrep_data2(value) != R_NilValue ||
         (TYPEOF(index) != INTSXP && TYPEOF(index) != REALSXP)) {
@@ -5368,7 +5096,7 @@ static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
     return result;
 }
 
-static SEXP C_dtatools_dictstring_subset(SEXP value, SEXP index) {
+SEXP C_dtatools_dictstring_subset(SEXP value, SEXP index) {
     if (unmaterialized_dictstring_source(value) == R_NilValue) Rf_error("compact dictionary required");
     SEXP result = dictstring_extract_subset(unmaterialized_dictstring_source(value), index, R_NilValue);
     return result == NULL ? R_NilValue : result;
@@ -6851,7 +6579,7 @@ static void commit_identical_slots(SEXP data, SEXP before, SEXP after) {
 
 #include "mutation-write.h"
 
-static SEXP C_dtatools_patch_slot(SEXP data, SEXP location, SEXP rows,
+SEXP C_dtatools_patch_slot(SEXP data, SEXP location, SEXP rows,
                                 SEXP replacement, SEXP entry_shared) {
     R_xlen_t slot = mutation_slot(data, location);
     SEXP numeric_result = patch_numeric_slot(data, slot, rows, replacement,
@@ -6998,18 +6726,18 @@ SEXP C_dtatools_reserve_column_capacity(SEXP x, SEXP capacity_value) {
    attribute cell before removal. Merely unlinking that cell leaves its old
    reference alive until collection, which would revoke reuse on reinstallation.
    The placeholder retains only its length, never the original names. */
-static R_altrep_class_t column_append_blank_names_class;
+R_altrep_class_t column_append_blank_names_class;
 
-static R_xlen_t column_append_blank_names_length(SEXP value) {
+R_xlen_t column_append_blank_names_length(SEXP value) {
     return (R_xlen_t) REAL(R_altrep_data1(value))[0];
 }
 
-static SEXP column_append_blank_names_elt(SEXP value, R_xlen_t index) {
+SEXP column_append_blank_names_elt(SEXP value, R_xlen_t index) {
     SEXP materialized = R_altrep_data2(value);
     return materialized == R_NilValue ? R_BlankString : STRING_ELT(materialized, index);
 }
 
-static void *column_append_blank_names_dataptr(SEXP value, Rboolean writable) {
+void *column_append_blank_names_dataptr(SEXP value, Rboolean writable) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized == R_NilValue) {
         R_xlen_t length = column_append_blank_names_length(value);
@@ -7021,7 +6749,7 @@ static void *column_append_blank_names_dataptr(SEXP value, Rboolean writable) {
     return writable ? DATAPTR_RW(materialized) : (void *) DATAPTR_RO(materialized);
 }
 
-static const void *column_append_blank_names_dataptr_or_null(SEXP value) {
+const void *column_append_blank_names_dataptr_or_null(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
 }
@@ -7050,7 +6778,7 @@ typedef struct {
 static int column_append_failure_stage = 0;
 static int column_append_failure_interrupt = 0;
 
-static SEXP C_dtatools_inject_column_append_failure(SEXP stage, SEXP interrupt) {
+SEXP C_dtatools_inject_column_append_failure(SEXP stage, SEXP interrupt) {
     int value = Rf_asInteger(stage);
     int signal = Rf_asLogical(interrupt);
     if (value < 0 || value > 3 || signal == NA_LOGICAL)
@@ -7333,7 +7061,7 @@ SEXP C_dtatools_select_data_columns(
    on entry so validation errors cannot leave a later generation armed. */
 static int generation_interrupt_mode = 0;
 
-static SEXP C_dtatools_inject_generation_interrupt(SEXP mode) {
+SEXP C_dtatools_inject_generation_interrupt(SEXP mode) {
     generation_interrupt_mode = 0;
     if (TYPEOF(mode) != INTSXP || XLENGTH(mode) != 1 ||
         INTEGER(mode)[0] < 0 || INTEGER(mode)[0] > 2)
@@ -7452,7 +7180,7 @@ static void set_generated_attributes(SEXP value, SEXP attributes) {
     }
 }
 
-static int string_declared_width(SEXP declared, const char *message) {
+int string_declared_width(SEXP declared, const char *message) {
     if (declared == R_NilValue) return -1;
     if (TYPEOF(declared) != STRSXP || XLENGTH(declared) != 1 ||
         STRING_ELT(declared, 0) == NA_STRING) {
@@ -7483,7 +7211,7 @@ static int generated_string_declared_width(SEXP declared) {
     );
 }
 
-static size_t reference_string_width(SEXP value, const char *operation) {
+size_t reference_string_width(SEXP value, const char *operation) {
     if (value == NA_STRING) return 0;
     const char *bytes = Rf_translateCharUTF8(value);
     size_t width = strlen(bytes);
@@ -7813,7 +7541,7 @@ SEXP C_dtatools_numeric_storage_matches(
 
 /* Test-only R-backed adapter. Copy first: the source may already have escaped
    through a writable compact consumer. The new raw allocation is immutable. */
-static SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
+SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
     numeric_data *source = unmaterialized_numeric_read_storage(value);
     double chunk_rows_double = Rf_asReal(chunk_rows_value);
     if (source == NULL || !R_FINITE(chunk_rows_double) || chunk_rows_double < 1 ||
@@ -7840,7 +7568,7 @@ static SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
 /* Native bytes count retained Buffer capacities, once per allocation within
    each owner. Independent handles do not add a charge. Separate owners may
    share one allocation, so this is charged memory rather than process RSS. */
-static SEXP C_dtatools_owned_numeric_info(SEXP value) {
+SEXP C_dtatools_owned_numeric_info(SEXP value) {
     numeric_data *data = unmaterialized_numeric_read_storage(value);
     int retained = data != NULL && data->native_owner != NULL;
     const char *labels[] = {"owned", "rows", "chunks", "native_bytes", "live_owners", "compatibility_bytes"};
@@ -8618,7 +8346,7 @@ SEXP C_dtatools_fused_compare_patch(
         replacement_scalar, threads_value, R_NilValue, 0, 0);
 }
 
-static SEXP C_dtatools_fused_patch_slot(
+SEXP C_dtatools_fused_patch_slot(
     SEXP data, SEXP location, SEXP entry_shared, SEXP op, SEXP left,
     SEXP right, SEXP scalar, SEXP replacement, SEXP replacement_scalar, SEXP threads
 ) {

@@ -1,0 +1,704 @@
+/* Internal interface shared by the dtatools native compilation units.
+   Everything here crosses a unit boundary: shared descriptors, the Rust
+   bridge, module globals created in R_init_dtatools, and the functions one
+   unit calls in another. Unit-local helpers stay static in their own file. */
+#ifndef DTATOOLS_INTERNAL_H
+#define DTATOOLS_INTERNAL_H
+
+#include <R.h>
+#include <Rversion.h>
+#include <Rinternals.h>
+#include <R_ext/Rdynload.h>
+#include <R_ext/Altrep.h>
+#include <R_ext/Memory.h>
+#include <R_ext/GraphicsEngine.h>
+#include <R_ext/Utils.h>
+#include <R_ext/Visibility.h>
+#include <float.h>
+#include <limits.h>
+#include <math.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+/* Descriptors shared across units, including the layouts mirrored in Rust. */
+enum { OWNED_SHARED, OWNED_EXPOSED, OWNED_NO_NA, OWNED_MAX_WIDTH, OWNED_WIDTH_EXACT, OWNED_FLAGS_SIZE };
+
+typedef struct {
+    void *values;
+    int kind;
+    int temporal;
+    int format_version;
+    const void *native_owner;
+} dtatools_compare_operand;
+
+typedef struct {
+    void *values;
+    int kind;
+    int temporal;
+    int format_version;
+} dtatools_patch_target;
+
+typedef struct {
+    const char *name;
+    const double *label_values;
+    SEXP label_texts;
+    size_t label_count;
+} dtatools_arrow_value_label_table;
+
+typedef struct {
+    const char *name;
+    int kind;
+    const char *label;
+    const char *format;
+    int storage;
+    int string_storage;
+    int ordered;
+    const char *tz;
+    const char *units;
+    const void *values;
+    SEXP strings;
+    size_t string_count;
+    const void *compact_values;
+    int compact_kind;
+    int compact_format_version;
+    int compact_temporal;
+    int value_label_index;
+    SEXP dta_metadata;
+    int haven_labelled;
+    /* Unmaterialized dictionary-string payload, or NULL for eager columns. */
+    const void *dictstring;
+    const void *compact_owner;
+} dtatools_arrow_column;
+
+enum dtatools_arrow_specification_slot {
+    DTATOOLS_ARROW_SPECIFICATION_DATASET_LABEL = 0,
+    DTATOOLS_ARROW_SPECIFICATION_DTA_METADATA = 1,
+    DTATOOLS_ARROW_SPECIFICATION_COLUMNS = 2,
+    DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES = 3,
+    DTATOOLS_ARROW_SPECIFICATION_OUTPUT_CONTAINER = 4,
+    DTATOOLS_ARROW_SPECIFICATION_SLOT_COUNT = 5
+};
+
+enum dtatools_arrow_column_slot {
+    DTATOOLS_ARROW_COLUMN_NAME = 0,
+    DTATOOLS_ARROW_COLUMN_KIND = 1,
+    DTATOOLS_ARROW_COLUMN_VALUES = 2,
+    DTATOOLS_ARROW_COLUMN_LEVELS = 3,
+    DTATOOLS_ARROW_COLUMN_ORDERED = 4,
+    DTATOOLS_ARROW_COLUMN_LABEL = 5,
+    DTATOOLS_ARROW_COLUMN_FORMAT = 6,
+    DTATOOLS_ARROW_COLUMN_STORAGE = 7,
+    DTATOOLS_ARROW_COLUMN_TIME_ZONE = 8,
+    DTATOOLS_ARROW_COLUMN_UNITS = 9,
+    DTATOOLS_ARROW_COLUMN_HAVEN_LABELLED = 10,
+    DTATOOLS_ARROW_COLUMN_STRING_STORAGE = 11,
+    DTATOOLS_ARROW_COLUMN_VALUE_LABEL_INDEX = 12,
+    DTATOOLS_ARROW_COLUMN_DTA_METADATA = 13,
+    DTATOOLS_ARROW_COLUMN_SLOT_COUNT = 14
+};
+
+enum dtatools_arrow_value_label_table_slot {
+    DTATOOLS_ARROW_VALUE_LABEL_TABLE_NAME = 0,
+    DTATOOLS_ARROW_VALUE_LABEL_TABLE_VALUES = 1,
+    DTATOOLS_ARROW_VALUE_LABEL_TABLE_TEXTS = 2,
+    DTATOOLS_ARROW_VALUE_LABEL_TABLE_SLOT_COUNT = 3
+};
+
+typedef struct {
+    const char *name;
+    void *label_values;
+    SEXP label_texts;
+    size_t label_count;
+} dtatools_write_value_label_table;
+
+typedef struct {
+    uint32_t *value_ids;
+    size_t length;
+} dictstring_data;
+
+enum {
+    METADATA_AGGREGATE_NO_NA = 1,
+    METADATA_AGGREGATE_SUM = 2,
+    METADATA_AGGREGATE_MIN = 4,
+    METADATA_AGGREGATE_MAX = 8
+};
+
+enum {
+    NUMERIC_BYTE = 0,
+    NUMERIC_INT = 1,
+    NUMERIC_LONG = 2,
+    NUMERIC_FLOAT = 3,
+    NUMERIC_DOUBLE = 4
+};
+
+enum {
+    WRITE_NUMERIC_CALLBACK = 0,
+    WRITE_NUMERIC_INTEGER = 1,
+    WRITE_NUMERIC_DOUBLE = 2,
+    WRITE_NUMERIC_BYTE = 3,
+    WRITE_NUMERIC_INT = 4,
+    WRITE_NUMERIC_LONG = 5,
+    WRITE_NUMERIC_FLOAT = 6
+};
+
+typedef struct {
+    const char *name;
+    int dta_type;
+    const char *format;
+    const char *label;
+    void *numeric_values;
+    SEXP string_values;
+    int value_label_index;
+    SEXP dta_metadata;
+    double numeric_shift;
+    double numeric_scale;
+    const void *direct_numeric_values;
+    int direct_numeric_kind;
+    int direct_numeric_format_version;
+    int direct_numeric_temporal;
+    int direct_numeric_no_na;
+    void *direct_string_data;
+    const void *direct_numeric_owner;
+} dtatools_write_column;
+
+enum dtatools_dta_column_slot {
+    DTATOOLS_DTA_COLUMN_NAME = 0,
+    DTATOOLS_DTA_COLUMN_TYPE = 1,
+    DTATOOLS_DTA_COLUMN_FORMAT = 2,
+    DTATOOLS_DTA_COLUMN_LABEL = 3,
+    DTATOOLS_DTA_COLUMN_VALUES = 4,
+    DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT = 5,
+    DTATOOLS_DTA_COLUMN_NUMERIC_SCALE = 6,
+    DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX = 7,
+    DTATOOLS_DTA_COLUMN_DTA_METADATA = 8,
+    DTATOOLS_DTA_COLUMN_SLOT_COUNT = 9
+};
+
+/* Rust entry points linked from libdtatools_r.a. */
+extern SEXP dtatools_metadata_rust(
+    const char *, uint32_t, uint32_t, const char *, int, char **
+);
+extern SEXP dtatools_read_rust(
+    const char *, const int *, size_t, int, double, double, int, int, int,
+    const char *, char **
+);
+extern SEXP dtatools_prepare_dta_rust(const char *, const char *, void **, char **);
+extern SEXP dtatools_read_prepared_dta_rust(
+    void *, const int *, size_t, int, double, double, int, int, int, char **
+);
+extern void dtatools_close_prepared_dta_rust(void *);
+extern int dtatools_write_rust(
+    const char *, const char *, SEXP, const void *,
+    size_t, const void *, size_t, double *, size_t, const char *, char **
+);
+extern int dtatools_write_path_kind(const char *, char **);
+extern void dtatools_free_error(char *);
+extern void dtatools_numeric_free(void *);
+extern void *dtatools_numeric_alloc(void *, size_t, int, int, size_t);
+extern void *dtatools_owned_numeric_from_raw(
+    const unsigned char *, size_t, size_t, int, int, int, size_t
+);
+extern void *dtatools_owned_numeric_clone(const void *);
+extern int dtatools_owned_numeric_region(
+    const void *, size_t, size_t, const void **, size_t *
+);
+extern size_t dtatools_owned_numeric_live_bytes(void);
+extern size_t dtatools_owned_numeric_live_owners(void);
+extern size_t dtatools_owned_numeric_chunks(const void *);
+extern int dtatools_numeric_compare(
+    int, const dtatools_compare_operand *, const dtatools_compare_operand *,
+    double, int, int *, size_t, int
+);
+extern int dtatools_numeric_compare_patch(
+    int, const dtatools_compare_operand *, const dtatools_compare_operand *,
+    double, int, const dtatools_compare_operand *, double, int,
+    const dtatools_patch_target *, size_t, int,
+    size_t *, size_t *, size_t *
+);
+extern int dtatools_gather_numeric_columns(
+    const void *, size_t, const int *, const int *, size_t
+);
+extern void dtatools_dictstring_free(void *);
+extern int dtatools_dictstring_retain(void *);
+extern int dtatools_dictstring_bytes(
+    void *, uint32_t, const char **, int *
+);
+extern void *dtatools_dictstring_clone(const void *);
+extern void *dtatools_dictstring_gather(
+    const void *, const uint32_t *, size_t
+);
+extern SEXP dtatools_save_arrow_rust(
+    const char *, const char *, const char *, SEXP, const dtatools_arrow_column *,
+    size_t, const dtatools_arrow_value_label_table *, size_t, size_t,
+    const char *, int, int, int *, char **
+);
+extern SEXP dtatools_datasig_rust(
+    const char *, SEXP, const dtatools_arrow_column *, size_t,
+    const dtatools_arrow_value_label_table *, size_t, size_t,
+    int, int *, char **
+);
+extern void *dtatools_open_arrow_rust(const char *, char **);
+extern void dtatools_close_arrow_rust(void *);
+extern SEXP dtatools_read_arrow_rust(
+    const void *, const int *, size_t, int, double, double, int, int, int,
+    int, int, int, int *, char **
+);
+extern SEXP dtatools_arrow_metadata_rust(
+    const void *, int, int, double, double, int *, char **
+);
+extern SEXP dtatools_arrow_datasig_rust(const char *, char **);
+
+typedef struct {
+    void *values;
+    size_t length;
+    int kind;
+    int temporal;
+    int format_version;
+    size_t missing_count;
+    /* Opaque immutable Rust owner. values is NULL when this is non-NULL. */
+    const void *native_owner;
+} numeric_data;
+
+typedef struct {
+    SEXP value;
+    numeric_data *storage;
+    const double *real_values;
+    const int *integer_values;
+    int type;
+} numeric_reader;
+
+typedef struct {
+    SEXP values;
+    SEXP source;
+    SEXP cache;
+    SEXP private_cache;
+    SEXP scalar;
+    dictstring_data *data;
+} reference_string_reader;
+
+typedef struct {
+    void *data;
+    size_t value_count;
+    int transferred;
+    SEXP result;
+} make_dictstring_context;
+
+/* Module globals. ALTREP classes are created in R_init_dtatools; counters
+   are read by diagnostics entry points in other units. */
+extern R_altrep_class_t dtatools_dictstring_class;
+extern R_altrep_class_t dtatools_numeric_class;
+extern R_altrep_class_t dtatools_metadata_real_class;
+extern R_altrep_class_t dtatools_metadata_string_class;
+extern R_altrep_class_t dtatools_ephemeral_string_class;
+extern R_altrep_class_t dtatools_mutation_string_class;
+extern SEXP write_callback_condition_classes;
+extern int metadata_real_aggregate_mask_enabled;
+extern int metadata_real_aggregate_mask;
+extern double owned_numeric_compatibility_bytes;
+extern R_altrep_class_t column_append_blank_names_class;
+extern double compact_copy_bytes;
+extern double mutation_target_copy_bytes;
+extern double staged_new_bytes;
+extern double old_journal_bytes;
+extern double native_scratch_allocated;
+
+/* Ordinary owned atomic backing (owned-columns.h). */
+int owned_real(SEXP value);
+int owned_column(SEXP value);
+R_altrep_class_t owned_class(SEXPTYPE type);
+SEXP owned_values(SEXP value);
+int *owned_flags(SEXP value);
+SEXP owned_adopt(SEXP values);
+SEXP owned_adopt_real(SEXP values);
+int known_numeric_classes(SEXP value, int compact);
+int owned_real_supported(SEXP value);
+int owned_supported(SEXP value);
+void owned_scan_strings(SEXP value);
+SEXP owned_capture(SEXP value);
+SEXP owned_capture_real(SEXP value);
+SEXP owned_fork(SEXP value);
+SEXP C_dtatools_capture_column(SEXP value);
+SEXP C_dtatools_owned_string_attribute(SEXP value, SEXP name, SEXP replacement);
+SEXP C_dtatools_owned_string_fits(SEXP value, SEXP width);
+SEXP C_dtatools_owned_string_width(SEXP value);
+SEXP C_dtatools_owned_scan_stats(SEXP reset);
+SEXP C_dtatools_is_owned_double(SEXP value);
+SEXP C_dtatools_owned_bare(SEXP value);
+SEXP C_dtatools_owned_plain_snapshot(SEXP value);
+SEXP C_dtatools_owned_coerce(SEXP value, SEXP logical);
+SEXP C_dtatools_owned_missing_mask(SEXP value);
+SEXP C_dtatools_owned_info(SEXP value);
+SEXP C_dtatools_native_copy_stats(SEXP reset);
+SEXP C_dtatools_owned_pointer(SEXP value, SEXP writable);
+SEXP C_dtatools_owned_pointer_write(SEXP pointer, SEXP index, SEXP replacement);
+SEXP C_dtatools_owned_no_na(SEXP value);
+SEXP C_dtatools_owned_set_string(SEXP value, SEXP index, SEXP replacement);
+SEXP C_dtatools_owned_subset(SEXP value, SEXP index);
+SEXP C_dtatools_gather_owned_discrete(SEXP columns, SEXP locations);
+int dtatools_adopt_atomic(SEXP values, SEXP *result);
+SEXP C_dtatools_callback_double(SEXP values, SEXP callback, SEXP element);
+SEXP C_dtatools_callback_integer(SEXP values, SEXP callback);
+SEXP C_dtatools_callback_character(SEXP values, SEXP callback);
+SEXP C_dtatools_callback_integer_after(SEXP values, SEXP callback, SEXP after);
+SEXP C_dtatools_callback_length(SEXP values, SEXP callback);
+SEXP C_dtatools_arm_callback_character(SEXP value, SEXP callback);
+void initialize_owned_columns(DllInfo *dll);
+
+/* Row filter reduction (row-filter.h). */
+SEXP C_dtatools_filter_start(SEXP size);
+SEXP C_dtatools_filter_reduce(SEXP state, SEXP rows, SEXP value);
+SEXP C_dtatools_filter_finish(SEXP state, SEXP inverse);
+
+/* Compact numeric payload and ALTREP class. */
+int compact_payload_is_shared(SEXP external);
+void compact_payload_mark_shared(SEXP external);
+int compact_payload_is_owned_by(SEXP external, SEXP owner);
+void compact_payload_claim(SEXP external, SEXP owner);
+void compact_payload_revoke_claim(SEXP external);
+SEXP detach_shared_materialized_payload(SEXP value);
+void numeric_finalize(SEXP external);
+numeric_data *numeric_read_storage(SEXP value);
+numeric_data *numeric_storage(SEXP value);
+R_xlen_t numeric_length(SEXP value);
+double numeric_missing_value(int offset);
+int tagged_na_tag_value(double value);
+int is_tagged_na_value(double value);
+int dta_expression_string_is_missing(SEXP value);
+int dta_missing_tag_value(double value);
+int normalized_dta_missing_tag(SEXP value, const char *argument);
+void copy_shape_attributes(SEXP target, SEXP source);
+numeric_data *unmaterialized_numeric_storage(SEXP value);
+SEXP numeric_base_source(SEXP value);
+numeric_data *unmaterialized_numeric_read_storage(SEXP value);
+void numeric_copy_region(
+    const numeric_data *data, size_t start, size_t length, void *output
+);
+int materialized_numeric_storage(
+    SEXP value, numeric_data *storage
+);
+double numeric_observed_value(double value, int temporal);
+int numeric_missing_offset_at(
+    const numeric_data *data, size_t index
+);
+int numeric_value_is_missing_at(
+    const numeric_data *data, size_t index
+);
+SEXP numeric_payload_root(SEXP value);
+numeric_reader numeric_reader_create(
+    SEXP value, R_xlen_t expected_length
+);
+double numeric_reader_at(
+    const numeric_reader *reader, R_xlen_t index, int *missing_code
+);
+void record_reference_row_read(void);
+SEXP C_dtatools_reference_row_reads(SEXP enabled);
+SEXP C_dtatools_inject_reference_write_interrupt(SEXP enabled);
+void maybe_inject_reference_write_interrupt(void);
+SEXP C_dtatools_mutation_rows(SEXP value, SEXP row_count_value);
+int write_string_utf8_status(SEXP value);
+int dtatools_write_numeric_region(
+    const void *reader_pointer, size_t start, size_t length,
+    double *values, int *missing_codes,
+    char *error_message, size_t error_capacity
+);
+int dtatools_write_string_region(
+    SEXP values, size_t start, size_t length, uint64_t *ids,
+    const char **strings, size_t *string_lengths,
+    char *error_message, size_t error_capacity
+);
+SEXP C_dtatools_capture_string(SEXP value);
+SEXP C_dtatools_construct_string(SEXP value, SEXP storage);
+SEXP C_dtatools_write_string_plan(SEXP value);
+SEXP C_dtatools_factorize_numeric(
+    SEXP value, SEXP seeds, SEXP missing_mode
+);
+double numeric_value(SEXP value, R_xlen_t index);
+R_xlen_t numeric_region(
+    SEXP value, R_xlen_t index, R_xlen_t count, double *output
+);
+void *numeric_dataptr(SEXP value, Rboolean writeable);
+const void *numeric_dataptr_or_null(SEXP value);
+int numeric_no_na(SEXP value);
+SEXP numeric_sum(SEXP value, Rboolean na_rm);
+SEXP numeric_min(SEXP value, Rboolean na_rm);
+SEXP numeric_max(SEXP value, Rboolean na_rm);
+SEXP numeric_from_backing(
+    SEXP backing, size_t length, int kind, int temporal,
+    int format_version, size_t missing_count
+);
+SEXP numeric_compact_copy(const numeric_data *data);
+SEXP numeric_handle_copy(SEXP source);
+SEXP numeric_serialized_state(SEXP value);
+SEXP numeric_unserialize(SEXP class, SEXP state);
+SEXP numeric_duplicate(SEXP value, Rboolean deep);
+void write_numeric_system_missing_raw(
+    unsigned char *output, R_xlen_t index, int kind, int format_version
+);
+SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call);
+SEXP C_dtatools_gather_numeric(
+    SEXP x, SEXP y, SEXP x_rows, SEXP y_rows
+);
+SEXP C_dtatools_gather_numeric_columns(
+    SEXP x, SEXP y, SEXP x_rows, SEXP y_rows
+);
+int dtatools_make_numeric(
+    void *data, SEXP backing, int *transferred, SEXP *result
+);
+size_t numeric_kind_width(int kind);
+void write_numeric_missing(
+    unsigned char *output, R_xlen_t index, int kind, int offset
+);
+void write_numeric_observed(
+    unsigned char *output, R_xlen_t index, int kind, double value
+);
+SEXP C_dtatools_construct_numeric(
+    SEXP value, SEXP kind_value, SEXP temporal_value
+);
+SEXP C_dtatools_construct_numeric_trusted(
+    SEXP value, SEXP missing_codes, SEXP kind_value, SEXP temporal_value
+);
+
+/* Dictionary-backed strings. */
+void dictstring_finalize(SEXP external);
+dictstring_data *dictstring_storage(SEXP value);
+SEXP dictstring_cache(SEXP value);
+SEXP unmaterialized_dictstring_source(SEXP value);
+SEXP dictstring_read_root(SEXP value);
+SEXP reference_string_reader_private_cache(
+    SEXP values, R_xlen_t read_count
+);
+reference_string_reader reference_string_reader_create(
+    SEXP values, SEXP private_cache
+);
+SEXP reference_string_reader_at(
+    const reference_string_reader *reader, R_xlen_t index
+);
+int reference_string_reader_is_missing_at(
+    const reference_string_reader *reader, R_xlen_t index
+);
+R_xlen_t dictstring_length(SEXP value);
+SEXP dictstring_value(SEXP value, R_xlen_t index);
+SEXP dictstring_patch_values(SEXP value, SEXP private_cache);
+SEXP dictstring_materialize_for_patch(SEXP value, SEXP private_cache);
+void *dictstring_dataptr(SEXP value, Rboolean writeable);
+const void *dictstring_dataptr_or_null(SEXP value);
+void dictstring_set_elt(SEXP value, R_xlen_t index, SEXP replacement);
+int dictstring_no_na(SEXP value);
+SEXP dictstring_duplicate(SEXP value, Rboolean deep);
+SEXP dictstring_compact_copy(SEXP value);
+SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call);
+SEXP C_dtatools_dictstring_subset(SEXP value, SEXP index);
+SEXP C_dtatools_deep_copy_value(SEXP value);
+SEXP C_dtatools_reference_contents(SEXP value);
+
+/* R-side helpers called by Rust. */
+int dtatools_make_dictstring(
+    void *data, size_t value_count, int *transferred, SEXP *result
+);
+int dtatools_alloc_vector(int type, R_xlen_t length, SEXP *result);
+size_t dtatools_xlength(SEXP value);
+int dtatools_is_null(SEXP value);
+int dtatools_preserve_object(SEXP object);
+void dtatools_release_object(SEXP object);
+int dtatools_make_char(
+    const char *value, int length, int encoding, SEXP *result
+);
+int dtatools_install(const char *name, SEXP *result);
+int dtatools_set_attrib(SEXP object, SEXP name, SEXP value);
+int dtatools_check_interrupt(void);
+void fail_from_rust(char *message);
+const char *optional_encoding(SEXP encoding);
+
+/* DTA and Arrow read/write marshalling. */
+SEXP C_dtatools_metadata(
+    SEXP path, SEXP encoding, SEXP column_start, SEXP column_count,
+    SEXP include_value_labels
+);
+SEXP C_dtatools_read(
+    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
+    SEXP threads, SEXP numeric_altrep, SEXP encoding
+);
+SEXP C_dtatools_prepare_dta_selection(SEXP path, SEXP encoding);
+SEXP C_dtatools_read_prepared_dta(
+    SEXP prepared, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
+    SEXP threads, SEXP numeric_altrep
+);
+SEXP C_dtatools_close_prepared_dta(SEXP prepared);
+SEXP C_dtatools_has_bytes_encoding(SEXP values);
+SEXP C_dtatools_owned_utf8_ready(SEXP value);
+const char *dtatools_string_elt_utf8(SEXP values, size_t index);
+SEXP C_dtatools_write_path_kind(SEXP path);
+SEXP C_dtatools_write(SEXP specification, SEXP path);
+SEXP C_dtatools_save_arrow(
+    SEXP specification, SEXP path, SEXP compression, SEXP threads,
+    SEXP checksums
+);
+SEXP C_dtatools_datasig(SEXP specification, SEXP threads);
+SEXP C_dtatools_open_arrow(SEXP path);
+SEXP C_dtatools_close_arrow(SEXP snapshot);
+SEXP C_dtatools_read_arrow(
+    SEXP snapshot, SEXP columns, SEXP skip, SEXP n_max, SEXP verify, SEXP profile,
+    SEXP numeric_altrep, SEXP threads, SEXP datasig, SEXP count_source_rows
+);
+SEXP C_dtatools_arrow_metadata(
+    SEXP snapshot, SEXP profile, SEXP scan_ambiguous_int32,
+    SEXP skip, SEXP n_max
+);
+SEXP C_dtatools_arrow_datasig(SEXP path);
+
+/* Metadata proxies and mutation views. */
+R_xlen_t mutation_string_length(SEXP value);
+SEXP mutation_string_elt(SEXP value, R_xlen_t i);
+SEXP mutation_string_duplicate(SEXP value, Rboolean deep);
+void *mutation_string_dataptr(SEXP value, Rboolean writable);
+const void *mutation_string_dataptr_or_null(SEXP value);
+SEXP C_dtatools_mutation_prototype(SEXP value);
+R_xlen_t ephemeral_string_length(SEXP value);
+SEXP ephemeral_string_value(SEXP value, R_xlen_t index);
+SEXP C_dtatools_ephemeral_altstring(SEXP value);
+SEXP C_dtatools_is_numeric_altrep(SEXP value);
+SEXP C_dtatools_is_altrep(SEXP value);
+SEXP metadata_proxy_state(SEXP value);
+SEXP metadata_proxy_source(SEXP value);
+SEXP metadata_proxy_owner(SEXP value);
+void metadata_proxy_set_state(
+    SEXP value, SEXP source, SEXP owner
+);
+R_xlen_t metadata_proxy_length(SEXP value);
+double metadata_real_value(SEXP value, R_xlen_t index);
+R_xlen_t metadata_real_region(
+    SEXP value, R_xlen_t index, R_xlen_t count, double *output
+);
+void *metadata_real_dataptr(SEXP value, Rboolean writeable);
+const void *metadata_real_dataptr_or_null(SEXP value);
+SEXP metadata_real_extract_subset(
+    SEXP value, SEXP index, SEXP call
+);
+int metadata_real_no_na(SEXP value);
+SEXP metadata_real_sum(SEXP value, Rboolean na_rm);
+SEXP metadata_real_min(SEXP value, Rboolean na_rm);
+SEXP metadata_real_max(SEXP value, Rboolean na_rm);
+SEXP metadata_string_value(SEXP value, R_xlen_t index);
+SEXP metadata_string_materialize_for_patch(
+    SEXP value, SEXP dictionary, SEXP private_cache
+);
+void *metadata_string_dataptr(SEXP value, Rboolean writeable);
+const void *metadata_string_dataptr_or_null(SEXP value);
+void metadata_string_set_elt(
+    SEXP value, R_xlen_t index, SEXP replacement
+);
+SEXP metadata_string_extract_subset(
+    SEXP value, SEXP index, SEXP call
+);
+SEXP metadata_proxy(
+    SEXP value, R_altrep_class_t proxy_class, int isolate
+);
+SEXP metadata_real_duplicate(SEXP value, Rboolean deep);
+SEXP metadata_string_duplicate(SEXP value, Rboolean deep);
+SEXP C_dtatools_metadata_copy(SEXP value);
+SEXP C_dtatools_metadata_view(SEXP value);
+SEXP C_dtatools_mutation_views(SEXP data);
+SEXP C_dtatools_release_mutation_views(SEXP columns);
+SEXP C_dtatools_expose_mutation_column(SEXP value);
+SEXP mutation_physical_names(SEXP data);
+SEXP C_dtatools_column_names_info(SEXP data);
+SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count);
+SEXP C_dtatools_mutation_name_location(SEXP data, SEXP name);
+SEXP C_dtatools_physical_column_count(SEXP data);
+SEXP C_dtatools_mark_reference_data(
+    SEXP data, SEXP state, SEXP classes
+);
+SEXP C_dtatools_reference_state_valid(SEXP data);
+SEXP C_dtatools_set_attribute(SEXP object, SEXP name, SEXP value);
+
+/* Reference table transactions. */
+SEXP C_dtatools_replacement_fits(SEXP values, SEXP rows, SEXP row_mode, SEXP kind_value);
+SEXP C_dtatools_mutation_info(SEXP data, SEXP location);
+SEXP C_dtatools_patch_vector(
+    SEXP target, SEXP rows, SEXP replacement
+);
+SEXP C_dtatools_patch_data_column(
+    SEXP data, SEXP location, SEXP target, SEXP rows, SEXP replacement
+);
+SEXP C_dtatools_set_data_column(SEXP data, SEXP location, SEXP column);
+SEXP C_dtatools_patch_slot(SEXP data, SEXP location, SEXP rows,
+                                SEXP replacement, SEXP entry_shared);
+SEXP C_dtatools_shared_columns(SEXP columns);
+SEXP C_dtatools_column_capacity(SEXP x);
+SEXP C_dtatools_reserve_column_capacity(SEXP x, SEXP capacity_value);
+R_xlen_t column_append_blank_names_length(SEXP value);
+SEXP column_append_blank_names_elt(SEXP value, R_xlen_t index);
+void *column_append_blank_names_dataptr(SEXP value, Rboolean writable);
+const void *column_append_blank_names_dataptr_or_null(SEXP value);
+SEXP C_dtatools_inject_column_append_failure(SEXP stage, SEXP interrupt);
+SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column);
+SEXP C_dtatools_can_select_data_columns(SEXP data, SEXP length);
+SEXP C_dtatools_select_data_columns(
+    SEXP data, SEXP columns, SEXP names, SEXP state,
+    SEXP base_classes, SEXP reference_classes
+);
+SEXP C_dtatools_inject_generation_interrupt(SEXP mode);
+int string_declared_width(SEXP declared, const char *message);
+size_t reference_string_width(SEXP value, const char *operation);
+SEXP C_dtatools_generate_character(
+    SEXP values, SEXP rows, SEXP row_count_value,
+    SEXP declared, SEXP attributes
+);
+SEXP C_dtatools_generate_numeric(
+    SEXP values, SEXP rows, SEXP row_count_value,
+    SEXP kind_value, SEXP temporal_value, SEXP attributes
+);
+SEXP C_dtatools_is_unmaterialized_numeric_altrep(SEXP value);
+SEXP C_dtatools_is_materialized_numeric_altrep(SEXP value);
+SEXP C_dtatools_is_unmaterialized_dictstring(SEXP value);
+SEXP C_dtatools_dictstring_cached_count(SEXP value);
+SEXP C_dtatools_dictstring_max_width(SEXP value);
+SEXP C_dtatools_numeric_storage_matches(
+    SEXP value, SEXP kind_value, SEXP temporal_value
+);
+SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value);
+SEXP C_dtatools_owned_numeric_info(SEXP value);
+SEXP C_dtatools_force_altrep_materialization(SEXP value);
+SEXP C_dtatools_mutate_first_numeric_altrep(SEXP value, SEXP replacement);
+SEXP C_dtatools_mutate_first_dictstring_altrep(
+    SEXP value, SEXP replacement
+);
+SEXP C_dtatools_metadata_proxy_depth(SEXP value);
+SEXP C_dtatools_metadata_proxy_aggregate_mask(SEXP enabled);
+SEXP C_dtatools_has_tagged_na(SEXP value);
+SEXP C_dtatools_tagged_missing(SEXP tag);
+SEXP C_dtatools_is_tagged_missing(SEXP value, SEXP tag);
+SEXP C_dtatools_is_missing(SEXP values);
+SEXP C_dtatools_missing_tag(SEXP value);
+SEXP C_dtatools_fused_compare_patch(
+    SEXP target, SEXP op_value, SEXP x, SEXP y, SEXP scalar,
+    SEXP replacement, SEXP replacement_scalar, SEXP threads_value
+);
+SEXP C_dtatools_fused_patch_slot(
+    SEXP data, SEXP location, SEXP entry_shared, SEXP op, SEXP left,
+    SEXP right, SEXP scalar, SEXP replacement, SEXP replacement_scalar, SEXP threads
+);
+SEXP C_dtatools_dta_compare(
+    SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
+);
+SEXP C_dtatools_missing_codes(SEXP value);
+SEXP C_dtatools_replace_table_columns(SEXP data, SEXP columns);
+SEXP C_dtatools_replace_reference_columns(
+    SEXP data, SEXP store, SEXP locations, SEXP names, SEXP columns
+);
+
+/* egen summaries and groups. */
+SEXP C_dtatools_egen_summary(SEXP input, SEXP operation, SEXP missing,
+                           SEXP allow_nan);
+SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
+                               SEXP allow_nan);
+SEXP C_dtatools_egen_rows(SEXP columns, SEXP operation, SEXP missing,
+                        SEXP allow_nan);
+
+/* Registration. */
+int dtatools_owned_numeric_gc(void);
+
+#endif /* DTATOOLS_INTERNAL_H */
