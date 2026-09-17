@@ -1175,28 +1175,34 @@ stopifnot(
 )
 # Both writes stay compact on a dibble and finish well under `system.time()`'s
 # resolution, so one sample cannot rank them. Repeated writes to the now
-# owned column give a per-write cost to compare with a fill pass: a restored
-# full-source scan costs about one fill per write, and the compact path a
-# small fraction of that.
-generic_altrep_repetitions <- 50L
-generic_altrep_per_write <- system.time(
-    for (iteration in seq_len(generic_altrep_repetitions)) {
-        replace_values(generic_altrep_data, value, 2L + (iteration %% 2L))
-    }
-)[["elapsed"]] / generic_altrep_repetitions
-sparse_generic_altrep_per_write <- system.time(
-    for (iteration in seq_len(generic_altrep_repetitions)) {
-        replace_values(
-            sparse_generic_altrep_data, value, 2L + (iteration %% 2L),
-            where = rows - iteration
-        )
-    }
-)[["elapsed"]] / generic_altrep_repetitions
+# owned column give a per-write cost to compare with a fill pass, both as
+# medians over batches so allocator warm-up cannot decide the gate. A
+# compact write costs well under one fill; a restored full-source scan adds
+# more than one fill per write and cannot pass.
+median_batches <- function(batches, repetitions, body) {
+    median(vapply(seq_len(batches), function(batch) {
+        system.time(
+            for (iteration in seq_len(repetitions)) body(iteration)
+        )[["elapsed"]] / repetitions
+    }, numeric(1)))
+}
+generic_altrep_fill_median <- median_batches(5L, 5L, function(iteration) {
+    fill_result <- rep.int(2L, rows)
+})
+generic_altrep_per_write <- median_batches(5L, 20L, function(iteration) {
+    replace_values(generic_altrep_data, value, 2L + (iteration %% 2L))
+})
+sparse_generic_altrep_per_write <- median_batches(5L, 20L, function(iteration) {
+    replace_values(
+        sparse_generic_altrep_data, value, 2L + (iteration %% 2L),
+        where = rows - iteration
+    )
+})
 stopifnot(
     dtatools:::.is_unmaterialized_numeric_altrep(generic_altrep_data$value),
     dtatools:::.is_unmaterialized_numeric_altrep(sparse_generic_altrep_data$value),
-    generic_altrep_per_write < integer_fill_time * 0.25,
-    sparse_generic_altrep_per_write < integer_fill_time * 0.25
+    generic_altrep_per_write < generic_altrep_fill_median,
+    sparse_generic_altrep_per_write < generic_altrep_fill_median
 )
 
 append_generated_columns <- function(data, count) {
@@ -1351,6 +1357,7 @@ record_metric("generic_altrep_replacement_largest_allocation_bytes", largest_gen
 record_metric("sparse_generic_altrep_replacement_seconds", sparse_generic_altrep_replacement_time, "%.6f")
 record_metric("sparse_generic_altrep_total_profiled_allocation_bytes", total_sparse_generic_altrep_allocation, "%.0f")
 record_metric("sparse_generic_altrep_largest_allocation_bytes", largest_sparse_generic_altrep_allocation, "%.0f")
+record_metric("generic_altrep_fill_median_seconds", generic_altrep_fill_median, "%.6f")
 record_metric("generic_altrep_per_write_seconds", generic_altrep_per_write, "%.6f")
 record_metric("sparse_generic_altrep_per_write_seconds", sparse_generic_altrep_per_write, "%.6f")
 record_metric("repeated_generation_small_count", small_repeated_generation_count, "%d")

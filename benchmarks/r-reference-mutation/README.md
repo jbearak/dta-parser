@@ -144,9 +144,10 @@ baseline. The full replacement caps total allocation at one compact result,
 leaves the former standalone column alias unchanged, and keeps the column
 compact; the one-row variant likewise permits only one result allocation.
 Because both writes finish below `system.time()`'s resolution, each is then
-repeated fifty times on the owned column and the per-write time must stay
-under a quarter of one integer fill pass. A restored full-source scan costs
-about one fill per write, so it cannot pass either timing gate.
+repeated on the owned column, and the median per-write time over five
+batches must stay under the median time of one integer fill pass. A compact
+write costs well under a fill; a restored full-source scan adds more than
+one fill per write, so it cannot pass either timing gate.
 One row is also replaced from a five-million-row dictionary-backed values
 vector with 250,000 distinct strings. That path must leave the source cache
 unchanged and allocate less than two megabytes in total, preventing cache space
