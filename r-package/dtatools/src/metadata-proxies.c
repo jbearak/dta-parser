@@ -354,7 +354,7 @@ SEXP metadata_proxy(
         R_altrep_inherits(source, dtatools_numeric_class)) {
         SEXP external = R_altrep_data1(source);
         if (R_altrep_data2(source) == R_NilValue &&
-            numeric_read_storage(source)->native_owner != NULL) {
+            numeric_payload_retained(numeric_read_storage(source))) {
             alias = PROTECT(numeric_handle_copy(source));
         } else {
             alias = PROTECT(R_new_altrep(
@@ -473,7 +473,7 @@ static SEXP mutation_column_view(SEXP value) {
             source = metadata_proxy_source(source);
         }
         SEXP origin = R_altrep_data1(source);
-        SEXP descriptor = PROTECT(numeric->native_owner != NULL
+        SEXP descriptor = PROTECT(numeric_payload_retained(numeric)
             ? numeric_handle_copy(source)
             : numeric_from_backing(
                 R_ExternalPtrProtected(origin), numeric->length, numeric->kind,

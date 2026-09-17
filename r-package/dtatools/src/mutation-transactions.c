@@ -1291,7 +1291,7 @@ SEXP C_dtatools_patch_vector(
     SEXP target, SEXP rows, SEXP replacement
 ) {
     numeric_data *immutable = unmaterialized_numeric_read_storage(target);
-    if (immutable != NULL && immutable->native_owner != NULL) {
+    if (immutable != NULL && numeric_payload_retained(immutable)) {
         SEXP entry_data1 = PROTECT(R_altrep_data1(target));
         SEXP entry_data2 = PROTECT(R_altrep_data2(target));
         R_xlen_t length = XLENGTH(target);
@@ -2418,7 +2418,7 @@ SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
    share one allocation, so this is charged memory rather than process RSS. */
 SEXP C_dtatools_owned_numeric_info(SEXP value) {
     numeric_data *data = unmaterialized_numeric_read_storage(value);
-    int retained = data != NULL && data->native_owner != NULL;
+    int retained = data != NULL && numeric_payload_retained(data);
     const char *labels[] = {"owned", "rows", "chunks", "native_bytes", "live_owners", "compatibility_bytes"};
     SEXP result = PROTECT(Rf_allocVector(REALSXP, 6));
     SEXP names = PROTECT(Rf_allocVector(STRSXP, 6));
