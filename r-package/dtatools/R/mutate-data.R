@@ -1852,6 +1852,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     original <- .as_mutation_data(
         data, allow_grouped = TRUE, allow_rowwise = FALSE, private_views = TRUE
     )
+    # An error or interrupt before the commit releases the views too; the
+    # native release is a no-op on a list released before the commit.
+    on.exit(.Call(C_dtatools_release_mutation_views, original$columns), add = TRUE)
     target <- .mutation_name(variable, generate, original)
     if (generate) {
         grown <- .grow_mutation_target(data, original, length(data) + 1L,

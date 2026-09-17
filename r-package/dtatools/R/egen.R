@@ -88,6 +88,9 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     # so an expression that retains a column cannot alias the dataset.
     original <- .open_mutation_target(data, allow_grouped = TRUE,
                                       allow_rowwise = FALSE, private_views = TRUE)
+    # An error or interrupt before the commit releases the views too; the
+    # native release is a no-op on a list released before the commit.
+    on.exit(.Call(C_dtatools_release_mutation_views, original$columns), add = TRUE)
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
         function() .capture_positional_pair(...),
