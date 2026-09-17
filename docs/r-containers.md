@@ -27,7 +27,8 @@ mutation. The other supported containers do not require data.table.
 | `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`, `reorder_dta_rows()` | Reference | Error | Error | Error |
 | `data[i, y := v]` | Reference | Error | Error | data.table's own `:=`: reference, ignoring declared Stata storage |
 | `set_var_label()`, `set_val_labels()`, `set_var_format()`, `set_dta_metadata()`, note and characteristic setters, on a table | Reference | Error | Error | Error |
-| `reserve_columns()`, `copy_data()`, `column_capacity()`, `can_add_columns()` | Reference / inspect | Error | Error | Error |
+| `reserve_columns()`, `column_capacity()`, `can_add_columns()` | Prepare / inspect | Error | Error | Error |
+| `copy_data()` | Copy → dibble | Error | Error | Error |
 | `dplyr::mutate()` and the other verbs | Copy → dibble | Copy → tibble | Copy → data.frame | Copy → data.table |
 | `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, `row.names<-` | Copy | Copy | Copy | Copy |
 | `var_label(data$x) <-`, `val_labels(data$x) <-`, `attr(data$x, ...) <-` | Copy | Copy | Copy | Copy |

@@ -72,7 +72,11 @@ By reference, on a dibble, the package's mutation target:
 - table metadata setters: `set_var_label()`, `set_var_labels()`, `set_val_labels()`,
   `set_var_format()`, `set_var_formats()`, `set_dta_metadata()`, and the note and
   characteristic setters
-- `reserve_columns()`, `copy_data()`, `column_capacity()`, `can_add_columns()`
+- `reserve_columns()`, `column_capacity()`, `can_add_columns()`, which prepare or
+  inspect the mutation target rather than change its values
+
+`copy_data()` also requires a dibble but returns an independent copy; it is a
+copying operation, listed below.
 
 A base data frame, tibble, or data table is not a mutation target. Each of these helpers rejects it before runtime names, selectors, or updates are evaluated, with an error naming the recovery: assign `data <- as_dibble(data)`. Conversion removes additional container classes, retains recognized grouping and metadata, and types numeric and string columns. A data.table user who wants by-reference mutation without Stata typing uses data.table's own `:=` and `set()`. Mutation by reference predates the dibble; restricting it to the container built for it is [ADR 0036](adr/0036-mutate-by-reference-only-on-dibbles.md).
 
