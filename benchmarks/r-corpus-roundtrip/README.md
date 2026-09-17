@@ -64,6 +64,62 @@ latest complete qualification against dtatools 0.6.0 under the documented
 Stata/MP 18 executable scope. The [2026-08-27 report](results-2026-08-27.md)
 remains the historical first complete qualification and write comparison.
 
+## Mutation signature gate
+
+`mutation-gate.R` is the merge gate for changes to the by-reference verbs and
+the copying verbs that ADR 0036 touches. It needs only R: no Stata, no haven.
+For every selected corpus file a fresh worker reads the file as a dibble, runs
+a fixed verb list on private copies, and records one [`datasig()`] per
+(verb, container) pair. The by-reference verbs (`gen()`, `egen()`, `repl()`,
+`replace_values()`, bracket `:=`, `keep_vars()`, `drop_vars()`,
+`rename_vars()`, `order_vars()`, `reorder_dta_rows()`) run on the dibble only.
+The copying verbs (`slice_dta_rows()`, `dta_merge()`, and dplyr's `mutate()`,
+`filter()`, and `select()`) run once per output container: dibble, tibble,
+data frame, and data table. Column targets are chosen deterministically, the
+first numeric and the first character column in declared order, and a verb
+with no applicable column records `not-applicable` rather than a gap, so the
+baseline has the same rows on every run.
+
+`mutation-gate-baseline.tsv` is committed. Its rows are the stable corpus ID,
+verb, input container, and the result's complete class vector followed by its
+signature;
+it contains no paths, labels, or values. The by-reference verbs are signed
+through an alias taken before the call, so a helper that returned a modified
+copy instead of writing in place would fail the gate.
+`compare` fails on any row that differs or is missing, and writes the
+differences to `differences.tsv` in the output directory:
+
+```sh
+DTATOOLS_BENCH_LIB=/path/to/lib \
+  Rscript --vanilla benchmarks/r-corpus-roundtrip/mutation-gate.R \
+  compare "$AWW_CACHE_ROOT" target/r-corpus-mutation-gate 3
+```
+
+`MAX_FILES` selects that many of the smallest nonempty files per corpus, so
+the smoke pass above signs nine datasets in about two minutes. Without it the
+gate runs the whole corpus in size-aware waves under `DTATOOLS_VERIFY_JOBS`
+and `DTATOOLS_VERIFY_MEMORY_GIB`, as verification does.
+
+Refreshing the baseline is a deliberate act: `record --update-baseline`
+with `MAX_FILES` replaces the rows of the selected datasets and leaves the
+others in place, and without `MAX_FILES` rebuilds the whole file. A full
+`compare` requires the baseline to cover exactly the current corpus, and
+the resulting diff to the committed file is part of the PR that changed the
+signatures. `record` without the flag behaves as `compare`. Record the
+baseline from the build the change is measured against, then run `compare`
+with the changed build:
+
+```sh
+DTATOOLS_BENCH_LIB=/path/to/reference-lib \
+  Rscript --vanilla benchmarks/r-corpus-roundtrip/mutation-gate.R \
+  record "$AWW_CACHE_ROOT" target/r-corpus-mutation-gate 3 --update-baseline
+```
+
+The committed baseline was recorded from the build before ADR 0036 landed, on
+the three smallest nonempty files of each corpus.
+
+[`datasig()`]: ../../r-package/dtatools/R/datasig.R
+
 ## Exact Stata verification
 
 `verify.sh` runs the stricter correctness loop. For each source it
