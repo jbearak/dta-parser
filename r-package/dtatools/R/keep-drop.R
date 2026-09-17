@@ -134,7 +134,9 @@ rename_vars <- function(data, ..., .names = NULL) {
 .rename_all_vars_by_reference <- function(data, new_names) {
     original <- .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
-    columns <- original$columns
+    # Read the columns after validation: a custom column's `length()` or
+    # `NROW()` method may have mutated the table while the view was built.
+    columns <- .data_columns(data)
     if (!is.character(new_names) || anyNA(new_names)) {
         stop("`.names` must be a character vector", call. = FALSE)
     }
@@ -169,7 +171,9 @@ rename_vars <- function(data, ..., .names = NULL) {
     }
     original <- .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
-    columns <- original$columns
+    # Read the columns after validation: a custom column's `length()` or
+    # `NROW()` method may have mutated the table while the view was built.
+    columns <- .data_columns(data)
     current_names <- names(columns)
     locations <- vapply(
         replacements,
@@ -347,7 +351,8 @@ rename_vars <- function(data, ..., .names = NULL) {
 
 .select_vars_by_reference <- function(data, selections, keep) {
     original <- .as_mutation_data(data)
-    columns <- original$columns
+    # Read the columns after validation, as above.
+    columns <- .data_columns(data)
     selected_locations <- .resolve_selections(selections, names(columns))
     if (keep && length(selected_locations) == length(columns)) {
         return(invisible(data))
@@ -364,7 +369,9 @@ rename_vars <- function(data, ..., .names = NULL) {
 .order_vars_by_reference <- function(data, selections) {
     original <- .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
-    columns <- original$columns
+    # Read the columns after validation: a custom column's `length()` or
+    # `NROW()` method may have mutated the table while the view was built.
+    columns <- .data_columns(data)
     moved_locations <- .resolve_selections(selections, names(columns))
     locations <- seq_along(columns)
     ordered_locations <- c(
