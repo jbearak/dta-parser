@@ -193,6 +193,16 @@
                       private_views = private_views)
 }
 
+# Validates the target's shape and grouping before argument capture runs
+# user code, through private views that are released at once: the call
+# that writes opens its own.
+.preflight_mutation_target <- function(data) {
+    preflight <- .open_mutation_target(data, allow_grouped = TRUE,
+                                       allow_rowwise = FALSE, private_views = TRUE)
+    .Call(C_dtatools_release_mutation_views, preflight$columns)
+    invisible(NULL)
+}
+
 # Shape and grouping rules shared by mutation targets and by frames on their
 # way to becoming one inside as_dibble(). The mutation-target gate itself runs
 # at each public helper's entry.
