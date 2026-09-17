@@ -449,7 +449,7 @@ fertility_output_expected_releases <- c(
 fertility_output_expected_levels <- c(survey = 1218L, aggregate = 8L)
 
 fertility_output_terminal_classifications <- function() c(
-    "pass", "direct-vs-eager-mismatch", "dtatools-only-error",
+    "pass", "direct-vs-rust-mismatch", "dtatools-only-error",
     "haven-only-error", "shared-reader-error", "metadata-mismatch",
     "value-mismatch", "tag-mismatch", "date-mismatch", "encoding-mismatch",
     "row-termination-mismatch", "known-intentional-divergence"
@@ -823,7 +823,7 @@ fertility_result_frame <- function(checkpoints) {
 
 fertility_classifications <- function() c(
     "pass", "expected-unsupported-111", "inventory-hash-error",
-    "direct-vs-eager-mismatch", "dtatools-only-error", "haven-only-error",
+    "direct-vs-rust-mismatch", "dtatools-only-error", "haven-only-error",
     "shared-reader-error", "metadata-mismatch", "value-mismatch", "tag-mismatch",
     "date-mismatch", "encoding-mismatch", "row-termination-mismatch",
     "known-intentional-divergence", "timeout", "memory-limit", "crash", "unresolved"
@@ -831,7 +831,7 @@ fertility_classifications <- function() c(
 
 fertility_mismatch_categories <- function() c(
     "metadata-mismatch", "value-mismatch", "tag-mismatch", "date-mismatch",
-    "encoding-mismatch", "row-termination-mismatch", "direct-vs-eager-mismatch",
+    "encoding-mismatch", "row-termination-mismatch", "direct-vs-rust-mismatch",
     "known-intentional-divergence", "unresolved"
 )
 
@@ -893,7 +893,7 @@ fertility_validate_public_results <- function(results) {
     }
     allowed_secondary <- unique(c(
         fertility_classifications(), fertility_mismatch_categories(),
-        "direct-reader-error", "eager-reader-error", "haven-reader-error",
+        "direct-reader-error", "rust-reader-error", "haven-reader-error",
         "metadata-reader-error", "hash-read-error", "signature-mismatch",
         "input-changed", "tile-ceiling-reached",
         "structural-metadata-unavailable"
@@ -2535,7 +2535,7 @@ fertility_validate_recorded_tile <- function(
                   fertility_legacy_corpus_schema_version)
     allowed_secondary <- c(
         fertility_classifications(), fertility_mismatch_categories(),
-        "direct-reader-error", "eager-reader-error", "haven-reader-error",
+        "direct-reader-error", "rust-reader-error", "haven-reader-error",
         "metadata-reader-error", "row-termination-mismatch",
         "structural-metadata-unavailable", "input-changed"
     )
@@ -2560,7 +2560,7 @@ fertility_validate_recorded_tile <- function(
         any(!is.na(mismatches$component) &
             (!is.finite(mismatches$component) | mismatches$component < 1)) ||
         any(!is.na(mismatches$pair) & !mismatches$pair %in%
-            c("direct-eager", "direct-haven", "eager-haven"))
+            c("direct-rust", "direct-haven", "rust-haven"))
     )) stop("recorded tile checkpoint contains malformed or non-canonical detail")
     invisible(TRUE)
 }
@@ -2802,7 +2802,7 @@ fertility_tile_secondary <- function(
     values <- unlist(lapply(tiles, `[[`, "secondary"), use.names = FALSE)
     artifact <- values == "-reader-error"
     canonical_reader_errors <- c(
-        "direct-reader-error", "eager-reader-error", "haven-reader-error",
+        "direct-reader-error", "rust-reader-error", "haven-reader-error",
         "metadata-reader-error"
     )
     malformed_reader_error <- grepl("reader-error", values, fixed = TRUE) &
@@ -2836,8 +2836,8 @@ fertility_aggregate_classification <- function(
     if ("row-termination-mismatch" %in% c(classes, secondary)) {
         return("row-termination-mismatch")
     }
-    if ("direct-vs-eager-mismatch" %in% c(classes, secondary)) {
-        return("direct-vs-eager-mismatch")
+    if ("direct-vs-rust-mismatch" %in% c(classes, secondary)) {
+        return("direct-vs-rust-mismatch")
     }
     for (classification in c("metadata-mismatch", "tag-mismatch", "date-mismatch",
                              "encoding-mismatch", "value-mismatch",
@@ -2987,7 +2987,7 @@ fertility_validate_tile_completeness <- function(tiles, batches, total_rows,
     ))]
     expected_terminal_skips <- as.double(total_rows) + seq.int(0, expected_probes - 1L)
     expected_count <- length(batches[[1L]])
-    readers <- c("direct", "eager", "haven")
+    readers <- c("direct", "rust", "haven")
     for (probe in seq_len(expected_probes)) {
         tile <- terminal_tiles[[probe]]
         expected_hash <- if (!is.null(tile$framework_id))
@@ -3025,7 +3025,7 @@ fertility_validate_tile_completeness <- function(tiles, batches, total_rows,
             expected_hash <- if (!is.null(tile$framework_id))
                 fertility_projection_hash(batches[[batch]], tile$framework_id) else
                 NA_character_
-            readers <- c("direct", "eager", "haven")
+            readers <- c("direct", "rust", "haven")
             attested <- identical(as.integer(tile$projection_expected_count),
                                   as.integer(expected_count)) &&
                 is.character(tile$projection_expected_hash) &&

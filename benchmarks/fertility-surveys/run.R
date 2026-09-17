@@ -214,7 +214,7 @@ execute_tile <- function(item, tile, input) {
                 "memory-limit" else "crash",
             secondary = character(), mismatches = data.frame(), rows = NA_integer_,
             reader_rows = setNames(rep(NA_integer_, 3L),
-                                   c("direct", "eager", "haven")),
+                                   c("direct", "rust", "haven")),
             columns = NA_integer_, column_names = character(), storage = character(),
             structural_rows = NA_real_, column_bytes = numeric(), strl = logical(),
             projection_expected_count = if (tile$type %in% c("value", "terminal"))
@@ -222,11 +222,11 @@ execute_tile <- function(item, tile, input) {
             projection_expected_hash = if (tile$type %in% c("value", "terminal"))
                 fertility_projection_hash(tile$column_names, framework_id) else NA_character_,
             projection_counts = setNames(rep(NA_integer_, 3L),
-                                         c("direct", "eager", "haven")),
+                                         c("direct", "rust", "haven")),
             projection_hashes = setNames(rep(NA_character_, 3L),
-                                         c("direct", "eager", "haven")),
+                                         c("direct", "rust", "haven")),
             projection_ok = setNames(rep(FALSE, 3L),
-                                     c("direct", "eager", "haven")),
+                                     c("direct", "rust", "haven")),
             elapsed_seconds = unname(proc.time()[["elapsed"]] - started)
             )
         }
@@ -304,15 +304,15 @@ planning_failure_tile <- function(item, batch, detail) list(
                             component = NA_integer_, pair = NA_character_,
                             stringsAsFactors = FALSE),
     rows = NA_integer_, reader_rows = setNames(rep(NA_integer_, 3L),
-                                                c("direct", "eager", "haven")),
+                                                c("direct", "rust", "haven")),
     columns = NA_integer_, column_names = character(), storage = character(),
     structural_rows = NA_real_, column_bytes = numeric(), strl = logical(),
     projection_expected_count = NA_integer_, projection_expected_hash = NA_character_,
     projection_counts = setNames(rep(NA_integer_, 3L),
-                                 c("direct", "eager", "haven")),
+                                 c("direct", "rust", "haven")),
     projection_hashes = setNames(rep(NA_character_, 3L),
-                                 c("direct", "eager", "haven")),
-    projection_ok = setNames(rep(FALSE, 3L), c("direct", "eager", "haven")),
+                                 c("direct", "rust", "haven")),
+    projection_ok = setNames(rep(FALSE, 3L), c("direct", "rust", "haven")),
     elapsed_seconds = 0
 )
 

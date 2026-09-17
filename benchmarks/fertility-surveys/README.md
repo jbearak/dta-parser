@@ -62,8 +62,10 @@ classification. Every metadata/value tile runs in its own timeout-isolated
 subprocess and reads exactly
 that projection/window through `dtatools::read_dta(..., output = "tibble")`, the
 same reader run serially and eagerly (`dtatools::read_dta(..., output = "tibble",
-threads = 1L, use_numeric_altrep = FALSE)`, the `eager` reader), and
-`haven::read_dta()`.
+threads = 1L, use_numeric_altrep = FALSE)`), and `haven::read_dta()`. The eager
+read keeps the reader identifier `rust` and the pair identifiers `direct-rust`
+and `rust-haven`, which recorded checkpoints and the frozen corpus schemas carry;
+it replaced the retired internal Rust-vector collector that the name described.
 
 Comparison evaluates every available direct-R/eager, direct-R/haven, and
 eager/haven pair and accumulates every mismatch rather than returning at the first
@@ -406,7 +408,7 @@ completed semantic mismatches remain valid evidence. Filters and shards do not
 alter tile identity.
 
 File-level classifications include `pass`, `expected-unsupported-111`,
-`inventory-hash-error`, `direct-vs-eager-mismatch`, `dtatools-only-error`,
+`inventory-hash-error`, `direct-vs-rust-mismatch`, `dtatools-only-error`,
 `haven-only-error`, `shared-reader-error`, `metadata-mismatch`, `value-mismatch`,
 `tag-mismatch`, `date-mismatch`, `encoding-mismatch`,
 `row-termination-mismatch`, `known-intentional-divergence`, `timeout`,

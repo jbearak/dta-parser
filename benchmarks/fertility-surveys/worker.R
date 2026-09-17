@@ -48,7 +48,7 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
                 path, encoding = encoding, n_max = 0L, .name_repair = "minimal",
                 output = "tibble"
             )
-        } else if (identical(reader, "eager")) {
+        } else if (identical(reader, "rust")) {
             dtatools::read_dta(
                 path, encoding = encoding, n_max = 0L, .name_repair = "minimal",
                 output = "tibble", threads = 1L, use_numeric_altrep = FALSE
@@ -64,7 +64,7 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
                 path, encoding = encoding, col_select = character(),
                 .name_repair = "minimal", output = "tibble"
             )
-        } else if (identical(reader, "eager")) {
+        } else if (identical(reader, "rust")) {
             dtatools::read_dta(
                 path, encoding = encoding, col_select = character(),
                 .name_repair = "minimal",
@@ -87,7 +87,7 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
                 .name_repair = "minimal", output = "tibble"
             ))
         }
-        if (identical(reader, "eager")) {
+        if (identical(reader, "rust")) {
             return(dtatools::read_dta(
                 path, encoding = encoding, skip = tile$skip, n_max = tile$n_max,
                 .name_repair = "minimal",
@@ -105,7 +105,7 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
             skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal",
             output = "tibble"
         )
-    } else if (identical(reader, "eager")) {
+    } else if (identical(reader, "rust")) {
         dtatools::read_dta(
             path, encoding = encoding, col_select = tidyselect::all_of(columns),
             skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal",
@@ -123,9 +123,9 @@ fertility_compare_available_pairs <- function(frames, errors) {
     mismatches <- fertility_bind_mismatches(list())
     secondary <- character()
     pairs <- list(
-        list(left = "direct", right = "eager", id = "direct-eager", internal = TRUE),
+        list(left = "direct", right = "rust", id = "direct-rust", internal = TRUE),
         list(left = "direct", right = "haven", id = "direct-haven", internal = FALSE),
-        list(left = "eager", right = "haven", id = "eager-haven", internal = FALSE)
+        list(left = "rust", right = "haven", id = "rust-haven", internal = FALSE)
     )
     for (pair in pairs) {
         if (errors[[pair$left]] || errors[[pair$right]]) next
@@ -138,7 +138,7 @@ fertility_compare_available_pairs <- function(frames, errors) {
         if (!nrow(current)) next
         current$pair <- pair$id
         mismatches <- fertility_bind_mismatches(list(mismatches, current))
-        if (pair$internal) secondary <- c(secondary, "direct-vs-eager-mismatch")
+        if (pair$internal) secondary <- c(secondary, "direct-vs-rust-mismatch")
         secondary <- c(secondary, current$category)
     }
     list(mismatches = mismatches, secondary = sort(unique(secondary)))
@@ -183,7 +183,7 @@ fertility_structural_shape_mismatch <- function(shape_rows, expected_rows,
 }
 
 fertility_reader_error_classification <- function(errors) {
-    dta_error <- errors[["direct"]] || errors[["eager"]]
+    dta_error <- errors[["direct"]] || errors[["rust"]]
     haven_error <- errors[["haven"]]
     if (dta_error && haven_error) "shared-reader-error" else
         if (dta_error) "dtatools-only-error" else
@@ -192,7 +192,7 @@ fertility_reader_error_classification <- function(errors) {
 
 fertility_reader_error_categories <- function(errors) {
     readers <- names(errors)
-    if (is.null(readers) || !identical(readers, c("direct", "eager", "haven"))) {
+    if (is.null(readers) || !identical(readers, c("direct", "rust", "haven"))) {
         stop("reader error flags are not canonical")
     }
     if (!any(errors)) return(character())
@@ -209,7 +209,7 @@ fertility_string_payload_bytes <- function(frame) {
 
 fertility_worker_sizing_tile <- function(item, tile, framework_id,
                                          timeout_seconds, encoding = NULL) {
-    readers <- c("direct", "eager", "haven")
+    readers <- c("direct", "rust", "haven")
     maximum <- 0
     completed <- 0L
     errors <- setNames(rep(FALSE, length(readers)), readers)
@@ -280,7 +280,7 @@ fertility_worker_tile <- function(item, tile, compare_script, package_library,
         result$elapsed_seconds <- unname(proc.time()[["elapsed"]] - started)
         return(result)
     }
-    readers <- c("direct", "eager", "haven")
+    readers <- c("direct", "rust", "haven")
     values <- setNames(lapply(readers, function(reader) {
         tryCatch(
             fertility_tile_read(reader, item$path, tile, encoding = encoding),
@@ -398,8 +398,8 @@ fertility_worker_tile <- function(item, tile, compare_script, package_library,
         "dtatools-only-error" else if (!is.na(error_classification))
         error_classification else if (source_structure_unavailable)
         "unresolved" else if ("row-termination-mismatch" %in% secondary)
-        "row-termination-mismatch" else if ("direct-vs-eager-mismatch" %in% secondary)
-        "direct-vs-eager-mismatch" else if (nrow(mismatches))
+        "row-termination-mismatch" else if ("direct-vs-rust-mismatch" %in% secondary)
+        "direct-vs-rust-mismatch" else if (nrow(mismatches))
         mismatches$category[[1L]] else "pass"
     successful <- frames[!errors]
     shape_source <- if (length(successful)) successful[[1L]] else NULL
