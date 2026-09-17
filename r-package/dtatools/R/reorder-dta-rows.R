@@ -33,6 +33,7 @@ reorder_dta_rows <- function(data, rows) {
         vctrs::new_data_frame(plan$columns, n = count),
         locations, fill_string_missing = FALSE
     )
+    .note_row_reorder()
     .Call(
         C_dtatools_replace_reference_columns, data, plan$store,
         plan$locations, plan$names, unname(columns)
@@ -51,6 +52,7 @@ reorder_dta_rows <- function(data, rows) {
         store = NULL,
         locations = seq_len(count),
         names = rep(NA_character_, count),
+        saved_names = attr(data, "names", exact = TRUE),
         nrow = original$nrow
     )
 }

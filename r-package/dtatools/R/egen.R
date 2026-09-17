@@ -23,8 +23,9 @@
 #' to the full group. The value expression then sees the admitted sample,
 #' with its own `.n` and `.N`. Missing keys, including distinct extended
 #' missing codes, form valid `by` groups. Row calculations and group-ID/tag
-#' calculations reject command-level grouping. `bysort` sorts the complete
-#' dataset by its grouping keys when the operation succeeds.
+#' calculations reject command-level grouping. Groups are formed as
+#' [gen()] forms them; `bysort` sorts the complete dataset by its
+#' grouping keys when the operation succeeds.
 #'
 #' Supported value calls are [dta_mean()], [dta_min()], [dta_max()],
 #' [dta_total()], [dta_row_max()], [dta_row_total()], [dta_group_id()], and
@@ -138,6 +139,7 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
             group_plan$order, fill_string_missing = FALSE
         )
         columns <- as.list(columns)
+        .note_row_reorder()
     }
     result <- .install_column_selection(data, original, columns)
     .return_mutation(original_data, result, if (is.null(destination)) target_expr else destination, parent.frame())
@@ -244,43 +246,17 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
          shadow = !formula)
 }
 
+# The shared group plan (`.assignment_groups()`), after the command's own
+# rule: only the aggregate calculations take command-level grouping.
 .egen_groups <- function(data, original, by, bysort, kind) {
-    by <- if (rlang::quo_is_null(by)) NULL else by
-    bysort <- if (rlang::quo_is_null(bysort)) NULL else bysort
-    grouped <- inherits(data, "grouped_df")
-    if (!is.null(by) && !is.null(bysort)) {
-        stop("supply either `by` or `bysort`, not both", call. = FALSE)
+    grouped_input <- inherits(data, "grouped_df")
+    grouped <- grouped_input || !rlang::quo_is_null(by) ||
+        !rlang::quo_is_null(bysort)
+    if (grouped && !kind %in% c("dta_mean", "dta_min", "dta_max", "dta_total")) {
+        stop(sprintf("`%s()` does not allow outer `by` or `bysort`", kind),
+             call. = FALSE)
     }
-    if (grouped && (!is.null(by) || !is.null(bysort))) {
-        stop(.MUTATION_GROUPED_MESSAGE, call. = FALSE)
-    }
-    if (grouped || !is.null(by) || !is.null(bysort)) {
-        if (!kind %in% c("dta_mean", "dta_min", "dta_max", "dta_total")) {
-            stop(sprintf("`%s()` does not allow outer `by` or `bysort`", kind),
-                 call. = FALSE)
-        }
-        argument <- if (is.null(by)) "bysort" else "by"
-        keys <- if (grouped) .group_vars(data) else
-            .mutation_group_expression(
-                rlang::quo_get_expr(if (is.null(by)) bysort else by),
-                rlang::quo_get_env(if (is.null(by)) bysort else by), argument
-            )
-        if (!length(keys) || anyDuplicated(keys)) {
-            stop("Grouping columns must be nonempty and unique", call. = FALSE)
-        }
-        columns <- lapply(keys, function(key) {
-            if (!.has_mutation_column(original$columns, key)) {
-                stop(sprintf("Column `%s` does not exist", key), call. = FALSE)
-            }
-            .mutation_column(original$columns, key)
-        })
-        names(columns) <- keys
-        plan <- .dta_egen_key_plan(columns)
-        groups <- unname(split(seq_len(original$nrow), plan$codes))
-        sorted <- if (!is.null(bysort)) order(plan$codes, method = "radix") else NULL
-        return(list(rows = groups, order = sorted))
-    }
-    list(rows = list(seq_len(original$nrow)), order = NULL)
+    .assignment_groups(data, original, by, bysort, grouped_input)
 }
 
 # Validate source values when they are read, before allowing arithmetic NaN
@@ -406,13 +382,15 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     quo <- calculation$quo
     .egen_validate_external(rlang::quo_get_expr(quo), rlang::quo_get_env(quo),
                             original$columns)
-    group_rows <- groups$rows
+    group_rows <- if (is.null(groups)) list(seq_len(original$nrow)) else groups$rows
     if (!length(group_rows)) group_rows <- list(integer())
     values <- rows <- vector("list", length(group_rows))
     count <- 0L
     for (index in seq_along(group_rows)) {
         full <- group_rows[[index]]
         size <- length(full)
+        # `.drop = FALSE` grouping can carry empty groups; they admit nothing.
+        if (!size && length(group_rows) > 1L) next
         view$rows <- full
         view$cache <- new.env(hash = TRUE, parent = emptyenv())
         selected <- .mutation_rows(.eval_mutation_expression(

@@ -100,11 +100,6 @@ dta_group_tag <- function(..., missing = FALSE) {
         stop(sprintf("`%s` must be TRUE or FALSE", name), call. = FALSE)
 }
 
-.dta_egen_key_plan <- function(columns) {
-    columns <- .dta_group_columns(columns, vector("list", length(columns)))
-    .Call(C_dtatools_egen_group, columns, TRUE, FALSE)
-}
-
 .dta_group_columns <- function(values, expressions) {
     if (length(values) == 1L && (is.data.frame(values[[1L]]) ||
         (is.list(values[[1L]]) && !is.object(values[[1L]])))) {

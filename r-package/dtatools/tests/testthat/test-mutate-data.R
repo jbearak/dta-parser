@@ -1990,10 +1990,126 @@ test_that("bysort sorts by reference and then groups", {
     expect_identical(as.double(injected$id), c(1, 2))
 })
 
+test_that("bysort is written with the assignment, so a failed one leaves the order", {
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 2, 3, 4)))
+    alias <- data
+    before <- as.data.frame(copy_data(data))
+    expect_error(repl(data, x = 1000, where = .n == 1, bysort = id, promote = FALSE),
+                 "byte")
+    expect_identical(as.data.frame(data), before)
+    expect_identical(as.data.frame(alias), before)
+    expect_error(gen(data, y = 1:3, bysort = id), "group id = 1;")
+    expect_identical(as.data.frame(data), before)
+    expect_error(gen(data, y = stop("boom"), bysort = id), "boom")
+    expect_identical(as.data.frame(data), before)
+    # A write that fails after the sort is undone with it: the cast is
+    # checked at the commit, once the rows are in `bysort` order. The
+    # undo reinstalls the columns as they were, so an aliased slot keeps
+    # its identity.
+    data$y <- data$x
+    columns <- dtatools:::.data_columns(data)
+    expect_error(repl(data, x = 1000, bysort = id, promote = FALSE), "byte")
+    expect_identical(as.data.frame(data)[c("id", "x")], before)
+    restored <- dtatools:::.data_columns(data)
+    expect_identical(rlang::obj_address(restored$x), rlang::obj_address(columns$x))
+    expect_identical(rlang::obj_address(restored$y), rlang::obj_address(columns$y))
+    data$y <- NULL
+    # Group-length values and selected rows follow the sort.
+    repl(data, x = c(10, 20) * .N, bysort = id)
+    expect_identical(as.double(data$id), c(1, 1, 2, 2))
+    expect_identical(as.double(data$x), c(20, 40, 20, 40))
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 2, 3, 4)))
+    repl(data, x = .n * 10, where = .n == .N, bysort = id)
+    expect_identical(as.double(data$x), c(2, 20, 1, 20))
+    # User code that reaches back into the dataset and adds a column
+    # before failing: the undo puts every column back, aligned.
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 2, 3, 4)))
+    reach <- function(x) { gen(data, z = .env$data$x * 10); stop("reach") }
+    expect_error(gen(data, y = reach(x), bysort = id), "reach")
+    expect_identical(as.double(data$id), c(2, 1, 2, 1))
+    expect_identical(as.double(data$x), c(1, 2, 3, 4))
+    expect_identical(as.double(data$z), c(10, 20, 30, 40))
+    # ... or replaces one: the committed write stays, aligned, while the
+    # untouched slots get their own pointers back.
+    id_column <- dtatools:::.data_columns(data)$id
+    rewrite <- function(x) { repl(data, z = .env$data$x * 100); stop("rewrite") }
+    expect_error(gen(data, y = rewrite(x), bysort = id), "rewrite")
+    expect_identical(as.double(data$id), c(2, 1, 2, 1))
+    expect_identical(as.double(data$z), c(100, 200, 300, 400))
+    expect_identical(rlang::obj_address(dtatools:::.data_columns(data)$id),
+                     rlang::obj_address(id_column))
+    data$z <- NULL
+    # ... or reorders the rows by reference before failing: that order was
+    # committed, so it stands rather than being scrambled by the undo of
+    # a sort it superseded. The same holds for a nested `bysort`.
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 4, 3, 2)))
+    reverse <- function(x) { reorder_dta_rows(data, 4:1); stop("reverse") }
+    expect_error(gen(data, y = reverse(x), bysort = id), "reverse")
+    expect_identical(as.double(data$id), c(2, 2, 1, 1))
+    expect_identical(as.double(data$x), c(3, 1, 2, 4))
+    expect_false("y" %in% names(data))
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 4, 3, 2)))
+    nested <- function(x) { gen(data, z = .n, bysort = x); stop("nested") }
+    expect_error(gen(data, y = nested(x), bysort = id), "nested")
+    expect_identical(as.double(data$x), c(1, 2, 3, 4))
+    expect_identical(as.double(data$id), c(2, 1, 2, 1))
+    expect_identical(as.double(data$z), c(1, 1, 1, 1))
+    expect_false("y" %in% names(data))
+    # A nested `bysort` that fails before writing is undone, on this table
+    # or another, and leaves the enclosing undo armed: neither call wrote,
+    # so neither order stays.
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 4, 3, 2)))
+    other <- dibble(k = c(3, 1, 2))
+    before <- as.data.frame(copy_data(data))
+    inner <- function(x) {
+        expect_error(gen(other, m = stop("inner"), bysort = k), "inner")
+        expect_error(gen(data, z = stop("same"), bysort = x), "same")
+        stop("outer")
+    }
+    expect_error(gen(data, y = inner(x), bysort = id), "outer")
+    expect_identical(as.data.frame(data), before)
+    expect_identical(as.double(other$k), c(3, 1, 2))
+    # One selected row takes a scalar; the row still moves with the sort.
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 2, 3, 4)))
+    repl(data, x = 99, where = x == 1, bysort = id)
+    expect_identical(as.double(data$x), c(2, 4, 99, 3))
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 2, 3, 4)))
+    before <- as.data.frame(copy_data(data))
+    alias <- data
+
+    # Several assignments in one bracket call share one plan and all
+    # evaluate against the sorted dataset. A failure before the first
+    # write leaves the order; a failure after it leaves the first written
+    # and the dataset sorted, as two Stata lines would (ADR 0020).
+    expect_error(data[stop("rows"), y := 1L, bysort = id], "rows")
+    expect_identical(as.data.frame(data), before)
+    expect_error(data[, `:=`(y = stop("first"), z = 1L), bysort = id], "first")
+    expect_identical(as.data.frame(data), before)
+    data[, `:=`(a = .env$data$x[1], b = .env$data$x[1]), bysort = id]
+    expect_identical(as.double(data$a), rep(2, 4))
+    expect_identical(as.double(data$b), rep(2, 4))
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 2, 3, 4)))
+    expect_error(data[, `:=`(y = 1L, z = stop("later")), bysort = id], "later")
+    expect_identical(as.double(data$id), c(1, 1, 2, 2))
+    expect_identical(as.double(data$x), c(2, 4, 1, 3))
+    expect_identical(as.double(data$y), c(1, 1, 1, 1))
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 2, 3, 4)))
+    data <- reserve_columns(data, 2)
+    alias <- data
+    data[.n == 1, `:=`(first = x, count = .N), bysort = id]
+    expect_identical(as.double(data$id), c(1, 1, 2, 2))
+    expect_identical(as.double(data$x), c(2, 4, 1, 3))
+    expect_identical(as.double(data$first), c(2, NA, 1, NA))
+    expect_identical(as.double(data$count), c(2, NA, 2, NA))
+    expect_identical(as.double(alias$first), as.double(data$first))
+})
+
 test_that("by and bysort are exclusive and reject a grouped input", {
     data <- dibble(id = c(1, 2), x = 1:2)
     expect_error(gen(data, y = 1, by = id, bysort = id), "not both")
     expect_error(repl(data, x = 1L, by = id, bysort = id), "not both")
+    expect_error(gen(data, y = 1, by = c(id, id)), "`by` must name unique columns")
+    expect_error(gen(data, y = 1, bysort = c("id", "id")), "`bysort` must name unique")
 
     grouped <- as_dibble(.group_fixture("id_12")$data)
     before <- serialize(grouped, NULL)

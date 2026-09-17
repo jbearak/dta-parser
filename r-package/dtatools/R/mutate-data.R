@@ -131,10 +131,13 @@
 #' `gen()` and `egen()` write their statistics into the existing rows.
 #'
 #' `by` groups the dataset in its current row order and never sorts.
-#' `bysort` first sorts the dataset by reference on every listed column,
-#' in Stata's total order for `dta_*()` columns (finite values, then `.`,
-#' then `.a` through `.z`), and then groups by those same columns, so the
+#' `bysort` sorts the dataset by reference on every listed column, in
+#' Stata's total order for `dta_*()` columns (finite values, then `.`,
+#' then `.a` through `.z`), and groups by those same columns, so the
 #' rows within each group are the sorted rows and `.n` follows the sort.
+#' The sort is written together with the assignment: an assignment that
+#' fails leaves the dataset in its original order. Several `:=`
+#' assignments in one bracket call sort with the first that writes.
 #' Stata's parenthesized sort-only keys are not supported: `bysort id
 #' (date):` is an `arrange()` or `reorder_dta_rows()` line followed by
 #' `by = id`. Group identity uses Stata value identity for `dta_*()`
@@ -623,6 +626,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 #   keep/drop/rename/order, egen()  select_data_columns            yes     no       none (C validates first)
 #   metadata table setters          set_data_column, set_attribute yes     no       none
 #   reorder_dta_rows()              replace_reference_columns      no      no       none (C validates first)
+#   bysort's sort, first write      the writer's, then disarm undo  (the writer's)    suspendInterrupts
 #   reserve_columns(), constructors reserve_column_capacity         yes     no       none (fresh table)
 
 .reference_snapshot <- function(data) {
@@ -1376,10 +1380,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # data.table applies `i` first and groups only the surviving rows. The
 # groups come from `by`, from `bysort`, or from the dplyr grouping of a
 # `grouped_df`; combining the two sources is an error rather than a
-# precedence rule. Each group's selection and values are gathered into
-# one row vector and one value vector and handed to the ungrouped write
-# path, so storage validation, compact patching, and transactions are
-# shared rather than duplicated.
+# precedence rule. The plan is `.assignment_groups()`, which `egen()`
+# shares; `bysort`'s sort is applied by the first successful commit
+# (`.apply_group_order()`). Each group's selection and values are
+# gathered into one row vector and one value vector and handed to the
+# ungrouped write path, so storage validation, compact patching, and
+# transactions are shared rather than duplicated.
 .MUTATION_GROUPED_MESSAGE <-
     "`data` is already grouped; drop `by`/`bysort` or ungroup"
 
@@ -1421,69 +1427,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             stop(sprintf("Column `%s` does not exist", name), call. = FALSE)
         }
     }
-    unique(names)
-}
-
-# Resolves the assignment groups as a list of integer row vectors plus
-# the key data frame used to name a group in an error. Returns `NULL`
-# when the call is ungrouped or the dataset is empty, and otherwise the
-# `original` column view to evaluate against, which `bysort` refreshes
-# after reordering the dataset.
-.mutation_groups <- function(data, original, by, bysort, grouped_input) {
-    if (!is.null(by) && rlang::quo_is_null(by)) by <- NULL
-    if (!is.null(bysort) && rlang::quo_is_null(bysort)) bysort <- NULL
-    if (!is.null(by) && !is.null(bysort)) {
-        stop("supply either `by` or `bysort`, not both", call. = FALSE)
+    if (anyDuplicated(names)) {
+        stop(sprintf("`%s` must name unique columns", argument), call. = FALSE)
     }
-    if (grouped_input) {
-        if (!is.null(by) || !is.null(bysort)) {
-            stop(.MUTATION_GROUPED_MESSAGE, call. = FALSE)
-        }
-        if (original$nrow == 0L) return(NULL)
-        groups <- attr(data, "groups", exact = TRUE)
-        if (!is.data.frame(groups) || !".rows" %in% names(groups)) {
-            stop("`data` has grouped-tibble metadata without groups",
-                 call. = FALSE)
-        }
-        rows <- lapply(seq_len(nrow(groups)), function(index) {
-            as.integer(groups$.rows[[index]])
-        })
-        keys <- groups[setdiff(names(groups), ".rows")]
-        return(list(rows = rows, keys = keys, original = original))
-    }
-    if (is.null(by) && is.null(bysort)) return(NULL)
-    argument <- if (is.null(by)) "bysort" else "by"
-    names <- .mutation_group_names(
-        if (is.null(by)) bysort else by, original$columns, argument
-    )
-    if (original$nrow == 0L) return(NULL)
-    key_columns <- function() {
-        keys <- lapply(names, .mutation_column, columns = original$columns)
-        if (isTRUE(attr(original$columns, ".dtatools_mutation_views", exact = TRUE))) {
-            keys <- lapply(keys, .metadata_copy)
-        }
-        names(keys) <- names
-        vctrs::new_data_frame(keys, n = original$nrow)
-    }
-    if (!is.null(bysort)) {
-        # `vec_order()` is stable and, through `vec_proxy_order()`, sorts
-        # Stata numeric columns in Stata's total order with system and
-        # extended missing after every finite value.
-        order <- vctrs::vec_order(key_columns())
-        if (!identical(order, seq_len(original$nrow))) {
-            reorder_dta_rows(data, order)
-            # The sort permuted every column by reference; the views
-            # taken before it are stale, so release them and open new ones.
-            .Call(C_dtatools_release_mutation_views, original$columns)
-            original <- .as_mutation_data(data, allow_grouped = TRUE, private_views = TRUE)
-        }
-    }
-    located <- vctrs::vec_group_loc(key_columns())
-    list(
-        rows = lapply(located$loc, as.integer),
-        keys = located$key,
-        original = original
-    )
+    names
 }
 
 # Names one group in an error the way Stata prints it: missing codes as
@@ -1818,21 +1765,30 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # its assignments writes: `i` is evaluated once, with the shadow check
 # and `.n`/`.N` of `where`, and the groups it was evaluated under are
 # kept so each assignment reuses them. The result is `.mutate_data()`'s
-# `selection`. `bysort` sorts the dataset here, once, as the grouped
-# `gen()` path does. The private views taken here serve this evaluation
-# only; each assignment opens its own.
-.mutation_selection <- function(data, where, by, bysort) {
+# `selection`. The group plan is made here, once, and `bysort` sorts the
+# dataset here, before `i` is evaluated; the bracket undoes the sort
+# through `staged` if the call fails before its first write. The private
+# views taken here serve this evaluation only; each assignment opens its
+# own.
+.mutation_selection <- function(data, where, by, bysort, staged) {
     grouped_input <- inherits(data, "grouped_df")
     original <- .as_mutation_data(
         data, allow_grouped = TRUE, allow_rowwise = FALSE, private_views = TRUE
     )
     on.exit(.Call(C_dtatools_release_mutation_views, original$columns), add = TRUE)
     groups <- if (grouped_input || !is.null(by) || !is.null(bysort)) {
-        .mutation_groups(data, original, by, bysort, grouped_input)
+        .assignment_groups(data, original, by, bysort, grouped_input)
     } else {
         NULL
     }
-    if (!is.null(groups)) original <- groups$original
+    if (!is.null(groups) && .apply_group_order(groups, data, staged)) {
+        # The sort permuted every column by reference; the views taken
+        # before it are stale, so release them and open new ones.
+        .Call(C_dtatools_release_mutation_views, original$columns)
+        original <- .as_mutation_data(
+            data, allow_grouped = TRUE, allow_rowwise = FALSE, private_views = TRUE
+        )
+    }
     .check_where_shadowing(where, original$columns)
     selected <- .resolve_where_rows(
         where, original$columns, groups, original$nrow,
@@ -1843,22 +1799,25 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 
 # One assignment, in three steps. `.mutate_data()` opens the target:
 # the sharing snapshot, the private views, the target name, capacity, and
-# the groups, including `bysort`'s reorder. `.resolve_mutation()` reads
-# the views and settles what to write, `rows`, `values`, and their
-# `value_mode`, without touching the table. The commit helpers write: the
-# fused adapter, the generated-column append, or the replacement, which
-# chooses promotion or a cast. Nothing after the resolve step evaluates
-# user code, and nothing before it writes.
+# the group plan. `.resolve_mutation()` reads the views and settles what
+# to write, `rows`, `values`, and their `value_mode`, without touching
+# the table. The commit helpers write: the fused adapter, the
+# generated-column append, or the replacement, which chooses promotion
+# or a cast. `bysort` sorts before the resolve step and a failure before
+# the commit undoes the sort. Nothing after the resolve step evaluates
+# user code, and nothing before the commit writes.
 #
 # `selection` is a `.mutation_selection()` result. When given, `where` is
 # not evaluated again and the groups it carries stand in for `by` and
 # `bysort`, so every assignment in one `data[i, j]` writes to the rows
 # `i` chose before the first of them wrote. `where` still arrives so
-# `values` can be given `.n` and `.N` on the same terms.
+# `values` can be given `.n` and `.N` on the same terms. `staged` is the
+# bracket's `bysort` undo state, disarmed by its first write.
 .mutate_data <- function(data, variable, values, where, generate,
                          by = NULL, bysort = NULL, selection = NULL,
                          promote = FALSE, report_promotion = FALSE,
-                         entry_shared = NULL, auto_grow = FALSE) {
+                         entry_shared = NULL, auto_grow = FALSE,
+                         staged = NULL) {
     if (generate && is.null(by) && is.null(bysort) && is.null(selection)) {
         direct <- .generate_direct_scalar(data, variable, values, where, auto_grow)
         if (!is.null(direct)) return(invisible(direct))
@@ -1885,29 +1844,57 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     groups <- if (!is.null(selection)) {
         selection$groups
     } else if (grouped_input || !is.null(by) || !is.null(bysort)) {
-        .mutation_groups(data, original, by, bysort, grouped_input)
+        .assignment_groups(data, original, by, bysort, grouped_input)
     } else {
         NULL
     }
-    if (is.null(selection) && !is.null(groups)) original <- groups$original
-
-    resolved <- .resolve_mutation(
-        where, values, original$columns, groups, selection, target,
-        original$nrow, generate
-    )
-    if (identical(resolved$kind, "fused")) {
-        if (.commit_fused_patch(data, target$location, shared[[target$location]],
-                                resolved$fused, resolved$replacement)) {
-            return(invisible(data))
+    # `bysort` sorts before `where` and `values` are evaluated, so they
+    # see the sorted dataset. The sort permuted every column by
+    # reference, so the views are reopened on the sorted table. An error
+    # or interrupt from the sort until the write commits puts the columns
+    # back, so the call changes nothing. The write and the disarming of
+    # that undo are one uninterruptible step, since a column appended in
+    # sorted order cannot be left on a restored table. A bracket call
+    # sorted in its selection and hands its `staged` down so its first
+    # assignment disarms the same way.
+    if (is.null(staged)) staged <- new.env(parent = emptyenv())
+    undo <- function(condition) {
+        .undo_group_order(data, staged)
+        stop(condition)
+    }
+    write <- function() {
+        if (generate) {
+            .commit_generated_column(data, target, resolved, original$nrow)
+        } else {
+            .commit_replacement(data, original, target, resolved, shared,
+                                promote, report_promotion, grouped_input)
         }
-        resolved <- .resolve_fused_fallback(resolved, original$nrow)
+        .disarm_group_order(staged)
     }
-    if (generate) {
-        .commit_generated_column(data, target, resolved, original$nrow)
-    } else {
-        .commit_replacement(data, original, target, resolved, shared,
-                            promote, report_promotion, grouped_input)
-    }
+    tryCatch({
+        if (is.null(selection) && !is.null(groups) &&
+            .apply_group_order(groups, data, staged)) {
+            .Call(C_dtatools_release_mutation_views, original$columns)
+            original <- .as_mutation_data(
+                data, allow_grouped = TRUE, allow_rowwise = FALSE,
+                private_views = TRUE
+            )
+        }
+        resolved <- .resolve_mutation(
+            where, values, original$columns, groups, selection, target,
+            original$nrow, generate
+        )
+        if (identical(resolved$kind, "fused")) {
+            # Only an ungrouped assignment resolves to a fused plan, so no
+            # sort is staged here.
+            if (.commit_fused_patch(data, target$location, shared[[target$location]],
+                                    resolved$fused, resolved$replacement)) {
+                return(invisible(data))
+            }
+            resolved <- .resolve_fused_fallback(resolved, original$nrow)
+        }
+        if (is.null(staged$restore)) write() else suspendInterrupts(write())
+    }, error = undo, interrupt = undo)
     invisible(data)
 }
 

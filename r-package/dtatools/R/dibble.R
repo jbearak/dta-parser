@@ -442,24 +442,37 @@ NULL
     if (length(new_names)) {
         x <- .prepare_column_growth(x, length(x) + length(new_names), auto_grow)
     } else .prepare_column_operation(x, length(x))
-    selection <- .mutation_selection(
-        x, where,
-        by = by_quo,
-        bysort = if (missing(bysort)) NULL else rlang::enquo(bysort)
-    )
-    for (assignment in assignments) {
-        # `:=` creates or overwrites, so the target's presence picks the
-        # path. Looked up per assignment because an earlier one may have
-        # created the column.
-        exists <- assignment$name %in% names(x)
-        x <- .mutate_data(
-            x, rlang::new_quosure(assignment$name, emptyenv()),
-            assignment$values, where, generate = !exists,
-            selection = selection, promote = TRUE
-        )
-        destination <- .rebind_mutation(original_x, x, destination, parent.frame())
-        original_x <- x
+    # `bysort` sorts in the selection, before `i` or any value is
+    # evaluated. Until the first assignment writes, a failure puts the
+    # rows back; that write disarms the undo, and the later assignments
+    # commit or fail on their own, as two Stata lines would (ADR 0020).
+    staged <- new.env(parent = emptyenv())
+    sorted_x <- x
+    undo <- function(condition) {
+        .undo_group_order(sorted_x, staged)
+        stop(condition)
     }
+    tryCatch({
+        selection <- .mutation_selection(
+            x, where,
+            by = by_quo,
+            bysort = if (missing(bysort)) NULL else rlang::enquo(bysort),
+            staged = staged
+        )
+        for (assignment in assignments) {
+            # `:=` creates or overwrites, so the target's presence picks the
+            # path. Looked up per assignment because an earlier one may have
+            # created the column.
+            exists <- assignment$name %in% names(x)
+            x <- .mutate_data(
+                x, rlang::new_quosure(assignment$name, emptyenv()),
+                assignment$values, where, generate = !exists,
+                selection = selection, promote = TRUE, staged = staged
+            )
+            destination <- .rebind_mutation(original_x, x, destination, parent.frame())
+            original_x <- x
+        }
+    }, error = undo, interrupt = undo)
     # `[` forces its result visible after dispatch, so `invisible()` alone
     # would autoprint the dataset after every assignment. Recorded after
     # the last write so a failed assignment still shows its error only.

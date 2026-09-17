@@ -106,6 +106,29 @@ test_that("egen stages bysort and commits only after success", {
     expect_error(egen(d, bad = dta_mean(x), by = absent), "does not exist")
 })
 
+test_that("egen shares gen()'s group plan: factor keys, empty dplyr groups, zero rows", {
+    # Any vctrs-orderable key groups, as it does for gen().
+    d <- dibble(f = factor(c("b", "a", "b")), x = c(1, 2, 3))
+    egen(d, total = dta_total(x), by = f)
+    expect_equal(as.double(d$total), c(4, 2, 4))
+    gen(d, total_gen = sum(x), by = f)
+    expect_identical(as.double(d$total_gen), as.double(d$total))
+    egen(d, sorted_total = dta_total(x), bysort = f)
+    expect_identical(as.character(d$f), c("a", "b", "b"))
+    expect_equal(as.double(d$sorted_total), c(2, 4, 4))
+
+    # `.drop = FALSE` grouping records an empty group; it admits nothing.
+    factor_grouped <- as_dibble(.group_fixture("factor_unused")$data)
+    egen(factor_grouped, n = dta_total(rep(1, .N)))
+    expect_equal(as.double(factor_grouped$n), c(2, 2))
+
+    # A grouped read of a dataset with no rows still types the result.
+    empty <- dibble(g = numeric(), x = numeric())
+    egen(empty, m = dta_mean(x), by = g)
+    expect_identical(nrow(empty), 0L)
+    expect_true("m" %in% names(empty))
+})
+
 test_that("egen grouped inputs supply groups and counters describe the sample", {
     d <- as_dibble(.group_fixture("g_1122_double_x_typed")$data)
     egen(d, y = dta_total(x), where = .n == 1)
