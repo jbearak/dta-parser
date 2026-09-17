@@ -189,12 +189,12 @@ extern SEXP dtatools_metadata_rust(
     const char *, uint32_t, uint32_t, const char *, int, char **
 );
 extern SEXP dtatools_read_rust(
-    const char *, const int *, size_t, int, double, double, int, int, int,
+    const char *, const int *, size_t, int, double, double, int, int,
     const char *, char **
 );
 extern SEXP dtatools_prepare_dta_rust(const char *, const char *, void **, char **);
 extern SEXP dtatools_read_prepared_dta_rust(
-    void *, const int *, size_t, int, double, double, int, int, int, char **
+    void *, const int *, size_t, int, double, double, int, int, char **
 );
 extern void dtatools_close_prepared_dta_rust(void *);
 extern int dtatools_write_rust(
@@ -525,13 +525,13 @@ DTATOOLS_INTERNAL SEXP C_dtatools_metadata(
     SEXP include_value_labels
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_read(
-    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
-    SEXP threads, SEXP numeric_altrep, SEXP encoding
+    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP threads,
+    SEXP numeric_altrep, SEXP encoding
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_prepare_dta_selection(SEXP path, SEXP encoding);
 DTATOOLS_INTERNAL SEXP C_dtatools_read_prepared_dta(
-    SEXP prepared, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
-    SEXP threads, SEXP numeric_altrep
+    SEXP prepared, SEXP columns, SEXP skip, SEXP n_max, SEXP threads,
+    SEXP numeric_altrep
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_close_prepared_dta(SEXP prepared);
 DTATOOLS_INTERNAL SEXP C_dtatools_has_bytes_encoding(SEXP values);

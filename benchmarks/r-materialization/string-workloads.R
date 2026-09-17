@@ -28,7 +28,8 @@ if (!identical(loaded_library, benchmark_library)) {
     stop("dtatools was not loaded from DTATOOLS_BENCH_LIB")
 }
 
-reference <- dtatools:::.read_dta_rust_vectors(path)
+# The serial eager read is the checksum oracle for the compact ALTREP read.
+reference <- dtatools::read_dta(path, output = "tibble", threads = 1L, use_numeric_altrep = FALSE)
 character_columns <- names(reference)[vapply(reference, is.character, logical(1))]
 numeric_columns <- names(reference)[vapply(reference, is.numeric, logical(1))]
 subset_rows <- if (nrow(reference) == 0L) {

@@ -1724,7 +1724,7 @@ supported_bundle <- which(vapply(output_fixture$bundles, function(bundle) {
 }, logical(1)))[[1L]]
 supported_row <- match("F0131", output_fixture$bundles[[supported_bundle]]$results$id)
 expected_output_terminal_classifications <- c(
-    "pass", "direct-vs-rust-mismatch", "dtatools-only-error",
+    "pass", "direct-vs-eager-mismatch", "dtatools-only-error",
     "haven-only-error", "shared-reader-error", "metadata-mismatch",
     "value-mismatch", "tag-mismatch", "date-mismatch",
     "encoding-mismatch", "row-termination-mismatch",
@@ -2498,16 +2498,16 @@ accepted_tile_execute <- function(item, tile, input) list(
     batch = tile$batch, skip = tile$skip, n_max = tile$n_max,
     classification = "pass", secondary = character(),
     mismatches = fertility_bind_mismatches(list()), rows = 1L,
-    reader_rows = c(direct = 1L, rust = 1L, haven = 1L),
+    reader_rows = c(direct = 1L, eager = 1L, haven = 1L),
     columns = 1L, column_names = character(), storage = character(),
     structural_rows = NA_real_, column_bytes = numeric(), strl = logical(),
     projection_expected_count = 1L,
     projection_expected_hash = fertility_projection_hash("x", test_framework_id),
-    projection_counts = c(direct = 1L, rust = 1L, haven = 1L),
+    projection_counts = c(direct = 1L, eager = 1L, haven = 1L),
     projection_hashes = setNames(rep(
         fertility_projection_hash("x", test_framework_id), 3L
-    ), c("direct", "rust", "haven")),
-    projection_ok = c(direct = TRUE, rust = TRUE, haven = TRUE),
+    ), c("direct", "eager", "haven")),
+    projection_ok = c(direct = TRUE, eager = TRUE, haven = TRUE),
     elapsed_seconds = 0
 )
 accepted_tile_result <- fertility_process_tile(
@@ -3237,14 +3237,14 @@ stopifnot(all(c("row-count-mismatch", "value-mismatch") %in%
               short_mismatches$detail))
 pair_frames <- list(
     direct = tibble::tibble(value = c(1, 2)),
-    rust = tibble::tibble(value = c(1, 3)),
+    eager = tibble::tibble(value = c(1, 3)),
     haven = tibble::tibble(value = c(4, 2))
 )
 pair_result <- fertility_compare_available_pairs(
-    pair_frames, c(direct = FALSE, rust = FALSE, haven = FALSE)
+    pair_frames, c(direct = FALSE, eager = FALSE, haven = FALSE)
 )
 stopifnot(identical(sort(unique(pair_result$mismatches$pair)),
-                    c("direct-haven", "direct-rust", "rust-haven")))
+                    c("direct-eager", "direct-haven", "eager-haven")))
 equal_count_summary <- fertility_mismatch_summary(list(list(
     mismatches = pair_result$mismatches
 )))
@@ -3257,7 +3257,7 @@ stopifnot(isTRUE(fertility_validate_public_results(equal_count_public)))
 tied_categories <- fertility_mismatch_summary(list(list(mismatches = data.frame(
     category = c("value-mismatch", "metadata-mismatch"),
     detail = c("private-b", "private-a"), component = c(2L, 1L),
-    pair = c("direct-haven", "direct-rust"), stringsAsFactors = FALSE
+    pair = c("direct-haven", "direct-eager"), stringsAsFactors = FALSE
 ))))
 stopifnot(identical(
     tied_categories$categories,
@@ -3266,9 +3266,9 @@ stopifnot(identical(
 private_attribute <- pair_frames$haven
 attr(private_attribute$value, "private_source_attribute") <- "different"
 private_pair_result <- fertility_compare_available_pairs(
-    list(direct = pair_frames$direct, rust = pair_frames$direct,
+    list(direct = pair_frames$direct, eager = pair_frames$direct,
          haven = private_attribute),
-    c(direct = FALSE, rust = FALSE, haven = FALSE)
+    c(direct = FALSE, eager = FALSE, haven = FALSE)
 )
 stopifnot(any(grepl("private_source_attribute",
                    private_pair_result$mismatches$detail)),
@@ -3478,15 +3478,15 @@ stopifnot(tag_structure$rows == 3, tag_structure$columns == 1L)
 # immediately; the configured window count, rather than reader behavior, bounds
 # the number of probes.
 nonterminating <- replicate(tile_configuration$beyond_end_windows,
-                            c(direct = 1L, rust = 1L, haven = 1L), simplify = FALSE)
+                            c(direct = 1L, eager = 1L, haven = 1L), simplify = FALSE)
 stopifnot(length(nonterminating) == 1L,
           all(vapply(nonterminating, fertility_row_termination_mismatch,
                      logical(1))))
 stopifnot(fertility_structural_shape_mismatch(
-              c(direct = 3L, rust = 3L), 4, 2L, 2L
+              c(direct = 3L, eager = 3L), 4, 2L, 2L
           ),
           !fertility_structural_shape_mismatch(
-              c(direct = 3L, rust = 3L), 3, 2L, 2L
+              c(direct = 3L, eager = 3L), 3, 2L, 2L
           ))
 if (requireNamespace("callr", quietly = TRUE)) {
     memory_failure <- tryCatch(callr::r(
@@ -3518,11 +3518,11 @@ make_tile_result <- function(batch, skip, rows, classification = "pass",
         projection_expected_count = length(expected_names),
         projection_expected_hash = expected_hash,
         projection_counts = setNames(rep(length(expected_names), 3L),
-                                     c("direct", "rust", "haven")),
+                                     c("direct", "eager", "haven")),
         projection_hashes = setNames(rep(expected_hash, 3L),
-                                     c("direct", "rust", "haven")),
+                                     c("direct", "eager", "haven")),
         projection_ok = setNames(rep(TRUE, 3L),
-                                 c("direct", "rust", "haven")),
+                                 c("direct", "eager", "haven")),
         elapsed_seconds = 0
     )
 }
@@ -3532,16 +3532,16 @@ make_terminal_result <- function(skip = 3, n_max = 1L, batch = 1L) {
     list(
         framework_id = "test-framework", tile_type = "terminal", batch = batch,
         skip = as.double(skip), n_max = as.integer(n_max), rows = 0L,
-        reader_rows = setNames(rep(0L, 3L), c("direct", "rust", "haven")),
+        reader_rows = setNames(rep(0L, 3L), c("direct", "eager", "haven")),
         classification = "pass", secondary = character(),
         mismatches = empty_mismatches,
         projection_expected_count = length(expected_names),
         projection_expected_hash = expected_hash,
         projection_counts = setNames(rep(length(expected_names), 3L),
-                                     c("direct", "rust", "haven")),
+                                     c("direct", "eager", "haven")),
         projection_hashes = setNames(rep(expected_hash, 3L),
-                                     c("direct", "rust", "haven")),
-        projection_ok = setNames(rep(TRUE, 3L), c("direct", "rust", "haven")),
+                                     c("direct", "eager", "haven")),
+        projection_ok = setNames(rep(TRUE, 3L), c("direct", "eager", "haven")),
         elapsed_seconds = 0
     )
 }
@@ -3667,11 +3667,11 @@ stopifnot(
     incomplete_reader_error_result$tiles_expected ==
         incomplete_reader_error_result$tiles_completed + 1L
 )
-reader_flags <- setNames(rep(FALSE, 3L), c("direct", "rust", "haven"))
+reader_flags <- setNames(rep(FALSE, 3L), c("direct", "eager", "haven"))
 stopifnot(!length(fertility_reader_error_categories(reader_flags)))
-reader_flags[["rust"]] <- TRUE
+reader_flags[["eager"]] <- TRUE
 stopifnot(identical(fertility_reader_error_categories(reader_flags),
-                    "rust-reader-error"))
+                    "eager-reader-error"))
 legacy_tiles <- traversed_tiles
 legacy_tiles <- lapply(legacy_tiles, function(tile) {
     tile$secondary <- c(tile$secondary, "-reader-error")
@@ -3966,7 +3966,7 @@ recorded_tile_fixture <- c(make_tile_result(1L, 0, 2L), list(
     tile_id = recorded_tile_spec$tile_id, tile_type = recorded_tile_spec$type,
     column_hash = recorded_tile_spec$column_hash,
     timeout_seconds = tile_configuration$timeout_seconds,
-    reader_rows = setNames(rep(2L, 3L), c("direct", "rust", "haven")),
+    reader_rows = setNames(rep(2L, 3L), c("direct", "eager", "haven")),
     columns = 1L, column_names = character(), storage = character(),
     structural_rows = NA_real_, column_bytes = numeric(), strl = logical()
 ))
@@ -4097,8 +4097,8 @@ stopifnot(fertility_validate_tile_execution(
     tile_configuration, length(reader_error_without_observed_rows)
 ))
 shared_empty <- fertility_projection_attestation(
-    list(direct = data.frame(), rust = data.frame(), haven = data.frame()),
-    c(direct = FALSE, rust = FALSE, haven = FALSE), "a", "test-framework"
+    list(direct = data.frame(), eager = data.frame(), haven = data.frame()),
+    c(direct = FALSE, eager = FALSE, haven = FALSE), "a", "test-framework"
 )
 stopifnot(!any(shared_empty$ok), all(shared_empty$counts == 0L),
           nchar(shared_empty$expected_hash) == 64L)
@@ -4237,16 +4237,16 @@ metadata_retry_execute <- function(item, tile, input) {
         classification = "unresolved",
         secondary = "structural-metadata-unavailable",
         mismatches = fertility_bind_mismatches(list()), rows = 3L,
-        reader_rows = c(direct = 3L, rust = 3L, haven = NA_integer_),
+        reader_rows = c(direct = 3L, eager = 3L, haven = NA_integer_),
         columns = 1L, column_names = "x", storage = "double",
         structural_rows = NA_real_, column_bytes = numeric(), strl = logical(),
         projection_expected_count = NA_integer_,
         projection_expected_hash = NA_character_,
-        projection_counts = c(direct = NA_integer_, rust = NA_integer_,
+        projection_counts = c(direct = NA_integer_, eager = NA_integer_,
                               haven = NA_integer_),
-        projection_hashes = c(direct = NA_character_, rust = NA_character_,
+        projection_hashes = c(direct = NA_character_, eager = NA_character_,
                               haven = NA_character_),
-        projection_ok = c(direct = NA, rust = NA, haven = NA),
+        projection_ok = c(direct = NA, eager = NA, haven = NA),
         elapsed_seconds = 0
     )
 }
@@ -4504,7 +4504,7 @@ if (dir.exists(file.path(checkout_library, "dtatools"))) {
     )
     stopifnot(
         structural_failure_worker$classification == "unresolved",
-        all(structural_failure_worker$reader_rows[c("direct", "rust")] ==
+        all(structural_failure_worker$reader_rows[c("direct", "eager")] ==
             nrow(bounded_data)),
         is.na(structural_failure_worker$reader_rows[["haven"]]),
         identical(
@@ -4548,14 +4548,15 @@ if (dir.exists(file.path(checkout_library, "dtatools"))) {
             fertility_tile_read("direct", bounded_path, default_tile),
             dtatools::read_dta(
                 bounded_path, col_select = tidyselect::all_of("text"),
-                skip = 0L, n_max = 1L, .name_repair = "minimal"
+                skip = 0L, n_max = 1L, .name_repair = "minimal", output = "tibble"
             )
         ),
         identical(
-            fertility_tile_read("rust", bounded_path, default_tile),
-            dtatools:::.read_dta_rust_vectors(
+            fertility_tile_read("eager", bounded_path, default_tile),
+            dtatools::read_dta(
                 bounded_path, col_select = tidyselect::all_of("text"),
-                skip = 0L, n_max = 1L, .name_repair = "minimal"
+                skip = 0L, n_max = 1L, .name_repair = "minimal",
+                output = "tibble", threads = 1L, use_numeric_altrep = FALSE
             )
         ),
         identical(
@@ -4582,10 +4583,10 @@ if (dir.exists(file.path(checkout_library, "dtatools"))) {
             on.exit(unlink(copied_path), add = TRUE)
             source(worker_script, local = environment())
             list(
-                preferred = lapply(c("direct", "rust", "haven"), function(reader) {
+                preferred = lapply(c("direct", "eager", "haven"), function(reader) {
                     fertility_tile_read(reader, path, tile)
                 }),
-                copied = lapply(c("direct", "rust", "haven"), function(reader) {
+                copied = lapply(c("direct", "eager", "haven"), function(reader) {
                     fertility_tile_read(reader, copied_path, tile)
                 })
             )
@@ -4609,7 +4610,7 @@ if (dir.exists(file.path(checkout_library, "dtatools"))) {
     encoding_item$id <- "F9903"
     encoding_item$path <- normalizePath(encoding_probe_path, winslash = "/")
     encoding_item$encoding_override <- "ISO-8859-1"
-    encoding_values <- lapply(c("direct", "rust", "haven"), function(reader) {
+    encoding_values <- lapply(c("direct", "eager", "haven"), function(reader) {
         fertility_tile_read(
             reader, encoding_item$path, default_tile,
             encoding = encoding_item$encoding_override
@@ -4675,7 +4676,7 @@ if (dir.exists(file.path(checkout_library, "dtatools"))) {
         all(encoding_terminal$reader_rows == 0L),
         identical(
             vapply(encoding_terminal_probe$calls, `[[`, character(1), "reader"),
-            c("direct", "rust", "haven")
+            c("direct", "eager", "haven")
         ),
         length(encoding_terminal_probe$calls) == 3L,
         all(vapply(encoding_terminal_probe$calls, function(call) {

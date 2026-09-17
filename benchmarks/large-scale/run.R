@@ -176,20 +176,26 @@ read_one <- function(implementation, workload, path, skip = 0, n_max = Inf) {
     full <- identical(workload, "full")
     if (identical(implementation, "direct-r")) {
         if (full) {
-            dtatools::read_dta(path, skip = skip, n_max = n_max)
+            dtatools::read_dta(
+                path, skip = skip, n_max = n_max, output = "tibble"
+            )
         } else {
             dtatools::read_dta(
                 path, col_select = tidyselect::all_of(projection),
-                skip = skip, n_max = n_max
+                skip = skip, n_max = n_max, output = "tibble"
             )
         }
-    } else if (identical(implementation, "rust-vectors")) {
+    } else if (identical(implementation, "eager-r")) {
         if (full) {
-            dtatools:::.read_dta_rust_vectors(path, skip = skip, n_max = n_max)
+            dtatools::read_dta(
+                path, skip = skip, n_max = n_max,
+                output = "tibble", threads = 1L, use_numeric_altrep = FALSE
+            )
         } else {
-            dtatools:::.read_dta_rust_vectors(
+            dtatools::read_dta(
                 path, col_select = tidyselect::all_of(projection),
-                skip = skip, n_max = n_max
+                skip = skip, n_max = n_max,
+                output = "tibble", threads = 1L, use_numeric_altrep = FALSE
             )
         }
     } else if (full) {
@@ -204,13 +210,13 @@ read_one <- function(implementation, workload, path, skip = 0, n_max = Inf) {
 
 validate_direct_identity <- function(path, workload, rows, expected_columns) {
     direct <- read_one("direct-r", workload, path)
-    rust_vectors <- read_one("rust-vectors", workload, path)
+    eager_r <- read_one("eager-r", workload, path)
     stopifnot(
-        identical(direct, rust_vectors),
+        identical(direct, eager_r),
         nrow(direct) == rows,
         ncol(direct) == expected_columns
     )
-    rm(direct, rust_vectors)
+    rm(direct, eager_r)
     invisible(gc())
 }
 
@@ -223,15 +229,15 @@ validate_haven_windows <- function(path, rows) {
             "direct-r", "projected-eight-columns", path,
             skip = skip, n_max = window_rows
         )
-        rust_vectors <- read_one(
-            "rust-vectors", "projected-eight-columns", path,
+        eager_r <- read_one(
+            "eager-r", "projected-eight-columns", path,
             skip = skip, n_max = window_rows
         )
         reference <- read_one(
             "haven", "projected-eight-columns", path,
             skip = skip, n_max = window_rows
         )
-        stopifnot(identical(direct, rust_vectors))
+        stopifnot(identical(direct, eager_r))
         comparison <- all.equal(
             normalize_for_haven(direct), normalize_for_haven(reference),
             tolerance = 1e-7, check.attributes = TRUE
@@ -257,7 +263,7 @@ temporary_output <- tempfile(
 on.exit(unlink(temporary_output), add = TRUE)
 writeLines(paste(header, collapse = "\t"), temporary_output)
 
-implementations <- c("direct-r", "rust-vectors", "haven")
+implementations <- c("direct-r", "eager-r", "haven")
 workloads <- c("full", "projected-eight-columns")
 for (dataset_index in seq_len(nrow(datasets))) {
     dataset <- datasets[dataset_index, ]

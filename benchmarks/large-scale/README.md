@@ -2,9 +2,11 @@
 
 This report-only benchmark compares three readers in the same R process:
 
-- `dta-tools`: the public `dtatools::read_dta()` path (recorded as `direct-r`
-  in raw machine-readable output);
-- `rust-vectors`: the internal `dtatools:::.read_dta_rust_vectors()` baseline;
+- `dta-tools`: the public `dtatools::read_dta()` path with `output = "tibble"`
+  (recorded as `direct-r` in raw machine-readable output);
+- `eager-r`: the same public reader run serially and eagerly,
+  `dtatools::read_dta(..., output = "tibble", threads = 1L,
+  use_numeric_altrep = FALSE)`, which materializes every column up front;
 - `haven`: `haven::read_dta()`.
 
 It measures full reads and a fixed eight-column projection on Stata-authored,
@@ -56,11 +58,11 @@ seven-iteration comparison. The [2026-08-27 report](results-2026-08-27.md) is
 the historical baseline.
 
 Before timing, the runner requires exact identity between the dta-tools and
-Rust-vector collectors for both workloads. It also compares 32-row projected
+eager-R reads for both workloads. It also compares 32-row projected
 windows at the beginning, middle, and end of each file with haven, allowing only
 `1e-7` numeric tolerance. Parser-only DTA storage classes and attributes are
 removed uniformly for the haven comparison while labels and display formats
-remain checked; dta-tools versus Rust-vector identity is checked before that
+remain checked; dta-tools versus eager-R identity is checked before that
 normalization. The manifest selects one immutable fixture generation and binds
 each dataset path to its exact byte size, row width, row count,
 fixed-file overhead, and SHA-256. Those invariants and hashes are verified both
@@ -193,7 +195,7 @@ Timed reads therefore
 measure dataset loading and tibble construction; the dimension check
 materializes neither the full row-level string-pointer vector nor widened
 numeric vectors. The exact
-dta-tools/Rust-vector comparison and the haven window comparisons before timing
+dta-tools/eager-R comparison and the haven window comparisons before timing
 do access values, so laziness cannot hide correctness differences.
 Use the separate `benchmarks/r-materialization/string-workloads.R` and
 `benchmarks/r-materialization/memory-worker.R` harnesses for matched string-access and

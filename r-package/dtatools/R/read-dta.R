@@ -203,8 +203,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     if (datasig) .validate_datasig_read(selection, skip, n_max)
     .read_dta_impl(
         file, encoding, selection, skip, n_max, .name_repair, output,
-        materialization = "direct", threads = threads,
-        use_numeric_altrep = use_numeric_altrep,
+        threads = threads, use_numeric_altrep = use_numeric_altrep,
         record_datasig = datasig
     )
 }
@@ -218,19 +217,6 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
             "drop `col_select`, `skip`, and `n_max`"
         ), call. = FALSE)
     }
-}
-
-# Internal A/B baseline. This deliberately retains the former two-stage path
-# so direct-to-R materialization can be benchmarked and checked independently.
-.read_dta_rust_vectors <- function(file, encoding = NULL, col_select = NULL,
-                                   skip = 0, n_max = Inf,
-                                   .name_repair = "unique") {
-    .read_dta_impl(
-        file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
-        "tibble",
-        materialization = "rust-vectors", threads = 1L,
-        use_numeric_altrep = FALSE, record_datasig = FALSE
-    )
 }
 
 # Internal invariant probe used by the native-materialization tests.
@@ -283,7 +269,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 }
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
-                           .name_repair, output, materialization, threads,
+                           .name_repair, output, threads,
                            use_numeric_altrep, record_datasig,
                            keep_source_rows = FALSE) {
     encoding <- .validate_dta_encoding(encoding)
@@ -319,14 +305,13 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     native <- if (is.null(prepared)) {
         .Call(
             C_dtatools_read, source$path, column_indices,
-            row_window$skip, row_window$n_max, identical(materialization, "direct"),
-            threads, use_numeric_altrep, encoding
+            row_window$skip, row_window$n_max, threads, use_numeric_altrep,
+            encoding
         )
     } else {
         .Call(
             C_dtatools_read_prepared_dta, prepared[[1L]], column_indices,
-            row_window$skip, row_window$n_max, identical(materialization, "direct"),
-            threads, use_numeric_altrep
+            row_window$skip, row_window$n_max, threads, use_numeric_altrep
         )
     }
     if (!is.null(column_indices)) {

@@ -32,12 +32,12 @@ rows whose historical signature is empty are bound to the hash computed by the
 checkpoint. The supplied manifest and its recorded hashes are external provenance
 assertions: this repository binds inputs to them fail-closed but does not maintain,
 warrant, or repair those external values. Supported files are never decoded into whole-file data frames. An
-isolated metadata subprocess compares zero-row direct-R, internal Rust-vector,
+isolated metadata subprocess compares zero-row direct-R, eager serial direct-R,
 and haven frames, including dataset label/notes and every column's class, label,
 `format.stata`, value labels, and `tzone`. A bounded source-header parser
 independently obtains the declared observation count, column count, fixed-string
 widths (including `str2045`), and `strL` identity without decoding values.
-Direct-R and Rust-vector zero-column shape reads are checked against that count;
+Direct-R and eager zero-column shape reads are checked against that count;
 the installed haven rejects an empty projection. Normal traversal is bound to the
 source count. The first column batch then receives only a configured small number
 of deterministic beyond-end windows (default one, hard maximum eight). Any reader
@@ -60,11 +60,13 @@ MiB), making the memory budget an enforced vector-heap limit rather than only a
 scheduling estimate. Memory-limit failures are reduced to a privacy-safe fixed
 classification. Every metadata/value tile runs in its own timeout-isolated
 subprocess and reads exactly
-that projection/window through `dtatools::read_dta()`,
-`dtatools:::.read_dta_rust_vectors()`, and `haven::read_dta()`.
+that projection/window through `dtatools::read_dta(..., output = "tibble")`, the
+same reader run serially and eagerly (`dtatools::read_dta(..., output = "tibble",
+threads = 1L, use_numeric_altrep = FALSE)`, the `eager` reader), and
+`haven::read_dta()`.
 
-Comparison evaluates every available direct-R/Rust, direct-R/haven, and
-Rust/haven pair and accumulates every mismatch rather than returning at the first
+Comparison evaluates every available direct-R/eager, direct-R/haven, and
+eager/haven pair and accumulates every mismatch rather than returning at the first
 one. It checks dimensions, the overlapping common row prefix even when dimensions
 differ, names, dataset/column attributes, storage types, missing
 positions and NA/NaN kinds, tagged missing values, Date/POSIXct/tzone semantics,
@@ -125,7 +127,7 @@ upstream repository are read-only; all mutable state remains under the
 checkout-local ignored target. Aggregate files are identified separately because
 the upstream build uses forced Stata append coercion; that provenance explains
 stored analytical types but never excuses a disagreement among Direct-R,
-Rust-vector, and Haven.
+eager Direct-R, and Haven.
 
 Fresh generated-output execution and publication use corpus schema 13, which
 binds each isolated worker to the descriptor identity captured during input
@@ -356,8 +358,8 @@ tile. Available options are:
 Encoding overrides are explicit run configuration, never tracked corpus-specific
 policy. Every override ID must belong to the complete selected family, and every
 shard in that family must receive the same sorted canonical map. The selected
-encoding is passed symmetrically to public direct-R materialization, internal
-Rust-vector materialization, Haven, structural name discovery, value and terminal
+encoding is passed symmetrically to public direct-R materialization, eager
+serial direct-R materialization, Haven, structural name discovery, value and terminal
 windows, and `strL` sizing samples. The canonical privacy-safe map is recorded in
 run provenance and bound into the configuration and family identities. Changing
 it therefore selects a different checkpoint namespace; omitting it preserves the
@@ -404,7 +406,7 @@ completed semantic mismatches remain valid evidence. Filters and shards do not
 alter tile identity.
 
 File-level classifications include `pass`, `expected-unsupported-111`,
-`inventory-hash-error`, `direct-vs-rust-mismatch`, `dtatools-only-error`,
+`inventory-hash-error`, `direct-vs-eager-mismatch`, `dtatools-only-error`,
 `haven-only-error`, `shared-reader-error`, `metadata-mismatch`, `value-mismatch`,
 `tag-mismatch`, `date-mismatch`, `encoding-mismatch`,
 `row-termination-mismatch`, `known-intentional-divergence`, `timeout`,
@@ -465,7 +467,7 @@ rewritten to match one reader. Adjudication should be a separate derived process
 2. Select one or more privacy-safe inventory IDs per cluster for an explicitly
    authorized, target-local attribute-only diagnostic.
 3. Record only fixed categories such as variable label, value-label mapping, class,
-   format, or character-decoding policy; direct-versus-Rust agreement; a fixed owner
+   format, or character-decoding policy; direct-versus-eager agreement; a fixed owner
    category; the explicit encoding modes tested; and the source raw signature.
 4. Require a second review before marking a cluster intentional. The derived record
    may explain or reclassify a confirmed divergence, but it must continue to link to

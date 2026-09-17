@@ -196,7 +196,6 @@ dta_append <- function(sources, force = TRUE,
 .append_read_dta_schema <- function(source, output) {
     .read_dta_impl(
         source, NULL, rlang::quo(NULL), 0, 0, "unique", output,
-        materialization = "direct",
         threads = getOption("dtatools.threads", 0L),
         use_numeric_altrep = getOption("dtatools.numeric_altrep", TRUE),
         record_datasig = FALSE, keep_source_rows = TRUE

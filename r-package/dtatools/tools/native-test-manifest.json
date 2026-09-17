@@ -150,7 +150,7 @@
         },
         {
           "path": "tests/testthat/test-read-dta.R",
-          "sha256": "f8e80aa6aee04e9080446c37eaf365067ffeb29e76009603204749091beea5de"
+          "sha256": "b4c6fc365567cefbdfec15c1da86f8b9bc93033d67745d4ce23239ead0ef12ec"
         },
         {
           "path": "tests/testthat/test-save-dta.R",
@@ -162,11 +162,11 @@
         },
         {
           "path": "tests/testthat/test-reader-dta-experiments.R",
-          "sha256": "0b47be3418d3c296294a0ac767dd9c357d14e7fdc24008d22d4a58dea3ff524a"
+          "sha256": "d22179ed2f4edfe77140e8b0006d8b8eb694d3a8a80b7759b62532a61c2108e5"
         },
         {
           "path": "tests/testthat/test-reader-dta-prepared.R",
-          "sha256": "bf5417a39ef0c85256e834f5cce00aa16e38f4e7f425aa3dae4d25fbf295856f"
+          "sha256": "a3d84a46fda51fff7c1a57102b8d6802dd601061a5f143198fc0de5c2955cec3"
         },
         {
           "path": "tests/testthat/test-reader-experiments.R",
@@ -809,14 +809,6 @@
         },
         {
           "file": "test-read-dta.R",
-          "test": "the largest exact skip is deterministic in both collectors",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 2,
-          "warnings": 0
-        },
-        {
-          "file": "test-read-dta.R",
           "test": "typed predicates and duplicate selections are deterministic",
           "occurrence": 1,
           "skip": "forbid",
@@ -844,7 +836,7 @@
           "test": "native numerics use width-aware storage with R value semantics",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 1353,
+          "min_pass": 1349,
           "warnings": 0
         },
         {
@@ -857,18 +849,10 @@
         },
         {
           "file": "test-read-dta.R",
-          "test": "explicit UTF-8 replaces malformed sequences in both collectors",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 3,
-          "warnings": 0
-        },
-        {
-          "file": "test-read-dta.R",
           "test": "argument and native parse failures are ordinary R errors",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 20,
+          "min_pass": 19,
           "warnings": 0
         },
         {
@@ -876,7 +860,7 @@
           "test": "unsafe row-window coercions fail before parsing",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 32,
+          "min_pass": 16,
           "warnings": 0
         },
         {
@@ -1197,6 +1181,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-read-dta.R",
+          "test": "the largest exact skip is deterministic",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-read-dta.R",
+          "test": "explicit UTF-8 replaces malformed sequences",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         },
         {
