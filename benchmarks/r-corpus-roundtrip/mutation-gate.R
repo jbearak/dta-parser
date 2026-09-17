@@ -1,6 +1,6 @@
 args <- commandArgs(trailingOnly = TRUE)
 update_baseline <- "--update-baseline" %in% args
-args <- setdiff(args, "--update-baseline")
+args <- args[args != "--update-baseline"]
 if (length(args) < 3L || length(args) > 4L ||
     !(args[[1L]] %in% c("record", "compare"))) {
     stop(paste0(
@@ -95,13 +95,32 @@ if (!(identical(mode, "record") && update_baseline)) {
             "same MAX_FILES first"
         )
     }
+    # A full run must cover exactly the baselined corpus: a file that left
+    # the cache would otherwise drop its expected rows silently.
+    stale_ids <- setdiff(baseline$id, inventory$id)
+    if (!is.finite(max_files) && length(stale_ids)) {
+        stop(
+            length(stale_ids), " baselined datasets are not in the corpus; ",
+            "run `record --update-baseline` without MAX_FILES on the ",
+            "reference build to rebuild the full baseline"
+        )
+    }
 }
 message(nrow(inventory), " corpus files selected")
 
 worker_script <- file.path(script_dir, "mutation-gate-worker.R")
+snapshot_root <- file.path(output_dir, "snapshots")
+dir.create(snapshot_root, recursive = TRUE, showWarnings = FALSE)
 run_worker <- function(item) {
+    # The worker reads a verified private copy, so a cache refresh between
+    # hashing and signing cannot label a different file with this identity.
+    snapshot <- benchmark_snapshot_file(
+        item$path, file.path(snapshot_root, paste0(item$id, ".dta")),
+        item$bytes, item$sha256
+    )
+    on.exit(unlink(snapshot), add = TRUE)
     process <- processx::run(
-        rscript, c("--vanilla", worker_script, item$path),
+        rscript, c("--vanilla", worker_script, snapshot),
         env = c(
             "current",
             DTATOOLS_BENCH_LIB = benchmark_library,
@@ -206,7 +225,13 @@ if (nrow(errors)) {
 }
 
 if (identical(mode, "record") && update_baseline) {
-    kept <- baseline[!(baseline$id %in% observed$id), , drop = FALSE]
+    # A full record replaces the whole baseline; a MAX_FILES record replaces
+    # only the selected datasets' rows.
+    kept <- if (is.finite(max_files)) {
+        baseline[!(baseline$id %in% observed$id), , drop = FALSE]
+    } else {
+        baseline[0L, , drop = FALSE]
+    }
     merged <- rbind(kept, observed)
     merged <- merged[order(merged$id, merged$verb, merged$container,
                            method = "radix"), , drop = FALSE]

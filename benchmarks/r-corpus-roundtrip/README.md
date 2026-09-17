@@ -101,7 +101,9 @@ gate runs the whole corpus in size-aware waves under `DTATOOLS_VERIFY_JOBS`
 and `DTATOOLS_VERIFY_MEMORY_GIB`, as verification does.
 
 Refreshing the baseline is a deliberate act: `record --update-baseline`
-replaces the rows of the selected datasets and leaves the others in place, and
+with `MAX_FILES` replaces the rows of the selected datasets and leaves the
+others in place, and without `MAX_FILES` rebuilds the whole file. A full
+`compare` requires the baseline to cover exactly the current corpus, and
 the resulting diff to the committed file is part of the PR that changed the
 signatures. `record` without the flag behaves as `compare`. Record the
 baseline from the build the change is measured against, then run `compare`
