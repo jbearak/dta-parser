@@ -89,6 +89,29 @@
     .reserve_column_capacity(result)
 }
 
+# Every native reader ends here. `native` is the rectangular frame the native
+# call returned, still carrying the dataset attributes it attached. The caller
+# has already resolved what differs between readers: the disk signature
+# (computed in R for DTA, read from the file for Arrow; ADR 0013) and the
+# stored container and profile flag that only Arrow files record.
+.finish_native_read <- function(native, output, .name_repair, datasig = NULL,
+                                stored = NULL, profiled = TRUE,
+                                keep_source_rows = FALSE) {
+    source_rows <- attr(native, "dtatools.source.rows", exact = TRUE)
+    attr(native, "dtatools.source.rows") <- NULL
+    dataset_label <- attr(native, "label", exact = TRUE)
+    result <- .finalize_output_container(
+        native, output, .name_repair, stored = stored, profiled = profiled,
+        reader = TRUE
+    )
+    if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
+    result <- .copy_dta_metadata_attributes(native, result)
+    if (!is.null(datasig)) attr(result, "datasig") <- datasig
+    result <- .repair_data_table_container(result)
+    if (keep_source_rows) attr(result, "dtatools.source.rows") <- source_rows
+    .complete_output_container(result, output, stored, profiled, reader = TRUE)
+}
+
 # The value `save_arrow()` records so `read_arrow()` can rebuild the same
 # container. A plain data frame records nothing.
 .stored_output_container <- function(data) {
