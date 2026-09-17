@@ -2418,6 +2418,48 @@ test_that("fused comparison evaluates scalar operands once", {
     expect_identical(calls, 1L)
 })
 
+test_that("a fused patch that writes never evaluates its comparison rows", {
+    compared <- 0L
+    local_mocked_bindings(
+        .fused_comparison_value = function(plan) {
+            compared <<- compared + 1L
+            stop("the fused patch wrote, so no rows should be needed")
+        }
+    )
+    data <- dibble(x = dta_byte(1:4), y = dta_byte(c(1, 0, 1, 0)))
+
+    replace_values(data, x, 9, where = y == 1)
+
+    expect_identical(compared, 0L)
+    expect_identical(as.double(data$x), c(9, 2, 9, 4))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
+})
+
+test_that("a declined fused patch resolves the same rows as the plain path", {
+    resolutions <- list()
+    plain <- dtatools:::.resolved_assignment
+    local_mocked_bindings(
+        .commit_fused_patch = function(...) FALSE,
+        .resolved_assignment = function(values, rows, row_count) {
+            result <- plain(values, rows, row_count)
+            resolutions[[length(resolutions) + 1L]] <<- result
+            result
+        }
+    )
+    fused <- dibble(x = dta_byte(1:6), y = dta_byte(c(1, 0, 1, 0, 1, 0)))
+    general <- copy_data(fused)
+
+    replace_values(fused, x, 9, where = y == 1)
+    replace_values(general, x, 9, where = I(y == 1))
+
+    expect_length(resolutions, 2L)
+    expect_identical(resolutions[[1L]], resolutions[[2L]])
+    expect_identical(resolutions[[1L]]$rows, c(1L, 3L, 5L))
+    expect_identical(resolutions[[1L]]$value_mode, "scalar")
+    expect_identical(as.double(fused$x), as.double(general$x))
+    expect_identical(as.double(fused$x), c(9, 2, 9, 4, 9, 6))
+})
+
 test_that("fused row-value errors roll back before the fallback error", {
     values <- c(9, NaN, 7)
     data <- dibble(

@@ -4712,7 +4712,7 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "f15cc910d5fff30ea43da77c0074bf9cc2dd96dfa167faaccd8739c75fdcb2a6"
+          "sha256": "7aca74dbd01d1a4af0dba538da8076e703f912f40044c9b42d4634268ddf5c05"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
@@ -5714,6 +5714,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "a fused patch that writes never evaluates its comparison rows",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "a declined fused patch resolves the same rows as the plain path",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
           "warnings": 0
         },
         {

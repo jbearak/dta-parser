@@ -403,8 +403,7 @@ NULL
         destination <- if (is.call(target_expr)) {
             .capture_mutation_binding(target_expr, parent.frame(), value = x)
         } else target_expr
-        .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE,
-                          private_views = TRUE)
+        .preflight_mutation_target(x)
     }
     assignments <- .bracket_assignments(rlang::enquo(j), x)
     if (is.null(assignments)) {
@@ -434,8 +433,7 @@ NULL
     } else {
         rlang::enquo(i)
     }
-    .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE,
-                      private_views = TRUE)
+    .preflight_mutation_target(x)
     # A whole-j injection can retain a bare-symbol destination. Extraction
     # operands were not captured before its callbacks, so those return only.
     auto_grow <- .mutation_auto_grow()

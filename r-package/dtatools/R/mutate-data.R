@@ -340,10 +340,7 @@ replace_values <- function(data, ..., where = NULL, by = NULL,
                            bysort = NULL, promote = TRUE) {
     .require_mutation_target(data)
     shared <- .Call(C_dtatools_shared_columns, data)
-    preflight <- .open_mutation_target(data, allow_grouped = TRUE,
-                                       allow_rowwise = FALSE, private_views = TRUE)
-    .Call(C_dtatools_release_mutation_views, preflight$columns)
-    preflight <- NULL
+    .preflight_mutation_target(data)
 
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
@@ -385,10 +382,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     .require_mutation_target(data)
     auto_grow <- .mutation_auto_grow()
     if (is.null(.mutation_fast_shape(data))) {
-        preflight <- .open_mutation_target(data, allow_grouped = TRUE,
-                                           allow_rowwise = FALSE, private_views = TRUE)
-        .Call(C_dtatools_release_mutation_views, preflight$columns)
-        preflight <- NULL
+        .preflight_mutation_target(data)
     }
 
     arguments <- .mutation_arguments(
@@ -746,12 +740,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     data <- .prepare_column_growth(data, length(data) + 1L, auto_grow)
     column <- .generated_column(scalar$value, NULL, row_count, generate = TRUE)
     .prepare_column_operation(data, length(data) + 1L)
-    suspendInterrupts({
-        if (!.Call(C_dtatools_append_data_column, data, name, column)) {
-            stop("internal error: prepared table cannot append a column")
-        }
-        .mark_fresh_reference(data)
-    })
+    .append_generated_column(data, name, column)
     data
 }
 
@@ -1483,8 +1472,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         order <- vctrs::vec_order(key_columns())
         if (!identical(order, seq_len(original$nrow))) {
             reorder_dta_rows(data, order)
-            # The sort permuted every column by reference; a plain data
-            # frame's column list was snapshotted before it.
+            # The sort permuted every column by reference; the views
+            # taken before it are stale, so release them and open new ones.
+            .Call(C_dtatools_release_mutation_views, original$columns)
             original <- .as_mutation_data(data, allow_grouped = TRUE, private_views = TRUE)
         }
     }
@@ -1794,44 +1784,72 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     result
 }
 
+# The shadow check for `where`. A formula body is exempt: `~` asks for the
+# data mask outright.
+.check_where_shadowing <- function(where, columns) {
+    if (rlang::quo_is_missing(where) ||
+        rlang::is_formula(rlang::quo_get_expr(where))) {
+        return(invisible(NULL))
+    }
+    .check_shadowed_symbols(
+        rlang::quo_get_expr(where), columns, rlang::quo_get_env(where)
+    )
+}
+
+# `where` as a row plan: per group when `groups` is given, so `.n` and
+# `.N` are each group's, and otherwise one native-normalized selection
+# for the whole dataset. `extras` supplies `.n` and `.N` for the
+# ungrouped evaluation; a caller that also evaluates `values` passes the
+# counters both share.
+.resolve_where_rows <- function(where, columns, groups, row_count, extras) {
+    if (!is.null(groups)) {
+        return(list(
+            rows = NULL,
+            group_rows = .grouped_selection(where, columns, groups)
+        ))
+    }
+    selected <- .eval_mutation_expression(
+        where, columns, "where", extras, row_count = row_count
+    )
+    list(rows = .mutation_rows(selected, row_count), group_rows = NULL)
+}
+
 # Selects the rows of one bracket call, `data[i, j, by]`, before any of
 # its assignments writes: `i` is evaluated once, with the shadow check
 # and `.n`/`.N` of `where`, and the groups it was evaluated under are
 # kept so each assignment reuses them. The result is `.mutate_data()`'s
 # `selection`. `bysort` sorts the dataset here, once, as the grouped
-# `gen()` path does.
+# `gen()` path does. The private views taken here serve this evaluation
+# only; each assignment opens its own.
 .mutation_selection <- function(data, where, by, bysort) {
     grouped_input <- inherits(data, "grouped_df")
     original <- .as_mutation_data(
         data, allow_grouped = TRUE, allow_rowwise = FALSE, private_views = TRUE
     )
+    on.exit(.Call(C_dtatools_release_mutation_views, original$columns), add = TRUE)
     groups <- if (grouped_input || !is.null(by) || !is.null(bysort)) {
         .mutation_groups(data, original, by, bysort, grouped_input)
     } else {
         NULL
     }
     if (!is.null(groups)) original <- groups$original
-    if (!rlang::quo_is_missing(where) &&
-        !rlang::is_formula(rlang::quo_get_expr(where))) {
-        .check_shadowed_symbols(
-            rlang::quo_get_expr(where), original$columns,
-            rlang::quo_get_env(where)
-        )
-    }
-    if (!is.null(groups)) {
-        return(list(
-            groups = groups,
-            group_rows = .grouped_selection(where, original$columns, groups)
-        ))
-    }
-    selected <- .eval_mutation_expression(
-        where, original$columns, "where",
-        .row_counter_extras(where, NULL, original$nrow),
-        row_count = original$nrow
+    .check_where_shadowing(where, original$columns)
+    selected <- .resolve_where_rows(
+        where, original$columns, groups, original$nrow,
+        .row_counter_extras(where, NULL, original$nrow)
     )
-    list(groups = NULL, rows = .mutation_rows(selected, original$nrow))
+    list(groups = groups, rows = selected$rows, group_rows = selected$group_rows)
 }
 
+# One assignment, in three steps. `.mutate_data()` opens the target:
+# the sharing snapshot, the private views, the target name, capacity, and
+# the groups, including `bysort`'s reorder. `.resolve_mutation()` reads
+# the views and settles what to write, `rows`, `values`, and their
+# `value_mode`, without touching the table. The commit helpers write: the
+# fused adapter, the generated-column append, or the replacement, which
+# chooses promotion or a cast. Nothing after the resolve step evaluates
+# user code, and nothing before it writes.
+#
 # `selection` is a `.mutation_selection()` result. When given, `where` is
 # not evaluated again and the groups it carries stand in for `by` and
 # `bysort`, so every assignment in one `data[i, j]` writes to the rows
@@ -1872,162 +1890,205 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         NULL
     }
     if (is.null(selection) && !is.null(groups)) original <- groups$original
-    access <- NULL
-    column <- NULL
 
-    # A formula body is exempt: `~` asks for the data mask outright.
-    if (is.null(selection) && !rlang::quo_is_missing(where) &&
-        !rlang::is_formula(rlang::quo_get_expr(where))) {
-        .check_shadowed_symbols(
-            rlang::quo_get_expr(where), original$columns,
-            rlang::quo_get_env(where)
-        )
+    resolved <- .resolve_mutation(
+        where, values, original$columns, groups, selection, target,
+        original$nrow, generate
+    )
+    if (identical(resolved$kind, "fused")) {
+        if (.commit_fused_patch(data, target$location, shared[[target$location]],
+                                resolved$fused, resolved$replacement)) {
+            return(invisible(data))
+        }
+        resolved <- .resolve_fused_fallback(resolved, original$nrow)
     }
-    # The fused comparison patch reads the whole target column, so it
-    # cannot serve a per-group selection, and there is nothing to fuse
-    # once the rows were selected up front.
-    fused <- if (generate || !is.null(groups) || !is.null(selection)) {
-        NULL
+    if (generate) {
+        .commit_generated_column(data, target, resolved, original$nrow)
     } else {
-        .fused_comparison_plan(where, original$columns, original$nrow)
+        .commit_replacement(data, original, target, resolved, shared,
+                            promote, report_promotion, grouped_input)
     }
+    invisible(data)
+}
+
+# What one assignment writes, read from the private `columns` without
+# writing to the table. A `"plain"` result carries `rows`, `values`, and
+# `value_mode`. A `"fused"` result carries the comparison and replacement
+# plans for the fused adapter instead: the comparison is not evaluated
+# here, because a successful fused patch never needs its rows. Groups take
+# `.grouped_mutation()`'s gathered rows and values, a bracket `selection`
+# supplies its rows, and the fused plan is attempted only for an ungrouped
+# replacement with no selection made up front, since the native patch
+# reads the whole target column.
+.resolve_mutation <- function(where, values, columns, groups, selection,
+                              target, row_count, generate) {
+    if (is.null(selection)) .check_where_shadowing(where, columns)
     if (!is.null(groups)) {
         gathered <- .grouped_mutation(
-            where, values, original$columns, groups, original$nrow,
+            where, values, columns, groups, row_count,
             selected = selection$group_rows, drop_unselected = !generate
         )
-        selected <- gathered$rows
-        evaluated <- gathered$values
-    } else if (!is.null(selection)) {
-        evaluated <- .eval_mutation_expression(
-            values, original$columns, "values",
-            .mutation_row_counters(where, values, original$nrow),
-            row_count = original$nrow
-        )
-        selected <- selection$rows
-    } else if (is.null(fused)) {
-        extras <- .mutation_row_counters(where, values, original$nrow)
-        selected <- .eval_mutation_expression(
-            where, original$columns, "where", extras,
-            row_count = original$nrow
-        )
-        evaluated <- .eval_mutation_expression(
-            values, original$columns, "values", extras,
-            row_count = original$nrow
-        )
-    } else {
-        evaluated <- .eval_mutation_expression(
-            values, original$columns, "values",
-            .mutation_row_counters(where, values, original$nrow),
-            row_count = original$nrow
-        )
-        access <- .column_access(data)
-        column <- original$columns[[target$location]]
-        replacement_plan <- if (
-            .is_unmaterialized_numeric_altrep(column)
-        ) {
-            .fused_replacement_plan(evaluated, column, original$nrow)
-        } else NULL
-        if (!is.null(replacement_plan)) {
-            patch <- function() .Call(
-                C_dtatools_fused_patch_slot,
-                data, as.integer(target$location), shared[[target$location]],
-                fused$op_code, fused$left, fused$right,
-                fused$scalar, replacement_plan$values,
-                replacement_plan$scalar, .mutation_threads()
-            )
-            patched <- patch()
-            if (!is.null(patched)) {
-                return(invisible(data))
-            }
-        }
-        selected <- .fused_comparison_value(fused)
+        return(.resolved_assignment(
+            gathered$values, .mutation_rows(gathered$rows, row_count), row_count
+        ))
     }
-    rows <- .mutation_rows(selected, original$nrow)
-    value_mode <- .mutation_value_mode(evaluated, rows, original$nrow)
-    values <- evaluated
+    extras <- .mutation_row_counters(where, values, row_count)
+    if (!is.null(selection)) {
+        evaluated <- .eval_mutation_expression(
+            values, columns, "values", extras, row_count = row_count
+        )
+        return(.resolved_assignment(evaluated, selection$rows, row_count))
+    }
+    fused <- if (generate) NULL else {
+        .fused_comparison_plan(where, columns, row_count)
+    }
+    if (is.null(fused)) {
+        selected <- .resolve_where_rows(where, columns, NULL, row_count, extras)
+        evaluated <- .eval_mutation_expression(
+            values, columns, "values", extras, row_count = row_count
+        )
+        return(.resolved_assignment(evaluated, selected$rows, row_count))
+    }
+    evaluated <- .eval_mutation_expression(
+        values, columns, "values", extras, row_count = row_count
+    )
+    column <- columns[[target$location]]
+    replacement <- if (.is_unmaterialized_numeric_altrep(column)) {
+        .fused_replacement_plan(evaluated, column, row_count)
+    } else NULL
+    if (is.null(replacement)) {
+        return(.resolved_assignment(
+            evaluated, .mutation_rows(.fused_comparison_value(fused), row_count),
+            row_count
+        ))
+    }
+    list(kind = "fused", values = evaluated, fused = fused,
+         replacement = replacement)
+}
 
-    if (generate) {
-        column <- .generated_column(
-            values, rows, original$nrow, generate = TRUE
-        )
-        .prepare_column_operation(data, length(data) + 1L)
-    } else {
-        if (is.null(access)) access <- .column_access(data)
-        if (is.null(column)) {
-            column <- original$columns[[target$location]]
-        }
-        # An assignment that selects no rows changes nothing and returns
-        # here: it neither declares storage nor promotes. Stata's
-        # `replace` behaves the same way, reporting `(0 real changes
-        # made)` and leaving the storage alone, so `repl()` takes this
-        # path as `:=` does.
-        if (promote &&
-            .mutation_selected_count(rows, original$nrow) == 0L) {
-            return(invisible(data))
-        }
-        declared <- if (promote) {
-            .wider_declared_storage(values, column)
-        } else {
-            NULL
-        }
-        if (!is.null(declared) ||
-            (promote &&
-             !.replacement_fits(values, column, rows, value_mode))) {
-            # Promotion widens storage; it admits no value Stata cannot
-            # hold at any width, and says so as `repl()` does.
-            .validate_numeric_values(values)
-            # `:=` promotes: the column is rebuilt at the storage the
-            # right-hand side declares when that is wider, and otherwise
-            # at the narrowest storage that holds the current and new
-            # values together.
-            promoted <- .promoted_replacement(
-                values, column, rows, value_mode, original$nrow, declared
-            )
-            if (report_promotion) {
-                .report_storage_promotion(target$name, column, promoted)
-            }
-            .set_data_column_at(access, target$location, promoted)
-            if (grouped_input) .regroup_after_replacement(data)
-            return(invisible(data))
-        }
-        replacement <- .cast_replacement(
-            values, column, rows, value_mode
-        )
-        # No selected group supplied a value. vctrs accepts NULL here, but
-        # the native patcher requires a vector even for an empty selection.
-        if (is.null(replacement) &&
-            .mutation_selected_count(rows, original$nrow) == 0L) {
-            return(invisible(data))
-        }
-    }
+# `rows` is already native-normalized: `NULL` for every row, else positions.
+.resolved_assignment <- function(values, rows, row_count) {
+    list(
+        kind = "plain", rows = rows, values = values,
+        value_mode = .mutation_value_mode(values, rows, row_count)
+    )
+}
 
-    if (!generate) {
-        if (is.null(rows) && .is_unmaterialized_dictstring(column) &&
-            .same_mutation_object(column, replacement)) return(invisible(data))
-        # Evaluation and casting are complete. Release only the internal read
-        # list and local target; callbacks' independent aliases remain live.
-        .Call(C_dtatools_release_mutation_views, original$columns)
-        column <- NULL
-        patch <- function() .Call(
-            C_dtatools_patch_slot, data, as.integer(target$location),
-            rows, replacement, shared[[target$location]]
-        )
-        patch()
-        # Rebuild after every grouped replacement, not only one that names
-        # a grouping column: a target can share its vector with a key
-        # under the package's alias semantics, so the key may have changed
-        # without being named.
-        if (grouped_input) .regroup_after_replacement(data)
-    }
-    if (generate) suspendInterrupts({
-        appended <- .Call(C_dtatools_append_data_column, data, target$name, column)
-        if (!appended) {
+# The rows of a fused plan the native patch declined, evaluated the way
+# an ungrouped `where` is, so the replacement commits through the
+# ordinary path with the values already evaluated.
+.resolve_fused_fallback <- function(resolved, row_count) {
+    .resolved_assignment(
+        resolved$values,
+        .mutation_rows(.fused_comparison_value(resolved$fused), row_count),
+        row_count
+    )
+}
+
+# The fused adapter: one native call compares and patches a compact
+# numeric target for a simple comparison and a scalar or full-length
+# value. `TRUE` when it wrote; `FALSE` when the native code declined and
+# the caller falls back to the ordinary replacement.
+.commit_fused_patch <- function(data, location, shared, fused, replacement) {
+    patched <- .Call(
+        C_dtatools_fused_patch_slot,
+        data, as.integer(location), shared,
+        fused$op_code, fused$left, fused$right,
+        fused$scalar, replacement$values,
+        replacement$scalar, .mutation_threads()
+    )
+    !is.null(patched)
+}
+
+# Builds the new column from the resolved rows and values and appends
+# it; the append and the reference remark run as one uninterruptible step.
+.commit_generated_column <- function(data, target, resolved, row_count) {
+    column <- .generated_column(
+        resolved$values, resolved$rows, row_count, generate = TRUE
+    )
+    .prepare_column_operation(data, length(data) + 1L)
+    .append_generated_column(data, target$name, column)
+}
+
+.append_generated_column <- function(data, name, column) {
+    suspendInterrupts({
+        if (!.Call(C_dtatools_append_data_column, data, name, column)) {
             stop("internal error: prepared table cannot append a column")
         }
         .mark_fresh_reference(data)
     })
-    invisible(data)
+    invisible(NULL)
+}
+
+# Writes resolved values into an existing column: a storage promotion
+# replaces the whole column, and otherwise the values are cast to the
+# target's declared storage and patched in place. The target view is
+# read here and dropped before the native patch; `shared` says whether
+# the slot must detach from other tables first.
+.commit_replacement <- function(data, original, target, resolved, shared,
+                                promote, report_promotion, grouped_input) {
+    rows <- resolved$rows
+    values <- resolved$values
+    value_mode <- resolved$value_mode
+    column <- original$columns[[target$location]]
+    # An assignment that selects no rows changes nothing and returns
+    # here: it neither declares storage nor promotes. Stata's
+    # `replace` behaves the same way, reporting `(0 real changes
+    # made)` and leaving the storage alone, so `repl()` takes this
+    # path as `:=` does.
+    if (promote &&
+        .mutation_selected_count(rows, original$nrow) == 0L) {
+        return(invisible(NULL))
+    }
+    declared <- if (promote) {
+        .wider_declared_storage(values, column)
+    } else {
+        NULL
+    }
+    if (!is.null(declared) ||
+        (promote &&
+         !.replacement_fits(values, column, rows, value_mode))) {
+        # Promotion widens storage; it admits no value Stata cannot
+        # hold at any width, and says so as `repl()` does.
+        .validate_numeric_values(values)
+        # `:=` promotes: the column is rebuilt at the storage the
+        # right-hand side declares when that is wider, and otherwise
+        # at the narrowest storage that holds the current and new
+        # values together.
+        promoted <- .promoted_replacement(
+            values, column, rows, value_mode, original$nrow, declared
+        )
+        if (report_promotion) {
+            .report_storage_promotion(target$name, column, promoted)
+        }
+        .set_data_column_at(.column_access(data), target$location, promoted)
+        if (grouped_input) .regroup_after_replacement(data)
+        return(invisible(NULL))
+    }
+    replacement <- .cast_replacement(values, column, rows, value_mode)
+    # No selected group supplied a value. vctrs accepts NULL here, but
+    # the native patcher requires a vector even for an empty selection.
+    if (is.null(replacement) &&
+        .mutation_selected_count(rows, original$nrow) == 0L) {
+        return(invisible(NULL))
+    }
+    if (is.null(rows) && .is_unmaterialized_dictstring(column) &&
+        .same_mutation_object(column, replacement)) return(invisible(NULL))
+    # Evaluation and casting are complete. Release the internal read list
+    # and the local target before the patch, which may detach the slot's
+    # backing; callbacks' independent aliases remain live.
+    .Call(C_dtatools_release_mutation_views, original$columns)
+    column <- NULL
+    .Call(
+        C_dtatools_patch_slot, data, as.integer(target$location),
+        rows, replacement, shared[[target$location]]
+    )
+    # Rebuild after every grouped replacement, not only one that names
+    # a grouping column: a target can share its vector with a key
+    # under the package's alias semantics, so the key may have changed
+    # without being named.
+    if (grouped_input) .regroup_after_replacement(data)
+    invisible(NULL)
 }
 
 # Preserve aliases within the supplied table while detaching its payload
