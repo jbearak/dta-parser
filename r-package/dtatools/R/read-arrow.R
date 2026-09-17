@@ -144,13 +144,12 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
         datasig,
         keep_source_rows
     )
-    source_rows <- attr(native, "dtatools.source.rows", exact = TRUE)
-    attr(native, "dtatools.source.rows") <- NULL
     if (!is.null(column_indices)) {
         names(native) <- selected_names
     }
-
-    dataset_label <- attr(native, "label", exact = TRUE)
+    # ADR 0013: an Arrow signature comes from the file's footer checksums, so
+    # the native reader attached it; the stored container and profile flag
+    # are recorded only by Arrow files.
     disk_signature <- attr(native, "datasig", exact = TRUE)
     stored_output <- if (profile) {
         attr(native, "dtatools.output.container", exact = TRUE)
@@ -158,18 +157,11 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     attr(native, "dtatools.output.container") <- NULL
     profiled <- identical(attr(native, "dtatools.profiled", exact = TRUE), 1L)
     attr(native, "dtatools.profiled") <- NULL
-    result <- .finalize_output_container(
-        native, output, .name_repair, stored = stored_output,
-        profiled = profiled, reader = TRUE
+    .finish_native_read(
+        native, output, .name_repair, datasig = disk_signature,
+        stored = stored_output, profiled = profiled,
+        keep_source_rows = keep_source_rows
     )
-    if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
-    result <- .copy_dta_metadata_attributes(native, result)
-    if (!is.null(disk_signature)) attr(result, "datasig") <- disk_signature
-    result <- .repair_data_table_container(result)
-    if (keep_source_rows) {
-        attr(result, "dtatools.source.rows") <- source_rows
-    }
-    .complete_output_container(result, output, stored_output, profiled, reader = TRUE)
 }
 
 .arrow_metadata <- function(snapshot, profile = TRUE,

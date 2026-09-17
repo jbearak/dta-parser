@@ -329,36 +329,16 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
             threads, use_numeric_altrep
         )
     }
-    source_rows <- attr(native, "dtatools.source.rows", exact = TRUE)
-    attr(native, "dtatools.source.rows") <- NULL
     if (!is.null(column_indices)) {
         names(native) <- selected_names
     }
-
-    native[] <- lapply(native, function(column) {
-        storage <- attr(column, "stata.string.storage", exact = TRUE)
-        if (is.character(column) && !is.null(storage) &&
-            !inherits(column, "dta_string")) {
-            .new_dta_string(column, storage, column)
-        } else {
-            column
-        }
-    })
-
-    disk_signature <- if (record_datasig) {
-        datasig(native, threads = threads)
-    }
-
-    dataset_label <- attr(native, "label", exact = TRUE)
-    result <- .finalize_output_container(native, output, .name_repair, reader = TRUE)
-    if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
-    result <- .copy_dta_metadata_attributes(native, result)
-    if (record_datasig) attr(result, "datasig") <- disk_signature
-    result <- .repair_data_table_container(result)
-    if (keep_source_rows) {
-        attr(result, "dtatools.source.rows") <- source_rows
-    }
-    .complete_output_container(result, output, reader = TRUE)
+    # ADR 0013: a DTA signature hashes the decoded columns, so it is computed
+    # here rather than read from the file.
+    disk_signature <- if (record_datasig) datasig(native, threads = threads)
+    .finish_native_read(
+        native, output, .name_repair, datasig = disk_signature,
+        keep_source_rows = keep_source_rows
+    )
 }
 
 .close_prepared_dta <- function(prepared) {
