@@ -193,7 +193,20 @@
             "Stata-typed conversion, assign `data <- as_dibble(data)` first."
         ), call. = FALSE)
     }
-    if (.data_table_container(data)) .require_data_table()
+    if (.data_table_container(data)) {
+        # A dibble is a tibble. A data.table carrying the dibble classes is
+        # a hand-built hybrid whose keys and indexes no write path maintains.
+        if (is_dibble(data)) {
+            stop(paste0(
+                "`data` carries both the dibble and data.table classes; ",
+                "a dibble cannot be a data.table. Assign ",
+                "`data <- as_dibble(tibble::as_tibble(data))` for a dibble, ",
+                "or `data <- data.table::as.data.table(tibble::as_tibble(data))` ",
+                "for a data.table."
+            ), call. = FALSE)
+        }
+        .require_data_table()
+    }
     if ((!allow_grouped && inherits(data, "grouped_df")) ||
         (!allow_rowwise && inherits(data, "rowwise_df"))) {
         stop(paste0("`data` must be an ungrouped data frame or tibble for this helper; ",

@@ -77,6 +77,18 @@ test_that("explicit helper boundaries reject dibble subclasses before evaluating
     expect_identical(effects, 0L)
 })
 
+test_that("a data.table carrying the dibble classes is rejected before any write", {
+    skip_if_not_installed("data.table")
+    hybrid <- data.table::as.data.table(data.frame(x = c(1, 2, 3)))
+    data.table::setkey(hybrid, x)
+    class(hybrid) <- c("dibble", "dtatools_ref_data", "data.table", "data.frame")
+    expect_error(repl(hybrid, x, 0, where = 3L), "cannot be a data.table")
+    expect_error(gen(hybrid, y = 1), "cannot be a data.table")
+    expect_error(keep_vars(hybrid, x), "cannot be a data.table")
+    expect_identical(as.double(.subset2(hybrid, "x")), c(1, 2, 3))
+    expect_identical(names(hybrid), "x")
+})
+
 test_that("explicit conversion removes custom container classes in isolation", {
     for (make in container_factories()) {
         d <- make(x = 1:3, text = c("a", "b", "c"))

@@ -4716,7 +4716,7 @@
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
-          "sha256": "2dcdba66290720b00c1841f1d98953954f45b7af22e5ab191696b2ba021cc5f8"
+          "sha256": "ea355738130d0cc41e409d06982b51e49edc7ef192a2121a1a6383d01ccb6a0a"
         },
         {
           "path": "tests/testthat/test-reserve-columns.R",
@@ -5810,6 +5810,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-containers.R",
+          "test": "a data.table carrying the dibble classes is rejected before any write",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
           "warnings": 0
         },
         {
