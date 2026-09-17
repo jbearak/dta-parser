@@ -1,6 +1,6 @@
 RUST_MANIFEST = rust/Cargo.toml
 
-$(SHLIB): $(RUST_LIB)
+$(SHLIB): $(RUST_LIB) dtatools-win.def
 
 # R derives OBJECTS from every C source in this directory.
 $(OBJECTS): dtatools-internal.h owned-columns.h row-filter.h mutation-write.h egen-values.h egen-groups.h
