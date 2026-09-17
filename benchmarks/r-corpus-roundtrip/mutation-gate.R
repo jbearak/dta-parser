@@ -77,7 +77,25 @@ read_baseline <- function() {
     if (!identical(names(baseline), baseline_columns)) {
         stop("mutation gate baseline has unexpected columns")
     }
+    require_unique_keys(baseline, "baseline")
     baseline
+}
+
+# Every (id, verb, container) appears once; a lookup by key would otherwise
+# hide the extra rows from the comparison.
+signature_key <- function(table) {
+    paste(table$id, table$verb, table$container, sep = "\t")
+}
+require_unique_keys <- function(table, label) {
+    duplicated_keys <- unique(signature_key(table)[duplicated(signature_key(table))])
+    if (length(duplicated_keys)) {
+        stop(
+            "mutation gate ", label, " repeats ", length(duplicated_keys),
+            " signature keys, for example: ",
+            gsub("\t", " / ", duplicated_keys[[1L]], fixed = TRUE)
+        )
+    }
+    invisible(table)
 }
 
 
@@ -214,6 +232,7 @@ observed <- do.call(rbind, rows)
 rownames(observed) <- NULL
 observed <- observed[order(observed$id, observed$verb, observed$container,
                            method = "radix"), , drop = FALSE]
+require_unique_keys(observed, "observations")
 atomic_tsv(observed, file.path(output_dir, "signatures.tsv"))
 unlink(partial_path)
 
@@ -246,10 +265,9 @@ if (identical(mode, "record") && update_baseline) {
 
 differences_path <- file.path(output_dir, "differences.tsv")
 unlink(differences_path)
-key <- function(table) paste(table$id, table$verb, table$container, sep = "\t")
 expected <- baseline[baseline$id %in% inventory$id, , drop = FALSE]
-expected_lookup <- stats::setNames(expected$datasig, key(expected))
-observed_lookup <- stats::setNames(observed$datasig, key(observed))
+expected_lookup <- stats::setNames(expected$datasig, signature_key(expected))
+observed_lookup <- stats::setNames(observed$datasig, signature_key(observed))
 all_keys <- sort(union(names(expected_lookup), names(observed_lookup)))
 differences <- all_keys[
     is.na(expected_lookup[all_keys]) | is.na(observed_lookup[all_keys]) |
