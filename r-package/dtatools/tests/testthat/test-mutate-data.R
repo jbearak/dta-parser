@@ -1141,10 +1141,17 @@ test_that("gen and a new := column copy a column's values, not its metadata", {
     repl(data, y, x)
     expect_null(var_label(data$y))
 
-    # `mutate()` is the R operation and copies the vector, attributes and all.
-    copied <- dplyr::mutate(data, w = x)
+    # `$<-` and `mutate()` are the R operations and copy the vector,
+    # attributes and all.
+    copied <- data
+    copied$w <- copied$x
     expect_identical(var_label(copied$w), "Original")
     expect_identical(val_labels(copied$w), c(one = 1, two = 2))
+    if (requireNamespace("dplyr", quietly = TRUE)) {
+        mutated <- dplyr::mutate(data, w = x)
+        expect_identical(var_label(mutated$w), "Original")
+        expect_identical(val_labels(mutated$w), c(one = 1, two = 2))
+    }
 
     # Authored metadata goes through the setters, as `label variable` does.
     set_var_label(data, y, "Copy of x")

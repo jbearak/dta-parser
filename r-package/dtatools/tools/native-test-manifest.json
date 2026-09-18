@@ -4804,7 +4804,7 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "489efb623bd5c094f6c1c7ab4cfe8ca7a3482c82abad4a89836c2146977517ca"
+          "sha256": "eabce2ab0f4cfec7a54850a1e688bf38aad592f253c285e36ed1c5abfdf60fc6"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
