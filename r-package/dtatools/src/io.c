@@ -1068,15 +1068,3 @@ SEXP C_dtatools_arrow_metadata(
     return result;
 }
 
-SEXP C_dtatools_arrow_datasig(SEXP path) {
-    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 ||
-        STRING_ELT(path, 0) == NA_STRING) {
-        Rf_error("`file` must be one non-missing path");
-    }
-    char *error = NULL;
-    SEXP result = dtatools_arrow_datasig_rust(
-        Rf_translateCharUTF8(STRING_ELT(path, 0)), &error
-    );
-    if (result == NULL) fail_from_rust(error);
-    return result;
-}

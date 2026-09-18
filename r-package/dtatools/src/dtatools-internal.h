@@ -256,7 +256,6 @@ extern SEXP dtatools_read_arrow_rust(
 extern SEXP dtatools_arrow_metadata_rust(
     const void *, int, int, double, double, int *, char **
 );
-extern SEXP dtatools_arrow_datasig_rust(const char *, char **);
 
 typedef struct {
     void *values;
@@ -573,7 +572,6 @@ DTATOOLS_INTERNAL SEXP C_dtatools_arrow_metadata(
     SEXP snapshot, SEXP profile, SEXP scan_ambiguous_int32,
     SEXP skip, SEXP n_max
 );
-DTATOOLS_INTERNAL SEXP C_dtatools_arrow_datasig(SEXP path);
 
 /* Metadata proxies and mutation views. */
 DTATOOLS_INTERNAL R_xlen_t mutation_string_length(SEXP value);
@@ -646,9 +644,6 @@ DTATOOLS_INTERNAL SEXP C_dtatools_mutation_info(SEXP data, SEXP location);
 DTATOOLS_INTERNAL SEXP C_dtatools_patch_vector(
     SEXP target, SEXP rows, SEXP replacement
 );
-DTATOOLS_INTERNAL SEXP C_dtatools_patch_data_column(
-    SEXP data, SEXP location, SEXP target, SEXP rows, SEXP replacement
-);
 DTATOOLS_INTERNAL SEXP C_dtatools_set_data_column(SEXP data, SEXP location, SEXP column);
 DTATOOLS_INTERNAL SEXP C_dtatools_patch_slot(SEXP data, SEXP location, SEXP rows,
                                 SEXP replacement, SEXP entry_shared);
@@ -711,7 +706,6 @@ DTATOOLS_INTERNAL SEXP C_dtatools_dta_compare(
     SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_missing_codes(SEXP value);
-DTATOOLS_INTERNAL SEXP C_dtatools_replace_table_columns(SEXP data, SEXP columns);
 DTATOOLS_INTERNAL SEXP C_dtatools_replace_reference_columns(
     SEXP data, SEXP store, SEXP locations, SEXP names, SEXP columns
 );

@@ -1320,53 +1320,6 @@ SEXP C_dtatools_patch_vector(
     return patch_vector(target, rows, replacement, 1);
 }
 
-SEXP C_dtatools_patch_data_column(
-    SEXP data, SEXP location, SEXP target, SEXP rows, SEXP replacement
-) {
-    if (TYPEOF(data) != VECSXP || TYPEOF(location) != INTSXP ||
-        XLENGTH(location) != 1) {
-        Rf_error("invalid generic ALTREP replacement target");
-    }
-    int index = INTEGER_ELT(location, 0);
-    if (index == NA_INTEGER || index < 1) {
-        Rf_error("invalid generic ALTREP replacement target");
-    }
-
-    int detached = ALTREP(target) && !reference_mutable_altrep(target);
-    if ((R_xlen_t) index > XLENGTH(data)) {
-        if (!detached || XLENGTH(target) == 0 ||
-            (rows != R_NilValue && XLENGTH(rows) == 0)) {
-            PROTECT(patch_vector(target, rows, replacement, 1));
-            UNPROTECT(1);
-            return target;
-        }
-        SEXP column = PROTECT(plain_column(target, rows != R_NilValue));
-        PROTECT(patch_vector(column, rows, replacement, 0));
-        UNPROTECT(2);
-        return column;
-    }
-    if (target != VECTOR_ELT(data, (R_xlen_t) index - 1)) {
-        Rf_error("invalid generic ALTREP replacement target");
-    }
-    if (XLENGTH(target) == 0 ||
-        (rows != R_NilValue && XLENGTH(rows) == 0)) {
-        PROTECT(patch_vector(target, rows, replacement, 1));
-        UNPROTECT(1);
-        return target;
-    }
-    if (!detached) {
-        PROTECT(patch_vector(target, rows, replacement, 1));
-        UNPROTECT(1);
-        return target;
-    }
-
-    SEXP column = PROTECT(plain_column(target, rows != R_NilValue));
-    PROTECT(patch_vector(column, rows, replacement, 0));
-    SET_VECTOR_ELT(data, (R_xlen_t) index - 1, column);
-    UNPROTECT(2);
-    return column;
-}
-
 SEXP C_dtatools_set_data_column(SEXP data, SEXP location, SEXP column) {
     if (TYPEOF(data) != VECSXP) {
         Rf_error("`data` must be a list");
@@ -3311,20 +3264,6 @@ SEXP C_dtatools_missing_codes(SEXP value) {
 
     UNPROTECT(2);
     return result;
-}
-
-SEXP C_dtatools_replace_table_columns(SEXP data, SEXP columns) {
-    if (TYPEOF(data) != VECSXP || TYPEOF(columns) != VECSXP) {
-        Rf_error("internal column replacement requires lists");
-    }
-    R_xlen_t count = XLENGTH(data);
-    if (XLENGTH(columns) != count) {
-        Rf_error("internal column replacement requires matching lists");
-    }
-    for (R_xlen_t index = 0; index < count; index++) {
-        SET_VECTOR_ELT(data, index, VECTOR_ELT(columns, index));
-    }
-    return R_NilValue;
 }
 
 /* Commits one already gathered set of columns back into a table, and into

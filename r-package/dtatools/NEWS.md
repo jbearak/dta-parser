@@ -1,5 +1,9 @@
 # dtatools (development version)
 
+* Three registered native entry points that nothing called are removed:
+  `C_dtatools_arrow_datasig`, `C_dtatools_patch_data_column` and
+  `C_dtatools_replace_table_columns`. ADR 0038 records why the rest of the
+  native surface stays as narrow entry points.
 * `save_dta()`, `save_arrow()` and `datasig()` now classify columns with one
   shared ladder, so the two writers accept the same tables and a table
   `datasig()` signs is one `save_dta()` saves unless it holds a `difftime`
