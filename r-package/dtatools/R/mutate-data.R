@@ -1706,8 +1706,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     # missing, before the cast, which refuses `NA` for a declared string.
     # After slicing, so a sparse replacement scans only its selected rows.
     if (typeof(target) == "character" && typeof(values) == "character" &&
-        !is.object(values) && anyNA(values)) {
-        values[is.na(values)] <- ""
+        !is.object(values)) {
+        values <- .stata_string_text(values)
     }
     .validate_numeric_values(values)
     # Build Stata prototypes from metadata rather than proxying the target.
@@ -1722,7 +1722,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         # metadata copy of a dictionary-backed column would decode and copy
         # the whole column to produce an empty prototype.
         .new_dta_string(character(),
-            attr(target, "stata.string.storage", exact = TRUE), target)
+            .declared_string_storage(target), target)
     } else {
         # A supported owned prototype needs attributes, not the target values.
         # Forking its full read view would make every later private write copy.
@@ -2191,7 +2191,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 }
 
 .generated_character <- function(values, rows, row_count) {
-    declared <- attr(values, "stata.string.storage", exact = TRUE)
+    declared <- .declared_string_storage(values)
     source_attributes <- attributes(values)
     source_attributes$names <- NULL
     source_attributes$stata.string.storage <- NULL
@@ -2567,10 +2567,8 @@ as.list.dibble <- function(x, ...) {
             !inherits(column, "dta_temporal")) {
             as.double(.dta_snapshot(column))
         } else if (is.character(column) &&
-            !is.null(attr(column, "stata.string.storage", exact = TRUE))) {
-            text <- as.character(column)
-            text[is.na(text)] <- ""
-            text
+            !is.null(.declared_string_storage(column))) {
+            .stata_string_text(column)
         } else {
             NULL
         }
@@ -2859,412 +2857,6 @@ transmute.dibble <- function(.data, ...) {
     storage
 }
 
-# A column a dibble holds as is: one carrying Stata storage; a factor,
-# which `save_dta()` writes as a value-labelled `long`; or a bare logical.
-# Stata has no boolean type, and typing a flag as `byte` would break
-# `filter(data, flag)`, `which(flag)`, and `where = flag`, so logicals
-# stay logical and become `byte` only when written. A `gen()` string
-# carries its declaration as an attribute without the `dta_string`
-# class, so the attribute is the test for strings.
-.dta_typed_column <- function(column) {
-    inherits(column, c("dta_numeric", "dta_temporal", "factor")) ||
-        (typeof(column) == "logical" && !is.object(column)) ||
-        (is.character(column) && .string_declaration_holds(column))
-}
-
-# Whether a character column's `stata.string.storage` declaration is
-# valid for its values: well formed, wide enough, and with no `NA`, which
-# Stata strings spell `""`. A join or `rbind()` can carry a declaration
-# onto values it no longer describes, and such a column is retyped rather
-# than trusted. That includes a `dta_string` vector: `full_join()` and
-# `bind_rows()` pad one with `NA` while vctrs keeps its class, so the
-# class is no proof. A compact dictionary string has no `NA` by
-# construction and its width is read from the dictionary, so it is
-# checked without being materialized.
-.string_declaration_holds <- function(column) {
-    declared <- attr(column, "stata.string.storage", exact = TRUE)
-    if (!.valid_string_declaration(declared)) return(FALSE)
-    if (.is_unmaterialized_dictstring(column)) {
-        return(.dta_string_storage_width(declared) >=
-            max(1L, .dictstring_max_width(column)))
-    }
-    owned_fits <- .Call(C_dtatools_owned_string_fits, column,
-                        .dta_string_storage_width(declared))
-    if (!is.null(owned_fits)) return(owned_fits)
-    if (anyNA(column)) return(FALSE)
-    .dta_string_storage_width(declared) >=
-        .dta_string_required_width(column)
-}
-
-.valid_string_declaration <- function(declared) {
-    is.character(declared) && length(declared) == 1L &&
-        !is.na(declared) && (identical(declared, "strL") || grepl(
-            "^str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5])$",
-            declared
-        ))
-}
-
-# A column no Stata storage can hold: raw, list, complex, a matrix, a
-# classed character other than a Stata string, or a classed numeric such
-# as `difftime` or `integer64` whose values are not Stata's. A dibble
-# carries it unchanged, and `save_dta()` refuses it with its own message.
-# `gen()` is stricter and rejects such a result, because it is the Stata
-# command. A `dta_string` whose declaration no longer holds is typable:
-# it is retyped from its values.
-.dta_untypable_column <- function(column) {
-    if (!is.null(dim(column))) return(TRUE)
-    if (typeof(column) == "character") {
-        return(is.object(column) && !inherits(column, "dta_string"))
-    }
-    if (!(typeof(column) %in% c("logical", "integer", "double"))) {
-        return(TRUE)
-    }
-    !.generated_numeric_class_supported(column)
-}
-
-# The Stata-typed form of one column entering a dibble. A typed column is
-# returned as is. A compact Arrow string is declared through a metadata
-# proxy with the width read from its dictionary, so it stays compact and
-# the source vector is untouched. Anything else takes `gen()`'s storage
-# for its values. `caller` names the entry point in errors.
-.typed_column <- function(column, row_count, caller) {
-    if (.dta_typed_column(column)) return(column)
-    .normalize_untyped_column(column, row_count, caller)
-}
-
-.normalize_untyped_column <- function(column, row_count, caller) {
-    if (.is_unmaterialized_dictstring(column)) {
-        storage <- .normalize_dta_string_storage(
-            NULL, .dictstring_max_width(column)
-        )
-        proxy <- .metadata_copy(column)
-        attr(proxy, "stata.string.storage") <- storage
-        class(proxy) <- c("dta_string", "vctrs_vctr", "character")
-        return(proxy)
-    }
-    if (is.character(column) &&
-        !is.null(attr(column, "stata.string.storage", exact = TRUE))) {
-        # A stale declaration: `NA` becomes `""`, the width is redone from
-        # the values, and the variable's other metadata comes along.
-        text <- as.character(column)
-        text[is.na(text)] <- ""
-        kept <- attributes(column)
-        kept[c("names", "class", "stata.string.storage")] <- NULL
-        if (length(kept)) attributes(text) <- c(attributes(text), kept)
-        column <- text
-    }
-    .generated_column(column, NULL, row_count, caller)
-}
-
-# Types every untyped column of a data frame so that a dibble's columns
-# all carry Stata storage. Typed columns are left as the same vectors, so
-# compact columns from a reader stay compact.
-.type_dibble_columns <- function(data, caller = "as_dibble()") {
-    row_count <- nrow(data)
-    column_names <- names(data)
-    captured_columns <- utils::hashtab(type = "address")
-    for (index in seq_along(column_names)) {
-        column <- .subset2(data, index)
-        typed <- .typed_column_named(
-            column, row_count, caller, column_names[[index]]
-        )
-        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
-            data[[index]] <- typed
-        }
-        # Value normalization above keeps the existing replacement/regrouping
-        # policy. Capturing identical values only changes their private handle;
-        # dispatching [[<- here would trim preserved empty grouping keys.
-        normalized <- .subset2(data, index)
-        captured <- utils::gethash(captured_columns, normalized, nomatch = NULL)
-        if (is.null(captured)) {
-            captured <- .Call(C_dtatools_capture_column, normalized)
-            utils::sethash(captured_columns, normalized, captured)
-        }
-        .Call(C_dtatools_set_data_column, data, as.integer(index), captured)
-    }
-    data
-}
-
-# The same for a column entering a dibble from construction or a verb,
-# where a column no Stata storage can hold passes through unchanged.
-.typed_column_named <- function(column, row_count, caller, name) {
-    if (.dta_typed_column(column)) return(column)
-    if (.is_unmaterialized_dictstring(column) ||
-        !.dta_untypable_column(column)) {
-        return(.normalize_untyped_column(column, row_count, caller))
-    }
-    column
-}
-
-# The Stata storage a column declares, numeric or string, or `NULL` when
-# it declares none.
-.promotion_storage_label <- function(column) {
-    if (typeof(column) == "character") {
-        attr(column, "stata.string.storage", exact = TRUE)
-    } else {
-        .declared_dta_storage(column)
-    }
-}
-
-# Stata's `replace` announces a widening as `variable x was byte now
-# int`, and `repl()` translates that command, so it says the same. Only a
-# real change of declared storage is reported; a column that keeps its
-# storage says nothing, as Stata does.
-.report_storage_promotion <- function(name, prior, promoted) {
-    was <- .promotion_storage_label(prior)
-    now <- .promotion_storage_label(promoted)
-    if (is.null(was) || is.null(now) || identical(was, now)) {
-        return(invisible(NULL))
-    }
-    message(sprintf("variable `%s` was %s now %s", name, was, now))
-    invisible(NULL)
-}
-
-# Column `values` that replaced `prior` in a dibble. A prior column with
-# declared storage keeps it when the new values fit, as Stata's `replace`
-# does. When they do not, the column takes the narrowest storage that
-# holds every new value exactly, without ever narrowing the integers the
-# column can hold. `conformance/stata/replace-promotion.do` records what
-# Stata does, and the two agree except on precision: a `float` given a
-# value needing binary64 keeps `float` in Stata, which rounds it, and
-# goes to `double` here, which does not. Prior variable metadata is
-# restored on the result. Other
-# combinations, including a change of kind between numeric and string,
-# take the storage a fresh column would. `declared` names storage the
-# caller has already settled on, such as a `:=` right-hand side's, and
-# stands in for the prior column's.
-.promoted_column <- function(values, prior, row_count, caller,
-                             declared = NULL) {
-    # A bare logical replacing a Stata numeric is a fitting replacement,
-    # as `replace x = x > 1` is in Stata, so it keeps the column's
-    # storage rather than turning the column logical.
-    logical_over_numeric <- typeof(values) == "logical" &&
-        !is.object(values) && inherits(prior, "dta_numeric") &&
-        !inherits(prior, "dta_temporal")
-    # An explicit `dta_*()` or arithmetic result already carries the
-    # storage the user asked for; a column no storage holds passes through.
-    if (!logical_over_numeric &&
-        (.dta_typed_column(values) || .dta_untypable_column(values))) {
-        return(values)
-    }
-    if (is.character(values) &&
-        !is.null(attr(values, "stata.string.storage", exact = TRUE))) {
-        # A stale declaration is redone from the values.
-        attr(values, "stata.string.storage") <- NULL
-    }
-    if (!.promotable_pair(values, prior)) {
-        return(.typed_column(values, row_count, caller))
-    }
-    if (typeof(prior) == "character") {
-        text <- as.character(values)
-        text[is.na(text)] <- ""
-        if (is.null(declared)) {
-            declared <- attr(prior, "stata.string.storage", exact = TRUE)
-        }
-        required <- .dta_string_required_width(text)
-        storage <- if (.dta_string_storage_width(declared) >= required) {
-            declared
-        } else {
-            .normalize_dta_string_storage(NULL, required)
-        }
-        return(.new_dta_string(enc2utf8(text), storage, prior))
-    }
-    doubles <- as.double(values)
-    if (is.null(declared)) declared <- .declared_dta_storage(prior)
-    # Promotion only widens: the search starts at the declared storage,
-    # so a `dta_float()` value beside a retained integer float cannot
-    # hold goes to `double` rather than back to `long`.
-    storage <- if (.dta_storage_holds(doubles, declared)) {
-        declared
-    } else {
-        .narrowest_dta_storage(doubles, from = declared)
-    }
-    .restore_dta_metadata(
-        .construct_dta_numeric(doubles, NULL, storage), prior, storage
-    )
-}
-
-# Whether replacement `values` for the selected `rows` fit `target`'s
-# declared storage. Pairs the promotion rule does not cover report `TRUE`
-# so the strict replacement path handles or refuses them as before.
-.replacement_fits <- function(values, target, rows, value_mode) {
-    if (!.promotable_pair(values, target)) return(TRUE)
-    if (typeof(target) != "character") {
-        native <- .Call(C_dtatools_replacement_fits, values, rows,
-                        identical(value_mode, "row"),
-                        match(.declared_dta_storage(target), .dta_storage) - 1L)
-        if (!is.null(native)) return(native)
-    }
-    # The dictionary's widest entry answers the question for a compact
-    # Arrow string without populating its shared cache, which the
-    # `as.character()` below would. Only a dictionary too wide for the
-    # target has to look at the values themselves.
-    if (typeof(target) == "character" &&
-        .is_unmaterialized_dictstring(values)) {
-        declared <- attr(target, "stata.string.storage", exact = TRUE)
-        if (.dta_string_storage_width(declared) >=
-            max(1L, .dictstring_max_width(values))) {
-            return(TRUE)
-        }
-    }
-    if (identical(value_mode, "row") && !is.null(rows)) {
-        slice_rows <- if (inherits(rows, "dta_numeric")) {
-            .dta_data(rows)
-        } else {
-            rows
-        }
-        values <- vctrs::vec_slice(values, slice_rows)
-    }
-    if (typeof(target) == "character") {
-        text <- as.character(values)
-        text[is.na(text)] <- ""
-        declared <- attr(target, "stata.string.storage", exact = TRUE)
-        return(.dta_string_storage_width(declared) >=
-            .dta_string_required_width(text))
-    }
-    .dta_storage_holds(
-        as.double(vctrs::vec_data(values)), .declared_dta_storage(target)
-    )
-}
-
-# The whole column after `values` replace the selected `rows` of
-# `target`, typed by promotion from `target`'s storage, or from
-# `declared` when the right-hand side settled a wider one.
-.promoted_replacement <- function(values, target, rows, value_mode,
-                                  row_count, declared = NULL) {
-    target <- .metadata_copy(target)
-    current <- if (typeof(target) == "character") {
-        text <- as.character(target)
-        text[is.na(text)] <- ""
-        text
-    } else {
-        as.double(.dta_snapshot(target))
-    }
-    replacement <- if (typeof(target) == "character") {
-        text <- as.character(values)
-        text[is.na(text)] <- ""
-        text
-    } else {
-        as.double(vctrs::vec_data(values))
-    }
-    positions <- if (is.null(rows)) {
-        seq_len(row_count)
-    } else if (inherits(rows, "dta_numeric")) {
-        .dta_data(rows)
-    } else {
-        rows
-    }
-    current[positions] <- if (identical(value_mode, "row")) {
-        replacement[positions]
-    } else {
-        replacement
-    }
-    .promoted_column(current, target, row_count, "`:=`", declared)
-}
-
-# The storage a `:=` right-hand side declares, through a `dta_*()` call
-# or Stata-typed arithmetic, when it is wider than `target`'s: the value
-# the user typed names the storage they want, and a column that holds
-# both must be at least that wide. `NULL` when the right-hand side is
-# bare, declares the target's storage or narrower, or is not of the
-# target's kind, so the ordinary fit check decides.
-.wider_declared_storage <- function(values, target) {
-    if (!.promotable_pair(values, target)) return(NULL)
-    if (typeof(target) == "character") {
-        declared <- attr(values, "stata.string.storage", exact = TRUE)
-        current <- attr(target, "stata.string.storage", exact = TRUE)
-        if (is.null(declared) || !is.character(declared) ||
-            length(declared) != 1L || is.na(declared)) {
-            return(NULL)
-        }
-        wider <- .dta_string_storage_width(declared) >
-            .dta_string_storage_width(current)
-        return(if (wider) declared else NULL)
-    }
-    if (!inherits(values, "dta_numeric")) return(NULL)
-    declared <- match(.declared_dta_storage(values), .dta_storage)
-    current <- match(.declared_dta_storage(target), .dta_storage)
-    if (is.na(declared) || is.na(current) || declared <= current) {
-        return(NULL)
-    }
-    .dta_storage[[declared]]
-}
-
-# `prior` has declared storage of the same kind as `values`: numeric for
-# numeric, string for string. Temporal and factor columns are not
-# promoted; they are retyped from their new values.
-.promotable_pair <- function(values, prior) {
-    if (is.factor(values) || !is.null(dim(values))) return(FALSE)
-    if (is.character(prior) &&
-        !is.null(attr(prior, "stata.string.storage", exact = TRUE))) {
-        return(is.character(values))
-    }
-    if (!inherits(prior, "dta_numeric") ||
-        inherits(prior, "dta_temporal")) return(FALSE)
-    typeof(values) %in% c("logical", "integer", "double") &&
-        (!is.object(values) || inherits(values, "dta_numeric"))
-}
-
-.dta_storage_holds <- function(doubles, storage) {
-    codes <- .tab_missing_codes(doubles)
-    observed <- is.na(codes)
-    if (any(!is.na(codes) & codes == 256L)) return(FALSE)
-    if (any(.invalid_dta_observed(doubles, observed, storage))) {
-        return(FALSE)
-    }
-    if (!identical(storage, "float") || !any(observed)) return(TRUE)
-    candidate <- doubles[observed]
-    rounded <- as.double(.construct_dta_numeric(candidate, NULL, "float"))
-    all(rounded == candidate)
-}
-
-.narrowest_dta_storage <- function(doubles, from = "byte") {
-    start <- match(from, .dta_storage)
-    if (is.na(start)) start <- 1L
-    ladder <- .dta_storage[start:length(.dta_storage)]
-    # `float` carries 24 bits of integer precision and `long` carries 31,
-    # so `long` to `float` narrows the integers the column can hold even
-    # when the values in hand happen to be float-exact, and it leaves a
-    # column that silently rounds the next long-range integer written to
-    # it. Stata's `replace` sends an overflowing `long` to `double` for
-    # the same reason, and the arithmetic lattice in `.dta_promote()`
-    # already pairs `long` with `float` as `double`. `byte` and `int` are
-    # unaffected: their whole ranges are float-exact.
-    if (identical(from, "long")) ladder <- setdiff(ladder, "float")
-    for (storage in ladder) {
-        if (.dta_storage_holds(doubles, storage)) return(storage)
-    }
-    "double"
-}
-
-# After an operation on a dibble's snapshot, every column that is not the
-# same vector as before is typed: a new column as `gen()` would type it, a
-# replaced column by promotion from its prior storage. Columns the
-# operation left alone are recognized by address and untouched.
-.retype_changed_columns <- function(result, before, caller) {
-    result_names <- names(result)
-    row_count <- nrow(result)
-    for (index in seq_along(result_names)) {
-        column <- .subset2(result, index)
-        prior <- before[[result_names[[index]]]]
-        if (!is.null(prior) &&
-            identical(rlang::obj_address(prior), rlang::obj_address(column))) {
-            next
-        }
-        typed <- if (is.null(prior)) {
-            .typed_column_named(
-                column, row_count, caller, result_names[[index]]
-            )
-        } else {
-            .promoted_column(column, prior, row_count, caller)
-        }
-        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
-            result[[index]] <- typed
-        }
-    }
-    result
-}
-
 # A dataset operation on a dibble returns a dibble; the copying helpers
 # that accept every container, such as the label replacement operators,
 # pass their plain result through. A non-data-frame result, such as
@@ -3370,13 +2962,6 @@ transmute.dibble <- function(.data, ...) {
         "rlang:::use_as_label_infix" = FALSE,
         rlang::as_label(rlang::quo_get_expr(quosure))
     )
-}
-
-.typed_mask_value <- function(value, prior, caller) {
-    if (is.null(prior)) {
-        return(.typed_column_named(value, length(value), caller, NULL))
-    }
-    .promoted_column(value, prior, length(value), caller)
 }
 
 .typed_reference_replacement <- function(data, result, caller) {

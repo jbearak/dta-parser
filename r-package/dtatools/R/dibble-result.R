@@ -27,7 +27,6 @@
     shared <- if (!is.null(sources)) addresses %in% source_addresses else NULL
     first <- match(addresses, addresses)
     row_count <- nrow(result)
-    column_names <- names(columns)
     for (index in seq_along(columns)) {
         address <- addresses[[index]]
         if (first[[index]] < index) {
@@ -37,7 +36,7 @@
             # writable columns still need isolation before validation.
             isolate <- is.null(sources) || shared[[index]]
             prepared <- .prepare_dibble_result_column(
-                columns[[index]], isolate, row_count, context$caller, column_names[[index]])
+                columns[[index]], isolate, row_count, context$caller)
         }
         .Call(C_dtatools_set_data_column, result, as.integer(index), prepared)
     }
@@ -46,37 +45,31 @@
     .new_validated_dibble(result)
 }
 
-.prepare_dibble_result_column <- function(column, isolate, row_count, caller, name) {
+.prepare_dibble_result_column <- function(column, isolate, row_count, caller) {
     # Nested frames can be retained even when the outer list was freshly
     # allocated. Capture their storage at the same publication boundary.
     if (is.list(column)) return(.capture_dibble_nested(column))
+    # A plain character column whose declaration holds for its values is
+    # copied by the generation kernel, which allocates the isolated result
+    # and preserves every attribute in one native pass. The kernel refuses
+    # two things a holding declaration does not rule out on its own: a
+    # width it cannot verify, which `.string_declaration_holds()` has
+    # verified here, and a value in R's `bytes` encoding, which it cannot
+    # translate; both are settled before the call rather than caught
+    # after it. The result is reused only when it is identical to the
+    # source, so a kernel that re-encoded a value hands over to the
+    # ordinary path below with every other column.
     if (isolate && is.character(column) && !.is_altrep(column) &&
-        is.null(dim(column)) && .valid_string_declaration(
-            attr(column, "stata.string.storage", exact = TRUE))) {
-        # The existing generation kernel validates width while allocating the
-        # isolated result. It preserves every attribute supplied here. It also
-        # normalizes NA, which a valid declaration cannot contain, so reuse the
-        # result only if all values and attributes are identical to the source.
-        # Stale declarations and encodings unsupported by that kernel retain
-        # the established normalization path below.
-        copied <- tryCatch(.Call(
+        is.null(dim(column)) && .string_declaration_holds(column) &&
+        !.has_bytes_encoding(column)) {
+        copied <- .Call(
             C_dtatools_generate_character, column, NULL, as.double(row_count),
-            attr(column, "stata.string.storage", exact = TRUE), attributes(column)
-        ), error = function(condition) {
-            message <- conditionMessage(condition)
-            if (identical(message,
-                "Generated values do not fit their declared Stata string storage") ||
-                identical(message,
-                    gettext('translating strings with "bytes" encoding is not allowed',
-                            domain = "R"))) {
-                return(NULL)
-            }
-            stop(condition)
-        })
-        if (!is.null(copied) && identical(column, copied)) return(copied)
+            .declared_string_storage(column), attributes(column)
+        )
+        if (identical(column, copied)) return(copied)
     }
     value <- if (isolate) .metadata_copy(column) else column
-    typed <- .typed_column_named(value, row_count, caller, name)
+    typed <- .typed_column(value, row_count, caller)
     # Unknown callback and bind outputs can already carry a valid declaration
     # while borrowing foreign payload. Capture them at the same ingress seam.
     if (isolate) typed else .Call(C_dtatools_capture_column, typed)

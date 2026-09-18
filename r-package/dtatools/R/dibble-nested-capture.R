@@ -49,8 +49,8 @@
         for (index in seq_along(columns)) {
             prior <- first[[index]]
             column <- if (prior < index) .subset2(result, prior) else capture(.subset2(columns, index))
-            if (dibble) column <- .typed_column_named(column, nrow(value),
-                "nested dibble result", names(columns)[[index]])
+            if (dibble) column <- .typed_column(column, nrow(value),
+                "nested dibble result")
             .Call(C_dtatools_set_data_column, result, as.integer(index), column)
         }
         for (name in intersect(c("ptype", "groups"), names(metadata))) {

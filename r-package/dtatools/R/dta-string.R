@@ -49,6 +49,31 @@ dta_string <- function(x = character(), storage = NULL) {
     as.integer(substring(storage, 4L))
 }
 
+# The Stata string storage a column declares (`str1` through `str2045` or
+# `strL`), or `NULL` when it declares none. The numeric counterpart is
+# `.declared_dta_storage()`.
+.declared_string_storage <- function(x) {
+    attr(x, "stata.string.storage", exact = TRUE)
+}
+
+# Values as Stata string text: `NA` is `""`, Stata's only missing string
+# (see CONTEXT.md, "Stata string missing"). Values without `NA` come back
+# as they are, so a bare character vector is not copied. Every path that
+# admits an `NA` into a Stata string spells the rule through here.
+.stata_string_text <- function(values) {
+    text <- as.character(values)
+    if (anyNA(text)) text[is.na(text)] <- ""
+    text
+}
+
+# Whether any element is marked with R's `bytes` encoding, which cannot
+# be translated to UTF-8: native kernels refuse such a value, while the
+# byte-counting width rules admit it. The Arrow writer's probe, which
+# reads the elements without allocating an encoding vector.
+.has_bytes_encoding <- function(x) {
+    isTRUE(.Call(C_dtatools_has_bytes_encoding, x))
+}
+
 .normalize_dta_string_storage <- function(storage, required = 1L) {
     if (is.null(storage)) {
         return(if (required > 2045L) "strL" else paste0("str", max(1L, required)))
@@ -128,7 +153,7 @@ vec_proxy.dta_string <- function(x, ...) .dta_string_data(x)
 
 #' @export
 vec_restore.dta_string <- function(x, to, ...) {
-    storage <- attr(to, "stata.string.storage", exact = TRUE)
+    storage <- .declared_string_storage(to)
     value <- as.character(x)
     if (!.is_unmaterialized_dictstring(value) && anyNA(value)) value[is.na(value)] <- ""
     .new_dta_string(value, storage, to)
@@ -140,20 +165,20 @@ vec_restore.dta_string <- function(x, to, ...) {
     data <- .dta_string_data(x)
     result <- if (missing(i)) data[] else data[i]
     if (!.is_unmaterialized_dictstring(result) && anyNA(result)) result[is.na(result)] <- ""
-    .new_dta_string(result, attr(x, "stata.string.storage", exact = TRUE), x)
+    .new_dta_string(result, .declared_string_storage(x), x)
 }
 
 #' @export
 `[[.dta_string` <- function(x, i, ...) {
     if (length(list(...))) stop("Stata string vectors do not support array subscripts", call. = FALSE)
     result <- .dta_string_data(x)[[i]]
-    .new_dta_string(result, attr(x, "stata.string.storage", exact = TRUE), x)
+    .new_dta_string(result, .declared_string_storage(x), x)
 }
 
 .dta_string_common_storage <- function(x, y) {
     declared <- c(
-        if (inherits(x, "dta_string")) attr(x, "stata.string.storage", exact = TRUE),
-        if (inherits(y, "dta_string")) attr(y, "stata.string.storage", exact = TRUE)
+        if (inherits(x, "dta_string")) .declared_string_storage(x),
+        if (inherits(y, "dta_string")) .declared_string_storage(y)
     )
     required <- max(
         .dta_string_required_width(as.character(x)),
@@ -188,9 +213,8 @@ vec_ptype2.character.dta_string <- .dta_string_ptype2
 # string. `dta_string()` and subset assignment stay strict, since there
 # the `NA` is the user's own.
 .cast_dta_string <- function(x, to) {
-    storage <- attr(to, "stata.string.storage", exact = TRUE)
-    value <- as.character(x)
-    value[is.na(value)] <- ""
+    storage <- .declared_string_storage(to)
+    value <- .stata_string_text(x)
     .normalize_dta_string_storage(storage, .dta_string_required_width(value))
     .new_dta_string(value, storage, to)
 }
@@ -218,7 +242,7 @@ vec_cast.character.dta_string <- function(x, to, ...) as.character(x)
     if (!missing(i) && .dta_subscript_extends(x, i)) {
         .dta_string_common_storage(x, value)
     } else {
-        attr(x, "stata.string.storage", exact = TRUE)
+        .declared_string_storage(x)
     }
 }
 
