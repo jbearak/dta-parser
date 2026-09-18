@@ -432,10 +432,10 @@ test_that("unrepresentable numerics become system missing in one aggregated warn
     )
     attr(data$narrow, "stata.storage") <- "byte"
     narrow_plan <- dtatools:::.prepare_dta_write_numeric(
-        data$narrow, "narrow", "numeric", TRUE
+        data$narrow, "narrow", TRUE
     )
     wide_plan <- dtatools:::.prepare_dta_write_numeric(
-        data$wide, "wide", "numeric", TRUE
+        data$wide, "wide", TRUE
     )
     expect_identical(
         dtatools:::.dta_write_numeric_replacement_mask(narrow_plan),
@@ -529,7 +529,7 @@ test_that("timezone adjustment retains extreme finite datetimes for native warni
         format.stata = "%tc"
     )
     plan <- dtatools:::.prepare_dta_write_numeric(
-        times, "times", "datetime", TRUE
+        times, "times", TRUE
     )
     expect_identical(plan$values[[2L]], .Machine$double.xmax)
     expect_false(is.na(plan$values[[2L]]))

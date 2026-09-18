@@ -253,54 +253,6 @@ save_dta <- function(data, path, version = 19L,
     .valid_dta_name_syntax(names, 32L) & !reserved
 }
 
-.write_column_kind <- function(column) {
-    if (!is.null(dim(column))) return(NA_character_)
-    classes <- attr(column, "class", exact = TRUE)
-    if (is.factor(column)) {
-        if (all(classes %in% c(
-            .dta_metadata_vector_class, "ordered", "factor"
-        ))) return("factor")
-        return(NA_character_)
-    }
-    if (inherits(column, "Date")) {
-        if (all(classes %in% c(
-            .dta_metadata_vector_class,
-            "dta_temporal", "dta_date", "Date"
-        ))) return("date")
-        return(NA_character_)
-    }
-    if (inherits(column, "POSIXct")) {
-        if (all(classes %in% c(
-            .dta_metadata_vector_class,
-            "dta_temporal", "dta_datetime", "POSIXct", "POSIXt"
-        ))) return("datetime")
-        return(NA_character_)
-    }
-    if (is.character(column)) {
-        if (is.null(classes) || all(
-            classes %in% c(
-                .dta_metadata_vector_class,
-                "dta_string", "vctrs_vctr", "character"
-            )
-        )) return("character")
-        return(NA_character_)
-    }
-    if (!(typeof(column) %in% c("logical", "integer", "double"))) {
-        return(NA_character_)
-    }
-    if (is.null(classes) || all(classes %in% c(
-        .dta_metadata_vector_class,
-        "haven_labelled", "vctrs_vctr", "dta_numeric",
-        paste0("dta_", .dta_storage), "double", "integer", "logical"
-    ))) return("numeric")
-    NA_character_
-}
-
-.write_column_description <- function(column) {
-    classes <- attr(column, "class", exact = TRUE)
-    if (is.null(classes)) typeof(column) else paste(classes, collapse = "/")
-}
-
 .default_dta_format <- function(storage, width = NULL) {
     switch(storage,
         byte = "%8.0g",
@@ -429,23 +381,6 @@ save_dta <- function(data, path, version = 19L,
         ))
     }
     format
-}
-
-.numeric_write_storage <- function(column) {
-    explicit <- attr(column, "stata.storage", exact = TRUE)
-    if (!is.null(explicit)) {
-        if (!is.character(explicit) || length(explicit) != 1L ||
-            !(explicit %in% .dta_storage)) {
-            return(NULL)
-        }
-        return(explicit)
-    }
-    switch(typeof(column),
-        logical = "byte",
-        integer = "long",
-        double = "double",
-        NULL
-    )
 }
 
 .validate_write_value_label_shape <- function(column, name) {
@@ -852,14 +787,20 @@ save_dta <- function(data, path, version = 19L,
     list(values = values, shift = 315619200, scale = 1000)
 }
 
-.prepare_dta_write_numeric <- function(column, name, kind, adjust_tz) {
-    temporal <- if (kind %in% c("date", "datetime")) kind else NULL
-    storage <- .numeric_write_storage(column)
-    if (is.null(storage)) {
-        .dta_write_abort(sprintf(
-            "Column `%s` has unsupported type or class: %s",
-            name, paste(class(column), collapse = "/")
-        ))
+# The storage, calendar, and native value layout of a numeric column: a
+# declared Stata storage wins, and an undeclared column takes the storage
+# its R type needs. Dates and datetimes keep R's epoch and carry the shift
+# and scale to Stata's, so the native writer converts them.
+.prepare_dta_write_numeric <- function(column, name, adjust_tz) {
+    temporal <- .write_temporal_kind(column)
+    storage <- if (is.null(attr(column, "stata.storage", exact = TRUE))) {
+        switch(typeof(column),
+            logical = "byte",
+            integer = "long",
+            double = "double"
+        )
+    } else {
+        .write_stata_storage(column, name)
     }
     values <- if (is.null(temporal)) {
         list(values = column, shift = 0, scale = 1)
@@ -922,12 +863,13 @@ save_dta <- function(data, path, version = 19L,
     result
 }
 
+# The DTA target adapter: lays one classified column out as the native
+# writer's nine-slot column. Factors export as value-labelled `long`
+# (CONTEXT.md, "Factor export"); strings take their declared width or the
+# widest value, and cross to `strL` above `strl_threshold`.
 .prepare_dta_write_column <- function(column, name, kind, strl_threshold,
                                       adjust_tz, value_label_index) {
-    variable_label <- .write_text(
-        attr(column, "label", exact = TRUE),
-        sprintf("variable label for `%s`", name)
-    )
+    variable_label <- .write_variable_label(column, name)
     dta_metadata <- .dta_metadata_payload(
         dta_notes(column), dta_characteristics(column)
     )
@@ -942,23 +884,18 @@ save_dta <- function(data, path, version = 19L,
         ))
     }
     if (identical(kind, "character")) {
+        declared <- .write_string_declaration(column, name)
+        if (!is.null(attr(column, "labels", exact = TRUE))) {
+            .dta_write_abort(sprintf(
+                "Character column `%s` cannot have numeric value labels", name
+            ))
+        }
         plan <- .Call(C_dtatools_write_string_plan, column)
         maximum <- plan[[1L]]
         values <- plan[[3L]]
-        declared <- attr(column, "stata.string.storage", exact = TRUE)
-        if (!is.null(declared) && (!is.character(declared) ||
-            length(declared) != 1L || is.na(declared) ||
-            !grepl("^(strL|str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5]))$", declared))) {
-            .dta_write_abort(sprintf(
-                "Column `%s` has an invalid `stata.string.storage` declaration",
-                name
-            ))
-        }
-        declared_width <- if (!is.null(declared) && declared != "strL") {
-            as.integer(sub("^str", "", declared))
-        } else NULL
+        declared_width <- declared$width
         if (!is.null(declared_width)) maximum <- max(maximum, declared_width)
-        fixed <- !identical(declared, "strL") &&
+        fixed <- !identical(declared$storage, "strL") &&
             maximum <= 2045L &&
             (!is.null(declared_width) || maximum <= strl_threshold)
         width <- max(1L, maximum)
@@ -967,33 +904,18 @@ save_dta <- function(data, path, version = 19L,
         format <- .prepare_write_format(
             column, name, .default_dta_format(storage, width), "string"
         )
-        if (!is.null(attr(column, "labels", exact = TRUE))) {
-            .dta_write_abort(sprintf(
-                "Character column `%s` cannot have numeric value labels", name
-            ))
-        }
         return(.new_dta_write_column(
             name, type_code, format, variable_label, values,
             character_missing = plan[[2L]],
             dta_metadata = dta_metadata
         ))
     }
-    numeric <- .prepare_dta_write_numeric(
-        column, name, kind, adjust_tz
+    numeric <- .prepare_dta_write_numeric(column, name, adjust_tz)
+    format <- .prepare_write_format(
+        column, name,
+        .write_default_numeric_format(numeric$storage, numeric$temporal),
+        numeric$temporal %||% "numeric"
     )
-    if (is.null(numeric$temporal)) {
-        format <- .prepare_write_format(
-            column, name, .default_dta_format(numeric$storage),
-            "numeric"
-        )
-    } else {
-        default_format <- if (identical(numeric$temporal, "date")) {
-            "%td"
-        } else "%tc"
-        format <- .prepare_write_format(
-            column, name, default_format, numeric$temporal
-        )
-    }
     .new_dta_write_column(
         name, match(numeric$storage, .dta_storage) - 1L,
         format, variable_label, numeric$values,
@@ -1043,17 +965,7 @@ save_dta <- function(data, path, version = 19L,
             "at most 32 Unicode characters"
         ))
     }
-    kinds <- vapply(data, .write_column_kind, character(1))
-    supported <- !is.na(kinds)
-    if (any(!supported)) {
-        details <- sprintf(
-            "`%s` (%s)", data_names[!supported],
-            vapply(data[!supported], .write_column_description, character(1))
-        )
-        .dta_write_abort(sprintf(
-            "Unsupported columns: %s", paste(details, collapse = ", ")
-        ))
-    }
+    kinds <- .write_column_kinds_for(data, .dta_write_kinds)
     label <- .write_text(label, "label")
     notes <- dta_notes(data)
     characteristics <- dta_characteristics(data)
