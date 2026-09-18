@@ -446,13 +446,12 @@ NULL
     # evaluated. Until the first assignment writes, a failure puts the
     # rows back; that write disarms the undo, and the later assignments
     # commit or fail on their own, as two Stata lines would (ADR 0020).
+    # The undo is a calling handler, as in `.mutate_data()`, so the
+    # condition continues unchanged once the rows are back.
     staged <- new.env(parent = emptyenv())
     sorted_x <- x
-    undo <- function(condition) {
-        .undo_group_order(sorted_x, staged)
-        stop(condition)
-    }
-    tryCatch({
+    undo <- function(condition) .undo_group_order(sorted_x, staged)
+    withCallingHandlers({
         selection <- .mutation_selection(
             x, where,
             by = by_quo,

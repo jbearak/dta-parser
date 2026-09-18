@@ -135,9 +135,12 @@
 #' Stata's total order for `dta_*()` columns (finite values, then `.`,
 #' then `.a` through `.z`), and groups by those same columns, so the
 #' rows within each group are the sorted rows and `.n` follows the sort.
-#' The sort is written together with the assignment: an assignment that
-#' fails leaves the dataset in its original order. Several `:=`
-#' assignments in one bracket call sort with the first that writes.
+#' The sort is written together with the assignment: a call that fails
+#' before its assignment writes leaves the dataset in its original
+#' order. Several `:=` assignments in one bracket call sort with the
+#' first that writes; once that one has written, the sort stays, and a
+#' later assignment that fails leaves the dataset sorted with the earlier
+#' ones written, as two Stata lines would.
 #' Stata's parenthesized sort-only keys are not supported: `bysort id
 #' (date):` is an `arrange()` or `reorder_dta_rows()` line followed by
 #' `by = id`. Group identity uses Stata value identity for `dta_*()`
@@ -1852,16 +1855,18 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     # see the sorted dataset. The sort permuted every column by
     # reference, so the views are reopened on the sorted table. An error
     # or interrupt from the sort until the write commits puts the columns
-    # back, so the call changes nothing. The write and the disarming of
-    # that undo are one uninterruptible step, since a column appended in
-    # sorted order cannot be left on a restored table. A bracket call
-    # sorted in its selection and hands its `staged` down so its first
-    # assignment disarms the same way.
+    # back, so the call changes nothing. The undo is a calling handler:
+    # it runs where the condition was signalled and the condition then
+    # continues to whoever handles it, so a user interrupt stays an
+    # interrupt (a re-raise through `stop()` would need a message it does
+    # not have) and a condition user code handles inside `where` or
+    # `values` never reaches it. The write and the disarming of the undo
+    # are one uninterruptible step, since a column appended in sorted
+    # order cannot be left on a restored table. A bracket call sorted in
+    # its selection and hands its `staged` down so its first assignment
+    # disarms the same way.
     if (is.null(staged)) staged <- new.env(parent = emptyenv())
-    undo <- function(condition) {
-        .undo_group_order(data, staged)
-        stop(condition)
-    }
+    undo <- function(condition) .undo_group_order(data, staged)
     write <- function() {
         if (generate) {
             .commit_generated_column(data, target, resolved, original$nrow)
@@ -1871,7 +1876,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         }
         .disarm_group_order(staged)
     }
-    tryCatch({
+    withCallingHandlers({
         if (is.null(selection) && !is.null(groups) &&
             .apply_group_order(groups, data, staged)) {
             .Call(C_dtatools_release_mutation_views, original$columns)

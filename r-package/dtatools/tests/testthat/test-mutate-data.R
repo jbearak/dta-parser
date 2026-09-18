@@ -2069,6 +2069,31 @@ test_that("bysort is written with the assignment, so a failed one leaves the ord
     expect_error(gen(data, y = inner(x), bysort = id), "outer")
     expect_identical(as.data.frame(data), before)
     expect_identical(as.double(other$k), c(3, 1, 2))
+    # An interrupt is undone like an error and continues as the same
+    # condition, so a handler above sees the interrupt, not an error.
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 4, 3, 2)))
+    before <- as.data.frame(copy_data(data))
+    interrupt <- structure(list(), class = c("interrupt", "condition"))
+    seen <- NULL
+    caught <- tryCatch(
+        withCallingHandlers(
+            gen(data, y = stop(interrupt), bysort = id),
+            interrupt = function(condition) seen <<- as.data.frame(data)
+        ),
+        interrupt = identity
+    )
+    expect_identical(caught, interrupt)
+    expect_identical(seen, before)
+    expect_identical(as.data.frame(data), before)
+    caught <- tryCatch(data[, y := stop(interrupt), bysort = id],
+                       interrupt = identity)
+    expect_identical(caught, interrupt)
+    expect_identical(as.data.frame(data), before)
+    # A condition user code handles inside `values` is not a failure of
+    # the call: the sort stands and the assignment writes.
+    gen(data, y = tryCatch(stop("inner"), error = function(e) .n), bysort = id)
+    expect_identical(as.double(data$id), c(1, 1, 2, 2))
+    expect_identical(as.double(data$y), c(1, 2, 1, 2))
     # One selected row takes a scalar; the row still moves with the sort.
     data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 2, 3, 4)))
     repl(data, x = 99, where = x == 1, bysort = id)
