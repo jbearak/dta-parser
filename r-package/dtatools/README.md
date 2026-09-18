@@ -774,8 +774,9 @@ not emit older formats. See the shared [compatibility contract](https://github.c
 
 `dtatools` takes Stata's behavior as its compatibility target.
 [Where dtatools diverges from Stata](https://github.com/jbearak/dta-parser/blob/main/docs/r-stata-divergences.md)
-explains differences such as `gen(data, y = x)` copying labels as well as values,
-numeric type promotion, and merge result order.
+explains differences such as `mutate(data, y = x)` copying labels as well as
+values where `gen(data, y = x)` copies values only, numeric type promotion, and
+merge result order.
 
 ## Contributing
 

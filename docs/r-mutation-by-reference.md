@@ -319,11 +319,11 @@ instead of assigning the protected `stata.string.storage` attribute later:
 
 ```r
 gen(survey, status_copy = dta_string(as.character(status)))
-set_var_label(survey, status_copy, NULL)
 ```
 
 `as.character(status)` removes the old storage declaration, and `dta_string()`
-chooses the smallest storage that fits the current UTF-8 byte widths. For the
+chooses the smallest storage that fits the current UTF-8 byte widths. `gen()`
+copies values, not labels, so `status_copy` starts without a variable label. For the
 `"yes"` and `"no"` example, `status_copy` is `str3`. To request a particular
 declaration, supply it explicitly, for example
 `dta_string(as.character(status), storage = "str20")`; all values must fit.
