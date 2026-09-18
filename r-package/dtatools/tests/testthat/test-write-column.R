@@ -127,6 +127,32 @@ test_that("both writers export a Stata declaration on any numeric R type", {
     expect_identical(datasig(from_dta), datasig(from_arrow))
 })
 
+test_that("a declared integer with haven classes exports through Arrow", {
+    arrow_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(arrow_path), add = TRUE)
+    x <- set_val_labels(1:2, .labels = c(a = 1L))
+    attr(x, "stata.storage") <- "long"
+    data <- one_column(x)
+    save_arrow(data, arrow_path)
+    actual <- read_arrow(arrow_path)
+    expect_identical(dta_storage_type(actual$v), "long")
+    expect_identical(as.double(actual$v), c(1, 2))
+    expect_identical(val_labels(actual$v), c(a = 1))
+    expect_identical(datasig(data), datasig(actual))
+})
+
+test_that("a temporal class on a non-numeric payload is a validation error", {
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    expect_error(
+        save_dta(one_column(structure(as.raw(1:2), class = "Date")), path),
+        "Column `v` has unsupported type or class: Date",
+        fixed = TRUE,
+        class = "dtatools_write_validation_error"
+    )
+    expect_false(file.exists(path))
+})
+
 test_that("a table datasig signs is a table save_dta saves", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)

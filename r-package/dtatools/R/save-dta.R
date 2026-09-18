@@ -797,10 +797,18 @@ save_dta <- function(data, path, version = 19L,
         switch(typeof(column),
             logical = "byte",
             integer = "long",
-            double = "double"
+            double = "double",
+            NULL
         )
     } else {
         .write_stata_storage(column, name)
+    }
+    if (is.null(storage)) {
+        # A `Date` or `POSIXct` class on a payload that is not numeric.
+        .dta_write_abort(sprintf(
+            "Column `%s` has unsupported type or class: %s",
+            name, paste(class(column), collapse = "/")
+        ))
     }
     values <- if (is.null(temporal)) {
         list(values = column, shift = 0, scale = 1)

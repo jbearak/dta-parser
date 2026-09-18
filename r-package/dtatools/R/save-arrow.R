@@ -242,7 +242,11 @@ save_arrow <- function(data, path,
     values <- if (identical(typeof(column), "double")) {
         column
     } else {
-        as.double(column)
+        # A declared integer or logical may carry haven classes whose
+        # `as.double()` method refuses; the profile wants the bare payload.
+        payload <- column
+        attributes(payload) <- NULL
+        as.double(payload)
     }
     temporal_code <- switch(temporal %||% "numeric",
         date = .dta_temporal_date,
