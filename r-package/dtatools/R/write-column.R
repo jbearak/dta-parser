@@ -84,7 +84,8 @@
         return(NA_character_)
     }
     if (inherits(column, "difftime")) {
-        if (admits(c(.dta_metadata_vector_class, "difftime"))) {
+        if (numeric_payload &&
+            admits(c(.dta_metadata_vector_class, "difftime"))) {
             return("difftime")
         }
         return(NA_character_)

@@ -141,14 +141,15 @@ test_that("a declared integer with haven classes exports through Arrow", {
     expect_identical(datasig(data), datasig(actual))
 })
 
-test_that("a calendar class on a non-numeric payload is unsupported everywhere", {
+test_that("a calendar or duration class on a non-numeric payload is unsupported everywhere", {
     dta_path <- tempfile(fileext = ".dta")
     arrow_path <- tempfile(fileext = ".arrow")
     on.exit(unlink(c(dta_path, arrow_path)), add = TRUE)
     for (value in list(
         structure(as.raw(1:2), class = "Date"),
         structure(as.raw(1:2), class = "Date", stata.storage = "long"),
-        structure(c("a", "b"), class = c("POSIXct", "POSIXt"))
+        structure(c("a", "b"), class = c("POSIXct", "POSIXt")),
+        structure(c("a", "b"), class = "difftime", units = "secs")
     )) {
         expect_identical(kind_of(value), NA_character_)
         expect_error(

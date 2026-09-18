@@ -158,7 +158,7 @@
         },
         {
           "path": "tests/testthat/test-write-column.R",
-          "sha256": "8a3e89b633a9eda70dd4f19c7dce9f731fb5c09903ddbf87f375b0984a9c06d3"
+          "sha256": "3a3cc79236179273e11e210b318f181c569c2cad0f10930527b9164ee339d992"
         },
         {
           "path": "tests/testthat/test-input-sources.R",
@@ -1397,14 +1397,6 @@
         },
         {
           "file": "test-write-column.R",
-          "test": "a calendar class on a non-numeric payload is unsupported everywhere",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 11,
-          "warnings": 0
-        },
-        {
-          "file": "test-write-column.R",
           "test": "a table datasig signs is a table save_dta saves",
           "occurrence": 1,
           "skip": "forbid",
@@ -1433,6 +1425,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "a calendar or duration class on a non-numeric payload is unsupported everywhere",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
           "warnings": 0
         }
       ],
