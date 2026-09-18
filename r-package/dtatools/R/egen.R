@@ -256,7 +256,8 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 }
 
 # The shared group plan (`.assignment_groups()`), after the command's own
-# rule: only the aggregate calculations take command-level grouping.
+# rules: only the aggregate calculations take command-level grouping, and
+# a key column is checked as a calculation input is.
 .egen_groups <- function(data, original, by, bysort, kind) {
     grouped_input <- inherits(data, "grouped_df")
     grouped <- grouped_input || !rlang::quo_is_null(by) ||
@@ -265,7 +266,8 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         stop(sprintf("`%s()` does not allow outer `by` or `bysort`", kind),
              call. = FALSE)
     }
-    .assignment_groups(data, original, by, bysort, grouped_input)
+    .assignment_groups(data, original, by, bysort, grouped_input,
+                       validate_key = .egen_validate_source)
 }
 
 # Validate source values when they are read, before allowing arithmetic NaN

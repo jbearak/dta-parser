@@ -17,9 +17,15 @@
 # one `data[i, j, bysort = ]` call share a plan and sort with the first
 # of them that writes.
 #
+# `validate_key`, when supplied, is called on each key column before
+# the groups are formed: `egen()` passes its source check, so a key with
+# NaN or an infinity is rejected as one of its calculation inputs would
+# be, whether the calculation reads the key or not.
+#
 # Returns `NULL` when the call is ungrouped or the dataset has no rows,
 # after validating the group names.
-.assignment_groups <- function(data, original, by, bysort, grouped_input) {
+.assignment_groups <- function(data, original, by, bysort, grouped_input,
+                               validate_key = NULL) {
     if (!is.null(by) && rlang::quo_is_null(by)) by <- NULL
     if (!is.null(bysort) && rlang::quo_is_null(bysort)) bysort <- NULL
     if (!is.null(by) && !is.null(bysort)) {
@@ -34,6 +40,13 @@
         if (!is.data.frame(groups) || !".rows" %in% names(groups)) {
             stop("`data` has grouped-tibble metadata without groups",
                  call. = FALSE)
+        }
+        if (!is.null(validate_key)) {
+            for (name in setdiff(names(groups), ".rows")) {
+                if (.has_mutation_column(original$columns, name)) {
+                    validate_key(.mutation_column(original$columns, name))
+                }
+            }
         }
         # dplyr's own partition, including the empty groups `.drop = FALSE`
         # records; consumers skip a group without rows.
@@ -51,6 +64,7 @@
     )
     if (original$nrow == 0L) return(NULL)
     keys <- lapply(names, .mutation_column, columns = original$columns)
+    if (!is.null(validate_key)) for (key in keys) validate_key(key)
     if (isTRUE(attr(original$columns, ".dtatools_mutation_views", exact = TRUE))) {
         keys <- lapply(keys, .metadata_copy)
     }

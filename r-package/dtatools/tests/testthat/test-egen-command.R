@@ -182,6 +182,16 @@ test_that("egen validates source NaN and normalizes arithmetic NaN", {
     class(invalid) <- class(d)
     expect_error(egen(invalid, y = dta_mean(x)), "NaN")
     expect_identical(names(invalid), "x")
+    # A group key is a source too, read or not by the calculation. (A
+    # grouped tibble with such a key is refused at the door by every
+    # by-reference command, so only `by` and `bysort` reach this check.)
+    keyed <- unclass(dibble(k = c(1, 2, 1, 3), x = c(1, 2, 3, 4)))
+    keyed$k <- c(1, NaN, 1, Inf)
+    class(keyed) <- class(d)
+    expect_error(egen(keyed, m = dta_mean(x), by = k), "NaN")
+    expect_error(egen(keyed, m = dta_mean(x), bysort = k), "NaN")
+    expect_identical(as.double(keyed$x), c(1, 2, 3, 4))
+    expect_identical(names(keyed), c("k", "x"))
     raw <- NaN
     expect_error(egen(d, bad = dta_mean(raw)), "NaN")
     expect_error(egen(d, bad = dta_mean(.env$raw)), "NaN")
