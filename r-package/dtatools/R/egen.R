@@ -273,9 +273,12 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # A group key is checked as a calculation input, and its raw double
 # payload is checked besides, since a key of a class the calculations do
 # not take (which `.egen_validate_source()` passes over) still groups.
+# An integer64 key is exempt: its doubles are bit patterns, not values,
+# and some valid ones read as NaN.
 .egen_validate_key <- function(key) {
     .egen_validate_source(key)
-    if (typeof(key) == "double" && is.null(dim(key))) {
+    if (typeof(key) == "double" && is.null(dim(key)) &&
+        !inherits(key, "integer64")) {
         codes <- .tab_missing_codes(key)
         if (any((!is.na(codes) & codes == 256L) | is.infinite(key))) {
             stop("Grouping columns cannot contain NaN or infinities",

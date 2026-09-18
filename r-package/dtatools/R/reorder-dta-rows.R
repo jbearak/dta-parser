@@ -37,7 +37,7 @@ reorder_dta_rows <- function(data, rows) {
     # note is made only when they did: a note without a commit, or for
     # the identity permutation, would stand down an enclosing `bysort`
     # undo for a reorder that never happened.
-    moved <- !identical(locations, seq_len(count))
+    moved <- !identical(unname(locations), seq_len(count))
     suspendInterrupts({
         .Call(
             C_dtatools_replace_reference_columns, data, plan$store,

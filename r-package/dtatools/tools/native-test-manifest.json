@@ -4712,7 +4712,7 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "74595cfa6276224d808d97eb0a89d35dac663a719c7296030e9596bad3285a56"
+          "sha256": "aaba5509d1febbd2c073dc695f4913347f5135617fe4cde96037e83d744d597b"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
@@ -10258,7 +10258,7 @@
       "files": [
         {
           "path": "tests/testthat/test-egen-command.R",
-          "sha256": "0ba9744b967b68dcc420eb3723adfa02d1d1b23703d68af25fc9541d3508b0cb"
+          "sha256": "a601c346c4010fd8b0fde726975e3ebfe7fcad443db6387eaca7926711514550"
         },
         {
           "path": "tests/testthat/test-egen-groups.R",

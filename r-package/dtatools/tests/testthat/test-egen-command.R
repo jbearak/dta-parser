@@ -205,6 +205,13 @@ test_that("egen validates source NaN and normalizes arithmetic NaN", {
     wrapped <- plant(I(c(1, Inf, 1, 2)))
     expect_error(egen(wrapped, m = dta_mean(x), bysort = k), "infinities")
     expect_identical(as.double(wrapped$x), c(1, 2, 3, 4))
+    skip_if_not_installed("bit64")
+    # An integer64 key groups by its values, whatever their bit patterns
+    # read as when taken for doubles.
+    big <- plant(bit64::as.integer64(c("9221120237041090560", "1",
+                                       "9221120237041090560", "2")))
+    egen(big, m = dta_mean(x), by = k)
+    expect_identical(as.double(big$m), c(2, 2, 2, 4))
     raw <- NaN
     expect_error(egen(d, bad = dta_mean(raw)), "NaN")
     expect_error(egen(d, bad = dta_mean(.env$raw)), "NaN")
