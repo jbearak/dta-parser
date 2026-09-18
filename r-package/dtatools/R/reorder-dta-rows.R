@@ -43,7 +43,7 @@ reorder_dta_rows <- function(data, rows) {
             C_dtatools_replace_reference_columns, data, plan$store,
             plan$locations, plan$names, unname(columns)
         )
-        if (moved) .note_row_reorder()
+        if (moved) .note_row_reorder(data)
     })
     invisible(data)
 }

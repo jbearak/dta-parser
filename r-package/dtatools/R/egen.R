@@ -147,7 +147,7 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         # `reorder_dta_rows()`.
         suspendInterrupts({
             installed <- .install_column_selection(data, original, columns)
-            .note_row_reorder()
+            .note_row_reorder(data)
             installed
         })
     }
@@ -267,7 +267,22 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
              call. = FALSE)
     }
     .assignment_groups(data, original, by, bysort, grouped_input,
-                       validate_key = .egen_validate_source)
+                       validate_key = .egen_validate_key)
+}
+
+# A group key is checked as a calculation input, and its raw double
+# payload is checked besides, since a key of a class the calculations do
+# not take (which `.egen_validate_source()` passes over) still groups.
+.egen_validate_key <- function(key) {
+    .egen_validate_source(key)
+    if (typeof(key) == "double" && is.null(dim(key))) {
+        codes <- .tab_missing_codes(key)
+        if (any((!is.na(codes) & codes == 256L) | is.infinite(key))) {
+            stop("Grouping columns cannot contain NaN or infinities",
+                 call. = FALSE)
+        }
+    }
+    invisible(NULL)
 }
 
 # Validate source values when they are read, before allowing arithmetic NaN

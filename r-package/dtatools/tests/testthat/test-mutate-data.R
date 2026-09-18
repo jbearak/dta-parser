@@ -2069,6 +2069,13 @@ test_that("bysort is written with the assignment, so a failed one leaves the ord
     expect_error(gen(data, y = inner(x), bysort = id), "outer")
     expect_identical(as.data.frame(data), before)
     expect_identical(as.double(other$k), c(3, 1, 2))
+    # A committed reorder of another table is not a reorder of this one,
+    # so it leaves the enclosing undo armed.
+    elsewhere <- function(x) { reorder_dta_rows(other, 3:1); stop("outer") }
+    expect_error(gen(data, y = elsewhere(x), bysort = id), "outer")
+    expect_identical(as.data.frame(data), before)
+    expect_identical(as.double(other$k), c(2, 1, 3))
+    other <- dibble(k = c(3, 1, 2))
     # A nested reorder that fails before its commit is no reorder, so it
     # leaves the enclosing undo armed too.
     failing <- function(x) {

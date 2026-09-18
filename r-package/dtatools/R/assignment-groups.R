@@ -20,7 +20,8 @@
 # `validate_key`, when supplied, is called on each key column before
 # the groups are formed: `egen()` passes its source check, so a key with
 # NaN or an infinity is rejected as one of its calculation inputs would
-# be, whether the calculation reads the key or not.
+# be, whether the calculation reads the key or not, and whatever the
+# key's class.
 #
 # Returns `NULL` when the call is ungrouped or the dataset has no rows,
 # after validating the group names.
@@ -91,25 +92,34 @@
     .new_assignment_groups(rows, located$key, order)
 }
 
-# Counts the by-reference row reorders of the session: `reorder_dta_rows()`,
-# a `bysort` sort, and egen's sorted install each bump it in the same
-# uninterruptible step as their native commit, so a count never records
-# a reorder that did not happen. The undo of a `bysort` sort compares the count with the
-# one it recorded: a change means user code reordered rows by reference
-# in between, and the saved inverse no longer describes the dataset. The
-# undo then stands down and the last committed order stays, as it does
-# once a write has committed. A sort that is itself undone puts the
-# count back with the rows, so it does not stand down an enclosing undo. The count is one per session, not per
-# table, so a reorder of another table inside `where` or `values` also
-# stands the undo down: the failed call then leaves its sort in place,
-# which is a state a bracket with a failing later assignment leaves too,
-# never a misaligned one.
-.row_order_epoch <- new.env(parent = emptyenv())
-.row_order_epoch$count <- 0L
+# Counts the by-reference row reorders of each table, keyed by the
+# table's address: `reorder_dta_rows()`, a `bysort` sort, and egen's
+# sorted install each bump the table's count in the same uninterruptible
+# step as their native commit, so a count never records a reorder that
+# did not happen. The undo of a `bysort` sort compares the table's count
+# with the one it recorded: a change means user code reordered that
+# table's rows by reference in between, and the saved inverse no longer
+# describes it. The undo then stands down and the last committed order
+# stays, as it does once a write has committed. A sort that is itself
+# undone puts the count back with the rows, so it does not stand down an
+# enclosing undo. A reorder of another table leaves the count alone. The
+# counts are one integer per table ever reordered and are never pruned;
+# an address a later table reuses inherits a count, which is harmless,
+# since only a change during an armed window means anything.
+.row_order_epoch <- new.env(hash = TRUE, parent = emptyenv())
 
-.note_row_reorder <- function() {
-    .row_order_epoch$count <- .row_order_epoch$count + 1L
-    invisible(.row_order_epoch$count)
+.row_order_key <- function(data) rlang::obj_address(data)
+
+.row_order_count <- function(key) {
+    count <- .row_order_epoch[[key]]
+    if (is.null(count)) 0L else count
+}
+
+.note_row_reorder <- function(data) {
+    key <- .row_order_key(data)
+    count <- .row_order_count(key) + 1L
+    assign(key, count, envir = .row_order_epoch)
+    invisible(count)
 }
 
 .new_assignment_groups <- function(rows, keys, order) {
@@ -154,7 +164,7 @@
             C_dtatools_replace_reference_columns, data, restore$store,
             restore$locations, restore$names, unname(columns)
         )
-        staged$epoch <- .note_row_reorder()
+        staged$epoch <- .note_row_reorder(data)
         # The pointers the sort installed: the undo tells a slot user
         # code has since replaced from one it has not by comparing
         # against them.
@@ -173,14 +183,15 @@
 # back into the dataset from `where` or `values`, and any slot it added,
 # is put back through the inverse permutation, so its committed values
 # stay and stay aligned. The plan is restored with the rows. A no-op
-# when nothing is staged, and when user code has reordered rows by
-# reference since the sort (see `.row_order_epoch`): that order was
+# when nothing is staged, and when user code has reordered this table's
+# rows by reference since the sort (see `.row_order_epoch`): that order was
 # committed and stands. A consumer disarms the undo with
 # `.disarm_group_order()` once its first write has committed.
 .undo_group_order <- function(data, staged) {
     restore <- staged$restore
     if (is.null(restore)) return(invisible(FALSE))
-    if (!identical(staged$epoch, .row_order_epoch$count)) {
+    key <- .row_order_key(data)
+    if (!identical(staged$epoch, .row_order_count(key))) {
         .disarm_group_order(staged)
         return(invisible(FALSE))
     }
@@ -214,7 +225,7 @@
         # The dataset is as it was before the sort, so the epoch is too:
         # a sort undone inside another call's `where` or `values` leaves
         # that call's undo armed, as its dataset has not moved.
-        .row_order_epoch$count <- staged$epoch - 1L
+        assign(key, staged$epoch - 1L, envir = .row_order_epoch)
     })
     staged$plan$rows <- staged$rows
     staged$plan$order <- staged$order

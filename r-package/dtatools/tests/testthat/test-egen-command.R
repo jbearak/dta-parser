@@ -192,6 +192,19 @@ test_that("egen validates source NaN and normalizes arithmetic NaN", {
     expect_error(egen(keyed, m = dta_mean(x), bysort = k), "NaN")
     expect_identical(as.double(keyed$x), c(1, 2, 3, 4))
     expect_identical(names(keyed), c("k", "x"))
+    # ... whatever the key's class: a class the calculations do not take
+    # still groups, so its payload is checked directly.
+    plant <- function(key) {
+        planted <- unclass(dibble(k = c(1, 2, 1, 3), x = c(1, 2, 3, 4)))
+        planted$k <- key
+        class(planted) <- class(d)
+        planted
+    }
+    expect_error(egen(plant(I(c(1, NaN, 1, 2))), m = dta_mean(x), by = k),
+                 "NaN")
+    wrapped <- plant(I(c(1, Inf, 1, 2)))
+    expect_error(egen(wrapped, m = dta_mean(x), bysort = k), "infinities")
+    expect_identical(as.double(wrapped$x), c(1, 2, 3, 4))
     raw <- NaN
     expect_error(egen(d, bad = dta_mean(raw)), "NaN")
     expect_error(egen(d, bad = dta_mean(.env$raw)), "NaN")
