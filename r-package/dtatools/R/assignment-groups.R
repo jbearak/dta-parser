@@ -78,8 +78,9 @@
 }
 
 # Counts the by-reference row reorders of the session: `reorder_dta_rows()`,
-# a `bysort` sort, and egen's sorted install each bump it before their
-# native commit. The undo of a `bysort` sort compares the count with the
+# a `bysort` sort, and egen's sorted install each bump it in the same
+# uninterruptible step as their native commit, so a count never records
+# a reorder that did not happen. The undo of a `bysort` sort compares the count with the
 # one it recorded: a change means user code reordered rows by reference
 # in between, and the saved inverse no longer describes the dataset. The
 # undo then stands down and the last committed order stays, as it does
@@ -135,11 +136,11 @@
     staged$order <- order
     staged$rows <- plan$rows
     suspendInterrupts({
-        staged$epoch <- .note_row_reorder()
         .Call(
             C_dtatools_replace_reference_columns, data, restore$store,
             restore$locations, restore$names, unname(columns)
         )
+        staged$epoch <- .note_row_reorder()
         # The pointers the sort installed: the undo tells a slot user
         # code has since replaced from one it has not by comparing
         # against them.

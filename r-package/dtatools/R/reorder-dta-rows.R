@@ -33,11 +33,16 @@ reorder_dta_rows <- function(data, rows) {
         vctrs::new_data_frame(plan$columns, n = count),
         locations, fill_string_missing = FALSE
     )
-    .note_row_reorder()
-    .Call(
-        C_dtatools_replace_reference_columns, data, plan$store,
-        plan$locations, plan$names, unname(columns)
-    )
+    # The commit and the note that rows moved are one step: a note
+    # without a commit would stand down an enclosing `bysort` undo for
+    # a reorder that never happened.
+    suspendInterrupts({
+        .Call(
+            C_dtatools_replace_reference_columns, data, plan$store,
+            plan$locations, plan$names, unname(columns)
+        )
+        .note_row_reorder()
+    })
     invisible(data)
 }
 

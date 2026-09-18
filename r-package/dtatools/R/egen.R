@@ -139,9 +139,18 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
             group_plan$order, fill_string_missing = FALSE
         )
         columns <- as.list(columns)
-        .note_row_reorder()
     }
-    result <- .install_column_selection(data, original, columns)
+    result <- if (is.null(group_plan$order)) {
+        .install_column_selection(data, original, columns)
+    } else {
+        # The install and the note that rows moved are one step, as in
+        # `reorder_dta_rows()`.
+        suspendInterrupts({
+            installed <- .install_column_selection(data, original, columns)
+            .note_row_reorder()
+            installed
+        })
+    }
     .return_mutation(original_data, result, if (is.null(destination)) target_expr else destination, parent.frame())
 }
 

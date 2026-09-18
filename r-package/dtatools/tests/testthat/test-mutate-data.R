@@ -2069,6 +2069,16 @@ test_that("bysort is written with the assignment, so a failed one leaves the ord
     expect_error(gen(data, y = inner(x), bysort = id), "outer")
     expect_identical(as.data.frame(data), before)
     expect_identical(as.double(other$k), c(3, 1, 2))
+    # A nested reorder that fails before its commit is no reorder, so it
+    # leaves the enclosing undo armed too.
+    failing <- function(x) {
+        expect_error(reorder_dta_rows(other, c(1L, 1L, 2L)), "exactly once")
+        expect_error(egen(other, m = dta_mean(k), bysort = k, type = "nope"),
+                     "type")
+        stop("outer")
+    }
+    expect_error(gen(data, y = failing(x), bysort = id), "outer")
+    expect_identical(as.data.frame(data), before)
     # An interrupt is undone like an error and continues as the same
     # condition, so a handler above sees the interrupt, not an error.
     data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 4, 3, 2)))
