@@ -207,89 +207,6 @@ save_arrow <- function(data, path,
     labelled_integer = 10L
 )
 
-.arrow_write_column_kind <- function(column) {
-    if (!is.null(dim(column))) return(NA_character_)
-    classes <- attr(column, "class", exact = TRUE)
-    if (is.factor(column)) {
-        if (all(classes %in% c(
-            .dta_metadata_vector_class, "ordered", "factor"
-        ))) return("factor")
-        return(NA_character_)
-    }
-    if (!is.null(attr(column, "stata.storage", exact = TRUE))) {
-        if (identical(typeof(column), "double") && all(classes %in% c(
-            .dta_metadata_vector_class,
-            "haven_labelled", "vctrs_vctr", "dta_numeric",
-            "dta_temporal", "dta_date", "dta_datetime",
-            paste0("dta_", .dta_storage), "double",
-            "Date", "POSIXct", "POSIXt"
-        ))) return("stata")
-        return(NA_character_)
-    }
-    if (inherits(column, "Date")) {
-        if (all(classes %in% c(
-            .dta_metadata_vector_class, "Date"
-        ))) return("date")
-        return(NA_character_)
-    }
-    if (inherits(column, "POSIXct")) {
-        if (all(classes %in% c(
-            .dta_metadata_vector_class, "POSIXct", "POSIXt"
-        ))) return("datetime")
-        return(NA_character_)
-    }
-    if (inherits(column, "difftime")) {
-        if (all(classes %in% c(
-            .dta_metadata_vector_class, "difftime"
-        ))) return("difftime")
-        return(NA_character_)
-    }
-    if (is.character(column)) {
-        if (is.null(classes) || all(
-            classes %in% c(
-                .dta_metadata_vector_class,
-                "dta_string", "vctrs_vctr", "character"
-            )
-        )) return("character")
-        return(NA_character_)
-    }
-    if (identical(typeof(column), "raw")) {
-        if (is.null(classes) || all(
-            classes %in% .dta_metadata_vector_class
-        )) return("raw")
-        return(NA_character_)
-    }
-    if (identical(typeof(column), "logical")) {
-        if (is.null(classes) || all(
-            classes %in% .dta_metadata_vector_class
-        )) return("logical")
-        return(NA_character_)
-    }
-    if (identical(typeof(column), "integer")) {
-        if (is.null(classes) || (
-            inherits(column, "haven_labelled") &&
-            all(classes %in% c(
-                .dta_metadata_vector_class,
-                "haven_labelled", "vctrs_vctr", "integer"
-            ))
-        ) || all(classes %in% .dta_metadata_vector_class
-        )) return("integer")
-        return(NA_character_)
-    }
-    if (identical(typeof(column), "double")) {
-        if (is.null(classes) || (
-            inherits(column, "haven_labelled") &&
-            all(classes %in% c(
-                .dta_metadata_vector_class,
-                "haven_labelled", "vctrs_vctr", "double"
-            ))
-        ) || all(classes %in% .dta_metadata_vector_class
-        )) return("double")
-        return(NA_character_)
-    }
-    NA_character_
-}
-
 .arrow_write_difftime_units <- function(column, name) {
     units <- attr(column, "units", exact = TRUE)
     if (!is.character(units) || length(units) != 1L || is.na(units) ||
@@ -309,47 +226,34 @@ save_arrow <- function(data, path,
 
 .prepare_arrow_write_format <- function(column, name, kind) {
     if (is.null(attr(column, "format.stata", exact = TRUE))) return("")
-    category <- switch(kind,
-        character = "string",
-        date = "date",
-        datetime = "datetime",
-        "numeric"
-    )
-    .prepare_write_format(column, name, "", category)
+    .prepare_write_format(column, name, "", .write_format_category(kind))
 }
 
+# A Stata-typed column keeps its declared storage and Stata's default
+# display format in the Arrow profile, so both containers describe it the
+# same way. Values stay in R's epoch; the profile records the calendar.
 .prepare_arrow_write_dta <- function(column, name, adjust_tz) {
-    storage <- attr(column, "stata.storage", exact = TRUE)
-    if (!is.character(storage) || length(storage) != 1L ||
-        !(storage %in% .dta_storage)) {
-        .dta_write_abort(sprintf(
-            "Column `%s` has an invalid `stata.storage` declaration", name
-        ))
-    }
-    category <- if (inherits(column, "Date")) {
-        "date"
-    } else if (inherits(column, "POSIXct")) {
-        "datetime"
-    } else {
-        "numeric"
-    }
-    default_format <- switch(category,
-        date = "%td",
-        datetime = "%tc",
-        numeric = .default_dta_format(storage)
+    storage <- .write_stata_storage(column, name)
+    temporal <- .write_temporal_kind(column)
+    format <- .prepare_write_format(
+        column, name, .write_default_numeric_format(storage, temporal),
+        temporal %||% "numeric"
     )
-    format <- .prepare_write_format(column, name, default_format, category)
-    values <- column
-    temporal <- switch(category,
+    values <- if (identical(typeof(column), "double")) {
+        column
+    } else {
+        as.double(column)
+    }
+    temporal_code <- switch(temporal %||% "numeric",
         date = .dta_temporal_date,
         datetime = .dta_temporal_datetime,
         .dta_temporal_none
     )
     if (.is_unmaterialized_numeric_altrep(values) &&
-        !.compact_dta_storage_matches(values, storage, temporal)) {
+        !.compact_dta_storage_matches(values, storage, temporal_code)) {
         values <- .force_altrep_materialization(values)
     }
-    if (identical(category, "datetime") && adjust_tz) {
+    if (identical(temporal, "datetime") && adjust_tz) {
         timezone <- .write_datetime_timezone(column)
         if (!(timezone %in% c("UTC", "GMT"))) {
             values <- .adjust_datetime_write_values(
@@ -370,10 +274,7 @@ save_arrow <- function(data, path,
     characteristics <- dta_characteristics(column)
     notes <- dta_notes(column)
     variable_label <- .arrow_utf8(
-        .write_text(
-            attr(column, "label", exact = TRUE),
-            sprintf("variable label for `%s`", name)
-        ),
+        .write_variable_label(column, name),
         sprintf("Variable label for `%s`", name)
     )
     levels <- character()
@@ -416,27 +317,18 @@ save_arrow <- function(data, path,
             )
             ordered <- is.ordered(column)
         } else if (identical(kind, "character")) {
-            declared <- attr(column, "stata.string.storage", exact = TRUE)
+            declared <- .write_string_declaration(column, name)
             if (!is.null(declared)) {
-                if (!is.character(declared) || length(declared) != 1L ||
-                    is.na(declared) ||
-                    !grepl("^(strL|str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5]))$", declared)) {
-                    .dta_write_abort(sprintf(
-                        "Column `%s` has an invalid `stata.string.storage` declaration",
-                        name
-                    ))
-                }
-                string_storage <- if (declared == "strL") 0L else
-                    as.integer(sub("^str", "", declared))
+                string_storage <- declared$width %||% 0L
                 # A declared Stata string is a Stata column, so it takes the
                 # same default display format `save_dta()` would write. Without
                 # this the two containers disagree for a declared string
                 # column that carries no explicit format.
                 if (!nzchar(format)) {
-                    format <- if (identical(declared, "strL")) {
+                    format <- if (is.null(declared$width)) {
                         .default_dta_format("strL")
                     } else {
-                        .default_dta_format("fixed", string_storage)
+                        .default_dta_format("fixed", declared$width)
                     }
                 }
             }
@@ -565,17 +457,7 @@ save_arrow <- function(data, path,
             "Column names must be unique, non-missing, and nonempty"
         )
     }
-    kinds <- vapply(data, .arrow_write_column_kind, character(1))
-    supported <- !is.na(kinds)
-    if (any(!supported)) {
-        details <- sprintf(
-            "`%s` (%s)", data_names[!supported],
-            vapply(data[!supported], .write_column_description, character(1))
-        )
-        .dta_write_abort(sprintf(
-            "Unsupported columns: %s", paste(details, collapse = ", ")
-        ))
-    }
+    kinds <- .write_column_kinds_for(data)
     label <- .arrow_utf8(.write_text(label, "label"), "Dataset label")
     .arrow_validate_dta_metadata_utf8(data, "Dataset")
     notes <- dta_notes(data)

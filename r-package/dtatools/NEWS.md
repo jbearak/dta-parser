@@ -1,5 +1,14 @@
 # dtatools (development version)
 
+* `save_dta()`, `save_arrow()` and `datasig()` now classify columns with one
+  shared ladder, so the two writers accept the same tables and a table
+  `datasig()` signs is one `save_dta()` saves unless it holds a `difftime`
+  or `raw` column. `save_arrow()` and `datasig()` now export a
+  `stata.storage` declaration on an R integer or logical, and a
+  `dta_numeric` column without one, as `save_dta()` already did; both
+  writers now name a malformed `stata.storage` declaration instead of
+  reporting an unsupported class; and neither exports a generic `vctrs_vctr`
+  or a labelled date. Existing signatures are unchanged. See ADR 0037.
 * `egen()` now evaluates its calculation on private column views, as `gen()`
   and `repl()` do, so an expression that retains a column keeps a copy rather
   than an alias of the dataset. The reference bookkeeping a dibble carries
