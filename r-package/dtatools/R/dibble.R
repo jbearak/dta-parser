@@ -446,12 +446,13 @@ NULL
     # evaluated. Until the first assignment writes, a failure puts the
     # rows back; that write disarms the undo, and the later assignments
     # commit or fail on their own, as two Stata lines would (ADR 0020).
-    # The undo is a calling handler, as in `.mutate_data()`, so the
-    # condition continues unchanged once the rows are back.
+    # The undo runs on exit, as in `.mutate_data()`: only when the call
+    # unwinds, and the condition continues unchanged.
     staged <- new.env(parent = emptyenv())
     sorted_x <- x
-    undo <- function(condition) .undo_group_order(sorted_x, staged)
-    withCallingHandlers({
+    completed <- FALSE
+    on.exit(if (!completed) .undo_group_order(sorted_x, staged), add = TRUE)
+    {
         selection <- .mutation_selection(
             x, where,
             by = by_quo,
@@ -471,7 +472,8 @@ NULL
             destination <- .rebind_mutation(original_x, x, destination, parent.frame())
             original_x <- x
         }
-    }, error = undo, interrupt = undo)
+    }
+    completed <- TRUE
     # `[` forces its result visible after dispatch, so `invisible()` alone
     # would autoprint the dataset after every assignment. Recorded after
     # the last write so a failed assignment still shows its error only.

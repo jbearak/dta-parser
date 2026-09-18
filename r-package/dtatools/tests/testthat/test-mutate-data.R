@@ -2093,17 +2093,37 @@ test_that("bysort is written with the assignment, so a failed one leaves the ord
     data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 4, 3, 2)))
     before <- as.data.frame(copy_data(data))
     interrupt <- structure(list(), class = c("interrupt", "condition"))
-    seen <- NULL
-    caught <- tryCatch(
-        withCallingHandlers(
-            gen(data, y = stop(interrupt), bysort = id),
-            interrupt = function(condition) seen <<- as.data.frame(data)
-        ),
-        interrupt = identity
-    )
+    caught <- tryCatch(gen(data, y = stop(interrupt), bysort = id),
+                       interrupt = identity)
     expect_identical(caught, interrupt)
-    expect_identical(seen, before)
     expect_identical(as.data.frame(data), before)
+    # Any other unwinding is undone too.
+    withRestarts(gen(data, y = invokeRestart("leave"), bysort = id),
+                 leave = function() NULL)
+    expect_identical(as.data.frame(data), before)
+    withRestarts(data[, y := invokeRestart("leave"), bysort = id],
+                 leave = function() NULL)
+    expect_identical(as.data.frame(data), before)
+    # A signalled error-class condition evaluation resumes from is not
+    # an exit: the sort stays in use and the assignment writes against
+    # it. (The handler that resumes sits outside the call, so it is
+    # further from the signal than any handler the call might set.)
+    soft <- function() {
+        withRestarts(signalCondition(simpleError("soft")), resume = function() NULL)
+        NULL
+    }
+    resuming <- function(expr) {
+        withCallingHandlers(expr, error = function(e) invokeRestart("resume"))
+    }
+    resuming(gen(data, y = { soft(); .n }, bysort = id))
+    expect_identical(as.double(data$id), c(1, 1, 2, 2))
+    expect_identical(as.double(data$y), c(1, 2, 1, 2))
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 4, 3, 2)))
+    resuming(data[{ soft(); .n == 1 }, y := x, bysort = id])
+    expect_identical(as.double(data$id), c(1, 1, 2, 2))
+    expect_identical(as.double(data$y), c(4, NA, 1, NA))
+    data <- dibble(id = c(2, 1, 2, 1), x = dta_byte(c(1, 4, 3, 2)))
+    before <- as.data.frame(copy_data(data))
     caught <- tryCatch(data[, y := stop(interrupt), bysort = id],
                        interrupt = identity)
     expect_identical(caught, interrupt)

@@ -1853,20 +1853,21 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     }
     # `bysort` sorts before `where` and `values` are evaluated, so they
     # see the sorted dataset. The sort permuted every column by
-    # reference, so the views are reopened on the sorted table. An error
-    # or interrupt from the sort until the write commits puts the columns
-    # back, so the call changes nothing. The undo is a calling handler:
-    # it runs where the condition was signalled and the condition then
-    # continues to whoever handles it, so a user interrupt stays an
-    # interrupt (a re-raise through `stop()` would need a message it does
-    # not have) and a condition user code handles inside `where` or
-    # `values` never reaches it. The write and the disarming of the undo
-    # are one uninterruptible step, since a column appended in sorted
-    # order cannot be left on a restored table. A bracket call sorted in
-    # its selection and hands its `staged` down so its first assignment
-    # disarms the same way.
+    # reference, so the views are reopened on the sorted table. Any exit
+    # from the sort until the write commits, an error, an interrupt, or
+    # a restart, puts the columns back, so the call changes nothing. The
+    # undo runs on exit, not from a condition handler: a handler would
+    # also run for a signalled condition evaluation resumes from, and
+    # undo a sort still in use, while the exit hook runs only when the
+    # call unwinds, and lets the condition continue unchanged, so a user
+    # interrupt stays an interrupt. The write and the disarming of the
+    # undo are one uninterruptible step, since a column appended in
+    # sorted order cannot be left on a restored table. A bracket call
+    # sorted in its selection and hands its `staged` down so its first
+    # assignment disarms the same way.
     if (is.null(staged)) staged <- new.env(parent = emptyenv())
-    undo <- function(condition) .undo_group_order(data, staged)
+    completed <- FALSE
+    on.exit(if (!completed) .undo_group_order(data, staged), add = TRUE)
     write <- function() {
         if (generate) {
             .commit_generated_column(data, target, resolved, original$nrow)
@@ -1876,7 +1877,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         }
         .disarm_group_order(staged)
     }
-    withCallingHandlers({
+    {
         if (is.null(selection) && !is.null(groups) &&
             .apply_group_order(groups, data, staged)) {
             .Call(C_dtatools_release_mutation_views, original$columns)
@@ -1894,12 +1895,14 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             # sort is staged here.
             if (.commit_fused_patch(data, target$location, shared[[target$location]],
                                     resolved$fused, resolved$replacement)) {
+                completed <- TRUE
                 return(invisible(data))
             }
             resolved <- .resolve_fused_fallback(resolved, original$nrow)
         }
         if (is.null(staged$restore)) write() else suspendInterrupts(write())
-    }, error = undo, interrupt = undo)
+    }
+    completed <- TRUE
     invisible(data)
 }
 
