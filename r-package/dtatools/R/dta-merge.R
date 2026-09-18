@@ -436,7 +436,7 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .normalized_value_labels <- function(column) {
-    labels <- val_labels(column)
+    labels <- attr(column, "labels", exact = TRUE)
     if (is.null(labels) || length(labels) == 0L) {
         return(NULL)
     }

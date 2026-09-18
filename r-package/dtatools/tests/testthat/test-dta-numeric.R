@@ -509,7 +509,7 @@ test_that("narrow temporal storage through dplyr", {
     for (combined in combined_values) {
         expect_identical(var_label(combined), "Car origin")
         expect_identical(
-            val_labels(combined), c(Domestic = 0, Foreign = 1)
+            val_labels(combined), dta_double(c(Domestic = 0, Foreign = 1))
         )
     }
 
@@ -722,7 +722,7 @@ test_that("base right and full merges can append native Stata keys", {
     expect_identical(dta_storage_type(right_result$id), "byte")
     expect_identical(dta_storage_type(full_result$id), "byte")
     expect_identical(var_label(full_result$id), "Identifier")
-    expect_identical(val_labels(full_result$id), c(One = 1, Three = 3))
+    expect_identical(val_labels(full_result$id), dta_double(c(One = 1, Three = 3)))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(full_result$id))
 
     wider <- data.frame(
@@ -732,7 +732,7 @@ test_that("base right and full merges can append native Stata keys", {
     expect_identical(as.double(promoted$id), c(1, 2, 200))
     expect_identical(dta_storage_type(promoted$id), "int")
     expect_identical(
-        val_labels(promoted$id), c(One = 1, TwoHundred = 200)
+        val_labels(promoted$id), dta_double(c(One = 1, TwoHundred = 200))
     )
 })
 
@@ -766,7 +766,7 @@ test_that("extension promotes declared inputs without weakening assignment", {
     expect_identical(as.double(extended), c(1, NA, 200))
     expect_identical(dta_storage_type(extended), "int")
     expect_identical(
-        val_labels(extended), c(One = 1, TwoHundred = 200)
+        val_labels(extended), dta_double(c(One = 1, TwoHundred = 200))
     )
 
     # Replacement within the vector stays strict; extension takes the
@@ -817,13 +817,13 @@ test_that("dplyr joins preserve compatible Stata key information", {
     expect_identical(dta_storage_type(coalesced$id), "int")
     expect_identical(var_label(coalesced$id), "Identifier")
     expect_identical(
-        val_labels(coalesced$id), c(One = 1, TwoHundred = 200)
+        val_labels(coalesced$id), dta_double(c(One = 1, TwoHundred = 200))
     )
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(coalesced$id))
     expect_identical(dta_storage_type(retained$id.x), "byte")
     expect_identical(dta_storage_type(retained$id.y), "int")
-    expect_identical(val_labels(retained$id.x), c(One = 1))
-    expect_identical(val_labels(retained$id.y), c(TwoHundred = 200))
+    expect_identical(val_labels(retained$id.x), dta_double(c(One = 1)))
+    expect_identical(val_labels(retained$id.y), dta_double(c(TwoHundred = 200)))
 })
 
 test_that("value labels compose with declared storage classes", {
@@ -864,7 +864,7 @@ test_that("value labels compose with declared storage classes", {
     if (include_dplyr) results[[3L]] <- dplyr::if_else(c(TRUE, FALSE), left, unlabelled)
     for (result in results) {
         expect_s3_class(result, "haven_labelled")
-        expect_identical(val_labels(result), c(One = 1))
+        expect_identical(val_labels(result), dta_double(c(One = 1)))
     }
 
     results <- list(
@@ -881,10 +881,10 @@ test_that("value labels compose with declared storage classes", {
     if (include_dplyr) {
         conditional <- dplyr::if_else(c(TRUE, FALSE), left, right)
     }
-    expect_identical(val_labels(left_right), c(One = 1, Three = 3))
-    expect_identical(val_labels(right_left), c(Three = 3, One = 1))
+    expect_identical(val_labels(left_right), dta_double(c(One = 1, Three = 3)))
+    expect_identical(val_labels(right_left), dta_double(c(Three = 3, One = 1)))
     if (include_dplyr) {
-        expect_identical(val_labels(conditional), c(One = 1, Three = 3))
+        expect_identical(val_labels(conditional), dta_double(c(One = 1, Three = 3)))
     }
     expect_identical(var_label(left_right), "Left variable")
     expect_identical(var_label(right_left), "Right variable")
@@ -894,7 +894,7 @@ test_that("value labels compose with declared storage classes", {
         resolved <- vctrs::vec_c(left, conflict),
         "conflicting value labels"
     )
-    expect_identical(val_labels(resolved)[[1L]], 1)
+    expect_identical(as.double(val_labels(resolved))[[1L]], 1)
     expect_identical(names(val_labels(resolved))[[1L]], "One")
     expect_warning(
         reversed <- vctrs::vec_c(conflict, left),

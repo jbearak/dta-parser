@@ -54,6 +54,8 @@ For data frames, `...` and `.labels` are combined into one atomic update. Every 
 
 Variable and dataset labels accept one string. `NULL`, `NA_character_`, and `""` all remove the attribute. Value-label tables are named numeric vectors in which names are the displayed text and values are Stata codes. Empty or missing displayed text is discarded, duplicate displayed text is allowed, and duplicate codes are rejected.
 
+`val_labels()` returns the table as a named Stata numeric, a `dta_double()` or a `dta_long()` for `haven`'s integer codes, so its codes behave as Stata values: a tagged missing prints as `.a` rather than `NA`, and `names(labels)[labels == .a]` finds its label. Any setter accepts the table back, and the `labels` attribute itself holds the bare named vector stored for `haven`. See [ADR 0040](./adr/0040-value-label-tables-are-stata-numerics.md).
+
 Value-label codes are limited to values that Stata can use in a label definition:
 
 - whole, nonmissing values from -2,147,483,647 through 2,147,483,620;

@@ -65,10 +65,26 @@
 #' tagged missings from the descriptive statistics and counts them together
 #' as `NA` values. Its arguments follow [base::summary.default()].
 #'
+#' @section Display:
+#' `format()` spells missing values as Stata does: `.` for system missing
+#' and `.a` through `.z` for a tagged missing, so a printed vector, a
+#' dibble or data frame column, and a value-label table read as they do
+#' in Stata rather than as R's `NA`. Observed values are formatted by
+#' [base::format()] with the same arguments. Printing a vector that
+#' carries value labels lists them under the values, with the codes in
+#' the same spelling, and a dibble or tibble column annotates each
+#' labelled cell with its text, `1 [One]`, as `haven` does.
+#' `options(dtatools.show_pillar_labels = FALSE)` turns the annotation
+#' off; `haven`'s option of the same meaning is honoured when the dtatools
+#' one is unset.
+#'
 #' @param x For a constructor, a logical, integer, or double vector to encode.
 #'   For `dta_storage_type()`, a vector to inspect.
 #' @param .size A non-negative whole number of system missing values to
 #'   allocate. Do not supply both `x` and `.size`.
+#' @param trim,digits,nsmall,justify,width,... For `format()`, as in
+#'   [base::format()]; they format the observed values, and `width` also
+#'   pads the missing spellings.
 #' @return A double vector carrying its declared Stata storage type.
 #'   `dta_storage_type()` returns that type as one string: one of the five
 #'   numeric widths for a declared numeric vector, or `"str1"` through
@@ -357,6 +373,41 @@ as.double.dta_numeric <- function(x, ...) {
 #' @export
 as.character.dta_numeric <- function(x, ...) {
     as.character(.dta_snapshot(x), ...)
+}
+
+# Observed values take base R's formatting; missing values take Stata's
+# spelling, then the column is padded back to one width so a `.a` lines
+# up under `100.0`. `trim = TRUE` leaves the padding off, as base does.
+#' @rdname dta_byte
+#' @export
+format.dta_numeric <- function(x, trim = FALSE, digits = NULL, nsmall = 0L,
+                               justify = c("left", "right", "centre", "none"),
+                               width = NULL, ...) {
+    values <- .dta_snapshot(x)
+    codes <- .tab_missing_codes(values)
+    text <- format(
+        unname(values), trim = trim, digits = digits, nsmall = nsmall,
+        justify = justify, width = width, ...
+    )
+    missing <- !is.na(codes)
+    if (any(missing)) {
+        # Only the substituted spellings are padded, so the observed cells
+        # are exactly what base returned. Without `trim` base gave every
+        # cell one common width, and a spelling takes the width of the
+        # `NA` it replaces. Under `trim` each cell stands alone and the
+        # caller's `width` is a minimum, so a spelling is padded to that
+        # and no further: `NA`'s two characters are not carried onto `.`.
+        spelled <- .stata_missing_text(codes[missing])
+        target <- if (trim) {
+            if (is.null(width)) 0L else as.integer(width)
+        } else {
+            nchar(text[missing], type = "width")
+        }
+        pad <- pmax(0L, target - nchar(spelled))
+        text[missing] <- paste0(strrep(" ", pad), spelled)
+    }
+    names(text) <- names(values)
+    text
 }
 
 # Integer and logical views of a Stata numeric: Stata missing codes become

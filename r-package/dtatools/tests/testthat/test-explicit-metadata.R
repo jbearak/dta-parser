@@ -205,7 +205,7 @@ test_that("metadata bundles restore downstream runtime column metadata atomicall
                 stata.characteristics = c(source = "survey"), custom = list(a = 1))
         }
         expect_false(withVisible(edit(data))$visible)
-        expect_identical(val_labels(alias$x), c(Complete = 1, Refused = 2))
+        expect_identical(val_labels(alias$x), dta_double(c(Complete = 1, Refused = 2)))
         expect_identical(attr(alias$x, "value.label.name"), "status")
         expect_identical(dta_notes(alias, my_name), c(`1` = "first", `4` = "fourth"))
         expect_identical(dta_characteristics(alias, my_name), c(source = "survey"))
@@ -215,7 +215,7 @@ test_that("metadata bundles restore downstream runtime column metadata atomicall
         expect_null(attr(alias$x, "stata.note.numbers"))
         expect_length(dta_characteristics(alias, my_name), 0L)
         set_dta_metadata(data, variable = my_name, labels = stats::setNames(double(), character()), value.label.name = "empty")
-        expect_identical(val_labels(alias$x), stats::setNames(double(), character()))
+        expect_identical(val_labels(alias$x), dta_double(stats::setNames(double(), character())))
         expect_identical(attr(alias$x, "value.label.name"), "empty")
         set_dta_metadata(data, label = "Dataset label", source = "interviews")
         expect_identical(dataset_label(alias), "Dataset label")
@@ -261,7 +261,7 @@ test_that("declared empty label tables reject nonnumeric targets atomically", {
     data <- dibble(x = 1:2)
     set_dta_metadata(data, variable = "x", labels = c(One = 1), value.label.name = "named")
     set_dta_metadata(data, variable = "x", labels = empty)
-    expect_identical(val_labels(data$x), empty)
+    expect_identical(val_labels(data$x), dta_double(empty))
     expect_identical(attr(data$x, "value.label.name"), "named")
     for (writer in list(save_dta, save_arrow)) {
         path <- tempfile(fileext = if (identical(writer, save_dta)) ".dta" else ".arrow")
@@ -270,7 +270,7 @@ test_that("declared empty label tables reject nonnumeric targets atomically", {
     }
     expect_error(set_dta_metadata(data, variable = "x", labels = NULL,
                                   value.label.name = "missing"), "requires a labels mapping")
-    expect_identical(val_labels(data$x), empty)
+    expect_identical(val_labels(data$x), dta_double(empty))
 })
 
 test_that("metadata bundles preserve complete raw value-label mappings", {
@@ -280,14 +280,14 @@ test_that("metadata bundles preserve complete raw value-label mappings", {
         my_name <- "x"
         set_dta_metadata(data, variable = my_name, labels = mapping,
                          value.label.name = "codes")
-        expect_identical(val_labels(alias$x), mapping)
+        expect_identical(val_labels(alias$x), dta_double(mapping))
         expect_identical(attr(alias$x, "value.label.name"), "codes")
         for (writer in list(save_dta, save_arrow)) {
             path <- tempfile(fileext = if (identical(writer, save_dta)) ".dta" else ".arrow")
             on.exit(unlink(path), add = TRUE)
             writer(data, path)
             restored <- if (identical(writer, save_dta)) read_dta(path) else read_arrow(path)
-            expect_identical(val_labels(restored$x), mapping)
+            expect_identical(val_labels(restored$x), dta_double(mapping))
             expect_identical(attr(restored$x, "value.label.name"), "codes")
         }
         before <- copy_data(data)
@@ -302,7 +302,7 @@ test_that("metadata bundles preserve complete raw value-label mappings", {
                      "32,000 UTF-8 bytes")
         expect_identical(val_labels(data$x), val_labels(before$x))
         set_val_labels(data, .labels = stats::setNames(list(mapping), my_name))
-        expect_identical(val_labels(data$x), c(Two = 2))
+        expect_identical(val_labels(data$x), dta_double(c(Two = 2)))
     }
 })
 

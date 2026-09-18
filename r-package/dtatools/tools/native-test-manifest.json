@@ -146,7 +146,7 @@
       "files": [
         {
           "path": "tests/testthat/test-arrow.R",
-          "sha256": "14364d30a97e34068a79ce276640fcfb91a77d41d6c32cdc09e0893b6bf31557"
+          "sha256": "939c2041bb5da77de2bda33dceaea6e6dde1e0e1d3ef92e421bf2f652d9bd4e2"
         },
         {
           "path": "tests/testthat/test-read-dta.R",
@@ -154,11 +154,11 @@
         },
         {
           "path": "tests/testthat/test-save-dta.R",
-          "sha256": "80c871526c93e0f0d7c55fbb1cbd10c5ee2013b27a25b95f446d96c5dd8fda66"
+          "sha256": "8669fc7374709d462233a1973bcc91e8be8c6cd66cebfd49b5b64ad18ae4de5c"
         },
         {
           "path": "tests/testthat/test-write-column.R",
-          "sha256": "3a3cc79236179273e11e210b318f181c569c2cad0f10930527b9164ee339d992"
+          "sha256": "86550fa0d7946c09f4aa646d3fe3b2ad3d7c109871cc1cb3c2d6ab484b41754a"
         },
         {
           "path": "tests/testthat/test-input-sources.R",
@@ -1460,7 +1460,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-numeric.R",
-          "sha256": "e5cac5a8ff0e25754c1d9ea948493be6299ad153727410ef68ce0b2cfeecafa0"
+          "sha256": "cf173a9bcc54a343376e0faabf304e70e3c8cf14dd440cc3a2c2d4108f3fb181"
         },
         {
           "path": "tests/testthat/test-dta-string.R",
@@ -2393,11 +2393,11 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-metadata.R",
-          "sha256": "e2720430960993b81f4f7fe42178eebd66bd46d1840fa21b60af64a4007d3d8e"
+          "sha256": "8a45a7fbfb8cef27e29589d351aa16e4d7d83a57cb412dc8e605a4f13158d5a7"
         },
         {
           "path": "tests/testthat/test-explicit-metadata.R",
-          "sha256": "16408056632d1e3403c36f0aa2515ebcbe183e74b63372b097b514d23ad44f18"
+          "sha256": "11724bca229220756e3f3cd450fd6673eb7e78993fcf3921af3d30c651fc200d"
         },
         {
           "path": "tests/testthat/test-factor-from-labels.R",
@@ -2405,19 +2405,19 @@
         },
         {
           "path": "tests/testthat/test-label-dual-shape.R",
-          "sha256": "48d1f78f28cd37424a04afd3698354d8d9f754e1252de74658ebaa4568718356"
+          "sha256": "f583eed2c960b671e2e63cfeb55da4c093602cc81d6847e9080380c6c44024f0"
         },
         {
           "path": "tests/testthat/test-label-metadata.R",
-          "sha256": "2f03f7b5738e897a0cfb6ad7973508e76f000861b172afee710bd4fca41f733b"
+          "sha256": "56f0bc1b28d362448198bb91784ee6055f94186fcac322d03b5c364b127d5261"
         },
         {
           "path": "tests/testthat/test-value-label-table-names.R",
-          "sha256": "5fb11a7281bb9faa245373f14b95ec3ac208aa6c0a3a19aed36ddd9a0c20f049"
+          "sha256": "82ea9046c6f5d772a74e477a179b33965245d94bfb8ccc36ceea60fd9970ae53"
         },
         {
           "path": "tests/testthat/test-name-strings.R",
-          "sha256": "a8932b14ce0f21486df389fdff927fd27ce74c28f1210c9db88586fee15932dd"
+          "sha256": "2549313929d2defc3b28c97c06ffd411457cd7e06df16526f4f823daee7ea448"
         },
         {
           "path": "tests/testthat/test-variable-names.R",
@@ -3250,6 +3250,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "val_labels returns a Stata numeric that compares and prints as Stata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "a table remembers its codes' type so setting it back is exact",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "a label table Stata could not hold is returned as haven stores it",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
           "warnings": 0
         },
         {
@@ -4804,11 +4828,11 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "eabce2ab0f4cfec7a54850a1e688bf38aad592f253c285e36ed1c5abfdf60fc6"
+          "sha256": "e60a3fca84958a1dda40d8b077136bffb940dd51ba611947f57ec69cb8e74e8e"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
-          "sha256": "ea355738130d0cc41e409d06982b51e49edc7ef192a2121a1a6383d01ccb6a0a"
+          "sha256": "332bce756066b65627748cf3d462d7d92aeef0e9fba52abe99d12158d2b0343e"
         },
         {
           "path": "tests/testthat/test-reserve-columns.R",
@@ -4820,7 +4844,7 @@
         },
         {
           "path": "tests/testthat/test-keep-drop.R",
-          "sha256": "e5e0ab4d8ad5c1b6f2c5c9a7964389706c7dff50167bd085cf1014e1fca4db50"
+          "sha256": "e6e97eef3a6f75e25a1046311241da5a2a2f4250bd294378106d2664aad2231c"
         },
         {
           "path": "tests/testthat/test-order-rename-vars.R",
@@ -6429,7 +6453,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "5e377ae34a910689bfc3fd69079eefa8810297294231726753acf231a2f31b0e"
+          "sha256": "b68104b594d980a0c7a2d0e77aa158dfa358618a1eab737b2db27cb266141dcd"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
@@ -6437,7 +6461,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-print.R",
-          "sha256": "88ab1ecf909732a29214f115a4ddba7085c794735eeb2e42c88671408222ede8"
+          "sha256": "4cd23aef048514489bb2859dc9de2d9cea4633b4d43a46ce6370d36f9dc05c5c"
         },
         {
           "path": "tests/testthat/test-dibble-bracket.R",
@@ -6890,6 +6914,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-print.R",
+          "test": "Stata numerics format and print missing values as Stata spells them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 21,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-print.R",
+          "test": "a value-labelled column annotates its cells and the option turns it off",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
           "warnings": 0
         },
         {
@@ -9270,11 +9310,11 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-append.R",
-          "sha256": "84c6fac5573b22cd43a10b27ed81f240a982ce0fb9bae24240ae4d89ae9f02f3"
+          "sha256": "475b7400093adf45ca2374a5c9c6b07ae4fc6e7181300d35c96d70d930aef233"
         },
         {
           "path": "tests/testthat/test-dta-merge.R",
-          "sha256": "90c595ddb848bba3adf4d1b3bbf7da8bb4d9f0e181691eaae0ec8ac321782dc3"
+          "sha256": "11959bce37f2aeb61e1e5297e929d937896866b15d809878f71339014b8734ae"
         },
         {
           "path": "tests/testthat/test-dta-compare-native.R",

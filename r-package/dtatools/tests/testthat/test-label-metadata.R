@@ -7,7 +7,7 @@ test_that("var_label returns a vector's variable label", {
 test_that("val_labels returns a vector's value-label table", {
     values <- structure(c(1, 2), labels = c(Complete = 1, Refused = 2))
 
-    expect_identical(val_labels(values), c(Complete = 1, Refused = 2))
+    expect_identical(val_labels(values), dta_double(c(Complete = 1, Refused = 2)))
 })
 
 test_that("dataset_label returns a data frame's dataset label", {
@@ -25,7 +25,7 @@ test_that("data-frame getters retain names and NULL entries", {
         list(variable = var_label(data), values = val_labels(data)),
         list(
             variable = list(labelled = "Status", plain = NULL),
-            values = list(labelled = c(No = 0, Yes = 1), plain = NULL)
+            values = list(labelled = dta_double(c(No = 0, Yes = 1)), plain = NULL)
         )
     )
 })
@@ -84,7 +84,7 @@ test_that("replacement syntax follows R copy semantics", {
 
     expect_identical(dataset_label(data), "Assigned dataset")
     expect_identical(var_label(data$x), "Assigned variable")
-    expect_identical(val_labels(data$x), c(No = 0, Yes = 1))
+    expect_identical(val_labels(data$x), dta_double(c(No = 0, Yes = 1)))
     expect_null(dataset_label(alias))
     expect_null(var_label(alias$x))
     expect_null(val_labels(alias$x))
@@ -97,7 +97,7 @@ test_that("replacement syntax follows R copy semantics", {
 
     expect_true(is_dibble(reference))
     expect_identical(var_label(reference), list(x = "X", y = "Y"))
-    expect_identical(val_labels(reference$x), c(No = 0, Yes = 1))
+    expect_identical(val_labels(reference$x), dta_double(c(No = 0, Yes = 1)))
     expect_identical(
         var_label(reference_alias), list(x = NULL, y = NULL)
     )
@@ -263,7 +263,7 @@ test_that("val_labels replacement labels ordinary numeric vectors in place", {
         ),
         list(
             values = c(0, 1),
-            labels = c(No = 0, Yes = 1),
+            labels = dta_double(c(No = 0, Yes = 1)),
             class = c("haven_labelled", "vctrs_vctr", "double"),
             format = "%8.0g",
             provenance = "imported"
@@ -289,7 +289,7 @@ test_that("val_labels replacement updates named columns and can clear all", {
             cleared_classes = lapply(data, class)
         ),
         list(
-            updated = list(x = c(Absent = 0, Present = 1), y = NULL),
+            updated = list(x = dta_double(c(Absent = 0, Present = 1)), y = NULL),
             updated_classes = list(
                 x = c("haven_labelled", "vctrs_vctr", "double"),
                 y = "numeric"
@@ -312,8 +312,8 @@ test_that("set_val_labels combines named dots and .labels", {
     expect_identical(
         val_labels(updated),
         list(
-            x = c(No = 0, Yes = 1),
-            y = c(First = 1, Second = 2)
+            x = dta_double(c(No = 0, Yes = 1)),
+            y = dta_double(c(First = 1, Second = 2))
         )
     )
 })
@@ -325,7 +325,7 @@ test_that("set_val_labels supports vector pipelines", {
 
     expect_identical(
         list(values = as.vector(updated), labels = val_labels(updated)),
-        list(values = c(0, 1), labels = c(No = 0, Yes = 1))
+        list(values = c(0, 1), labels = dta_double(c(No = 0, Yes = 1)))
     )
 })
 
@@ -431,7 +431,7 @@ test_that("value-label codes cover Stata long boundaries and extended missings",
 
     expect_identical(
         list(
-            observed = unname(val_labels(updated)[1:2]),
+            observed = as.double(val_labels(updated)[1:2]),
             missing_codes = unname(dtatools:::.tab_missing_codes(
                 val_labels(updated)[3:4]
             ))
@@ -477,7 +477,7 @@ test_that("empty value-label text is discarded and duplicate text is allowed", {
 
     expect_identical(
         list(labels = val_labels(updated), removed_class = class(removed)),
-        list(labels = c(Shared = 1, Shared = 2), removed_class = "numeric")
+        list(labels = dta_double(c(Shared = 1, Shared = 2)), removed_class = "numeric")
     )
 })
 
@@ -550,8 +550,8 @@ test_that("value-label setters keep imported numeric storage compact", {
             source_is_unmaterialized = TRUE,
             result_is_altrep = TRUE,
             result_is_unmaterialized = TRUE,
-            source_labels = c(Domestic = 0, Foreign = 1),
-            result_labels = c(Domestic = 0, Imported = 1),
+            source_labels = dta_double(c(Domestic = 0, Foreign = 1)),
+            result_labels = dta_double(c(Domestic = 0, Imported = 1)),
             result_format = "%8.0g"
         )
     )
@@ -579,7 +579,7 @@ test_that("repeated metadata setters keep numeric backing unmaterialized", {
             unmaterialized = TRUE,
             proxy_depth = 1L,
             variable = "Vehicle origin 100",
-            values = c(Domestic = 0, Imported = 1),
+            values = dta_double(c(Domestic = 0, Imported = 1)),
             format = "%8.0g"
         )
     )
@@ -831,7 +831,7 @@ test_that("bulk value-label setters normalize each table once", {
 
     expect_identical(
         list(calls = counter$calls, labels = val_labels(updated$x)),
-        list(calls = 1L, labels = c(No = 0, Yes = 1))
+        list(calls = 1L, labels = dta_double(c(No = 0, Yes = 1)))
     )
 })
 
@@ -844,8 +844,8 @@ test_that("dibble set functions mutate by reference", {
     expect_identical(var_label(alias$a), "Alpha")
 
     set_val_labels(data, a = c(One = 1L))
-    expect_identical(val_labels(data$a), c(One = 1L))
-    expect_identical(val_labels(alias$a), c(One = 1L))
+    expect_identical(val_labels(data$a), dta_long(c(One = 1L)))
+    expect_identical(val_labels(alias$a), dta_long(c(One = 1L)))
 
     set_var_label(data, b, "Beta")
     expect_identical(var_label(data$b), "Beta")
@@ -892,4 +892,143 @@ test_that("set_var_label labels a generated reference column", {
 
     set_var_label(data, a, "Alpha")
     expect_identical(var_label(data$a), "Alpha")
+})
+
+test_that("val_labels returns a Stata numeric that compares and prints as Stata", {
+    # ADR 0040: the codes are Stata values, so a tagged missing is found by
+    # `==` and prints as `.a`, where the bare double compared `NA == NA`.
+    x <- set_val_labels(
+        dta_byte(c(1, 2, tagged_missing("a"), NA)),
+        One = 1, Refused = tagged_missing("a")
+    )
+    labels <- val_labels(x)
+    expect_s3_class(labels, "dta_double")
+    expect_identical(names(labels), c("One", "Refused"))
+    expect_identical(names(labels)[labels == tagged_missing("a")], "Refused")
+    expect_identical(names(labels)[labels == .a], "Refused")
+    expect_identical(names(labels)[labels == 1], "One")
+    expect_identical(format(labels), c(One = " 1", Refused = ".a"))
+    expect_output(print(labels), ".a", fixed = TRUE)
+    expect_identical(as.double(labels), c(1, tagged_missing("a")))
+    expect_type(attr(x, "labels"), "double")
+    expect_null(attr(attr(x, "labels"), "class"))
+
+    # The table goes back into any setter and lands as the bare attribute.
+    y <- set_val_labels(c(1, 2), .labels = labels)
+    expect_identical(attr(y, "labels"), attr(x, "labels"))
+    y <- dibble(y = c(1, 2))
+    set_val_labels(y, y, labels)
+    expect_identical(attr(y$y, "labels"), attr(x, "labels"))
+
+    # Data frame and (data, variable) shapes agree.
+    data <- dibble(x = x, plain = 1:4)
+    expect_identical(val_labels(data, x), labels)
+    expect_identical(val_labels(data), list(x = labels, plain = NULL))
+    expect_null(val_labels(data$plain))
+
+    # An integer-coded haven table reads as a double table; an empty
+    # declared table stays an empty table.
+    integers <- set_val_labels(1:2, .labels = c(one = 1L, two = 2L))
+    expect_identical(val_labels(integers), dta_long(c(one = 1, two = 2)))
+    empty <- dibble(z = 1:2)
+    set_dta_metadata(
+        empty, variable = "z", labels = stats::setNames(double(), character()),
+        value.label.name = "empty"
+    )
+    expect_identical(
+        val_labels(empty$z), dta_double(stats::setNames(double(), character()))
+    )
+
+    # Reading the table does not materialize a compact column.
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    save_dta(data.frame(x = x), path)
+    read <- read_dta(path)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(read$x))
+    expect_identical(val_labels(read$x), labels)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(read$x))
+})
+
+test_that("a label table Stata could not hold is returned as haven stores it", {
+    x <- structure(c("a", "b"), labels = c(A = "a"),
+                   class = c("haven_labelled", "vctrs_vctr", "character"))
+    expect_identical(val_labels(x), c(A = "a"))
+    expect_identical(val_labels(data.frame(x = x, y = 1:2)), list(x = c(A = "a"), y = NULL))
+    # Numeric codes outside Stata's label range come back bare too, so the
+    # table stays usable rather than a Stata numeric with an invalid payload.
+    wide <- structure(1L, labels = c(Bad = .Machine$integer.max),
+                      class = c("haven_labelled", "vctrs_vctr", "integer"))
+    expect_identical(val_labels(wide), c(Bad = .Machine$integer.max))
+    expect_identical(val_labels(wide)[1], c(Bad = .Machine$integer.max))
+    infinite <- structure(c(1, 2), labels = c(Forever = Inf),
+                          class = c("haven_labelled", "vctrs_vctr", "double"))
+    expect_identical(sort(val_labels(infinite)), c(Forever = Inf))
+})
+
+test_that("a table remembers its codes' type so setting it back is exact", {
+    # haven stores integer codes on an integer vector and writes that
+    # vector only with integer codes. The table reads as a `long`, and any
+    # setter stores it back as the integers it came from.
+    integers <- set_val_labels(1:2, .labels = c(one = 1L, two = 2L))
+    before <- attr(integers, "labels")
+    expect_identical(val_labels(integers), dta_long(c(one = 1, two = 2)))
+    val_labels(integers) <- val_labels(integers)
+    expect_identical(attr(integers, "labels"), before)
+    integers <- set_val_labels(integers, .labels = val_labels(integers))
+    expect_identical(attr(integers, "labels"), before)
+    bundled <- set_dta_metadata(1:2, labels = val_labels(integers))
+    expect_identical(attr(bundled, "labels"), before)
+    empty <- set_dta_metadata(1:2, labels = stats::setNames(integer(), character()),
+                              value.label.name = "empty")
+    empty <- set_dta_metadata(empty, labels = val_labels(empty))
+    expect_identical(attr(empty, "labels"), stats::setNames(integer(), character()))
+    # The plain setters keep a declared empty table too, with its name and
+    # class, while an unnamed `numeric()` still clears the table.
+    val_labels(empty) <- val_labels(empty)
+    expect_identical(attr(empty, "labels"), stats::setNames(integer(), character()))
+    expect_identical(attr(empty, "value.label.name"), "empty")
+    expect_s3_class(empty, "haven_labelled")
+    empty <- set_val_labels(empty, val_labels(empty))
+    expect_identical(attr(empty, "labels"), stats::setNames(integer(), character()))
+    frame <- data.frame(z = 1:2)
+    val_labels(frame) <- list(z = val_labels(empty))
+    expect_identical(attr(frame$z, "labels"), stats::setNames(integer(), character()))
+    val_labels(empty) <- numeric()
+    expect_null(attr(empty, "labels"))
+    expect_null(attr(empty, "value.label.name"))
+
+    # A `long` table edited to hold a tagged missing stays double, so `.a`
+    # is stored as `.a` and not collapsed to `.`.
+    edited <- val_labels(integers)
+    edited[2] <- .a
+    expect_s3_class(edited, "dta_long")
+    back <- set_val_labels(c(1, 2), .labels = edited)
+    expect_identical(attr(back, "labels"), c(one = 1, two = .a))
+    expect_identical(unname(missing_tag(attr(back, "labels"))), c(NA, "a"))
+    bundled <- set_dta_metadata(c(1, 2), labels = edited)
+    expect_identical(attr(bundled, "labels"), c(one = 1, two = .a))
+
+    # Double codes stay double whatever the vector, as before, and a table
+    # is never stored as the classed object it was read as.
+    doubles <- set_val_labels(1:2, .labels = c(one = 1, two = 2))
+    expect_identical(attr(doubles, "labels"), c(one = 1, two = 2))
+    expect_identical(val_labels(doubles), dta_double(c(one = 1, two = 2)))
+    tagged <- set_val_labels(c(1, 2), .labels = c(one = 1, refused = .a))
+    stored <- set_dta_metadata(c(1, 2), labels = val_labels(tagged))
+    expect_identical(attr(stored, "labels"), c(one = 1, refused = .a))
+    expect_null(attr(attr(stored, "labels"), "class"))
+    data <- dibble(g = 1:2, h = c(1, 2))
+    set_val_labels(data, g = val_labels(integers), h = val_labels(doubles))
+    expect_identical(attr(data$g, "labels"), before)
+    expect_identical(attr(data$h, "labels"), c(one = 1, two = 2))
+    val_labels(data) <- list(g = val_labels(data$g))
+    expect_identical(attr(data$g, "labels"), before)
+    # The variadic setter keeps a whole table's storage too.
+    h <- structure(c(1L, 2L), labels = c(One = 1L, Two = 2L),
+                   class = c("haven_labelled", "vctrs_vctr", "integer"))
+    back <- set_val_labels(h, val_labels(h))
+    expect_identical(attr(back, "labels"), c(One = 1L, Two = 2L))
+    # Combining a table with further pairs joins them as `c()` would.
+    extended <- set_val_labels(h, val_labels(h), Three = 3L)
+    expect_identical(attr(extended, "labels"), c(One = 1, Two = 2, Three = 3))
 })

@@ -349,8 +349,8 @@ test_that("Arrow writes labelled numeric vectors with Stata metadata", {
     expect_identical(
         dta_characteristics(restored$double), c(source = "double")
     )
-    expect_equal(val_labels(restored$integer), c(one = 1, two = 2))
-    expect_equal(val_labels(restored$double), c(one = 1, two = 2))
+    expect_equal(val_labels(restored$integer), dta_double(c(one = 1, two = 2)))
+    expect_equal(val_labels(restored$double), dta_double(c(one = 1, two = 2)))
 })
 
 test_that("wide subsets restore only metadata-bearing variables", {

@@ -399,9 +399,9 @@ test_that("ordered and unordered factors become labelled long integers", {
     actual <- read_dta(path, use_numeric_altrep = FALSE)
     expect_identical(dta_storage_type(actual$group), "long")
     expect_identical(as.double(actual$group), c(2, 1, NA_real_))
-    expect_identical(val_labels(actual$group), c(a = 1, b = 2, unused = 3))
+    expect_identical(val_labels(actual$group), dta_double(c(a = 1, b = 2, unused = 3)))
     expect_identical(as.double(actual$rank), c(1, 2, 1))
-    expect_identical(val_labels(actual$rank), c(low = 1, high = 2))
+    expect_identical(val_labels(actual$rank), dta_double(c(low = 1, high = 2)))
     expect_false(is.factor(actual$group))
     expect_false(is.ordered(actual$rank))
 })
@@ -561,7 +561,7 @@ test_that("value labels and ordered dataset notes round-trip", {
     expect_identical(attr(actual, "notes", exact = TRUE), c("first", "", "third"))
     expect_identical(
         val_labels(actual$x),
-        c(negative = -1, positive = 1, missing_c = tagged_missing("c"))
+        dta_double(c(negative = -1, positive = 1, missing_c = tagged_missing("c")))
     )
 })
 
@@ -765,7 +765,7 @@ test_that("dependency-free haven_labelled-compatible vectors are supported", {
     expect_silent(save_dta(data, path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)$x
     expect_identical(as.double(actual), c(1, 2, tagged_missing("a")))
-    expect_identical(val_labels(actual), c(One = 1, Two = 2))
+    expect_identical(val_labels(actual), dta_double(c(One = 1, Two = 2)))
 })
 
 

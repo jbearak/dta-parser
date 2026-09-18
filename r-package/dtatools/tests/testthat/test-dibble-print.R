@@ -224,3 +224,206 @@ test_that("printing preserves cells metadata aliases and compact backing", {
     expect_identical(as.list(alias), columns)
     expect_identical(class(data$generated), "character")
 })
+
+test_that("Stata numerics format and print missing values as Stata spells them", {
+    values <- dta_double(c(a = 1.5, b = 100, c = NA, d = tagged_missing("a")))
+    expect_identical(
+        format(values), c(a = "  1.5", b = "100.0", c = "    .", d = "   .a")
+    )
+    expect_identical(format(values, trim = TRUE), c(a = "1.5", b = "100.0", c = ".", d = ".a"))
+    expect_identical(format(dta_byte(c(1, NA, .z))), c(" 1", " .", ".z"))
+    expect_identical(format(dta_byte(double())), character())
+    expect_identical(format(dta_int(c(7, 8))), format(c(7, 8)))
+
+    printed <- capture.output(print(dta_byte(c(1, 2, .a, NA))))
+    expect_identical(printed[[1L]], "<dta_numeric[4]>")
+    expect_match(printed[[2L]], "^\\[1\\] +1 +2 +\\.a +\\.$")
+
+    # A labelled vector lists its table under the values, codes in the
+    # same spelling; a table-less vector prints no footer.
+    labelled <- set_val_labels(
+        dta_byte(c(1, 2, .a, NA)), One = 1, Refused = .a
+    )
+    printed <- capture.output(print(labelled))
+    expect_identical(printed[[1L]], "<dta_numeric[4]>")
+    expect_true(any(printed == "Labels:"))
+    expect_match(paste(printed, collapse = "\n"), "\\.a +Refused")
+    expect_match(paste(printed, collapse = "\n"), "1 +One")
+    expect_length(capture.output(print(dta_byte(c(1, 2)))), 2L)
+
+    # Dibble, tibble, and data frame columns show the same spelling.
+    data <- dibble(
+        v = dta_double(c(1.5, 100, NA, .a)),
+        w = dta_byte(c(1, 2, NA, .z)),
+        x = labelled
+    )
+    output <- capture.output(print(data, width = 100))
+    body <- paste(output[-(1:3)], collapse = "\n")
+    expect_match(body, "\\. +\\. +\\.a")
+    expect_match(body, "\\.a +\\.z +\\.")
+    expect_false(grepl("NA", body, fixed = TRUE))
+    tbl <- capture.output(print(tibble::as_tibble(data), width = 100))
+    expect_false(any(grepl("NA", tbl[-(1:3)], fixed = TRUE)))
+    frame <- capture.output(print(data.frame(v = dta_byte(c(1, NA, .b)))))
+    expect_match(frame[[3L]], "\\.$")
+    expect_match(frame[[4L]], "\\.b$")
+
+    # Dates and datetimes keep their calendar formatting.
+    dated <- dibble(i = 1:2)
+    gen(dated, day = as.Date(c("2020-01-01", NA)))
+    dated_output <- paste(capture.output(print(dated, width = 100)), collapse = "\n")
+    expect_match(dated_output, "2020-01-01")
+    expect_identical(format(dated$day), format(as.Date(c("2020-01-01", NA))))
+
+    # The shared spelling covers every code the reader reports.
+    expect_identical(
+        dtatools:::.stata_missing_text(c(NA, 0L, utf8ToInt("a"), utf8ToInt("z"), 256L)),
+        c(NA, ".", ".a", ".z", "NaN")
+    )
+
+    # A caller's width is honoured when every value is missing.
+    expect_identical(format(dta_byte(c(NA, .a)), width = 8), c("       .", "      .a"))
+    expect_identical(format(dta_byte(c(1, NA)), width = 8), c("       1", "       ."))
+    # `trim` is base's second positional argument, and an explicit `width`
+    # survives `trim`, as it does in base.
+    expect_identical(format(dta_byte(c(1, NA)), TRUE), c("1", "."))
+    expect_identical(format(dta_double(c(1.234, NA)), FALSE, 2L), c("1.2", "  ."))
+    expect_identical(
+        format(dta_byte(c(1, NA)), trim = TRUE, width = 8), c("       1", "       .")
+    )
+    expect_identical(format(dta_byte(c(1, 100, NA)), trim = TRUE), c("1", "100", "."))
+    # `width` passed by position, as base's sixth argument.
+    expect_identical(
+        format(dta_byte(c(1, NA)), TRUE, NULL, 0L, "right", 8L),
+        c("       1", "       .")
+    )
+    expect_identical(format(dta_double(c(1.5, NA)), nsmall = 2L), c("1.50", "   ."))
+    # Each missing cell takes the width base gave the `NA` it replaces, so
+    # a narrow `width` under `trim` leaves the observed cells as base has
+    # them, and `width = 0` still lines the spellings up.
+    expect_identical(
+        format(dta_double(c(-1234.5, 0, NA)), trim = TRUE, width = 1),
+        c("-1234.5", "0.0", ".")
+    )
+    expect_identical(format(dta_byte(c(1, 100, NA)), width = 0), c("  1", "100", "  ."))
+    expect_identical(format(dta_byte(c(1, NA)), width = 3), c("  1", "  ."))
+})
+
+test_that("a value-labelled column annotates its cells and the option turns it off", {
+    labelled <- set_val_labels(
+        dta_byte(c(1, 2, .a, NA)), One = 1, Refused = .a
+    )
+    data <- dibble(x = labelled, y = dta_double(c(1.5, 100, NA, .a)))
+    cells <- function(...) {
+        lines <- capture.output(print(data, width = 100, ...))
+        lines[grepl("^[0-9]", lines)]
+    }
+    shown <- cells()
+    expect_match(shown[[1L]], "1 \\[One\\] +1\\.5$")
+    expect_match(shown[[2L]], "^2 +2 +100")
+    expect_match(shown[[3L]], "\\.a \\[Refused\\] +\\.$")
+    expect_match(shown[[4L]], "^4 +\\. +\\.a$")
+    expect_false(any(grepl("NA", shown, fixed = TRUE)))
+
+    withr::with_options(list(dtatools.show_pillar_labels = FALSE), {
+        hidden <- cells()
+        expect_false(any(grepl("[", hidden, fixed = TRUE)))
+        expect_match(hidden[[3L]], "\\.a +\\.$")
+    })
+    # haven's option of the same meaning is honoured when ours is unset.
+    withr::with_options(list(haven.show_pillar_labels = FALSE), {
+        expect_false(any(grepl("[", cells(), fixed = TRUE)))
+    })
+    withr::with_options(
+        list(haven.show_pillar_labels = FALSE, dtatools.show_pillar_labels = TRUE),
+        expect_true(any(grepl("[One]", cells(), fixed = TRUE)))
+    )
+
+    # A code matches by value, whatever the other observations look like,
+    # and `show_labels` on the shaft itself is honoured.
+    mixed <- set_val_labels(dta_double(c(1, 1.5, .a)), One = 1, Refused = .a)
+    rows <- capture.output(print(dibble(m = mixed), width = 100))
+    expect_match(rows[[4L]], "1 +\\[One\\]")
+    expect_match(rows[[6L]], "\\.a \\[Refused\\]")
+    expect_no_warning(shaft <- pillar::pillar_shaft(mixed, show_labels = FALSE))
+    expect_false(any(grepl("[", format(shaft, width = 20), fixed = TRUE)))
+
+    # Label text is escaped so a control character cannot break the row.
+    tricky <- set_val_labels(dta_byte(c(1, 2)), "hello\nworld" = 1, "tab\there" = 2)
+    rows <- capture.output(print(dibble(t = tricky), width = 100))
+    expect_length(rows, 5L)
+    expect_match(rows[[4L]], "hello\\\\nworld", fixed = FALSE)
+    expect_match(rows[[5L]], "tab\\\\there", fixed = FALSE)
+
+    # An empty labelled column is a valid shaft, as pillar asks for one on
+    # a prototype.
+    empty <- set_val_labels(dta_byte(double()), One = 1)
+    expect_no_warning(shaft <- pillar::pillar_shaft(empty))
+    expect_length(format(shaft, width = 10), 0L)
+    expect_output(print(dibble(e = empty)), "A dibble: 0")
+
+    # A wide-glyph label is cut by display width, so the cell never
+    # overruns the width the shaft declared.
+    wide <- set_val_labels(dta_byte(c(1, 2)), "\u4e2d\u6587\u6807\u7b7e\u5f88\u957f" = 1)
+    shaft <- pillar::pillar_shaft(wide)
+    for (w in c(6L, 8L, 9L, 12L)) {
+        cells <- as.character(format(shaft, width = w))
+        expect_true(all(pillar::get_extent(cells) <= w), info = w)
+    }
+    # With colours on, the cut falls on the text and never on the escape
+    # sequence, so each cell holds a whole, closed style.
+    local({
+        testthat::local_reproducible_output(crayon = TRUE)
+        # pillar caches its colour count on first use, so an earlier
+        # uncoloured test would otherwise leave styling off here.
+        testthat::local_mocked_bindings(
+            num_colors = function(forget = FALSE) 8L, .package = "pillar"
+        )
+        long <- set_val_labels(dta_byte(c(1, 2)), "a label that runs long" = 1)
+        shaft <- pillar::pillar_shaft(long)
+        for (w in c(6L, 10L, 16L)) {
+            cells <- as.character(format(shaft, width = w))
+            plain <- cli::ansi_strip(cells)
+            expect_true(all(pillar::get_extent(plain) <= w), info = w)
+            escape <- "\033\\[[0-9;]*m"
+            expect_match(cells[[1L]], paste0("^1", escape, " \\[a.*\u2026", escape, "$"),
+                         info = as.character(w))
+            expect_identical(cli::ansi_nchar(cells[[1L]]), pillar::get_extent(plain[[1L]]))
+        }
+    })
+
+    # A long label never costs a value its digits: while the full value and
+    # a cut label fit, the value is rendered whole and the label is cut.
+    big <- set_val_labels(dta_double(c(123456789, 1)), "a label that runs long" = 1)
+    shaft <- pillar::pillar_shaft(big)
+    inner <- pillar::pillar_shaft(c(123456789, 1))
+    full <- attr(inner, "width")
+    cells <- as.character(format(shaft, width = full + 6L))
+    expect_match(cells[[1L]], "^123456789 *$")
+    expect_match(cells[[2L]], "^ *1 \\[a.*…$")
+    expect_true(all(pillar::get_extent(cells) <= full + 6L))
+    narrow <- as.character(format(shaft, width = attr(shaft, "min_width")))
+    expect_true(all(pillar::get_extent(narrow) <= attr(shaft, "min_width")))
+    expect_match(narrow[[1L]], "e8|e\\+08")
+
+    # The observed cells are pillar's own rendering, so `sigfig` and the
+    # `pillar.sigfig` option apply to a labelled column as to any double.
+    precise <- set_val_labels(dta_double(c(pi, 1 / 3, NA)), One = 1)
+    shaft <- pillar::pillar_shaft(precise, sigfig = 3)
+    cells <- as.character(format(shaft, width = 20))
+    expect_match(cells[[1L]], "^ *3\\.14 ")
+    expect_match(cells[[2L]], "^ *0\\.333")
+    expect_match(cells[[3L]], "^ *\\. *$")
+    withr::with_options(list(pillar.sigfig = 3), {
+        lines <- capture.output(print(dibble(p = precise), width = 100))
+        expect_match(lines[[4L]], "3\\.14 ")
+        expect_false(any(grepl("3.141593", lines, fixed = TRUE)))
+    })
+
+    # A table-less column has no annotation and stays right-aligned.
+    plain <- dibble(x = dta_byte(c(1, 22, NA)))
+    lines <- capture.output(print(plain, width = 100))
+    expect_match(lines[[4L]], " 1$")
+    expect_match(lines[[5L]], "22$")
+    expect_match(lines[[6L]], " \\.$")
+})

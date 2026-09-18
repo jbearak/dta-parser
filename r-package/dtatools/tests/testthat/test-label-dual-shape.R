@@ -4,7 +4,7 @@ test_that("the accessors keep their vector and whole-data-frame shapes", {
     val_labels(status) <- c(Complete = 1, Refused = 2)
 
     expect_identical(var_label(status), "Interview status")
-    expect_identical(val_labels(status), c(Complete = 1, Refused = 2))
+    expect_identical(val_labels(status), dta_double(c(Complete = 1, Refused = 2)))
 
     survey <- data.frame(status = status, stratum = c(1, 1, 2))
     expect_identical(
@@ -13,7 +13,7 @@ test_that("the accessors keep their vector and whole-data-frame shapes", {
     )
     expect_identical(
         val_labels(survey),
-        list(status = c(Complete = 1, Refused = 2), stratum = NULL)
+        list(status = dta_double(c(Complete = 1, Refused = 2)), stratum = NULL)
     )
 })
 
@@ -31,10 +31,10 @@ test_that("the accessors read one column in the (data, variable) shape", {
     expect_null(var_label(survey, stratum))
 
     codes <- c(Complete = 1, Refused = 2)
-    expect_identical(val_labels(survey, status), codes)
-    expect_identical(val_labels(survey, "status"), codes)
-    expect_identical(val_labels(survey, !!status_name), codes)
-    expect_identical(val_labels(survey, .(status_name)), codes)
+    expect_identical(val_labels(survey, status), dta_double(codes))
+    expect_identical(val_labels(survey, "status"), dta_double(codes))
+    expect_identical(val_labels(survey, !!status_name), dta_double(codes))
+    expect_identical(val_labels(survey, .(status_name)), dta_double(codes))
     expect_null(val_labels(survey, stratum))
 })
 
@@ -109,16 +109,16 @@ test_that("set_val_labels accepts the positional (data, variable) shape", {
     codes <- c(yes = 1, no = 2)
 
     set_val_labels(survey, status, codes)
-    expect_identical(val_labels(survey, status), codes)
+    expect_identical(val_labels(survey, status), dta_double(codes))
     set_val_labels(survey, "status", c(maybe = 3))
-    expect_identical(val_labels(survey, status), c(maybe = 3))
+    expect_identical(val_labels(survey, status), dta_double(c(maybe = 3)))
 
     # The exact call from issue #133.
     set_val_labels(survey, !!status_name, c(yes = 1))
-    expect_identical(val_labels(survey, status), c(yes = 1))
+    expect_identical(val_labels(survey, status), dta_double(c(yes = 1)))
 
     set_val_labels(survey, .(status_name), codes)
-    expect_identical(val_labels(survey, status), codes)
+    expect_identical(val_labels(survey, status), dta_double(codes))
 
     expect_null(val_labels(survey, stratum))
 })
@@ -129,7 +129,7 @@ test_that("the positional labels argument evaluates in the caller", {
 
     # `status` on the right is the caller's vector, not the column.
     set_val_labels(survey, status, status)
-    expect_identical(val_labels(survey, status), c(yes = 1, no = 2))
+    expect_identical(val_labels(survey, status), dta_double(c(yes = 1, no = 2)))
 })
 
 test_that("every pre-existing setter convention still works", {
@@ -140,7 +140,7 @@ test_that("every pre-existing setter convention still works", {
     set_var_labels(survey, status = "Interview status")
     expect_identical(var_label(survey, status), "Interview status")
     set_val_labels(survey, status = c(yes = 1))
-    expect_identical(val_labels(survey, status), c(yes = 1))
+    expect_identical(val_labels(survey, status), dta_double(c(yes = 1)))
 
     # `!!name :=` and `.(name) :=` tags.
     set_var_labels(survey, !!stratum_name := "Sampling stratum")
@@ -148,9 +148,9 @@ test_that("every pre-existing setter convention still works", {
     set_var_labels(survey, .(stratum_name) := "Stratum again")
     expect_identical(var_label(survey, stratum), "Stratum again")
     set_val_labels(survey, !!stratum_name := c(urban = 1))
-    expect_identical(val_labels(survey, stratum), c(urban = 1))
+    expect_identical(val_labels(survey, stratum), dta_double(c(urban = 1)))
     set_val_labels(survey, .(stratum_name) := c(rural = 2))
-    expect_identical(val_labels(survey, stratum), c(rural = 2))
+    expect_identical(val_labels(survey, stratum), dta_double(c(rural = 2)))
 
     # `.labels`, alone and combined with tagged dots.
     set_var_labels(survey, .labels = list(status = "From .labels"))
@@ -162,14 +162,14 @@ test_that("every pre-existing setter convention still works", {
     expect_identical(var_label(survey, status), "Tagged")
     expect_identical(var_label(survey, stratum), "Listed")
     set_val_labels(survey, .labels = list(status = c(no = 2)))
-    expect_identical(val_labels(survey, status), c(no = 2))
+    expect_identical(val_labels(survey, status), dta_double(c(no = 2)))
 
     # The vector branch.
     status <- c(1, 2)
     status <- set_var_labels(status, "Vector label")
     expect_identical(var_label(status), "Vector label")
     status <- set_val_labels(status, yes = 1, no = 2)
-    expect_identical(val_labels(status), c(yes = 1, no = 2))
+    expect_identical(val_labels(status), dta_double(c(yes = 1, no = 2)))
 })
 
 test_that("dots forwarded from a wrapper keep the tagged path", {
@@ -187,7 +187,7 @@ test_that("dots forwarded from a wrapper keep the positional shape", {
         set_val_labels(data, ...)
     }
     codes_through_wrapper(survey, "status", c(yes = 1))
-    expect_identical(val_labels(survey, status), c(yes = 1))
+    expect_identical(val_labels(survey, status), dta_double(c(yes = 1)))
 })
 
 test_that("a computed first argument still errors as before", {

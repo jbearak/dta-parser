@@ -226,7 +226,7 @@ test_that("`.()` tags name columns in the plural label setters", {
 
     second <- "b"
     set_val_labels(data, .(second) := c(yes = 3, no = 4))
-    expect_identical(val_labels(data$b), c(yes = 3, no = 4))
+    expect_identical(val_labels(data$b), dta_double(c(yes = 3, no = 4)))
 })
 
 test_that("`.()` tags coexist with splices and `:=` names", {
@@ -280,5 +280,5 @@ test_that("forwarded dots keep their own frames alongside a `.()` tag", {
     from_caller(data)
     expect_identical(var_label(data$a), "Tagged")
     expect_identical(var_label(data$b), "From the caller")
-    expect_identical(val_labels(data$a), c(low = 1))
+    expect_identical(val_labels(data$a), dta_double(c(low = 1)))
 })

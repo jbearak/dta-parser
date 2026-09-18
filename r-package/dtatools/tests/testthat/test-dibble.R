@@ -1572,7 +1572,7 @@ test_that("grouped gen() keeps a factor's levels, not its label", {
     expect_identical(attr(changed$s, "notes"), "a note")
     expect_identical(attr(changed$s, "stata.note.numbers"), 4L)
     expect_identical(attr(changed$s, "stata.characteristics"), c(source = "survey"))
-    expect_identical(val_labels(changed$x), c(one = 1, two = 2))
+    expect_identical(val_labels(changed$x), dta_double(c(one = 1, two = 2)))
     expect_identical(var_label(changed$x), "Count")
     expect_identical(attr(changed$x, "format.stata"), "%9.0g")
     expect_identical(names(changed), c("x", "s", "y", "z"))

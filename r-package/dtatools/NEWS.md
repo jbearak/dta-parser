@@ -1,5 +1,22 @@
 # dtatools (development version)
 
+* Breaking: `val_labels()` returns a value-label table as a named Stata
+  numeric, a `dta_double()` or a `dta_long()` for integer codes, rather
+  than a bare named vector. The codes are Stata
+  values, so a tagged missing prints as `.a` instead of `NA` and
+  `names(labels)[labels == .a]` finds its label, where the bare double
+  compared `NA == NA`. The `labels` attribute on the vector is unchanged,
+  so files and `haven` see what they always did. Code that compared the
+  result with `identical()` against a bare `c(One = 1)` should wrap the
+  expected value in `dta_double()`, or read the bare named vector from
+  `attr(x, "labels")`. Setting a table back with `val_labels<-` or
+  `set_val_labels()` stores the codes as they were, including a named
+  empty table, so a read-and-set round trip changes nothing.
+* Stata numeric vectors format and print missing values as Stata spells
+  them: `.` for system missing and `.a` through `.z` for a tagged
+  missing, in a printed vector, a dibble or tibble column, a data frame,
+  and a value-label table. A printed vector that carries value labels
+  lists them under the values. See ADR 0040.
 * Breaking: `gen()` and a new column through `:=` now copy a value's
   values and typing only, as Stata's `generate` does. The new column keeps
   its storage, string storage, and date or datetime class, and drops the

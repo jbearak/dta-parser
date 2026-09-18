@@ -218,7 +218,7 @@ test_that("surviving columns keep Stata values and metadata", {
     expect_identical(dta_storage_type(data$status), "byte")
     expect_identical(missing_tag(data$status), c(NA, "a", NA))
     expect_identical(var_label(data$status), "Status")
-    expect_identical(val_labels(data$status), c(Active = 1))
+    expect_identical(val_labels(data$status), dta_double(c(Active = 1)))
 })
 
 test_that("keep and drop support zero-row and zero-column results", {

@@ -10,18 +10,28 @@
 #'
 #' @section Getter results:
 #' `var_label(data, variable)` returns one column's character label or
-#' `NULL`, and `val_labels(data, variable)` returns its named numeric
-#' vector or `NULL`. The `variable` argument follows the same rule as in
+#' `NULL`, and `val_labels(data, variable)` returns its value-label table
+#' or `NULL`. The `variable` argument follows the same rule as in
 #' `gen()` and `replace_values()`, so `var_label(data, hh1)`,
 #' `var_label(data, "hh1")`, `var_label(data, !!name)`, and
 #' `var_label(data, .(name))` are equivalent. Asking for a column that
 #' does not exist is an error.
 #'
 #' Without `variable`: for a vector, `var_label()` returns one character
-#' value or `NULL`, and `val_labels()` returns a named numeric vector or
+#' value or `NULL`, and `val_labels()` returns a value-label table or
 #' `NULL`. For a data frame, each returns a named list with one element
 #' per column, including `NULL` entries. `dataset_label()` accepts only a
 #' data frame or tibble and returns one character value or `NULL`.
+#'
+#' A value-label table is a named Stata numeric, a [dta_double()], or a
+#' [dta_long()] when `haven` stored integer codes: the names are the
+#' displayed text and the values are the Stata codes. Because the codes
+#' are a Stata numeric, a tagged missing prints as `.a` rather than `NA`,
+#' and comparisons follow Stata, so `names(labels)[labels == .a]` finds
+#' the label of `.a`. The table can be passed back to any setter; the
+#' `labels` attribute itself holds the bare named vector `haven` stores,
+#' and the table's storage records that vector's type, so reading a table
+#' and setting it back changes nothing.
 #'
 #' @section Setting labels:
 #' Replacement functions modify the supplied metadata. On a data frame,
@@ -99,8 +109,9 @@
 #' Value-label setters retain the hint while value labels remain and remove
 #' it when the mapping is cleared. Use [set_dta_metadata()] to set the hint and
 #' raw mapping together. That helper preserves an explicitly named zero-length
-#' mapping and its hint as an empty table; clearing with `labels = NULL` removes
-#' both. This does not create a shared table registry.
+#' mapping and its hint as an empty table, and the value-label setters keep
+#' such a table when it is set back; clearing with `NULL` or an unnamed
+#' `numeric()` removes both. This does not create a shared table registry.
 #'
 #' See the
 #' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
@@ -181,16 +192,40 @@ val_labels <- function(x, variable) {
     variable <- rlang::enquo(variable)
     if (!rlang::quo_is_missing(variable)) {
         column <- .label_lookup_column(x, variable)
-        return(attr(column, "labels", exact = TRUE))
+        return(.value_label_table(attr(column, "labels", exact = TRUE)))
     }
     if (is.data.frame(x)) {
         return(stats::setNames(
-            lapply(x, attr, which = "labels", exact = TRUE),
+            lapply(x, function(column) {
+                .value_label_table(attr(column, "labels", exact = TRUE))
+            }),
             names(x)
         ))
     }
 
-    attr(x, "labels", exact = TRUE)
+    .value_label_table(attr(x, "labels", exact = TRUE))
+}
+
+# The stored `labels` attribute is the bare named vector haven writes, so
+# files and `labelled` see what they expect. Read back through
+# `val_labels()`, the codes are a Stata numeric, so `.a` prints as `.a`
+# and `labels == .a` is Stata's comparison (ADR 0040). The storage
+# records the codes' own type, `long` for haven's integer codes and
+# `double` otherwise, so a setter can store the table back exactly as it
+# was. A table haven wrote that Stata could not hold, a character code, an
+# infinity, or an integer outside `long`, is returned bare as haven stores
+# it, since a Stata numeric could not carry it.
+.value_label_table <- function(labels) {
+    if (is.null(labels) || !is.numeric(labels) ||
+        !all(.dta_value_label_code_info(labels)$valid)) {
+        return(labels)
+    }
+    storage <- if (is.integer(labels)) "long" else "double"
+    result <- as.double(labels)
+    names(result) <- names(labels)
+    attr(result, "stata.storage") <- storage
+    attr(result, "class") <- .dta_storage_class(storage)
+    result
 }
 
 # `var_label(data, variable)` and `val_labels(data, variable)` read one
@@ -349,9 +384,16 @@ dataset_label <- function(data) {
         stop(sprintf("`%s` must be a named numeric vector or NULL", argument),
              call. = FALSE)
     }
-    if (length(value) == 0L) return(NULL)
-
     label_text <- names(value)
+    if (length(value) == 0L) {
+        # `numeric()` clears the table; a named empty table, as
+        # `set_dta_metadata()` declares and `val_labels()` returns, is kept
+        # so a read-and-set round trip leaves it in place.
+        if (is.null(label_text)) return(NULL)
+        codes <- .bare_value_label_codes(value)
+        names(codes) <- character()
+        return(codes)
+    }
     if (is.null(label_text) || length(label_text) != length(value)) {
         stop(sprintf("`%s` must name every value-label code", argument),
              call. = FALSE)
@@ -387,9 +429,34 @@ dataset_label <- function(data) {
                      argument), call. = FALSE)
     }
 
-    value <- if (is.integer(value)) as.integer(value) else as.double(value)
+    value <- .bare_value_label_codes(value)
     names(value) <- label_text
     value
+}
+
+# The codes as haven's bare vector, in their own type. A table read
+# through `val_labels()` recorded integer codes as `long`, so setting it
+# back is exact (ADR 0040); a `long` table that was edited to hold a
+# tagged missing has to stay double, since an R integer cannot carry the
+# tag and `as.integer()` would turn `.a` into `.`.
+.bare_value_label_codes <- function(value) {
+    integer_codes <- is.integer(value) || (
+        identical(.declared_dta_storage(value), "long") &&
+            all(is.na(.tab_missing_codes(value)))
+    )
+    codes <- if (integer_codes) as.integer(value) else as.double(value)
+    as.vector(codes)
+}
+
+# The bundle setter keeps a mapping's blank text, so it bypasses
+# `.normalize_value_labels()`; this applies the same type rule to what it
+# stores, so a `val_labels()` table lands as the bare vector it came from.
+.stored_value_labels <- function(labels) {
+    if (is.null(labels)) return(NULL)
+    label_text <- names(labels)
+    codes <- .bare_value_label_codes(labels)
+    names(codes) <- label_text
+    codes
 }
 
 .value_label_limit_violations <- function(count, text, location) {
@@ -822,12 +889,17 @@ set_val_labels <- function(.data, ..., .labels = NULL) {
                 call. = FALSE
             )
         }
-        value <- if (is.null(.labels)) {
-            if (length(dots) == 0L) NULL else unlist(
-                dots, recursive = FALSE, use.names = TRUE
-            )
-        } else {
+        value <- if (!is.null(.labels)) {
             .labels
+        } else if (length(dots) == 0L) {
+            NULL
+        } else if (length(dots) == 1L &&
+                   (is.null(names(dots)) || !nzchar(names(dots)[1L]))) {
+            # A single unnamed argument is a whole table, kept as supplied so
+            # a `val_labels()` result carries its storage back unchanged.
+            dots[[1L]]
+        } else {
+            unlist(dots, recursive = FALSE, use.names = TRUE)
         }
         return(`val_labels<-`(.data, value))
     }
