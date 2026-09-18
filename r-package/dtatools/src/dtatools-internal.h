@@ -345,6 +345,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_capture_column(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_string_attribute(SEXP value, SEXP name, SEXP replacement);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_string_fits(SEXP value, SEXP width);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_string_width(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_string_fits(SEXP value, SEXP width, SEXP allow_bytes);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_scan_stats(SEXP reset);
 DTATOOLS_INTERNAL SEXP C_dtatools_is_owned_double(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_bare(SEXP value);

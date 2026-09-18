@@ -66,14 +66,6 @@ dta_string <- function(x = character(), storage = NULL) {
     text
 }
 
-# Whether any element is marked with R's `bytes` encoding, which cannot
-# be translated to UTF-8: native kernels refuse such a value, while the
-# byte-counting width rules admit it. The Arrow writer's probe, which
-# reads the elements without allocating an encoding vector.
-.has_bytes_encoding <- function(x) {
-    isTRUE(.Call(C_dtatools_has_bytes_encoding, x))
-}
-
 .normalize_dta_string_storage <- function(storage, required = 1L) {
     if (is.null(storage)) {
         return(if (required > 2045L) "strL" else paste0("str", max(1L, required)))

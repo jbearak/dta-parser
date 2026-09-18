@@ -171,6 +171,33 @@ test_that("Stata string text and the declaration accessor are one rule each", {
     expect_null(dtatools:::.declared_string_storage(dta_byte(1)))
 })
 
+test_that("the one-pass string check answers missing, width, and encoding", {
+    fits <- function(x, width, bytes = TRUE) {
+        .Call(dtatools:::C_dtatools_string_fits, x, width, bytes)
+    }
+    expect_true(fits(c("ab", "c"), 2))
+    expect_false(fits(c("ab", "c"), 1))
+    expect_false(fits(c("ab", NA), 2))
+    expect_true(fits(character(), 1))
+    expect_true(fits("\u00e9", 2))
+    expect_false(fits("\u00e9", 1))
+    latin <- iconv("\u00e9", from = "UTF-8", to = "latin1")
+    Encoding(latin) <- "latin1"
+    expect_true(fits(latin, 2))
+    expect_false(fits(latin, 1))
+    bytes <- rawToChar(as.raw(255L))
+    Encoding(bytes) <- "bytes"
+    expect_true(fits(bytes, 1))
+    expect_false(fits(bytes, 1, bytes = FALSE))
+    expect_true(fits(strrep("a", 3000), Inf))
+    expect_null(fits(1:2, 2))
+    declared <- structure(c("ab", bytes), stata.string.storage = "str2")
+    expect_true(dtatools:::.string_declaration_holds(declared))
+    expect_false(dtatools:::.string_declaration_copyable(declared))
+    expect_true(dtatools:::.string_declaration_copyable(
+        structure(c("ab", "c"), stata.string.storage = "str2")))
+})
+
 test_that("a result column with a holding declaration is copied natively", {
     skip_if_not_installed("dplyr", "1.2.1")
     # The fast path: a plain declared character column comes back with

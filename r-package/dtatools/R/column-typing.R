@@ -48,12 +48,23 @@
         return(.dta_string_storage_width(declared) >=
             max(1L, .dictstring_max_width(column)))
     }
-    owned_fits <- .Call(C_dtatools_owned_string_fits, column,
-                        .dta_string_storage_width(declared))
+    width <- .dta_string_storage_width(declared)
+    owned_fits <- .Call(C_dtatools_owned_string_fits, column, width)
     if (!is.null(owned_fits)) return(owned_fits)
-    if (anyNA(column)) return(FALSE)
-    .dta_string_storage_width(declared) >=
-        .dta_string_required_width(column)
+    # One native pass for missing values and width, counting a
+    # `bytes`-encoded value's raw length as the width rules do.
+    .Call(C_dtatools_string_fits, column, width, TRUE)
+}
+
+# Whether a character column's declaration holds and the generation
+# kernel can copy the column as it is: `.string_declaration_holds()`
+# with `bytes`-encoded values, which the kernel cannot translate, failing
+# the check instead of counting. One native pass, no allocation.
+.string_declaration_copyable <- function(column) {
+    declared <- .declared_string_storage(column)
+    if (!.valid_string_declaration(declared)) return(FALSE)
+    isTRUE(.Call(C_dtatools_string_fits, column,
+                 .dta_string_storage_width(declared), FALSE))
 }
 
 .valid_string_declaration <- function(declared) {

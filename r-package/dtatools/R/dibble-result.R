@@ -51,17 +51,15 @@
     if (is.list(column)) return(.capture_dibble_nested(column))
     # A plain character column whose declaration holds for its values is
     # copied by the generation kernel, which allocates the isolated result
-    # and preserves every attribute in one native pass. The kernel refuses
-    # two things a holding declaration does not rule out on its own: a
-    # width it cannot verify, which `.string_declaration_holds()` has
-    # verified here, and a value in R's `bytes` encoding, which it cannot
-    # translate; both are settled before the call rather than caught
-    # after it. The result is reused only when it is identical to the
-    # source, so a kernel that re-encoded a value hands over to the
-    # ordinary path below with every other column.
+    # and preserves every attribute in one native pass. The kernel would
+    # refuse a value too wide for the declaration or in R's `bytes`
+    # encoding, which it cannot translate; one native pass settles both
+    # before the call rather than catching them after it. The result is
+    # reused only when it is identical to the source, so a kernel that
+    # re-encoded a value hands over to the ordinary path below with every
+    # other column.
     if (isolate && is.character(column) && !.is_altrep(column) &&
-        is.null(dim(column)) && .string_declaration_holds(column) &&
-        !.has_bytes_encoding(column)) {
+        is.null(dim(column)) && .string_declaration_copyable(column)) {
         copied <- .Call(
             C_dtatools_generate_character, column, NULL, as.double(row_count),
             .declared_string_storage(column), attributes(column)
