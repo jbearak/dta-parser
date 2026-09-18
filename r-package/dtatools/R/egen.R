@@ -274,16 +274,20 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # payload is checked besides, since a key of a class the calculations do
 # not take (which `.egen_validate_source()` passes over) still groups.
 # An integer64 key is exempt: its doubles are bit patterns, not values,
-# and some valid ones read as NaN.
+# and some valid ones read as NaN. A complex key is checked for a NaN or
+# infinite part, leaving R's `NA_complex_`, which vctrs groups as missing.
 .egen_validate_key <- function(key) {
     .egen_validate_source(key)
-    if (typeof(key) == "double" && is.null(dim(key)) &&
-        !inherits(key, "integer64")) {
+    invalid <- if (typeof(key) == "double" && !inherits(key, "integer64")) {
+        # Whatever the shape: a matrix key groups by its rows.
         codes <- .tab_missing_codes(key)
-        if (any((!is.na(codes) & codes == 256L) | is.infinite(key))) {
-            stop("Grouping columns cannot contain NaN or infinities",
-                 call. = FALSE)
-        }
+        (!is.na(codes) & codes == 256L) | is.infinite(key)
+    } else if (typeof(key) == "complex") {
+        !is.finite(key) & !is.na(key)
+    } else FALSE
+    if (any(invalid)) {
+        stop("Grouping columns cannot contain NaN or infinities",
+             call. = FALSE)
     }
     invisible(NULL)
 }

@@ -205,6 +205,15 @@ test_that("egen validates source NaN and normalizes arithmetic NaN", {
     wrapped <- plant(I(c(1, Inf, 1, 2)))
     expect_error(egen(wrapped, m = dta_mean(x), bysort = k), "infinities")
     expect_identical(as.double(wrapped$x), c(1, 2, 3, 4))
+    # A matrix key groups by its rows, and a complex key by its values;
+    # both are checked by payload.
+    expect_error(egen(plant(matrix(c(1, NaN, 1, 2), 4)), m = dta_mean(x), by = k),
+                 "NaN")
+    expect_error(egen(plant(complex(real = c(1, Inf, 1, 2), imaginary = 0)),
+                      m = dta_mean(x), bysort = k), "infinities")
+    fine <- plant(complex(real = c(1, 2, 1, 2), imaginary = 0))
+    egen(fine, m = dta_mean(x), by = k)
+    expect_identical(as.double(fine$m), c(2, 3, 2, 3))
     skip_if_not_installed("bit64")
     # An integer64 key groups by its values, whatever their bit patterns
     # read as when taken for doubles.
