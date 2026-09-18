@@ -274,22 +274,35 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # payload is checked besides, since a key of a class the calculations do
 # not take (which `.egen_validate_source()` passes over) still groups.
 # An integer64 key is exempt: its doubles are bit patterns, not values,
-# and some valid ones read as NaN. A complex key is checked for a NaN or
-# infinite part, leaving R's `NA_complex_`, which vctrs groups as missing.
+# and some valid ones read as NaN.
 .egen_validate_key <- function(key) {
     .egen_validate_source(key)
-    invalid <- if (typeof(key) == "double" && !inherits(key, "integer64")) {
-        # Whatever the shape: a matrix key groups by its rows.
-        codes <- .tab_missing_codes(key)
-        (!is.na(codes) & codes == 256L) | is.infinite(key)
-    } else if (typeof(key) == "complex") {
-        !is.finite(key) & !is.na(key)
-    } else FALSE
-    if (any(invalid)) {
+    if (.egen_key_payload_invalid(key)) {
         stop("Grouping columns cannot contain NaN or infinities",
              call. = FALSE)
     }
     invisible(NULL)
+}
+
+# Whether any leaf of a key holds NaN or an infinity, whatever the key's
+# shape: a matrix key groups by its rows and a list or data frame key by
+# its elements, so every leaf is a key value. `NA_complex_` is missing,
+# not NaN, and passes.
+.egen_key_payload_invalid <- function(key) {
+    if (is.list(key)) {
+        for (element in unclass(key)) {
+            if (.egen_key_payload_invalid(element)) return(TRUE)
+        }
+        return(FALSE)
+    }
+    if (typeof(key) == "double" && !inherits(key, "integer64")) {
+        codes <- .tab_missing_codes(key)
+        return(any((!is.na(codes) & codes == 256L) | is.infinite(key)))
+    }
+    if (typeof(key) == "complex") {
+        return(any(is.nan(key) | is.infinite(key)))
+    }
+    FALSE
 }
 
 # Validate source values when they are read, before allowing arithmetic NaN
