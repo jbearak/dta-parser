@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::thread;
 
 use dta_tools::arrow::{
-    arrow_stored_signature, dataset_signature_from_sources, preflight_arrow_metadata,
+    dataset_signature_from_sources, preflight_arrow_metadata,
     save_arrow_file_from_sources_with_preflight, ArrowCompression, ArrowFieldDocument,
     ArrowFileSnapshot, ArrowMetadataPreflight, ArrowMissingEncoding, ArrowRSemantics,
     ArrowReadColumn, ArrowReadOptions, ArrowWriteSource, ArrowWriteSourceColumn,
@@ -3630,28 +3630,6 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             attach_source_rows(frame, source_rows)?;
         }
         Ok(frame)
-    })
-}
-
-#[no_mangle]
-/// Derive an Arrow file's dataset signature from its stored footer checksums
-/// and schema documents, without reading data buffers.
-///
-/// # Safety
-///
-/// `path` must point to a readable NUL-terminated C byte string for the
-/// duration of this call. If non-null, `error` must point to writable storage
-/// for one C string pointer. The caller must run on R's main thread with an
-/// initialized R runtime.
-pub unsafe extern "C" fn dtatools_arrow_datasig_rust(
-    path: *const c_char,
-    error: *mut *mut c_char,
-) -> Sexp {
-    boundary(error, ptr::null_mut(), || {
-        let path = required_c_string(path, "the input path")?;
-        let signature = arrow_stored_signature(&path).map_err(|error| error.to_string())?;
-        let mut guard = ProtectGuard::new();
-        scalar_string(&signature, &mut guard)
     })
 }
 
