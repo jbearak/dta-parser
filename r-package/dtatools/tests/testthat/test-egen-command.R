@@ -106,6 +106,29 @@ test_that("egen stages bysort and commits only after success", {
     expect_error(egen(d, bad = dta_mean(x), by = absent), "does not exist")
 })
 
+test_that("egen shares gen()'s group plan: factor keys, empty dplyr groups, zero rows", {
+    # Any vctrs-orderable key groups, as it does for gen().
+    d <- dibble(f = factor(c("b", "a", "b")), x = c(1, 2, 3))
+    egen(d, total = dta_total(x), by = f)
+    expect_equal(as.double(d$total), c(4, 2, 4))
+    gen(d, total_gen = sum(x), by = f)
+    expect_identical(as.double(d$total_gen), as.double(d$total))
+    egen(d, sorted_total = dta_total(x), bysort = f)
+    expect_identical(as.character(d$f), c("a", "b", "b"))
+    expect_equal(as.double(d$sorted_total), c(2, 4, 4))
+
+    # `.drop = FALSE` grouping records an empty group; it admits nothing.
+    factor_grouped <- as_dibble(.group_fixture("factor_unused")$data)
+    egen(factor_grouped, n = dta_total(rep(1, .N)))
+    expect_equal(as.double(factor_grouped$n), c(2, 2))
+
+    # A grouped read of a dataset with no rows still types the result.
+    empty <- dibble(g = numeric(), x = numeric())
+    egen(empty, m = dta_mean(x), by = g)
+    expect_identical(nrow(empty), 0L)
+    expect_true("m" %in% names(empty))
+})
+
 test_that("egen grouped inputs supply groups and counters describe the sample", {
     d <- as_dibble(.group_fixture("g_1122_double_x_typed")$data)
     egen(d, y = dta_total(x), where = .n == 1)
@@ -159,6 +182,51 @@ test_that("egen validates source NaN and normalizes arithmetic NaN", {
     class(invalid) <- class(d)
     expect_error(egen(invalid, y = dta_mean(x)), "NaN")
     expect_identical(names(invalid), "x")
+    # A group key is a source too, read or not by the calculation. (A
+    # grouped tibble with such a key is refused at the door by every
+    # by-reference command, so only `by` and `bysort` reach this check.)
+    keyed <- unclass(dibble(k = c(1, 2, 1, 3), x = c(1, 2, 3, 4)))
+    keyed$k <- c(1, NaN, 1, Inf)
+    class(keyed) <- class(d)
+    expect_error(egen(keyed, m = dta_mean(x), by = k), "NaN")
+    expect_error(egen(keyed, m = dta_mean(x), bysort = k), "NaN")
+    expect_identical(as.double(keyed$x), c(1, 2, 3, 4))
+    expect_identical(names(keyed), c("k", "x"))
+    # ... whatever the key's class: a class the calculations do not take
+    # still groups, so its payload is checked directly.
+    plant <- function(key) {
+        planted <- unclass(dibble(k = c(1, 2, 1, 3), x = c(1, 2, 3, 4)))
+        planted$k <- key
+        class(planted) <- class(d)
+        planted
+    }
+    expect_error(egen(plant(I(c(1, NaN, 1, 2))), m = dta_mean(x), by = k),
+                 "NaN")
+    wrapped <- plant(I(c(1, Inf, 1, 2)))
+    expect_error(egen(wrapped, m = dta_mean(x), bysort = k), "infinities")
+    expect_identical(as.double(wrapped$x), c(1, 2, 3, 4))
+    # A matrix key groups by its rows, and a complex key by its values;
+    # both are checked by payload.
+    expect_error(egen(plant(matrix(c(1, NaN, 1, 2), 4)), m = dta_mean(x), by = k),
+                 "NaN")
+    expect_error(egen(plant(complex(real = c(1, Inf, 1, 2), imaginary = 0)),
+                      m = dta_mean(x), bysort = k), "infinities")
+    expect_error(egen(plant(complex(real = c(1, NaN, 1, 2), imaginary = 0)),
+                      m = dta_mean(x), by = k), "NaN")
+    expect_error(egen(plant(list(1, Inf + 0i, 1, 2)), m = dta_mean(x), by = k),
+                 "infinities")
+    expect_error(egen(plant(list(1, list(NaN), 1, 2)), m = dta_mean(x), by = k),
+                 "NaN")
+    fine <- plant(complex(real = c(1, 2, 1, NA), imaginary = 0))
+    egen(fine, m = dta_mean(x), by = k)
+    expect_identical(as.double(fine$m), c(2, 2, 2, 4))
+    skip_if_not_installed("bit64")
+    # An integer64 key groups by its values, whatever their bit patterns
+    # read as when taken for doubles.
+    big <- plant(bit64::as.integer64(c("9221120237041090560", "1",
+                                       "9221120237041090560", "2")))
+    egen(big, m = dta_mean(x), by = k)
+    expect_identical(as.double(big$m), c(2, 2, 2, 4))
     raw <- NaN
     expect_error(egen(d, bad = dta_mean(raw)), "NaN")
     expect_error(egen(d, bad = dta_mean(.env$raw)), "NaN")

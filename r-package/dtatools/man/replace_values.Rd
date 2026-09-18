@@ -198,10 +198,16 @@ Use \code{\link[dplyr:summarise]{dplyr::summarise()}} to produce a new aggregate
 \code{gen()} and \code{egen()} write their statistics into the existing rows.
 
 \code{by} groups the dataset in its current row order and never sorts.
-\code{bysort} first sorts the dataset by reference on every listed column,
-in Stata's total order for \verb{dta_*()} columns (finite values, then \code{.},
-then \code{.a} through \code{.z}), and then groups by those same columns, so the
+\code{bysort} sorts the dataset by reference on every listed column, in
+Stata's total order for \verb{dta_*()} columns (finite values, then \code{.},
+then \code{.a} through \code{.z}), and groups by those same columns, so the
 rows within each group are the sorted rows and \code{.n} follows the sort.
+The sort is written together with the assignment: a call that fails
+before its assignment writes leaves the dataset in its original
+order. Several \verb{:=} assignments in one bracket call sort with the
+first that writes; once that one has written, the sort stays, and a
+later assignment that fails leaves the dataset sorted with the earlier
+ones written, as two Stata lines would.
 Stata's parenthesized sort-only keys are not supported: \verb{bysort id (date):} is an \code{arrange()} or \code{reorder_dta_rows()} line followed by
 \code{by = id}. Group identity uses Stata value identity for \verb{dta_*()}
 columns and ordinary identity otherwise, so missing values form their

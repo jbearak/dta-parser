@@ -33,10 +33,18 @@ reorder_dta_rows <- function(data, rows) {
         vctrs::new_data_frame(plan$columns, n = count),
         locations, fill_string_missing = FALSE
     )
-    .Call(
-        C_dtatools_replace_reference_columns, data, plan$store,
-        plan$locations, plan$names, unname(columns)
-    )
+    # The commit and the note that rows moved are one step, and the
+    # note is made only when they did: a note without a commit, or for
+    # the identity permutation, would stand down an enclosing `bysort`
+    # undo for a reorder that never happened.
+    moved <- !identical(unname(locations), seq_len(count))
+    suspendInterrupts({
+        .Call(
+            C_dtatools_replace_reference_columns, data, plan$store,
+            plan$locations, plan$names, unname(columns)
+        )
+        if (moved) .note_row_reorder(data)
+    })
     invisible(data)
 }
 
@@ -51,6 +59,7 @@ reorder_dta_rows <- function(data, rows) {
         store = NULL,
         locations = seq_len(count),
         names = rep(NA_character_, count),
+        saved_names = attr(data, "names", exact = TRUE),
         nrow = original$nrow
     )
 }

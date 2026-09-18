@@ -4712,7 +4712,7 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "7aca74dbd01d1a4af0dba538da8076e703f912f40044c9b42d4634268ddf5c05"
+          "sha256": "7e0746678349a9115c7e19e2cac77a26a7a6d774e245d8c50e96c571c10223fa"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
@@ -5730,6 +5730,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "bysort is written with the assignment, so a failed one leaves the order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
           "warnings": 0
         },
         {
@@ -10250,7 +10258,7 @@
       "files": [
         {
           "path": "tests/testthat/test-egen-command.R",
-          "sha256": "2baf9cfe94a2129fc4cf43c0a7bab1bdfccc690ac04e7749d4b1706bab111092"
+          "sha256": "75459e3f3ed60e9874fa4642acdbdbbe559fb947f65ae87a55999177dc644773"
         },
         {
           "path": "tests/testthat/test-egen-groups.R",
@@ -10596,6 +10604,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-command.R",
+          "test": "egen shares gen()'s group plan: factor keys, empty dplyr groups, zero rows",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         },
         {

@@ -72,8 +72,9 @@ number and size. \code{rows} is intersected with that selection and is relative
 to the full group. The value expression then sees the admitted sample,
 with its own \code{.n} and \code{.N}. Missing keys, including distinct extended
 missing codes, form valid \code{by} groups. Row calculations and group-ID/tag
-calculations reject command-level grouping. \code{bysort} sorts the complete
-dataset by its grouping keys when the operation succeeds.
+calculations reject command-level grouping. Groups are formed as
+\code{\link[=gen]{gen()}} forms them; \code{bysort} sorts the complete dataset by its
+grouping keys when the operation succeeds.
 
 Supported value calls are \code{\link[=dta_mean]{dta_mean()}}, \code{\link[=dta_min]{dta_min()}}, \code{\link[=dta_max]{dta_max()}},
 \code{\link[=dta_total]{dta_total()}}, \code{\link[=dta_row_max]{dta_row_max()}}, \code{\link[=dta_row_total]{dta_row_total()}}, \code{\link[=dta_group_id]{dta_group_id()}}, and

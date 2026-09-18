@@ -72,7 +72,7 @@ Widening a typed column to the narrowest Stata storage that holds every new valu
 _Avoid_: Type widening, upcasting
 
 **Group-wise assignment**:
-Evaluating one generation or replacement separately within each group of a dataset, in Stata's `by varlist:` order: the group is formed first, then the row selection and values are evaluated on that group's rows, with `.n` and `.N` as the within-group row number and row count. Groups come from `by`, from `bysort`, or from dplyr grouping.
+Evaluating one generation or replacement separately within each group of a dataset, in Stata's `by varlist:` order: the group is formed first, then the row selection and values are evaluated on that group's rows, with `.n` and `.N` as the within-group row number and row count. Groups come from `by`, from `bysort`, or from dplyr grouping. `by` visits the groups in the dataset's current order; `bysort` sorts the dataset by its keys, and the sort is written together with the assignment.
 _Avoid_: Grouped mutate, by-group operation
 
 **Egen calculation sample**:
