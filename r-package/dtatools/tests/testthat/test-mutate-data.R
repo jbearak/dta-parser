@@ -2073,6 +2073,7 @@ test_that("bysort is written with the assignment, so a failed one leaves the ord
     # leaves the enclosing undo armed too.
     failing <- function(x) {
         expect_error(reorder_dta_rows(other, c(1L, 1L, 2L)), "exactly once")
+        reorder_dta_rows(other, 1:3)
         expect_error(egen(other, m = dta_mean(k), bysort = k, type = "nope"),
                      "type")
         stop("outer")
