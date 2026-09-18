@@ -221,10 +221,16 @@
         return(.typed_column(values, row_count, caller))
     }
     if (typeof(prior) == "character") {
-        text <- .stata_string_text(values)
+        # The declaration is read and its width taken before the values
+        # are measured: a value without `NA` is not copied here, so
+        # nothing that could run user code, such as a lazy attribute,
+        # may sit between the width check and the capture in
+        # `.new_dta_string()` and reach a borrowed vector.
         if (is.null(declared)) declared <- .declared_string_storage(prior)
+        declared_width <- .dta_string_storage_width(declared)
+        text <- .stata_string_text(values)
         required <- .dta_string_required_width(text)
-        storage <- if (.dta_string_storage_width(declared) >= required) {
+        storage <- if (declared_width >= required) {
             declared
         } else {
             .normalize_dta_string_storage(NULL, required)
