@@ -231,7 +231,14 @@ results keep their class with a Stata date or datetime declaration, and
 character results
 keep a valid declared \code{stata.string.storage} or take the smallest
 \code{str1} through \code{str2045} width that fits, or \code{strL} above 2,045 UTF-8
-bytes. Standard \code{haven_labelled} results preserve their label metadata.
+bytes. Like Stata's \code{generate}, \code{gen()} copies values, not labels: the
+new column takes the storage, string storage, and date or datetime
+class of its value and none of its variable metadata, so \code{gen(data, y = x)} has no variable label, value labels, display format, notes, or
+characteristics, and a \code{haven_labelled} value arrives as a plain typed
+column. Author them with \code{\link[=set_var_label]{set_var_label()}}, \code{\link[=set_val_labels]{set_val_labels()}}, and the
+other setters, as \verb{label variable} and \verb{label values} follow \code{generate}
+in Stata. \code{\link[dplyr:mutate]{dplyr::mutate()}} and the replacement operators are R
+operations and copy the vector with its attributes (see \href{https://github.com/jbearak/dta-parser/blob/main/docs/adr/0039-generate-copies-values-not-labels.md}{ADR 0039}).
 Other classed numeric results, including \code{difftime} and
 \code{bit64::integer64}, are rejected because their physical representation
 does not have Stata numeric semantics; convert them first. Numeric rows

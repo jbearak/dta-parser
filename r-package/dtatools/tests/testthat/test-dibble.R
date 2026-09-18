@@ -864,7 +864,7 @@ test_that("gen and := accept factors as mutate does", {
     labelled <- factor(c("lo", "hi", "lo"), levels = c("lo", "hi"))
     attr(labelled, "label") <- "Level"
     gen(data, h = labelled)
-    expect_identical(attr(data$h, "label"), "Level")
+    expect_null(attr(data$h, "label"))
     expect_identical(levels(data$h), c("lo", "hi"))
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
@@ -1535,14 +1535,14 @@ test_that("mask typing keeps dplyr's names, arguments, and messages", {
     )
 })
 
-test_that("grouped gen() keeps a factor's attributes", {
+test_that("grouped gen() keeps a factor's levels, not its label", {
     data <- dibble(
         g = c(1, 1, 2),
         f = structure(factor(c("a", "b", "a")), label = "Letter")
     )
     gen(data, h = .data$f, by = g)
     expect_identical(levels(data$h), c("a", "b"))
-    expect_identical(attr(data$h, "label"), "Letter")
+    expect_null(attr(data$h, "label"))
     expect_identical(as.character(data$h), c("a", "b", "a"))
 })
 

@@ -166,7 +166,16 @@
 #' character results
 #' keep a valid declared `stata.string.storage` or take the smallest
 #' `str1` through `str2045` width that fits, or `strL` above 2,045 UTF-8
-#' bytes. Standard `haven_labelled` results preserve their label metadata.
+#' bytes. Like Stata's `generate`, `gen()` copies values, not labels: the
+#' new column takes the storage, string storage, and date or datetime
+#' class of its value and none of its variable metadata, so `gen(data, y =
+#' x)` has no variable label, value labels, display format, notes, or
+#' characteristics, and a `haven_labelled` value arrives as a plain typed
+#' column. Author them with [set_var_label()], [set_val_labels()], and the
+#' other setters, as `label variable` and `label values` follow `generate`
+#' in Stata. [dplyr::mutate()] and the replacement operators are R
+#' operations and copy the vector with its attributes (see [ADR
+#' 0039](https://github.com/jbearak/dta-parser/blob/main/docs/adr/0039-generate-copies-values-not-labels.md)).
 #' Other classed numeric results, including `difftime` and
 #' `bit64::integer64`, are rejected because their physical representation
 #' does not have Stata numeric semantics; convert them first. Numeric rows
@@ -745,7 +754,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     scalar <- .mutation_scalar_binding(values, data)
     if (is.null(scalar)) return(NULL)
     data <- .prepare_column_growth(data, length(data) + 1L, auto_grow)
-    column <- .generated_column(scalar$value, NULL, row_count, generate = TRUE)
+    column <- .generated_column(
+        scalar$value, NULL, row_count, generate = TRUE, carry_metadata = FALSE
+    )
     .prepare_column_operation(data, length(data) + 1L)
     .append_generated_column(data, name, column)
     data
@@ -1538,7 +1549,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # `selected` is a `.grouped_selection()` result; when given, `where` is
 # not evaluated again.
 .grouped_mutation <- function(where, values, columns, groups, row_count,
-                              selected = NULL, drop_unselected = FALSE) {
+                              selected = NULL, drop_unselected = FALSE,
+                              generate = FALSE) {
     view <- .mutation_group_view(columns)
     count <- length(groups$rows)
     row_pieces <- vector("list", count)
@@ -1585,6 +1597,11 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             selected = evaluated
         )
         row_pieces[index] <- list(rows[positions])
+        # A generated column keeps none of its pieces' variable metadata
+        # (ADR 0039), so it comes off each piece here, before the pieces
+        # are gathered, and two groups whose columns carry different value
+        # labels do not raise a conflict over labels the result drops.
+        if (generate && !is.null(piece)) piece <- .generate_value(piece)
         # Single-bracket assignment keeps a `NULL` piece, which a group
         # that selects no rows and evaluates `values` to `NULL` produces.
         value_pieces[index] <- list(piece)
@@ -1921,7 +1938,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     if (!is.null(groups)) {
         gathered <- .grouped_mutation(
             where, values, columns, groups, row_count,
-            selected = selection$group_rows, drop_unselected = !generate
+            selected = selection$group_rows, drop_unselected = !generate,
+            generate = generate
         )
         return(.resolved_assignment(
             gathered$values, .mutation_rows(gathered$rows, row_count), row_count
@@ -1999,7 +2017,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # it; the append and the reference remark run as one uninterruptible step.
 .commit_generated_column <- function(data, target, resolved, row_count) {
     column <- .generated_column(
-        resolved$values, resolved$rows, row_count, generate = TRUE
+        resolved$values, resolved$rows, row_count, generate = TRUE,
+        carry_metadata = FALSE
     )
     .prepare_column_operation(data, length(data) + 1L)
     .append_generated_column(data, target$name, column)
@@ -2204,16 +2223,24 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     )
 }
 
-# `generate` marks `gen()` and a new column through `:=`, the two Stata
-# commands, whose bare double result takes Stata's `generate` default
-# rather than the container mapping; see `.generate_storage()`.
+# `generate` marks `gen()`, `egen()`, and a new column through `:=`, the
+# Stata commands, whose bare double result takes Stata's `generate`
+# default rather than the container mapping; see `.generate_storage()`.
+# `carry_metadata = FALSE` is `generate`'s other half: Stata's `generate`
+# copies values, not labels, so `gen()` and a new `:=` column keep only
+# what types the result (ADR 0039). The value is stripped before anything
+# reads it, so a note, a label, or the haven class cannot change the
+# dispatch or the storage the result takes. `egen()` authors its own
+# labels on the value and carries them; the container mapping carries
+# everything, as R does.
 .generated_column <- function(values, rows, row_count, caller = "gen()",
-                              generate = FALSE) {
+                              generate = FALSE, carry_metadata = TRUE) {
     message <- sprintf(
         "`%s` values must be numeric, logical, character, or a factor",
         caller
     )
     if (!is.null(dim(values))) stop(message, call. = FALSE)
+    if (!carry_metadata) values <- .generate_value(values)
     if (typeof(values) == "character") {
         return(.generated_character(values, rows, row_count))
     }
@@ -2224,11 +2251,65 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         return(.generated_logical(values, rows, row_count))
     }
     if (typeof(values) %in% c("logical", "integer", "double")) {
-        return(.generated_numeric(
-            values, rows, row_count, caller, generate
-        ))
+        return(.generated_numeric(values, rows, row_count, caller, generate))
     }
     stop(message, call. = FALSE)
+}
+
+# The attributes a generated column keeps from its value: the ones that
+# type it. Everything that describes a variable (its label, value labels,
+# display format, notes, and characteristics) is left behind, as Stata's
+# `generate` leaves it; `set_var_label()` and `set_val_labels()` author it
+# on the new variable. The haven class goes with the labels, and the
+# metadata marker with the notes.
+.generate_kept_attributes <- c(
+    "class", "stata.storage", "stata.string.storage", "levels", "tzone",
+    "units"
+)
+
+.generate_attributes <- function(source) {
+    kept <- source[intersect(names(source), .generate_kept_attributes)]
+    if (!is.null(kept$class)) {
+        classes <- kept$class
+        haven <- startsWith(classes, "haven_labelled")
+        if (any(haven)) {
+            # haven's chain is `haven_labelled` or a subclass such as
+            # `haven_labelled_spss`, then `vctrs_vctr`, then the base type.
+            # Without its head the tail is an orphaned vctrs class with no
+            # methods, so a haven value that carries no `dta_*()` class of
+            # its own goes back to a plain vector.
+            classes <- classes[!haven]
+            if (!any(startsWith(classes, "dta_"))) {
+                classes <- setdiff(
+                    classes,
+                    c("vctrs_vctr", "double", "integer", "character", "logical")
+                )
+            }
+        }
+        classes <- setdiff(classes, .dta_metadata_vector_class)
+        kept$class <- if (length(classes)) classes else NULL
+    }
+    kept
+}
+
+# The value with only the attributes a generated column keeps. A value
+# that carries nothing else, the common bare result, is returned as is; a
+# column reference is copied through `.metadata_copy()`, which keeps a
+# compact backing compact, and its attributes are then removed one at a
+# time: replacing them wholesale would wrap the copy in R's own ALTREP
+# wrapper, and the native readers would no longer see the dictionary
+# behind a string column.
+.generate_value <- function(values) {
+    source <- attributes(values)
+    if (is.null(source)) return(values)
+    kept <- .generate_attributes(source)
+    if (identical(kept, source)) return(values)
+    values <- .metadata_copy(values)
+    for (name in setdiff(names(source), names(kept))) {
+        attr(values, name) <- NULL
+    }
+    if (!identical(kept$class, source$class)) class(values) <- kept$class
+    values
 }
 
 # A factor result stays a factor, which `save_dta()` writes as a

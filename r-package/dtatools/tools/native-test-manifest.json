@@ -4804,7 +4804,7 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "7e0746678349a9115c7e19e2cac77a26a7a6d774e245d8c50e96c571c10223fa"
+          "sha256": "eabce2ab0f4cfec7a54850a1e688bf38aad592f253c285e36ed1c5abfdf60fc6"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
@@ -5246,14 +5246,6 @@
         },
         {
           "file": "test-mutate-data.R",
-          "test": "gen preserves metadata on otherwise supported numeric classes",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 8,
-          "warnings": 0
-        },
-        {
-          "file": "test-mutate-data.R",
           "test": "gen handles zero rows and evaluates before insertion",
           "occurrence": 1,
           "skip": "forbid",
@@ -5469,14 +5461,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
-          "warnings": 0
-        },
-        {
-          "file": "test-mutate-data.R",
-          "test": "grouped gen keeps value attributes and string storage",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 3,
           "warnings": 0
         },
         {
@@ -5830,6 +5814,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "gen keeps what types a value and leaves variable metadata behind",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "gen and a new := column copy a column's values, not its metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 37,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "grouped gen keeps string storage and drops value attributes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "grouped gen drops each group's metadata before gathering",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
           "warnings": 0
         },
         {
@@ -6413,7 +6429,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "2dff5564925fd8f800da349b13d984024fb904ca8c9a7a6dec04a3de8139c9f3"
+          "sha256": "5e377ae34a910689bfc3fd69079eefa8810297294231726753acf231a2f31b0e"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
@@ -7365,14 +7381,6 @@
         },
         {
           "file": "test-dibble.R",
-          "test": "grouped gen() keeps a factor's attributes",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 3,
-          "warnings": 0
-        },
-        {
-          "file": "test-dibble.R",
           "test": "ordinary replacement stays local while explicit metadata reaches callers",
           "occurrence": 1,
           "skip": "forbid",
@@ -7482,6 +7490,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble.R",
+          "test": "grouped gen() keeps a factor's levels, not its label",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
         },
         {
           "file": "test-dplyr-optional.R",

@@ -1,5 +1,16 @@
 # dtatools (development version)
 
+* Breaking: `gen()` and a new column through `:=` now copy a value's
+  values and typing only, as Stata's `generate` does. The new column keeps
+  its storage, string storage, and date or datetime class, and drops the
+  variable label, value labels, display format, notes, and characteristics
+  of whatever vector produced it, whether a bare column reference,
+  `gen(data, y = x)`, or a `haven_labelled` value. Author labels on the new
+  variable with `set_var_label()` and `set_val_labels()`. `dplyr::mutate()`,
+  the replacement operators, `repl()`, `:=` on an existing column, and
+  `egen()`'s own labels are unchanged. Previously the metadata came along
+  whenever the expression happened to return the column object itself and
+  was dropped by any arithmetic. See ADR 0039.
 * Three registered native entry points that nothing called are removed:
   `C_dtatools_arrow_datasig`, `C_dtatools_patch_data_column` and
   `C_dtatools_replace_table_columns`. ADR 0038 records why the rest of the

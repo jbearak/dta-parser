@@ -57,10 +57,12 @@ variables. Each right-hand side of \verb{:=} is \code{values}, evaluated in the
 same data mask. Unlike \code{gen()}, which refuses an existing name, and
 \code{replace_values()}, which refuses a new one, \verb{:=} creates a column that
 is absent and overwrites one that exists, as a user of the data.table
-shape expects; a new column takes \code{gen()}'s storage rules, including
-Stata's \code{generate} default of \code{float} for a bare double, and an existing
-one is promoted from its storage as \code{\link[dplyr:mutate]{dplyr::mutate()}} does, so a
-declared \verb{dta_*()} target widens only when the values do not fit.
+shape expects; a new column takes \code{gen()}'s rules, including Stata's
+\code{generate} default of \code{float} for a bare double and \code{generate}'s habit
+of copying values but not labels, so \code{data[, y := x]} has no variable
+label or value labels; an existing one keeps its metadata and is
+promoted from its storage as \code{\link[dplyr:mutate]{dplyr::mutate()}} does, so a declared
+\verb{dta_*()} target widens only when the values do not fit.
 \code{data[i, y := 1]} is otherwise \code{repl(data, y = 1, where = i)} or
 \code{gen(data, y = 1, where = i)}.
 

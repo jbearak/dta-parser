@@ -244,7 +244,7 @@ test_that("full-dataset values are gathered by selected row", {
     string_values <- structure(letters[1:5], label = "letters")
     gen(strings, y, string_values, where = dta_long(c(3, 1)))
     expect_identical(as.character(strings$y), c("a", "", "c", "", ""))
-    expect_identical(attr(strings$y, "label"), "letters")
+    expect_null(attr(strings$y, "label"))
     expect_identical(attr(strings$y, "stata.string.storage"), "str1")
 })
 
@@ -995,9 +995,10 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     attr(labelled, "labels") <- c(One = 1)
     attr(labelled, "format.stata") <- "%8.0g"
     gen(data, labelled, labelled)
-    expect_identical(attr(data$labelled, "label"), "Generated label")
-    expect_identical(attr(data$labelled, "labels"), c(One = 1))
-    expect_identical(attr(data$labelled, "format.stata"), "%8.0g")
+    expect_identical(dta_storage_type(data$labelled), "byte")
+    expect_null(attr(data$labelled, "label"))
+    expect_null(attr(data$labelled, "labels"))
+    expect_null(attr(data$labelled, "format.stata"))
 
     authored <- set_var_labels(
         set_val_labels(c(1, 2, 3), One = 1),
@@ -1006,10 +1007,10 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     attr(authored, "format.stata") <- "%9.0g"
     gen(data, authored, authored)
     expect_identical(as.double(data$authored), c(1, 2, 3))
-    expect_identical(var_label(data$authored), "Authored label")
-    expect_identical(val_labels(data$authored), c(One = 1))
-    expect_identical(attr(data$authored, "format.stata"), "%9.0g")
-    expect_s3_class(data$authored, "haven_labelled")
+    expect_null(var_label(data$authored))
+    expect_null(val_labels(data$authored))
+    expect_null(attr(data$authored, "format.stata"))
+    expect_false(inherits(data$authored, "haven_labelled"))
 
     attributed <- structure(
         c(4, 5, 6),
@@ -1018,9 +1019,9 @@ test_that("gen appends one variable with Stata missing and storage rules", {
         format.stata = "%8.0g"
     )
     gen(data, attributed, attributed)
-    expect_identical(var_label(data$attributed), "Attributed label")
-    expect_identical(val_labels(data$attributed), c(Four = 4))
-    expect_identical(attr(data$attributed, "format.stata"), "%8.0g")
+    expect_null(var_label(data$attributed))
+    expect_null(val_labels(data$attributed))
+    expect_null(attr(data$attributed, "format.stata"))
 
     gen(data, string, c("a", "long", "z"), where = eligible)
     expect_identical(as.vector(data$string), c("a", "", "z"))
@@ -1034,7 +1035,7 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     )
     gen(strings, y, authored_string, where = dta_long(c(3, 1, 3)))
     expect_identical(as.character(strings$y), c("one", "", "three"))
-    expect_identical(attr(strings$y, "label"), "Authored string")
+    expect_null(attr(strings$y, "label"))
     expect_identical(attr(strings$y, "stata.string.storage"), "str5")
 
     full_strings <- dibble(x = 1:3)
@@ -1065,7 +1066,8 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(attr(data$long_string, "stata.string.storage"), "strL")
 })
 
-test_that("gen preserves metadata on otherwise supported numeric classes", {
+test_that("gen keeps what types a value and leaves variable metadata behind", {
+    # Stata's `generate` copies values, not labels (ADR 0039).
     sources <- list(
         numeric = c(1, 2, 3),
         date = as.Date("2020-01-01") + 0:2,
@@ -1078,19 +1080,162 @@ test_that("gen preserves metadata on otherwise supported numeric classes", {
 
         gen(data, copied, .env$source)
 
-        expect_identical(
-            dta_notes(data$copied), c(`3` = "source note"), info = kind
-        )
-        expect_identical(
-            dta_characteristics(data$copied), c(source = kind), info = kind
+        expect_length(dta_notes(data$copied), 0L)
+        expect_length(dta_characteristics(data$copied), 0L)
+        expect_false(
+            inherits(data$copied, dtatools:::.dta_metadata_vector_class),
+            info = kind
         )
         if (identical(kind, "date")) {
             expect_s3_class(data$copied, "dta_date")
         }
         if (identical(kind, "labelled")) {
-            expect_identical(val_labels(data$copied), c(One = 1, Two = 2))
+            expect_null(val_labels(data$copied))
+            expect_false(inherits(data$copied, "haven_labelled"))
         }
     }
+})
+
+test_that("gen and a new := column copy a column's values, not its metadata", {
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    source <- dta_byte(c(1, 2, 3))
+    source <- set_var_label(source, "Original")
+    source <- set_val_labels(source, one = 1, two = 2)
+    attr(source, "format.stata") <- "%3.0f"
+    source <- set_dta_note(source, 1L, "about x")
+    source <- set_dta_characteristic(source, "origin", "survey")
+    save_dta(data.frame(x = source, s = c("a", "bb", "c")), path)
+    data <- as_dibble(read_dta(path))
+    set_var_label(data, s, "Text")
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
+
+    gen(data, y = x)
+    expect_identical(dta_storage_type(data$y), "byte")
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$y))
+    expect_identical(as.double(data$y), c(1, 2, 3))
+    expect_null(var_label(data$y))
+    expect_null(val_labels(data$y))
+    expect_null(attr(data$y, "format.stata"))
+    expect_length(dta_notes(data$y), 0L)
+    expect_length(dta_characteristics(data$y), 0L)
+    expect_identical(
+        class(data$y), c("dta_numeric", "dta_byte", "vctrs_vctr", "double")
+    )
+    # The source is untouched.
+    expect_identical(var_label(data$x), "Original")
+    expect_identical(val_labels(data$x), c(one = 1, two = 2))
+
+    gen(data, t = s)
+    expect_identical(attr(data$t, "stata.string.storage"), "str2")
+    expect_null(var_label(data$t))
+
+    data[, z := x]
+    expect_identical(dta_storage_type(data$z), "byte")
+    expect_null(var_label(data$z))
+    expect_null(val_labels(data$z))
+
+    # An existing column keeps its own metadata through `:=` and `repl()`.
+    data[, x := 9]
+    expect_identical(var_label(data$x), "Original")
+    repl(data, y, x)
+    expect_null(var_label(data$y))
+
+    # `$<-` and `mutate()` are the R operations and copy the vector,
+    # attributes and all.
+    copied <- data
+    copied$w <- copied$x
+    expect_identical(var_label(copied$w), "Original")
+    expect_identical(val_labels(copied$w), c(one = 1, two = 2))
+    if (requireNamespace("dplyr", quietly = TRUE)) {
+        mutated <- dplyr::mutate(data, w = x)
+        expect_identical(var_label(mutated$w), "Original")
+        expect_identical(val_labels(mutated$w), c(one = 1, two = 2))
+    }
+
+    # Authored metadata goes through the setters, as `label variable` does.
+    set_var_label(data, y, "Copy of x")
+    expect_identical(var_label(data$y), "Copy of x")
+
+    # Storage, string storage, and calendar classes are what gen keeps.
+    gen(data, day = as.Date("2020-01-01"))
+    expect_s3_class(data$day, "dta_date")
+    gen(data, dt = as.POSIXct("2020-01-01", tz = "UTC"))
+    expect_s3_class(data$dt, "dta_datetime")
+    expect_identical(attr(data$dt, "tzone"), "UTC")
+    gen(data, f = structure(factor(c("u", "v", "u")), label = "Level"))
+    expect_identical(levels(data$f), c("u", "v"))
+    expect_null(attr(data$f, "label"))
+    gen(data, l = structure(c(TRUE, NA, FALSE), label = "Flag"))
+    expect_type(data$l, "logical")
+    expect_null(attr(data$l, "label"))
+    gen(data, w20 = dta_string(as.character(s), "str20"))
+    expect_identical(attr(data$w20, "stata.string.storage"), "str20")
+
+    # A haven-labelled character value arrives as a plain string column,
+    # not an orphaned `vctrs_vctr`.
+    haven_chr <- structure(
+        c("a", "b", "a"), labels = c(A = "a"),
+        class = c("haven_labelled", "vctrs_vctr", "character")
+    )
+    gen(data, hs = haven_chr)
+    expect_null(attr(data$hs, "class"))
+    expect_null(attr(data$hs, "labels"))
+    expect_identical(attr(data$hs, "stata.string.storage"), "str1")
+    expect_identical(data$hs == "a", c(TRUE, FALSE, TRUE))
+    haven_int <- structure(
+        c(1L, 2L, 1L), labels = c(One = 1L),
+        class = c("haven_labelled", "vctrs_vctr", "integer")
+    )
+    gen(data, hn = haven_int)
+    haven_spss <- structure(
+        c("a", "b", "a"), labels = c(A = "a"), na_values = "b",
+        class = c("haven_labelled_spss", "haven_labelled", "vctrs_vctr", "character")
+    )
+    gen(data, hspss = haven_spss)
+    expect_null(attr(data$hspss, "class"))
+    expect_null(attr(data$hspss, "na_values"))
+    expect_identical(attr(data$hspss, "stata.string.storage"), "str1")
+    expect_identical(dta_storage_type(data$hn), "long")
+    expect_false(inherits(data$hn, "haven_labelled"))
+    expect_null(val_labels(data$hn))
+
+    # Metadata cannot change the typing a bare value would get: a noted
+    # double takes the `generate` default, and a noted logical stays logical.
+    noted_double <- set_dta_note(c(1, 2, 3), 1L, "n")
+    gen(data, nd = .env$noted_double)
+    expect_identical(dta_storage_type(data$nd), "float")
+    noted_logical <- set_dta_note(c(TRUE, FALSE, NA), 1L, "n")
+    gen(data, nl = .env$noted_logical)
+    expect_type(data$nl, "logical")
+    expect_null(attr(data$nl, "class"))
+    expect_length(dta_notes(data$nl), 0L)
+    labelled_int <- set_var_label(c(1L, 2L, 3L), "Int")
+    gen(data, li = .env$labelled_int)
+    expect_identical(dta_storage_type(data$li), "long")
+    expect_null(var_label(data$li))
+})
+
+test_that("grouped gen drops each group's metadata before gathering", {
+    data <- dibble(
+        g = c(1, 1, 2, 2),
+        a = set_val_labels(c(1, 2, 1, 2), One = 1),
+        b = set_val_labels(c(1, 4, 1, 4), Uno = 1)
+    )
+    expect_no_warning(
+        gen(data, y = if (.data$g[1] == 1) .data$a else .data$b, by = g)
+    )
+    expect_identical(as.double(data$y), c(1, 2, 1, 4))
+    expect_null(val_labels(data$y))
+    expect_no_warning(
+        data[, z := if (.data$g[1] == 1) .data$a else .data$b, by = g]
+    )
+    expect_null(val_labels(data$z))
+    # Replacing an existing column still reconciles the pieces' labels.
+    expect_warning(
+        repl(data, y, if (.data$g[1] == 1) .data$a else .data$b, by = g),
+        "conflicting value labels"
+    )
 })
 
 test_that("gen handles zero rows and evaluates before insertion", {
@@ -2273,10 +2418,11 @@ test_that("the shadow check still fires inside grouped expressions", {
     expect_identical(as.double(data$z), c(NA, 4, 6))
 })
 
-test_that("grouped gen keeps value attributes and string storage", {
+test_that("grouped gen keeps string storage and drops value attributes", {
     data <- dibble(id = c(1, 2, 1), x = c(1, 2, 3))
     gen(data, labelled = structure(x, label = "L"), by = id)
-    expect_identical(attr(data$labelled, "label"), "L")
+    expect_null(attr(data$labelled, "label"))
+    expect_identical(as.double(data$labelled), c(1, 2, 3))
 
     gen(data, text = paste0("g", id, .n), by = id)
     expect_identical(as.character(data$text), c("g11", "g21", "g12"))
