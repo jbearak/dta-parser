@@ -31,8 +31,9 @@
 }
 
 # One of `.write_column_kinds`, or `NA` for a column no writer exports: a
-# matrix, a list, a complex vector, or a classed vector whose class set is
-# not one dtatools or haven produces for that kind. A generic `vctrs_vctr`
+# matrix, a list, a complex vector, a calendar class on a payload that is
+# not numeric, or a classed vector whose class set is not one dtatools or
+# haven produces for that kind. A generic `vctrs_vctr`
 # is such a vector: only a haven-labelled or Stata-typed numeric carries
 # that class with a meaning the writers know, and haven labels only
 # integers and doubles.
@@ -55,7 +56,8 @@
         }
         return(NA_character_)
     }
-    if (typeof(column) %in% c("logical", "integer", "double") &&
+    numeric_payload <- typeof(column) %in% c("logical", "integer", "double")
+    if (numeric_payload &&
         !is.null(attr(column, "stata.storage", exact = TRUE))) {
         allowed <- if (is.null(.write_temporal_kind(column))) {
             .write_numeric_classes()
@@ -69,13 +71,13 @@
         return(NA_character_)
     }
     if (inherits(column, "Date")) {
-        if (admits(c(
+        if (numeric_payload && admits(c(
             .dta_metadata_vector_class, "dta_temporal", "dta_date", "Date"
         ))) return("date")
         return(NA_character_)
     }
     if (inherits(column, "POSIXct")) {
-        if (admits(c(
+        if (numeric_payload && admits(c(
             .dta_metadata_vector_class, "dta_temporal", "dta_datetime",
             "POSIXct", "POSIXt"
         ))) return("datetime")
@@ -98,8 +100,7 @@
         if (admits(.dta_metadata_vector_class)) return("raw")
         return(NA_character_)
     }
-    if (typeof(column) %in% c("logical", "integer", "double") &&
-        known_numeric()) {
+    if (numeric_payload && known_numeric()) {
         return(typeof(column))
     }
     NA_character_

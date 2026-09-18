@@ -141,16 +141,31 @@ test_that("a declared integer with haven classes exports through Arrow", {
     expect_identical(datasig(data), datasig(actual))
 })
 
-test_that("a temporal class on a non-numeric payload is a validation error", {
-    path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
-    expect_error(
-        save_dta(one_column(structure(as.raw(1:2), class = "Date")), path),
-        "Column `v` has unsupported type or class: Date",
-        fixed = TRUE,
-        class = "dtatools_write_validation_error"
-    )
-    expect_false(file.exists(path))
+test_that("a calendar class on a non-numeric payload is unsupported everywhere", {
+    dta_path <- tempfile(fileext = ".dta")
+    arrow_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(c(dta_path, arrow_path)), add = TRUE)
+    for (value in list(
+        structure(as.raw(1:2), class = "Date"),
+        structure(as.raw(1:2), class = "Date", stata.storage = "long"),
+        structure(c("a", "b"), class = c("POSIXct", "POSIXt"))
+    )) {
+        expect_identical(kind_of(value), NA_character_)
+        expect_error(
+            save_dta(one_column(value), dta_path),
+            "Unsupported columns: `v` (",
+            fixed = TRUE,
+            class = "dtatools_write_validation_error"
+        )
+        expect_error(
+            save_arrow(one_column(value), arrow_path),
+            "Unsupported columns: `v` (",
+            fixed = TRUE,
+            class = "dtatools_write_validation_error"
+        )
+    }
+    expect_false(file.exists(dta_path))
+    expect_false(file.exists(arrow_path))
 })
 
 test_that("a table datasig signs is a table save_dta saves", {

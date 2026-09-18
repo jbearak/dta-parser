@@ -157,6 +157,10 @@
           "sha256": "80c871526c93e0f0d7c55fbb1cbd10c5ee2013b27a25b95f446d96c5dd8fda66"
         },
         {
+          "path": "tests/testthat/test-write-column.R",
+          "sha256": "8a3e89b633a9eda70dd4f19c7dce9f731fb5c09903ddbf87f375b0984a9c06d3"
+        },
+        {
           "path": "tests/testthat/test-input-sources.R",
           "sha256": "d2865970e79bc3c798a99a978f73dfec87769ee76569ddcdb688ced9de18850a"
         },
@@ -1341,6 +1345,94 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 96,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "the ladder names every kind both writers know",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "a Stata declaration classifies before the R type",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "columns no writer exports are NA",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "save_dta refuses only the kinds a DTA file cannot hold",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "both writers export a Stata declaration on any numeric R type",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "a declared integer with haven classes exports through Arrow",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "a calendar class on a non-numeric payload is unsupported everywhere",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "a table datasig signs is a table save_dta saves",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "both writers name a malformed Stata declaration",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "the shared string declaration reports storage and width",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "the shared default format follows storage and calendar",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
           "warnings": 0
         }
       ],
