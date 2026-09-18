@@ -217,9 +217,7 @@ is_dibble <- function(x) {
     column_names <- names(x)
     for (index in seq_along(column_names)) {
         column <- .subset2(x, index)
-        typed <- .typed_column_named(
-            column, row_count, "as_dibble()", column_names[[index]]
-        )
+        typed <- .typed_column(column, row_count, "as_dibble()")
         if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
             captured <- .Call(C_dtatools_capture_column, typed)
             .Call(C_dtatools_set_data_column, x, as.integer(index), captured)

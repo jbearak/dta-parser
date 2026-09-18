@@ -63,10 +63,11 @@
                             if (!nzchar(original_name)) {
                                 value <- .metadata_copy(value)
                                 for (target in names(value)) value[[target]] <-
-                                    .typed_mask_value(value[[target]], prior(target), caller)
+                                    .retyped_column(value[[target]], prior(target),
+                                        length(value[[target]]), caller)
                             }
                             value
-                        } else .typed_mask_value(value, prior(name), caller)
+                        } else .retyped_column(value, prior(name), length(value), caller)
                     })
                     if (!is.null(value) && !vctrs::obj_is_vector(value)) {
                         rlang::abort(paste0("`", name, "` must be a vector."))

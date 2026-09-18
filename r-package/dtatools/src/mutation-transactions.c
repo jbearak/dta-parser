@@ -2076,6 +2076,36 @@ static size_t generated_string_width(SEXP value) {
     return reference_string_width(value, "generated");
 }
 
+/* Whether every element of a character vector is a non-missing string of
+   at most `width` UTF-8 bytes, in one pass that allocates nothing that
+   outlives it: the R-level check builds an n-element width vector. A
+   `width` of Inf is strL. A `bytes`-encoded element counts its raw
+   length when `allow_bytes` is true, as nchar(type = "bytes") does, and
+   fails the check otherwise, for a caller about to hand the vector to a
+   kernel that must translate it. NULL for a non-character value. */
+SEXP C_dtatools_string_fits(SEXP value, SEXP width, SEXP allow_bytes) {
+    if (TYPEOF(value) != STRSXP) return R_NilValue;
+    double limit = Rf_asReal(width);
+    int bytes_ok = Rf_asLogical(allow_bytes) == TRUE;
+    R_xlen_t n = XLENGTH(value);
+    for (R_xlen_t i = 0; i < n; i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        SEXP item = STRING_ELT(value, i);
+        if (item == NA_STRING) return Rf_ScalarLogical(0);
+        size_t w;
+        if (Rf_getCharCE(item) == CE_BYTES) {
+            if (!bytes_ok) return Rf_ScalarLogical(0);
+            w = (size_t) LENGTH(item);
+        } else {
+            const void *marker = vmaxget();
+            w = strlen(Rf_translateCharUTF8(item));
+            vmaxset(marker);
+        }
+        if ((double) w > limit) return Rf_ScalarLogical(0);
+    }
+    return Rf_ScalarLogical(1);
+}
+
 SEXP C_dtatools_generate_character(
     SEXP values, SEXP rows, SEXP row_count_value,
     SEXP declared, SEXP attributes

@@ -282,12 +282,13 @@
                     if (!item$named && is.data.frame(value)) {
                         for (position in seq_along(value)) {
                             target <- names(value)[[position]]
-                            pending[target] <- list(.metadata_copy(.typed_mask_value(
-                                value[[position]], prior[[target]], caller)))
+                            pending[target] <- list(.metadata_copy(.retyped_column(
+                                value[[position]], prior[[target]],
+                                length(value[[position]]), caller)))
                         }
                     } else {
                         pending[name] <- list(.metadata_copy(if (is.data.frame(value)) value else
-                            .typed_mask_value(value, prior[[name]], caller)))
+                            .retyped_column(value, prior[[name]], length(value), caller)))
                     }
                 }
                 for (name in names(pending)) {

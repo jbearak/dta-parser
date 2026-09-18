@@ -71,6 +71,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_capture_column", (DL_FUNC) &C_dtatools_capture_column, 1},
     {"C_dtatools_owned_string_fits", (DL_FUNC) &C_dtatools_owned_string_fits, 2},
     {"C_dtatools_owned_string_width", (DL_FUNC) &C_dtatools_owned_string_width, 1},
+    {"C_dtatools_string_fits", (DL_FUNC) &C_dtatools_string_fits, 3},
     {"C_dtatools_owned_string_attribute", (DL_FUNC) &C_dtatools_owned_string_attribute, 3},
     {"C_dtatools_capture_string", (DL_FUNC) &C_dtatools_capture_string, 1},
     {"C_dtatools_construct_string", (DL_FUNC) &C_dtatools_construct_string, 2},
