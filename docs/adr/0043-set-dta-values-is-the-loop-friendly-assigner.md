@@ -60,10 +60,14 @@ value is cast to the target's storage against a private view of the
 column, so that by the time the target is resolved for the write
 nothing that remains to run can call back into R: the final resolution
 is an attribute read, a name match, and an address comparison. A reorder during evaluation is
-honoured, because the target is found again by name. Adding or removing
-the target, changing the row count, or replacing the column object
-during evaluation is refused with nothing written, rather than guessed
-at.
+honoured, because the target is found again by name, and so is an
+argument that replaces the column object while it is evaluated, such as
+one that promotes the target's storage: the write lands in the column
+the table holds once every argument has run. What is refused, with
+nothing written, is a change the settled arguments can no longer be
+trusted against: the target added or removed, the row count changed, or
+the column object replaced after the value was cast against it, which a
+method on the value's class can do.
 
 ## One storage rule
 

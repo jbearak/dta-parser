@@ -17,4 +17,4 @@ dput(list(source_sha = args[[2L]], provenance = provenance,
     package_path = package_path, dll = dll, dll_md5 = tools::md5sum(dll),
     runtime = R.version, libraries = .libPaths()),
     file.path(args[[4L]], "preflight-identity.R"))
-cat("PASS exact installed source, namespace, DLL and 108 exports\n")
+cat("PASS exact installed source, namespace, DLL and 109 exports\n")

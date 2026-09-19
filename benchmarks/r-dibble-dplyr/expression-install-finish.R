@@ -25,7 +25,7 @@ if (!inherits(value, "dibble") || !identical(as.double(value$x), c(1, 2))) stop(
 validate_benchmark_install(library_path, source_sha)
 dll <- getLoadedDLLs()[["dtatools"]][["path"]]
 if (!startsWith(normalizePath(dll), paste0(normalizePath(package_path), "/"))) stop("Loaded DLL is outside candidate")
-cat("PASS fresh candidate", source_sha, "package tree", source_tree, "exports 108\n")
+cat("PASS fresh candidate", source_sha, "package tree", source_tree, "exports 109\n")
 cat("DLL", dll, "MD5", unname(tools::md5sum(dll)), "\n")
 dput(list(R = R.version, libraries = .libPaths(), package_path = package_path,
           exports = length(getNamespaceExports(namespace)), provenance = provenance,
