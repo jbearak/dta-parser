@@ -179,7 +179,7 @@ captured_dots = true
 # explicit `data` argument, and the literal controls after the dots, are not.
 [[function]]
 name = "tab"
-formals = ["x", "...", "data", "missing", "display"]
+formals = ["x", "...", "data", "missing", "display", "sort", "percent", "expected", "freq"]
 captured = ["x"]
 captured_dots = true
 

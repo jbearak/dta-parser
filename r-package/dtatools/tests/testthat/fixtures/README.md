@@ -28,3 +28,12 @@ The committed registry has 133 cases. It was generated with R 4.6.1, dplyr 1.2.1
 | Helper | `f5df3c768932a1f55cdf8aa42c908a0d982773bc5209a84c8f3c2af394fc7a36` |
 | Repository auto fixture | `cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c` |
 | Registry | `dc503758cc22ce467b0693a607cd435e98c79643037f507c735c7f9214a97121` |
+
+# Stata tabulate fixtures
+
+`tabulate.do` is the Stata side of the `tab()` parity check and
+`tabulate.log` is its output under Stata 19 MP. `test-tab-stata-parity.R`
+replays the do-file's `tabulate` commands in R, in order, and compares the
+printed lines with the log. The log is regenerated with Stata, never
+edited: `stata -q -b do tabulate.do` in this directory. See
+[docs/r-tab-stata-parity.md](../../../../../docs/r-tab-stata-parity.md).

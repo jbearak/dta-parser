@@ -1,24 +1,25 @@
-test_that("tab is exported and returns ordinary table objects", {
+test_that("tab is exported and wraps ordinary table objects", {
     expect_true("tab" %in% getNamespaceExports("dtatools"))
     expect_identical(
         names(formals(tab)),
-        c("x", "...", "data", "missing", "display")
+        c("x", "...", "data", "missing", "display", "sort", "percent",
+          "expected", "freq")
     )
 
     x <- c(2, 1, 2, 3)
     y <- c("b", "a", "a", "b")
-    expect_identical(tab(x), table(x))
-    expect_identical(tab(x, y), table(x, y))
+    expect_identical(as.table(tab(x)), table(x))
+    expect_identical(as.table(tab(x, y)), table(x, y))
     expect_s3_class(tab(x), "table")
 
     list_x <- list(first = x, second = y)
-    expect_identical(tab(list_x), table(list_x))
-    expect_identical(tab(list(x, y)), table(list(x, y)))
+    expect_identical(as.table(tab(list_x)), table(list_x))
+    expect_identical(as.table(tab(list(x, y))), table(list(x, y)))
 
     factor_x <- factor(c("b", "a", "b"), levels = c("b", "a", "unused"))
-    expect_identical(tab(factor_x), table(factor_x))
+    expect_identical(as.table(tab(factor_x)), table(factor_x))
     expect_identical(
-        tab(factor_x, missing = TRUE),
+        as.table(tab(factor_x, missing = TRUE)),
         table(factor_x, useNA = "ifany")
     )
     xtab <- stats::xtabs(~ x + y)
@@ -39,23 +40,23 @@ test_that("tab is exported and returns ordinary table objects", {
     )
     expected <- table(data)
 
-    expect_identical(tab(data), expected)
-    expect_identical(tab(data = data), expected)
-    expect_identical(tab(status, region, data = data), expected)
-    expect_identical(data |> tab(status, region), expected)
+    expect_identical(as.table(tab(data)), expected)
+    expect_identical(as.table(tab(data = data)), expected)
+    expect_identical(as.table(tab(status, region, data = data)), expected)
+    expect_identical(as.table(data |> tab(status, region)), expected)
     if (include_dplyr) {
         expect_identical(
-            data |> dplyr::select(status, region) |> tab(),
+            as.table(data |> dplyr::select(status, region) |> tab()),
             expected
         )
         expect_identical(
-            dplyr::`%>%`(data, tab(status, region)),
+            as.table(dplyr::`%>%`(data, tab(status, region))),
             expected
         )
 
     }
-    expect_identical(tab(first = data$status), table(first = data$status))
-    expect_identical(data$status |> tab(), table(data$status))
+    expect_identical(as.table(tab(first = data$status)), table(first = data$status))
+    expect_identical(as.table(data$status |> tab()), table(data$status))
 
     missing_column <- data$status
     expect_error(tab(missing_column, data = data), "unknown column")
@@ -171,7 +172,10 @@ test_that("cross-tabs handle labelled and ordinary vectors in either order", {
     reverse <- tab(ordinary, labelled, missing = TRUE)
     expect_identical(dimnames(forward)[[1L]], c("Yes", "No", ".a"))
     expect_identical(dimnames(forward)[[2L]], c("a", "b"))
-    expect_identical(unname(forward), aperm(unname(reverse), c(2L, 1L)))
+    expect_identical(
+        unname(as.table(forward)),
+        aperm(unname(as.table(reverse)), c(2L, 1L))
+    )
 })
 
 test_that("tab preserves source values and metadata", {
