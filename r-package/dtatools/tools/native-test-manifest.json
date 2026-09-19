@@ -4879,7 +4879,7 @@
         },
         {
           "path": "tests/testthat/test-set-dta-values.R",
-          "sha256": "a14caf3433155d1355e60b9e1c2bf5b73e94d7abb4c1669d1080edca892cc295"
+          "sha256": "61a8cf191604054bc4479e2b1685414211e6821671ee1cd714dd31ae281424bf"
         }
       ],
       "blocks": [
@@ -6530,6 +6530,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values settles a value that runs code when it is read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 22,
+          "warnings": 0
         }
       ],
       "children": [

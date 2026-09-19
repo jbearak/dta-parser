@@ -118,6 +118,77 @@ test_that("set_dta_values evaluates its arguments before reading the table", {
     expect_identical(touched, 0L)
 })
 
+test_that("set_dta_values settles a value that runs code when it is read", {
+    ns <- asNamespace("dtatools")
+    # A foreign ALTREP value whose element read reorders the table: the
+    # value is copied before the layout is read, so the write lands in the
+    # named column at its new position and the other column is untouched.
+    data <- dibble(x = c(1, 2), y = c(3, 4))
+    moving <- .Call(ns$C_dtatools_callback_double, c(9, 9),
+                    function() order_vars(data, y, x), 1L)
+    set_dta_values(data, "x", moving)
+    expect_identical(names(data), c("y", "x"))
+    expect_identical(as.double(data$x), c(9, 9))
+    expect_identical(as.double(data$y), c(3, 4))
+    # The same through `rows`.
+    moving_rows <- .Call(ns$C_dtatools_callback_integer, 2L,
+                         function() order_vars(data, x, y))
+    set_dta_values(data, "y", 0, rows = moving_rows)
+    expect_identical(names(data), c("x", "y"))
+    expect_identical(as.double(data$y), c(3, 0))
+    # A callback that adds the column being created, or removes the column
+    # being written, is refused with nothing written and no duplicate name.
+    adding <- .Call(ns$C_dtatools_callback_double, 1,
+                    function() gen(data, w = 5), 1L)
+    expect_error(set_dta_values(data, "w", adding, create = TRUE), "changed")
+    expect_identical(names(data), c("x", "y", "w"))
+    expect_identical(as.double(data$w), c(5, 5))
+    removing <- .Call(ns$C_dtatools_callback_double, 1,
+                      function() rename_vars(data, z = w), 1L)
+    expect_error(set_dta_values(data, "w", removing, create = TRUE), "changed")
+    expect_identical(names(data), c("x", "y", "z"))
+    expect_identical(as.double(data$z), c(5, 5))
+    # A callback that writes the same column first is sequenced before this
+    # write, which then lands on top of it.
+    writing <- .Call(ns$C_dtatools_callback_double, 1,
+                     function() repl(data, z := 7), 1L)
+    set_dta_values(data, "z", writing, rows = 1)
+    expect_identical(as.double(data$z), c(1, 7))
+    # A foreign value is settled before the target is resolved, so one
+    # that replaces the column object, here by promoting its storage, is
+    # sequenced before the write, which lands in the promoted column.
+    set_dta_values(data, "n", 1L, create = TRUE)
+    expect_identical(dta_storage_type(data$n), "long")
+    promoting <- .Call(ns$C_dtatools_callback_double, 2,
+                       function() repl(data, n := 1.5), 1L)
+    expect_message(set_dta_values(data, "n", promoting), "long now double")
+    expect_identical(dta_storage_type(data$n), "double")
+    expect_identical(as.double(data$n), c(2, 2))
+    # A vector with methods runs them during the cast, after the target was
+    # resolved. One that replaces the column object then is refused: the
+    # cast was made against a column the slot no longer holds.
+    set_dta_values(data, "m", 1L, create = TRUE)
+    late_promotion <- structure(3L, class = "promoting_value")
+    registerS3method("vec_proxy", "promoting_value", function(x, ...) unclass(x),
+                     envir = asNamespace("vctrs"))
+    registerS3method("vec_cast", "dta_numeric.promoting_value",
+                     function(x, to, ...) { repl(data, m := 1.5); vctrs::vec_cast(unclass(x), to) },
+                     envir = asNamespace("vctrs"))
+    expect_message(
+        expect_error(set_dta_values(data, "m", late_promotion), "changed"),
+        "long now double"
+    )
+    expect_identical(dta_storage_type(data$m), "double")
+    expect_identical(as.double(data$m), c(1.5, 1.5))
+    # The value is read once in R and never by the native patch.
+    reads <- 0L
+    counted <- .Call(ns$C_dtatools_callback_double, c(4, 4),
+                     function() reads <<- reads + 1L, 1L)
+    set_dta_values(data, "x", counted)
+    expect_identical(reads, 1L)
+    expect_identical(as.double(data$x), c(4, 4))
+})
+
 test_that("set_dta_values creates a missing column only when asked", {
     data <- dibble(id = 1:3)
     result <- set_dta_values(data, "flag", TRUE, rows = c(1, 3), create = TRUE)

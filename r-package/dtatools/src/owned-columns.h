@@ -246,6 +246,58 @@ SEXP C_dtatools_capture_column(SEXP value) {
     return result;
 }
 
+/* An ALTREP object of a class this package did not define runs its own code
+   on every element read, and that code may edit the table a write is about
+   to commit into. Settling copies such a value into an ordinary vector once,
+   before the write reads the table's layout; the package's own classes read
+   their payload without callbacks and are returned unchanged, as is any
+   ordinary vector. Elements are read one at a time because a foreign class
+   need not provide a data pointer. */
+static int foreign_altrep(SEXP value) {
+    return ALTREP(value) && !owned_column(value) &&
+        !R_altrep_inherits(value, dtatools_numeric_class) &&
+        !R_altrep_inherits(value, dtatools_dictstring_class) &&
+        !R_altrep_inherits(value, dtatools_metadata_real_class) &&
+        !R_altrep_inherits(value, dtatools_metadata_string_class) &&
+        !R_altrep_inherits(value, dtatools_ephemeral_string_class) &&
+        !R_altrep_inherits(value, dtatools_mutation_string_class);
+}
+
+SEXP C_dtatools_settle_foreign_altrep(SEXP value) {
+    if (!foreign_altrep(value)) return value;
+    R_xlen_t length = XLENGTH(value);
+    SEXP result;
+    switch (TYPEOF(value)) {
+    case LGLSXP:
+        result = PROTECT(Rf_allocVector(LGLSXP, length));
+        for (R_xlen_t i = 0; i < length; i++) LOGICAL(result)[i] = LOGICAL_ELT(value, i);
+        break;
+    case INTSXP:
+        result = PROTECT(Rf_allocVector(INTSXP, length));
+        for (R_xlen_t i = 0; i < length; i++) INTEGER(result)[i] = INTEGER_ELT(value, i);
+        break;
+    case REALSXP:
+        result = PROTECT(Rf_allocVector(REALSXP, length));
+        for (R_xlen_t i = 0; i < length; i++) REAL(result)[i] = REAL_ELT(value, i);
+        break;
+    case STRSXP:
+        result = PROTECT(Rf_allocVector(STRSXP, length));
+        for (R_xlen_t i = 0; i < length; i++) SET_STRING_ELT(result, i, STRING_ELT(value, i));
+        break;
+    case VECSXP:
+        result = PROTECT(Rf_allocVector(VECSXP, length));
+        for (R_xlen_t i = 0; i < length; i++) SET_VECTOR_ELT(result, i, VECTOR_ELT(value, i));
+        break;
+    default:
+        result = PROTECT(Rf_duplicate(value));
+        UNPROTECT(1);
+        return result;
+    }
+    DUPLICATE_ATTRIB(result, value);
+    UNPROTECT(1);
+    return result;
+}
+
 /* R's attribute-only copy may wrap a large ALTREP in a generic metadata
    wrapper. Package string construction already owns its copy boundary; keep
    that independent handle here so restoration retains the backing facts. */

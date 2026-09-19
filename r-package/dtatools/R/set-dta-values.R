@@ -65,42 +65,63 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     # The order every mutation helper keeps: the table is validated before
     # any argument is evaluated, and capacity for a new column is checked
     # before the values that fill it are. Each argument is an ordinary R
-    # value, but an argument expression, or a callback-capable vector, can
-    # edit this table by reference while it is read, so the layout the write
-    # relies on, the target's location, the sharing, and the views, is read
-    # only after every argument has been evaluated and normalized.
+    # value, but an argument expression, a vector with methods, or a foreign
+    # ALTREP object can run caller code whenever it is read, and that code
+    # can edit this table by reference. So every argument is evaluated and
+    # settled, the value cast or built into the column it becomes, before
+    # the layout the write relies on is read. Reordering the columns
+    # meanwhile is honoured, since the target is found again by name; adding
+    # or removing the target, or changing the row count, is refused.
     row_count <- .set_values_preflight(data)
     force(variable)
     if (!rlang::is_bool(create)) {
         stop("`create` must be `TRUE` or `FALSE`", call. = FALSE)
     }
     target <- .set_values_target(data, variable, create)
-    if (is.na(target$location)) {
+    creating <- is.na(target$location)
+    if (creating) {
         data <- .prepare_column_growth(data, length(data) + 1L, .mutation_auto_grow())
     }
-    force(value)
-    rows <- .set_values_rows(rows, row_count)
-    .mutation_value_mode(value, rows, row_count)
-    # Nothing evaluates caller code from here to the commit. The target is
-    # resolved again against the names the table has now.
+    value <- .set_values_settled_input(value)
+    rows <- .set_values_settled_input(.set_values_rows(rows, row_count))
+    # The arguments have run; the target is found again by name for the
+    # cast, and once more after it, since the cast can run a value's methods.
     target <- .set_values_target(data, target$name, create)
-    shared <- .Call(C_dtatools_shared_columns, data)
-    original <- .set_values_open(data)
-    on.exit(.Call(C_dtatools_release_mutation_views, original$columns), add = TRUE)
-    if (original$nrow != row_count) {
-        stop("`data` changed its row count while `set_dta_values()` evaluated its arguments",
-             call. = FALSE)
+    if (is.na(target$location) != creating) .set_values_changed()
+    view <- if (!creating) .Call(C_dtatools_mutation_column_view, data, target$location)
+    on.exit(.Call(C_dtatools_release_mutation_views, view), add = TRUE)
+    column <- .set_values_column(view, value, rows, row_count)
+    # Nothing evaluates caller code from here to the commit.
+    target <- .set_values_target(data, target$name, create)
+    if (.set_values_preflight(data) != row_count ||
+        is.na(target$location) != creating ||
+        (!creating &&
+         !.Call(C_dtatools_mutation_column_current, data, target$location, view))) {
+        .set_values_changed()
     }
-    if (is.na(target$location)) {
-        return(invisible(.set_values_create(data, original, target$name, value, rows)))
+    if (creating) {
+        .prepare_column_operation(data, length(data) + 1L)
+        .append_generated_column(data, target$name, column)
+    } else if (!is.null(column) || .mutation_selected_count(rows, row_count) > 0L) {
+        # The commit `repl()` makes with `promote = FALSE`, with the cast
+        # already done: release the view, then patch the slot, which
+        # detaches it first when another table holds the column.
+        .Call(C_dtatools_release_mutation_views, view)
+        shared <- .Call(C_dtatools_shared_columns, data)
+        .Call(
+            C_dtatools_patch_slot, data, target$location, rows, column,
+            shared[[target$location]]
+        )
     }
-    resolved <- .resolved_assignment(value, rows, row_count)
-    .commit_replacement(
-        data, original, target, resolved, shared,
-        promote = FALSE, report_promotion = FALSE,
-        grouped_input = inherits(data, "grouped_df")
-    )
+    if (inherits(data, "grouped_df")) .regroup_after_replacement(data)
     invisible(data)
+}
+
+.set_values_changed <- function() {
+    stop(paste0(
+        "`data` changed while `set_dta_values()` evaluated its arguments; ",
+        "nothing was written"
+    ), call. = FALSE)
 }
 
 # Validates the table before any argument is evaluated and returns its row
@@ -113,6 +134,35 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
         if (isTRUE(.Call(C_dtatools_mutation_shape, data, rows))) return(rows)
     }
     .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE)$nrow
+}
+
+# An ALTREP object of a class this package did not define runs its own
+# code whenever an element is read, which the native patch does after the
+# layout is taken. It is copied into an ordinary vector once, here; the
+# package's own compact and dictionary vectors read without callbacks and
+# pass through, as does every ordinary vector.
+.set_values_settled_input <- function(value) {
+    .Call(C_dtatools_settle_foreign_altrep, value)
+}
+
+# The value in the form the commit writes, after the size rule: cast to
+# the target's declared storage for a replacement, since the cast is where
+# a vector with methods runs them; or built into the column `gen()` would
+# make for a creation. The cast reads the target through a private view,
+# never the column itself, so a method the value runs cannot observe or
+# alias the column. Casting here rather than in the commit means the
+# commit's native patch reads a vector that carries only package or base
+# classes, and the storage a value cannot fit is reported before the
+# table's layout is read.
+.set_values_column <- function(view, value, rows, row_count) {
+    value_mode <- .mutation_value_mode(value, rows, row_count)
+    if (is.null(view)) {
+        return(.generated_column(
+            value, rows, row_count, caller = "set_dta_values()",
+            generate = TRUE, carry_metadata = FALSE
+        ))
+    }
+    .set_values_settled_input(.cast_replacement(value, view[[1L]], rows, value_mode))
 }
 
 # The column as name and location. A position must exist; a name must
@@ -151,21 +201,6 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     )
 }
 
-# The table's columns as private views with the row count, validated again
-# the way `.set_values_preflight()` did, since the arguments have run since.
-.set_values_open <- function(data) {
-    row_count <- if (.ungrouped_dibble_classes(class(data))) {
-        rows <- abs(.row_names_info(data, 2L))
-        if (isTRUE(.Call(C_dtatools_mutation_shape, data, rows))) rows else NULL
-    }
-    if (!is.null(row_count)) {
-        return(list(columns = .Call(C_dtatools_mutation_views, data),
-                    names = attr(data, "names", exact = TRUE), nrow = row_count))
-    }
-    .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE,
-                      private_views = TRUE)
-}
-
 # The two class chains an ungrouped dibble carries: with and without the
 # dataset-metadata marker a reader adds. Distinct from `.plain_dibble_classes()`
 # in dibble.R, which also admits grouped and rowwise chains.
@@ -173,18 +208,4 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     identical(classes, c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame")) ||
         identical(classes, c("dibble", "dtatools_ref_data", "dtatools_dta_metadata",
                              "tbl_df", "tbl", "data.frame"))
-}
-
-# `create = TRUE` on a missing column: the column `gen()` would make from
-# `value` at `rows`, appended to a table whose capacity the caller has
-# already secured, so `data` may be the isolated table growth returned.
-.set_values_create <- function(data, original, name, value, rows) {
-    column <- .generated_column(
-        value, rows, original$nrow, caller = "set_dta_values()",
-        generate = TRUE, carry_metadata = FALSE
-    )
-    .prepare_column_operation(data, length(data) + 1L)
-    .append_generated_column(data, name, column)
-    if (inherits(data, "grouped_df")) .regroup_after_replacement(data)
-    data
 }

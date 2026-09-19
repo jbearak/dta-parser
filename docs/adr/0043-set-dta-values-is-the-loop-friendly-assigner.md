@@ -44,6 +44,25 @@ value the column cannot hold.
 Where the shared row normalizer speaks of `where`, the assigner's errors
 say `rows`, since that is the argument the caller wrote.
 
+## Arguments run first, then the layout is read
+
+The arguments are ordinary R values, but evaluating one can run caller
+code: the argument expression itself, a method a classed vector runs
+when vctrs proxies or casts it, or the element reads of an ALTREP object
+from another package. That code can edit the same table by reference,
+and a write whose column position was fixed before it ran would land in
+the wrong column. So the assigner keeps the order every mutation verb
+keeps: validate the table, check capacity for a new column, evaluate
+every argument, and only then read the layout it writes into. A foreign
+ALTREP value is copied into an ordinary vector once, and the value is
+cast to the target's storage against a private view of the column, so
+that by the time the target is resolved for the write nothing that
+remains to run can call back into R. A reorder during evaluation is
+honoured, because the target is found again by name. Adding or removing
+the target, changing the row count, or replacing the column object
+during evaluation is refused with nothing written, rather than guessed
+at.
+
 ## One storage rule
 
 The target keeps its declared storage, and a value it cannot hold is an
