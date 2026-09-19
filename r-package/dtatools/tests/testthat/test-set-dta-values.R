@@ -76,6 +76,32 @@ test_that("set_dta_values checks its arguments before writing", {
     expect_error(set_dta_values(data, x, 1), "object 'x' not found")
 })
 
+test_that("set_dta_values evaluates its arguments before reading the table", {
+    # An argument that reorders the table by reference is honoured: the
+    # write lands in the named column at its new position.
+    data <- dibble(x = c(1, 2), y = c(3, 4))
+    set_dta_values(data, "x", 9, rows = { order_vars(data, y, x); 1 })
+    expect_identical(names(data), c("y", "x"))
+    expect_identical(as.double(data$x), c(9, 2))
+    expect_identical(as.double(data$y), c(3, 4))
+    set_dta_values(data, { drop_vars(data, y); "x" }, 8, rows = 2)
+    expect_identical(names(data), "x")
+    expect_identical(as.double(data$x), c(9, 8))
+    set_dta_values(data, "x", { gen(data, z = 0); 7 })
+    expect_identical(names(data), c("x", "z"))
+    expect_identical(as.double(data$x), c(7, 7))
+    # A container no writer accepts is refused before any argument runs.
+    touched <- 0L
+    touch <- function(value) { touched <<- touched + 1L; value }
+    odd <- structure(dibble(x = 1), class = c("dibble", "dtatools_ref_data", "odd_df", "tbl_df", "tbl", "data.frame"))
+    expect_error(set_dta_values(odd, touch("x"), touch(1), create = touch(FALSE)), "as_dibble")
+    expect_identical(touched, 0L)
+    skip_if_not_installed("dplyr")
+    rowwise <- dplyr::rowwise(dibble(x = c(1, 2)))
+    expect_error(set_dta_values(rowwise, touch("x"), touch(0)), "ungroup")
+    expect_identical(touched, 0L)
+})
+
 test_that("set_dta_values creates a missing column only when asked", {
     data <- dibble(id = 1:3)
     result <- set_dta_values(data, "flag", TRUE, rows = c(1, 3), create = TRUE)
@@ -105,8 +131,11 @@ test_that("set_dta_values creates a missing column only when asked", {
     expect_identical(names(grown), c("a", "b"))
     expect_identical(names(small), "a")
     withr::local_options(dtatools.auto_grow = FALSE)
-    expect_error(set_dta_values(reserve_columns(dibble(a = 1:2), 0L), "b", 1L, create = TRUE),
-                 "reserve_columns")
+    full <- reserve_columns(dibble(a = 1:2), 0L)
+    expect_error(set_dta_values(full, "b", 1L, create = TRUE), "reserve_columns")
+    # A value the fill would refuse is not reached when capacity fails first.
+    expect_error(set_dta_values(full, "b", c(1L, 2L, 3L), create = TRUE), "reserve_columns")
+    expect_identical(names(full), "a")
 })
 
 test_that("set_dta_values works on grouped dibbles and refuses rowwise ones", {

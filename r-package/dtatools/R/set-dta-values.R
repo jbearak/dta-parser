@@ -62,13 +62,25 @@
 #' survey
 set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     .require_mutation_target(data)
+    # Every argument is an ordinary R value, so all of them are forced here,
+    # before anything about the table is read: an argument expression that
+    # edits the table by reference, or errors, has done so before the
+    # layout, the sharing, and the views are taken, and they describe the
+    # table that is written. The container check comes first, cheaply,
+    # so a table no writer accepts is refused with no argument evaluated.
+    .set_values_preflight(data)
+    force(variable); force(value); force(rows)
     if (!rlang::is_bool(create)) {
         stop("`create` must be `TRUE` or `FALSE`", call. = FALSE)
+    }
+    target <- .set_values_target(data, variable, create)
+    if (is.na(target$location)) {
+        # Capacity is checked before the column is built, as `gen()` does.
+        data <- .prepare_column_growth(data, length(data) + 1L, .mutation_auto_grow())
     }
     # Inspect sharing before the views add temporary column references,
     # as `repl()` does.
     shared <- .Call(C_dtatools_shared_columns, data)
-    target <- .set_values_target(data, variable, create)
     original <- .set_values_open(data)
     on.exit(.Call(C_dtatools_release_mutation_views, original$columns), add = TRUE)
     rows <- .set_values_rows(rows, original$nrow)
@@ -82,6 +94,14 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
         grouped_input = inherits(data, "grouped_df")
     )
     invisible(data)
+}
+
+# The container check every mutation helper runs before it evaluates an
+# argument, without the column views the full preflight opens: an
+# ungrouped dibble with no extra classes passes on its class vector alone.
+.set_values_preflight <- function(data) {
+    if (.ungrouped_dibble_classes(class(data))) return(invisible(NULL))
+    .validate_mutation_container(data, allow_grouped = TRUE, allow_rowwise = FALSE)
 }
 
 # The column as name and location. A position must exist; a name must
@@ -152,9 +172,8 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
 }
 
 # `create = TRUE` on a missing column: the column `gen()` would make from
-# `value` at `rows`, appended after any growth the table needs. The views
-# were taken on the table before growth; an isolated table needs none,
-# since nothing here reads a column.
+# `value` at `rows`, appended to a table whose capacity the caller has
+# already secured, so `data` may be the isolated table growth returned.
 .set_values_create <- function(data, original, name, value, rows) {
     # The size rule the write path applies, before the native fill sees a
     # value it cannot spread over the rows.
@@ -163,7 +182,6 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
         value, rows, original$nrow, caller = "set_dta_values()",
         generate = TRUE, carry_metadata = FALSE
     )
-    data <- .prepare_column_growth(data, length(data) + 1L, .mutation_auto_grow())
     .prepare_column_operation(data, length(data) + 1L)
     .append_generated_column(data, name, column)
     if (inherits(data, "grouped_df")) .regroup_after_replacement(data)
