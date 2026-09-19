@@ -13,7 +13,8 @@ test_that("reference mutation exports one coherent API", {
     expect_identical(
         formals(gen),
         as.pairlist(alist(
-            data = , ... = , where = NULL, by = NULL, bysort = NULL
+            data = , ... = , where = NULL, by = NULL, bysort = NULL,
+            before = NULL, after = NULL
         ))
     )
 
@@ -3273,4 +3274,113 @@ test_that("strict grouped zero-selection replacement is a no-op", {
         expect_identical(dta_storage_type(data$x), dta_storage_type(value))
         expect_identical(data, alias)
     }
+})
+
+test_that("gen inserts the new column before or after an anchor", {
+    data <- dibble(a = 1:3, b = 4:6, c = 7:9)
+    alias <- data
+    result <- withVisible(gen(data, x = a + 1L, before = b))
+    expect_false(result$visible)
+    expect_identical(names(data), c("a", "x", "b", "c"))
+    expect_identical(names(alias), names(data))
+    expect_identical(as.integer(data$x), 2:4)
+    gen(data, y, a * 2L, after = "c")
+    expect_identical(names(data), c("a", "x", "b", "c", "y"))
+    gen(data, z = 0, before = a)
+    expect_identical(names(data), c("z", "a", "x", "b", "c", "y"))
+    anchor <- "x"
+    gen(data, w = 1, after = !!anchor)
+    expect_identical(names(data), c("z", "a", "x", "w", "b", "c", "y"))
+    gen(data, v = 1, before = .(anchor))
+    expect_identical(names(data), c("z", "a", "v", "x", "w", "b", "c", "y"))
+    expect_identical(as.integer(data$b), 4:6)
+    expect_true(is_dibble(data))
+
+    # A placed column is an ordinary column: it writes, reorders, and drops.
+    repl(data, v = 9, where = a == 2L)
+    expect_identical(as.double(data$v), c(1, 9, 1))
+    drop_vars(data, v, w, z)
+    expect_identical(names(data), c("a", "x", "b", "c", "y"))
+
+    # Validation fails before anything changes.
+    before <- as.data.frame(copy_data(data))
+    expect_error(gen(data, bad = 1, before = a, after = b), "either")
+    expect_error(gen(data, bad = 1, before = absent), "does not exist")
+    expect_error(gen(data, bad = 1, after = bad), "does not exist")
+    expect_error(gen(data, a = 1, before = b), "already exists")
+    expect_error(gen(data, bad = 1, before = ""), "one unquoted column name")
+    expect_identical(as.data.frame(data), before)
+    expect_identical(names(data), c("a", "x", "b", "c", "y"))
+
+    # Placement composes with where, by, bysort, and grouped input.
+    grouped <- dibble(g = c(1, 1, 2), a = c(1, 2, 3))
+    gen(grouped, total = sum(a), by = g, before = a)
+    expect_identical(names(grouped), c("g", "total", "a"))
+    expect_identical(as.double(grouped$total), c(3, 3, 3))
+    gen(grouped, flag = 1, where = a > 1, after = g)
+    expect_identical(names(grouped), c("g", "flag", "total", "a"))
+    expect_identical(as.double(grouped$flag), c(NA, 1, 1))
+    sorted <- dibble(g = c(2, 1, 2), a = c(1, 2, 3))
+    gen(sorted, last = .n == .N, bysort = g, before = g)
+    expect_identical(names(sorted), c("last", "g", "a"))
+    expect_identical(as.double(sorted$g), c(1, 2, 2))
+    skip_if_not_installed("dplyr")
+    tibble <- dplyr::group_by(dibble(g = c(1, 2), a = c(5, 6)), g)
+    gen(tibble, n = .N, after = g)
+    expect_identical(names(tibble), c("g", "n", "a"))
+})
+
+test_that("a placed generated column keeps compact storage and its alias", {
+    data <- dibble(id = dta_int(1:5), v = dta_byte(1:5), w = dta_double(6:10))
+    alias <- data
+    gen(data, doubled = v * 2, before = w)
+    expect_identical(names(data), c("id", "v", "doubled", "w"))
+    expect_identical(names(alias), names(data))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$v))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$doubled))
+    expect_identical(dta_storage_type(data$doubled), "byte")
+    expect_identical(as.double(data$doubled), c(2, 4, 6, 8, 10))
+    # The scalar fast path is bypassed when a placement is requested.
+    gen(data, one = 1L, after = id)
+    expect_identical(names(data), c("id", "one", "v", "doubled", "w"))
+    expect_identical(dta_storage_type(data$one), "long")
+    # Growth past capacity returns an isolated table that is also placed.
+    small <- reserve_columns(dibble(a = 1:2, b = 3:4), 0L)
+    expect_warning(grown <- gen(small, c = 5:6, before = b), "isolated table")
+    expect_identical(names(grown), c("a", "c", "b"))
+    expect_identical(as.integer(grown$c), 5:6)
+})
+
+test_that("placement follows an anchor moved or removed while values evaluate", {
+    # The anchor's position is read at the commit, so a values expression
+    # that mutated the same table cannot leave the new column misplaced.
+    data <- dibble(a = 1:3, b = 4:6)
+    gen(data, x = { gen(data, z = 9L); 1L }, before = b)
+    expect_identical(names(data), c("a", "x", "b", "z"))
+    expect_identical(as.integer(data$x), c(1L, 1L, 1L))
+    expect_identical(as.integer(data$z), c(9L, 9L, 9L))
+    gen(data, y = { order_vars(data, z, b); 2L }, after = b)
+    expect_identical(names(data), c("z", "b", "y", "a", "x"))
+    # An anchor dropped during evaluation stops the call before it appends.
+    before <- as.data.frame(copy_data(data))
+    expect_error(
+        gen(data, w = { drop_vars(data, z); 3L }, before = z),
+        "does not exist"
+    )
+    expect_identical(names(data), c("b", "y", "a", "x"))
+    expect_identical(as.data.frame(data), before[names(data)])
+
+    # Placement is validated before `...` is captured, so injected caller
+    # code in the dots never runs for a call whose placement is wrong.
+    touched <- 0L
+    touch <- function() { touched <<- touched + 1L; "w" }
+    # Plain closures, so `!!` is gen()'s injection and not expect_error()'s.
+    both <- function() gen(data, !!touch() := 2L, before = a, after = b)
+    absent <- function() gen(data, !!touch() := 2L, before = absent)
+    expect_error(both(), "either")
+    expect_error(absent(), "does not exist")
+    expect_identical(touched, 0L)
+    gen(data, !!touch() := 2L, before = a)
+    expect_identical(touched, 1L)
+    expect_identical(names(data), c("b", "y", "w", "a", "x"))
 })

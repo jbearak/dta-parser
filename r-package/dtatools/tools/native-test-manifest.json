@@ -4838,7 +4838,7 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "e60a3fca84958a1dda40d8b077136bffb940dd51ba611947f57ec69cb8e74e8e"
+          "sha256": "986f6c55a6c0a867fdb3d69a76665d9b73c3bdb512eb5e06040a13e2353f1ebe"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
@@ -4862,7 +4862,7 @@
         },
         {
           "path": "tests/testthat/test-raven-nse.R",
-          "sha256": "a762cad391dba4a9f0a0dbd0160427f4934400cafa4a96b9d297fe3e2034eeda"
+          "sha256": "d87eaaece1d130b16db480a9ac8bdf9a06a84ae4cd136160e9e3305717cdd911"
         },
         {
           "path": "tests/testthat/test-auto-grow.R",
@@ -5880,6 +5880,33 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "gen inserts the new column before or after an anchor",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 26,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "a placed generated column keeps compact storage and its alias",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "placement follows an anchor moved or removed while values evaluate",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         },
         {

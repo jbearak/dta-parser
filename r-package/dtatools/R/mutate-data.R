@@ -155,8 +155,9 @@
 #' argument to a string as it does everywhere else in dtatools, not
 #' data.table's `list()`.
 #'
-#' `gen()` appends one variable and does not implement Stata's `before()` or
-#' `after()` placement. The new column takes the storage in
+#' `gen()` appends one variable, or inserts it beside an existing column
+#' with `before` or `after`, as Stata's `generate ..., before(varname)` and
+#' `after(varname)` do. The new column takes the storage in
 #' [dta-storage-defaults]: a declared `dta_*()` result keeps its storage,
 #' bare integer results are `long`, bare double results take Stata's
 #' `generate` default of `float`, or `double` under
@@ -294,6 +295,12 @@
 #' @param bysort `NULL`, or the columns to sort the dataset by, by
 #'   reference, and then group by. Same spellings as `by`. Not allowed with
 #'   `by` or on a grouped tibble.
+#' @param before,after An optional existing column name before or after
+#'   which `gen()` inserts the new column, as Stata's `before()` and
+#'   `after()` options. Supply at most one. Uses the target-name syntax:
+#'   a bare name, a string, `!!name`, or `.(name)`. Without either the
+#'   column is appended. `replace_values()` has no placement, since its
+#'   column already has a position.
 #' @param promote Whether `replace_values()` widens a target whose declared
 #'   storage cannot preserve the input R value exactly, reporting the
 #'   change. Defaults to `TRUE`. `FALSE` holds declared storage fixed:
@@ -328,6 +335,8 @@
 #'
 #' survey <- dibble(income = c(10, 20), eligible = c(TRUE, FALSE))
 #' gen(survey, adjusted = income + 5)
+#' gen(survey, id = .n, before = income)   # generate id = _n, before(income)
+#' names(survey)                           # "id" "income" "eligible" "adjusted"
 #' replace_values(survey, income = income * 2, where = eligible)
 #' # The positional, Stata-shaped spelling means the same thing
 #' gen(survey, tripled, income * 3)
@@ -390,7 +399,8 @@ repl <- replace_values
 
 #' @rdname replace_values
 #' @export
-gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
+gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
+                before = NULL, after = NULL) {
     target_expr <- substitute(data)
     destination <- if (is.call(target_expr)) .capture_mutation_binding(target_expr, parent.frame()) else NULL
     if (!is.null(destination)) data <- destination$data
@@ -399,6 +409,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     if (is.null(.mutation_fast_shape(data))) {
         .preflight_mutation_target(data)
     }
+    # Before `...` is captured: injection in the dots can run caller code,
+    # and a call whose placement is wrong must fail with nothing evaluated.
+    placement <- .generate_placement(rlang::enquo(before), rlang::enquo(after))
+    .placement_anchor(placement, attr(data, "names", exact = TRUE))
 
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
@@ -412,9 +426,47 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         generate = TRUE,
         by = if (missing(by)) NULL else rlang::enquo(by),
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort),
-        auto_grow = auto_grow
+        auto_grow = auto_grow, placement = placement
     )
     .return_mutation(data, result, if (is.null(destination)) target_expr else destination, parent.frame())
+}
+
+# Stata's `before(varname)` and `after(varname)` on `generate`. Read before
+# any evaluation so a call that names both fails with the table untouched;
+# the anchor is checked by `.placement_anchor()` and the final order
+# computed by `.mutation_placement()` at the commit.
+.generate_placement <- function(before, after) {
+    has_before <- !rlang::quo_is_null(before)
+    has_after <- !rlang::quo_is_null(after)
+    if (has_before && has_after) {
+        stop("supply either `before` or `after`, not both", call. = FALSE)
+    }
+    if (!has_before && !has_after) return(NULL)
+    list(side = if (has_before) "before" else "after",
+         anchor = .unquoted_variable_name(if (has_before) before else after))
+}
+
+# The anchor's position among `names`, or `NULL` without a placement. The
+# anchor must be an existing column; the target is not one yet, so it cannot
+# anchor itself. Checked twice per `gen()`: on entry, so a bad anchor fails
+# before anything is evaluated, and at the commit, against the names the
+# table has by then, since evaluating `values` may have mutated it.
+.placement_anchor <- function(placement, names) {
+    if (is.null(placement)) return(NULL)
+    index <- match(placement$anchor, names)
+    if (is.na(index)) {
+        stop(sprintf("Column `%s` does not exist", placement$anchor), call. = FALSE)
+    }
+    index
+}
+
+# The column order once the new column sits beside its anchor, as positions
+# into `c(names, target)`, or `NULL` when it is appended.
+.mutation_placement <- function(placement, names, target) {
+    index <- .placement_anchor(placement, names)
+    if (is.null(index)) return(NULL)
+    order <- append(names, target, after = index - (placement$side == "before"))
+    match(order, c(names, target))
 }
 
 .MUTATION_SHAPE_MESSAGE <- paste(
@@ -1837,8 +1889,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                          by = NULL, bysort = NULL, selection = NULL,
                          promote = FALSE, report_promotion = FALSE,
                          entry_shared = NULL, auto_grow = FALSE,
-                         staged = NULL) {
-    if (generate && is.null(by) && is.null(bysort) && is.null(selection)) {
+                         staged = NULL, placement = NULL) {
+    if (generate && is.null(by) && is.null(bysort) && is.null(selection) &&
+        is.null(placement)) {
         direct <- .generate_direct_scalar(data, variable, values, where, auto_grow)
         if (!is.null(direct)) return(invisible(direct))
     }
@@ -1887,7 +1940,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     on.exit(if (!completed) .undo_group_order(data, staged), add = TRUE)
     write <- function() {
         if (generate) {
-            .commit_generated_column(data, target, resolved, original$nrow)
+            .commit_generated_column(data, target, resolved, original$nrow,
+                                     placement)
         } else {
             .commit_replacement(data, original, target, resolved, shared,
                                 promote, report_promotion, grouped_input)
@@ -2015,13 +2069,36 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 
 # Builds the new column from the resolved rows and values and appends
 # it; the append and the reference remark run as one uninterruptible step.
-.commit_generated_column <- function(data, target, resolved, row_count) {
+.commit_generated_column <- function(data, target, resolved, row_count,
+                                     placement = NULL) {
+    # Resolved against the names the table has now, not the ones read on
+    # entry: a `values` expression that mutated this table may have moved
+    # or removed the anchor, and one that is gone stops the call here.
+    names <- attr(data, "names", exact = TRUE)
+    column_order <- .mutation_placement(placement, names, target$name)
     column <- .generated_column(
         resolved$values, resolved$rows, row_count, generate = TRUE,
         carry_metadata = FALSE
     )
     .prepare_column_operation(data, length(data) + 1L)
-    .append_generated_column(data, target$name, column)
+    if (is.null(column_order)) {
+        .append_generated_column(data, target$name, column)
+    } else {
+        .insert_generated_column(data, target$name, column, column_order, row_count)
+    }
+}
+
+# Installs the new column beside its `before` or `after` anchor in the one
+# native commit `order_vars()` uses, on the complete column list with the
+# new column in place, so no observer sees it appended and then moved. The
+# columns are read plainly, without dispatch, from the prepared table.
+.insert_generated_column <- function(data, name, column, column_order, row_count) {
+    columns <- .data_columns(data)
+    columns[[name]] <- column
+    suspendInterrupts(
+        .install_column_selection(data, list(nrow = row_count), columns[column_order])
+    )
+    invisible(NULL)
 }
 
 .append_generated_column <- function(data, name, column) {
