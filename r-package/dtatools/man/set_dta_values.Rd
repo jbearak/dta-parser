@@ -54,10 +54,11 @@ with \code{dta_int()}, \code{dta_double()}, or \code{set_dta_metadata()}. Charac
 
 \section{Cost}{
 
-A single-row write costs about ten microseconds on a compact numeric
-column and about seventy on a Stata string column, most of it the cast
-that checks the string width; a whole-column write costs about twenty.
-\code{repl()} costs over a hundred for the same writes. The
+On a 100,000-row table a single-row write costs about thirteen
+microseconds on a numeric column and a whole-column write about twenty;
+a Stata string column costs more, since every write checks the string
+width. \code{repl()} costs over a hundred microseconds for the same writes,
+and \code{data.table::set()} about two. The
 \href{https://github.com/jbearak/dta-parser/tree/main/benchmarks/r-cell-assignment}{cell-assignment benchmark}
 records the numbers and how to reproduce them.
 }

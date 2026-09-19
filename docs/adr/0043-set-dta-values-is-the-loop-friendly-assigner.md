@@ -33,10 +33,13 @@ position, normalizes `rows` as `where` is normalized once evaluated,
 applies the same size rule to `value`, and commits through the same
 replacement path `repl()` commits through, with the same native patch on
 compact storage and the same detach of a column shared with another
-table. A single-row write costs about ten microseconds on a compact
-numeric column against over a hundred through `repl()`; the
-[cell-assignment benchmark](../../benchmarks/r-cell-assignment/) records
-both.
+table. A single-row write costs about thirteen microseconds on a numeric
+column against over a hundred through `repl()` and about two through
+`data.table::set()`; the
+[cell-assignment benchmark](../../benchmarks/r-cell-assignment/results-2026-09-19-set-dta-values.md)
+records all three. The gap to `set()` is the storage check and the
+private column views every write opens, which is the price of refusing a
+value the column cannot hold.
 
 Where the shared row normalizer speaks of `where`, the assigner's errors
 say `rows`, since that is the argument the caller wrote.
