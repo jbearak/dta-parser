@@ -1,5 +1,14 @@
 # dtatools (development version)
 
+* New `val_label(x, v)` and `val_code(x, label)` look up the label text of
+  a code and the code of a label text. Both are vectorised: `val_label()`
+  returns a character vector with `NA` where a code has no label, and
+  `val_code()` a Stata numeric with `.` where no text matches. A tagged
+  missing matches by its tag, so `val_label(x, .a)` finds its label. Each
+  takes a labelled vector, a `val_labels()` table, or a data frame and
+  column, as `val_label(data, status, 1)`. `val_label()` shares its name
+  and `v` argument with `labelled::val_label()`, which returns `NULL` for
+  an unlabelled code where dtatools returns `NA`.
 * Breaking: `val_labels()` returns a value-label table as a named Stata
   numeric, a `dta_double()` or a `dta_long()` for integer codes, rather
   than a bare named vector. The codes are Stata

@@ -54,7 +54,7 @@ test_that("native namespace loading and recoding leave dplyr unloaded", {
     expect_identical(observed$rows, c(2, 1))
     expect_false(observed$dplyr_loaded)
     expect_identical(observed$exports, sort(getNamespaceExports("dtatools")))
-    expect_length(observed$exports, 106L)
+    expect_length(observed$exports, 108L)
     expect_identical(normalizePath(observed$namespace_path),
         normalizePath(getNamespaceInfo(asNamespace("dtatools"), "path")))
 })

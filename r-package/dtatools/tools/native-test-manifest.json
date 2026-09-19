@@ -103,6 +103,8 @@
     "slice_dta_rows",
     "tab",
     "tagged_missing",
+    "val_code",
+    "val_label",
     "val_labels",
     "val_labels<-",
     "var_label",
@@ -2409,7 +2411,7 @@
         },
         {
           "path": "tests/testthat/test-label-metadata.R",
-          "sha256": "56f0bc1b28d362448198bb91784ee6055f94186fcac322d03b5c364b127d5261"
+          "sha256": "32b02b7433478505f2cc79a0ed0eb5112ce60b5aa544fab1a71bb921491468ed"
         },
         {
           "path": "tests/testthat/test-value-label-table-names.R",
@@ -3274,6 +3276,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-label-metadata.R",
+          "test": "val_label and val_code look up one direction of a table",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
           "warnings": 0
         },
         {
@@ -6477,7 +6487,7 @@
         },
         {
           "path": "tests/testthat/test-dplyr-optional.R",
-          "sha256": "bd19a0482fe7977477afa832fd2d2152967fea50e3b2355aba41f2a30ee236e2"
+          "sha256": "98ce9c1f143c8e3c21dea9e9f01c8915a8b2b0a6eaa8c06a658964955d2c7d41"
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",

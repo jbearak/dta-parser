@@ -41,7 +41,8 @@ attach_result <- function(order) {
             )
 
             shared <- c(
-                "var_label", "var_label<-", "val_labels", "val_labels<-"
+                "var_label", "var_label<-", "val_labels", "val_labels<-",
+                "val_label"
             )
             owner <- vapply(shared, function(name) {
                 resolved <- get(name, mode = "function")
@@ -78,7 +79,7 @@ attach_result <- function(order) {
 
 labelled_first <- attach_result(c("labelled", "dtatools"))
 assert(
-    identical(unname(labelled_first$owner), rep("dtatools", 4L)),
+    identical(unname(labelled_first$owner), rep("dtatools", 5L)),
     "dtatools helpers did not take precedence when dtatools attached last"
 )
 assert(
@@ -93,7 +94,7 @@ assert(
 
 dtatools_first <- attach_result(c("dtatools", "labelled"))
 assert(
-    identical(unname(dtatools_first$owner), rep("labelled", 4L)),
+    identical(unname(dtatools_first$owner), rep("labelled", 5L)),
     "Normal R masking did not apply when labelled attached last"
 )
 assert(

@@ -159,10 +159,10 @@ format.pillar_shaft_dta_numeric <- function(x, width, ...) {
 }
 
 .pillar_value_labels <- function(x, show_labels = NULL) {
-    table <- attr(x, "labels", exact = TRUE)
-    if (is.null(table) || length(table) == 0L || !is.numeric(table)) {
-        return(NULL)
-    }
+    # Only a table Stata could hold annotates; one it could not, such as
+    # character codes or an `integer64`, has no codes to match.
+    table <- .stata_value_label_table(attr(x, "labels", exact = TRUE))
+    if (is.null(table) || length(table) == 0L) return(NULL)
     show <- if (is.null(show_labels)) {
         getOption(
             "dtatools.show_pillar_labels",
@@ -173,16 +173,9 @@ format.pillar_shaft_dta_numeric <- function(x, width, ...) {
     }
     if (!isTRUE(show)) return(NULL)
     # An observed value matches a code by value and a tagged missing by
-    # its tag; system missing matches nothing, as in `tab()`.
-    values <- .dta_snapshot(x)
-    codes <- .tab_missing_codes(values)
-    table_codes <- .tab_missing_codes(table)
-    matched <- rep(NA_integer_, length(values))
-    observed <- is.na(codes)
-    matched[observed] <- match(values[observed], as.double(table)[is.na(table_codes)])
-    matched[observed] <- which(is.na(table_codes))[matched[observed]]
-    tagged <- !observed & codes >= utf8ToInt("a") & codes <= utf8ToInt("z")
-    matched[tagged] <- match(codes[tagged], table_codes)
+    # its tag; system missing matches nothing, as in `tab()` and
+    # `val_label()`.
+    matched <- .match_value_label_codes(x, table)
     found <- !is.na(matched) & !is.na(names(table)[matched]) &
         nzchar(names(table)[matched])
     # Label text is user data and may hold a newline or tab; escaped, as

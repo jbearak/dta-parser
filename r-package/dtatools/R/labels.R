@@ -33,6 +33,24 @@
 #' and the table's storage records that vector's type, so reading a table
 #' and setting it back changes nothing.
 #'
+#' @section Looking up one label or code:
+#' `val_label(x, v)` returns the label text of each code in `v`, and
+#' `val_code(x, label)` the code of each label text, from `x`'s value-label
+#' table. `x` is a labelled vector, a value-label table as `val_labels()`
+#' returns it, or a data frame with `variable` naming the column, so
+#' `val_label(data, status, 1)` and `val_label(data$status, 1)` agree. Both
+#' are vectorised lookups: `val_label()` returns a character vector with
+#' `NA` where a code has no label, and `val_code()` a Stata numeric of the
+#' table's storage with system missing `.` where no label matches. A code
+#' matches as Stata compares it: an observed value by equality and a
+#' tagged missing by its tag, so `val_label(x, .a)` finds the label of
+#' `.a`; system missing matches nothing. Label text matches exactly, and
+#' when a table repeats a text the first code wins. On a vector without a
+#' table, or with one Stata could not hold, every lookup is unmatched. `val_label()` shares its name and
+#' `v` argument with `labelled::val_label()`, which looks up one code and
+#' returns `NULL` when it is unlabelled; dtatools returns `NA` there so the
+#' result keeps the length of `v`.
+#'
 #' @section Setting labels:
 #' Replacement functions modify the supplied metadata. On a data frame,
 #' replacement values must be a named list; a bare `NULL` clears that metadata
@@ -136,7 +154,11 @@
 #'   `val_labels()`: when supplied, `x` must be a data frame and only that
 #'   column's metadata is returned.
 #' @param label One variable label, or `NULL` to remove it. In the vector
-#'   shape `set_var_label(x, label)` the label is the second argument.
+#'   shape `set_var_label(x, label)` the label is the second argument. For
+#'   `val_code()`, a character vector of label texts to look up.
+#' @param v A numeric vector of value-label codes to look up, Stata missings
+#'   included. In the vector shape `val_label(x, v)` it is the second
+#'   argument, as in `labelled::val_label()`.
 #' @return Getters return the metadata described above. Replacement functions
 #'   and `set_*()` functions return the updated vector or data frame. Data-frame
 #'   `set_*()` forms return it invisibly because they already mutated it by
@@ -162,6 +184,11 @@
 #'
 #' var_label(survey)
 #' val_labels(survey$status)
+#'
+#' # One label or code at a time, in either direction
+#' val_label(survey$status, 2)
+#' val_label(survey, status, c(1, 2, 3))
+#' val_code(survey$status, "Refused")
 #'
 #' # A column name known only at run time
 #' stratum_name <- "stratum"
@@ -206,6 +233,118 @@ val_labels <- function(x, variable) {
     .value_label_table(attr(x, "labels", exact = TRUE))
 }
 
+#' @rdname var_label
+#' @export
+val_label <- function(x, variable, v) {
+    .validate_label_object(x)
+    if (is.data.frame(x)) {
+        if (missing(v)) {
+            stop("`v` must be supplied after `variable` when `x` is a data frame",
+                 call. = FALSE)
+        }
+        column <- .label_lookup_column(x, rlang::enquo(variable))
+        table <- .stata_value_label_table(attr(column, "labels", exact = TRUE))
+    } else {
+        # `val_label(x, v)`: the vector shape, as `set_var_label(x, label)`
+        # takes its label in the second position.
+        if (missing(v)) {
+            if (missing(variable)) stop("`v` must be supplied", call. = FALSE)
+            v <- variable
+        } else if (!missing(variable)) {
+            stop("`variable` applies only when `x` is a data frame", call. = FALSE)
+        }
+        table <- .lookup_value_label_table(x)
+    }
+    # An `integer64` stores bit patterns, not Stata values, and a factor's
+    # codes are positions, so neither can be looked up as a code.
+    if (!is.numeric(v) || !is.null(dim(v)) || is.factor(v) ||
+        inherits(v, "integer64")) {
+        stop("`v` must be a numeric vector of value-label codes", call. = FALSE)
+    }
+    if (is.null(table)) return(rep(NA_character_, length(v)))
+    text <- names(table)[.match_value_label_codes(v, table)]
+    text[!is.na(text) & !nzchar(text)] <- NA_character_
+    text
+}
+
+#' @rdname var_label
+#' @export
+val_code <- function(x, variable, label) {
+    .validate_label_object(x)
+    if (is.data.frame(x)) {
+        if (missing(label)) {
+            stop(paste(
+                "`label` must be supplied after `variable` when `x` is a",
+                "data frame"
+            ), call. = FALSE)
+        }
+        column <- .label_lookup_column(x, rlang::enquo(variable))
+        table <- .stata_value_label_table(attr(column, "labels", exact = TRUE))
+    } else {
+        if (missing(label)) {
+            if (missing(variable)) stop("`label` must be supplied", call. = FALSE)
+            label <- variable
+        } else if (!missing(variable)) {
+            stop("`variable` applies only when `x` is a data frame", call. = FALSE)
+        }
+        table <- .lookup_value_label_table(x)
+    }
+    if (!is.character(label) || !is.null(dim(label))) {
+        stop("`label` must be a character vector of value-label text", call. = FALSE)
+    }
+    if (is.null(table)) return(dta_double(rep(NA_real_, length(label))))
+    # A table in hand keeps its storage; a raw mapping is wrapped as
+    # `val_labels()` wraps it. Blank text is no label, so it matches nothing.
+    codes <- if (inherits(table, "dta_numeric")) table else .value_label_table(table)
+    text <- names(table)
+    text[is.na(text) | !nzchar(text)] <- NA_character_
+    unname(codes[match(label, text, incomparables = NA_character_)])
+}
+
+# The table a lookup reads: a labelled vector's own `labels` attribute, or
+# the vector itself when it is a table in hand, a named numeric with no
+# table of its own, as `val_labels()` returns one. Anything else has no
+# table, and every lookup on it is unmatched. So is a table Stata could
+# not hold, character codes or a number outside `long`, which
+# `val_labels()` returns bare: it has no Stata codes to look up.
+.lookup_value_label_table <- function(x) {
+    table <- attr(x, "labels", exact = TRUE)
+    if (is.null(table) && is.numeric(x) && !is.null(names(x)) &&
+        is.null(dim(x))) {
+        table <- x
+    }
+    .stata_value_label_table(table)
+}
+
+.stata_value_label_table <- function(table) {
+    if (is.null(table) || !is.numeric(table) || !is.null(dim(table)) ||
+        is.null(names(table)) || inherits(table, "integer64") ||
+        !all(.dta_value_label_code_info(table)$valid)) {
+        return(NULL)
+    }
+    table
+}
+
+# Which table entry each value matches, as Stata compares: an observed
+# value by equality, a tagged missing by its tag, and system missing, an
+# R `NaN`, or an unrepresentable value nothing. Integer and double codes
+# meet as doubles, so a `long` table matches a double value.
+.match_value_label_codes <- function(values, table) {
+    values <- as.double(.dta_snapshot(values))
+    table_values <- as.double(.dta_snapshot(table))
+    codes <- .tab_missing_codes(values)
+    table_codes <- .tab_missing_codes(table_values)
+    matched <- rep(NA_integer_, length(values))
+    observed <- is.na(codes)
+    observed_table <- which(is.na(table_codes))
+    matched[observed] <- observed_table[
+        match(values[observed], table_values[observed_table])
+    ]
+    tagged <- !observed & codes >= utf8ToInt("a") & codes <= utf8ToInt("z")
+    matched[tagged] <- match(codes[tagged], table_codes)
+    matched
+}
+
 # The stored `labels` attribute is the bare named vector haven writes, so
 # files and `labelled` see what they expect. Read back through
 # `val_labels()`, the codes are a Stata numeric, so `.a` prints as `.a`
@@ -213,10 +352,12 @@ val_labels <- function(x, variable) {
 # records the codes' own type, `long` for haven's integer codes and
 # `double` otherwise, so a setter can store the table back exactly as it
 # was. A table haven wrote that Stata could not hold, a character code, an
-# infinity, or an integer outside `long`, is returned bare as haven stores
+# infinity, an integer outside `long`, or an `integer64`, whose doubles
+# are bit patterns rather than values, is returned bare as haven stores
 # it, since a Stata numeric could not carry it.
 .value_label_table <- function(labels) {
     if (is.null(labels) || !is.numeric(labels) ||
+        inherits(labels, "integer64") ||
         !all(.dta_value_label_code_info(labels)$valid)) {
         return(labels)
     }

@@ -1032,3 +1032,110 @@ test_that("a table remembers its codes' type so setting it back is exact", {
     extended <- set_val_labels(h, val_labels(h), Three = 3L)
     expect_identical(attr(extended, "labels"), c(One = 1, Two = 2, Three = 3))
 })
+
+test_that("val_label and val_code look up one direction of a table", {
+    x <- set_val_labels(dta_byte(c(1, 2, .a, NA)), One = 1, Two = 2, Refused = .a)
+    expect_identical(val_label(x, 1), "One")
+    expect_identical(val_label(x, v = 2), "Two")
+    # A vectorised lookup keeps its length, with `NA` where no code matches;
+    # a tagged missing matches by its tag and system missing matches nothing.
+    expect_identical(
+        val_label(x, c(1, 2, 3, .a, .b, NA)),
+        c("One", "Two", NA, "Refused", NA, NA)
+    )
+    expect_identical(val_label(x, numeric()), character())
+    expect_identical(val_label(x, 1L), "One")
+
+    codes <- val_code(x, c("One", "Nope", "Refused"))
+    expect_s3_class(codes, "dta_double")
+    expect_identical(as.double(codes)[1:2], c(1, NA))
+    expect_identical(unname(missing_tag(codes)), c(NA, NA, "a"))
+    expect_true(is.na(codes[[2L]]) && !is_tagged_missing(codes[[2L]]))
+    expect_identical(val_label(x, val_code(x, "Two")), "Two")
+
+    # The data-frame shape names the column as the other getters do.
+    data <- dibble(s = x, t = 1:4)
+    expect_identical(val_label(data, s, 2), "Two")
+    expect_identical(val_label(data, "s", .a), "Refused")
+    name <- "s"
+    expect_identical(val_label(data, !!name, 1), "One")
+    expect_identical(as.double(val_code(data, s, "Two")), 2)
+    expect_identical(val_label(data, t, 1), NA_character_)
+    expect_error(val_label(data, 1), "`v` must be supplied after `variable`")
+    expect_error(val_code(data, s), "`label` must be supplied after `variable`")
+    expect_error(val_label(data, missing_column, 1), "does not exist")
+    expect_error(val_label(x, s, 1), "applies only when `x` is a data frame")
+    expect_error(val_label(x, "One"), "numeric vector of value-label codes")
+    expect_error(val_label(x, factor("One")), "numeric vector of value-label codes")
+    skip_if_not_installed("bit64")
+    expect_error(val_label(x, bit64::as.integer64(1)),
+                 "numeric vector of value-label codes")
+    expect_error(val_code(x, 1), "character vector of value-label text")
+
+    # A table in hand, as `val_labels()` returns it, is looked up directly.
+    table <- val_labels(x)
+    expect_identical(val_label(table, .a), "Refused")
+    expect_identical(as.double(val_code(table, "One")), 1)
+
+    # Without a table every lookup is unmatched, in the result's type.
+    expect_identical(val_label(c(1, 2), 1), NA_character_)
+    unmatched <- val_code(c(1, 2), "One")
+    expect_s3_class(unmatched, "dta_double")
+    expect_true(is.na(unmatched))
+    expect_identical(val_label(dibble(t = 1:2), t, 1), NA_character_)
+
+    # haven's integer codes come back as the `long` table they are, and a
+    # double value still matches an integer code.
+    haven <- structure(c(1L, 2L), labels = c(One = 1L, Two = 2L),
+                       class = c("haven_labelled", "vctrs_vctr", "integer"))
+    expect_identical(val_label(haven, 2), "Two")
+    expect_s3_class(val_code(haven, "Two"), "dta_long")
+    expect_identical(as.double(val_code(haven, c("Two", "None"))), c(2, NA))
+
+    # Repeated label text resolves to its first code; blank text is no label.
+    twice <- set_val_labels(c(1, 2), Same = 1, Same = 2)
+    expect_identical(as.double(val_code(twice, "Same")), 1)
+    blank <- structure(c(1, 2), labels = c(One = 1, 2),
+                       class = c("haven_labelled", "vctrs_vctr", "double"))
+    expect_identical(val_label(blank, c(1, 2)), c("One", NA))
+    expect_true(is.na(val_code(blank, "")))
+    expect_true(is.na(val_code(blank, NA_character_)))
+
+    # A table Stata could not hold has no codes to look up: character
+    # codes, a number outside `long`, or an infinity leave every lookup
+    # unmatched in the documented type, and never a raw code.
+    chars <- structure(c("a", "b"), labels = c(A = "a"),
+                       class = c("haven_labelled", "vctrs_vctr", "character"))
+    expect_no_warning(expect_identical(val_label(chars, 1), NA_character_))
+    expect_true(is.na(val_code(chars, "A")))
+    expect_s3_class(val_code(chars, "A"), "dta_double")
+    wide <- structure(1L, labels = c(Bad = .Machine$integer.max),
+                      class = c("haven_labelled", "vctrs_vctr", "integer"))
+    expect_identical(val_label(wide, .Machine$integer.max), NA_character_)
+    expect_true(is.na(val_code(wide, "Bad")))
+    infinite <- structure(c(1, 2), labels = c(Forever = Inf),
+                          class = c("haven_labelled", "vctrs_vctr", "double"))
+    expect_true(is.na(val_code(infinite, "Forever")))
+    expect_true(is.na(val_code(val_labels(infinite), "Forever")))
+    expect_identical(val_label(dibble(w = wide), w, 1), NA_character_)
+    unnamed <- structure(c(1, 2), labels = c(1, 2))
+    expect_identical(val_label(unnamed, c(1, 2)), c(NA_character_, NA_character_))
+    expect_length(val_code(unnamed, c("a", "b")), 2L)
+    # An `integer64` table stores bit patterns, not Stata codes: it reads
+    # back bare, and every lookup on it is unmatched.
+    skip_if_not_installed("bit64")
+    big <- structure(c(1, 2),
+                     labels = stats::setNames(bit64::as.integer64(c(1, 2)), c("One", "Two")),
+                     class = c("haven_labelled", "vctrs_vctr", "double"))
+    expect_s3_class(val_labels(big), "integer64")
+    expect_identical(val_label(big, c(1, 2)), c(NA_character_, NA_character_))
+    expect_true(all(is.na(val_code(big, c("One", "Two")))))
+    shown <- dta_double(c(1, 2))
+    attr(shown, "labels") <- attr(big, "labels")
+    expect_false(any(grepl("[", format(pillar::pillar_shaft(shown), width = 20),
+                           fixed = TRUE)))
+
+    # A `long` table in hand keeps its storage, as the vector's own does.
+    expect_s3_class(val_code(val_labels(haven), "Two"), "dta_long")
+    expect_identical(val_code(val_labels(haven), "Two"), val_code(haven, "Two"))
+})
