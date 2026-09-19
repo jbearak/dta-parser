@@ -44,11 +44,11 @@ selects the row positionally on both sides:
 
 | Call | Median | Allocation |
 | --- | --- | --- |
-| `repl(d, !!name := 2)` | 140 µs | 782 KB |
-| `repl(d, x = 3, where = 5L)` | 114 µs | 280 B |
-| `data.table::set(dt, j = "x", value = 2)` | 7.5 µs | 0 B |
+| `repl(d, !!name := 2)` | 123 µs | 782 KB |
+| `repl(d, x = 3, where = 5L)` | 110 µs | 280 B |
+| `data.table::set(dt, j = "x", value = 2)` | 7.4 µs | 0 B |
 | `data.table::set(dt, i = 5L, j = "x", value = 3)` | 1.8 µs | 0 B |
-| 1,000 single-row `repl()` calls | 116 ms | 311 KB |
+| 1,000 single-row `repl()` calls | 113 ms | 311 KB |
 | 1,000 single-row `set()` calls | 2.0 ms | 24 KB |
 
 So a per-row loop through `repl()` is about sixty times slower than
