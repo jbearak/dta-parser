@@ -90,6 +90,22 @@ test_that("set_dta_values evaluates its arguments before reading the table", {
     set_dta_values(data, "x", { gen(data, z = 0); 7 })
     expect_identical(names(data), c("x", "z"))
     expect_identical(as.double(data$x), c(7, 7))
+    # A value whose size method reorders the table when the size rule runs,
+    # after the target was first resolved, still writes the named column.
+    late <- structure(list(5), class = "late_value")
+    registerS3method("vec_proxy", "late_value", function(x, ...) { order_vars(data, z, x); 5 },
+                     envir = asNamespace("vctrs"))
+    expect_error(set_dta_values(data, "x", late))
+    expect_identical(names(data), c("z", "x"))
+    expect_identical(as.double(data$x), c(7, 7))
+    # A callback that adds the column being created turns creation into a
+    # write to that column, never a duplicate name.
+    added <- structure(list(1), class = "adding_value")
+    registerS3method("vec_proxy", "adding_value", function(x, ...) { gen(data, w = 0); 1 },
+                     envir = asNamespace("vctrs"))
+    expect_error(set_dta_values(data, "w", added, create = TRUE))
+    expect_identical(names(data), c("z", "x", "w"))
+    expect_identical(as.double(data$w), c(0, 0))
     # A container no writer accepts is refused before any argument runs.
     touched <- 0L
     touch <- function(value) { touched <<- touched + 1L; value }
@@ -133,9 +149,18 @@ test_that("set_dta_values creates a missing column only when asked", {
     withr::local_options(dtatools.auto_grow = FALSE)
     full <- reserve_columns(dibble(a = 1:2), 0L)
     expect_error(set_dta_values(full, "b", 1L, create = TRUE), "reserve_columns")
-    # A value the fill would refuse is not reached when capacity fails first.
-    expect_error(set_dta_values(full, "b", c(1L, 2L, 3L), create = TRUE), "reserve_columns")
+    # Capacity fails before `value` and `rows` are evaluated.
+    touched <- 0L
+    touch <- function(value) { touched <<- touched + 1L; value }
+    expect_error(set_dta_values(full, "b", touch(1L), rows = touch(1), create = TRUE),
+                 "reserve_columns")
+    expect_identical(touched, 0L)
     expect_identical(names(full), "a")
+    # A malformed table is refused before any argument is evaluated.
+    broken <- dibble(a = 1:2, b = 3:4)
+    attr(broken, "names") <- c("a", "a")
+    expect_error(set_dta_values(broken, touch("a"), touch(1L)), "unique")
+    expect_identical(touched, 0L)
 })
 
 test_that("set_dta_values works on grouped dibbles and refuses rowwise ones", {

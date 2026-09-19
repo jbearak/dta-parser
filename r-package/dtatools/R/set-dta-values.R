@@ -62,32 +62,39 @@
 #' survey
 set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     .require_mutation_target(data)
-    # Every argument is an ordinary R value, so all of them are forced here,
-    # before anything about the table is read: an argument expression that
-    # edits the table by reference, or errors, has done so before the
-    # layout, the sharing, and the views are taken, and they describe the
-    # table that is written. The container check comes first, cheaply,
-    # so a table no writer accepts is refused with no argument evaluated.
-    .set_values_preflight(data)
-    force(variable); force(value); force(rows)
+    # The order every mutation helper keeps: the table is validated before
+    # any argument is evaluated, and capacity for a new column is checked
+    # before the values that fill it are. Each argument is an ordinary R
+    # value, but an argument expression, or a callback-capable vector, can
+    # edit this table by reference while it is read, so the layout the write
+    # relies on, the target's location, the sharing, and the views, is read
+    # only after every argument has been evaluated and normalized.
+    row_count <- .set_values_preflight(data)
+    force(variable)
     if (!rlang::is_bool(create)) {
         stop("`create` must be `TRUE` or `FALSE`", call. = FALSE)
     }
     target <- .set_values_target(data, variable, create)
     if (is.na(target$location)) {
-        # Capacity is checked before the column is built, as `gen()` does.
         data <- .prepare_column_growth(data, length(data) + 1L, .mutation_auto_grow())
     }
-    # Inspect sharing before the views add temporary column references,
-    # as `repl()` does.
+    force(value)
+    rows <- .set_values_rows(rows, row_count)
+    .mutation_value_mode(value, rows, row_count)
+    # Nothing evaluates caller code from here to the commit. The target is
+    # resolved again against the names the table has now.
+    target <- .set_values_target(data, target$name, create)
     shared <- .Call(C_dtatools_shared_columns, data)
     original <- .set_values_open(data)
     on.exit(.Call(C_dtatools_release_mutation_views, original$columns), add = TRUE)
-    rows <- .set_values_rows(rows, original$nrow)
+    if (original$nrow != row_count) {
+        stop("`data` changed its row count while `set_dta_values()` evaluated its arguments",
+             call. = FALSE)
+    }
     if (is.na(target$location)) {
         return(invisible(.set_values_create(data, original, target$name, value, rows)))
     }
-    resolved <- .resolved_assignment(value, rows, original$nrow)
+    resolved <- .resolved_assignment(value, rows, row_count)
     .commit_replacement(
         data, original, target, resolved, shared,
         promote = FALSE, report_promotion = FALSE,
@@ -96,12 +103,16 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     invisible(data)
 }
 
-# The container check every mutation helper runs before it evaluates an
-# argument, without the column views the full preflight opens: an
-# ungrouped dibble with no extra classes passes on its class vector alone.
+# Validates the table before any argument is evaluated and returns its row
+# count. An ungrouped dibble with no extra classes takes the native shape
+# check, which certifies the names and column lengths in about a
+# microsecond; every other table takes the full validation `repl()` uses.
 .set_values_preflight <- function(data) {
-    if (.ungrouped_dibble_classes(class(data))) return(invisible(NULL))
-    .validate_mutation_container(data, allow_grouped = TRUE, allow_rowwise = FALSE)
+    if (.ungrouped_dibble_classes(class(data))) {
+        rows <- abs(.row_names_info(data, 2L))
+        if (isTRUE(.Call(C_dtatools_mutation_shape, data, rows))) return(rows)
+    }
+    .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE)$nrow
 }
 
 # The column as name and location. A position must exist; a name must
@@ -140,19 +151,12 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     )
 }
 
-# The table's columns as private views with the row count, through the
-# native shape check when the table is one it certifies, since that check
-# is what keeps a call at microseconds; otherwise through the full
-# validation `repl()` uses, which also covers a grouped dibble.
+# The table's columns as private views with the row count, validated again
+# the way `.set_values_preflight()` did, since the arguments have run since.
 .set_values_open <- function(data) {
     row_count <- if (.ungrouped_dibble_classes(class(data))) {
-        # An ungrouped dibble with no extra classes is what the native
-        # shape check certifies; the generic container validation it would
-        # otherwise run costs more than the write itself.
         rows <- abs(.row_names_info(data, 2L))
         if (isTRUE(.Call(C_dtatools_mutation_shape, data, rows))) rows else NULL
-    } else {
-        .mutation_fast_shape(data)
     }
     if (!is.null(row_count)) {
         return(list(columns = .Call(C_dtatools_mutation_views, data),
@@ -175,9 +179,6 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
 # `value` at `rows`, appended to a table whose capacity the caller has
 # already secured, so `data` may be the isolated table growth returned.
 .set_values_create <- function(data, original, name, value, rows) {
-    # The size rule the write path applies, before the native fill sees a
-    # value it cannot spread over the rows.
-    .mutation_value_mode(value, rows, original$nrow)
     column <- .generated_column(
         value, rows, original$nrow, caller = "set_dta_values()",
         generate = TRUE, carry_metadata = FALSE
