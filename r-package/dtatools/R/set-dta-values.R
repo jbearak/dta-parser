@@ -86,9 +86,8 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     # The size rule reads only the value's length, so a foreign value that
     # cannot fit is refused before its elements are copied.
     value_mode <- .mutation_value_mode(value, rows, row_count)
-    settled <- .set_values_settled_input(value)
-    if (!.same_mutation_object(settled, value)) {
-        value <- settled
+    if (.is_altrep(value)) {
+        value <- .set_values_settled_input(value)
         value_mode <- .mutation_value_mode(value, rows, row_count)
     }
     # The arguments have run; the target is found again by name for the
