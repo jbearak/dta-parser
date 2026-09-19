@@ -33,7 +33,7 @@ position, normalizes `rows` as `where` is normalized once evaluated,
 applies the same size rule to `value`, and commits through the same
 replacement path `repl()` commits through, with the same native patch on
 compact storage and the same detach of a column shared with another
-table. A single-row write costs about thirteen microseconds on a numeric
+table. A single-row write costs about fourteen microseconds on a numeric
 column against over a hundred through `repl()` and about two through
 `data.table::set()`; the
 [cell-assignment benchmark](../../benchmarks/r-cell-assignment/results-2026-09-19-set-dta-values.md)

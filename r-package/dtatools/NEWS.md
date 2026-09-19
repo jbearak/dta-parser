@@ -4,7 +4,7 @@
   is the loop-friendly assigner, `data.table::set()` for a dibble: the
   column as a name or position in an ordinary R value, `rows` and
   `value` as ordinary R values, nothing evaluated against the data, and a
-  single-row write in about thirteen microseconds where `repl()` takes over
+  single-row write in about fourteen microseconds where `repl()` takes over
   a hundred. The target keeps its declared storage and a value it cannot
   hold is an error, as `repl(promote = FALSE)` makes it. A missing
   column is an error unless `create = TRUE`. See ADR 0043.
