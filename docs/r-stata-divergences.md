@@ -190,7 +190,13 @@ adding casts to an R translation that reproduce information loss.
 
 **`labelbook(list_limit = )` lists a deterministic prefix.** Stata's `list(#)` shows a random subset of mappings. dtatools lists the first ones, so two runs of the same script produce the same report.
 
-**Reports are data, not printed output.** `codebook()` and `labelbook()` return structured results — underlying numeric codes, missing counts, notes, diagnostics, and Stata-style missingness implications — so callers need not parse a printed report. `tab()` returns a base `table` object rather than Stata's formatted `tabulate` output.
+**Reports are data, not printed output.** `codebook()` and `labelbook()` return structured results — underlying numeric codes, missing counts, notes, diagnostics, and Stata-style missingness implications — so callers need not parse a printed report. `tab()` is the exception: it prints as Stata prints `tabulate`, and its result is still a `table` of frequencies with `as.table()`, `as.data.frame()`, and the usual table operations behind it. The [parity matrix](./r-tab-stata-parity.md) lists every `tabulate` form and option.
+
+**`tab()` refuses an empty display.** Stata's `tabulate x y, nofreq` prints nothing and returns. `tab(d, x, y, freq = FALSE)` without `percent` or `expected` is an error, since a table with nothing to show is a mistake in the call.
+
+**`tab()` qualifies duplicate label text.** Stata's `tabulate` prints two rows both headed `Same` when two codes share that label. `tab()` prints `Same [1]` and `Same [2]`, so every row name is unambiguous and `as.data.frame()` never yields two identical categories.
+
+**`tab()` takes three or more variables.** Stata's `tabulate` is one- or two-way. `tab(d, x, y, z)` returns an R multidimensional table printed as base R prints it.
 
 **`recode()` is dplyr's interface, not Stata's command.** `dtatools::recode()` takes dplyr's replacement form and adds what dplyr loses: unmatched system and extended missing payloads survive, as do numeric classes, `haven_labelled`, `Date`, and `POSIXct`. Stata's `recode` rule syntax, including range rules, is not implemented. Value-label definitions are not rewritten when the codes they describe change.
 

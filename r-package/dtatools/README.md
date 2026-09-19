@@ -433,11 +433,15 @@ Use explicit column names with base `cbind()`, such as `cbind(data, extra = x)`,
 when the output name matters. An unnamed argument following a dibble can retain
 a value-derived name from the existing base-binding adapter.
 
-`tab()` creates one-way and multidimensional frequency tables using Stata value labels. With `missing = TRUE`, it keeps `.`, `.a` through `.z`, and R `NaN` as separate categories when they occur:
+`tab()` creates one-way and two-way frequency tables that print as Stata's `tabulate` prints them, using Stata value labels, with `sort`, `percent`, `expected`, and `freq` for Stata's `sort`, `row column cell`, `expected`, and `nofreq`. With `missing = TRUE`, it keeps `.`, `.a` through `.z`, and R `NaN` as separate categories when they occur, and the empty string as the string missing:
 
 ```r
-tab(cars$foreign, missing = TRUE)
+tab(cars, foreign, missing = TRUE)
+tab(cars, rep78, foreign, percent = "row")
+as.table(tab(cars, rep78))  # the plain frequency table
 ```
+
+The [parity matrix](https://github.com/jbearak/dta-parser/blob/main/docs/r-tab-stata-parity.md) lists every `tabulate` form and option and how far each is matched.
 
 `labelbook()` describes named value-label tables rather than observations.
 An R data frame reports tables assigned to its current columns. A direct DTA
@@ -738,7 +742,7 @@ Use the installed help for exact behavior and examples:
 | `slice_dta_rows()`, `reorder_dta_rows()` | Select rows into a new table, or permute a table's rows in place, gathering compact Stata columns in native code. |
 | `resolve_var_name()`, `confirm_var()` | Resolve or check an exact variable name or unique abbreviation, with configurable failure behavior. |
 | `copy_data()` | Make an independent copy of a dataset and its metadata. |
-| `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
+| `tab()` | Stata `tabulate` in R: one-way and two-way tables printed as Stata prints them, with `sort`, `percent`, `expected`, and `freq`. |
 | `labelbook()` | Structured reports on named value-label tables, assignments, mappings, and problems. |
 | `codebook()` | Structured variable metadata, observed-data summaries, missingness relationships, and problems. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |

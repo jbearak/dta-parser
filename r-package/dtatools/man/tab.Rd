@@ -2,14 +2,18 @@
 % Please edit documentation in R/tab.R
 \name{tab}
 \alias{tab}
-\title{Tabulate vectors using Stata value labels}
+\title{Tabulate vectors as Stata's \code{tabulate} does}
 \usage{
 tab(
   x,
   ...,
   data = NULL,
   missing = FALSE,
-  display = c("label", "value", "both")
+  display = c("label", "value", "both"),
+  sort = FALSE,
+  percent = NULL,
+  expected = FALSE,
+  freq = TRUE
 )
 }
 \arguments{
@@ -25,20 +29,45 @@ unquoted column names. All selected vectors must have the same length.}
 \item{missing}{How missing values should be handled. \code{FALSE} and
 \code{"exclude"} omit them; \code{TRUE} and \code{"distinguish"} give observed Stata
 system missing (\code{.}), extended missing codes (\code{.a} through \code{.z}), and R
-\code{NaN} separate categories; \code{"combine"} creates one base-R missing category.}
+\code{NaN} separate categories; \code{"combine"} creates one base-R missing
+category. A character \code{""} or \code{NA} is Stata's string missing under every
+mode: excluded by default, and one blank category otherwise.}
 
 \item{display}{How labelled values should be named: by \code{"label"} (the
-default), underlying \code{"value"}, or \code{"both"}. An absent label always falls
-back to the underlying value. Duplicate displayed labels are qualified by
-their values.}
+default), underlying \code{"value"} (Stata's \code{nolabel}), or \code{"both"}. An
+absent label always falls back to the underlying value. Duplicate
+displayed labels are qualified by their values.}
+
+\item{sort}{One-way tables only. \code{TRUE} orders the categories by
+descending frequency, ties in value order, as Stata's \code{sort} does.}
+
+\item{percent}{Two-way tables only. Any of \code{"row"}, \code{"column"}, and
+\code{"cell"}: the percentages to show under each frequency, as Stata's
+\code{row}, \code{column}, and \code{cell} options do.}
+
+\item{expected}{Two-way tables only. \code{TRUE} shows each cell's expected
+frequency under independence, as Stata's \code{expected} does.}
+
+\item{freq}{\code{FALSE} omits the frequencies, as Stata's \code{nofreq} does. It
+needs \code{percent} or \code{expected}, since a table with nothing to show is an
+error here where Stata prints nothing.}
 }
 \value{
-A standard \code{table} object.
+A \code{table} of frequencies with class \code{dta_tab}. \code{\link[=as.table]{as.table()}} drops
+the class for a plain \code{table}, \code{\link[=as.data.frame]{as.data.frame()}} adds the percentages
+and expected frequencies as columns, and \code{\link[=format]{format()}} gives the printed
+lines. Subsetting, arithmetic, \code{\link[=t]{t()}}, and \code{\link[=aperm]{aperm()}} return plain
+tables. \code{\link[=margin.table]{margin.table()}} is not generic and restores the class itself;
+its result carries no layout and prints as a plain table, and
+\code{as.table(margin.table(x, 1))} is the exact plain table.
 }
 \description{
-Creates one-way or multidimensional frequency tables while using the value
-labels and extended missing codes carried by vectors returned by \code{\link[=read_dta]{read_dta()}}.
-Ordinary unlabelled vectors retain the familiar behavior of \code{\link[base:table]{base::table()}}.
+Creates one-way and two-way frequency tables that print as Stata's
+\code{tabulate} prints them, using the value labels and extended missing codes
+carried by vectors returned by \code{\link[=read_dta]{read_dta()}}. Three
+or more vectors give an R multidimensional table, which Stata's \code{tabulate}
+does not offer. Ordinary unlabelled vectors keep the behavior of
+\code{\link[base:table]{base::table()}} for their categories.
 }
 \details{
 Calls may supply vectors directly, select unquoted names from \code{data}, or
@@ -59,6 +88,16 @@ after observed values as system missing, extended missings \code{.a} through
 \code{missing = "combine"} follows base R by collapsing all missing numeric
 payloads into one category.
 
+The result prints as Stata prints \code{tabulate}: a one-way table with
+frequency, percent, and cumulative percent columns and a total row; a
+two-way table with row and column totals, the requested percentages and
+expected frequencies under each frequency, a key when more than one
+statistic is shown, and panels when the table is wider than the console.
+The header uses each variable's label, or its name without one. A table
+with no observations prints \verb{no observations}. The
+\href{https://github.com/jbearak/dta-parser/blob/main/docs/r-tab-stata-parity.md}{parity matrix}
+lists every \code{tabulate} form and option and how far each is matched.
+
 Numeric factorization is shared with \code{\link[=factor_from_labels]{factor_from_labels()}} and does not
 materialize compact numeric columns returned by \code{\link[=read_dta]{read_dta()}}.
 }
@@ -72,7 +111,8 @@ table(unclass(x), useNA = "ifany")
 table(factor_from_labels(x), useNA = "ifany")
 tab(x, missing = TRUE)
 tab(x, missing = TRUE, display = "both")
+tab(x, sort = TRUE)
 
 mtcars |>
-    tab(cyl, gear)
+    tab(cyl, gear, percent = "row")
 }

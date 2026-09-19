@@ -139,7 +139,15 @@
     },
     {
       "path": "tests/testthat/fixtures/README.md",
-      "sha256": "c3b13c43a49756ad63197c1557821b18e883002907b4083f1a148fffafbfe1ff"
+      "sha256": "b069e57cb96e908d262eee5f6c1f53c346ae78c668216071868ce74f8bd3a709"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate.do",
+      "sha256": "80cae6bed2584535b156ed894059970cbda84b028b434f512e294a9a5015548a"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate.log",
+      "sha256": "fd5b60aed41221778bc51f03c9b6f4c5170c2f87c74dc370c49b88b133646c7b"
     }
   ],
   "families": [
@@ -10459,7 +10467,7 @@
         },
         {
           "path": "tests/testthat/test-tab.R",
-          "sha256": "df2b759fa1d21069ae5c83293da2c4ef0fec123ae6be2a17e18375c4e5334480"
+          "sha256": "e2ad85800b192203c7ea04478fe8989a6d6ce40c6706d3eebfada558a067678f"
         },
         {
           "path": "tests/testthat/test-codebooks.R",
@@ -10468,6 +10476,10 @@
         {
           "path": "tests/testthat/test-datasig.R",
           "sha256": "4f1737cff069b05e5b7fb459d57652e508916b40e426579ec53fd18aca54bdfd"
+        },
+        {
+          "path": "tests/testthat/test-tab-stata-parity.R",
+          "sha256": "fd3e20081686da5de344a3c71414348628c53f59019bd412e53c8e054bbee265"
         }
       ],
       "blocks": [
@@ -11009,14 +11021,6 @@
         },
         {
           "file": "test-tab.R",
-          "test": "tab is exported and returns ordinary table objects",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 12,
-          "warnings": 0
-        },
-        {
-          "file": "test-tab.R",
           "test": "tab supports data frames and pipes",
           "occurrence": 1,
           "skip": "forbid",
@@ -11107,6 +11111,102 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab.R",
+          "test": "tab is exported and wraps ordinary table objects",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "tab prints every tabulate case of the Stata log identically",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 126,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "the do-file and the log carry the same tabulate commands",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "a dta_tab is a table with a presentation record",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "tab checks its Stata options the way Stata checks them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "three or more variables are an R extension without a Stata layout",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "empty strings and NA are one string missing",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "printing survives categories Stata cannot produce",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "the console width option drives the printed panels",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "the layout measures display width, not characters",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "duplicate label text is qualified by code, unlike Stata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "sort keeps a table with one category or none",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         }
       ],

@@ -5,6 +5,22 @@
   instead of appended, with the same column-name spellings `egen()` accepts.
   A call that names both, or names a column that does not exist, changes
   nothing.
+* `tab()` prints as Stata prints `tabulate`: a one-way table with
+  frequency, percent, cumulative percent, and a total; a two-way table
+  with row and column totals. New arguments carry `tabulate`'s options:
+  `sort = TRUE` for `sort`, `percent = c("row", "column", "cell")` for
+  `row`, `column`, and `cell`, `expected = TRUE` for `expected`, and
+  `freq = FALSE` for `nofreq`. The result is a `table` of frequencies
+  with class `dta_tab`; `as.table()` gives the plain table,
+  `as.data.frame()` adds the percentages and expected frequencies as
+  columns, and the printed lines are checked against Stata 19 output in
+  the test suite. The [parity matrix](https://github.com/jbearak/dta-parser/blob/main/docs/r-tab-stata-parity.md)
+  lists every `tabulate` form and option and how far each is matched.
+* Breaking: `tab()` treats the empty string as Stata's string missing,
+  so `""` and `NA_character_` are one category, excluded by default and
+  shown as a blank level with `missing = TRUE`. Code that compared a
+  `tab()` result with `table()` through `expect_identical()` now
+  compares `as.table(tab(...))`.
 * New `val_label(x, v)` and `val_code(x, label)` look up the label text of
   a code and the code of a label text. Both are vectorised: `val_label()`
   returns a character vector with `NA` where a code has no label, and
