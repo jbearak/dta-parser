@@ -73,7 +73,7 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     # meanwhile is honoured, since the target is found again by name; adding
     # or removing the target, or changing the row count, is refused.
     row_count <- .set_values_preflight(data)
-    force(variable)
+    variable <- .set_values_settled_input(variable)
     if (!rlang::is_bool(create)) {
         stop("`create` must be `TRUE` or `FALSE`", call. = FALSE)
     }
@@ -82,15 +82,22 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     if (creating) {
         data <- .prepare_column_growth(data, length(data) + 1L, .mutation_auto_grow())
     }
-    value <- .set_values_settled_input(value)
     rows <- .set_values_settled_input(.set_values_rows(rows, row_count))
+    # The size rule reads only the value's length, so a foreign value that
+    # cannot fit is refused before its elements are copied.
+    value_mode <- .mutation_value_mode(value, rows, row_count)
+    settled <- .set_values_settled_input(value)
+    if (!.same_mutation_object(settled, value)) {
+        value <- settled
+        value_mode <- .mutation_value_mode(value, rows, row_count)
+    }
     # The arguments have run; the target is found again by name for the
     # cast, and once more after it, since the cast can run a value's methods.
     target <- .set_values_target(data, target$name, create)
     if (is.na(target$location) != creating) .set_values_changed()
     view <- if (!creating) .Call(C_dtatools_mutation_column_view, data, target$location)
     on.exit(.Call(C_dtatools_release_mutation_views, view), add = TRUE)
-    column <- .set_values_column(view, value, rows, row_count)
+    column <- .set_values_column(view, value, value_mode, rows, row_count)
     # Nothing evaluates caller code from here to the commit.
     target <- .set_values_target(data, target$name, create)
     if (.set_values_preflight(data) != row_count ||
@@ -145,7 +152,7 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     .Call(C_dtatools_settle_foreign_altrep, value)
 }
 
-# The value in the form the commit writes, after the size rule: cast to
+# The value in the form the commit writes: cast to
 # the target's declared storage for a replacement, since the cast is where
 # a vector with methods runs them; or built into the column `gen()` would
 # make for a creation. The cast reads the target through a private view,
@@ -154,8 +161,7 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
 # commit's native patch reads a vector that carries only package or base
 # classes, and the storage a value cannot fit is reported before the
 # table's layout is read.
-.set_values_column <- function(view, value, rows, row_count) {
-    value_mode <- .mutation_value_mode(value, rows, row_count)
+.set_values_column <- function(view, value, value_mode, rows, row_count) {
     if (is.null(view)) {
         return(.generated_column(
             value, rows, row_count, caller = "set_dta_values()",

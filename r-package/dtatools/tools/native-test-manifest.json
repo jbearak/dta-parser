@@ -4879,7 +4879,7 @@
         },
         {
           "path": "tests/testthat/test-set-dta-values.R",
-          "sha256": "61a8cf191604054bc4479e2b1685414211e6821671ee1cd714dd31ae281424bf"
+          "sha256": "30f39be58d09093fed4717b6c2c90e55eeea501ee7c850246cd18c711639f07e"
         }
       ],
       "blocks": [

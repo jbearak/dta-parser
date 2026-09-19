@@ -263,6 +263,15 @@ static int foreign_altrep(SEXP value) {
         !R_altrep_inherits(value, dtatools_mutation_string_class);
 }
 
+#define SETTLE_ELEMENTS(store, read) \
+    for (R_xlen_t i = 0; i < length; i++) { \
+        if ((i & 0xFFFF) == 0xFFFF) R_CheckUserInterrupt(); \
+        store(result, i, read(value, i)); \
+    }
+static void settle_logical(SEXP result, R_xlen_t i, int x) { LOGICAL(result)[i] = x; }
+static void settle_integer(SEXP result, R_xlen_t i, int x) { INTEGER(result)[i] = x; }
+static void settle_real(SEXP result, R_xlen_t i, double x) { REAL(result)[i] = x; }
+
 SEXP C_dtatools_settle_foreign_altrep(SEXP value) {
     if (!foreign_altrep(value)) return value;
     R_xlen_t length = XLENGTH(value);
@@ -270,23 +279,23 @@ SEXP C_dtatools_settle_foreign_altrep(SEXP value) {
     switch (TYPEOF(value)) {
     case LGLSXP:
         result = PROTECT(Rf_allocVector(LGLSXP, length));
-        for (R_xlen_t i = 0; i < length; i++) LOGICAL(result)[i] = LOGICAL_ELT(value, i);
+        SETTLE_ELEMENTS(settle_logical, LOGICAL_ELT)
         break;
     case INTSXP:
         result = PROTECT(Rf_allocVector(INTSXP, length));
-        for (R_xlen_t i = 0; i < length; i++) INTEGER(result)[i] = INTEGER_ELT(value, i);
+        SETTLE_ELEMENTS(settle_integer, INTEGER_ELT)
         break;
     case REALSXP:
         result = PROTECT(Rf_allocVector(REALSXP, length));
-        for (R_xlen_t i = 0; i < length; i++) REAL(result)[i] = REAL_ELT(value, i);
+        SETTLE_ELEMENTS(settle_real, REAL_ELT)
         break;
     case STRSXP:
         result = PROTECT(Rf_allocVector(STRSXP, length));
-        for (R_xlen_t i = 0; i < length; i++) SET_STRING_ELT(result, i, STRING_ELT(value, i));
+        SETTLE_ELEMENTS(SET_STRING_ELT, STRING_ELT)
         break;
     case VECSXP:
         result = PROTECT(Rf_allocVector(VECSXP, length));
-        for (R_xlen_t i = 0; i < length; i++) SET_VECTOR_ELT(result, i, VECTOR_ELT(value, i));
+        SETTLE_ELEMENTS(SET_VECTOR_ELT, VECTOR_ELT)
         break;
     default:
         result = PROTECT(Rf_duplicate(value));
@@ -297,6 +306,7 @@ SEXP C_dtatools_settle_foreign_altrep(SEXP value) {
     UNPROTECT(1);
     return result;
 }
+#undef SETTLE_ELEMENTS
 
 /* R's attribute-only copy may wrap a large ALTREP in a generic metadata
    wrapper. Package string construction already owns its copy boundary; keep

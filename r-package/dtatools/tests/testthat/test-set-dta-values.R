@@ -180,6 +180,21 @@ test_that("set_dta_values settles a value that runs code when it is read", {
     )
     expect_identical(dta_storage_type(data$m), "double")
     expect_identical(as.double(data$m), c(1.5, 1.5))
+    # A position that reorders the table when it is read names the column
+    # at that position afterwards.
+    moving_position <- .Call(ns$C_dtatools_callback_integer, 1L,
+                             function() order_vars(data, y, x))
+    set_dta_values(data, moving_position, 6)
+    expect_identical(names(data)[[1L]], "y")
+    expect_identical(as.double(data$y), c(6, 6))
+    expect_identical(as.double(data$x), c(9, 9))
+    # A foreign value that breaks the size rule is refused by its length
+    # alone, before any element is read.
+    reads <- 0L
+    oversized <- .Call(ns$C_dtatools_callback_double, c(1, 2, 3),
+                       function() reads <<- reads + 1L, 1L)
+    expect_error(set_dta_values(data, "x", oversized), "size 3")
+    expect_identical(reads, 0L)
     # The value is read once in R and never by the native patch.
     reads <- 0L
     counted <- .Call(ns$C_dtatools_callback_double, c(4, 4),
