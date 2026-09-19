@@ -3,6 +3,8 @@
 \name{var_label}
 \alias{var_label}
 \alias{val_labels}
+\alias{val_label}
+\alias{val_code}
 \alias{dataset_label}
 \alias{var_label<-}
 \alias{dataset_label<-}
@@ -15,6 +17,10 @@
 var_label(x, variable)
 
 val_labels(x, variable)
+
+val_label(x, variable, v)
+
+val_code(x, variable, label)
 
 dataset_label(data)
 
@@ -39,14 +45,19 @@ character string, which is what \code{!!name} unquotes to and what a
 \code{val_labels()}: when supplied, \code{x} must be a data frame and only that
 column's metadata is returned.}
 
+\item{v}{A numeric vector of value-label codes to look up, Stata missings
+included. In the vector shape \code{val_label(x, v)} it is the second
+argument, as in \code{labelled::val_label()}.}
+
+\item{label}{One variable label, or \code{NULL} to remove it. In the vector
+shape \code{set_var_label(x, label)} the label is the second argument. For
+\code{val_code()}, a character vector of label texts to look up.}
+
 \item{data}{A dibble for \code{set_var_label()}; a data frame or tibble for the
 getters.}
 
 \item{value}{New label metadata. Data-frame replacement forms require a
 named list or \code{NULL}.}
-
-\item{label}{One variable label, or \code{NULL} to remove it. In the vector
-shape \code{set_var_label(x, label)} the label is the second argument.}
 
 \item{.data}{A vector, or a dibble for the table forms of \code{set_var_labels()}
 and \code{set_val_labels()}.}
@@ -98,6 +109,26 @@ the label of \code{.a}. The table can be passed back to any setter; the
 \code{labels} attribute itself holds the bare named vector \code{haven} stores,
 and the table's storage records that vector's type, so reading a table
 and setting it back changes nothing.
+}
+
+\section{Looking up one label or code}{
+
+\code{val_label(x, v)} returns the label text of each code in \code{v}, and
+\code{val_code(x, label)} the code of each label text, from \code{x}'s value-label
+table. \code{x} is a labelled vector, a value-label table as \code{val_labels()}
+returns it, or a data frame with \code{variable} naming the column, so
+\code{val_label(data, status, 1)} and \code{val_label(data$status, 1)} agree. Both
+are vectorised lookups: \code{val_label()} returns a character vector with
+\code{NA} where a code has no label, and \code{val_code()} a Stata numeric of the
+table's storage with system missing \code{.} where no label matches. A code
+matches as Stata compares it: an observed value by equality and a
+tagged missing by its tag, so \code{val_label(x, .a)} finds the label of
+\code{.a}; system missing matches nothing. Label text matches exactly, and
+when a table repeats a text the first code wins. On a vector without a
+table, or with one Stata could not hold, every lookup is unmatched. \code{val_label()} shares its name and
+\code{v} argument with \code{labelled::val_label()}, which looks up one code and
+returns \code{NULL} when it is unlabelled; dtatools returns \code{NA} there so the
+result keeps the length of \code{v}.
 }
 
 \section{Setting labels}{
@@ -210,6 +241,11 @@ set_var_labels(survey, stratum, "Sampling stratum")
 
 var_label(survey)
 val_labels(survey$status)
+
+# One label or code at a time, in either direction
+val_label(survey$status, 2)
+val_label(survey, status, c(1, 2, 3))
+val_code(survey$status, "Refused")
 
 # A column name known only at run time
 stratum_name <- "stratum"

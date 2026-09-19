@@ -9,7 +9,7 @@ provenance <- validate_benchmark_install(library_path, args[[2L]])
 namespace <- loadNamespace("dtatools", lib.loc = library_path)
 package_path <- normalizePath(file.path(library_path, "dtatools"))
 stopifnot(identical(normalizePath(getNamespaceInfo(namespace, "path")), package_path),
-          length(getNamespaceExports(namespace)) == 106L)
+          length(getNamespaceExports(namespace)) == 108L)
 dll <- normalizePath(getLoadedDLLs()[["dtatools"]][["path"]])
 stopifnot(startsWith(dll, paste0(package_path, "/")))
 validate_benchmark_install(library_path, args[[2L]])
@@ -17,4 +17,4 @@ dput(list(source_sha = args[[2L]], provenance = provenance,
     package_path = package_path, dll = dll, dll_md5 = tools::md5sum(dll),
     runtime = R.version, libraries = .libPaths()),
     file.path(args[[4L]], "preflight-identity.R"))
-cat("PASS exact installed source, namespace, DLL and 106 exports\n")
+cat("PASS exact installed source, namespace, DLL and 108 exports\n")

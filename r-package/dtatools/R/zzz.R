@@ -4,7 +4,7 @@
 .warn_labelled_masking <- function(...) {
     if (!"package:dtatools" %in% search()) return(invisible(NULL))
     shared <- c(
-        "var_label", "var_label<-", "val_labels", "val_labels<-"
+        "var_label", "var_label<-", "val_labels", "val_labels<-", "val_label"
     )
     masks_dtatools <- any(vapply(shared, function(name) {
         locations <- utils::find(name, mode = "function")

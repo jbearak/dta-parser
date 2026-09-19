@@ -56,6 +56,8 @@ Variable and dataset labels accept one string. `NULL`, `NA_character_`, and `""`
 
 `val_labels()` returns the table as a named Stata numeric, a `dta_double()` or a `dta_long()` for `haven`'s integer codes, so its codes behave as Stata values: a tagged missing prints as `.a` rather than `NA`, and `names(labels)[labels == .a]` finds its label. Any setter accepts the table back, and the `labels` attribute itself holds the bare named vector stored for `haven`. See [ADR 0040](./adr/0040-value-label-tables-are-stata-numerics.md).
 
+`val_label(x, v)` and `val_code(x, label)` look up one direction of the table, the text of each code and the code of each text. They accept a labelled vector, a `val_labels()` table, or a data frame and column, as `val_label(data, status, 1)`. Both keep the length of their input: `val_label()` returns `NA` where a code has no label, and `val_code()` a Stata numeric with `.` where no text matches. A tagged missing matches by its tag, so `val_label(x, .a)` finds the label of `.a`, and system missing matches nothing. Where a table repeats a text, `val_code()` returns its first code.
+
 Value-label codes are limited to values that Stata can use in a label definition:
 
 - whole, nonmissing values from -2,147,483,647 through 2,147,483,620;
@@ -174,7 +176,10 @@ These guarantees are covered at the exported helper seam in [`test-label-metadat
 ## Compared with `labelled`
 
 The variable- and value-label getters and replacement functions intentionally
-match common `labelled` calls. The shorter `set_var_label()`,
+match common `labelled` calls, and `val_label(x, v)` shares its name and `v`
+argument with `labelled::val_label()`, differing in that it is vectorised and
+returns `NA` rather than `NULL` for an unlabelled code. `val_code()` is a
+dtatools addition. The shorter `set_var_label()`,
 `set_var_labels()`, and `set_val_labels()` names are dtatools additions, as is
 `dataset_label()`. dtatools promises call compatibility only for the documented
 getter and replacement surface. It does not implement `prefixed`, `null_action`,
@@ -194,7 +199,7 @@ The comparison below is specific to `labelled` 2.16.0 and `haven` 2.5.5. It is n
 
 The version-pinned comparison and both package attach orders run in [`test-labelled-interop.R`](../scripts/test-labelled-interop.R). CI installs `labelled` only for that repository-level gate; it is not a dtatools runtime, suggested, or enhanced dependency.
 
-If `labelled` is attached first and `dtatools` second, the four common getter
+If `labelled` is attached first and `dtatools` second, the five common getter
 and replacement names resolve to dtatools. If `labelled` is attached after
 dtatools, normal R masking makes those names resolve to `labelled`; dtatools
 emits one scoped warning. The three `set_*()` names resolve to dtatools in
