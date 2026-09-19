@@ -2,7 +2,8 @@
 * dtatools::tab() reproduces, so the R printer is compared against a
 * measurement rather than against recollection. Run with:
 *
-*     stata -b do r-package/dtatools/tests/testthat/fixtures/tabulate.do
+*     cd r-package/dtatools/tests/testthat/fixtures
+*     stata -q -b do tabulate.do
 *
 * and compare the result against tabulate.log beside it, which was produced
 * by Stata 19 MP. test-tab-stata-parity.R reads that log: every `tabulate`

@@ -143,11 +143,11 @@
     },
     {
       "path": "tests/testthat/fixtures/tabulate.do",
-      "sha256": "80cae6bed2584535b156ed894059970cbda84b028b434f512e294a9a5015548a"
+      "sha256": "ee0926a67f6059c6623312bb759d15b9477123432d617e2171bff77a79863dd8"
     },
     {
       "path": "tests/testthat/fixtures/tabulate.log",
-      "sha256": "fd5b60aed41221778bc51f03c9b6f4c5170c2f87c74dc370c49b88b133646c7b"
+      "sha256": "f81ebf6b11a052f5be0a41cb254b380cbd60488ef60c7af17f1a6af50244bc08"
     }
   ],
   "families": [
