@@ -1,5 +1,10 @@
 # dtatools (development version)
 
+* `gen()` gains `before` and `after`, Stata's `generate ..., before(varname)`
+  and `after(varname)`: the new column is inserted beside an existing column
+  instead of appended, with the same column-name spellings `egen()` accepts.
+  A call that names both, or names a column that does not exist, changes
+  nothing.
 * New `val_label(x, v)` and `val_code(x, label)` look up the label text of
   a code and the code of a label text. Both are vectorised: `val_label()`
   returns a character vector with `NA` where a code has no label, and

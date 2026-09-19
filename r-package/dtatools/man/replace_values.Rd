@@ -18,7 +18,15 @@ replace_values(
 
 repl(data, ..., where = NULL, by = NULL, bysort = NULL, promote = TRUE)
 
-gen(data, ..., where = NULL, by = NULL, bysort = NULL)
+gen(
+  data,
+  ...,
+  where = NULL,
+  by = NULL,
+  bysort = NULL,
+  before = NULL,
+  after = NULL
+)
 
 copy_data(data)
 }
@@ -57,6 +65,13 @@ change. Defaults to \code{TRUE}. \code{FALSE} holds declared storage fixed:
 float targets can round, while integer targets reject fractional or
 out-of-range values. It is not a Stata-compatibility mode. Ignored by \code{gen()}, which creates
 the column and so has no prior storage to widen.}
+
+\item{before, after}{An optional existing column name before or after
+which \code{gen()} inserts the new column, as Stata's \code{before()} and
+\code{after()} options. Supply at most one. Uses the target-name syntax:
+a bare name, a string, \code{!!name}, or \code{.(name)}. Without either the
+column is appended. \code{replace_values()} has no placement, since its
+column already has a position.}
 }
 \value{
 \code{gen()} returns the updated table invisibly: \code{data} when existing
@@ -220,8 +235,9 @@ the package's usual rules: \code{by = g}, \code{by = c(g1, g2)}, \code{by = c("g
 argument to a string as it does everywhere else in dtatools, not
 data.table's \code{list()}.
 
-\code{gen()} appends one variable and does not implement Stata's \code{before()} or
-\code{after()} placement. The new column takes the storage in
+\code{gen()} appends one variable, or inserts it beside an existing column
+with \code{before} or \code{after}, as Stata's \verb{generate ..., before(varname)} and
+\code{after(varname)} do. The new column takes the storage in
 \link{dta-storage-defaults}: a declared \verb{dta_*()} result keeps its storage,
 bare integer results are \code{long}, bare double results take Stata's
 \code{generate} default of \code{float}, or \code{double} under
@@ -352,6 +368,8 @@ identical(as.double(fraction$x), 0.1)  # TRUE
 
 survey <- dibble(income = c(10, 20), eligible = c(TRUE, FALSE))
 gen(survey, adjusted = income + 5)
+gen(survey, id = .n, before = income)   # generate id = _n, before(income)
+names(survey)                           # "id" "income" "eligible" "adjusted"
 replace_values(survey, income = income * 2, where = eligible)
 # The positional, Stata-shaped spelling means the same thing
 gen(survey, tripled, income * 3)

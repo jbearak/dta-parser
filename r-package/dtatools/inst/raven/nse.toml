@@ -22,12 +22,12 @@ converters = ["reserve_columns"]
 # gen(survey, adjusted = income + 5) and gen(survey, adjusted, income + 5):
 # the target and its values arrive in `...`, optionally followed by `where`,
 # and every dot is quoted and evaluated against the data mask, as is a named
-# `where`. `by` and `bysort` are quoted column names. `data` is an ordinary
-# argument that should still be checked.
+# `where`. `by`, `bysort`, `before` and `after` are quoted column names.
+# `data` is an ordinary argument that should still be checked.
 [[function]]
 name = "gen"
-formals = ["data", "...", "where", "by", "bysort"]
-captured = ["where", "by", "bysort"]
+formals = ["data", "...", "where", "by", "bysort", "before", "after"]
+captured = ["where", "by", "bysort", "before", "after"]
 captured_dots = true
 
 [[function]]

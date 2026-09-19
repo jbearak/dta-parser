@@ -66,7 +66,10 @@ declaration_path <- function() {
 # silently leaving Raven without the suppression -- the later tests only check
 # the tables that are still present.
 expected_policy <- list(
-    gen = list(captured = c("where", "by", "bysort"), captured_dots = TRUE),
+    gen = list(
+        captured = c("where", "by", "bysort", "before", "after"),
+        captured_dots = TRUE
+    ),
     repl = list(captured = c("where", "by", "bysort"), captured_dots = TRUE),
     replace_values = list(
         captured = c("where", "by", "bysort"), captured_dots = TRUE
