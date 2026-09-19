@@ -461,8 +461,10 @@ codebook(cars, foreign, mpg)
 codebook(cars, mpg, where = foreign == 1, mv = TRUE)
 ```
 
-`val_labels()` returns one variable's resolved mapping, while `labelbook()`
-groups mappings by their named table assignments. `tab()` counts observed
+`val_labels()` returns one variable's resolved mapping as a named Stata
+numeric, so a tagged-missing code prints as `.a` and compares as Stata
+compares it, while `labelbook()` groups mappings by their named table
+assignments. `tab()` counts observed
 values. Base `summary()` remains useful for ordinary R summaries, while
 `codebook()` applies Stata's categorical threshold, missing-code rules,
 metadata terminology, and problem checks. Multilingual value-label registries

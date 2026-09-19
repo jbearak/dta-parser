@@ -714,13 +714,14 @@ test_that("value labels on profiled columns round-trip", {
     save_arrow(data, path)
 
     actual <- read_arrow(path)
-    expect_identical(val_labels(actual$vote), c(yes = 1, no = 2))
+    expect_identical(val_labels(actual$vote), dta_double(c(yes = 1, no = 2)))
     expect_identical(dta_storage_type(actual$vote), "long")
 })
 
 test_that("integer-coded value labels work in Arrow and datasig", {
     labelled <- set_val_labels(1:2, .labels = c(one = 1L, two = 2L))
-    expect_type(val_labels(labelled), "integer")
+    expect_type(attr(labelled, "labels"), "integer")
+    expect_identical(val_labels(labelled), dta_long(c(one = 1, two = 2)))
     data <- tibble::tibble(x = labelled)
     specification <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
     expect_type(specification[[3L]][[1L]]$values, "integer")
@@ -729,7 +730,7 @@ test_that("integer-coded value labels work in Arrow and datasig", {
 
     save_arrow(data, path)
     actual <- read_arrow(path)
-    expect_identical(val_labels(actual$x), c(one = 1, two = 2))
+    expect_identical(val_labels(actual$x), dta_double(c(one = 1, two = 2)))
     expect_identical(datasig(actual), datasig(data))
 })
 
@@ -1178,7 +1179,7 @@ test_that("profiled UInt16 columns retain projected shared value labels", {
     full <- read_arrow(path, verify = FALSE)
     projected <- read_arrow(path, col_select = second, verify = FALSE)
     expect_identical(as.integer(full$first), c(1L, 2L))
-    expect_identical(val_labels(full$first), c(Yes = 1))
+    expect_identical(val_labels(full$first), dta_double(c(Yes = 1)))
     expect_identical(
         attr(full$first, "value.label.name", exact = TRUE), "shared_uint16"
     )
@@ -1189,10 +1190,10 @@ test_that("profiled UInt16 columns retain projected shared value labels", {
         attr(projected$second, "value.label.name", exact = TRUE),
         "shared_uint16"
     )
-    expect_identical(val_labels(projected$second), c(Yes = 1))
+    expect_identical(val_labels(projected$second), dta_double(c(Yes = 1)))
     expect_identical(
-        rlang::obj_address(val_labels(full$first)),
-        rlang::obj_address(val_labels(full$second))
+        rlang::obj_address(attr(full$first, "labels")),
+        rlang::obj_address(attr(full$second, "labels"))
     )
 
     roundtrip_path <- arrow_tempfile()
@@ -1200,7 +1201,7 @@ test_that("profiled UInt16 columns retain projected shared value labels", {
     roundtrip <- read_arrow(roundtrip_path)
     expect_equal(roundtrip$first, c(1, 2), ignore_attr = TRUE)
     expect_equal(roundtrip$second, c(2, 1), ignore_attr = TRUE)
-    expect_identical(val_labels(roundtrip$first), c(Yes = 1))
+    expect_identical(val_labels(roundtrip$first), dta_double(c(Yes = 1)))
     expect_identical(
         attr(roundtrip$first, "value.label.name", exact = TRUE),
         "shared_uint16"

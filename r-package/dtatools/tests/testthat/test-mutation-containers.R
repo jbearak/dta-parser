@@ -263,7 +263,7 @@ test_that("grouping validation ignores label wrappers on keys and identifiers", 
         set_dta_characteristic(d, "source", "survey", variable = "g")
         expect_identical(attr(alias, "groups", exact = TRUE), groups)
         expect_identical(attr(alias$g, "format.stata"), "%9.0g")
-        expect_identical(val_labels(alias$g), c(One = 1L, Two = 2L))
+        expect_identical(val_labels(alias$g), dta_long(c(One = 1L, Two = 2L)))
         if (!rowwise) {
             gen(d, size = .N)
             expect_equal(as.integer(alias$size), c(2L, 2L, 1L))

@@ -664,13 +664,13 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 .book_codes <- function(x) {
     raw <- .tab_missing_codes(x)
     values <- .book_numeric_data(x)
-    missing <- rep(NA_character_, length(x)); rank <- rep(0L, length(x))
+    missing <- .stata_missing_text(raw); rank <- rep(0L, length(x))
     system <- !is.na(raw) & raw == 0L
     tagged <- !is.na(raw) & raw >= utf8ToInt("a") & raw <= utf8ToInt("z")
     nan <- !is.na(raw) & raw == 256L
-    missing[system] <- "."; rank[system] <- 1L
-    missing[tagged] <- paste0(".", intToUtf8(raw[tagged], multiple = TRUE)); rank[tagged] <- raw[tagged] - 95L
-    missing[nan] <- "NaN"; rank[nan] <- 28L
+    rank[system] <- 1L
+    rank[tagged] <- raw[tagged] - 95L
+    rank[nan] <- 28L
     text <- ifelse(is.na(missing), format(values, trim = TRUE, scientific = FALSE), missing)
     list(missing_code = missing, rank = rank, text = text)
 }

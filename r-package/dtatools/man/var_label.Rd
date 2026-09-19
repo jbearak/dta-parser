@@ -76,18 +76,28 @@ and unrelated attributes.
 \section{Getter results}{
 
 \code{var_label(data, variable)} returns one column's character label or
-\code{NULL}, and \code{val_labels(data, variable)} returns its named numeric
-vector or \code{NULL}. The \code{variable} argument follows the same rule as in
+\code{NULL}, and \code{val_labels(data, variable)} returns its value-label table
+or \code{NULL}. The \code{variable} argument follows the same rule as in
 \code{gen()} and \code{replace_values()}, so \code{var_label(data, hh1)},
 \code{var_label(data, "hh1")}, \code{var_label(data, !!name)}, and
 \code{var_label(data, .(name))} are equivalent. Asking for a column that
 does not exist is an error.
 
 Without \code{variable}: for a vector, \code{var_label()} returns one character
-value or \code{NULL}, and \code{val_labels()} returns a named numeric vector or
+value or \code{NULL}, and \code{val_labels()} returns a value-label table or
 \code{NULL}. For a data frame, each returns a named list with one element
 per column, including \code{NULL} entries. \code{dataset_label()} accepts only a
 data frame or tibble and returns one character value or \code{NULL}.
+
+A value-label table is a named Stata numeric, a \code{\link[=dta_double]{dta_double()}}, or a
+\code{\link[=dta_long]{dta_long()}} when \code{haven} stored integer codes: the names are the
+displayed text and the values are the Stata codes. Because the codes
+are a Stata numeric, a tagged missing prints as \code{.a} rather than \code{NA},
+and comparisons follow Stata, so \code{names(labels)[labels == .a]} finds
+the label of \code{.a}. The table can be passed back to any setter; the
+\code{labels} attribute itself holds the bare named vector \code{haven} stores,
+and the table's storage records that vector's type, so reading a table
+and setting it back changes nothing.
 }
 
 \section{Setting labels}{
@@ -169,8 +179,9 @@ shared semantic state. Each vector's \code{labels} mapping is authoritative in R
 Value-label setters retain the hint while value labels remain and remove
 it when the mapping is cleared. Use \code{\link[=set_dta_metadata]{set_dta_metadata()}} to set the hint and
 raw mapping together. That helper preserves an explicitly named zero-length
-mapping and its hint as an empty table; clearing with \code{labels = NULL} removes
-both. This does not create a shared table registry.
+mapping and its hint as an empty table, and the value-label setters keep
+such a table when it is set back; clearing with \code{NULL} or an unnamed
+\code{numeric()} removes both. This does not create a shared table registry.
 
 See the
 \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}

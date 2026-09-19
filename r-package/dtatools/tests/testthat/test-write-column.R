@@ -137,7 +137,7 @@ test_that("a declared integer with haven classes exports through Arrow", {
     actual <- read_arrow(arrow_path)
     expect_identical(dta_storage_type(actual$v), "long")
     expect_identical(as.double(actual$v), c(1, 2))
-    expect_identical(val_labels(actual$v), c(a = 1))
+    expect_identical(val_labels(actual$v), dta_double(c(a = 1)))
     expect_identical(datasig(data), datasig(actual))
 })
 

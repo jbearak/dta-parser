@@ -30,7 +30,7 @@ test_that("1:1 merges match keys under Stata missing-code identity", {
 
     expect_identical(dta_storage_type(result$`_merge`), "byte")
     expect_identical(as.double(result$`_merge`), c(1, 3, 3, 2))
-    expect_identical(val_labels(result$`_merge`), merge_indicator_labels)
+    expect_identical(val_labels(result$`_merge`), dta_double(merge_indicator_labels))
 })
 
 test_that("compact gathers retain exact missing counts", {
@@ -148,7 +148,7 @@ test_that("key columns coalesce storage and metadata", {
     expect_identical(as.double(result$id), c(1, 2, 200))
     expect_identical(dta_storage_type(result$id), "int")
     expect_identical(var_label(result$id), "Identifier")
-    expect_identical(val_labels(result$id), c(One = 1, TwoHundred = 200))
+    expect_identical(val_labels(result$id), dta_double(c(One = 1, TwoHundred = 200)))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(result$id))
 
     conflicting <- tibble::tibble(
@@ -416,7 +416,7 @@ test_that("Stata doubles retain values and metadata across merge partitions", {
     )
     expect_identical(var_label(result$double_x), "Master double")
     expect_identical(var_label(result$double_y), "Using double")
-    expect_identical(val_labels(result$shared), c(One = 1, Three = 3))
+    expect_identical(val_labels(result$shared), dta_double(c(One = 1, Three = 3)))
 })
 
 test_that("compact variables keep legacy observed encodings", {

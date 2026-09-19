@@ -245,8 +245,12 @@ assert(
     identical(interop$factor_values, rep(c("Imported", "Domestic"), 5L)),
     "haven::as_factor() did not understand dtatools metadata"
 )
+# `val_labels()` returns a Stata numeric (ADR 0040); the codes compare
+# through `as.double()`.
 assert(
-    identical(interop$recode_labels, c(Domestic = 0, Imported = 1)) &&
+    inherits(interop$recode_labels, "dta_numeric") &&
+        identical(as.double(interop$recode_labels), c(0, 1)) &&
+        identical(names(interop$recode_labels), c("Domestic", "Imported")) &&
         identical(interop$recode_format, "%8.0g"),
     "Loading labelled displaced the dtatools package's metadata-preserving recode method"
 )

@@ -7,6 +7,7 @@
 \alias{dta_float}
 \alias{dta_double}
 \alias{dta_storage_type}
+\alias{format.dta_numeric}
 \title{Construct and inspect Stata numeric storage}
 \usage{
 dta_byte(x = NULL, .size = NULL)
@@ -20,6 +21,16 @@ dta_float(x = NULL, .size = NULL)
 dta_double(x = NULL, .size = NULL)
 
 dta_storage_type(x)
+
+\method{format}{dta_numeric}(
+  x,
+  trim = FALSE,
+  digits = NULL,
+  nsmall = 0L,
+  justify = c("left", "right", "centre", "none"),
+  width = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{For a constructor, a logical, integer, or double vector to encode.
@@ -27,6 +38,10 @@ For \code{dta_storage_type()}, a vector to inspect.}
 
 \item{.size}{A non-negative whole number of system missing values to
 allocate. Do not supply both \code{x} and \code{.size}.}
+
+\item{trim, digits, nsmall, justify, width, ...}{For \code{format()}, as in
+\code{\link[base:format]{base::format()}}; they format the observed values, and \code{width} also
+pads the missing spellings.}
 }
 \value{
 A double vector carrying its declared Stata storage type.
@@ -102,6 +117,21 @@ Comparisons keep Stata's ordering of missing values and are unaffected.
 \code{summary()} returns an ordinary R numeric summary. It excludes system and
 tagged missings from the descriptive statistics and counts them together
 as \code{NA} values. Its arguments follow \code{\link[base:summary.default]{base::summary.default()}}.
+}
+
+\section{Display}{
+
+\code{format()} spells missing values as Stata does: \code{.} for system missing
+and \code{.a} through \code{.z} for a tagged missing, so a printed vector, a
+dibble or data frame column, and a value-label table read as they do
+in Stata rather than as R's \code{NA}. Observed values are formatted by
+\code{\link[base:format]{base::format()}} with the same arguments. Printing a vector that
+carries value labels lists them under the values, with the codes in
+the same spelling, and a dibble or tibble column annotates each
+labelled cell with its text, \code{1 [One]}, as \code{haven} does.
+\code{options(dtatools.show_pillar_labels = FALSE)} turns the annotation
+off; \code{haven}'s option of the same meaning is honoured when the dtatools
+one is unset.
 }
 
 \examples{

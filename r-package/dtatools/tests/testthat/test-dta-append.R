@@ -225,14 +225,14 @@ test_that("the first source to define a value-label table owns it", {
     second <- tibble::tibble(v = labelled_byte(c(2, 3), c(no = 2), "xl"))
 
     expect_silent(result <- dta_append(list(first, second)))
-    expect_identical(val_labels(result$v), c(yes = 1))
+    expect_identical(val_labels(result$v), dta_double(c(yes = 1)))
     expect_identical(attr(result$v, "value.label.name"), "xl")
 
     # Conflicting text for a shared code is not a warning either: the
     # later definition is discarded whole.
     third <- tibble::tibble(v = labelled_byte(1, c(oui = 1), "xl"))
     expect_silent(result <- dta_append(list(first, third)))
-    expect_identical(val_labels(result$v), c(yes = 1))
+    expect_identical(val_labels(result$v), dta_double(c(yes = 1)))
 
     unlabeled <- tibble::tibble(v = dta_byte(1))
     result <- dta_append(list(unlabeled, second))
@@ -255,14 +255,14 @@ test_that("a variable takes the owning definition of its table name", {
 
     result <- dta_append(list(first, second))
     for (my_name in c("ma7m", "ma6a2", "cm11c")) {
-        expect_identical(val_labels(result[[my_name]]), months, info = my_name)
+        expect_identical(val_labels(result[[my_name]]), dta_double(months), info = my_name)
         expect_identical(
             attr(result[[my_name]], "value.label.name"), "labb", info = my_name
         )
     }
     # A table the master does not define is taken from the later
     # source that does.
-    expect_identical(val_labels(result$y), c(why = 1))
+    expect_identical(val_labels(result$y), dta_double(c(why = 1)))
     expect_identical(attr(result$y, "value.label.name"), "yl")
 
     # Every variable sharing `labb` now carries the same definition, so
@@ -270,7 +270,7 @@ test_that("a variable takes the owning definition of its table name", {
     path <- withr::local_tempfile(fileext = ".dta")
     expect_no_warning(save_dta(result, path))
     written <- read_dta(path)
-    expect_identical(val_labels(written$ma6a2), months)
+    expect_identical(val_labels(written$ma6a2), dta_double(months))
     expect_identical(attr(written$ma6a2, "value.label.name"), "labb")
 })
 
@@ -284,18 +284,18 @@ test_that("unnamed labels define a table named after the variable", {
     )
 
     result <- dta_append(list(first, named_later))
-    expect_identical(val_labels(result$v), c(one = 1))
+    expect_identical(val_labels(result$v), dta_double(c(one = 1)))
     expect_null(attr(result$v, "value.label.name"))
     # `w` is assigned the table `v`, which the first source owns.
-    expect_identical(val_labels(result$w), c(one = 1))
+    expect_identical(val_labels(result$w), dta_double(c(one = 1)))
     expect_identical(attr(result$w, "value.label.name"), "v")
 
     # The same rule from the other direction: an unnamed later
     # contributor's table `v` is discarded when the master defines `v`.
     owner <- tibble::tibble(w = labelled_byte(1, c(uno = 1), "v"))
     result <- dta_append(list(owner, first))
-    expect_identical(val_labels(result$w), c(uno = 1))
-    expect_identical(val_labels(result$v), c(uno = 1))
+    expect_identical(val_labels(result$w), dta_double(c(uno = 1)))
+    expect_identical(val_labels(result$v), dta_double(c(uno = 1)))
     expect_null(attr(result$v, "value.label.name"))
 })
 
@@ -315,7 +315,7 @@ test_that("value-label ownership survives a file round trip", {
     save_dta(second, using)
 
     result <- dta_append(list(master, using))
-    expect_identical(val_labels(result$x), c(one = 1))
+    expect_identical(val_labels(result$x), dta_double(c(one = 1)))
     expect_identical(attr(result$x, "value.label.name"), "xl")
     expect_null(val_labels(result$u))
 })
@@ -663,7 +663,7 @@ test_that("append name repair preserves implicit label-table identity", {
         expect_identical(names(result), c("V", "W"))
         expect_identical(attr(result$V, "value.label.name"), "v")
         expect_identical(attr(result$W, "value.label.name"), "v")
-        expect_identical(val_labels(result$V), c(one = 1))
+        expect_identical(val_labels(result$V), dta_double(c(one = 1)))
         path <- tempfile(fileext = ".dta")
         save_dta(result, path)
         restored <- read_dta(path)
@@ -689,7 +689,7 @@ test_that("append gives blank implicit label names a stable repaired identity", 
         repeated <- dta_append(result, output = output,
             .name_repair = function(names) paste0("renamed_", names))
         expect_identical(attr(repeated[[1L]], "value.label.name"), table_name)
-        expect_identical(val_labels(repeated[[1L]]), c(one = 1, two = 2))
+        expect_identical(val_labels(repeated[[1L]]), dta_double(c(one = 1, two = 2)))
     }
     expect_null(attr(source[[1L]], "value.label.name"))
 })

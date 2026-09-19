@@ -233,6 +233,7 @@ set_dta_metadata <- function(x, ..., .metadata = NULL, variable = NULL) {
     }
     if ("labels" %in% keys) {
         .validate_value_label_target(changed, updates$labels)
+        attr(changed, "labels") <- .stored_value_labels(updates$labels)
         .prepare_write_value_labels(changed, "metadata target")
         if (!is.null(updates$labels)) {
             # Use nonempty temporary text only for the existing uniqueness

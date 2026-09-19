@@ -330,13 +330,23 @@ tab <- function(x, ..., data = NULL, missing = FALSE,
     make.unique(names, sep = " #")
 }
 
-.tab_missing_name <- function(code) {
-    if (code == 0L) return(".")
-    if (code == 256L) return("NaN")
-    if (code >= utf8ToInt("a") && code <= utf8ToInt("z")) {
-        return(paste0(".", intToUtf8(code)))
-    }
-    paste0(".<tag ", code, ">")
+.tab_missing_name <- function(code) .stata_missing_text(code)
+
+# Stata's spelling of the missing codes `.tab_missing_codes()` reports: `.`
+# for system missing, `.a` through `.z` for a tagged missing, `NaN` for
+# R's own NaN, and `NA_character_` for an observed value. Every console
+# surface that shows a missing value, the codebooks, `tab()`, `format()`,
+# and the error messages, spells it through here (ADR 0040).
+.stata_missing_text <- function(codes) {
+    text <- rep(NA_character_, length(codes))
+    known <- !is.na(codes)
+    text[known & codes == 0L] <- "."
+    text[known & codes == 256L] <- "NaN"
+    tagged <- known & codes >= utf8ToInt("a") & codes <= utf8ToInt("z")
+    text[tagged] <- paste0(".", intToUtf8(codes[tagged], multiple = TRUE))
+    other <- known & is.na(text)
+    text[other] <- paste0(".<tag ", codes[other], ">")
+    text
 }
 
 .tab_missing_codes <- function(value) {

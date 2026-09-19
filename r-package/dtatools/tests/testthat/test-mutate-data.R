@@ -1124,7 +1124,7 @@ test_that("gen and a new := column copy a column's values, not its metadata", {
     )
     # The source is untouched.
     expect_identical(var_label(data$x), "Original")
-    expect_identical(val_labels(data$x), c(one = 1, two = 2))
+    expect_identical(val_labels(data$x), dta_double(c(one = 1, two = 2)))
 
     gen(data, t = s)
     expect_identical(attr(data$t, "stata.string.storage"), "str2")
@@ -1146,11 +1146,11 @@ test_that("gen and a new := column copy a column's values, not its metadata", {
     copied <- data
     copied$w <- copied$x
     expect_identical(var_label(copied$w), "Original")
-    expect_identical(val_labels(copied$w), c(one = 1, two = 2))
+    expect_identical(val_labels(copied$w), dta_double(c(one = 1, two = 2)))
     if (requireNamespace("dplyr", quietly = TRUE)) {
         mutated <- dplyr::mutate(data, w = x)
         expect_identical(var_label(mutated$w), "Original")
-        expect_identical(val_labels(mutated$w), c(one = 1, two = 2))
+        expect_identical(val_labels(mutated$w), dta_double(c(one = 1, two = 2)))
     }
 
     # Authored metadata goes through the setters, as `label variable` does.
@@ -2446,7 +2446,7 @@ test_that("ordinary assignments and metadata helpers materialize current state",
     labelled <- set_val_labels(labelled, x = c(One = 1))
     expect_true(inherits(labelled, "dtatools_ref_data"))
     expect_identical(var_label(labelled), list(x = "X", y = "Y", z = "Z"))
-    expect_identical(val_labels(labelled$x), c(One = 1))
+    expect_identical(val_labels(labelled$x), dta_double(c(One = 1)))
 
     dataset_label(alias) <- "updated"
     isolated <- copy_data(alias)

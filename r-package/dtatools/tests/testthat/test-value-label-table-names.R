@@ -53,8 +53,8 @@ test_that("shared DTA tables survive projection and emit one table record", {
     expect_identical(value_label_name(projected$second), "answer_set")
     expect_identical(val_labels(full$first), val_labels(full$second))
     expect_identical(
-        rlang::obj_address(val_labels(full$first)),
-        rlang::obj_address(val_labels(full$second))
+        rlang::obj_address(attr(full$first, "labels")),
+        rlang::obj_address(attr(full$second, "labels"))
     )
 })
 
@@ -130,8 +130,8 @@ test_that("conflicting names warn once and fall back without harming other table
         expect_null(value_label_name(actual$y))
         expect_identical(value_label_name(actual$u), "shared_ok")
         expect_identical(value_label_name(actual$v), "shared_ok")
-        expect_identical(val_labels(actual$x), c(One = 1))
-        expect_identical(val_labels(actual$y), c(Two = 2))
+        expect_identical(val_labels(actual$x), dta_double(c(One = 1)))
+        expect_identical(val_labels(actual$y), dta_double(c(Two = 2)))
     }
 })
 
@@ -164,8 +164,8 @@ test_that("explicit and implicit name collisions share or fall back safely", {
         fallback <- reader(fallback_path)
         expect_null(value_label_name(fallback$first))
         expect_null(value_label_name(fallback$answer))
-        expect_identical(val_labels(fallback$first), c(No = 0))
-        expect_identical(val_labels(fallback$answer), c(Yes = 1))
+        expect_identical(val_labels(fallback$first), dta_double(c(No = 0)))
+        expect_identical(val_labels(fallback$answer), dta_double(c(Yes = 1)))
     }
 })
 
@@ -328,7 +328,7 @@ test_that("empty mappings are usable and missing mappings are malformed", {
         actual <- reader(path)$x
         expect_identical(value_label_name(actual), "empty_table")
         expect_identical(
-            val_labels(actual), stats::setNames(double(), character())
+            val_labels(actual), dta_double(stats::setNames(double(), character()))
         )
         expect_error(
             writer(data.frame(x = missing), path),
