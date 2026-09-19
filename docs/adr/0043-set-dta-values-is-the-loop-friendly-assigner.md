@@ -53,11 +53,13 @@ from another package. That code can edit the same table by reference,
 and a write whose column position was fixed before it ran would land in
 the wrong column. So the assigner keeps the order every mutation verb
 keeps: validate the table, check capacity for a new column, evaluate
-every argument, and only then read the layout it writes into. A foreign
-ALTREP value is copied into an ordinary vector once, and the value is
-cast to the target's storage against a private view of the column, so
-that by the time the target is resolved for the write nothing that
-remains to run can call back into R. A reorder during evaluation is
+every argument, and only then read the layout it writes into. The
+column selector and the `create` flag are reduced to plain scalars, a
+foreign ALTREP value is copied into an ordinary vector once, and the
+value is cast to the target's storage against a private view of the
+column, so that by the time the target is resolved for the write
+nothing that remains to run can call back into R: the final resolution
+is an attribute read, a name match, and an address comparison. A reorder during evaluation is
 honoured, because the target is found again by name. Adding or removing
 the target, changing the row count, or replacing the column object
 during evaluation is refused with nothing written, rather than guessed

@@ -195,6 +195,23 @@ test_that("set_dta_values settles a value that runs code when it is read", {
                        function() reads <<- reads + 1L, 1L)
     expect_error(set_dta_values(data, "x", oversized), "size 3")
     expect_identical(reads, 0L)
+    # A classed `variable` or `create` is reduced to a plain value first, so
+    # no method of its class runs while the assigner reads the table.
+    dispatched <- 0L
+    for (generic in c("length", "is.na", "Ops", "as.character", "as.logical")) {
+        registerS3method(generic, "watched_scalar",
+                         function(e1, e2) { dispatched <<- dispatched + 1L; stop("dispatched") },
+                         envir = asNamespace("base"))
+    }
+    set_dta_values(data, structure("x", class = "watched_scalar"), 11,
+                   create = structure(FALSE, class = "watched_scalar"))
+    expect_identical(dispatched, 0L)
+    expect_identical(as.double(data$x), c(11, 11))
+    expect_error(set_dta_values(data, structure(c("x", "y"), class = "watched_scalar"), 1),
+                 "one existing column")
+    expect_error(set_dta_values(data, "x", 1, create = structure(NA, class = "watched_scalar")),
+                 "`create` must be")
+    expect_identical(dispatched, 0L)
     # The value is read once in R and never by the native patch.
     reads <- 0L
     counted <- .Call(ns$C_dtatools_callback_double, c(4, 4),

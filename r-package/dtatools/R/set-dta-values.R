@@ -73,8 +73,9 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     # meanwhile is honoured, since the target is found again by name; adding
     # or removing the target, or changing the row count, is refused.
     row_count <- .set_values_preflight(data)
-    variable <- .set_values_settled_input(variable)
-    if (!rlang::is_bool(create)) {
+    variable <- .set_values_plain(variable)
+    create <- .set_values_plain(create)
+    if (!is.logical(create) || length(create) != 1L || is.na(create)) {
         stop("`create` must be `TRUE` or `FALSE`", call. = FALSE)
     }
     target <- .set_values_target(data, variable, create)
@@ -97,9 +98,11 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
     view <- if (!creating) .Call(C_dtatools_mutation_column_view, data, target$location)
     on.exit(.Call(C_dtatools_release_mutation_views, view), add = TRUE)
     column <- .set_values_column(view, value, value_mode, rows, row_count)
-    # Nothing evaluates caller code from here to the commit.
-    target <- .set_values_target(data, target$name, create)
-    if (.set_values_preflight(data) != row_count ||
+    # Nothing evaluates caller code from here to the commit: the name and
+    # the flag are plain values, the names and row count are attribute
+    # reads, and the slot is compared by address.
+    target$location <- match(target$name, attr(data, "names", exact = TRUE))
+    if (abs(.row_names_info(data, 2L)) != row_count ||
         is.na(target$location) != creating ||
         (!creating &&
          !.Call(C_dtatools_mutation_column_current, data, target$location, view))) {
@@ -140,6 +143,16 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
         if (isTRUE(.Call(C_dtatools_mutation_shape, data, rows))) return(rows)
     }
     .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE)$nrow
+}
+
+# `variable` and `create` as plain vectors: a foreign ALTREP object is
+# copied, and a class and other attributes are dropped, so that reading
+# either later dispatches no method. Both are scalars, so the copy is
+# trivial, and neither carries metadata the assigner would keep.
+.set_values_plain <- function(value) {
+    value <- .set_values_settled_input(value)
+    if (!is.null(attributes(value))) attributes(value) <- NULL
+    value
 }
 
 # An ALTREP object of a class this package did not define runs its own
