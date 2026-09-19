@@ -1,10 +1,11 @@
 # R cell assignment
 
-Report-only benchmark behind [ADR 0041](../../docs/adr/0041-typed-setters-and-stata-verbs-bound-the-mutation-surface.md).
-It measures the per-call cost of the package's by-reference value verb
-`repl()` against `data.table::set()`, the loop-friendly assigner the ADR
-declines to add: one whole-column write, one single-row write, and a loop of
-single-row writes. Each write is checked for its landed value outside the
+Report-only benchmark behind [ADR 0041](../../docs/adr/0041-typed-setters-and-stata-verbs-bound-the-mutation-surface.md)
+and [ADR 0043](../../docs/adr/0043-set-dta-values-is-the-loop-friendly-assigner.md).
+It measures the per-call cost of the package's by-reference value verbs,
+`repl()` and the loop-friendly assigner `set_dta_values()`, against
+`data.table::set()`: one whole-column write, one single-row write, and a
+loop of single-row writes. Each write is checked for its landed value outside the
 timed region. It has no thresholds; the results are evidence, not a gate.
 
 Run from a clean checkout:
@@ -28,4 +29,7 @@ so neither side pays for a predicate scan. The runner refuses a modified tree
 and prints the source SHA and package tree, the package, `data.table`, and
 `bench` versions, the R version and platform, and the host.
 
-See [results-2026-09-19.md](results-2026-09-19.md) for the dated baseline.
+See [results-2026-09-19.md](results-2026-09-19.md) for the baseline that
+motivated ADR 0041, before the assigner existed, and
+[results-2026-09-19-set-dta-values.md](results-2026-09-19-set-dta-values.md)
+for the run that measures it.

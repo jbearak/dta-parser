@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
-# Per-call cost of the package's by-reference value verbs against
-# data.table::set(), the loop-friendly assigner ADR 0041 declines to add.
-# Report-only: evidence, not a gate. Run from a clean checkout with the
+# Per-call cost of the package's by-reference value verbs, repl() and the
+# loop-friendly assigner set_dta_values() of ADR 0043, against
+# data.table::set(). Report-only: evidence, not a gate. Run from a clean checkout with the
 # package under test installed in DTATOOLS_BENCH_LIB:
 #
 #   DTATOOLS_BENCH_LIB=/path/to/lib Rscript --vanilla \
@@ -64,18 +64,24 @@ repl(d, !!name := 2); stopifnot(all(as.double(d$x) == 2))
 data.table::set(dt, j = "x", value = 2); stopifnot(all(dt$x == 2))
 repl(d, x = 3, where = !!single_row)
 stopifnot(as.double(d$x)[single_row] == 3, as.double(d$x)[neighbour] == 2)
+set_dta_values(d, name, 4); stopifnot(all(as.double(d$x) == 4))
+set_dta_values(d, name, 3, rows = single_row)
+stopifnot(as.double(d$x)[single_row] == 3, as.double(d$x)[neighbour] == 4)
 data.table::set(dt, i = single_row, j = "x", value = 3)
 stopifnot(dt$x[single_row] == 3, dt$x[neighbour] == 2)
 
 single <- bench::mark(
     repl_whole_column = repl(d, !!name := 2),
     repl_single_row = repl(d, x = 3, where = !!single_row),
+    set_dta_values_whole_column = set_dta_values(d, name, 2),
+    set_dta_values_single_row = set_dta_values(d, name, 3, rows = single_row),
     set_whole_column = data.table::set(dt, j = "x", value = 2),
     set_single_row = data.table::set(dt, i = single_row, j = "x", value = 3),
     check = FALSE, iterations = iterations, filter_gc = FALSE
 )
 loops <- bench::mark(
     repl_row_loop = for (i in seq_len(loop_rows)) repl(d, x = 9, where = !!i),
+    set_dta_values_row_loop = for (i in seq_len(loop_rows)) set_dta_values(d, name, 9, rows = i),
     set_row_loop = for (i in seq_len(loop_rows)) data.table::set(dt, i = i, j = "x", value = 9),
     check = FALSE, iterations = 3L, filter_gc = FALSE
 )

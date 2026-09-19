@@ -511,6 +511,43 @@ SEXP C_dtatools_mutation_views(SEXP data) {
     return result;
 }
 
+/* One column's private view, in the list form `C_dtatools_release_mutation_views()`
+   releases, for a writer that casts against a single target before it reads
+   the table's layout. The list records the physical column's address, not
+   the column, so the writer can tell whether the slot still holds the column
+   the cast was made against; holding the column would make the slot look
+   shared and force the patch to detach it. */
+static R_xlen_t view_slot(SEXP data, SEXP location) {
+    if (TYPEOF(data) != VECSXP) Rf_error("mutation views need a physical table");
+    double position = Rf_asReal(location);
+    if (ISNAN(position) || position < 1 || position > (double) XLENGTH(data)) {
+        Rf_error("mutation view location is out of range");
+    }
+    return (R_xlen_t) position - 1;
+}
+
+SEXP C_dtatools_mutation_column_view(SEXP data, SEXP location) {
+    R_xlen_t slot = view_slot(data, location);
+    SEXP column = VECTOR_ELT(data, slot);
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 1));
+    SEXP view = mutation_column_view(column);
+    SET_VECTOR_ELT(result, 0, view);
+    SEXP token = PROTECT(R_MakeExternalPtr((void *) column, R_NilValue, R_NilValue));
+    SEXP size = PROTECT(Rf_ScalarReal(view == column ? NA_REAL : (double) XLENGTH(view)));
+    Rf_setAttrib(result, Rf_install(".dtatools_mutation_views"), Rf_ScalarLogical(1));
+    Rf_setAttrib(result, Rf_install(".dtatools_mutation_sizes"), size);
+    Rf_setAttrib(result, Rf_install(".dtatools_mutation_slot"), token);
+    UNPROTECT(3);
+    return result;
+}
+
+SEXP C_dtatools_mutation_column_current(SEXP data, SEXP location, SEXP views) {
+    R_xlen_t slot = view_slot(data, location);
+    SEXP recorded = Rf_getAttrib(views, Rf_install(".dtatools_mutation_slot"));
+    if (TYPEOF(recorded) != EXTPTRSXP) return Rf_ScalarLogical(0);
+    return Rf_ScalarLogical(R_ExternalPtrAddr(recorded) == (void *) VECTOR_ELT(data, slot));
+}
+
 /* These lists belong solely to a finished mutation evaluation. Drop their
    physical fallback references before the late sharing check; genuine aliases
    retained by user callbacks remain counted. No view is used after release. */

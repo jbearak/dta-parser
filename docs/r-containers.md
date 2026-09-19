@@ -132,6 +132,7 @@ Assign `data <- as_dibble(data)` to explicitly convert an unsupported subclass. 
 | Explicit helper family | Ungrouped dibble | Grouped dibble | Rowwise dibble |
 | --- | --- | --- | --- |
 | `gen()`, `egen()`, `replace_values()` / `repl()` | By reference | By reference, using dplyr groups | Error |
+| `set_dta_values()` | By reference | By reference; groups rebuilt | Error |
 | Dibble bracket `:=` | By reference | By reference | Error |
 | `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()` | By reference | Error; ungroup first | Error; ungroup first |
 | `reorder_dta_rows()` | By reference | Error; ungroup first | Error; ungroup first |

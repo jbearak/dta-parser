@@ -95,6 +95,7 @@
     "set_dta_characteristic",
     "set_dta_metadata",
     "set_dta_note",
+    "set_dta_values",
     "set_val_labels",
     "set_var_format",
     "set_var_formats",
@@ -4875,6 +4876,10 @@
         {
           "path": "tests/testthat/test-auto-grow.R",
           "sha256": "b710d9aa3ff4d12a38be6861ff2399a8831d2bf4c1cd27e65d1d5268f69c5f16"
+        },
+        {
+          "path": "tests/testthat/test-set-dta-values.R",
+          "sha256": "d324420ff8a4a15e2914d52d1524cd64d6681cdbf1dd743054ed6c5d17373e48"
         }
       ],
       "blocks": [
@@ -6439,6 +6444,100 @@
           "skip": "forbid",
           "min_pass": 12,
           "warnings": 0
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values is exported with the documented signature",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values writes by reference by name or position",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values keeps the declared storage and refuses what it cannot hold",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values checks its arguments before writing",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values creates a missing column only when asked",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values works on grouped dibbles and refuses rowwise ones",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 7,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values matches repl(promote = FALSE) on every storage",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values detaches a column shared with another table",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "a set_dta_values loop allocates nothing proportional to the table",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values evaluates its arguments before reading the table",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 11,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-set-dta-values.R",
+          "test": "set_dta_values settles a value that runs code when it is read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 22,
+          "warnings": 0
         }
       ],
       "children": [
@@ -6522,7 +6621,7 @@
         },
         {
           "path": "tests/testthat/test-dplyr-optional.R",
-          "sha256": "98ce9c1f143c8e3c21dea9e9f01c8915a8b2b0a6eaa8c06a658964955d2c7d41"
+          "sha256": "cb2fbb54c589eabbcd9a92513c6c78a20fd9beb81b3c485b95e84b6eae59e869"
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",

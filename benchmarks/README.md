@@ -93,10 +93,12 @@ complete qualification and aggregate write results. The controlled synthetic
 and dtatools timing and peak-RSS comparisons.
 
 The report-only [`r-cell-assignment/`](r-cell-assignment/) benchmark times one
-`repl()` call against one `data.table::set()` call, whole column, single row,
-and in a per-row loop; its
-[2026-09-19 report](r-cell-assignment/results-2026-09-19.md) is the evidence
-behind ADR 0041.
+`repl()` call and one `set_dta_values()` call against one `data.table::set()`
+call, whole column, single row, and in a per-row loop. Its
+[first 2026-09-19 report](r-cell-assignment/results-2026-09-19.md) is the
+evidence behind ADR 0041, and its
+[second](r-cell-assignment/results-2026-09-19-set-dta-values.md) measures the
+assigner ADR 0043 added.
 
 The report-only [`r-helper-performance/`](r-helper-performance/) benchmark
 compares label factorization and one-way tabulation with Haven on a generated

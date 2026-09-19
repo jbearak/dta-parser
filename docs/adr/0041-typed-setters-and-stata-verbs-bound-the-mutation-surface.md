@@ -1,8 +1,13 @@
 ---
-status: accepted
+status: superseded in part by ADR-0043
 ---
 
 # Typed setters and Stata verbs bound the by-reference mutation surface
+
+> **Superseded in part by [ADR 0043](./0043-set-dta-values-is-the-loop-friendly-assigner.md).**
+> The loop-friendly assigner this ADR declined is now `set_dta_values()`,
+> built in the shape specified below. The decision on the generic
+> attribute setter stands.
 
 The package's by-reference mutation surface stops at the helpers that name
 a Stata concept. It does not add a generic attribute setter on the model of
