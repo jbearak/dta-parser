@@ -327,4 +327,16 @@ test_that("a set_dta_values loop allocates nothing proportional to the table", {
     expect_identical(as.double(data$x)[1:500], rep(0, 500))
     # 500 writes to an 800 KB column: a copy per write would be 400 MB.
     expect_lt(allocated_mb, 8)
+    # The same on a table the native shape check declines: a non-ASCII
+    # name and a list column take the generic validation, which must not
+    # leave a second holder of the target that the write would detach.
+    odd <- dibble(x = as.double(seq_len(100000)),
+                  l = replicate(100000, NULL, simplify = FALSE))
+    names(odd)[[1L]] <- "caf\u00e9"
+    set_dta_values(odd, "caf\u00e9", 0, rows = 1)
+    before <- sum(gc(full = TRUE)[, 6L])
+    for (i in seq_len(500)) set_dta_values(odd, "caf\u00e9", 0, rows = i)
+    allocated_mb <- sum(gc(full = FALSE)[, 6L]) - before
+    expect_identical(as.double(odd[[1L]])[1:500], rep(0, 500))
+    expect_lt(allocated_mb, 8)
 })

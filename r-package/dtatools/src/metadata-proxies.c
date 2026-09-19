@@ -532,12 +532,12 @@ SEXP C_dtatools_mutation_column_view(SEXP data, SEXP location) {
     SEXP result = PROTECT(Rf_allocVector(VECSXP, 1));
     SEXP view = mutation_column_view(column);
     SET_VECTOR_ELT(result, 0, view);
+    SEXP token = PROTECT(R_MakeExternalPtr((void *) column, R_NilValue, R_NilValue));
+    SEXP size = PROTECT(Rf_ScalarReal(view == column ? NA_REAL : (double) XLENGTH(view)));
     Rf_setAttrib(result, Rf_install(".dtatools_mutation_views"), Rf_ScalarLogical(1));
-    Rf_setAttrib(result, Rf_install(".dtatools_mutation_sizes"),
-                 Rf_ScalarReal(view == column ? NA_REAL : (double) XLENGTH(view)));
-    Rf_setAttrib(result, Rf_install(".dtatools_mutation_slot"),
-                 R_MakeExternalPtr((void *) column, R_NilValue, R_NilValue));
-    UNPROTECT(1);
+    Rf_setAttrib(result, Rf_install(".dtatools_mutation_sizes"), size);
+    Rf_setAttrib(result, Rf_install(".dtatools_mutation_slot"), token);
+    UNPROTECT(3);
     return result;
 }
 

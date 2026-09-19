@@ -41,7 +41,10 @@
 #' width. `repl()` costs over a hundred microseconds for the same writes,
 #' and `data.table::set()` about two. The
 #' [cell-assignment benchmark](https://github.com/jbearak/dta-parser/tree/main/benchmarks/r-cell-assignment)
-#' records the numbers and how to reproduce them.
+#' records the numbers and how to reproduce them. A grouped dibble rebuilds
+#' its groups after every write, which costs time and memory in proportion
+#' to the row count, so `dplyr::ungroup()` before a loop and group again
+#' after it.
 #'
 #' @return `data`, invisibly. When `create = TRUE` had to grow the table,
 #'   an isolated table is returned and must be assigned, as with [gen()].
@@ -142,7 +145,13 @@ set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
         rows <- abs(.row_names_info(data, 2L))
         if (isTRUE(.Call(C_dtatools_mutation_shape, data, rows))) return(rows)
     }
-    .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE)$nrow
+    # Through private views, released at once: a plain list of the columns
+    # would count as a second holder of each until this frame is cleaned
+    # up, and the write would detach and copy the target for no reason.
+    original <- .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE,
+                                  private_views = TRUE)
+    .Call(C_dtatools_release_mutation_views, original$columns)
+    original$nrow
 }
 
 # `variable` and `create` as plain vectors: a foreign ALTREP object is

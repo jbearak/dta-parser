@@ -60,7 +60,10 @@ a Stata string column costs more, since every write checks the string
 width. \code{repl()} costs over a hundred microseconds for the same writes,
 and \code{data.table::set()} about two. The
 \href{https://github.com/jbearak/dta-parser/tree/main/benchmarks/r-cell-assignment}{cell-assignment benchmark}
-records the numbers and how to reproduce them.
+records the numbers and how to reproduce them. A grouped dibble rebuilds
+its groups after every write, which costs time and memory in proportion
+to the row count, so \code{dplyr::ungroup()} before a loop and group again
+after it.
 }
 
 \examples{
