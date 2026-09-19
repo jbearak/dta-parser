@@ -143,7 +143,7 @@ def main():
         expected = dict(lane["expected_packages"])
         require("dtatools" not in expected, "dtatools must have its own installed library")
         expected["dtatools"] = {"path": str(installed), "version": cfg["package"]["version"]}
-        require(len(manifest["exports"]) == 108 and len(set(manifest["exports"])) == 108,
+        require(len(manifest["exports"]) == 109 and len(set(manifest["exports"])) == 109,
                 "Explicit 108-name export manifest required")
         source_root = Path(cfg["source_root"]).resolve(strict=True)
         tools_dir = source_root / "tools"

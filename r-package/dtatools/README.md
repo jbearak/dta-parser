@@ -737,6 +737,7 @@ Use the installed help for exact behavior and examples:
 | `dta_mean()`, `dta_min()`, `dta_max()`, `dta_total()` | Calculate Stata summaries as ordinary functions usable in `gen()`, `egen()`, or `:=`. |
 | `dta_row_max()`, `dta_row_total()`, `dta_group_id()`, `dta_group_tag()` | Calculate across columns, assign sorted group codes, or mark each group's first row. |
 | `replace_values()`, `repl()` | Replace selected values by reference, preserving or widening Stata storage as needed. |
+| `set_dta_values()` | Loop-friendly assigner: write into one column by name or position at given rows, by reference, without tidy evaluation, keeping the declared storage. |
 | `keep_vars()`, `drop_vars()` | Keep or drop variables by reference, including variables created by `gen()`. |
 | `order_vars()`, `rename_vars()` | Move variables to the front, or rename them, by reference, as Stata's `order` and `rename` do. |
 | `slice_dta_rows()`, `reorder_dta_rows()` | Select rows into a new table, or permute a table's rows in place, gathering compact Stata columns in native code. |

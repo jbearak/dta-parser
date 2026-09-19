@@ -19,7 +19,7 @@ namespace <- loadNamespace("dtatools", lib.loc = library_path)
 if (!identical(normalizePath(getNamespaceInfo(namespace, "path")), normalizePath(package_path))) {
   stop("Loaded the wrong dtatools installation")
 }
-if (length(getNamespaceExports(namespace)) != 108L) stop("Unexpected public export count")
+if (length(getNamespaceExports(namespace)) != 109L) stop("Unexpected public export count")
 value <- dtatools::dibble(x = 1:2)
 if (!inherits(value, "dibble") || !identical(as.double(value$x), c(1, 2))) stop("Tiny baseline load check failed")
 validate_benchmark_install(library_path, source_sha)

@@ -9,7 +9,7 @@ provenance <- validate_benchmark_install(library_path, args[[2L]])
 namespace <- loadNamespace("dtatools", lib.loc = library_path)
 package_path <- normalizePath(file.path(library_path, "dtatools"))
 stopifnot(identical(normalizePath(getNamespaceInfo(namespace, "path")), package_path),
-          length(getNamespaceExports(namespace)) == 108L)
+          length(getNamespaceExports(namespace)) == 109L)
 dll <- normalizePath(getLoadedDLLs()[["dtatools"]][["path"]])
 stopifnot(startsWith(dll, paste0(package_path, "/")))
 validate_benchmark_install(library_path, args[[2L]])

@@ -67,6 +67,8 @@ defensive approach.
 By reference, on a dibble, the package's mutation target:
 
 - `gen()`, `egen()`, `replace_values()` / `repl()`
+- `set_dta_values()`, the loop-friendly assigner: one column by name or
+  position, no tidy evaluation, the target's storage kept
 - `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`
 - `reorder_dta_rows()`
 - table metadata setters: `set_var_label()`, `set_var_labels()`, `set_val_labels()`,
@@ -78,7 +80,7 @@ By reference, on a dibble, the package's mutation target:
 `copy_data()` also requires a dibble but returns an independent copy; it is a
 copying operation, listed below.
 
-A base data frame, tibble, or data table is not a mutation target. Each of these helpers rejects it before runtime names, selectors, or updates are evaluated, with an error naming the recovery: assign `data <- as_dibble(data)`. Conversion removes additional container classes, retains recognized grouping and metadata, and types numeric and string columns. A data.table user who wants by-reference mutation without Stata typing uses data.table's own `:=` and `set()`. Mutation by reference predates the dibble; restricting it to the container built for it is [ADR 0036](adr/0036-mutate-by-reference-only-on-dibbles.md). The surface stops at these helpers: there is no generic attribute setter beyond `set_dta_metadata()`, and no per-cell assigner on the model of `data.table::set()`; [ADR 0041](adr/0041-typed-setters-and-stata-verbs-bound-the-mutation-surface.md) records the benchmark behind that and what would reopen it.
+A base data frame, tibble, or data table is not a mutation target. Each of these helpers rejects it before runtime names, selectors, or updates are evaluated, with an error naming the recovery: assign `data <- as_dibble(data)`. Conversion removes additional container classes, retains recognized grouping and metadata, and types numeric and string columns. A data.table user who wants by-reference mutation without Stata typing uses data.table's own `:=` and `set()`. Mutation by reference predates the dibble; restricting it to the container built for it is [ADR 0036](adr/0036-mutate-by-reference-only-on-dibbles.md). The surface stops at these helpers: there is no generic attribute setter beyond `set_dta_metadata()`; [ADR 0041](adr/0041-typed-setters-and-stata-verbs-bound-the-mutation-surface.md) records why. The per-cell assigner on the model of `data.table::set()` is `set_dta_values()`; [ADR 0043](adr/0043-set-dta-values-is-the-loop-friendly-assigner.md) records its one storage rule and the benchmark behind it.
 
 Grouped dibbles support `gen()`, `egen()`, and `repl()` using their dplyr groups. Metadata setters also support rowwise dibbles and retain the grouping. Structural helpers and `reorder_dta_rows()` require `data <- dplyr::ungroup(data)` first; assign preparation afterwards if needed. Rowwise tables do not support value mutation. See the complete [helper and grouping matrix](r-containers.md#restrictions).
 
@@ -213,6 +215,8 @@ or when subsequent operations need a resizable allocation to remove columns.
 ## Compared with data.table
 
 If you know `data.table`, the model is familiar: `DT[, x := 1]` and `set()` modify in place, and `DT2 <- DT` gives a second name rather than a copy. dtatools' `:=` is deliberately the same shape. Three differences are worth knowing.
+
+`set()` is `set_dta_values()`. `set_dta_values(data, "x", value, rows = i)` is `set(DT, i, "x", value)`: name or position, no evaluation against the data, microseconds per call, so it belongs inside a `for` loop where `repl()` would pay tidy evaluation on every iteration. Two differences from `set()`: it never creates a column unless `create = TRUE` is passed, and it refuses a value the column's declared Stata storage cannot hold rather than coercing with a warning.
 
 The bracket shape belongs to the dibble. `data[i, y := value]` works on a dibble; on a data table it runs data.table's own `:=`, which knows nothing about declared Stata storage; on a tibble or data frame it is whatever error their `[` raises. `gen()` and `repl()` are the explicit spellings of the same dibble operations.
 
