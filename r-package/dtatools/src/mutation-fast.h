@@ -99,6 +99,17 @@ static SEXP mutation_argument(SEXP frame, const char *name) {
                                 R_DelayedBindingEnvironment(symbol, frame));
 }
 
+/* The promoting adapter may fall back after its fit check. Its speculative
+   work must not force a policy expression that could change row/value
+   bindings before that fallback evaluates them. */
+SEXP C_dtatools_peek_promote(SEXP frame) {
+    if (TYPEOF(frame) != ENVSXP) return R_NilValue;
+    SEXP value = mutation_argument(frame, "promote");
+    if (TYPEOF(value) != LGLSXP || ALTREP(value) || ANY_ATTRIB(value) ||
+        XLENGTH(value) != 1 || LOGICAL(value)[0] == NA_LOGICAL) return R_NilValue;
+    return value;
+}
+
 SEXP C_dtatools_set_values_fast(SEXP data, SEXP frame) {
     R_xlen_t count;
     if (TYPEOF(frame) != ENVSXP || !mutation_fast_shape(data, &count)) return R_NilValue;

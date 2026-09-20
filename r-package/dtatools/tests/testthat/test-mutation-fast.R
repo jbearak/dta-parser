@@ -196,3 +196,42 @@ test_that("invalid generation defaults still fail before appending a scalar", {
         expect_identical(dta_storage_type(data$y), "long")
     }
 })
+
+test_that("promote callbacks cannot change a declined scalar assignment", {
+    for (promoting in c(FALSE, TRUE)) {
+        data <- dibble(x = dta_byte(c(1, 2, 3)))
+        value <- if (promoting) 1000 else 9
+        row <- 1L
+        calls <- 0L
+        expect_message(repl(data, x = value, where = row, promote = {
+            calls <- calls + 1L
+            value <- 7
+            row <- 3L
+            TRUE
+        }), if (promoting) "byte now int" else NA)
+        expect_identical(calls, 1L)
+        expect_identical(as.double(data$x), c(if (promoting) 1000 else 9, 2, 3))
+        expect_identical(dta_storage_type(data$x), if (promoting) "int" else "byte")
+    }
+    data <- dibble(x = dta_byte(c(1, 2, 3)))
+    value <- 1000
+    row <- 1L
+    delayedAssign("policy", { value <- 7; row <- 3L; TRUE })
+    expect_message(repl(data, x = value, where = row, promote = policy), "byte now int")
+    expect_identical(as.double(data$x), c(1000, 2, 3))
+})
+
+test_that("native promote inspection declines active and attributed flags", {
+    peek <- function(promote = TRUE) .Call(C_dtatools_peek_promote, environment())
+    expect_identical(peek(), TRUE)
+    expect_identical(peek(FALSE), FALSE)
+    expect_null(peek(structure(TRUE, label = "policy")))
+    labelled <- structure(TRUE, label = "policy")
+    expect_null(peek(labelled))
+    touched <- 0L
+    makeActiveBinding("active_policy", function() { touched <<- touched + 1L; TRUE }, environment())
+    expect_null(peek(active_policy))
+    expect_identical(touched, 0L)
+    expect_null(peek({ touched <- touched + 1L; TRUE }))
+    expect_identical(touched, 0L)
+})

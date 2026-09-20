@@ -137,7 +137,10 @@ or writing, then use the existing path and its diagnostics.
 `repl()` and dibble `:=` adapt their captured scalar literals and settled
 bindings to the same native patch. Promotion first checks exact fit and
 falls back to the existing promotion path when needed. Fixed float writes
-still round to float. A promoted assignment with no selected rows remains
+still round to float. A callback-capable `promote` argument uses the general
+path from the outset, so a speculative fit check cannot force it and then
+evaluate the row and value bindings again on fallback. A promoted assignment
+with no selected rows remains
 a no-op. Expressions requiring a data mask retain their private views,
 and fused comparison-and-patch calls retain their existing adapter.
 

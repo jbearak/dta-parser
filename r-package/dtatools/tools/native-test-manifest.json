@@ -4883,7 +4883,7 @@
         },
         {
           "path": "tests/testthat/test-mutation-fast.R",
-          "sha256": "ba72f783c5d14fb42fcb5bf623f81c3ba2a4817e98b4a081772c21118f44e618"
+          "sha256": "e9c4fcacf3ce65a3688a48d28939936636470980fcd204053770920b79a59cfd"
         }
       ],
       "blocks": [
@@ -6613,6 +6613,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "promote callbacks cannot change a declined scalar assignment",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "native promote inspection declines active and attributed flags",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
           "warnings": 0
         }
       ],

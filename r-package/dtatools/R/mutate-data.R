@@ -375,13 +375,14 @@ replace_values <- function(data, ..., where = NULL, by = NULL,
     )
     # `missing()` keeps the two extra quosure captures off the ungrouped
     # path, which `repl()` in a loop depends on.
+    fast_promote <- .Call(C_dtatools_peek_promote, environment())
     result <- .mutate_data(
         data, arguments$variable, arguments$values, arguments$where,
         generate = FALSE,
         by = if (missing(by)) NULL else rlang::enquo(by),
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort),
         promote = .validate_promote(promote), report_promotion = TRUE,
-        entry_shared = shared
+        entry_shared = shared, fast_promote = fast_promote
     )
     invisible(result)
 }
@@ -826,7 +827,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 
 # Reuse the callback-free scalar lookup used by generation. Expressions that
 # need a mask, lazy bindings, and selections that need evaluation retain the
-# full view path. A bracket supplies its already evaluated selection once.
+# full view path. `promote` is already certified callback-free by the public
+# adapter; its original promise is reserved for the general path. A bracket
+# supplies its already evaluated selection once.
 .replace_direct_scalar <- function(data, variable, values, where, selection, promote) {
     if (rlang::quo_is_missing(variable) || rlang::quo_is_missing(values)) return(NULL)
     expression <- rlang::quo_get_expr(variable)
@@ -1934,10 +1937,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
                          by = NULL, bysort = NULL, selection = NULL,
                          promote = FALSE, report_promotion = FALSE,
                          entry_shared = NULL, auto_grow = FALSE,
-                         staged = NULL, placement = NULL) {
+                         staged = NULL, placement = NULL, fast_promote = NULL) {
     if (!generate && is.null(by) && is.null(bysort) &&
-        !inherits(data, "grouped_df") && is.null(staged$restore)) {
-        direct <- .replace_direct_scalar(data, variable, values, where, selection, promote)
+        !inherits(data, "grouped_df") && is.null(staged$restore) && !is.null(fast_promote)) {
+        direct <- .replace_direct_scalar(data, variable, values, where, selection, fast_promote)
         if (!is.null(direct)) return(invisible(direct))
     }
     if (generate && is.null(by) && is.null(bysort) &&

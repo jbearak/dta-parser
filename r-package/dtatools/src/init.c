@@ -66,6 +66,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_mutation_shape", (DL_FUNC) &C_dtatools_mutation_shape, 2},
     {"C_dtatools_fast_shape", (DL_FUNC) &C_dtatools_fast_shape, 1},
     {"C_dtatools_set_values_fast", (DL_FUNC) &C_dtatools_set_values_fast, 2},
+    {"C_dtatools_peek_promote", (DL_FUNC) &C_dtatools_peek_promote, 1},
     {"C_dtatools_patch_scalar", (DL_FUNC) &C_dtatools_patch_scalar, 5},
     {"C_dtatools_generate_scalar", (DL_FUNC) &C_dtatools_generate_scalar, 4},
     {"C_dtatools_mutation_name_location", (DL_FUNC) &C_dtatools_mutation_name_location, 2},

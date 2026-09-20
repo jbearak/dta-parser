@@ -37,8 +37,10 @@ benchmark_activate_library(c("dtatools", "bench", "data.table", "profmem"))
 provenance <- helpers$validate_benchmark_install(lib, sha)
 library(dtatools)
 dir.create(output, recursive = TRUE, showWarnings = FALSE)
+runner_sha <- system2("git", c("-C", shQuote(repository), "rev-parse", "HEAD"), stdout = TRUE)
+if (length(runner_sha) != 1L || !grepl("^[0-9a-f]{40}$", runner_sha)) stop("invalid runner revision")
 metadata <- c(source_sha = sha, source_tree = provenance$source_tree,
-              runner_sha = system2("git", c("rev-parse", "HEAD"), stdout = TRUE),
+              runner_sha = runner_sha,
               dtatools = as.character(packageVersion("dtatools")),
               data.table = as.character(packageVersion("data.table")),
               bench = as.character(packageVersion("bench")), R = R.version.string,
