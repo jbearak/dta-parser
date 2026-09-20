@@ -126,6 +126,8 @@ reads only the target handle and its backing ownership.
 
 For `set_dta_values()`, native inspection accepts literal arguments and
 already evaluated bindings. It does not force delayed or active bindings.
+It checks those input forms before scanning the table, so an expression or
+other unsupported input does not pay for a second whole-table shape check.
 The column selector must be a plain name or position, `create` must be
 false, the value must be one ordinary unclassed logical, integer or double,
 and rows must be null or ordinary unclassed numeric positions. The target

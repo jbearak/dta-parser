@@ -20,9 +20,13 @@ static int mutation_plain_positions(SEXP rows, R_xlen_t count) {
     return 1;
 }
 
+static int mutation_plain_selector(SEXP variable) {
+    return (TYPEOF(variable) == STRSXP || TYPEOF(variable) == INTSXP || TYPEOF(variable) == REALSXP) &&
+        !ALTREP(variable) && !ANY_ATTRIB(variable) && XLENGTH(variable) == 1;
+}
+
 static R_xlen_t mutation_scalar_location(SEXP data, SEXP variable) {
-    if ((TYPEOF(variable) != STRSXP && TYPEOF(variable) != INTSXP && TYPEOF(variable) != REALSXP) ||
-        ALTREP(variable) || ANY_ATTRIB(variable) || XLENGTH(variable) != 1) return -1;
+    if (!mutation_plain_selector(variable)) return -1;
     if (TYPEOF(variable) == STRSXP) {
         SEXP location = C_dtatools_mutation_name_location(data, variable);
         if (location == R_NilValue || INTEGER(location)[0] == NA_INTEGER) return -1;
@@ -114,15 +118,19 @@ SEXP C_dtatools_peek_promote(SEXP frame) {
 
 SEXP C_dtatools_set_values_fast(SEXP data, SEXP frame) {
     R_xlen_t count;
-    if (TYPEOF(frame) != ENVSXP || !mutation_fast_shape(data, &count)) return R_NilValue;
+    if (TYPEOF(frame) != ENVSXP) return R_NilValue;
     SEXP variable = PROTECT(mutation_argument(frame, "variable"));
     SEXP create = PROTECT(mutation_argument(frame, "create"));
     SEXP rows = PROTECT(mutation_argument(frame, "rows"));
     SEXP value = PROTECT(mutation_argument(frame, "value"));
     SEXP result = R_NilValue;
-    if (variable != R_UnboundValue && rows != R_UnboundValue && value != R_UnboundValue &&
+    /* Inspecting these bindings does not evaluate them. Decline unsupported
+       inputs before a whole-table scan that their general path will repeat. */
+    if (mutation_plain_selector(variable) && mutation_plain_numeric(value) && XLENGTH(value) == 1 &&
+        (rows == R_NilValue || (mutation_plain_numeric(rows) && TYPEOF(rows) != LGLSXP)) &&
         TYPEOF(create) == LGLSXP && !ALTREP(create) && !ANY_ATTRIB(create) &&
-        XLENGTH(create) == 1 && LOGICAL(create)[0] == FALSE) {
+        XLENGTH(create) == 1 && LOGICAL(create)[0] == FALSE &&
+        mutation_fast_shape(data, &count)) {
         result = mutation_patch_scalar(data, variable, rows, value, 0, count);
     }
     UNPROTECT(4);

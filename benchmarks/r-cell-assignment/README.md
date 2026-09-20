@@ -76,3 +76,8 @@ native allocation. `components.csv` times individual setup helpers, private
 view creation/release, the native patch, and scalar generation. These isolated
 measurements are evidence about the costly steps, not additive parts of an
 end-to-end latency model.
+
+For a targeted repeat, set `DTATOOLS_BENCHMARK_OPERATIONS` to comma-separated
+matrix names, such as `set_expression,repl_expression,data_table_row`.
+The report records this filter. The profiler is warmed before the first
+allocation observation so loading its helpers is outside the measured call.

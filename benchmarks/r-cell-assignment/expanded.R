@@ -45,7 +45,8 @@ metadata <- c(source_sha = sha, source_tree = provenance$source_tree,
               data.table = as.character(packageVersion("data.table")),
               bench = as.character(packageVersion("bench")), R = R.version.string,
               platform = R.version$platform, host = paste(Sys.info()[c("sysname", "release", "machine")], collapse = " "),
-              rows = n, samples = samples, wide = wide, library = normalizePath(lib))
+              rows = n, samples = samples, wide = wide, library = normalizePath(lib),
+              operations = Sys.getenv("DTATOOLS_BENCHMARK_OPERATIONS", "all"))
 write.table(data.frame(key = names(metadata), value = unname(metadata)),
             file.path(output, "provenance.tsv"), sep = "\t", row.names = FALSE, quote = FALSE)
 
@@ -75,6 +76,13 @@ operations <- list(
     data_table_row = quote(data.table::set(d, i = 5L, j = "x", value = 3)),
     data_table_whole = quote(data.table::set(d, j = "x", value = 3))
 )
+selected_operations <- Sys.getenv("DTATOOLS_BENCHMARK_OPERATIONS")
+if (nzchar(selected_operations)) {
+    selected_operations <- strsplit(selected_operations, ",", fixed = TRUE)[[1L]]
+    if (anyDuplicated(selected_operations) || !all(selected_operations %in% names(operations)))
+        stop("DTATOOLS_BENCHMARK_OPERATIONS must name distinct operations from the matrix")
+    operations <- operations[selected_operations]
+}
 fixture <- function(operation, width, backing) {
     env <- new.env(parent = globalenv())
     compact <- operation %in% c("set_reject", "repl_promote", "bracket_promote", "repl_fused")
@@ -112,6 +120,8 @@ verify <- function(env, operation) {
         stopifnot(all(as.double(env$holder$x) == 1))
 }
 records <- list()
+# Load the profiler's own helpers before measuring the first operation.
+invisible(profmem::profmem(NULL))
 for (width in c(1L, wide)) for (backing in c("private", "shared")) {
     for (operation in names(operations)) {
         call <- operations[[operation]]
