@@ -111,6 +111,27 @@ test_that("scalar storage policy distinguishes fixed rounding and promotion", {
     expect_identical(.stata_missing_text(.tab_missing_codes(data$x))[[3L]], ".z")
 })
 
+test_that("speculative scalar replacement leaves retained backing intact", {
+    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
+        data <- dibble(x = .Call(C_dtatools_owned_numeric_freeze,
+                                constructor(c(1, 2, 3, 4)), 2))
+        before <- .Call(C_dtatools_owned_numeric_info, data$x)
+        expect_identical(before[["owned"]], 1)
+        # A promoted assignment to no rows is a no-op even for invalid values.
+        data[integer(), x := Inf]
+        data[x > 10, x := 1000]
+        after <- .Call(C_dtatools_owned_numeric_info, data$x)
+        expect_identical(after[["owned"]], 1)
+        expect_identical(after[["compatibility_bytes"]], before[["compatibility_bytes"]])
+        # A failed speculative fit leaves conversion to the general path.
+        expect_null(.Call(C_dtatools_patch_scalar, data, "x", 1L, Inf, TRUE))
+        after <- .Call(C_dtatools_owned_numeric_info, data$x)
+        expect_identical(after[["owned"]], 1)
+        expect_identical(after[["compatibility_bytes"]], before[["compatibility_bytes"]])
+        expect_identical(as.double(data$x), c(1, 2, 3, 4))
+    }
+})
+
 test_that("direct generation retains storage defaults and one bracket selection", {
     for (storage in c("float", "double")) {
         withr::local_options(dtatools.generate_type = storage)

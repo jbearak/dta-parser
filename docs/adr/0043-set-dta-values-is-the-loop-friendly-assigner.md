@@ -141,7 +141,9 @@ still round to float. A callback-capable `promote` argument uses the general
 path from the outset, so a speculative fit check cannot force it and then
 evaluate the row and value bindings again on fallback. A promoted assignment
 with no selected rows remains
-a no-op. Expressions requiring a data mask retain their private views,
+a no-op. Eligibility reads retained compact backing without converting it
+to writable storage, so a no-op or declined fit does not copy its payload.
+Expressions requiring a data mask retain their private views,
 and fused comparison-and-patch calls retain their existing adapter.
 
 The existing direct scalar generation path now accepts positional rows

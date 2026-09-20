@@ -44,7 +44,9 @@ static SEXP mutation_patch_scalar(SEXP data, SEXP variable, SEXP rows,
     SEXP target = VECTOR_ELT(data, slot);
     if (!known_numeric_classes(target, 1) || !Rf_inherits(target, "dta_numeric") ||
         Rf_inherits(target, "dta_temporal")) return R_NilValue;
-    numeric_data *compact = unmaterialized_numeric_storage(target);
+    /* Eligibility and a declined fit must not detach retained backing. The
+       patch transaction obtains writable storage only after this decision. */
+    numeric_data *compact = unmaterialized_numeric_read_storage(target);
     numeric_data materialized;
     int kind;
     if (compact != NULL) kind = compact->kind;

@@ -4883,7 +4883,7 @@
         },
         {
           "path": "tests/testthat/test-mutation-fast.R",
-          "sha256": "e9c4fcacf3ce65a3688a48d28939936636470980fcd204053770920b79a59cfd"
+          "sha256": "3d78780ef98040555c5606927966e34039a36c843b40bbac17dc3e58a6af52ef"
         }
       ],
       "blocks": [
@@ -6629,6 +6629,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "speculative scalar replacement leaves retained backing intact",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 28,
           "warnings": 0
         }
       ],
