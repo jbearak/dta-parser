@@ -142,9 +142,9 @@ for (width in c(1L, wide)) for (backing in c("private", "shared")) {
             env <- fixture(operation, width, backing)
             if (gc_mode == "before") gc()
             .Call(dtatools:::C_dtatools_native_copy_stats, TRUE)
-            gc_before <- sum(gc.time())
+            gc_before <- sum(gc.time()[1:3])
             times[[i]] <- as.numeric(bench::system_time(eval(call, env))[["real"]])
-            collected[[i]] <- sum(gc.time()) > gc_before
+            collected[[i]] <- sum(gc.time()[1:3]) > gc_before
             stats <- .Call(dtatools:::C_dtatools_native_copy_stats, FALSE)
             scratch[[i]] <- stats[["native_scratch_allocated"]]
             copied[[i]] <- stats[["mutation_target_copy"]]
