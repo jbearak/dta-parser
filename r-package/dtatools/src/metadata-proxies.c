@@ -615,27 +615,25 @@ static int mutation_ascii_name(SEXP name) {
     return 1;
 }
 
-SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count) {
-    if (ALTREP(row_count) || (TYPEOF(row_count) != INTSXP && TYPEOF(row_count) != REALSXP) ||
-        XLENGTH(row_count) != 1) return Rf_ScalarLogical(0);
+static int mutation_shape(SEXP data, double expected) {
     if (TYPEOF(data) != VECSXP || ALTREP(data) ||
-        XLENGTH(data) > MUTATION_SHAPE_NAME_SLOTS / 2) return Rf_ScalarLogical(0);
-    if (Rf_getAttrib(data, R_DimSymbol) != R_NilValue) return Rf_ScalarLogical(0);
+        XLENGTH(data) > MUTATION_SHAPE_NAME_SLOTS / 2) return 0;
+    if (Rf_getAttrib(data, R_DimSymbol) != R_NilValue) return 0;
     SEXP names = mutation_physical_names(data);
     if (TYPEOF(names) != STRSXP || ALTREP(names) || Rf_isObject(names) ||
-        XLENGTH(names) != XLENGTH(data)) return Rf_ScalarLogical(0);
+        XLENGTH(names) != XLENGTH(data)) return 0;
     /* Establish the callback-free domain before reading lengths or names. */
     for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
         SEXP value = VECTOR_ELT(data, i);
-        if (ALTREP(Rf_getAttrib(value, R_ClassSymbol))) return Rf_ScalarLogical(0);
+        if (ALTREP(Rf_getAttrib(value, R_ClassSymbol))) return 0;
         int known = owned_supported(value) ||
             (unmaterialized_numeric_read_storage(value) != NULL && known_numeric_classes(value, 1)) ||
             (!ALTREP(value) && !Rf_isObject(value) &&
              (TYPEOF(value) == REALSXP || TYPEOF(value) == INTSXP ||
               TYPEOF(value) == LGLSXP || TYPEOF(value) == STRSXP));
-        if (!known || Rf_getAttrib(value, R_DimSymbol) != R_NilValue) return Rf_ScalarLogical(0);
+        if (!known || Rf_getAttrib(value, R_DimSymbol) != R_NilValue) return 0;
         SEXP name = STRING_ELT(names, i);
-        if (!mutation_ascii_name(name)) return Rf_ScalarLogical(0);
+        if (!mutation_ascii_name(name)) return 0;
     }
     SEXP seen[MUTATION_SHAPE_NAME_SLOTS] = {0};
     for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
@@ -652,12 +650,53 @@ SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count) {
         }
         seen[slot] = name;
     }
-    double expected = Rf_asReal(row_count);
     for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
         if ((double) XLENGTH(VECTOR_ELT(data, i)) != expected)
             Rf_error("`data` has columns with inconsistent row counts; assign `data <- dplyr::ungroup(data)` and group again");
     }
-    return Rf_ScalarLogical(1);
+    return 1;
+}
+
+SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count) {
+    if (ALTREP(row_count) || (TYPEOF(row_count) != INTSXP && TYPEOF(row_count) != REALSXP) ||
+        XLENGTH(row_count) != 1) return Rf_ScalarLogical(0);
+    return Rf_ScalarLogical(mutation_shape(data, Rf_asReal(row_count)));
+}
+
+static SEXP mutation_row_names_attribute(SEXP tag, SEXP value, void *context) {
+    (void) context;
+    return tag == R_RowNamesSymbol ? value : NULL;
+}
+
+/* Exact ungrouped dibble classes and physical row names, without dispatch or
+   expanding compact row names. A failed certificate is only a fallback. */
+int mutation_fast_shape(SEXP data, R_xlen_t *row_count) {
+    if (TYPEOF(data) != VECSXP || ALTREP(data)) return 0;
+    SEXP classes = Rf_getAttrib(data, R_ClassSymbol);
+    const char *expected[] = {"dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame"};
+    if (TYPEOF(classes) != STRSXP || ALTREP(classes) || ANY_ATTRIB(classes) ||
+        (XLENGTH(classes) != 5 && XLENGTH(classes) != 6)) return 0;
+    int metadata = XLENGTH(classes) == 6;
+    for (int i = 0; i < XLENGTH(classes); i++) {
+        const char *name = metadata && i == 2 ? "dtatools_dta_metadata" :
+            expected[i - (metadata && i > 2)];
+        if (strcmp(CHAR(STRING_ELT(classes, i)), name) != 0) return 0;
+    }
+    SEXP rows = R_mapAttrib(data, mutation_row_names_attribute, NULL);
+    if (rows == NULL || ALTREP(rows) || ANY_ATTRIB(rows)) return 0;
+    if (TYPEOF(rows) == INTSXP && XLENGTH(rows) == 2 && INTEGER(rows)[0] == NA_INTEGER) {
+        int n = INTEGER(rows)[1];
+        if (n == NA_INTEGER) return 0;
+        *row_count = n < 0 ? -(R_xlen_t) n : n;
+    } else if (TYPEOF(rows) == INTSXP || TYPEOF(rows) == STRSXP) {
+        *row_count = XLENGTH(rows);
+    } else return 0;
+    return mutation_shape(data, (double) *row_count);
+}
+
+SEXP C_dtatools_fast_shape(SEXP data) {
+    R_xlen_t rows;
+    return mutation_fast_shape(data, &rows) ? Rf_ScalarReal((double) rows) : R_NilValue;
 }
 
 /* Only used after the ASCII shape certificate above. A non-ASCII query

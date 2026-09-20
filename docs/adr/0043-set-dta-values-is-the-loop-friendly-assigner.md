@@ -33,13 +33,13 @@ position, normalizes `rows` as `where` is normalized once evaluated,
 applies the same size rule to `value`, and commits through the same
 replacement path `repl()` commits through, with the same native patch on
 compact storage and the same detach of a column shared with another
-table. A single-row write costs about fourteen microseconds on a numeric
-column against over a hundred through `repl()` and about two through
-`data.table::set()`; the
+table. The original
 [cell-assignment benchmark](../../benchmarks/r-cell-assignment/results-2026-09-19-set-dta-values.md)
-records all three. The gap to `set()` is the storage check and the
-private column views every write opens, which is the price of refusing a
-value the column cannot hold.
+measured 14.3 microseconds for a single-row numeric write, 22.1 for a
+whole-column scalar fill, and 14.5 milliseconds for 1,000 row writes.
+Those end-to-end measurements did not establish what caused the gap to
+`data.table::set()`. The original attribution to unavoidable storage
+checks and private views was a hypothesis, not a measured lower bound.
 
 Where the shared row normalizer speaks of `where`, the assigner's errors
 say `rows`, since that is the argument the caller wrote.
@@ -73,8 +73,10 @@ method on the value's class can do.
 
 The target keeps its declared storage, and a value it cannot hold is an
 error naming the storage that would, with nothing changed. This is the
-`promote = FALSE` rule of `repl()` and the rule `data.table::set()`
-follows, and it is the only rule that makes sense inside a loop: a
+`promote = FALSE` rule of `repl()`. `data.table::set()` also checks types
+and ranges, but permits some lossy conversions with warnings. dtatools
+also enforces Stata ranges, missing tags and declared storage. Keeping
+storage fixed makes loop costs predictable: a
 promotion on iteration 4,000 of 10,000 would rebuild the whole column on
 that iteration and silently change its type, so the caller who wanted a
 wider column should declare it before the loop with `dta_int()`,
@@ -111,3 +113,84 @@ gains one primitive. `set_dta_values()` is the 109th export, pinned in the
 native manifest and the benchmark guards. ADR 0041's reopening conditions
 for the generic attribute setter are unchanged. Issue #184 closes on this
 record.
+
+## Shared numeric scalar fast path
+
+[Issue #263](https://github.com/jbearak/dta-parser/issues/263) moves eligible
+replacement setup into native code and reuses the existing numeric patch
+transaction. The table must have the exact ungrouped dibble class chain,
+ordinary ASCII column names, at most 2,048 columns, and supported physical
+columns with consistent lengths. Shape validation still checks every column:
+a one-column write must not accept a malformed table. The sharing decision
+reads only the target handle and its backing ownership.
+
+For `set_dta_values()`, native inspection accepts literal arguments and
+already evaluated bindings. It does not force delayed or active bindings.
+It checks those input forms before scanning the table, so an expression or
+other unsupported input does not pay for a second whole-table shape check.
+The column selector must be a plain name or position, `create` must be
+false, the value must be one ordinary unclassed logical, integer or double,
+and rows must be null or ordinary unclassed numeric positions. The target
+must be a supported non-temporal Stata numeric column. Compact and owned
+double backing qualify; a materialized compact column qualifies for a
+whole-column write. Other inputs decline without evaluating caller code
+or writing, then use the existing path and its diagnostics.
+
+`repl()` and dibble `:=` adapt their captured scalar literals and settled
+bindings to the same native patch. Promotion first checks exact fit and
+falls back to the existing promotion path when needed. Fixed float writes
+still round to float. A callback-capable `promote` argument uses the general
+path from the outset, so a speculative fit check cannot force it and then
+evaluate the row and value bindings again on fallback. A promoted assignment
+with no selected rows remains
+a no-op. Eligibility reads retained compact backing without converting it
+to writable storage, so a no-op or declined fit does not copy its payload.
+Expressions requiring a data mask retain their private views,
+and fused comparison-and-patch calls retain their existing adapter.
+
+The existing direct scalar generation path now accepts positional rows
+and bracket selections. Bare numeric scalars reuse native generation with
+a native attribute plan, also after general expression evaluation. Integers
+still create long columns, doubles follow the generation option, and bare
+logical values retain logical storage. Capacity and placement remain with
+the existing append machinery. Calls needing capacity growth decline before
+reading row or value bindings, because a growth warning can run a calling
+handler that changes them. Attributed or foreign generation options use the
+original validator and generator; a native decline never becomes a column.
+A bracket evaluates its row selection once
+and passes the same rows to every assignment, including new columns.
+
+The shared patch transaction keeps one row offset and up to eight staged
+value bytes on the stack. Larger plans retain their allocated staging and
+cleanup. The native scratch counter reports heap allocation separately
+from R allocation, staged bytes, and target payload copying. A private
+single-row scalar write and a whole-column scalar fill need no native
+scratch heap allocation; detaching shared backing can still allocate an
+R-managed payload. The transaction validates before its first write and
+preserves the existing interruption and ownership rules.
+
+## Measured costs after the shared fast path
+
+The [2026-09-20 measurements](../../benchmarks/r-cell-assignment/results-2026-09-20-shared-mutation.md)
+compare exact-source installs on the same host. The original direct-call runner
+measures 1.8 microseconds for a single-row scalar write, 10.0 for a whole-column
+fill, and 2.0 to 2.1 milliseconds for 1,000 row writes. Baseline measured
+14.0 microseconds, 22.1 microseconds, and 16.7 to 17.0 milliseconds. The candidate
+and data.table have the same rounded 1.8-microsecond single-row median on this
+fixture; whole-column fills remain about 1.33 times data.table's cost.
+
+Isolated baseline measurements put row normalization at 2.60 microseconds,
+the cast helper at 2.44, shape preflight at 1.19, target resolution at 0.78,
+and the native patch at 0.53. They cannot be summed into an exact latency
+model, but they identify avoidable setup around an already cheap write.
+Bare scalar generation falls from 22.21 to 12.75 microseconds in isolation.
+Its end-to-end improvement is smaller because capture and append remain.
+
+The fresh-fixture matrix measures narrow and wide tables, private and shared
+targets, all four APIs, expressions, creation, promotion and the existing fused
+path. A private scalar row write drops from 16 native scratch heap bytes to
+zero; its R allocation was already zero. Shared sparse writes still copy the
+target payload. The matrix also records expression timing variation and
+GC-controlled repeats. It supports repeatable scalar improvements without
+claiming every fallback is faster or treating an observed gap as an unavoidable
+semantic cost.

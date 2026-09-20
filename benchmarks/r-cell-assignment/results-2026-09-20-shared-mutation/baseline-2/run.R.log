@@ -1,0 +1,21 @@
+| Call | Median | Allocation | Iterations |
+| --- | ---: | ---: | ---: |
+| `repl_whole_column` | 122.5 µs | 781.6 KB | 200 |
+| `repl_single_row` | 109.4 µs | 280 B | 200 |
+| `set_dta_values_whole_column` | 22.2 µs | 0 B | 200 |
+| `set_dta_values_single_row` | 14.1 µs | 0 B | 200 |
+| `set_whole_column` | 7.4 µs | 0 B | 200 |
+| `set_single_row` | 1.8 µs | 0 B | 200 |
+| `repl_row_loop` | 119.7 ms | 310.5 KB | 3 |
+| `set_dta_values_row_loop` | 16.7 ms | 9.6 KB | 3 |
+| `set_row_loop` | 2.0 ms | 24.0 KB | 3 |
+
+benchmark_source_sha	75771518e1312794ae02b617253fde48028ec16f
+benchmark_source_tree	6a5841e97ef7151aed6c9e6504819fb3f3025320
+rows	100000
+loop_rows	1000
+dtatools	0.10.0
+data.table	1.18.6.1
+bench	1.1.4
+R	4.6.1	aarch64-apple-darwin25.4.0
+host	Darwin 25.6.0 arm64

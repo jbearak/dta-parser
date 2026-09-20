@@ -77,6 +77,8 @@ typedef struct {
     R_xlen_t count;
     R_xlen_t *positions;
     unsigned char *staged;
+    R_xlen_t inline_position;
+    unsigned char inline_value[sizeof(double)];
     size_t staged_size;
     size_t width;
     int entry_shared;
@@ -138,9 +140,10 @@ static void stage_numeric_slot(numeric_slot_transaction *transaction) {
             Rf_error("reference mutation row plan is too large");
         }
         size_t bytes = (size_t) transaction->count * sizeof(R_xlen_t);
-        transaction->positions = (R_xlen_t *) malloc(bytes);
+        transaction->positions = transaction->count == 1
+            ? &transaction->inline_position : (R_xlen_t *) malloc(bytes);
         if (transaction->positions == NULL) Rf_error("could not stage reference mutation rows");
-        native_scratch_allocated += (double) bytes;
+        if (transaction->count != 1) native_scratch_allocated += (double) bytes;
         for (R_xlen_t i = 0; i < transaction->count; i++) {
             if ((i & 16383) == 0) R_CheckUserInterrupt();
             transaction->positions[i] = reference_patch_row(&rows, i);
@@ -151,10 +154,11 @@ static void stage_numeric_slot(numeric_slot_transaction *transaction) {
         Rf_error("reference replacement plan is too large");
     }
     transaction->staged_size = (size_t) staged_count * transaction->width;
-    transaction->staged = (unsigned char *) malloc(
-        transaction->staged_size == 0 ? 1 : transaction->staged_size);
+    transaction->staged = transaction->staged_size <= sizeof(transaction->inline_value)
+        ? transaction->inline_value : (unsigned char *) malloc(transaction->staged_size);
     if (transaction->staged == NULL) Rf_error("could not stage reference replacement values");
-    native_scratch_allocated += (double) transaction->staged_size;
+    if (transaction->staged != transaction->inline_value)
+        native_scratch_allocated += (double) transaction->staged_size;
     numeric_reader reader;
     memset(&reader, 0, sizeof(reader));
     if (transaction->is_compact || transaction->is_materialized || transaction->stata_double) {
@@ -340,8 +344,8 @@ static SEXP apply_numeric_slot(void *data) {
 static void cleanup_numeric_slot(void *data, Rboolean jump) {
     (void) jump;
     numeric_slot_transaction *transaction = (numeric_slot_transaction *) data;
-    free(transaction->positions);
-    free(transaction->staged);
+    if (transaction->positions != &transaction->inline_position) free(transaction->positions);
+    if (transaction->staged != transaction->inline_value) free(transaction->staged);
     transaction->positions = NULL;
     transaction->staged = NULL;
 }

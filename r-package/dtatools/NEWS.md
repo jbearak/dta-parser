@@ -4,10 +4,19 @@
   is the loop-friendly assigner, `data.table::set()` for a dibble: the
   column as a name or position in an ordinary R value, `rows` and
   `value` as ordinary R values, nothing evaluated against the data, and a
-  single-row write in about fourteen microseconds where `repl()` takes over
-  a hundred. The target keeps its declared storage and a value it cannot
+  native fast path for common numeric scalar writes. The target keeps its
+  declared storage and a value it cannot
   hold is an error, as `repl(promote = FALSE)` makes it. A missing
   column is an error unless `create = TRUE`. See ADR 0043.
+* Numeric scalar replacement shares a native fast path across
+  `set_dta_values()`, `repl()`, and dibble `:=`. Single-row and whole-column
+  scalar writes use stack staging without native scratch heap allocation.
+  `gen()` and `:=` creation share native scalar generation. General expressions,
+  callbacks, grouping and promotion retain their existing policies. On the
+  recorded 100,000-row fixture, single-row `set_dta_values()` fell from
+  14.0 to 1.8 microseconds. See the
+  [cell-assignment results](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-cell-assignment/results-2026-09-20-shared-mutation.md)
+  for the API matrix, eligibility and separate native allocation measurements.
 * `gen()` gains `before` and `after`, Stata's `generate ..., before(varname)`
   and `after(varname)`: the new column is inserted beside an existing column
   instead of appended, with the same column-name spellings `egen()` accepts.

@@ -375,13 +375,14 @@ replace_values <- function(data, ..., where = NULL, by = NULL,
     )
     # `missing()` keeps the two extra quosure captures off the ungrouped
     # path, which `repl()` in a loop depends on.
+    fast_promote <- .Call(C_dtatools_peek_promote, environment())
     result <- .mutate_data(
         data, arguments$variable, arguments$values, arguments$where,
         generate = FALSE,
         by = if (missing(by)) NULL else rlang::enquo(by),
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort),
         promote = .validate_promote(promote), report_promotion = TRUE,
-        entry_shared = shared
+        entry_shared = shared, fast_promote = fast_promote
     )
     invisible(result)
 }
@@ -792,10 +793,19 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     list(value = value)
 }
 
-.generate_direct_scalar <- function(data, variable, values, where, auto_grow) {
+.generate_direct_scalar <- function(data, variable, values, where, auto_grow,
+                                    selection = NULL) {
     row_count <- .mutation_fast_shape(data)
-    if (is.null(row_count) || rlang::quo_is_missing(where) ||
-        !is.null(rlang::quo_get_expr(where)) || rlang::quo_is_missing(values)) return(NULL)
+    if (is.null(row_count) || rlang::quo_is_missing(values) ||
+        (!is.null(selection) && !is.null(selection$groups))) return(NULL)
+    # A growth warning can run a calling handler that changes row/value
+    # bindings. Let the full path prepare capacity before reading either.
+    if (!.column_operation_ready(data, length(data) + 1L)) return(NULL)
+    selected <- .direct_scalar_rows(data, where, selection)
+    if (is.null(selected)) return(NULL)
+    if (!is.null(selected$rows) &&
+        (!typeof(selected$rows) %in% c("integer", "double") ||
+         !is.null(attributes(selected$rows)) || .is_altrep(selected$rows))) return(NULL)
     expression <- rlang::quo_get_expr(variable)
     if (!is.symbol(expression) && !is.character(expression)) return(NULL)
     if (is.character(expression) && (!is.null(attributes(expression)) || .is_altrep(expression))) return(NULL)
@@ -806,12 +816,40 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     scalar <- .mutation_scalar_binding(values, data)
     if (is.null(scalar)) return(NULL)
     data <- .prepare_column_growth(data, length(data) + 1L, auto_grow)
+    rows <- .mutation_rows(selected$rows, row_count)
     column <- .generated_column(
-        scalar$value, NULL, row_count, generate = TRUE, carry_metadata = FALSE
+        scalar$value, rows, row_count, generate = TRUE, carry_metadata = FALSE
     )
     .prepare_column_operation(data, length(data) + 1L)
     .append_generated_column(data, name, column)
     data
+}
+
+# Reuse the callback-free scalar lookup used by generation. Expressions that
+# need a mask, lazy bindings, and selections that need evaluation retain the
+# full view path. `promote` is already certified callback-free by the public
+# adapter; its original promise is reserved for the general path. A bracket
+# supplies its already evaluated selection once.
+.replace_direct_scalar <- function(data, variable, values, where, selection, promote) {
+    if (rlang::quo_is_missing(variable) || rlang::quo_is_missing(values)) return(NULL)
+    expression <- rlang::quo_get_expr(variable)
+    if (!is.symbol(expression) && !.mutation_literal_member(expression)) return(NULL)
+    if (!is.null(selection) && !is.null(selection$groups)) return(NULL)
+    selected <- .direct_scalar_rows(data, where, selection)
+    if (is.null(selected)) return(NULL)
+    scalar <- .mutation_scalar_binding(values, data)
+    if (is.null(scalar)) return(NULL)
+    .Call(C_dtatools_patch_scalar, data, .unquoted_variable_name(variable),
+          selected$rows, scalar$value, promote)
+}
+
+.direct_scalar_rows <- function(data, where, selection = NULL) {
+    if (!is.null(selection)) return(list(rows = selection$rows))
+    if (rlang::quo_is_missing(where)) return(NULL)
+    if (is.null(rlang::quo_get_expr(where))) return(list(rows = NULL))
+    selected <- .mutation_scalar_binding(where, data)
+    if (is.null(selected) || !typeof(selected$value) %in% c("integer", "double")) return(NULL)
+    list(rows = selected$value)
 }
 
 .RUNTIME_NAME_MESSAGE <-
@@ -1844,6 +1882,16 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # own.
 .mutation_selection <- function(data, where, by, bysort, staged) {
     grouped_input <- inherits(data, "grouped_df")
+    if (!grouped_input && is.null(by) && is.null(bysort)) {
+        row_count <- .Call(C_dtatools_fast_shape, data)
+        if (!is.null(row_count)) {
+            selected <- .direct_scalar_rows(data, where)
+            if (!is.null(selected)) return(list(
+                groups = NULL, rows = .mutation_rows(selected$rows, row_count),
+                group_rows = NULL
+            ))
+        }
+    }
     original <- .as_mutation_data(
         data, allow_grouped = TRUE, allow_rowwise = FALSE, private_views = TRUE
     )
@@ -1889,10 +1937,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
                          by = NULL, bysort = NULL, selection = NULL,
                          promote = FALSE, report_promotion = FALSE,
                          entry_shared = NULL, auto_grow = FALSE,
-                         staged = NULL, placement = NULL) {
-    if (generate && is.null(by) && is.null(bysort) && is.null(selection) &&
-        is.null(placement)) {
-        direct <- .generate_direct_scalar(data, variable, values, where, auto_grow)
+                         staged = NULL, placement = NULL, fast_promote = NULL) {
+    if (!generate && is.null(by) && is.null(bysort) &&
+        !inherits(data, "grouped_df") && is.null(staged$restore) && !is.null(fast_promote)) {
+        direct <- .replace_direct_scalar(data, variable, values, where, selection, fast_promote)
+        if (!is.null(direct)) return(invisible(direct))
+    }
+    if (generate && is.null(by) && is.null(bysort) &&
+        is.null(placement) && is.null(staged$restore)) {
+        direct <- .generate_direct_scalar(data, variable, values, where, auto_grow, selection)
         if (!is.null(direct)) return(invisible(direct))
     }
     # Inspect before masks and snapshots add temporary column references.
@@ -2312,6 +2365,16 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # everything, as R does.
 .generated_column <- function(values, rows, row_count, caller = "gen()",
                               generate = FALSE, carry_metadata = TRUE) {
+    if (generate && !carry_metadata && is.null(attributes(values)) &&
+        typeof(values) %in% c("integer", "double") && !.is_altrep(values) &&
+        length(values) == 1L) {
+        # Inspect the option without dispatch. Attributed or foreign values
+        # decline and reach the original validator once, below.
+        column <- .Call(C_dtatools_generate_scalar, values, rows, as.double(row_count),
+                        if (typeof(values) == "integer") "long" else
+                            getOption("dtatools.generate_type", "float"))
+        if (!is.null(column)) return(column)
+    }
     message <- sprintf(
         "`%s` values must be numeric, logical, character, or a factor",
         caller

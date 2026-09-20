@@ -467,7 +467,8 @@ NULL
             x <- .mutate_data(
                 x, rlang::new_quosure(assignment$name, emptyenv()),
                 assignment$values, where, generate = !exists,
-                selection = selection, promote = TRUE, staged = staged
+                selection = selection, promote = TRUE, staged = staged,
+                fast_promote = TRUE
             )
             destination <- .rebind_mutation(original_x, x, destination, parent.frame())
             original_x <- x

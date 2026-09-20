@@ -4880,6 +4880,10 @@
         {
           "path": "tests/testthat/test-set-dta-values.R",
           "sha256": "d324420ff8a4a15e2914d52d1524cd64d6681cdbf1dd743054ed6c5d17373e48"
+        },
+        {
+          "path": "tests/testthat/test-mutation-fast.R",
+          "sha256": "3d78780ef98040555c5606927966e34039a36c843b40bbac17dc3e58a6af52ef"
         }
       ],
       "blocks": [
@@ -6537,6 +6541,102 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 22,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "native scalar inspection accepts literals and settled bindings only",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "native scalar declines preserve diagnostics and unsupported inputs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 21,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "scalar writes reuse private storage and isolate shared results",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 45,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "scalar storage policy distinguishes fixed rounding and promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "direct generation retains storage defaults and one bracket selection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "fast shape preserves wide and malformed table checks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "native generation declines accepted attributed storage options safely",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "growth warning handlers run before direct generation reads bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "invalid generation defaults still fail before appending a scalar",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "promote callbacks cannot change a declined scalar assignment",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "native promote inspection declines active and attributed flags",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "speculative scalar replacement leaves retained backing intact",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 28,
           "warnings": 0
         }
       ],
