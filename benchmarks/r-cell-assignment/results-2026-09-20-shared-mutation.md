@@ -196,7 +196,7 @@ repeat. They are not replacements for the full matrix.
 The larger expression and promotion cases stay within 5% of baseline across
 this repeat's shapes. The largest increase is the small one-column shared
 `set_expression` case, 63.3 → 67.9 µs, about 7%. In the full matrix the same
-case differs by about 2%.
+case differs by 1.25%.
 
 These results support the scalar improvements and do not establish a persistent
 16 to 19% expression regression. They also do not show every fallback getting
