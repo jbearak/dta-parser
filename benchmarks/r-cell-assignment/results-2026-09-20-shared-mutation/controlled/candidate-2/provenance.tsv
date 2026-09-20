@@ -1,0 +1,16 @@
+key	value
+source_sha	8ef15b826f6bb88eed8c5a401b5ba6601ecb2fbc
+source_tree	13976093639e2dc3815e4853aadea2a2f076fda8
+runner_sha	d06c2d95c9ef4ffc0194c9c5c0759402d5f2a582
+dtatools	0.10.0
+data.table	1.18.6.1
+bench	1.1.4
+R	R version 4.6.1 (2026-06-24)
+platform	aarch64-apple-darwin25.4.0
+host	Darwin 25.6.0 arm64
+rows	100000
+samples	50
+wide	100
+library	/private/tmp/claude-501/rlib-263-exact-8ef15b82
+gc	before
+operations	set_expression,repl_expression,gen_expression,bracket_create_expression,repl_promote,data_table_row

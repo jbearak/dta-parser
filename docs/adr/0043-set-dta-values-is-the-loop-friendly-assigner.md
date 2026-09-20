@@ -168,3 +168,29 @@ single-row scalar write and a whole-column scalar fill need no native
 scratch heap allocation; detaching shared backing can still allocate an
 R-managed payload. The transaction validates before its first write and
 preserves the existing interruption and ownership rules.
+
+## Measured costs after the shared fast path
+
+The [2026-09-20 measurements](../../benchmarks/r-cell-assignment/results-2026-09-20-shared-mutation.md)
+compare exact-source installs on the same host. The original direct-call runner
+measures 1.8 microseconds for a single-row scalar write, 10.0 for a whole-column
+fill, and 2.0 to 2.1 milliseconds for 1,000 row writes. Baseline measured
+14.0 microseconds, 22.1 microseconds, and 16.7 to 17.0 milliseconds. The candidate
+and data.table have the same rounded 1.8-microsecond single-row median on this
+fixture; whole-column fills remain about 1.33 times data.table's cost.
+
+Isolated baseline measurements put row normalization at 2.60 microseconds,
+the cast helper at 2.44, shape preflight at 1.19, target resolution at 0.78,
+and the native patch at 0.53. They cannot be summed into an exact latency
+model, but they identify avoidable setup around an already cheap write.
+Bare scalar generation falls from 22.21 to 12.75 microseconds in isolation.
+Its end-to-end improvement is smaller because capture and append remain.
+
+The fresh-fixture matrix measures narrow and wide tables, private and shared
+targets, all four APIs, expressions, creation, promotion and the existing fused
+path. A private scalar row write drops from 16 native scratch heap bytes to
+zero; its R allocation was already zero. Shared sparse writes still copy the
+target payload. The matrix also records expression timing variation and
+GC-controlled repeats. It supports repeatable scalar improvements without
+claiming every fallback is faster or treating an observed gap as an unavoidable
+semantic cost.

@@ -36,6 +36,13 @@ motivated ADR 0041, before the assigner existed, and
 [results-2026-09-19-set-dta-values.md](results-2026-09-19-set-dta-values.md)
 for the run that measures it.
 
+The [shared mutation results](results-2026-09-20-shared-mutation.md) compare
+the scalar fast paths with the preceding revision on the same host. The
+direct-call medians are 1.8 µs for a single-row `set_dta_values()` write and
+10.0 µs for a whole-column fill, versus 14.0 and 22.1 µs. The report includes
+all four APIs, native scratch counters, wide and shared fixtures, and
+controlled repeats for expression timing variation.
+
 ## Shared mutation measurements
 
 `expanded.R` runs the same matrix against any committed revision. It covers

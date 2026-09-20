@@ -1,0 +1,77 @@
+NULL
+Results: /private/tmp/dta-263-controlled/candidate-1 
+                 operation width backing median_seconds gc_samples
+            set_expression     1 private   3.722811e-05          0
+           repl_expression     1 private   2.093829e-03          0
+            gen_expression     1 private   2.542041e-03          0
+ bracket_create_expression     1 private   2.586567e-03          0
+              repl_promote     1 private   8.688884e-03          0
+            data_table_row     1 private   9.225099e-06          0
+            set_expression     1  shared   6.742449e-05          0
+           repl_expression     1  shared   2.083825e-03          0
+            gen_expression     1  shared   2.533657e-03          0
+ bracket_create_expression     1  shared   2.584517e-03          0
+              repl_promote     1  shared   8.657499e-03          0
+            data_table_row     1  shared   1.045503e-05          0
+            set_expression   100 private   5.795353e-05          0
+           repl_expression   100 private   2.202212e-03          0
+            gen_expression   100 private   2.617912e-03          0
+ bracket_create_expression   100 private   2.665041e-03          0
+              repl_promote   100 private   8.756575e-03          0
+            data_table_row   100 private   1.080357e-05          0
+            set_expression   100  shared   8.284068e-05          0
+           repl_expression   100  shared   2.236263e-03          0
+            gen_expression   100  shared   2.721211e-03          0
+ bracket_create_expression   100  shared   2.743987e-03          0
+              repl_promote   100  shared   9.045645e-03          0
+            data_table_row   100  shared   1.106993e-05          0
+ median_without_gc_seconds  p25_seconds  p75_seconds  r_bytes
+              3.722811e-05 3.449136e-05 4.306028e-05        0
+              2.093829e-03 2.062587e-03 2.123841e-03 16402096
+              2.542041e-03 2.522658e-03 2.567922e-03 16410624
+              2.586567e-03 2.553910e-03 2.712662e-03 16410624
+              8.688884e-03 8.595055e-03 8.806943e-03 28603448
+              9.225099e-06 8.876435e-06 1.043448e-05        0
+              6.742449e-05 6.398046e-05 7.823826e-05   800048
+              2.083825e-03 2.074169e-03 2.140815e-03 16402096
+              2.533657e-03 2.518886e-03 2.586977e-03 16410624
+              2.584517e-03 2.553521e-03 2.697615e-03 16410624
+              8.657499e-03 8.565064e-03 8.708830e-03 28603448
+              1.045503e-05 9.850191e-06 1.138775e-05        0
+              5.795353e-05 5.483744e-05 6.710662e-05     2992
+              2.202212e-03 2.162422e-03 2.238744e-03 16411808
+              2.617912e-03 2.594511e-03 2.649369e-03 16421128
+              2.665041e-03 2.649092e-03 2.717470e-03 16425192
+              8.756575e-03 8.665852e-03 8.944529e-03 28610616
+              1.080357e-05 1.034234e-05 1.165434e-05        0
+              8.284068e-05 7.944781e-05 8.676620e-05   803040
+              2.236263e-03 2.200470e-03 2.280441e-03 16411808
+              2.721211e-03 2.682343e-03 2.771508e-03 16421128
+              2.743987e-03 2.696919e-03 2.770790e-03 16425192
+              9.045645e-03 8.885376e-03 9.476801e-03 28610616
+              1.106993e-05 1.078291e-05 1.209503e-05        0
+ native_scratch_bytes target_copy_bytes samples
+                    0             0e+00      50
+                    0             8e+05      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             8e+05      50
+                    0             8e+05      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             8e+05      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             8e+05      50
+                    0             8e+05      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             0e+00      50
+                    0             0e+00      50

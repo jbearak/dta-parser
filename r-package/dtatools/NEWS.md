@@ -12,8 +12,11 @@
   `set_dta_values()`, `repl()`, and dibble `:=`. Single-row and whole-column
   scalar writes use stack staging without native scratch heap allocation.
   `gen()` and `:=` creation share native scalar generation. General expressions,
-  callbacks, grouping and promotion retain their existing policies. See the
-  cell-assignment benchmark for eligibility and measured costs.
+  callbacks, grouping and promotion retain their existing policies. On the
+  recorded 100,000-row fixture, single-row `set_dta_values()` fell from
+  14.0 to 1.8 microseconds. See the
+  [cell-assignment results](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-cell-assignment/results-2026-09-20-shared-mutation.md)
+  for the API matrix, eligibility and separate native allocation measurements.
 * `gen()` gains `before` and `after`, Stata's `generate ..., before(varname)`
   and `after(varname)`: the new column is inserted beside an existing column
   instead of appended, with the same column-name spellings `egen()` accepts.

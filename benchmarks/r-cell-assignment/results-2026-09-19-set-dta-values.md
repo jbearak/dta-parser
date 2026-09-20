@@ -1,17 +1,20 @@
-# R cell assignment with set_dta_values() — 2026-09-19
+# R cell assignment with set_dta_values(), 2026-09-19
 
 ## Result
 
 On a 100,000-row dibble, one `set_dta_values()` call costs about an
 eighth of one `repl()` call for a single positional row, and about a
-fifth for a whole-column write, with no allocation per call. A loop
+fifth for a whole-column write, with no R allocation in the profiled assigner calls. A loop
 of 1,000 single-row writes takes 15 ms through `set_dta_values()`, 126 ms
-through `repl()`, and 2 ms through `data.table::set()`. The remaining gap
-to `set()` is the Stata storage check on every write and the private
-column view the write path opens and releases; both are what make the
-assigner refuse a value the column cannot hold rather than coerce it, and
-the view is also what lets a value that runs code when it is read be
-settled before the table's layout is read.
+through `repl()`, and 2 ms through `data.table::set()`.
+
+Correction, 2026-09-20: these end-to-end measurements did not establish the
+cause of the remaining gap. The original attribution to unavoidable storage
+checks and private views was a hypothesis. The
+[shared mutation follow-up](results-2026-09-20-shared-mutation.md) profiles
+the setup, removes it for eligible calls, and measures native scratch
+allocation separately from R allocation. The table below preserves the
+historical measurements.
 
 | Call | Median | Allocation | Iterations |
 | --- | ---: | ---: | ---: |

@@ -55,12 +55,18 @@ with \code{dta_int()}, \code{dta_double()}, or \code{set_dta_metadata()}. Charac
 
 \section{Cost}{
 
+On the recorded 100,000-row ungrouped fixture, a single-row scalar write
+took 1.8 microseconds, a whole-column scalar fill 10.0 microseconds, and
+1,000 row writes 2.0 to 2.1 milliseconds. The baseline on the same host
+took 14.0 microseconds, 22.1 microseconds, and 16.7 to 17.0 milliseconds.
 Eligible numeric scalar writes use native validation and commit without
 private target views. Single-row writes and whole-column scalar fills
-stage their values on the stack. Expressions, classed or foreign ALTREP
+stage their values on the stack, with zero native scratch heap bytes in
+the recorded private-write cases. Expressions, classed or foreign ALTREP
 inputs, temporal targets, and strings use the general path. The
-\href{https://github.com/jbearak/dta-parser/tree/main/benchmarks/r-cell-assignment}{cell-assignment benchmark}
-records the numbers and how to reproduce them. A grouped dibble rebuilds
+\href{https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-cell-assignment/results-2026-09-20-shared-mutation.md}{cell-assignment benchmark}
+records revisions, methods, width and sharing effects, and fallback
+variation. These timings are not guarantees. A grouped dibble rebuilds
 its groups after every write, which costs time and memory in proportion
 to the row count, so \code{dplyr::ungroup()} before a loop and group again
 after it.
