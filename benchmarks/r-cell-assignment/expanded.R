@@ -94,8 +94,10 @@ fixture <- function(operation, width, backing) {
     } else {
         if (compact) columns$x <- dta_byte(columns$x)
         env$d <- as_dibble(tibble::as_tibble(columns))
-        # Start with a private target even if construction retained a handle.
-        set_dta_values(env$d, "x", 1)
+        # Use the same native setup on both revisions. Calling a public API
+        # here would warm the baseline's general path but the candidate's
+        # fast path, biasing the next timed general-path call.
+        .Call(dtatools:::C_dtatools_patch_slot, env$d, 1L, NULL, 1, TRUE)
         if (backing == "shared") env$holder <- tibble::as_tibble(env$d)
         if (operation == "append_prebuilt") env$column <- dtatools:::.generated_column(
             3, NULL, n, generate = TRUE, carry_metadata = FALSE)

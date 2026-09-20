@@ -62,7 +62,10 @@ assignment with `bench::system_time(eval(call, env))`. The extra base `eval()`
 is included for every entry point and revision. A shared fixture is rebuilt
 for every sample, so each successful dtatools replacement measures its first
 write after sharing. Creation leaves the existing shared columns in place. Private fixtures
-are also fresh, with the target made private before timing. Generation adds
+are also fresh, with the target made private before timing through the same
+native patch on both revisions. Setup does not call a public mutation API,
+which would warm different paths before timing in baseline and candidate.
+Generation adds
 one column to a fresh table with spare capacity. Assertions run outside the
 timed region, and an untimed call warms each case. These matrix times should
 be compared with each other, not subtracted from `run.R`'s direct-call times.
