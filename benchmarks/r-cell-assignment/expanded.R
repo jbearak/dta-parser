@@ -15,6 +15,9 @@ count <- function(index, default) {
 n <- count(1, 100000L)
 samples <- count(2, 50L)
 wide <- count(3, 100L)
+gc_mode <- Sys.getenv("DTATOOLS_BENCHMARK_GC", "none")
+if (!gc_mode %in% c("none", "before")) stop("DTATOOLS_BENCHMARK_GC must be none or before")
+invisible(gc.time(TRUE))
 output <- if (length(args) >= 4L) args[[4L]] else tempfile("mutation-expanded-")
 if (n < 5L || wide < 2L) stop("need at least five rows and two wide-table columns")
 if (length(system2("git", c("-C", shQuote(repository), "status", "--short"), stdout = TRUE)))
@@ -46,6 +49,7 @@ metadata <- c(source_sha = sha, source_tree = provenance$source_tree,
               bench = as.character(packageVersion("bench")), R = R.version.string,
               platform = R.version$platform, host = paste(Sys.info()[c("sysname", "release", "machine")], collapse = " "),
               rows = n, samples = samples, wide = wide, library = normalizePath(lib),
+              gc = gc_mode,
               operations = Sys.getenv("DTATOOLS_BENCHMARK_OPERATIONS", "all"))
 write.table(data.frame(key = names(metadata), value = unname(metadata)),
             file.path(output, "provenance.tsv"), sep = "\t", row.names = FALSE, quote = FALSE)
@@ -132,21 +136,28 @@ for (width in c(1L, wide)) for (backing in c("private", "shared")) {
         eval(call, env)
         verify(env, operation)
         times <- numeric(samples)
+        collected <- logical(samples)
         scratch <- copied <- numeric(samples)
         for (i in seq_len(samples)) {
             env <- fixture(operation, width, backing)
+            if (gc_mode == "before") gc()
             .Call(dtatools:::C_dtatools_native_copy_stats, TRUE)
+            gc_before <- sum(gc.time())
             times[[i]] <- as.numeric(bench::system_time(eval(call, env))[["real"]])
+            collected[[i]] <- sum(gc.time()) > gc_before
             stats <- .Call(dtatools:::C_dtatools_native_copy_stats, FALSE)
             scratch[[i]] <- stats[["native_scratch_allocated"]]
             copied[[i]] <- stats[["mutation_target_copy"]]
         }
         verify(env, operation)
         env <- fixture(operation, width, backing)
+        if (gc_mode == "before") gc()
         memory <- profmem::profmem(eval(call, env))
         verify(env, operation)
         records[[length(records) + 1L]] <- data.frame(
             operation, width, backing, median_seconds = median(times),
+            gc_samples = sum(collected),
+            median_without_gc_seconds = if (any(!collected)) median(times[!collected]) else NA_real_,
             p25_seconds = unname(quantile(times, .25)), p75_seconds = unname(quantile(times, .75)),
             r_bytes = sum(memory$bytes, na.rm = TRUE),
             native_scratch_bytes = median(scratch), target_copy_bytes = median(copied), samples)

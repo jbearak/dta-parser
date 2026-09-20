@@ -84,3 +84,10 @@ For a targeted repeat, set `DTATOOLS_BENCHMARK_OPERATIONS` to comma-separated
 matrix names, such as `set_expression,repl_expression,data_table_row`.
 The report records this filter. The profiler is warmed before the first
 allocation observation so loading its helpers is outside the measured call.
+
+The matrix records how many samples observed time spent in garbage collection
+and the median of samples without an observed collection. The primary median
+includes every sample. Set `DTATOOLS_BENCHMARK_GC=before` for a separate
+controlled repeat that collects fixture garbage before each timed call and
+allocation observation. This distinguishes assignment costs from collection
+whose timing depends on earlier fixtures; the report records the mode.
