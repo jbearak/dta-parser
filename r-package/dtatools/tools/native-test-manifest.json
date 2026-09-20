@@ -4880,6 +4880,10 @@
         {
           "path": "tests/testthat/test-set-dta-values.R",
           "sha256": "d324420ff8a4a15e2914d52d1524cd64d6681cdbf1dd743054ed6c5d17373e48"
+        },
+        {
+          "path": "tests/testthat/test-mutation-fast.R",
+          "sha256": "33617c2a9bd51859378c2ab85a7824b8d40cb73e02496650cb42678d03631fe3"
         }
       ],
       "blocks": [
@@ -6537,6 +6541,54 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 22,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "native scalar inspection accepts literals and settled bindings only",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "native scalar declines preserve diagnostics and unsupported inputs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 21,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "scalar writes reuse private storage and isolate shared results",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 45,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "scalar storage policy distinguishes fixed rounding and promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "direct generation retains storage defaults and one bracket selection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "fast shape preserves wide and malformed table checks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
           "warnings": 0
         }
       ],

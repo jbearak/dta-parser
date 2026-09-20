@@ -27,19 +27,19 @@
 #' @section One storage rule:
 #' The target keeps its declared storage. A value the storage cannot hold
 #' is an error naming the storage that would, and nothing changes; this is
-#' [repl()] with `promote = FALSE`, and it is what `data.table::set()` does
-#' too. A loop that widened its column mid-way would rebuild the whole
+#' [repl()] with `promote = FALSE`. `data.table::set()` also checks types
+#' and ranges, but permits some lossy conversions with warnings. dtatools
+#' also enforces Stata ranges, missing tags, and declared storage. A loop that widened its column mid-way would rebuild the whole
 #' column on that iteration and change its type without a word, so the
 #' assigner refuses instead, and the caller declares the storage up front,
 #' with `dta_int()`, `dta_double()`, or `set_dta_metadata()`. Character
 #' `NA` is written as `""`, Stata's string missing.
 #'
 #' @section Cost:
-#' On a 100,000-row table a single-row write costs about fourteen
-#' microseconds on a numeric column and a whole-column write about twenty;
-#' a Stata string column costs more, since every write checks the string
-#' width. `repl()` costs over a hundred microseconds for the same writes,
-#' and `data.table::set()` about two. The
+#' Eligible numeric scalar writes use native validation and commit without
+#' private target views. Single-row writes and whole-column scalar fills
+#' stage their values on the stack. Expressions, classed or foreign ALTREP
+#' inputs, temporal targets, and strings use the general path. The
 #' [cell-assignment benchmark](https://github.com/jbearak/dta-parser/tree/main/benchmarks/r-cell-assignment)
 #' records the numbers and how to reproduce them. A grouped dibble rebuilds
 #' its groups after every write, which costs time and memory in proportion
@@ -64,6 +64,10 @@
 #' survey <- set_dta_values(survey, "flag", TRUE, rows = c(1, 3), create = TRUE)
 #' survey
 set_dta_values <- function(data, variable, value, rows = NULL, create = FALSE) {
+    # Native inspection never forces an argument. A decline leaves the
+    # established evaluation order below untouched.
+    fast <- .Call(C_dtatools_set_values_fast, data, environment())
+    if (!is.null(fast)) return(invisible(fast))
     .require_mutation_target(data)
     # The order every mutation helper keeps: the table is validated before
     # any argument is evaluated, and capacity for a new column is checked

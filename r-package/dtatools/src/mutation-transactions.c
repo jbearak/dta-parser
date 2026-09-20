@@ -1379,6 +1379,7 @@ static void commit_identical_slots(SEXP data, SEXP before, SEXP after) {
 }
 
 #include "mutation-write.h"
+#include "mutation-fast.h"
 
 SEXP C_dtatools_patch_slot(SEXP data, SEXP location, SEXP rows,
                                 SEXP replacement, SEXP entry_shared) {

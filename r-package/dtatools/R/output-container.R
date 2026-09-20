@@ -220,6 +220,7 @@
 # user code, through private views that are released at once: the call
 # that writes opens its own.
 .preflight_mutation_target <- function(data) {
+    if (!is.null(.Call(C_dtatools_fast_shape, data))) return(invisible(NULL))
     preflight <- .open_mutation_target(data, allow_grouped = TRUE,
                                        allow_rowwise = FALSE, private_views = TRUE)
     .Call(C_dtatools_release_mutation_views, preflight$columns)

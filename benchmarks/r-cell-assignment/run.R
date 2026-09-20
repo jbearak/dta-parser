@@ -34,7 +34,10 @@ neighbour <- if (single_row < rows) single_row + 1L else single_row - 1L
 repository <- normalizePath(file.path(script_dir, "..", ".."))
 helpers <- new.env()
 source(file.path(repository, "benchmarks", "r-dibble-dplyr", "helpers.R"), local = helpers)
-source_sha <- system2("git", c("-C", shQuote(repository), "rev-parse", "HEAD"), stdout = TRUE)
+revision <- Sys.getenv("DTATOOLS_BENCHMARK_REVISION", "HEAD")
+source_sha <- system2("git", c("-C", shQuote(repository), "rev-parse", "--verify", "--end-of-options",
+                              shQuote(paste0(revision, "^{commit}"))), stdout = TRUE)
+if (length(source_sha) != 1L || !grepl("^[0-9a-f]{40}$", source_sha)) stop("Invalid source revision")
 if (length(system2("git", c("-C", shQuote(repository), "status", "--short"), stdout = TRUE))) {
     stop("Commit or remove changes before benchmarking")
 }

@@ -44,8 +44,9 @@ condition, grouping, or storage promotion.
 
 The target keeps its declared storage. A value the storage cannot hold
 is an error naming the storage that would, and nothing changes; this is
-\code{\link[=repl]{repl()}} with \code{promote = FALSE}, and it is what \code{data.table::set()} does
-too. A loop that widened its column mid-way would rebuild the whole
+\code{\link[=repl]{repl()}} with \code{promote = FALSE}. \code{data.table::set()} also checks types
+and ranges, but permits some lossy conversions with warnings. dtatools
+also enforces Stata ranges, missing tags, and declared storage. A loop that widened its column mid-way would rebuild the whole
 column on that iteration and change its type without a word, so the
 assigner refuses instead, and the caller declares the storage up front,
 with \code{dta_int()}, \code{dta_double()}, or \code{set_dta_metadata()}. Character
@@ -54,11 +55,10 @@ with \code{dta_int()}, \code{dta_double()}, or \code{set_dta_metadata()}. Charac
 
 \section{Cost}{
 
-On a 100,000-row table a single-row write costs about fourteen
-microseconds on a numeric column and a whole-column write about twenty;
-a Stata string column costs more, since every write checks the string
-width. \code{repl()} costs over a hundred microseconds for the same writes,
-and \code{data.table::set()} about two. The
+Eligible numeric scalar writes use native validation and commit without
+private target views. Single-row writes and whole-column scalar fills
+stage their values on the stack. Expressions, classed or foreign ALTREP
+inputs, temporal targets, and strings use the general path. The
 \href{https://github.com/jbearak/dta-parser/tree/main/benchmarks/r-cell-assignment}{cell-assignment benchmark}
 records the numbers and how to reproduce them. A grouped dibble rebuilds
 its groups after every write, which costs time and memory in proportion

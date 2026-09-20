@@ -633,6 +633,11 @@ DTATOOLS_INTERNAL SEXP C_dtatools_expose_mutation_column(SEXP value);
 DTATOOLS_INTERNAL SEXP mutation_physical_names(SEXP data);
 DTATOOLS_INTERNAL SEXP C_dtatools_column_names_info(SEXP data);
 DTATOOLS_INTERNAL SEXP C_dtatools_mutation_shape(SEXP data, SEXP row_count);
+DTATOOLS_INTERNAL int mutation_fast_shape(SEXP data, R_xlen_t *row_count);
+DTATOOLS_INTERNAL SEXP C_dtatools_fast_shape(SEXP data);
+DTATOOLS_INTERNAL SEXP C_dtatools_set_values_fast(SEXP data, SEXP frame);
+DTATOOLS_INTERNAL SEXP C_dtatools_patch_scalar(SEXP data, SEXP name, SEXP rows, SEXP value, SEXP promote);
+DTATOOLS_INTERNAL SEXP C_dtatools_generate_scalar(SEXP value, SEXP rows, SEXP count, SEXP storage);
 DTATOOLS_INTERNAL SEXP C_dtatools_mutation_name_location(SEXP data, SEXP name);
 DTATOOLS_INTERNAL SEXP C_dtatools_physical_column_count(SEXP data);
 DTATOOLS_INTERNAL SEXP C_dtatools_mark_reference_data(
