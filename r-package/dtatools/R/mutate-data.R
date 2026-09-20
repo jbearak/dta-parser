@@ -797,6 +797,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     row_count <- .mutation_fast_shape(data)
     if (is.null(row_count) || rlang::quo_is_missing(values) ||
         (!is.null(selection) && !is.null(selection$groups))) return(NULL)
+    # A growth warning can run a calling handler that changes row/value
+    # bindings. Let the full path prepare capacity before reading either.
+    if (!.column_operation_ready(data, length(data) + 1L)) return(NULL)
     selected <- .direct_scalar_rows(data, where, selection)
     if (is.null(selected)) return(NULL)
     if (!is.null(selected$rows) &&
@@ -2362,8 +2365,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     if (generate && !carry_metadata && is.null(attributes(values)) &&
         typeof(values) %in% c("integer", "double") && !.is_altrep(values) &&
         length(values) == 1L) {
-        return(.Call(C_dtatools_generate_scalar, values, rows, as.double(row_count),
-                     if (typeof(values) == "integer") "long" else .generate_storage()))
+        # Inspect the option without dispatch. Attributed or foreign values
+        # decline and reach the original validator once, below.
+        column <- .Call(C_dtatools_generate_scalar, values, rows, as.double(row_count),
+                        if (typeof(values) == "integer") "long" else
+                            getOption("dtatools.generate_type", "float"))
+        if (!is.null(column)) return(column)
     }
     message <- sprintf(
         "`%s` values must be numeric, logical, character, or a factor",

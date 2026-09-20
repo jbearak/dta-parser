@@ -147,3 +147,52 @@ test_that("fast shape preserves wide and malformed table checks", {
     set_dta_values(large, "x2050", 7)
     expect_identical(as.double(large$x2050), c(7, 7))
 })
+
+test_that("native generation declines accepted attributed storage options safely", {
+    for (storage in c("float", "double")) {
+        withr::local_options(dtatools.generate_type = c(storage = storage))
+        data <- dibble(x = c(1, 2, 3))
+        gen(data, y = 2)
+        data[2L, z := 4]
+        set_dta_values(data, "w", 6, create = TRUE)
+        expect_identical(as.double(data$y), rep(2, 3))
+        expect_identical(as.double(data$z), c(NA_real_, 4, NA_real_))
+        expect_identical(as.double(data$w), rep(6, 3))
+        expect_identical(unname(dta_storage_type(data$y)), storage)
+        expect_identical(unname(dta_storage_type(data$z)), storage)
+        expect_identical(unname(dta_storage_type(data$w)), storage)
+        expect_identical(.set_values_preflight(data), 3L)
+    }
+})
+
+test_that("growth warning handlers run before direct generation reads bindings", {
+    withr::local_options(dtatools.alloccol = 0L)
+    for (selected in c(FALSE, TRUE)) {
+        data <- dibble(x = c(1, 2, 3))
+        row <- 1L
+        value <- 2
+        warnings <- 0L
+        result <- withCallingHandlers(
+            if (selected) gen(data, y = value, where = row) else gen(data, y = value),
+            warning = function(w) {
+                warnings <<- warnings + 1L
+                row <<- 3L
+                value <<- 8
+                invokeRestart("muffleWarning")
+            }
+        )
+        expect_identical(warnings, 1L)
+        expect_identical(as.double(result$y), if (selected) c(NA_real_, NA_real_, 8) else rep(8, 3))
+    }
+})
+
+test_that("invalid generation defaults still fail before appending a scalar", {
+    for (storage in list("long", "int", NA_character_, 3, c("float", "double"))) {
+        withr::local_options(dtatools.generate_type = storage)
+        data <- dibble(x = c(1, 2, 3))
+        expect_error(gen(data, y = 2), "dtatools.generate_type")
+        expect_identical(names(data), "x")
+        gen(data, y = 2L)
+        expect_identical(dta_storage_type(data$y), "long")
+    }
+})

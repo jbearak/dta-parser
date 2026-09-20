@@ -125,7 +125,7 @@ SEXP C_dtatools_generate_scalar(SEXP value, SEXP rows, SEXP count, SEXP storage)
     const char *name = CHAR(STRING_ELT(storage, 0));
     int kind = strcmp(name, "long") == 0 ? NUMERIC_LONG :
         strcmp(name, "float") == 0 ? NUMERIC_FLOAT : strcmp(name, "double") == 0 ? NUMERIC_DOUBLE : -1;
-    if (kind < 0) return R_NilValue;
+    if (kind < 0 || (TYPEOF(value) == REALSXP && kind == NUMERIC_LONG)) return R_NilValue;
     SEXP attributes = PROTECT(Rf_allocVector(VECSXP, 2));
     SEXP names = PROTECT(Rf_allocVector(STRSXP, 2));
     SET_STRING_ELT(names, 0, Rf_mkChar("stata.storage"));

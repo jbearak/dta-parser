@@ -60,7 +60,8 @@ and tree separately from the revision containing the runner.
 Each matrix sample builds its fixture before timing, then measures one
 assignment with `bench::system_time(eval(call, env))`. The extra base `eval()`
 is included for every entry point and revision. A shared fixture is rebuilt
-for every sample so every measured write really detaches. Private fixtures
+for every sample, so each successful dtatools replacement measures its first
+write after sharing. Creation leaves the existing shared columns in place. Private fixtures
 are also fresh, with the target made private before timing. Generation adds
 one column to a fresh table with spare capacity. Assertions run outside the
 timed region, and an untimed call warms each case. These matrix times should

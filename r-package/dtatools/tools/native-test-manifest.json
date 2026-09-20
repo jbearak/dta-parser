@@ -4883,7 +4883,7 @@
         },
         {
           "path": "tests/testthat/test-mutation-fast.R",
-          "sha256": "33617c2a9bd51859378c2ab85a7824b8d40cb73e02496650cb42678d03631fe3"
+          "sha256": "ba72f783c5d14fb42fcb5bf623f81c3ba2a4817e98b4a081772c21118f44e618"
         }
       ],
       "blocks": [
@@ -6589,6 +6589,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "native generation declines accepted attributed storage options safely",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "growth warning handlers run before direct generation reads bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "invalid generation defaults still fail before appending a scalar",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
           "warnings": 0
         }
       ],

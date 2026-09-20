@@ -146,7 +146,11 @@ and bracket selections. Bare numeric scalars reuse native generation with
 a native attribute plan, also after general expression evaluation. Integers
 still create long columns, doubles follow the generation option, and bare
 logical values retain logical storage. Capacity and placement remain with
-the existing append machinery. A bracket evaluates its row selection once
+the existing append machinery. Calls needing capacity growth decline before
+reading row or value bindings, because a growth warning can run a calling
+handler that changes them. Attributed or foreign generation options use the
+original validator and generator; a native decline never becomes a column.
+A bracket evaluates its row selection once
 and passes the same rows to every assignment, including new columns.
 
 The shared patch transaction keeps one row offset and up to eight staged
