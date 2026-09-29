@@ -5,3 +5,5 @@ RUST_BUILD_TARGET =
 PKG_LIBS = $(RUST_LIB) @RUST_SYSTEM_LIBS@
 
 include Makevars.rust
+
+numeric-payload.o: initial-capture.inc

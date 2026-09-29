@@ -41,10 +41,196 @@ double owned_numeric_compatibility_bytes = 0.0;
 #include "egen-values.h"
 #include "egen-groups.h"
 
+/* THROWAWAY unique-target function-entry floor. */
+SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
+                                  SEXP dependencies, SEXP s3_state,
+                                  SEXP base_live, SEXP rlang_state,
+                                  SEXP vctrs_size_state, SEXP base16_state,
+                                  SEXP public48_state, SEXP wrapper_state);
+SEXP C_dtatools_probe_unique_repl_stats(SEXP reset);
+SEXP C_dtatools_probe_unique_repl_mode(SEXP mode);
+SEXP C_dtatools_profile_file_fingerprints(SEXP paths);
+SEXP C_dtatools_probe_abs_mode(SEXP mode);
+SEXP C_dtatools_probe_precommit_hook(SEXP callback);
+SEXP C_dtatools_probe_scalar_public_dependencies(SEXP dependencies);
+SEXP C_dtatools_probe_caller_plus(SEXP quosure, SEXP dependencies);
+SEXP C_dtatools_probe_repl_syntax(SEXP variable, SEXP values);
+SEXP C_fast_s3_guard(SEXP quosure, SEXP tables, SEXP live, SEXP namespaces);
+SEXP C_dtatools_probe_base_profile(SEXP frozen);
+SEXP C_dtatools_probe_base_guard(SEXP live, SEXP quosure);
+SEXP C_dtatools_probe_base_guard_deep(SEXP live, SEXP quosure);
+SEXP C_dtatools_probe_rlang_profile(SEXP ns, SEXP frozen);
+SEXP C_dtatools_probe_rlang_guard(SEXP state);
+SEXP C_dtatools_probe_vctrs_size_guard(SEXP state);
+SEXP C_dtatools_probe_vctrs_size_guard_deep(SEXP state);
+SEXP C_dtatools_probe_base16_guard(SEXP state);
+SEXP C_dtatools_probe_base16_formals_only(SEXP state);
+SEXP C_dtatools_probe_base16_mode(SEXP mode);
+SEXP C_probe_48_expected_plain(SEXP expected);
+SEXP C_dtatools_probe_public48_capture(SEXP state);
+SEXP C_dtatools_probe_public48_guard(SEXP state);
+SEXP C_probe_public48_source_qualification(SEXP current, SEXP frozen);
+SEXP C_probe_public48_debug_available(SEXP unused);
+SEXP C_probe_public48_debug_state(SEXP fn);
+SEXP C_probe_public48_same_pointer(SEXP a, SEXP b);
+SEXP C_dtatools_probe_public_fused_guard(SEXP base, SEXP public48,
+                                          SEXP vctrs, SEXP quosure,
+                                          SEXP dependencies);
+SEXP C_dtatools_probe_wrapper_capture(SEXP state);
+SEXP C_dtatools_probe_wrapper_guard(SEXP state);
+SEXP C_dtatools_probe_direct_final(SEXP data, SEXP base, SEXP public_state,
+                                   SEXP extra, SEXP wrapper, SEXP rlang,
+                                   SEXP s3);
+SEXP C_dtatools_probe_direct_final_mode(SEXP mode);
+SEXP C_dtatools_probe_direct_final_stats(SEXP reset);
+SEXP C_dtatools_probe_grouped_gen(SEXP data, SEXP base, SEXP public_state,
+                                  SEXP extra, SEXP wrapper, SEXP rlang,
+                                  SEXP s3, SEXP grouped);
+SEXP C_dtatools_probe_grouped_gen_mode(SEXP mode);
+SEXP C_dtatools_probe_grouped_gen_stats(SEXP reset);
+SEXP C_dtatools_probe_grouped_gen_after_stage(SEXP callback);
+SEXP C_dtatools_probe_gen_after_stage(SEXP callback);
+SEXP C_dtatools_probe_gen_extra_capture(SEXP state);
+SEXP C_dtatools_probe_gen_append_hook(SEXP callback, SEXP stage);
+void dtatools_probe_gen_primitive_init(void);
+SEXP C_dtatools_grouped_active_mutate(SEXP ignored);
+SEXP C_dtatools_grouped_disable(SEXP ignored);
+SEXP C_dtatools_grouped_guard_early(SEXP ignored);
+SEXP C_dtatools_grouped_guard_public(SEXP ignored);
+SEXP C_dtatools_grouped_begin_context(SEXP data);
+SEXP C_dtatools_grouped_entry(SEXP data, SEXP dots, SEXP by,
+                              SEXP captured_dots, SEXP captured_by,
+                              SEXP captured_columns);
+SEXP C_dtatools_grouped_pin_operators(SEXP operators);
+SEXP C_dtatools_grouped_pin_public(SEXP roots);
+SEXP C_dtatools_grouped_pin_absent(SEXP roots);
+SEXP C_dtatools_probe_mutate_selector(SEXP frame);
+SEXP C_dtatools_probe_mutate_mode(SEXP enabled);
+SEXP C_dtatools_probe_dplyr_early_stats(SEXP reset);
+SEXP C_dtatools_probe_arm_publication_gc(SEXP value);
+SEXP C_dtatools_probe_fork_gc_index(SEXP value);
+SEXP C_dtatools_probe_pin_operators(SEXP operators);
+SEXP C_dtatools_probe_pin_public(SEXP roots);
+SEXP C_dtatools_probe_pin_absent(SEXP roots);
+SEXP C_dtatools_probe_guard_public(SEXP ignored);
+void dtatools_probe_release_public_cache(void);
+
+SEXP C_bracket_s3_guard(SEXP caller, SEXP tables, SEXP live, SEXP namespaces);
+SEXP C_bracket_s3_init(SEXP ignored);
+SEXP C_dtatools_probe_bracket_append_mark_reference(SEXP data, SEXP name, SEXP column, SEXP state, SEXP classes);
+SEXP C_dtatools_probe_bracket_general_batch(SEXP data, SEXP assignments, SEXP profile);
+SEXP C_dtatools_probe_bracket_general_descriptor(SEXP data, SEXP assignments, SEXP caller);
+SEXP C_dtatools_probe_bracket_ordinary_append_hook(SEXP hook);
+SEXP C_dtatools_probe_bracket_public_guard(SEXP profile, SEXP assignments);
+SEXP C_dtatools_probe_bracket_public_live(SEXP profile, SEXP assignments);
+SEXP C_dtatools_probe_bracket_public_live_caller(SEXP profile, SEXP caller);
+SEXP C_dtatools_probe_bracket_raw_five_parser(SEXP raw_j, SEXP profile);
+SEXP C_dtatools_probe_bracket_raw_parser_into_frame(SEXP raw_j, SEXP profile);
+SEXP C_dtatools_probe_bracket_raw_parser_stats(SEXP reset);
+SEXP C_dtatools_probe_bracket_step_stats(SEXP reset);
+SEXP C_dtatools_probe_gen_public_guard(SEXP base, SEXP public_state, SEXP extra_state, SEXP wrapper_state, SEXP rlang_state, SEXP s3_state);
+SEXP C_dtatools_probe_grouped_bracket_batch(SEXP data, SEXP assignments, SEXP by, SEXP where, SEXP caller, SEXP extra_state, SEXP s3_state);
+SEXP C_dtatools_probe_grouped_bracket_mode(SEXP requested);
+SEXP C_dtatools_probe_grouped_bracket_pin(SEXP state);
+SEXP C_dtatools_probe_grouped_bracket_profile(SEXP on);
+SEXP C_dtatools_probe_grouped_bracket_raw(SEXP raw_j);
+SEXP C_dtatools_probe_grouped_bracket_rebind_live(SEXP ignored);
+SEXP C_dtatools_probe_grouped_bracket_selection(SEXP key, SEXP name);
+SEXP C_dtatools_probe_grouped_bracket_stats(SEXP reset);
+SEXP C_dtatools_probe_grouped_guard_live(SEXP ignored);
+SEXP C_dtatools_probe_grouped_output_hook(SEXP hook);
+SEXP C_dtatools_probe_grouped_owned_write_first(SEXP column, SEXP number);
+SEXP C_dtatools_probe_grouped_set_column_attr(SEXP column, SEXP name, SEXP value);
+SEXP C_dtatools_probe_grouped_set_column_label(SEXP column, SEXP label);
+SEXP C_dtatools_probe_grouped_set_table_attr(SEXP data, SEXP name, SEXP value);
+SEXP C_dtatools_probe_owned_set_storage(SEXP value, SEXP storage);
+SEXP C_dtatools_probe_owned_write_first(SEXP value, SEXP scalar);
+SEXP C_dtatools_probe_plan_key_change(SEXP key, SEXP change, SEXP replacement);
+SEXP C_dtatools_probe_prepared_copy_after_names_hook(SEXP hook);
+SEXP C_snap_active(SEXP ext, SEXP active);
+SEXP C_snap_active_parts(SEXP ext, SEXP active);
+SEXP C_snap_check(SEXP ext);
+SEXP C_snap_new(SEXP functions, SEXP env);
+SEXP C_snap_new_bracket(SEXP functions, SEXP env);
+SEXP C_snap_new_shallow_all(SEXP functions, SEXP env);
+SEXP C_snap_stats(SEXP ext);
+
+SEXP C_dtatools_probe_bracket_generation_hook(SEXP ignored);
+SEXP C_dtatools_probe_bracket_pre_generation_hook(SEXP resolved);
+
 static const R_CallMethodDef CallEntries[] = {
+    {"C_dtatools_grouped_active_mutate", (DL_FUNC) &C_dtatools_grouped_active_mutate, 1},
+    {"C_dtatools_grouped_disable", (DL_FUNC) &C_dtatools_grouped_disable, 1},
+    {"C_dtatools_grouped_guard_early", (DL_FUNC) &C_dtatools_grouped_guard_early, 1},
+    {"C_dtatools_grouped_guard_public", (DL_FUNC) &C_dtatools_grouped_guard_public, 1},
+    {"C_dtatools_grouped_begin_context", (DL_FUNC) &C_dtatools_grouped_begin_context, 1},
+    {"C_dtatools_grouped_entry", (DL_FUNC) &C_dtatools_grouped_entry, 6},
+    {"C_dtatools_grouped_pin_operators", (DL_FUNC) &C_dtatools_grouped_pin_operators, 1},
+    {"C_dtatools_grouped_pin_public", (DL_FUNC) &C_dtatools_grouped_pin_public, 1},
+    {"C_dtatools_grouped_pin_absent", (DL_FUNC) &C_dtatools_grouped_pin_absent, 1},
+    {"C_dtatools_probe_mutate_selector", (DL_FUNC) &C_dtatools_probe_mutate_selector, 1},
+    {"C_dtatools_probe_mutate_mode", (DL_FUNC) &C_dtatools_probe_mutate_mode, 1},
+    {"C_dtatools_probe_dplyr_early_stats", (DL_FUNC) &C_dtatools_probe_dplyr_early_stats, 1},
+    {"C_dtatools_probe_arm_publication_gc", (DL_FUNC) &C_dtatools_probe_arm_publication_gc, 1},
+    {"C_dtatools_probe_fork_gc_index", (DL_FUNC) &C_dtatools_probe_fork_gc_index, 1},
+    {"C_dtatools_probe_pin_operators", (DL_FUNC) &C_dtatools_probe_pin_operators, 1},
+    {"C_dtatools_probe_pin_public", (DL_FUNC) &C_dtatools_probe_pin_public, 1},
+    {"C_dtatools_probe_pin_absent", (DL_FUNC) &C_dtatools_probe_pin_absent, 1},
+    {"C_dtatools_probe_guard_public", (DL_FUNC) &C_dtatools_probe_guard_public, 1},
+    {"C_dtatools_probe_unique_repl", (DL_FUNC) &C_dtatools_probe_unique_repl, 11},
+    {"C_dtatools_probe_unique_repl_stats", (DL_FUNC) &C_dtatools_probe_unique_repl_stats, 1},
+    {"C_dtatools_probe_unique_repl_mode", (DL_FUNC) &C_dtatools_probe_unique_repl_mode, 1},
+    {"C_dtatools_profile_file_fingerprints",
+     (DL_FUNC) &C_dtatools_profile_file_fingerprints, 1},
+    {"C_dtatools_probe_abs_mode", (DL_FUNC) &C_dtatools_probe_abs_mode, 1},
+    {"C_dtatools_probe_precommit_hook", (DL_FUNC) &C_dtatools_probe_precommit_hook, 1},
+    {"C_dtatools_probe_scalar_public_dependencies", (DL_FUNC) &C_dtatools_probe_scalar_public_dependencies, 1},
+    {"C_dtatools_probe_caller_plus", (DL_FUNC) &C_dtatools_probe_caller_plus, 2},
+    {"C_dtatools_probe_repl_syntax", (DL_FUNC) &C_dtatools_probe_repl_syntax, 2},
+    {"C_fast_s3_guard", (DL_FUNC) &C_fast_s3_guard, 4},
+    {"C_dtatools_probe_base_profile", (DL_FUNC) &C_dtatools_probe_base_profile, 1},
+    {"C_dtatools_probe_base_guard", (DL_FUNC) &C_dtatools_probe_base_guard, 2},
+    {"C_dtatools_probe_base_guard_deep", (DL_FUNC) &C_dtatools_probe_base_guard_deep, 2},
+    {"C_dtatools_probe_rlang_profile", (DL_FUNC) &C_dtatools_probe_rlang_profile, 2},
+    {"C_dtatools_probe_rlang_guard", (DL_FUNC) &C_dtatools_probe_rlang_guard, 1},
+    {"C_dtatools_probe_vctrs_size_guard", (DL_FUNC) &C_dtatools_probe_vctrs_size_guard, 1},
+    {"C_dtatools_probe_vctrs_size_guard_deep", (DL_FUNC) &C_dtatools_probe_vctrs_size_guard_deep, 1},
+    {"C_dtatools_probe_base16_guard", (DL_FUNC) &C_dtatools_probe_base16_guard, 1},
+    {"C_dtatools_probe_base16_formals_only", (DL_FUNC) &C_dtatools_probe_base16_formals_only, 1},
+    {"C_dtatools_probe_base16_mode", (DL_FUNC) &C_dtatools_probe_base16_mode, 1},
+    {"C_probe_48_expected_plain", (DL_FUNC) &C_probe_48_expected_plain, 1},
+    {"C_dtatools_probe_public48_capture", (DL_FUNC) &C_dtatools_probe_public48_capture, 1},
+    {"C_dtatools_probe_public48_guard", (DL_FUNC) &C_dtatools_probe_public48_guard, 1},
+    {"C_probe_public48_source_qualification", (DL_FUNC) &C_probe_public48_source_qualification, 2},
+    {"C_probe_public48_debug_available", (DL_FUNC) &C_probe_public48_debug_available, 1},
+    {"C_probe_public48_debug_state", (DL_FUNC) &C_probe_public48_debug_state, 1},
+    {"C_probe_public48_same_pointer", (DL_FUNC) &C_probe_public48_same_pointer, 2},
+    {"C_dtatools_probe_public_fused_guard", (DL_FUNC) &C_dtatools_probe_public_fused_guard, 5},
+    {"C_dtatools_probe_wrapper_capture", (DL_FUNC) &C_dtatools_probe_wrapper_capture, 1},
+    {"C_dtatools_probe_wrapper_guard", (DL_FUNC) &C_dtatools_probe_wrapper_guard, 1},
+    {"C_dtatools_probe_direct_final", (DL_FUNC) &C_dtatools_probe_direct_final, 7},
+    {"C_dtatools_probe_direct_final_mode", (DL_FUNC) &C_dtatools_probe_direct_final_mode, 1},
+    {"C_dtatools_probe_direct_final_stats", (DL_FUNC) &C_dtatools_probe_direct_final_stats, 1},
+    {"C_dtatools_probe_grouped_gen", (DL_FUNC) &C_dtatools_probe_grouped_gen, 8},
+    {"C_dtatools_probe_grouped_gen_mode", (DL_FUNC) &C_dtatools_probe_grouped_gen_mode, 1},
+    {"C_dtatools_probe_grouped_gen_stats", (DL_FUNC) &C_dtatools_probe_grouped_gen_stats, 1},
+    {"C_dtatools_probe_grouped_gen_after_stage", (DL_FUNC) &C_dtatools_probe_grouped_gen_after_stage, 1},
+    {"C_dtatools_probe_gen_after_stage", (DL_FUNC) &C_dtatools_probe_gen_after_stage, 1},
+    {"C_dtatools_probe_gen_extra_capture", (DL_FUNC) &C_dtatools_probe_gen_extra_capture, 1},
+    {"C_dtatools_probe_gen_append_hook", (DL_FUNC) &C_dtatools_probe_gen_append_hook, 2},
+    {"C_dtatools_initial_capture_mode", (DL_FUNC) &C_dtatools_initial_capture_mode, 1},
+    {"C_dtatools_initial_capture_shell", (DL_FUNC) &C_dtatools_initial_capture_shell, 1},
+    {"C_dtatools_initial_capture_initial", (DL_FUNC) &C_dtatools_initial_capture_initial, 1},
+    {"C_dtatools_initial_capture_stats", (DL_FUNC) &C_dtatools_initial_capture_stats, 1},
     {"C_dtatools_owned_numeric_freeze", (DL_FUNC) &C_dtatools_owned_numeric_freeze, 2},
     {"C_dtatools_owned_numeric_info", (DL_FUNC) &C_dtatools_owned_numeric_info, 1},
     {"C_dtatools_native_copy_stats", (DL_FUNC) &C_dtatools_native_copy_stats, 1},
+    {"C_dtatools_numeric_entry_stats", (DL_FUNC) &C_dtatools_numeric_entry_stats, 1},
+    {"C_dtatools_test_numeric_size_minimum", (DL_FUNC) &C_dtatools_test_numeric_size_minimum, 1},
+    {"C_dtatools_numeric_size_stats", (DL_FUNC) &C_dtatools_numeric_size_stats, 1},
+    {"C_dtatools_test_numeric_size_gate", (DL_FUNC) &C_dtatools_test_numeric_size_gate, 1},
+    {"C_dtatools_capture_branch_frame", (DL_FUNC) &C_dtatools_capture_branch_frame, 0},
+    {"C_dtatools_select_branch", (DL_FUNC) &C_dtatools_select_branch, 2},
     {"C_dtatools_mutation_views", (DL_FUNC) &C_dtatools_mutation_views, 1},
     {"C_dtatools_mutation_column_view",
      (DL_FUNC) &C_dtatools_mutation_column_view, 2},
@@ -122,8 +308,39 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_ephemeral_altstring, 1},
     {"C_dtatools_construct_numeric",
      (DL_FUNC) &C_dtatools_construct_numeric, 3},
+    {"C_dtatools_try_mask_bindings",
+     (DL_FUNC) &C_dtatools_try_mask_bindings, 3},
+    {"C_dtatools_expected_numeric_profile", (DL_FUNC) &C_dtatools_expected_numeric_profile, 2},
+    {"C_dtatools_numeric_proof_stats", (DL_FUNC) &C_dtatools_numeric_proof_stats, 1},
+    {"C_dtatools_test_numeric_proof", (DL_FUNC) &C_dtatools_test_numeric_proof, 3},
+    {"C_dtatools_test_numeric_old_proof", (DL_FUNC) &C_dtatools_test_numeric_old_proof, 2},
+    {"C_dtatools_numeric_entry_state",
+     (DL_FUNC) &C_dtatools_numeric_entry_state, 1},
+    {"C_dtatools_double_combine_dependencies",
+     (DL_FUNC) &C_dtatools_double_combine_dependencies, 1},
+    {"C_dtatools_canonical_generate_attributes",
+     (DL_FUNC) &C_dtatools_canonical_generate_attributes, 3},
+    {"C_dtatools_metadata_execution_profile",
+     (DL_FUNC) &C_dtatools_metadata_execution_profile, 1},
+    {"C_dtatools_metadata_dependencies_unchanged",
+     (DL_FUNC) &C_dtatools_metadata_dependencies_unchanged, 2},
+    {"C_dtatools_canonical_attribute_plan",
+     (DL_FUNC) &C_dtatools_canonical_attribute_plan, 2},
+    {"C_dtatools_attribute_plan_stats", (DL_FUNC) &C_dtatools_attribute_plan_stats, 1},
+    {"C_dtatools_try_combine_double",
+     (DL_FUNC) &C_dtatools_try_combine_double, 5},
+    {"C_dtatools_combine_double_into_current",
+     (DL_FUNC) &C_dtatools_combine_double_into_current, 3},
+    {"C_dtatools_construct_double",
+     (DL_FUNC) &C_dtatools_construct_double, 3},
+    {"C_dtatools_double_fits",
+     (DL_FUNC) &C_dtatools_double_fits, 3},
     {"C_dtatools_construct_numeric_trusted",
      (DL_FUNC) &C_dtatools_construct_numeric_trusted, 4},
+    {"C_dtatools_computed_numeric",
+     (DL_FUNC) &C_dtatools_computed_numeric, 4},
+    {"C_dtatools_scalar_arithmetic",
+     (DL_FUNC) &C_dtatools_scalar_arithmetic, 5},
     {"C_dtatools_gather_numeric",
      (DL_FUNC) &C_dtatools_gather_numeric, 4},
     {"C_dtatools_gather_numeric_columns",
@@ -212,6 +429,47 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_dta_compare, 5},
     {"C_dtatools_fused_compare_patch",
      (DL_FUNC) &C_dtatools_fused_compare_patch, 8},
+    {"C_bracket_s3_guard", (DL_FUNC) &C_bracket_s3_guard, 4},
+    {"C_bracket_s3_init", (DL_FUNC) &C_bracket_s3_init, 1},
+    {"C_dtatools_probe_bracket_append_mark_reference", (DL_FUNC) &C_dtatools_probe_bracket_append_mark_reference, 5},
+    {"C_dtatools_probe_bracket_general_batch", (DL_FUNC) &C_dtatools_probe_bracket_general_batch, 3},
+    {"C_dtatools_probe_bracket_general_descriptor", (DL_FUNC) &C_dtatools_probe_bracket_general_descriptor, 3},
+    {"C_dtatools_probe_bracket_ordinary_append_hook", (DL_FUNC) &C_dtatools_probe_bracket_ordinary_append_hook, 1},
+    {"C_dtatools_probe_bracket_public_guard", (DL_FUNC) &C_dtatools_probe_bracket_public_guard, 2},
+    {"C_dtatools_probe_bracket_public_live", (DL_FUNC) &C_dtatools_probe_bracket_public_live, 2},
+    {"C_dtatools_probe_bracket_public_live_caller", (DL_FUNC) &C_dtatools_probe_bracket_public_live_caller, 2},
+    {"C_dtatools_probe_bracket_raw_five_parser", (DL_FUNC) &C_dtatools_probe_bracket_raw_five_parser, 2},
+    {"C_dtatools_probe_bracket_raw_parser_into_frame", (DL_FUNC) &C_dtatools_probe_bracket_raw_parser_into_frame, 2},
+    {"C_dtatools_probe_bracket_raw_parser_stats", (DL_FUNC) &C_dtatools_probe_bracket_raw_parser_stats, 1},
+    {"C_dtatools_probe_bracket_step_stats", (DL_FUNC) &C_dtatools_probe_bracket_step_stats, 1},
+    {"C_dtatools_probe_gen_public_guard", (DL_FUNC) &C_dtatools_probe_gen_public_guard, 6},
+    {"C_dtatools_probe_grouped_bracket_batch", (DL_FUNC) &C_dtatools_probe_grouped_bracket_batch, 7},
+    {"C_dtatools_probe_grouped_bracket_mode", (DL_FUNC) &C_dtatools_probe_grouped_bracket_mode, 1},
+    {"C_dtatools_probe_grouped_bracket_pin", (DL_FUNC) &C_dtatools_probe_grouped_bracket_pin, 1},
+    {"C_dtatools_probe_grouped_bracket_profile", (DL_FUNC) &C_dtatools_probe_grouped_bracket_profile, 1},
+    {"C_dtatools_probe_grouped_bracket_raw", (DL_FUNC) &C_dtatools_probe_grouped_bracket_raw, 1},
+    {"C_dtatools_probe_grouped_bracket_rebind_live", (DL_FUNC) &C_dtatools_probe_grouped_bracket_rebind_live, 1},
+    {"C_dtatools_probe_grouped_bracket_selection", (DL_FUNC) &C_dtatools_probe_grouped_bracket_selection, 2},
+    {"C_dtatools_probe_grouped_bracket_stats", (DL_FUNC) &C_dtatools_probe_grouped_bracket_stats, 1},
+    {"C_dtatools_probe_grouped_guard_live", (DL_FUNC) &C_dtatools_probe_grouped_guard_live, 1},
+    {"C_dtatools_probe_grouped_output_hook", (DL_FUNC) &C_dtatools_probe_grouped_output_hook, 1},
+    {"C_dtatools_probe_grouped_owned_write_first", (DL_FUNC) &C_dtatools_probe_grouped_owned_write_first, 2},
+    {"C_dtatools_probe_grouped_set_column_attr", (DL_FUNC) &C_dtatools_probe_grouped_set_column_attr, 3},
+    {"C_dtatools_probe_grouped_set_column_label", (DL_FUNC) &C_dtatools_probe_grouped_set_column_label, 2},
+    {"C_dtatools_probe_grouped_set_table_attr", (DL_FUNC) &C_dtatools_probe_grouped_set_table_attr, 3},
+    {"C_dtatools_probe_owned_set_storage", (DL_FUNC) &C_dtatools_probe_owned_set_storage, 2},
+    {"C_dtatools_probe_owned_write_first", (DL_FUNC) &C_dtatools_probe_owned_write_first, 2},
+    {"C_dtatools_probe_plan_key_change", (DL_FUNC) &C_dtatools_probe_plan_key_change, 3},
+    {"C_dtatools_probe_prepared_copy_after_names_hook", (DL_FUNC) &C_dtatools_probe_prepared_copy_after_names_hook, 1},
+    {"C_snap_active", (DL_FUNC) &C_snap_active, 2},
+    {"C_snap_active_parts", (DL_FUNC) &C_snap_active_parts, 2},
+    {"C_snap_check", (DL_FUNC) &C_snap_check, 1},
+    {"C_snap_new", (DL_FUNC) &C_snap_new, 2},
+    {"C_snap_new_bracket", (DL_FUNC) &C_snap_new_bracket, 2},
+    {"C_snap_new_shallow_all", (DL_FUNC) &C_snap_new_shallow_all, 2},
+    {"C_snap_stats", (DL_FUNC) &C_snap_stats, 1},
+    {"C_dtatools_probe_bracket_generation_hook", (DL_FUNC) &C_dtatools_probe_bracket_generation_hook, 1},
+    {"C_dtatools_probe_bracket_pre_generation_hook", (DL_FUNC) &C_dtatools_probe_bracket_pre_generation_hook, 1},
     {NULL, NULL, 0}
 };
 
@@ -221,7 +479,10 @@ static const R_CallMethodDef CallEntries[] = {
  * reference ownership and column-sharing checks are registered .Call entries.
  */
 void attribute_visible R_init_dtatools(DllInfo *dll) {
+    dtatools_probe_gen_primitive_init();
+    initialize_numeric_size_gate();
     initialize_owned_columns(dll);
+    initialize_generated_real_reader();
     column_append_blank_names_class = R_make_altstring_class("dtatools_append_blank_names", "dtatools", dll);
     R_set_altrep_Length_method(column_append_blank_names_class, column_append_blank_names_length);
     R_set_altstring_Elt_method(column_append_blank_names_class, column_append_blank_names_elt);
@@ -356,4 +617,10 @@ void attribute_visible R_init_dtatools(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
     R_forceSymbols(dll, TRUE);
+}
+
+void attribute_visible R_unload_dtatools(DllInfo *dll) {
+    (void) dll;
+    dtatools_probe_release_public_cache();
+    release_generated_real_reader();
 }

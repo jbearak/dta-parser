@@ -1,0 +1,19 @@
+Installed package: /private/tmp/dta-existing-experiments-20260929/integrated-lib/dtatools
+Loaded DLL: /private/tmp/dta-existing-experiments-20260929/integrated-lib/dtatools/libs/dtatools.so
+R version 4.6.1 (2026-06-24)
+combiner-attribute-isolation: SS
+folded-return-mutation: S
+scalar-cache-constant-mutation: S
+
+══ Skipped ═════════════════════════════════════════════════════════════════════
+1. grouped mutation keeps returned numeric attributes independent ('test-combiner-attribute-isolation.R:108:5') - Reason: {data.table} is not installed
+
+2. grouped generation keeps returned numeric attributes independent ('test-combiner-attribute-isolation.R:112:5') - Reason: {data.table} is not installed
+
+3. returned folded constants retain fresh numeric execution comparison ('test-folded-return-mutation.R:2:5') - Reason: {data.table} is not installed
+
+4. scalar admission rechecks in-place compiled helper constants ('test-scalar-cache-constant-mutation.R:2:5') - Reason: {data.table} is not installed
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+ passed  failed   error skipped warning
+      0       0       0       4       0

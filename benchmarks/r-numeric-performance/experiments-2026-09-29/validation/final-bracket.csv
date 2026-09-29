@@ -1,0 +1,6 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-bracket-native-admission.R","native brackets publish unfamiliar columns and preserve ordinary fallback",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","bracket fallback retains a completed RHS after a source write",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","grouped bracket late shaping traces preserve the uncommitted prefix",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","generated native siblings have independent mutable metadata",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","pending bracket generation does not repeat reference marker callbacks",1,0,FALSE,FALSE,0

@@ -405,7 +405,78 @@ NULL
         } else target_expr
         .preflight_mutation_target(x)
     }
-    assignments <- .bracket_assignments(rlang::enquo(j), x)
+    early <- .native_admission_call(C_dtatools_probe_grouped_bracket_raw,
+                                     raw_j)
+    if (.native_admission_not(.native_admission_is_null(early))) {
+            early_assignments <- .native_admission_subset2(early, 1L)
+            early_by <- .native_admission_subset2(early, 2L)
+            early_where <- .native_admission_subset2(early, 3L)
+            direct <- .native_admission_call(
+                C_dtatools_probe_grouped_bracket_batch,
+                x, early_assignments, early_by, early_where,
+                early_by, .probe_grouped_bracket_state,
+                .probe_s3_state)
+            if (.native_admission_not(.native_admission_is_null(direct))) {
+                completed_native <- .native_admission_subset2(direct, 1L)
+                selection_native <- .native_admission_subset2(direct, 2L)
+                if (completed_native) {
+                    if (.native_admission_subset2(direct, 3L)) {
+                        .mark_fresh_reference(x)
+                        if (identical(getOption(
+                                "dtatools.probe_bracket_deferred_stop"),
+                                "after_mark"))
+                            return(invisible(x))
+                        destination <- .rebind_mutation(
+                            original_x, x, destination, parent.frame())
+                        original_x <- x
+                        if (identical(getOption(
+                                "dtatools.probe_bracket_deferred_stop"),
+                                "after_rebind"))
+                            return(invisible(x))
+                    } else if (.native_admission_not(.native_admission_call(
+                        C_dtatools_probe_grouped_bracket_rebind_live,
+                        NULL))) {
+                        destination <- .rebind_mutation(original_x, x,
+                                                        destination, parent.frame())
+                        original_x <- x
+                    }
+                }
+                if (length(direct) == 5L && !is.null(direct[[5L]])) {
+                    pending <- direct[[5L]]
+                    .resume_grouped_bracket_generation(x, pending,
+                        completed_native, early_assignments)
+                    completed_native <- pending$step
+                    destination <- .rebind_mutation(original_x, x,
+                        destination, parent.frame())
+                    original_x <- x
+                }
+                if (completed_native <
+                    .native_admission_length(early_assignments)) {
+                    staged_native <- .native_admission_subset2(direct, 4L)
+                    for (index in seq.int(completed_native + 1L,
+                                          .native_admission_length(
+                                              early_assignments))) {
+                        assignment <- early_assignments[[index]]
+                        exists <- assignment$name %in% names(x)
+                        x <- .mutate_data(
+                            x, rlang::new_quosure(assignment$name, emptyenv()),
+                            assignment$values, early_where, generate = !exists,
+                            selection = selection_native, promote = TRUE,
+                            staged = staged_native, fast_promote = TRUE
+                        )
+                        destination <- .rebind_mutation(original_x, x,
+                                                        destination, parent.frame())
+                        original_x <- x
+                    }
+                }
+                .suppress_bracket_autoprint(x)
+                return(invisible(x))
+            }
+    }
+    assignments <- .native_admission_if(.native_admission_call(
+        C_dtatools_probe_bracket_raw_parser_into_frame, raw_j,
+        .probe_bracket_public_state), assignments,
+        .bracket_assignments(rlang::enquo(j), x))
     if (is.null(assignments)) {
         if (!missing(by) || !missing(bysort)) {
             stop("`by` and `bysort` need a `:=` assignment in `j`",
@@ -415,6 +486,71 @@ NULL
         environment <- parent.frame()
         one_dimension <- (nargs() - !missing(drop)) <= 2L
         return(.reference_bracket(x, call, environment, one_dimension))
+    }
+    if (.native_admission_missing(i) && .native_admission_missing(by) &&
+        .native_admission_missing(bysort) && .native_admission_missing(drop) &&
+        .native_admission_dots_length() == 0L) {
+        general_direct <- .native_admission_call(
+            C_dtatools_probe_bracket_general_batch, x, assignments,
+            .probe_bracket_public_state)
+        if (!.native_admission_is_null(general_direct)) {
+            general_live <- .native_admission_call(
+                C_dtatools_probe_bracket_public_live,
+                .probe_bracket_public_state, assignments)
+            general_done <- general_direct[[1L]]
+            general_selection <- general_direct[[2L]]
+            general_where <- general_direct[[3L]]
+            general_staged <- general_direct[[5L]]
+            general_needs_mark <- general_direct[[6L]]
+            pending <- .native_admission_subset2(general_direct, 7L)
+            # A pending result has not appended its current column. Its
+            # ordinary append will mark it; remarking now repeats callbacks.
+            .native_admission_if((general_live ||
+                .native_admission_not(.native_admission_is_null(pending))) &&
+                !general_needs_mark, NULL, {
+                .mark_fresh_reference(x)
+                destination <- .rebind_mutation(original_x, x,
+                    destination, parent.frame())
+            })
+            if (!is.null(pending)) {
+                stopifnot(is.list(pending), length(pending) == 4L,
+                    identical(names(pending), c("step", "target", "row_count", "rhs")),
+                    identical(pending$step, general_done + 1L),
+                    identical(pending$target, assignments[[pending$step]]$name),
+                    is.double(pending$row_count), length(pending$row_count) == 1L,
+                    pending$row_count >= 0, pending$row_count == length(pending$rhs),
+                    identical(class(pending$rhs),
+                        c("dta_numeric", "dta_double", "vctrs_vctr", "double")))
+                # Placement and value shaping preceded the native generation
+                # phase. Continue with that fixed RHS, never evaluate it again.
+                column <- .generated_numeric(pending$rhs, NULL,
+                    pending$row_count, generate = TRUE)
+                .prepare_column_operation(x, length(x) + 1L)
+                .append_generated_column(x, pending$target, column)
+                destination <- .rebind_mutation(original_x, x,
+                    destination, parent.frame())
+                original_x <- x
+                general_done <- pending$step
+            }
+            if (general_done < length(assignments)) {
+                for (index in seq.int(general_done + 1L,
+                                      length(assignments))) {
+                    assignment <- assignments[[index]]
+                    exists <- assignment$name %in% names(x)
+                    x <- .mutate_data(x,
+                        rlang::new_quosure(assignment$name, emptyenv()),
+                        assignment$values, general_where,
+                        generate = !exists, selection = general_selection,
+                        promote = TRUE, staged = general_staged,
+                        fast_promote = TRUE)
+                    destination <- .rebind_mutation(original_x, x,
+                        destination, parent.frame())
+                    original_x <- x
+                }
+            }
+            .suppress_bracket_autoprint(x)
+            return(invisible(x))
+        }
     }
     # data.table's third slot is `by`, so `data[i, j, id]` puts `id` in
     # `...`; one unnamed dot is that positional `by`.
@@ -436,6 +572,51 @@ NULL
     .preflight_mutation_target(x)
     # A whole-j injection can retain a bare-symbol destination. Extraction
     # operands were not captured before its callbacks, so those return only.
+    if (isTRUE(getOption("dtatools.probe_grouped_bracket", TRUE)) &&
+        missing(i) && !missing(by) && missing(bysort) &&
+        missing(drop) && length(dots) == 0L) {
+        direct <- .Call(C_dtatools_probe_grouped_bracket_batch,
+                        x, assignments, by_quo, where, parent.frame(),
+                        .probe_grouped_bracket_state, .probe_s3_state)
+        if (!is.null(direct)) {
+            completed_native <- direct[[1L]]
+            selection_native <- direct[[2L]]
+            staged_native <- new.env(parent = emptyenv())
+            if (direct[[3L]]) {
+                .mark_fresh_reference(x)
+                destination <- .rebind_mutation(original_x, x,
+                    destination, parent.frame())
+                original_x <- x
+            }
+            if (length(direct) == 5L && !is.null(direct[[5L]])) {
+                pending <- direct[[5L]]
+                .resume_grouped_bracket_generation(x, pending,
+                    completed_native, assignments)
+                completed_native <- pending$step
+                destination <- .rebind_mutation(original_x, x,
+                    destination, parent.frame())
+                original_x <- x
+            }
+            if (completed_native < length(assignments)) {
+                for (index in seq.int(completed_native + 1L,
+                                      length(assignments))) {
+                    assignment <- assignments[[index]]
+                    exists <- assignment$name %in% names(x)
+                    x <- .mutate_data(
+                        x, rlang::new_quosure(assignment$name, emptyenv()),
+                        assignment$values, where, generate = !exists,
+                        selection = selection_native, promote = TRUE,
+                        staged = staged_native, fast_promote = TRUE
+                    )
+                    destination <- .rebind_mutation(original_x, x,
+                                                    destination, parent.frame())
+                    original_x <- x
+                }
+            }
+            .suppress_bracket_autoprint(x)
+            return(invisible(x))
+        }
+    }
     auto_grow <- .mutation_auto_grow()
     new_names <- setdiff(vapply(assignments, `[[`, character(1), "name"),
                          names(x))
@@ -593,4 +774,20 @@ NULL
 .bracket_is_call_to <- function(expression, name) {
     is.call(expression) &&
         .selection_call_is(expression[[1L]], name, "base")
+}
+
+.resume_grouped_bracket_generation <- function(data, pending, completed, assignments) {
+    stopifnot(is.list(pending), length(pending) == 5L,
+        identical(names(pending), c("step", "target", "row_count", "rhs", "generated")),
+        identical(pending$step, completed + 1L),
+        identical(pending$target, assignments[[pending$step]]$name),
+        is.double(pending$row_count), length(pending$row_count) == 1L,
+        pending$row_count >= 0, pending$row_count == length(pending$rhs),
+        is.logical(pending$generated), length(pending$generated) == 1L,
+        !is.na(pending$generated))
+    column <- if (pending$generated) pending$rhs else .generated_column(
+        pending$rhs, NULL, pending$row_count, generate = TRUE,
+        carry_metadata = FALSE)
+    .prepare_column_operation(data, length(data) + 1L)
+    .append_generated_column(data, pending$target, column)
 }

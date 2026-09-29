@@ -196,7 +196,7 @@ jobs:
           check_dirs <- list.dirs(".", recursive = FALSE, full.names = TRUE)
           check_dirs <- check_dirs[endsWith(check_dirs, ".Rcheck")]
           for (check_dir in check_dirs) {
-            logs <- list.files(check_dir, pattern = "\\.(log|Rout(\\.fail)?)$",
+            logs <- list.files(check_dir, pattern = "\\.(log|out|Rout(\\.fail)?)$",
                                recursive = TRUE, full.names = TRUE)
             for (path in logs) {
               cat("\n--- ", path, " ---\n", sep = "")
@@ -210,6 +210,7 @@ jobs:
           name: r-check-failure-${{ matrix.os }}
           path: |
             *.Rcheck/00*.log
+            *.Rcheck/00install.out
             *.Rcheck/tests/*.Rout*
             *.Rcheck/tests/testthat-problems.rds
           if-no-files-found: ignore
@@ -416,4 +417,5 @@ jobs:
             native-libraries/evidence
             native-build/evidence
             native-check/evidence
+            native-check/payload/install.log
           if-no-files-found: warn

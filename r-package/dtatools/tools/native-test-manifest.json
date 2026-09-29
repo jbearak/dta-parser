@@ -131,6 +131,10 @@
     {
       "path": "tests/testthat/helper-stage6-row.R",
       "sha256": "415e4d7dd5dbc9c454fa5e4b254a9d31460183a087628e4386b40917a4a3998d"
+    },
+    {
+      "path": "tests/testthat/helper-native-execution-profile.R",
+      "sha256": "68f85d17d7089b5151af49a9f058fcb61e8ffdba8d0ebb0f99c581156f074f47"
     }
   ],
   "fixtures": [
@@ -149,6 +153,26 @@
     {
       "path": "tests/testthat/fixtures/tabulate.log",
       "sha256": "f81ebf6b11a052f5be0a41cb254b380cbd60488ef60c7af17f1a6af50244bc08"
+    },
+    {
+      "path": "tests/testthat/fixtures/numeric-size-userdb.c",
+      "sha256": "cd5a3049f7b2965b88e4a8774d09fa3e5e670dbfafc72639c76b99468c0bbd20"
+    },
+    {
+      "path": "tests/testthat/fixtures/initial-capture-helpers.R",
+      "sha256": "ddf91c82fe7d12e1612ded7d320655c4fd268b2e99690c9d71e21198d614b919"
+    },
+    {
+      "path": "tests/testthat/fixtures/initial-capture-userdb.c",
+      "sha256": "5996f22c53061a6fcd3306b84bff4bf993fb0cc6e936c27c4db20fc496ec0350"
+    },
+    {
+      "path": "tests/testthat/fixtures/initial-capture-collision-names.txt",
+      "sha256": "39e1e42dd05876db592e7cacb2eb339093dcffb07d949b38e21226847e722cb8"
+    },
+    {
+      "path": "tests/testthat/fixtures/numeric-bytecode-probe.c",
+      "sha256": "51d16e03ece28a5cdee9dc33fc0e9ab0b6124adff2087f0921b928841446485f"
     }
   ],
   "families": [
@@ -1500,6 +1524,114 @@
         {
           "path": "tests/testthat/test-recode-interop.R",
           "sha256": "25d9ef200ff3db4605aaaeeff0b67376684e0e79e1116d423691f4fffbb6ff68"
+        },
+        {
+          "path": "tests/testthat/test-dta-attribute-plan.R",
+          "sha256": "e952ceea5bfc949a31385cbed207271111563cd3953cd22097eb3acaebd53cf1"
+        },
+        {
+          "path": "tests/testthat/test-computed-numeric.R",
+          "sha256": "b2f310d554f48007aa4c28e430f02f36d9f03c61510f9a0117c5e31d75eed87f"
+        },
+        {
+          "path": "tests/testthat/test-strict-double.R",
+          "sha256": "b4fd164e1ad70b6b2fcabcd503aaf6e319a7eb7cf3205173a05a104f4cd57d00"
+        },
+        {
+          "path": "tests/testthat/test-double-combine.R",
+          "sha256": "7a1dcddc7929ea6cbabd48164330d48a9c940fd3647678b4216c8e4631867249"
+        },
+        {
+          "path": "tests/testthat/test-numeric-helper-profile.R",
+          "sha256": "07c4c2bf3926c8cecc1a501ef5011f0c22ebc7e328ca195426b5f0c871b35763"
+        },
+        {
+          "path": "tests/testthat/test-computed-minimum-admission.R",
+          "sha256": "b0650955612562d298bb40d183285b68665880668a5530632d4258c25c875f9f"
+        },
+        {
+          "path": "tests/testthat/test-scalar-export-admission.R",
+          "sha256": "0be00e4a74f81b4c0cd5a638c0ee4c65d8bb0b27eb21290f4da2716fe2b32c9a"
+        },
+        {
+          "path": "tests/testthat/test-numeric-eager-inputs.R",
+          "sha256": "d64e7348a177b5952783e6856e96a9d9153251df0f8faed5f9377347ea45a6a8"
+        },
+        {
+          "path": "tests/testthat/test-numeric-decoration-callbacks.R",
+          "sha256": "1ecccc443563e4286069c89d7713afab9f530f32f45c17d8bf7522f680eb2220"
+        },
+        {
+          "path": "tests/testthat/test-numeric-decoration-profile.R",
+          "sha256": "dc39a124ceca4984cbe52700d4a9ddf237505505f4ff11c5ca66c8b47321b477"
+        },
+        {
+          "path": "tests/testthat/test-numeric-entry-admission.R",
+          "sha256": "83276eb27a0deb5a60f0030cf02eab1575c1c63fd0e9c91b2b2c733143570379"
+        },
+        {
+          "path": "tests/testthat/test-numeric-entry-callbacks.R",
+          "sha256": "fd03d7b56a0d206fe8d53984bdfeecbc3c3a56ffec732132894663867c2a213b"
+        },
+        {
+          "path": "tests/testthat/test-native-control-callbacks.R",
+          "sha256": "affcd0a0efa5851aecb563029b5845b5cdb94ba7d3939eb9b8df3d462b193920"
+        },
+        {
+          "path": "tests/testthat/test-delayed-dependency-settlement.R",
+          "sha256": "d9706f4e29078b7d46dac7b64817f4ad78008e8f65ebaac49675782f88c6f47f"
+        },
+        {
+          "path": "tests/testthat/test-canonical-nested-callbacks.R",
+          "sha256": "09fb27affbd51c064952eb048246b081ec1341193de537e31e3a2040e4c74226"
+        },
+        {
+          "path": "tests/testthat/test-combiner-stack-callbacks.R",
+          "sha256": "f3c04e97073344211c2674d99b80bf29309929e56ff5db2cb94504332c6af08f"
+        },
+        {
+          "path": "tests/testthat/test-metadata-dependency-settlement.R",
+          "sha256": "2ddf5c194011b173e3f5850e726fe66d0c3f730a9d036f4f7b75218b9a253ba2"
+        },
+        {
+          "path": "tests/testthat/test-numeric-size-policy.R",
+          "sha256": "180e164cc357edf99b3f23f295d860fe4affa477813729f72c80cb4cf66d9865"
+        },
+        {
+          "path": "tests/testthat/test-folded-return-mutation.R",
+          "sha256": "9634ed7aa7df87e8e5ebff43fd554bf847bf78f4b31388a0b87fba92e055e933"
+        },
+        {
+          "path": "tests/testthat/test-numeric-secondary-inputs.R",
+          "sha256": "0fe73a8d247e5cd39e0cc965df854f09e9ff45a607d321cb82c34a20a6f34d9b"
+        },
+        {
+          "path": "tests/testthat/test-numeric-s4-policies.R",
+          "sha256": "9c52fffbcdea42b41bfefa1ee99db394a7af5f31c41d825ee25e3a61fa41e420"
+        },
+        {
+          "path": "tests/testthat/test-combiner-attribute-isolation.R",
+          "sha256": "32bd49c323e6a810c6adc0b8ba64e1a9af5fcf952769436736f15104b401f120"
+        },
+        {
+          "path": "tests/testthat/test-scalar-cache-constant-mutation.R",
+          "sha256": "dd2775d6ece0f02da9d4a7b91011d5b58685dffe1fffc261f43cfa32785c5f33"
+        },
+        {
+          "path": "tests/testthat/test-numeric-bytecode-altrep.R",
+          "sha256": "c806e2d64bf65c95a438e08a3a63c2f13a1d60260015029da25aba87729b9352"
+        },
+        {
+          "path": "tests/testthat/test-altrep-scalar-arithmetic.R",
+          "sha256": "0b6ca3fa3f8f42990a5554b5d8673d94458bc3271974f3e3a0d22d9253ff4e64"
+        },
+        {
+          "path": "tests/testthat/test-column-typing.R",
+          "sha256": "e16d8d14efda3df0065dd01325cfa2d7a670a8ee9a6c6af92f63ddc4e0238fb0"
+        },
+        {
+          "path": "tests/testthat/test-owned-finite-double.R",
+          "sha256": "df59fa43230d7b0290f1de18e316cadc89b401e99fe575a6b94244004a8e4726"
         }
       ],
       "blocks": [
@@ -2394,9 +2526,1630 @@
           "skip": "forbid",
           "min_pass": 3,
           "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "computed storage is chosen for the complete result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 27,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "computed double preserves missing bits and normalizes undefined values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "computed results retain evaluation order and independent values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "computed policies retain exact temporal validation and getter callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "native classification declines traced predicates",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "foreign result reads precede delayed policy evaluation without replay",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "computed output owns its values without exposing the source pointer",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "getter admission does not read foreign literals",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "double scalar arithmetic agrees bit for bit with the general path",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 168,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "scalar admission preserves delayed operator and recycling order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "scalar admission keeps traced recycling and getter calls",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "scalar native decline does not touch a foreign operand",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "scalar arithmetic runs operand names methods before admission",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "scalar arithmetic preserves nested recycling and warning callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "scalar arithmetic retains the final classed names assignment",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "computed arithmetic declines replaced primitive predicates",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "computed arithmetic retains machine limit values and methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "computed machine limit admission never reads foreign metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 22,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "scalar fallback reads classed recycled arguments only once per use",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "scalar kernel uses actual settled operands and isolates its result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "scalar arithmetic keeps operands settled before a source callback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "computed arithmetic retains executable primitive tracers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-numeric.R",
+          "test": "scalar debugger stops follow native admission or public fallback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-strict-double.R",
+          "test": "strict double construction preserves bits names and rejection policy",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-strict-double.R",
+          "test": "strict double native admission never reads foreign or attributed inputs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-strict-double.R",
+          "test": "strict double output retains independent handles and backing rules",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-strict-double.R",
+          "test": "double fit keeps delayed policy and unsupported-tag fallback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-strict-double.R",
+          "test": "strict double admission respects replaced and traced predicates",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-strict-double.R",
+          "test": "strict double checks retain machine limit values and methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-strict-double.R",
+          "test": "storage fit preserves lazy replacement callback and error order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-strict-double.R",
+          "test": "successful double fit settles forwarded value and storage promises",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-strict-double.R",
+          "test": "synthetic double fit entries decline without forcing arguments",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "canonical attribute plans preserve storage classes and result names",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "attribute plans retain metadata order and unknown-attribute warnings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "attribute plans do not read foreign or classed source names",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "double combination preserves bytes, order and independent backing",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "double combination declines unsupported shapes before foreign reads",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "strict combination leaves invalid-value diagnostics to vctrs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination preserves registered vctrs callbacks without speculative calls",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination retains active and delayed global pair-method lookup",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination calls a replaced external combiner once on fallback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination respects reachable prototype and finalise methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 40,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination respects names, dimensions and name assignment methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 75,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination retains the namespace numeric coercion method",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "ordinary canonical sources copy once and unsupported profiles decline",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination fallback preserves expressions and resolves operands once",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination retains strict-validator trace callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "real grouped generation uses one combination payload",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "real grouped dplyr mutation uses one combination payload",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination fallback preserves public generation error attribution",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination fallback preserves public dplyr error attribution",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "disabled combination profiles retain public fallback and isolation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination retains registered character methods used by metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination retains executable callbacks throughout its successful helper graph",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 168,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "compilation changes cannot hide callbacks below package combination helpers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "ordinary external helper compiler forms preserve callback admission",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination adds no predicate callbacks before its original fallback calls",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination callbacks run before unresolved operand promises",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "replaced combiners receive the original lazy argument expressions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "indexed combination reads active rows once after combiner entry",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "interpreted public combination preserves mask row callback order",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "public combination callbacks retain the original caller frame",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "native combination reuses ordinary assignment targets safely",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 28,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "public indexed combination admits five expressions in one run frame",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination namespace admission leaves active exports untouched",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "indexed admission never forces unfamiliar operand bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "production namespace tracing retains values and the original caller",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "public combination settles piece promises before later metadata callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "successful combination settles original forwarded operands",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "fresh public grouped generation preserves typed results without test-only warming",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "fresh grouped dplyr calls preserve typed results without test-only warming",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-numeric-helper-profile.R",
+          "test": "numeric routes preserve executable skipped-helper callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 104,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-helper-profile.R",
+          "test": "numeric admission adds no environment callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-helper-profile.R",
+          "test": "scalar profile rejects changed standard compiled wrapper code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-helper-profile.R",
+          "test": "scalar recycling preserves functions reached by ordinary recompilation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-helper-profile.R",
+          "test": "numeric admission adds no predicates to interpreted helpers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-helper-profile.R",
+          "test": "owned strict construction retains its reached isTRUE callback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-helper-profile.R",
+          "test": "native admissions add no callbacks to replaced .Call bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-helper-profile.R",
+          "test": "numeric kernel diagnostics retain canonical compiled route contracts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-helper-profile.R",
+          "test": "numeric entry rejects synthetic callers without touching result slots",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-helper-profile.R",
+          "test": "numeric entry aliases leave synthetic production wrappers unadmitted",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "arithmetic respects a minimum promise replaced by a payload callback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "computed minimum expressions retain callback order and errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "native minimum admission follows the actual source through promises",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "minimum admission respects the promise getter environment",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "native minimum admission leaves active policy and source bindings unread",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "minimum getter bindings stay lazy until the original evaluation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "arithmetic settles captured operator and minimum promises without changing expressions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "computed results settle captured temporal and minimum promise chains",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "public numeric operations retain the original computed helper call signature",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "public arithmetic retains the original arithmetic helper call signature",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-scalar-export-admission.R",
+          "test": "scalar admission preserves executable recycling export callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-scalar-export-admission.R",
+          "test": "scalar admission follows a recycling export redirected to a function",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-scalar-export-admission.R",
+          "test": "scalar native admission does not inspect the unused list2 export",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-eager-inputs.R",
+          "test": "strict construction retains custom conversion local reads",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-eager-inputs.R",
+          "test": "scalar admission leaves active operands to original recycling",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-eager-inputs.R",
+          "test": "recycling errors precede active numeric operand errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-eager-inputs.R",
+          "test": "computed numeric admission preserves conversion local callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-callbacks.R",
+          "test": "numeric decoration preserves replacement helper arguments and frames",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-callbacks.R",
+          "test": "numeric decoration retains downstream primitive callback observations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 36,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-profile.R",
+          "test": "numeric decoration preserves registered and lexical names setter callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 90,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-profile.R",
+          "test": "computed decoration preserves compact storage names setter callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-profile.R",
+          "test": "names repair callbacks retain the original numeric decoration frame",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-profile.R",
+          "test": "numeric decoration guards retain positive unnamed production admission",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-profile.R",
+          "test": "names decoration guards leave explicit kernel contracts unchanged",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-profile.R",
+          "test": "names decoration guards leave active and delayed method lookup to the R fallback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-profile.R",
+          "test": "ordinary names wrapper compiler forms retain unnamed native admission",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-profile.R",
+          "test": "numeric decoration retains executable NextMethod callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-profile.R",
+          "test": "synthetic constructor entries leave unresolved names locals untouched",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-decoration-profile.R",
+          "test": "synthetic numeric entries decline without invoking local names methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "canonical numeric production calls publish through the entry counters",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "named numeric production results retain fallback names and values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "unknown numeric entry promises stay on the original forcing path",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "custom numeric conversions retain their callbacks without entry publication",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "custom scalar readers retain their callbacks without entry publication",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "actual constructor callback frames retain unsafe native result bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "scalar input names getters retain their original calls before arithmetic",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "numeric entry success settles original ancestor promises and expressions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 23,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "numeric entry results retain visible public and helper returns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "scalar literals and reductions retain the small numeric fallback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-callbacks.R",
+          "test": "constructor input forcing retains callbacks on later local assignments",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-callbacks.R",
+          "test": "constructor conversion preserves all original local assignment callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-callbacks.R",
+          "test": "constructor conversion retains the original completed caller frame",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-callbacks.R",
+          "test": "scalar data callbacks retain all original local assignment callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-callbacks.R",
+          "test": "self restoring scalar callbacks retain their later local assignments",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-callbacks.R",
+          "test": "self restoring scalar callbacks retain the original completed caller frame",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-callbacks.R",
+          "test": "computed conversion preserves all original local assignment callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-callbacks.R",
+          "test": "constructor conversion does not introduce a plain double local assignment",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-callbacks.R",
+          "test": "self untracing storage checks retain locals for later public mutations",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-numeric-entry-callbacks.R",
+          "test": "self untracing metadata generation retains locals for later public generation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-control-callbacks.R",
+          "test": "native entry conditions do not add executable if callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-control-callbacks.R",
+          "test": "original helper if callbacks still retain their errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-control-callbacks.R",
+          "test": "labelled generation keeps the original fallback evaluator callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-delayed-dependency-settlement.R",
+          "test": "numeric shortcuts preserve delayed dependency binding settlement",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 177,
+          "warnings": 0
+        },
+        {
+          "file": "test-delayed-dependency-settlement.R",
+          "test": "delayed function dependencies retain later numeric results and errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 44,
+          "warnings": 0
+        },
+        {
+          "file": "test-delayed-dependency-settlement.R",
+          "test": "delayed public machine limits settle before later numeric calls",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-delayed-dependency-settlement.R",
+          "test": "delayed minimum getters settle through the original minimum promise",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-canonical-nested-callbacks.R",
+          "test": "metadata filtering retains nested environment tracer errors before generation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-canonical-nested-callbacks.R",
+          "test": "grouped assembly retains snapshot attribute tracer errors before publication",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-combiner-stack-callbacks.R",
+          "test": "double assembly retains the C dispatch stack callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-combiner-stack-callbacks.R",
+          "test": "grouped generation preserves errors in C dispatch stack callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-combiner-stack-callbacks.R",
+          "test": "double assembly settles delayed C dispatch stack dependencies",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-dependency-settlement.R",
+          "test": "metadata and combination settle every reached delayed primitive binding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 82,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-dependency-settlement.R",
+          "test": "settled metadata dependencies retain later public function results",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-dependency-settlement.R",
+          "test": "public generation retains delayed metadata errors before publication",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 21,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-size-policy.R",
+          "test": "large numeric routes retain executable helper callbacks after size admission",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-size-policy.R",
+          "test": "numeric size boundaries retain small fallback and large native publication",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 109,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-size-policy.R",
+          "test": "numeric size peeks retain their roots under GC and reentrant finalizers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-size-policy.R",
+          "test": "numeric size preflight leaves genuine database operands to the original read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 121,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-size-policy.R",
+          "test": "numeric size preflight leaves unknown operands and foreign readers untouched",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 60,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-size-policy.R",
+          "test": "numeric size preflight rejects custom forwarded environments before lookup",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-size-policy.R",
+          "test": "size admission does not replace changed or self-untracing executing closures",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 56,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-size-policy.R",
+          "test": "small numeric fallback settles forwarded operand promises",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-folded-return-mutation.R",
+          "test": "returned folded constants retain fresh numeric execution comparison",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-secondary-inputs.R",
+          "test": "numeric secondary inputs keep custom database reads on the original path",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 50,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-s4-policies.R",
+          "test": "bare S4 numeric policies retain constructor and temporal errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 22,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-s4-policies.R",
+          "test": "bare S4 storage policies retain computed scalar and holds fallback results",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-combiner-attribute-isolation.R",
+          "test": "grouped mutation keeps returned numeric attributes independent",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 56,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-combiner-attribute-isolation.R",
+          "test": "grouped generation keeps returned numeric attributes independent",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 56,
+          "warnings": 0
+        },
+        {
+          "file": "test-scalar-cache-constant-mutation.R",
+          "test": "scalar admission rechecks in-place compiled helper constants",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 13,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Bytecode scalar admission requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic suite.",
+          "skip_message": "Reason: .dtatools_numeric_entry_expected(\"scalar\") is not TRUE"
+        },
+        {
+          "file": "test-numeric-bytecode-altrep.R",
+          "test": "compiled helper identity does not execute ALTREP bytecode constants",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 17,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Bytecode scalar admission requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic suite.",
+          "skip_message": "Reason: .dtatools_numeric_entry_expected(\"scalar\") is not TRUE"
+        },
+        {
+          "file": "test-altrep-scalar-arithmetic.R",
+          "test": "compact Stata numerics use the typed scalar producer",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-altrep-scalar-arithmetic.R",
+          "test": "compact scalar promotion and missing values match the R route",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-altrep-scalar-arithmetic.R",
+          "test": "bounded integer scalar arithmetic preserves compact storage and promotes at limits",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 19,
+          "warnings": 0
+        },
+        {
+          "file": "test-altrep-scalar-arithmetic.R",
+          "test": "compact float arithmetic promotes past the Stata observed limit",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-altrep-scalar-arithmetic.R",
+          "test": "compact helper admission checks live executable traces after warming",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "the container mapping types a value with no prior column",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 36,
+          "warnings": 0
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "a stale string declaration is retyped from the values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "compact reader columns stay compact through typing",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "promotion widens to the narrowest storage that holds the values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 28,
+          "warnings": 0
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "promotion keeps a fitting storage and the prior's metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "promotion's other rules: logicals, declared storage, kind changes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "the dispatcher types a fresh column and promotes a replaced one",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "Stata string text and the declaration accessor are one rule each",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "the one-pass string check answers missing, width, and encoding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "a result column with a holding declaration is copied natively",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-owned-finite-double.R",
+          "test": "scalar arithmetic certifies only its exact untouched double backing",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 21,
+          "warnings": 0,
+          "reason": "Finite certificates are enabled only for the supported R, vctrs and rlang execution profile; public fallback behavior is covered separately.",
+          "min_pass_before_skip": 0,
+          "skip_message": "Reason: .dtatools_numeric_entry_expected() is not TRUE"
         }
       ],
-      "children": [],
+      "children": [
+        {
+          "id": "scalar-arithmetic-debugonce",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "double-combine-clean-session",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "numeric-recompiled-wrapper",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "combination-predicate-prefix",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "storage-fit-callback-order",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-admission-call-callbacks",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "numeric-decoration-callbacks",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-entry-if-callbacks",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-original-if-errors",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-labelled-fallback-evaluation",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "metadata-nested-environment-callbacks",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "combination-snapshot-attribute-callbacks",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "combiner-c-stack-callback-counts",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "combiner-c-stack-callback-errors",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "combiner-c-stack-delayed-dependencies",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "metadata-primitive-dependency-settlement",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "metadata-primitive-dependency-followup",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "metadata-primitive-dependency-gen-errors",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "numeric-size-userdb",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "numeric-secondary-userdb",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "numeric-bytecode-altrep",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        }
+      ],
       "forks": []
     },
     {
@@ -2433,6 +4186,10 @@
         {
           "path": "tests/testthat/test-variable-names.R",
           "sha256": "4dc1692fdba8dd61e46c5a910fe55aec9238024fc318e7e5d5755b8a1bb7ce46"
+        },
+        {
+          "path": "tests/testthat/test-metadata-source-admission.R",
+          "sha256": "b8a00a9e475ef9b8a88d4b6d47e7cda4d1ae984c008de2fe5a9e8fa4693ec6bc"
         }
       ],
       "blocks": [
@@ -3646,9 +5403,82 @@
           "skip": "forbid",
           "min_pass": 15,
           "warnings": 0
+        },
+        {
+          "file": "test-metadata-source-admission.R",
+          "test": "generated metadata keeps lazy source forcing after subset callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-source-admission.R",
+          "test": "attribute planning keeps active source reads after original callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-source-admission.R",
+          "test": "metadata class callbacks retain the original unknown attribute local",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-source-admission.R",
+          "test": "self untracing attribute plans retain executable callbacks and generation errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-source-admission.R",
+          "test": "prototype forcing retains active unknown assignments and completed plan locals",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-source-admission.R",
+          "test": "ordinary metadata filtering preserves values and diagnostic caller bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
         }
       ],
-      "children": [],
+      "children": [
+        {
+          "id": "metadata-source-forcing",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "metadata-active-source",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "attribute-plan-self-untrace",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        }
+      ],
       "forks": []
     },
     {
@@ -4972,6 +6802,26 @@
         {
           "path": "tests/testthat/test-mutation-fast.R",
           "sha256": "3d78780ef98040555c5606927966e34039a36c843b40bbac17dc3e58a6af52ef"
+        },
+        {
+          "path": "tests/testthat/test-generation-metadata.R",
+          "sha256": "7e15ea1a555818995f21ff58f6b75e8de0fd8ce4370e2565f930cc0eba5d35eb"
+        },
+        {
+          "path": "tests/testthat/test-metadata-execution-profile.R",
+          "sha256": "380bed1cb2dcadf0ea866e790628d6c92ef941121204d034ed4f48a8972d89b3"
+        },
+        {
+          "path": "tests/testthat/test-bracket-native-admission.R",
+          "sha256": "caf1d3e8bd69b0ab4bcbeee1ab4bdbc32469899e541b3d4afe49ab935821779c"
+        },
+        {
+          "path": "tests/testthat/test-repl-native-admission.R",
+          "sha256": "f4df779a85e012dc76546b0043398c554d01681ccba23c34b608d055dbece003"
+        },
+        {
+          "path": "tests/testthat/test-grouped-gen-native-admission.R",
+          "sha256": "99255435432de372db08b9b90319bc6a84e7c5c1e315db0e90a9e54e89117434"
         }
       ],
       "blocks": [
@@ -6726,6 +8576,183 @@
           "skip": "forbid",
           "min_pass": 28,
           "warnings": 0
+        },
+        {
+          "file": "test-generation-metadata.R",
+          "test": "generation metadata shortcut admits only ordinary canonical doubles",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 22,
+          "warnings": 0
+        },
+        {
+          "file": "test-generation-metadata.R",
+          "test": "generation metadata admission does not read foreign attributes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-generation-metadata.R",
+          "test": "generated canonical values retain helper callbacks and independent storage",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-generation-metadata.R",
+          "test": "generated canonical metadata retains executable base helper tracers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-generation-metadata.R",
+          "test": "canonical metadata retains nested unique callbacks and character methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-generation-metadata.R",
+          "test": "metadata admission leaves active and delayed helpers untouched",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-generation-metadata.R",
+          "test": "unsupported metadata profiles retain ordinary filtering",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-execution-profile.R",
+          "test": "metadata execution probe detects the active evaluator",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-execution-profile.R",
+          "test": "metadata shortcuts retain callbacks after supported closure transformations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 40,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-execution-profile.R",
+          "test": "metadata shape admission adds no executable names callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-execution-profile.R",
+          "test": "metadata shape admission retains positive and nonforcing cases",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-metadata-execution-profile.R",
+          "test": "metadata admission preserves environment callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "native brackets publish unfamiliar columns and preserve ordinary fallback",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "bracket fallback retains a completed RHS after a source write",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "grouped bracket late shaping traces preserve the uncommitted prefix",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "generated native siblings have independent mutable metadata",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "pending bracket generation does not repeat reference marker callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "native bracket replacement preserves complete target attributes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-repl-native-admission.R",
+          "test": "native replacement admits an unfamiliar column and preserves public fallback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-grouped-gen-native-admission.R",
+          "test": "grouped native gen publishes and declines after a staged source change",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-grouped-gen-native-admission.R",
+          "test": "native generation preserves Stata double range normalization",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
         }
       ],
       "children": [
@@ -6772,6 +8799,78 @@
         {
           "id": "generation-signal-noisy",
           "kind": "r_bg",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-native-admission",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-pending-rhs",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-bracket-pending-rhs",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-generated-metadata-isolation",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "repl-native-clean-session",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-gen-native-clean-session",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-pending-marker",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-generation-range",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-replacement-attributes",
+          "kind": "r",
           "minimum": 1,
           "maximum": 1,
           "completion": "complete",
@@ -8896,7 +10995,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble-expressions.R",
-          "sha256": "afe42d7ae0a853e5d12516443f698cb87e4d82a5c66be74bfcdb8cc5238d9c96"
+          "sha256": "9aa9329bd07619cb56278af1bcbd2ade927acf350e2448ac5f6ac6f3699bae08"
         },
         {
           "path": "tests/testthat/test-dibble-callbacks.R",
@@ -8909,6 +11008,30 @@
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
           "sha256": "5e64e697ffb81148ed6e2bbd0f7fb25c168367ad3e4648318b47f71bf1285765"
+        },
+        {
+          "path": "tests/testthat/test-mask-bindings.R",
+          "sha256": "224d17ca77a8736429e7ded2d3fab28201c4cd11201a2e26561f164c2223d200"
+        },
+        {
+          "path": "tests/testthat/test-mask-reader-callbacks.R",
+          "sha256": "7d38ba1695159e6201c22278936e8e82e7f5d9e143fe90e2598712e841297246"
+        },
+        {
+          "path": "tests/testthat/test-initial-capture.R",
+          "sha256": "674aa249d029d9edd3be9b90bfc48600c5863d01d00269c9c9682f740d214d97"
+        },
+        {
+          "path": "tests/testthat/test-initial-capture-names.R",
+          "sha256": "c12b0568988dd2fb8a29782cacdd20c80052fb8cc5d00b7b2d722a8c907ae804"
+        },
+        {
+          "path": "tests/testthat/test-ungrouped-dplyr-native-admission.R",
+          "sha256": "1fccbc44e728097de30c77bc8bb55fdf1a81c6c14cf263304e45b4319515583e"
+        },
+        {
+          "path": "tests/testthat/test-grouped-native-lifecycle.R",
+          "sha256": "0b22eca94faf97f769cfe7c82aa77e72420824d2980f2619975242e4a28ca87e"
         }
       ],
       "blocks": [
@@ -9632,9 +11755,492 @@
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-expressions.R",
+          "test": "initial mask generations support later appends and repeated cleanup",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-expressions.R",
+          "test": "an initially empty expression mask can append generations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "native bindings capture fixed generations names and groups",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "native binding admission declines unsupported containers and names",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "native binding admission never invokes unknown constructor bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "binding construction retains traced constructors without admission callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "binding fallback retains encoded-name diagnostics",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "non-ASCII binding names retain the original reader path",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "changed constructors run before the fallback group promise is forced",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "long ASCII names retain the original symbol-conversion diagnostics",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "foreign names run before a declined binding attempt forces its group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "binding admission leaves unfamiliar promises and state fields untouched",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "foreign initial names cannot interrupt mask expiration",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "mask registries keep captured names after an input rename by reference",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "initial capture records the column names actually consumed",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "mutation can retain initial column names across caller renames",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "interpreted public masks retain executable names callbacks",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr callback comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "public masks preserve executable nested constructor callbacks",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 8,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr callback comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "public masks preserve callbacks exposed by standard wrapper recompilation",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr callback comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "binding admission checks actual factory code without invoking it",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "public masks retain executable changes to their actual local factory",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr callback comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "canonical masks admit their actual local binding factory",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "public mask admission does not add environment callbacks",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr callback comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "public masks add no predicates when their enclosing helper is interpreted",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 12,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr callback comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "production mask status commits only to an absent local result binding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "public masks retain history and values bookkeeping callbacks",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 12,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr callback comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "binding admission accepts settled IDs and settles successful default IDs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "public mask constructors see the original forced group argument",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "successful nonempty native masks settle only their default group promise",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "empty and declined native masks leave group promises untouched",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "public mask constructors see the original final loop name",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "native masks preserve loop names and decline unsafe name bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 48,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-reader-callbacks.R",
+          "test": "mask readers retain argument expressions for executable tracers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-reader-callbacks.R",
+          "test": "public masks retain reader replacement after binding construction",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-initial-capture.R",
+          "test": "initial capture publishes wide owned and compact columns and declines narrow inputs early",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 42,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture.R",
+          "test": "initial capture preserves unknown operand forcing and original errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture.R",
+          "test": "initial capture retains replaced and executable traced helper callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture.R",
+          "test": "initial capture qualifies executing constructors after recompilation and self-untracing",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture.R",
+          "test": "initial capture isolates public results and retained generation registries",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 12,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-initial-capture.R",
+          "test": "initial capture retains roots under forced GC and independent reentrant finalizers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture.R",
+          "test": "initial capture leaves genuine database lookups on the original forcing path",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 29,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture.R",
+          "test": "initial capture expected profiles remain independent of public source literal mutation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture.R",
+          "test": "bounded-width fallback matches the original R capture loop",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 42,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture.R",
+          "test": "bounded-width fallback retains current helper callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture-names.R",
+          "test": "initial capture duplicate checks preserve width limits and full name comparisons",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 80,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture-names.R",
+          "test": "initial capture declines duplicate names introduced after R validation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 44,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture-names.R",
+          "test": "initial capture keeps ASCII encoding and name length boundaries",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 86,
+          "warnings": 0
+        },
+        {
+          "file": "test-initial-capture-names.R",
+          "test": "initial capture leaves deferred foreign name reads on the fallback route",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-ungrouped-dplyr-native-admission.R",
+          "test": "ungrouped native mutate isolates five outputs and honors public fallback",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-grouped-native-lifecycle.R",
+          "test": "dplyr reload disables all stale grouped native guards",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
-      "children": [],
+      "children": [
+        {
+          "id": "initial-capture-finalizers",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "initial-capture-userdb",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "initial-capture-literals",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "ungrouped-dplyr-native-clean-session",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-native-dplyr-reload",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        }
+      ],
       "forks": []
     },
     {

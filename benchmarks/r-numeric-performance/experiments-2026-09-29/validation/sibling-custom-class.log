@@ -1,0 +1,2 @@
+[1] 5
+custom_class same TRUE candidate/ordinary widths 32 32 callbacks 1 1 native publications 1 candidate message `data` has columns with inconsistent row counts; assign `data <- dplyr::ungroup(data)` and group again ordinary message `data` has columns with inconsistent row counts; assign `data <- dplyr::ungroup(data)` and group again

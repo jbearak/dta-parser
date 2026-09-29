@@ -761,6 +761,37 @@ SEXP C_dtatools_reference_state_valid(SEXP data) {
                             R_ExternalPtrAddr(owner) == data);
 }
 
+typedef struct {
+    SEXP symbol;
+    SEXP value;
+} reference_state_attribute;
+
+static SEXP reference_state_attribute_visit(SEXP tag, SEXP value,
+                                            void *context) {
+    reference_state_attribute *found = (reference_state_attribute *) context;
+    if (tag == found->symbol) found->value = value;
+    return NULL;
+}
+
+/* A speculative admission must not invoke an active `owner` binding that the
+ * ordinary operation has not reached. This check reads only raw attributes
+ * and value bindings; all other reference states take the original path. */
+int dtatools_reference_state_valid_noalloc(SEXP data) {
+    if (!Rf_inherits(data, "dtatools_ref_data")) return 0;
+    reference_state_attribute found = {
+        Rf_install(".dtatools_ref_state"), R_NilValue
+    };
+    R_mapAttrib(data, reference_state_attribute_visit, &found);
+    SEXP state = found.value;
+    if (TYPEOF(state) != ENVSXP) return 0;
+    SEXP symbol = Rf_install("owner");
+    R_BindingType_t type = R_GetBindingType(symbol, state);
+    if (type != R_BindingTypeValue && type != R_BindingTypeForced)
+        return 0;
+    SEXP owner = R_getVar(symbol, state, FALSE);
+    return TYPEOF(owner) == EXTPTRSXP && R_ExternalPtrAddr(owner) == data;
+}
+
 // Replaces one attribute on an object in place. Reference datasets are
 // shared by every binding that holds them, so grouping metadata that a
 // replacement invalidated must be rewritten on the object itself rather

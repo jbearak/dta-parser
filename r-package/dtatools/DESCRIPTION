@@ -21,6 +21,7 @@ BugReports: https://github.com/jbearak/dta-parser/issues
 Encoding: UTF-8
 Depends: R (>= 4.6.0)
 Imports:
+    compiler,
     lifecycle (>= 1.0.5),
     pillar (>= 1.9.0),
     readr (>= 2.2.0),

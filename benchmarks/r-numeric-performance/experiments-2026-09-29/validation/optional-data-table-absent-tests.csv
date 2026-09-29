@@ -1,0 +1,5 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-combiner-attribute-isolation.R","grouped mutation keeps returned numeric attributes independent",0,0,FALSE,TRUE,0
+"test-combiner-attribute-isolation.R","grouped generation keeps returned numeric attributes independent",0,0,FALSE,TRUE,0
+"test-folded-return-mutation.R","returned folded constants retain fresh numeric execution comparison",0,0,FALSE,TRUE,0
+"test-scalar-cache-constant-mutation.R","scalar admission rechecks in-place compiled helper constants",0,0,FALSE,TRUE,0
