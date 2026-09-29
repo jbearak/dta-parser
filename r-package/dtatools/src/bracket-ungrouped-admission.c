@@ -467,8 +467,7 @@ static SEXP general_try_replace(SEXP data, SEXP assignments,
     }
     SEXP backing = PROTECT(Rf_allocVector(REALSXP, n));
     SEXP replacement = PROTECT(owned_adopt_real(backing));
-    Rf_setAttrib(replacement, R_ClassSymbol, class);
-    Rf_setAttrib(replacement, Rf_install("stata.storage"), storage);
+    SHALLOW_DUPLICATE_ATTRIB(replacement, x);
     SEXP result = PROTECT(general_single_result());
     double guard_start = probe_general_clock_ns();
     int live_ok = C_dtatools_probe_bracket_public_live_raw(profile, caller);

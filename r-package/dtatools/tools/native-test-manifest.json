@@ -6807,7 +6807,7 @@
         },
         {
           "path": "tests/testthat/test-bracket-native-admission.R",
-          "sha256": "c2dbd2b757e222fc7575062d1c106483539a32619bd5d34dd52de189d81dbba5"
+          "sha256": "caf1d3e8bd69b0ab4bcbeee1ab4bdbc32469899e541b3d4afe49ab935821779c"
         },
         {
           "path": "tests/testthat/test-repl-native-admission.R",
@@ -8717,6 +8717,14 @@
           "warnings": 0
         },
         {
+          "file": "test-bracket-native-admission.R",
+          "test": "native bracket replacement preserves complete target attributes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
           "file": "test-repl-native-admission.R",
           "test": "native replacement admits an unfamiliar column and preserves public fallback",
           "occurrence": 1,
@@ -8848,6 +8856,14 @@
         },
         {
           "id": "native-generation-range",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-replacement-attributes",
           "kind": "r",
           "minimum": 1,
           "maximum": 1,

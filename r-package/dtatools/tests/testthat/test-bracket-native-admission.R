@@ -203,3 +203,38 @@ test_that("pending bracket generation does not repeat reference marker callbacks
     }, libpath = .libPaths())
     expect_true(observed)
 })
+
+test_that("native bracket replacement preserves complete target attributes", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    expected <- .dtatools_public_mutation_build_expected()
+    observed <- .dtatools_child_r("bracket-replacement-attributes", function(expected) {
+        library(dtatools)
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        run <- function(enabled, plain, expression) {
+            d <- as_dibble(tibble::tibble(x = rep(2, 41L), spare = rep(3, 41L)))
+            if (plain) for (i in seq_along(d))
+                cc("C_dtatools_set_data_column", d, as.integer(i),
+                    cc("C_dtatools_owned_plain_snapshot", .subset2(d, i)))
+            profile <- dtatools:::.probe_bracket_public_state
+            saved <- profile$snapshots
+            if (!enabled) profile$snapshots <- NULL
+            on.exit(profile$snapshots <- saved)
+            before <- cc("C_dtatools_probe_bracket_step_stats", FALSE)
+            eval(expression)
+            after <- cc("C_dtatools_probe_bracket_step_stats", FALSE)
+            list(columns = lapply(d, function(column)
+                list(values = as.double(column), attributes = attributes(column))),
+                published = (after - before)[[3L]])
+        }
+        for (plain in c(FALSE, TRUE))
+            for (expression in list(quote(d[, x := x + 2.5]), quote(d[, x := 3]),
+                                    quote(d[, x := abs(-3)]))) {
+                ordinary <- run(FALSE, plain, expression)
+                native <- run(TRUE, plain, expression)
+                stopifnot(identical(native$columns, ordinary$columns))
+                if (!plain) stopifnot(native$published == as.integer(expected))
+            }
+        TRUE
+    }, args = list(expected = expected), libpath = .libPaths())
+    expect_true(observed)
+})
