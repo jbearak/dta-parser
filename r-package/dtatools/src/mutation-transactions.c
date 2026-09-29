@@ -1292,13 +1292,14 @@ SEXP C_dtatools_patch_vector(
 ) {
     numeric_data *immutable = unmaterialized_numeric_read_storage(target);
     if (immutable != NULL && numeric_payload_retained(immutable)) {
+        double compatibility_bytes =
+            (double) immutable->length * (double) numeric_kind_width(immutable->kind);
         SEXP entry_data1 = PROTECT(R_altrep_data1(target));
         SEXP entry_data2 = PROTECT(R_altrep_data2(target));
         R_xlen_t length = XLENGTH(target);
         SEXP working = PROTECT(numeric_compact_copy(immutable));
         SHALLOW_DUPLICATE_ATTRIB(working, target);
-        owned_numeric_compatibility_bytes +=
-            (double) immutable->length * (double) numeric_kind_width(immutable->kind);
+        owned_numeric_compatibility_bytes += compatibility_bytes;
         SEXP result = PROTECT(patch_vector(working, rows, replacement, 0));
         if (R_altrep_data1(target) != entry_data1 || R_altrep_data2(target) != entry_data2 ||
             XLENGTH(target) != length) {
@@ -1918,9 +1919,29 @@ static SEXP generate_double_numeric(
     SEXP values, const reference_rows *rows, size_t row_count,
     const reference_value_plan *value_plan, int temporal
 ) {
+    /* Retain the exact ordinary/owned allocation before reader/output
+       allocation. The handle, record and backing are separate roots because
+       a returning callback can detach an owned handle from its old record.
+       Unknown REAL ALTREP readers retain the original generic path. */
+    SEXP leaf = PROTECT(TYPEOF(values) == REALSXP &&
+        (!ALTREP(values) || owned_real(values)) ? values : R_NilValue);
+    SEXP record = PROTECT(owned_real(leaf) ? R_altrep_data1(leaf) : R_NilValue);
+    SEXP backing = PROTECT(owned_real(leaf) ? owned_values(leaf) : leaf);
     numeric_reader reader = numeric_reader_create(
         values, value_plan->value_count
     );
+    /* Only known native contiguous REAL allocations enter the block loop.
+       The exact rooted record must still own the reader's saved allocation. */
+    int contiguous = temporal == 0 && rows->value == R_NilValue &&
+        value_plan->mode == REFERENCE_VALUES_SELECTED &&
+        reader.type == REALSXP && reader.storage == NULL &&
+        reader.real_values != NULL && backing != R_NilValue &&
+        TYPEOF(backing) == REALSXP && !ALTREP(backing) &&
+        XLENGTH(backing) == value_plan->value_count &&
+        reader.real_values == (const double *) DATAPTR_OR_NULL(backing) &&
+        (record == R_NilValue ||
+         (R_ExternalPtrProtected(record) == backing &&
+          R_ExternalPtrAddr(record) == reader.real_values));
     PROTECT(numeric_payload_root(values));
     numeric_data encoding;
     if (reader.storage != NULL) { encoding = *reader.storage; reader.storage = &encoding; }
@@ -1946,6 +1967,36 @@ static SEXP generate_double_numeric(
                 output[reference_patch_row(rows, index)] = value;
             }
         }
+    } else if (contiguous) {
+        for (R_xlen_t start = 0; start < value_plan->count; ) {
+            R_CheckUserInterrupt();
+            R_xlen_t end = value_plan->count - start > 16384
+                ? start + 16384 : value_plan->count;
+            int valid_block = 1;
+            for (R_xlen_t index = start; index < end; index++) {
+                double value = reader.real_values[index];
+#if defined(__APPLE__) && defined(__aarch64__) && defined(__SIZEOF_DOUBLE__) && \
+    __SIZEOF_DOUBLE__ == 8 && FLT_RADIX == 2 && DBL_MANT_DIG == 53 && \
+    DBL_MAX_EXP == 1024 && UINT64_MAX == UINT64_C(0xffffffffffffffff)
+                uint64_t bits;
+                memcpy(&bits, &value, sizeof(bits));
+                int valid = (bits & UINT64_C(0x7fffffffffffffff)) <=
+                    UINT64_C(0x7fdfffffffffffff);
+#else
+                int valid = isfinite(value) && fabs(value) <= DBL_MAX / 2;
+#endif
+                valid_block &= valid;
+                output[index] = value;
+            }
+            if (!valid_block) {
+                /* No R callback occurs inside a direct-pointer block. Replay
+                   only its private decoding, preserving the first invalid
+                   condition and canonical/tagged missing normalization. */
+                for (R_xlen_t index = start; index < end; index++)
+                    output[index] = generated_double_value(&reader, index, 0);
+            }
+            start = end;
+        }
     } else {
         for (R_xlen_t index = 0; index < value_plan->count; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -1959,7 +2010,7 @@ static SEXP generate_double_numeric(
             );
         }
     }
-    UNPROTECT(2);
+    UNPROTECT(5);
     return result;
 }
 

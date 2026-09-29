@@ -87,9 +87,10 @@ numeric_data *numeric_read_storage(SEXP value) {
 numeric_data *numeric_storage(SEXP value) {
     numeric_data *data = numeric_read_storage(value);
     if (numeric_payload_retained(data)) {
-        SEXP detached = PROTECT(numeric_compact_copy(data));
-        owned_numeric_compatibility_bytes +=
+        double compatibility_bytes =
             (double) data->length * (double) numeric_kind_width(data->kind);
+        SEXP detached = PROTECT(numeric_compact_copy(data));
+        owned_numeric_compatibility_bytes += compatibility_bytes;
         R_set_altrep_data1(value, R_altrep_data1(detached));
         data = numeric_read_storage(value);
         UNPROTECT(1);
@@ -1693,6 +1694,9 @@ SEXP numeric_from_backing(
     SEXP backing, size_t length, int kind, int temporal,
     int format_version, size_t missing_count
 ) {
+    /* backing may be rooted only by a public handle whose finalizer or
+       materialization clears that root during external-pointer allocation. */
+    PROTECT(backing);
     SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
     R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
     void *data = dtatools_numeric_alloc(
@@ -1710,7 +1714,7 @@ SEXP numeric_from_backing(
     SEXP result = PROTECT(R_new_altrep(
         dtatools_numeric_class, external, R_NilValue
     ));
-    UNPROTECT(2);
+    UNPROTECT(3);
     return result;
 }
 
@@ -1732,20 +1736,51 @@ SEXP numeric_compact_copy(const numeric_data *data) {
     return result;
 }
 
+typedef struct {
+    const numeric_data *entry;
+    SEXP roots;
+    void *copy;
+} numeric_capture_context;
+
+static void numeric_capture_cleanup(void *raw) {
+    numeric_capture_context *context = (numeric_capture_context *) raw;
+    if (context->copy != NULL) {
+        dtatools_numeric_free(context->copy);
+        context->copy = NULL;
+    }
+}
+
+static SEXP numeric_capture_body(void *raw) {
+    numeric_capture_context *context = (numeric_capture_context *) raw;
+    /* Rust clones scalar metadata and retains the immutable owner. It calls
+       no R API. Do not dereference the public descriptor after this call. */
+    context->copy = dtatools_owned_numeric_clone(context->entry);
+    context->entry = NULL;
+    if (context->copy == NULL) Rf_error("could not retain an owned numeric column");
+    SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, R_NilValue));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    /* Registered finalizer takes ownership in one allocation-free segment. */
+    R_SetExternalPtrProtected(external, context->roots);
+    R_SetExternalPtrAddr(external, context->copy);
+    context->copy = NULL;
+    SEXP result = PROTECT(R_new_altrep(dtatools_numeric_class, external, R_NilValue));
+    UNPROTECT(2);
+    return result;
+}
+
 /* Share only immutable bytes. Every returned vector has its own descriptor,
-   external pointer and materialization state, plus the original R roots. */
+   external pointer and materialization state, plus the entry R roots. */
 SEXP numeric_handle_copy(SEXP source) {
     numeric_data *data = numeric_read_storage(source);
     if (!numeric_payload_retained(data)) return numeric_compact_copy(data);
-    SEXP external = PROTECT(R_MakeExternalPtr(
-        NULL, R_NilValue, R_ExternalPtrProtected(R_altrep_data1(source))
-    ));
-    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
-    void *copy = dtatools_owned_numeric_clone(data);
-    if (copy == NULL) Rf_error("could not retain an owned numeric column");
-    R_SetExternalPtrAddr(external, copy);
-    SEXP result = PROTECT(R_new_altrep(dtatools_numeric_class, external, R_NilValue));
-    UNPROTECT(2);
+    PROTECT(source);
+    SEXP entry_external = PROTECT(R_altrep_data1(source));
+    SEXP entry_roots = PROTECT(R_ExternalPtrProtected(entry_external));
+    numeric_capture_context context = {data, entry_roots, NULL};
+    SEXP result = R_ExecWithCleanup(
+        numeric_capture_body, &context, numeric_capture_cleanup, &context
+    );
+    UNPROTECT(3);
     return result;
 }
 

@@ -567,3 +567,53 @@ test_that("owned extrema preserve signed zero and missing payload order across r
         }
     }
 })
+
+# These stress normal allocation paths, not an exact private detachment window.
+with_numeric_gc_stress <- function(code) {
+    previous <- gctorture2(1L)
+    on.exit(gctorture2(previous), add = TRUE)
+    force(code)
+}
+
+test_that("retained captures and mutation views survive allocation GC", {
+    expected <- c(1, NA_real_, 3, 4)
+    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
+        source <- freeze_numeric(constructor(expected), 2)
+        expected_attributes <- attributes(source)
+        captured <- with_numeric_gc_stress(.Call(C_dtatools_metadata_copy, source))
+        nested <- with_numeric_gc_stress(.Call(C_dtatools_metadata_copy, captured))
+        data <- list(x = source)
+        views <- with_numeric_gc_stress(.Call(C_dtatools_mutation_views, data))
+        single <- with_numeric_gc_stress(.Call(C_dtatools_mutation_column_view, data, 1L))
+        expect_identical(.Call(C_dtatools_mutation_column_current, data, 1L, single), TRUE)
+        expect_identical(attr(views, ".dtatools_mutation_sizes"), 4)
+        expect_identical(attr(single, ".dtatools_mutation_sizes"), 4)
+
+        .Call(C_dtatools_mutate_first_numeric_altrep, source, 8)
+        gc()
+        expect_identical(as.double(source), c(8, NA_real_, 3, 4))
+        for (value in list(captured, nested, views[[1L]], single[[1L]])) {
+            expect_identical(as.double(value), expected)
+            expect_identical(attributes(value), expected_attributes)
+        }
+        data[[1L]] <- constructor(c(9, NA_real_, 3, 4))
+        expect_identical(.Call(C_dtatools_mutation_column_current, data, 1L, single), FALSE)
+        expect_identical(as.double(single[[1L]]), expected)
+    }
+})
+
+test_that("public copying and replacement preserve retained aliases under GC", {
+    expected <- c(1, NA_real_, 3, 4)
+    data <- dibble(x = freeze_numeric(dta_int(expected), 2))
+    saved <- with_numeric_gc_stress(copy_data(data))
+    captured <- data$x
+    with_numeric_gc_stress(replace_values(data, x = 9, where = c(1L, 3L)))
+    gc()
+    expect_identical(as.double(data$x), c(9, NA_real_, 9, 4))
+    expect_identical(as.double(saved$x), expected)
+    expect_identical(as.double(captured), expected)
+    expect_identical(names(data), "x")
+    expect_identical(names(saved), "x")
+    expect_identical(attributes(saved$x), attributes(captured))
+    expect_identical(dta_storage_type(data$x), "int")
+})

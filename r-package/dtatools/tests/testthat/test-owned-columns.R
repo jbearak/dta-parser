@@ -323,6 +323,49 @@ test_that("native promotion fits preserve ranges, precision and selected values"
                      structure(c(1, 2), class = "unfamiliar_number"), NULL, FALSE, 0L))
 })
 
+test_that("double promotion scans retain finite limits and exceptional values", {
+    fits <- function(value) .Call(C_dtatools_replacement_fits, value, NULL, FALSE, 4L)
+    capture <- function(value) .Call(C_dtatools_capture_column, value)
+    bits <- function(value) writeBin(as.double(value), raw(), size = 8L, endian = "little")
+    limit <- .Machine$double.xmax / 2
+    finite <- c(-limit, limit, -0, 0, .Machine$double.xmin * .Machine$double.eps)
+    for (size in c(0L, 1L, 16383L, 16384L, 16385L, 32769L)) {
+        value <- rep(finite, length.out = size)
+        expect_true(fits(value))
+        expect_true(fits(capture(value)))
+    }
+    invalid_tag <- readBin(as.raw(c(0xa2, 0x07, 0, 0, 0x41, 0, 0xf0, 0x7f)),
+                           "double", n = 1L, endian = "little")
+    exceptions <- c(NA_real_, tagged_missing(letters), Inf, -Inf, NaN,
+                    invalid_tag, limit * (1 + .Machine$double.eps),
+                    -limit * (1 + .Machine$double.eps))
+    expected <- c(rep(TRUE, 27L), rep(FALSE, 6L))
+    for (index in seq_along(exceptions)) for (position in c(1L, 16384L, 16385L, 32769L)) {
+        value <- rep(1, 32769L)
+        value[[position]] <- exceptions[[index]]
+        before <- bits(value)
+        for (input in list(value, capture(value))) {
+            expect_identical(fits(input), expected[[index]])
+            expect_identical(bits(input), before)
+        }
+    }
+})
+
+test_that("double promotion preserves attributes and foreign reader callbacks", {
+    value <- structure(c(1, NA_real_, 2), names = c("first", "missing", "last"),
+                       label = "replacement values")
+    owned <- .Call(C_dtatools_capture_column, value)
+    before <- attributes(owned)
+    expect_true(.Call(C_dtatools_replacement_fits, owned, NULL, FALSE, 4L))
+    expect_identical(attributes(owned), before)
+    expect_identical(as.double(owned), as.double(value))
+    calls <- 0L
+    foreign <- .Call(C_dtatools_callback_double, c(1, NA_real_, 2),
+                     function() calls <<- calls + 1L, TRUE)
+    expect_true(.Call(C_dtatools_replacement_fits, foreign, NULL, FALSE, 4L))
+    expect_identical(calls, 1L)
+})
+
 test_that("grouped proxy callbacks retain isolated Date inputs", {
     data <- dibble(x = 1:4, g = c(1L, 1L, 2L, 2L))
     # Install a plain Date column: dibble() would otherwise type it as dta_date.
@@ -950,4 +993,304 @@ test_that("a sparse write into a dictionary-backed Stata string allocates only i
     # that size besides it: the empty cast prototype must not copy the column.
     expect_lt(sum(bytes), rows * 8 * 1.1)
     expect_identical(as.character(target$text[c(1L, rows)]), c("value-000001", "changed"))
+})
+
+owned_stage_bits <- function(value) {
+    # Preserve input exposure/ownership while inspecting exact bytes. The
+    # snapshot retains attributes, so strip them only on the independent copy.
+    snapshot <- .Call(C_dtatools_owned_plain_snapshot, value)
+    writeBin(as.double(if (is.null(snapshot)) value else snapshot),
+             raw(), size = 8L, endian = "little")
+}
+
+owned_stage_missing <- function(tag = 0L, negative = FALSE, quiet = FALSE) {
+    # Independent IEEE-754 oracle: do not call the package missing decoder.
+    readBin(as.raw(c(0xa2, 0x07, 0, 0, tag, 0,
+                    if (quiet) 0xf8 else 0xf0, if (negative) 0xff else 0x7f)),
+            "double", n = 1L, endian = "little")
+}
+
+test_that("numeric slot staging commits finite boundary bytes", {
+    limit <- .Machine$double.xmax / 2
+    positions <- c(1L, 16384L, 16385L, 32768L, 32769L)
+    sentinels <- c(-limit, limit, -0, .Machine$double.xmin * .Machine$double.eps, 0)
+    for (size in c(0L, 1L, 16384L, 16385L, 32769L)) {
+        values <- rep(2, size)
+        present <- positions <= size
+        values[positions[present]] <- sentinels[present]
+        expected <- owned_stage_bits(values)
+        for (owned in c(FALSE, TRUE)) {
+            input <- if (owned) .Call(C_dtatools_capture_column, values) else values
+            attr(input, "label") <- "replacement label"
+            input_attributes <- attributes(input)
+            data <- dibble(x = dta_double(rep(11, size)))
+            attr(data$x, "label") <- "target label"
+            column_attributes <- attributes(data$x)
+            table_attributes <- attributes(data)
+            before <- .metadata_copy(data$x)
+            .Call(C_dtatools_native_copy_stats, TRUE)
+            result <- .Call(C_dtatools_patch_slot, data, 1L, NULL, input, FALSE)
+            stats <- .Call(C_dtatools_native_copy_stats, FALSE)
+            expect_identical(result, data)
+            expect_identical(stats[["staged_new"]], 8 * as.double(size))
+            expect_identical(owned_stage_bits(data$x), expected)
+            expect_identical(owned_stage_bits(input), expected)
+            expect_identical(owned_stage_bits(before), owned_stage_bits(rep(11, size)))
+            expect_identical(attributes(input), input_attributes)
+            expect_identical(attributes(data$x), column_attributes)
+            expect_identical(attributes(before), column_attributes)
+            expect_identical(attributes(data), table_attributes)
+        }
+    }
+})
+
+test_that("numeric slot staging canonicalizes missing bytes and isolates metadata", {
+    size <- 32769L
+    positions <- c(1L, 2L, 16384L, 16385L, 32768L, 32769L)
+    values <- rep(2, size)
+    values[positions] <- c(NA_real_, owned_stage_missing(97L),
+        owned_stage_missing(97L, negative = TRUE), owned_stage_missing(122L, quiet = TRUE),
+        owned_stage_missing(97L, negative = TRUE, quiet = TRUE),
+        owned_stage_missing(122L, negative = TRUE, quiet = TRUE))
+    expected <- rep(2, size)
+    expected[positions] <- c(owned_stage_missing(), owned_stage_missing(97L),
+        owned_stage_missing(97L), owned_stage_missing(122L),
+        owned_stage_missing(97L), owned_stage_missing(122L))
+    for (owned in c(FALSE, TRUE)) {
+        input <- if (owned) .Call(C_dtatools_capture_column, values) else values
+        attr(input, "label") <- "replacement metadata"
+        names(input) <- rep("replacement name", size)
+        source_bytes <- owned_stage_bits(input)
+        source_attributes <- attributes(input)
+        data <- dibble(x = dta_double(rep(11, size)))
+        attr(data$x, "label") <- "target metadata"
+        attributes_before <- attributes(data$x)
+        old_column <- .metadata_copy(data$x)
+        .Call(C_dtatools_native_copy_stats, TRUE)
+        result <- .Call(C_dtatools_patch_slot, data, 1L, NULL, input, FALSE)
+        stats <- .Call(C_dtatools_native_copy_stats, FALSE)
+        expect_identical(result, data)
+        expect_identical(stats[["staged_new"]], 8 * as.double(size))
+        expect_identical(owned_stage_bits(data$x), owned_stage_bits(expected))
+        expect_identical(owned_stage_bits(input), source_bytes)
+        expect_identical(attributes(input), source_attributes)
+        expect_identical(attributes(data$x), attributes_before)
+        expect_identical(attributes(old_column), attributes_before)
+        expect_identical(as.double(old_column), rep(11, size))
+        # Later destination and source writes must remain independent.
+        .Call(C_dtatools_patch_slot, data, 1L, 3L, 99, FALSE)
+        expect_identical(owned_stage_bits(input), source_bytes)
+        output_bytes <- owned_stage_bits(data$x)
+        if (owned) {
+            pointer <- .Call(C_dtatools_owned_pointer, input, TRUE)
+            .Call(C_dtatools_owned_pointer_write, pointer, 3L, 77)
+        } else input[[3L]] <- 77
+        expect_identical(owned_stage_bits(data$x), output_bytes)
+        expect_identical(as.double(old_column), rep(11, size))
+    }
+})
+
+test_that("numeric slot staging preserves validation priority and failed targets", {
+    limit <- .Machine$double.xmax / 2
+    outside <- limit * (1 + .Machine$double.eps)
+    missing_error <- "`values` cannot contain `NaN` or infinities; use `NA_real_` for Stata system missing"
+    range_error <- "No Stata numeric storage can represent `x`"
+    cases <- list(
+        positive_range = list(positions = 16384L, values = outside, error = range_error),
+        negative_range = list(positions = 16385L, values = -outside, error = range_error),
+        missing_then_range = list(positions = c(16384L, 16385L),
+            values = c(NaN, outside), error = missing_error),
+        range_then_invalid_tag = list(positions = c(16384L, 16385L),
+            values = c(outside, owned_stage_missing(65L)), error = missing_error),
+        infinities = list(positions = c(1L, 32769L),
+            values = c(Inf, -Inf), error = missing_error)
+    )
+    for (case in cases) for (owned in c(FALSE, TRUE)) {
+        values <- rep(2, 32769L)
+        values[case$positions] <- case$values
+        input <- if (owned) .Call(C_dtatools_capture_column, values) else values
+        attr(input, "label") <- "invalid replacement"
+        source_bytes <- owned_stage_bits(input)
+        source_attributes <- attributes(input)
+        data <- dibble(x = dta_double(rep(11, 32769L)))
+        attr(data$x, "label") <- "unchanged target"
+        column_attributes <- attributes(data$x)
+        table_attributes <- attributes(data)
+        .Call(C_dtatools_native_copy_stats, TRUE)
+        error <- tryCatch(.Call(C_dtatools_patch_slot, data, 1L, NULL, input, FALSE),
+                          error = identity)
+        stats <- .Call(C_dtatools_native_copy_stats, FALSE)
+        expect_s3_class(error, "error")
+        expect_identical(if (inherits(error, "error")) conditionMessage(error) else NULL,
+                         case$error)
+        # staged_new records completed staging bytes, not attempted allocation.
+        expect_identical(stats[["staged_new"]], 0)
+        expect_identical(owned_stage_bits(data$x), owned_stage_bits(rep(11, 32769L)))
+        expect_identical(owned_stage_bits(input), source_bytes)
+        expect_identical(attributes(input), source_attributes)
+        expect_identical(attributes(data$x), column_attributes)
+        expect_identical(attributes(data), table_attributes)
+        expect_identical(.Call(C_dtatools_patch_slot, data, 1L, NULL, rep(3, 32769L), FALSE), data)
+        expect_identical(as.double(data$x), rep(3, 32769L))
+    }
+})
+
+test_that("numeric slot staging retains scalar selected and foreign readers", {
+    check <- function(values, expected, rows = NULL, staged_bytes) {
+        force(values); force(expected); force(rows); force(staged_bytes)
+        data <- dibble(x = dta_double(rep(11, length(expected))))
+        attributes_before <- attributes(data$x)
+        .Call(C_dtatools_native_copy_stats, TRUE)
+        result <- .Call(C_dtatools_patch_slot, data, 1L, rows, values, FALSE)
+        stats <- .Call(C_dtatools_native_copy_stats, FALSE)
+        expect_identical(result, data)
+        expect_identical(stats[["staged_new"]], staged_bytes)
+        expect_identical(owned_stage_bits(data$x), owned_stage_bits(expected))
+        expect_identical(attributes(data$x), attributes_before)
+    }
+    # Scalar staging writes one double before commit recycles it over the target.
+    check(.Call(C_dtatools_capture_column, 7), rep(7, 32769L), staged_bytes = 8)
+    check(.Call(C_dtatools_capture_column, c(2, 3, 4)), c(11, 4, 11, 11, 2),
+          rows = c(5L, 2L, 2L), staged_bytes = 24)
+    check(.Call(C_dtatools_capture_column, c(2, 3, 4, 5, 6)), c(11, 3, 11, 11, 6),
+          rows = c(5L, 2L, 2L), staged_bytes = 24)
+    check(c(1L, NA_integer_, 3L), c(1, NA_real_, 3), staged_bytes = 24)
+    check(c(TRUE, NA, FALSE), c(1, NA_real_, 0), staged_bytes = 24)
+    data <- dibble(x = dta_double(c(11, 11, 11)))
+    attributes_before <- attributes(data$x)
+    calls <- 0L
+    before_commit <- NULL
+    foreign <- .Call(C_dtatools_callback_double, c(2, NA_real_, 4), function() {
+        calls <<- calls + 1L
+        before_commit <<- owned_stage_bits(data$x)
+    }, TRUE)
+    .Call(C_dtatools_native_copy_stats, TRUE)
+    result <- .Call(C_dtatools_patch_slot, data, 1L, NULL, foreign, FALSE)
+    stats <- .Call(C_dtatools_native_copy_stats, FALSE)
+    expect_identical(result, data)
+    expect_identical(stats[["staged_new"]], 24)
+    expect_identical(calls, 1L)
+    expect_identical(before_commit, owned_stage_bits(c(11, 11, 11)))
+    expect_identical(owned_stage_bits(data$x), owned_stage_bits(c(2, NA_real_, 4)))
+    expect_identical(attributes(data$x), attributes_before)
+})
+
+test_that("numeric slot staging retains temporal encoded range checks", {
+    data <- dibble(x = as.POSIXct(c(1, 2, 3), origin = "1970-01-01", tz = "UTC"))
+    expect_true(.Call(C_dtatools_is_owned_double, .subset2(data, 1L)))
+    before <- owned_stage_bits(data$x)
+    attributes_before <- attributes(data$x)
+    input <- .Call(C_dtatools_capture_column, c(.Machine$double.xmax / 2, 1, 2))
+    input_before <- owned_stage_bits(input)
+    .Call(C_dtatools_native_copy_stats, TRUE)
+    error <- tryCatch(.Call(C_dtatools_patch_slot, data, 1L, NULL, input, FALSE),
+                      error = identity)
+    stats <- .Call(C_dtatools_native_copy_stats, FALSE)
+    expect_s3_class(error, "error")
+    expect_identical(if (inherits(error, "error")) conditionMessage(error) else NULL,
+                     "No Stata numeric storage can represent `x`")
+    expect_identical(stats[["staged_new"]], 0)
+    expect_identical(owned_stage_bits(data$x), before)
+    expect_identical(owned_stage_bits(input), input_before)
+    expect_identical(attributes(data$x), attributes_before)
+})
+
+test_that("generated doubles preserve boundary bytes and independent payloads", {
+    generated_attributes <- attributes(dta_double(double()))
+    generate <- function(values) {
+        .Call(C_dtatools_generate_numeric, values, NULL,
+              as.double(length(values)), 4L, 0L, generated_attributes)
+    }
+    sources <- list(
+        plain = identity,
+        owned = function(values) .Call(C_dtatools_capture_column, values),
+        wrapper = function(values) {
+            vctrs::vec_data(.Call(C_dtatools_capture_column, values))
+        }
+    )
+    positions <- c(1L, 16384L, 16385L, 32768L, 32769L)
+    limit <- .Machine$double.xmax / 2
+    sentinels <- c(-limit, limit, -0,
+                   .Machine$double.xmin * .Machine$double.eps, 0)
+    for (size in c(0L, 1L, 16384L, 16385L, 32769L)) {
+        values <- rep(2, size)
+        present <- positions <= size
+        values[positions[present]] <- sentinels[present]
+        for (make_source in sources) {
+            source <- make_source(values)
+            source_attributes <- attributes(source)
+            before <- owned_stage_bits(source)
+            result <- generate(source)
+            expect_identical(owned_stage_bits(result), before)
+            expect_identical(attributes(result), generated_attributes)
+            expect_identical(owned_stage_bits(source), before)
+            expect_identical(attributes(source), source_attributes)
+            if (size > 0L) {
+                data <- dibble(x = result)
+                repl(data, x = 99, where = 1L)
+                expect_identical(as.double(data$x)[1L], 99)
+                expect_identical(owned_stage_bits(result), before)
+                expect_identical(owned_stage_bits(source), before)
+            }
+        }
+    }
+
+    values <- rep(2, 32769L)
+    tags <- utf8ToInt(paste(letters, collapse = ""))
+    values[seq_along(tags)] <- vapply(seq_along(tags), function(index) {
+        owned_stage_missing(tags[index], negative = index %% 2L == 0L,
+                            quiet = index %% 3L == 0L)
+    }, numeric(1L))
+    values[positions] <- c(NA_real_, owned_stage_missing(97L, negative = TRUE),
+        owned_stage_missing(122L, quiet = TRUE),
+        owned_stage_missing(97L, negative = TRUE, quiet = TRUE), NA_real_)
+    expected <- rep(2, length(values))
+    expected[seq_along(tags)] <- vapply(tags, owned_stage_missing, numeric(1L))
+    expected[positions] <- c(NA_real_, owned_stage_missing(97L),
+        owned_stage_missing(122L), owned_stage_missing(97L), NA_real_)
+    for (make_source in sources) {
+        source <- make_source(values)
+        before <- owned_stage_bits(source)
+        result <- generate(source)
+        expect_identical(owned_stage_bits(result), owned_stage_bits(expected))
+        expect_identical(attributes(result), generated_attributes)
+        expect_identical(owned_stage_bits(source), before)
+    }
+})
+
+test_that("generated doubles report the first invalid value across block boundaries", {
+    generated_attributes <- attributes(dta_double(double()))
+    sources <- list(
+        plain = identity,
+        owned = function(values) .Call(C_dtatools_capture_column, values),
+        wrapper = function(values) {
+            vctrs::vec_data(.Call(C_dtatools_capture_column, values))
+        }
+    )
+    outside <- (.Machine$double.xmax / 2) * (1 + .Machine$double.eps)
+    unsupported <- owned_stage_missing(65L)
+    for (position in c(1L, 16384L, 16385L, 32768L)) {
+        for (range_first in c(FALSE, TRUE)) {
+            values <- rep(2, 32769L)
+            values[c(position, position + 1L)] <- if (range_first) {
+                c(outside, unsupported)
+            } else c(unsupported, outside)
+            message <- if (range_first) {
+                "No Stata double storage can represent the generated value"
+            } else "generated values cannot contain `NaN` or unsupported missing tags"
+            for (make_source in sources) {
+                source <- make_source(values)
+                before <- owned_stage_bits(source)
+                source_attributes <- attributes(source)
+                error <- tryCatch(.Call(C_dtatools_generate_numeric,
+                    source, NULL, as.double(length(source)), 4L, 0L, generated_attributes),
+                    error = identity)
+                expect_s3_class(error, "error")
+                expect_identical(if (inherits(error, "error")) conditionMessage(error) else NULL,
+                                 message)
+                expect_identical(owned_stage_bits(source), before)
+                expect_identical(attributes(source), source_attributes)
+            }
+        }
+    }
 })

@@ -34,12 +34,21 @@ SEXP C_dtatools_replacement_fits(SEXP values, SEXP rows, SEXP row_mode, SEXP kin
     float float_maximum;
     memcpy(&float_maximum, &float_maximum_bits, sizeof(float_maximum));
     int fits = 1;
+    int finite_double = rows == R_NilValue && kind == NUMERIC_DOUBLE &&
+        type == REALSXP && (!ALTREP(values) || owned_real(values)) &&
+        reader.storage == NULL && reader.real_values != NULL;
     for (R_xlen_t i = 0; i < count; i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t from = by_row ? reference_patch_row(&indices, i) : i;
         /* A foreign value reader may change a later live row after initial
            validation. Recheck each consumed offset before reading values. */
         if (from >= length) Rf_error("invalid reference mutation row");
+        /* Keep the entry reader and all polls. Values outside this finite
+           range retain the original missing-value and storage checks. */
+        if (finite_double) {
+            double value = reader.real_values[from];
+            if (value >= -DBL_MAX / 2.0 && value <= DBL_MAX / 2.0) continue;
+        }
         int missing;
         double value = numeric_reader_at(&reader, from, &missing);
         if (missing >= 0) {
@@ -159,6 +168,11 @@ static void stage_numeric_slot(numeric_slot_transaction *transaction) {
     if (transaction->staged == NULL) Rf_error("could not stage reference replacement values");
     if (transaction->staged != transaction->inline_value)
         native_scratch_allocated += (double) transaction->staged_size;
+    /* Keep the exact owned entry allocation alive if a returning callback
+       detaches the replacement handle. This lookup does not copy or expose it. */
+    PROTECT((transaction->is_compact || transaction->is_materialized || transaction->stata_double) &&
+        owned_column(transaction->replacement)
+        ? numeric_payload_root(transaction->replacement) : R_NilValue);
     numeric_reader reader;
     memset(&reader, 0, sizeof(reader));
     if (transaction->is_compact || transaction->is_materialized || transaction->stata_double) {
@@ -167,12 +181,25 @@ static void stage_numeric_slot(numeric_slot_transaction *transaction) {
     if (transaction->is_materialized) {
         validate_materialized_numeric_replacement(&transaction->encoding, &reader, &rows, values);
     }
+    int finite_double = transaction->rows == R_NilValue && !transaction->scalar &&
+        transaction->stata_double && !transaction->is_compact && !transaction->is_materialized &&
+        transaction->encoding.temporal == 0 && transaction->width == sizeof(double) &&
+        TYPEOF(transaction->replacement) == REALSXP &&
+        (!ALTREP(transaction->replacement) || owned_real(transaction->replacement)) &&
+        reader.storage == NULL && reader.real_values != NULL;
     int invalid_missing = 0, invalid_range = 0;
     for (R_xlen_t i = 0; i < staged_count; i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t row = transaction->positions == NULL || transaction->scalar
             ? i : transaction->positions[i];
         R_xlen_t from = reference_value_index(&values, i, row);
+        if (finite_double) {
+            double value = reader.real_values[from];
+            if (value >= -DBL_MAX / 2.0 && value <= DBL_MAX / 2.0) {
+                memcpy(transaction->staged + (size_t) i * sizeof(double), &value, sizeof(double));
+                continue;
+            }
+        }
         if (transaction->is_compact) {
             int missing;
             double value = numeric_reader_at(&reader, from, &missing);
@@ -210,7 +237,7 @@ static void stage_numeric_slot(numeric_slot_transaction *transaction) {
     if (invalid_range) Rf_error("No Stata numeric storage can represent `x`");
     staged_new_bytes += (double) transaction->staged_size;
     if (transaction->scalar && transaction->new_missing) transaction->new_missing = transaction->count;
-    UNPROTECT(1);
+    UNPROTECT(2);
 }
 
 /* These routines receive only plain backing and staged C buffers. There are

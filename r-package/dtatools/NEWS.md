@@ -1,5 +1,16 @@
 # dtatools (development version)
 
+* Retained numeric captures now clone their immutable owner before allocating
+  R objects and release it correctly if construction is interrupted. Numeric
+  and metadata views retain their entry backing and selected columns across
+  allocation callbacks. Capture detects a table that grows beyond its saved
+  size buffer.
+* Whole-column double replacement skips general decoding for finite values,
+  while preserving missing tags, range errors and interrupt checks. Double
+  generation copies ordinary and package-owned contiguous input in blocks and
+  falls back to the existing decoder for exceptional values. Unknown ALTREP
+  readers retain the ordinary path. Single-column compact gathers run without
+  starting a worker thread.
 * New `set_dta_values(data, variable, value, rows = NULL, create = FALSE)`
   is the loop-friendly assigner, `data.table::set()` for a dibble: the
   column as a name or position in an ordinary R value, `rows` and
