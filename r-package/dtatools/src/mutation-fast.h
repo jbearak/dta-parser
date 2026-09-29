@@ -59,7 +59,8 @@ static SEXP mutation_patch_scalar(SEXP data, SEXP variable, SEXP rows,
     else if (rows == R_NilValue && !ALTREP(target) &&
              owned_real_supported(target) && Rf_inherits(target, "dta_double") &&
              TYPEOF(value) == REALSXP && R_FINITE(REAL(value)[0]) &&
-             REAL(value)[0] >= -DBL_MAX / 2.0 && REAL(value)[0] <= DBL_MAX / 2.0)
+             REAL(value)[0] >= -DBL_MAX / 2.0 && REAL(value)[0] <= DBL_MAX / 2.0 &&
+             dtatools_probe_plain_public_guard())
         kind = NUMERIC_DOUBLE;
     else return R_NilValue;
     if (promote) {

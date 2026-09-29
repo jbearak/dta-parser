@@ -6822,6 +6822,10 @@
         {
           "path": "tests/testthat/test-grouped-gen-native-admission.R",
           "sha256": "99255435432de372db08b9b90319bc6a84e7c5c1e315db0e90a9e54e89117434"
+        },
+        {
+          "path": "tests/testthat/test-plain-native-admission.R",
+          "sha256": "683d87f666b1264f8edef1a227238e10bafca1e7fd415a7e7c93d708ac92c47b"
         }
       ],
       "blocks": [
@@ -8753,6 +8757,82 @@
           "skip": "forbid",
           "min_pass": 1,
           "warnings": 0
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "plain double generation uses the guarded native route",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "plain double mutate preserves frozen columns on its native route",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "plain replacement and bracket operations use native admission",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "plain native operations retain ordinary values metadata and aliases",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "plain native mutate freezes each source at its ordered copy",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "plain whole-column scalar replacement avoids general resolution",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "plain native admission preserves traced public arithmetic",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "plain bracket generation retains the RHS across source writes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
         }
       ],
       "children": [
@@ -8870,6 +8950,62 @@
         },
         {
           "id": "bracket-replacement-attributes",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "plain-native-generation",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "plain-native-mutate",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "plain-native-reference-operations",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "plain-native-semantics",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "plain-native-fork-writes",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "plain-native-public-traces",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "plain-native-pending-rhs",
           "kind": "r",
           "minimum": 1,
           "maximum": 1,

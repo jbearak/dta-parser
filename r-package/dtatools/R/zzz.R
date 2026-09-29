@@ -236,6 +236,7 @@
     .probe_gen_extra_init()
     .probe_bracket_public_init()
     .probe_grouped_gen_init()
+    .plain_public_init(libname, pkgname)
     .metadata_state$dependencies <- if (
         identical(as.character(getRversion()), "4.6.1") &&
         identical(as.character(R.version[["svn rev"]]), "90187") &&

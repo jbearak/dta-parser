@@ -237,8 +237,101 @@ test_that("plain whole-column scalar replacement avoids general resolution", {
     alias <- d$x
     old_attributes <- attributes(alias)
     result <- .Call(C_dtatools_patch_scalar, d, "x", NULL, 3.0, TRUE)
-    expect_identical(result, d)
+    if (.dtatools_public_mutation_build_expected()) expect_identical(result, d) else {
+        expect_null(result)
+        dtatools::replace_values(d, x = 3.0)
+    }
     expect_identical(as.double(d$x), rep(3, 41L))
     expect_identical(as.double(alias), rep(2, 41L))
     expect_identical(attributes(d$x), old_attributes)
+})
+
+test_that("plain native admission preserves traced public arithmetic", {
+    skip_if_not_installed("dplyr")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("plain-native-public-traces", function() {
+        library(dtatools)
+        library(dplyr)
+        options(dtatools.generate_type = "double")
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        events <- new.env(parent = emptyenv())
+        events$hits <- 0L
+        run <- function(enabled, expression) {
+            cc("C_dtatools_probe_direct_final_mode", enabled)
+            cc("C_dtatools_probe_unique_repl_mode", as.integer(enabled))
+            cc("C_dtatools_probe_mutate_mode", enabled)
+            profile <- dtatools:::.probe_bracket_public_state
+            saved <- profile$snapshots
+            if (!enabled) profile$snapshots <- NULL
+            on.exit(profile$snapshots <- saved)
+            d <- as_dibble(tibble::tibble(x = rep(2, 41L), spare = rep(7, 41L)))
+            for (i in seq_along(d)) cc("C_dtatools_set_data_column", d, as.integer(i),
+                cc("C_dtatools_owned_plain_snapshot", .subset2(d, i)))
+            events$hits <- 0L
+            value <- eval(expression)
+            hits <- events$hits
+            list(hits = hits, columns = lapply(value, function(column)
+                list(values = as.double(column), attributes = attributes(column))))
+        }
+        check_trace <- function(package, name) {
+            trace(name, where = asNamespace(package), print = FALSE,
+                tracer = function() events$hits <- events$hits + 1L)
+            on.exit(untrace(name, where = asNamespace(package)))
+            total <- 0L
+            for (expression in list(quote(gen(d, y = x + 2.5)),
+                quote(dtatools::replace_values(d, x = x + 2.5)),
+                quote(dtatools::replace_values(d, x = abs(-3))),
+                quote(dtatools::replace_values(d, x = 3)),
+                quote(d[, x := x + 2.5]), quote(d[, y := x + 2.5]),
+                quote(mutate(d, y = x + 2.5)))) {
+                native <- run(TRUE, expression)
+                ordinary <- run(FALSE, expression)
+                if (!identical(native, ordinary)) stop(paste(name, deparse1(expression),
+                    "native hits", native$hits, "ordinary hits", ordinary$hits,
+                    paste(all.equal(native, ordinary), collapse = "; ")))
+                total <- total + native$hits
+            }
+            stopifnot(total > 0L)
+        }
+        for (name in c("vec_arith", "vec_cast", "vec_math")) check_trace("vctrs", name)
+        check_trace("rlang", "as_label")
+        TRUE
+    }, libpath = .libPaths())
+    expect_true(observed)
+})
+
+test_that("plain bracket generation retains the RHS across source writes", {
+    skip_if_not_installed("data.table")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("plain-native-pending-rhs", function() {
+        library(dtatools)
+        options(dtatools.generate_type = "double")
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        run <- function(enabled, step) {
+            d <- as_dibble(tibble::tibble(x = rep(2, 41L), spare = rep(7, 41L)))
+            for (i in seq_along(d)) cc("C_dtatools_set_data_column", d, as.integer(i),
+                cc("C_dtatools_owned_plain_snapshot", .subset2(d, i)))
+            profile <- dtatools:::.probe_bracket_public_state
+            saved <- profile$snapshots
+            if (!enabled) profile$snapshots <- NULL
+            on.exit(profile$snapshots <- saved)
+            hits <- 0L
+            options(dtatools.probe_bracket_generation_hook = function() {
+                hits <<- hits + 1L
+                if (hits == step) data.table::set(d, i = 1L, j = "x", value = 42.0)
+            })
+            on.exit(options(dtatools.probe_bracket_generation_hook = NULL), add = TRUE)
+            d[, `:=`(one = x + 2.5, two = x + 2.5, three = x + 2.5,
+                     four = x + 2.5, five = x + 2.5)]
+            list(values = lapply(d, as.double), hits = hits)
+        }
+        for (step in c(1L, 2L, 5L)) {
+            native <- run(TRUE, step)
+            ordinary <- run(FALSE, step)
+            stopifnot(identical(native, ordinary), native$hits == 5L,
+                native$values$one[[1L]] == 4.5)
+        }
+        TRUE
+    }, libpath = .libPaths())
+    expect_true(observed)
 })

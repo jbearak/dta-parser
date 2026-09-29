@@ -160,7 +160,8 @@ static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
                                        R_xlen_t n, int step,
                                        R_xlen_t source_slot,
                                        double offset) {
-    if (TYPEOF(state) != ENVSXP || dtatools_probe_double_input_values(x) == R_NilValue ||
+    if (TYPEOF(state) != ENVSXP ||
+        dtatools_probe_double_input_values(x) == R_NilValue ||
         n > (R_xlen_t) SIZE_MAX / sizeof(double)) return R_NilValue;
     SEXP values = dtatools_probe_double_input_values(x);
     if (TYPEOF(values) != REALSXP || ALTREP(values) || XLENGTH(values) != n)
@@ -204,7 +205,8 @@ static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
         SEXP output = PROTECT(capture_generated_column(seed));
         int source_slot_same = VECTOR_ELT(data, source_slot) == x;
         int backing_same = dtatools_probe_double_input_values(x) == values;
-        int attrs_same = probe_canonical_source_attrs(x);
+        int attrs_same = probe_canonical_source_attrs(x) &&
+            (ALTREP(x) || dtatools_probe_plain_public_guard());
         int class_same = Rf_getAttrib(x, R_ClassSymbol) == class;
         int storage_same =
             Rf_getAttrib(x, Rf_install("stata.storage")) == storage;
@@ -227,7 +229,8 @@ static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
     }
     const double *xp = REAL(values);
     R_CheckUserInterrupt();
-    if (VECTOR_ELT(data, source_slot) != x || dtatools_probe_double_input_values(x) != values ||
+    if (VECTOR_ELT(data, source_slot) != x ||
+        dtatools_probe_double_input_values(x) != values ||
         !probe_canonical_source_attrs(x) ||
         Rf_getAttrib(x, R_ClassSymbol) != class ||
         Rf_getAttrib(x, Rf_install("stata.storage")) != storage) {
@@ -241,7 +244,8 @@ static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
         Rf_defineVar(Rf_install("pending_rhs"), seed, state);
         probe_generation_phase_hook();
         SEXP output = PROTECT(capture_generated_column(seed));
-        if (VECTOR_ELT(data, source_slot) != x ||
+        if ((!ALTREP(x) && !dtatools_probe_plain_public_guard()) ||
+            VECTOR_ELT(data, source_slot) != x ||
             dtatools_probe_double_input_values(x) != values ||
             !probe_canonical_source_attrs(x) ||
             Rf_getAttrib(x, R_ClassSymbol) != class ||
@@ -266,12 +270,15 @@ static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
     Rf_defineVar(Rf_install("pending_rhs"), new_seed, state);
     probe_generation_phase_hook();
     SEXP new_output = PROTECT(capture_generated_column(new_seed));
-    if (VECTOR_ELT(data, source_slot) != x || dtatools_probe_double_input_values(x) != values) {
+    if ((!ALTREP(x) && !dtatools_probe_plain_public_guard()) ||
+        VECTOR_ELT(data, source_slot) != x ||
+        dtatools_probe_double_input_values(x) != values) {
         UNPROTECT(7);
         return R_NilValue;
     }
     Rf_defineVar(seed_tag, new_seed, state);
-    if (VECTOR_ELT(data, source_slot) != x || dtatools_probe_double_input_values(x) != values ||
+    if (VECTOR_ELT(data, source_slot) != x ||
+        dtatools_probe_double_input_values(x) != values ||
         Rf_getAttrib(x, R_ClassSymbol) != class ||
         Rf_getAttrib(x, Rf_install("stata.storage")) != storage) {
         UNPROTECT(7);
@@ -461,6 +468,7 @@ static SEXP general_try_replace(SEXP data, SEXP assignments,
     R_xlen_t n = XLENGTH(x);
     if (!probe_typed_column(x, n, "double", "dta_double") ||
         !probe_canonical_source_attrs(x) ||
+        (!ALTREP(x) && !dtatools_probe_plain_public_guard()) ||
         dtatools_probe_double_input_values(x) == R_NilValue) {
         UNPROTECT(2); return R_NilValue;
     }
@@ -480,8 +488,9 @@ static SEXP general_try_replace(SEXP data, SEXP assignments,
     probe_general_phase_add(6, probe_general_clock_ns() - guard_start);
     if (!general_table_class(data) || XLENGTH(data) != width ||
         Rf_getAttrib(data, R_NamesSymbol) != names ||
-        !live_ok ||
-        VECTOR_ELT(data, target_slot) != x || dtatools_probe_double_input_values(x) != source ||
+        !live_ok || (!ALTREP(x) && !dtatools_probe_plain_public_guard()) ||
+        VECTOR_ELT(data, target_slot) != x ||
+        dtatools_probe_double_input_values(x) != source ||
         Rf_getAttrib(x, R_ClassSymbol) != class ||
         Rf_getAttrib(x, Rf_install("stata.storage")) != storage ||
         !probe_canonical_source_attrs(x)) {

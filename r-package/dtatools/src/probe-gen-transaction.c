@@ -181,6 +181,7 @@ SEXP C_dtatools_probe_direct_final(SEXP data, SEXP base_state,
     R_xlen_t n = XLENGTH(x);
     if (!probe_typed_column(x, n, "double", "dta_double", 0))
         return Rf_ScalarLogical(FALSE);
+    if (!ALTREP(x) && !dtatools_probe_plain_public_guard()) return Rf_ScalarLogical(FALSE);
     SEXP x_backing = owned_real(x) ? owned_values(x) : x;
     if (TYPEOF(x_backing) != REALSXP || ALTREP(x_backing))
         return Rf_ScalarLogical(FALSE);
@@ -245,6 +246,7 @@ SEXP C_dtatools_probe_direct_final(SEXP data, SEXP base_state,
         XLENGTH(data) != width ||
         VECTOR_ELT(data, source_index) != x ||
         (owned_real(x) ? owned_values(x) : x) != x_backing ||
+        (!ALTREP(x) && !dtatools_probe_plain_public_guard()) ||
         !probe_typed_column(x, n, "double", "dta_double", 0) ||
         Rf_getAttrib(data, R_NamesSymbol) != names ||
         Rf_getAttrib(data, R_ClassSymbol) != classes ||

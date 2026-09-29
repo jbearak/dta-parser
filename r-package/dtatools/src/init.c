@@ -114,6 +114,8 @@ SEXP C_dtatools_probe_pin_public(SEXP roots);
 SEXP C_dtatools_probe_pin_absent(SEXP roots);
 SEXP C_dtatools_probe_guard_public(SEXP ignored);
 void dtatools_probe_release_public_cache(void);
+void dtatools_probe_plain_public_release(void);
+SEXP C_dtatools_probe_plain_public_pin(SEXP state);
 
 SEXP C_bracket_s3_guard(SEXP caller, SEXP tables, SEXP live, SEXP namespaces);
 SEXP C_bracket_s3_init(SEXP ignored);
@@ -216,6 +218,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_probe_grouped_gen_stats", (DL_FUNC) &C_dtatools_probe_grouped_gen_stats, 1},
     {"C_dtatools_probe_grouped_gen_after_stage", (DL_FUNC) &C_dtatools_probe_grouped_gen_after_stage, 1},
     {"C_dtatools_probe_gen_after_stage", (DL_FUNC) &C_dtatools_probe_gen_after_stage, 1},
+    {"C_dtatools_probe_plain_public_pin", (DL_FUNC) &C_dtatools_probe_plain_public_pin, 1},
     {"C_dtatools_probe_gen_extra_capture", (DL_FUNC) &C_dtatools_probe_gen_extra_capture, 1},
     {"C_dtatools_probe_gen_append_hook", (DL_FUNC) &C_dtatools_probe_gen_append_hook, 2},
     {"C_dtatools_initial_capture_mode", (DL_FUNC) &C_dtatools_initial_capture_mode, 1},
@@ -622,5 +625,6 @@ void attribute_visible R_init_dtatools(DllInfo *dll) {
 void attribute_visible R_unload_dtatools(DllInfo *dll) {
     (void) dll;
     dtatools_probe_release_public_cache();
+    dtatools_probe_plain_public_release();
     release_generated_real_reader();
 }

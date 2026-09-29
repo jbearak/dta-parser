@@ -421,6 +421,7 @@ SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
         return Rf_ScalarLogical(FALSE);
     SEXP x = PROTECT(VECTOR_ELT(data, cert.target_index));
     if (TYPEOF(x) != REALSXP || Rf_isS4(x) ||
+        (!ALTREP(x) && !dtatools_probe_plain_public_guard()) ||
         (ALTREP(x) && (!owned_real(x) || R_altrep_data2(x) != R_NilValue)) ||
         XLENGTH(x) != shape_rows || !Rf_inherits(x, "dta_double")) {
         UNPROTECT(1);
@@ -488,7 +489,9 @@ SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
         (ALTREP(x) && (!owned_real(x) ||
             R_altrep_data1(x) != saved_data1 ||
             R_altrep_data2(x) != saved_data2)) ||
-        (owned_real(x) ? owned_values(x) : x) != source || !canonical_x_attributes(x, &target_attrs) ||
+        (owned_real(x) ? owned_values(x) : x) != source ||
+        (!ALTREP(x) && !dtatools_probe_plain_public_guard()) ||
+        Rf_isS4(x) || !canonical_x_attributes(x, &target_attrs) ||
         (!scalar_mode &&
          (!canonical_x_attributes(replacement, &staged_attrs) ||
           target_attrs.tags[0] != staged_attrs.tags[0] ||

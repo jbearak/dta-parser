@@ -1,4 +1,4 @@
-/* Source-qualified native ungrouped mutate for canonical owned dibbles. */
+/* Source-qualified native ungrouped mutate for canonical plain/owned dibbles. */
 #include "dtatools-internal.h"
 #include <string.h>
 #include <stdint.h>
@@ -597,11 +597,14 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
     if (!typed(x, n, "dta_double", "double")) {
         return R_NilValue;
     }
+    int has_plain = !ALTREP(x);
     for (R_xlen_t j = 0; j < width; j++) {
         if (j == source_index) continue;
         SEXP column = VECTOR_ELT(data, j);
         if (!ungrouped_column(column, n)) return R_NilValue;
+        has_plain |= !ALTREP(column);
     }
+    if (has_plain && !dtatools_probe_plain_public_guard()) return R_NilValue;
     /* Read-only pointers keep owned input handles unexposed. */
     const double *xp = constant ? NULL : (const double *) DATAPTR_RO(x);
     /* Every allocation and output publication precedes the final input and
@@ -714,7 +717,8 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
         R_gc();
     }
     R_CheckUserInterrupt();
-    int public_ok = probe_public_bindings_same();
+    int public_ok = probe_public_bindings_same() &&
+        (!has_plain || dtatools_probe_plain_public_guard());
     int final_ok[] = {
         public_ok,
         probe_default_alloccol_option(),
@@ -747,8 +751,8 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
             UNPROTECT(11); return R_NilValue;
         }
     }
-    /* Read the frozen source fork. The original handle may now point at a
-       newer record after a finalizer's supported COW value write. */
+    /* Read the isolated source copy (plain) or frozen source fork (owned).
+       A finalizer may have changed the physical input after this capture. */
     if (!constant)
         xp = (const double *) DATAPTR_RO(
             outputs == 0 ? VECTOR_ELT(backings, 1) :

@@ -187,7 +187,8 @@ SEXP C_dtatools_probe_bracket_general_descriptor(SEXP data,
     }
     SEXP source = VECTOR_ELT(data, source_slot);
     SEXP values = dtatools_probe_double_input_values(source);
-    if (TYPEOF(values) != REALSXP || ALTREP(values) ||
+    if ((!ALTREP(source) && !dtatools_probe_plain_public_guard()) ||
+        TYPEOF(values) != REALSXP || ALTREP(values) ||
         XLENGTH(values) != XLENGTH(source) ||
         !probe_canonical_source_attrs(source) ||
         !one_field(Rf_getAttrib(source, Rf_install("stata.storage")),
