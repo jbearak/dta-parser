@@ -1,5 +1,6 @@
 /* Guarded native route for grouped source-plus-constant generation. */
 #include "dtatools-internal.h"
+#include <float.h>
 #include <string.h>
 
 extern int dtatools_probe_gen_public_guard_plain(SEXP frame, SEXP base,
@@ -395,7 +396,8 @@ SEXP C_dtatools_probe_grouped_gen(SEXP data, SEXP base_state,
         bad |= !R_FINITE(gp[i]) ||
                gp[i] < -2147483647.0 || gp[i] > 2147483647.0 ||
                gp[i] != (double) ((int) gp[i]) ||
-               !R_FINITE(xp[i]) || !R_FINITE(value);
+               !R_FINITE(xp[i]) ||
+               !(value >= -DBL_MAX / 2.0 && value <= DBL_MAX / 2.0);
     }
     if (bad) { UNPROTECT(14); return Rf_ScalarLogical(FALSE); }
     SEXP appended = PROTECT(C_dtatools_append_mark_reference(

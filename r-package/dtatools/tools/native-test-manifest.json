@@ -6815,7 +6815,7 @@
         },
         {
           "path": "tests/testthat/test-grouped-gen-native-admission.R",
-          "sha256": "20cd4e09dd2ec92923815c7fc3e9a6f805dae05d16f546303c4ada7b8fb2ba1a"
+          "sha256": "99255435432de372db08b9b90319bc6a84e7c5c1e315db0e90a9e54e89117434"
         }
       ],
       "blocks": [
@@ -8731,6 +8731,14 @@
           "skip": "forbid",
           "min_pass": 3,
           "warnings": 0
+        },
+        {
+          "file": "test-grouped-gen-native-admission.R",
+          "test": "native generation preserves Stata double range normalization",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
         }
       ],
       "children": [
@@ -8832,6 +8840,14 @@
         },
         {
           "id": "bracket-pending-marker",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-generation-range",
           "kind": "r",
           "minimum": 1,
           "maximum": 1,

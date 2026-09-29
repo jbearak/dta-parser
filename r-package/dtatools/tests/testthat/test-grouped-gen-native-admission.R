@@ -86,3 +86,32 @@ test_that("grouped native gen publishes and declines after a staged source chang
     expect_identical(observed$changed, if (native_expected) c(1L, 1L, 0L) else c(1L, 0L, 0L))
     expect_identical(observed$hook_hits, as.integer(native_expected))
 })
+
+test_that("native generation preserves Stata double range normalization", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("native-generation-range", function() {
+        library(dtatools)
+        options(dtatools.generate_type = "double")
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        run <- function(enabled, grouped, sign) {
+            cc("C_dtatools_probe_direct_final_mode", enabled)
+            cc("C_dtatools_probe_grouped_gen_mode", enabled)
+            holder <- new.env(parent = globalenv())
+            holder$d <- as_dibble(tibble::tibble(source_value = rep(sign * 1e307, 4L),
+                group_key = dta_long(c(1, 2, 1, 2))))
+            expression <- if (grouped) substitute(
+                gen(d, output = source_value + OFFSET, by = group_key),
+                list(OFFSET = sign * 1e308)) else substitute(
+                gen(d, output = source_value + OFFSET), list(OFFSET = sign * 1e308))
+            value <- eval(expression, holder)
+            list(values = as.double(value$output), attributes = attributes(value$output))
+        }
+        for (grouped in c(FALSE, TRUE)) for (sign in c(-1, 1)) {
+            native <- run(TRUE, grouped, sign)
+            ordinary <- run(FALSE, grouped, sign)
+            stopifnot(identical(native, ordinary), all(is.na(native$values)))
+        }
+        TRUE
+    }, libpath = .libPaths())
+    expect_true(observed)
+})

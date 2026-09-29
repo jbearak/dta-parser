@@ -1,6 +1,7 @@
 /* Owned typed-double, ungrouped gen admission. Unsupported shapes and
    unaudited public dependencies continue through the ordinary R path. */
 #include "dtatools-internal.h"
+#include <float.h>
 
 static int probe_attempts = 0;
 static int probe_produced = 0;
@@ -254,7 +255,8 @@ SEXP C_dtatools_probe_direct_final(SEXP data, SEXP base_state,
     for (R_xlen_t i = 0; i < n; i++) {
         double result = xp[i] + increment;
         output[i] = result;
-        nonfinite |= !isfinite(xp[i]) | !isfinite(result);
+        nonfinite |= !isfinite(xp[i]) |
+            !(result >= -DBL_MAX / 2.0 && result <= DBL_MAX / 2.0);
     }
     if (nonfinite) { UNPROTECT(8); return Rf_ScalarLogical(FALSE); }
     SEXP appended = PROTECT(C_dtatools_append_mark_reference(
