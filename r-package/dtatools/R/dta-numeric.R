@@ -140,6 +140,56 @@ dta_storage_type <- function(x) {
     attr(x, "stata.storage", exact = TRUE)
 }
 
+# Qualify the getter in the original minimum expression before native evaluation.
+.computed_storage_getter <- .declared_dta_storage
+
+# Retain the predicates skipped by native computed-result classification.
+.computed_numeric_dependencies <- list(
+    base::is.na, base::is.infinite, base::is.finite, base::any, base::abs, base::floor,
+    .Primitive("!"), .Primitive("|"), .Primitive("&"), .Primitive("=="),
+    .Primitive(">"), .Primitive("<"), .Primitive(">="), .Primitive("<="),
+    .Primitive("["), .Primitive("[<-"), .Primitive("attr"), .Primitive("names"),
+    .Primitive("names<-"), .Primitive("[["), .Primitive("length")
+)
+
+# Keep the installed definitions, rather than capturing possible replacements
+# on the first arithmetic call. Native admission compares code without reading
+# foreign literals or forcing bindings.
+.scalar_arith_dependencies <- if (
+    identical(as.character(getNamespaceVersion("vctrs")), "0.7.3") &&
+    identical(as.character(getNamespaceVersion("rlang")), "1.3.0")
+) list(
+    utils::removeSource(vctrs::vec_recycle_common),
+    base::getExportedValue, base::suppressWarnings,
+    .Primitive("+"), .Primitive("-"), .Primitive("::"),
+    .Primitive("is.numeric"), .Primitive("as.double"), asNamespace("vctrs"),
+    utils::removeSource(rlang::list2), base::withCallingHandlers, base::parent.frame,
+    .computed_numeric_dependencies, .Primitive("list"),
+    .Primitive("{"), .Primitive(".External2")
+) else NULL
+
+# Set operations on ordinary attribute names still enter these base helpers
+# and unique.character dispatch. Native metadata shortcuts share this profile.
+.metadata_dependencies <- if (
+    identical(as.character(getRversion()), "4.6.1") &&
+    identical(as.character(R.version[["svn rev"]]), "90187")
+) local({
+    names <- c(
+        "intersect", "setdiff", "startsWith", ".set_ops_need_as_vector",
+        "unique", "unique.default", "isa", "tryCatch", "parent.frame",
+        "%in%", "names<-", "list", "identity"
+    )
+    functions <- lapply(names, function(name) {
+        value <- get(name, envir = baseenv(), inherits = FALSE)
+        if (is.primitive(value)) value else utils::removeSource(value)
+    })
+    names(functions) <- names
+    functions
+}) else NULL
+
+.metadata_state <- new.env(parent = emptyenv())
+.metadata_state$dependencies <- NULL
+
 .dta_storage <- c("byte", "int", "long", "float", "double")
 
 .dta_temporal_none <- 0L
@@ -168,9 +218,22 @@ dta_storage_type <- function(x) {
     as.integer(size)
 }
 
+# Keep the predicates whose successful strict-double path native code skips.
+# Replaced or traced bindings retain the R validation sequence.
+.strict_double_dependencies <- list(
+    base::is.na, base::is.finite, base::any, base::abs, base::floor,
+    .Primitive("!"), .Primitive("|"), .Primitive("&"), .Primitive("=="),
+    .Primitive(">"), .Primitive("<"), .Primitive(">="), .Primitive("<="),
+    .Primitive("["), .Primitive("[<-"), base::rep, base::length,
+    base::utf8ToInt, base::identical, .Primitive("/"), .Primitive("$")
+)
+
 .construct_dta_numeric <- function(
     x, .size, storage, temporal = .dta_temporal_none
 ) {
+    .native_admission_if(.native_admission_call(
+        C_dtatools_construct_double, NULL, NULL, .strict_double_dependencies
+    ), .native_admission_return({ native <- native; native }))
     if (!is.null(x) && !is.null(.size)) {
         stop("Supply `x` or `.size`, not both", call. = FALSE)
     }
@@ -1014,6 +1077,64 @@ vec_cast.dta_numeric.dta_numeric <- function(
     .cast_to_dta(x, to)
 }
 
+# Preserve the installed definitions. Method-table environments are captured
+# separately at load because serialized copies are not the live S3 tables.
+.double_combine_expected <- if (
+    identical(as.character(getNamespaceVersion("vctrs")), "0.7.3")
+) list(
+    asNamespace("vctrs"), environment(vec_proxy.dta_numeric),
+    list(
+        utils::removeSource(vctrs::list_unchop),
+        utils::removeSource(vec_ptype2.dta_numeric.dta_numeric),
+        utils::removeSource(vec_cast.dta_numeric.dta_numeric),
+        utils::removeSource(vec_proxy.dta_numeric),
+        utils::removeSource(vec_restore.dta_numeric),
+        utils::removeSource(as.double.dta_numeric),
+        utils::removeSource(vctrs:::vec_ptype_finalise.default),
+        utils::removeSource(vctrs:::`names<-.vctrs_vctr`)
+    ),
+    list(.Primitive("names"), .Primitive("dim"),
+         .Primitive("as.double"), .Primitive("names<-"),
+         .Primitive("::"), .Primitive("<-")),
+    c("dta_numeric", "dta_double", "vctrs_vctr", "double"),
+    "double", "vctrs-0.7.3", .strict_double_dependencies
+) else NULL
+
+.double_combine_state <- new.env(parent = emptyenv())
+.double_combine_state$dependencies <- NULL
+
+.try_combine_dta_double_indexed <- function(chunks, mask) {
+    # These promises retain the real run() environment even when its expression
+    # is being evaluated through tryCatch's promise machinery.
+    .native_admission_call(C_dtatools_combine_double_into_current,
+          TRUE, .double_combine_state, .metadata_state)
+}
+
+# Diagnostic adapters use the same direct native entry and fallback calls as
+# the production callers, which keep their own evaluation frames intact.
+.combine_dta_double <- function(pieces) {
+    result <- .native_admission_call(
+        C_dtatools_select_branch,
+        .native_admission_branches(.native_admission_call(
+            C_dtatools_combine_double_into_current,
+            FALSE, .double_combine_state, .metadata_state
+        ), result, vctrs::list_unchop(pieces)),
+        .native_admission_if
+    )
+    result
+}
+
+.combine_dta_double_indexed <- function(chunks, mask) {
+    value <- .native_admission_call(
+        C_dtatools_select_branch,
+        .native_admission_branches(
+            .try_combine_dta_double_indexed(chunks, mask),
+            value, vctrs::list_unchop(chunks, indices = mask$rows)
+        ), .native_admission_if
+    )
+    value
+}
+
 #' @export
 vec_cast.dta_numeric.double <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
@@ -1120,6 +1241,10 @@ vec_cast.logical.dta_numeric <- function(
 .dta_computed <- function(
     result, minimum, temporal = .dta_temporal_none
 ) {
+    .native_admission_if(.native_admission_call(
+        C_dtatools_computed_numeric, NULL, NULL,
+        .computed_storage_getter, .computed_numeric_dependencies
+    ), .native_admission_return({ native <- native; native }))
     if (typeof(result) == "logical" || typeof(result) == "complex") {
         return(result)
     }
@@ -1156,6 +1281,10 @@ vec_cast.logical.dta_numeric <- function(
 }
 
 .dta_arith_base <- function(op, x, y, minimum) {
+    .native_admission_if(.native_admission_call(
+        C_dtatools_scalar_arithmetic, NULL, NULL, NULL,
+        .computed_storage_getter, .scalar_arith_dependencies
+    ), .native_admission_return({ native <- native; native }))
     left <- if (inherits(x, "dta_numeric")) .dta_data(x) else x
     right <- if (inherits(y, "dta_numeric")) .dta_data(y) else y
     args <- vctrs::vec_recycle_common(left, right)

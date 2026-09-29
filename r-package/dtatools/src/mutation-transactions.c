@@ -1458,6 +1458,10 @@ SEXP C_dtatools_shared_columns(SEXP columns) {
 }
 
 /* Validate data.table's non-owning self-reference and names identity.
+   The layout and validity rule come from data.table 1.18.6.1 src/assign.c,
+   setselfref() and _selfrefok(), by its contributors under MPL-2.0;
+   inst/NOTICE records the exact upstream source. This compatibility check
+   is independently written, not a copy of data.table's assignment code.
    Pointer addresses are compared only, never dereferenced. A copied or
    deserialized table, or a replaced names vector, requires assigned repair. */
 static int data_table_reference_valid(SEXP data) {

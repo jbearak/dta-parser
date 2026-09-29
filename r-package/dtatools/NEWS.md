@@ -1,5 +1,10 @@
 # dtatools (development version)
 
+* Canonical numeric construction, scalar addition and subtraction, storage
+  checks, grouped double assembly, and expression-mask setup use native paths
+  when their input and execution profiles are supported. Other profiles keep
+  the existing R paths. Owned double buffers cache finite-value checks and
+  invalidate that information when their values can change.
 * Retained numeric captures now clone their immutable owner before allocating
   R objects and release it correctly if construction is interrupted. Numeric
   and metadata views retain their entry backing and selected columns across

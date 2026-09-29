@@ -1732,7 +1732,14 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # attributes such as a variable label; restore them when every piece
 # agrees, so a grouped `gen()` keeps the label an ungrouped one would.
 .mutation_gather_values <- function(pieces) {
-    result <- vctrs::list_unchop(pieces)
+    result <- .native_admission_call(
+        C_dtatools_select_branch,
+        .native_admission_branches(.native_admission_call(
+            C_dtatools_combine_double_into_current,
+            FALSE, .double_combine_state, .metadata_state
+        ), result, vctrs::list_unchop(pieces)),
+        .native_admission_if
+    )
     first <- attributes(pieces[[1L]])
     first$names <- NULL
     if (length(first) == 0L) return(result)

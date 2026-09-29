@@ -22,6 +22,10 @@ double mutation_target_copy_bytes = 0;
 double staged_new_bytes = 0;
 double old_journal_bytes = 0;
 double native_scratch_allocated = 0;
+/* R-managed combiner allocations overlap Rprofmem; they are not native heap. */
+double combine_copied_payload_bytes = 0;
+double combine_root_r_bytes = 0;
+double combine_partition_r_bytes = 0;
 
 
 int owned_real(SEXP value) {
@@ -70,6 +74,7 @@ static SEXP owned_record(SEXP values) {
     INTEGER(flags)[OWNED_NO_NA] = -1;
     INTEGER(flags)[OWNED_MAX_WIDTH] = -1;
     INTEGER(flags)[OWNED_WIDTH_EXACT] = 0;
+    INTEGER(flags)[OWNED_FINITE_DOUBLE] = 0;
     /* This pointer never owns native memory. The protected ordinary vector is
        its exact R-managed allocation, and the tag roots that allocation's facts.
        Replacing the record changes all three together. No finalizer is needed. */
@@ -209,7 +214,9 @@ SEXP owned_capture(SEXP value) {
     SEXP result = PROTECT(owned_adopt(values));
     SHALLOW_DUPLICATE_ATTRIB(result, value);
     if (owned_column(value) && !owned_flags(value)[OWNED_EXPOSED]) {
-        for (int i = OWNED_NO_NA; i < OWNED_FLAGS_SIZE; i++)
+        /* The finite-double certificate belongs only to the exact allocation.
+           A copied allocation starts unknown, even if its source was certified. */
+        for (int i = OWNED_NO_NA; i < OWNED_FINITE_DOUBLE; i++)
             owned_flags(result)[i] = owned_flags(value)[i];
     }
     UNPROTECT(2);
@@ -424,6 +431,7 @@ static void *owned_prepare(SEXP value, int exposed) {
     flags[OWNED_NO_NA] = -1;
     flags[OWNED_MAX_WIDTH] = -1;
     flags[OWNED_WIDTH_EXACT] = 0;
+    flags[OWNED_FINITE_DOUBLE] = 0;
     if (exposed) flags[OWNED_EXPOSED] = 1;
     return DATAPTR_RW(owned_values(value));
 }
@@ -500,10 +508,10 @@ static SEXP owned_real_subset(SEXP value, SEXP index, SEXP call) {
 
 SEXP C_dtatools_owned_info(SEXP value) {
     if (!owned_column(value)) return R_NilValue;
-    SEXP result = PROTECT(Rf_allocVector(VECSXP, 5));
-    SEXP names = PROTECT(Rf_allocVector(STRSXP, 5));
-    const char *fields[] = {"backing", "shared", "exposed", "bytes", "depth"};
-    for (int i = 0; i < 5; i++) SET_STRING_ELT(names, i, Rf_mkChar(fields[i]));
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 6));
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, 6));
+    const char *fields[] = {"backing", "shared", "exposed", "bytes", "depth", "finite_double"};
+    for (int i = 0; i < 6; i++) SET_STRING_ELT(names, i, Rf_mkChar(fields[i]));
     char address[2 + sizeof(void *) * 2 + 1];
     snprintf(address, sizeof(address), "%p", (void *) owned_values(value));
     SET_VECTOR_ELT(result, 0, Rf_mkString(address));
@@ -511,19 +519,26 @@ SEXP C_dtatools_owned_info(SEXP value) {
     SET_VECTOR_ELT(result, 2, Rf_ScalarLogical(owned_flags(value)[OWNED_EXPOSED]));
     SET_VECTOR_ELT(result, 3, Rf_ScalarReal((double) XLENGTH(value) * owned_width(value)));
     SET_VECTOR_ELT(result, 4, Rf_ScalarInteger(1));
+    SET_VECTOR_ELT(result, 5, Rf_ScalarLogical(owned_flags(value)[OWNED_FINITE_DOUBLE]));
     Rf_setAttrib(result, R_NamesSymbol, names);
     UNPROTECT(2);
     return result;
 }
 
 SEXP C_dtatools_native_copy_stats(SEXP reset) {
-    SEXP result = PROTECT(Rf_allocVector(REALSXP, 6));
-    SEXP names = PROTECT(Rf_allocVector(STRSXP, 6));
-    const char *fields[] = {"owned_capture", "compact_copy", "staged_new",
-                            "old_journal", "native_scratch_allocated", "mutation_target_copy"};
-    double values[] = {owned_capture_bytes, compact_copy_bytes, staged_new_bytes,
-                       old_journal_bytes, native_scratch_allocated, mutation_target_copy_bytes};
-    for (int i = 0; i < 6; i++) {
+    SEXP result = PROTECT(Rf_allocVector(REALSXP, 9));
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, 9));
+    const char *fields[] = {
+        "owned_capture", "compact_copy", "staged_new", "old_journal",
+        "native_scratch_allocated", "mutation_target_copy",
+        "combine_copied_payload_bytes", "combine_root_r_bytes", "combine_partition_r_bytes"
+    };
+    double values[] = {
+        owned_capture_bytes, compact_copy_bytes, staged_new_bytes, old_journal_bytes,
+        native_scratch_allocated, mutation_target_copy_bytes,
+        combine_copied_payload_bytes, combine_root_r_bytes, combine_partition_r_bytes
+    };
+    for (int i = 0; i < 9; i++) {
         SET_STRING_ELT(names, i, Rf_mkChar(fields[i]));
         REAL(result)[i] = values[i];
     }
@@ -532,6 +547,8 @@ SEXP C_dtatools_native_copy_stats(SEXP reset) {
         owned_capture_bytes = compact_copy_bytes = staged_new_bytes = 0;
         old_journal_bytes = native_scratch_allocated = 0;
         mutation_target_copy_bytes = 0;
+        combine_copied_payload_bytes = combine_root_r_bytes = 0;
+        combine_partition_r_bytes = 0;
     }
     UNPROTECT(2);
     return result;

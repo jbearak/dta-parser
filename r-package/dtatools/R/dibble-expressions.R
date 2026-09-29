@@ -28,6 +28,24 @@
     list(rows = info$loc, keys = info$key, names = vars, type = "grouped")
 }
 
+# Capture canonical constructor definitions at package build, not on load.
+.mask_bindings_expected <- list(
+    utils::removeSource(base::new.env),
+    utils::removeSource(base::makeActiveBinding),
+    base::`$`, .Primitive("names"),
+    compiler::cmpfun(utils::removeSource(base::as.name)),
+    compiler::cmpfun(utils::removeSource(base::force)),
+    base::emptyenv, .Primitive("is.character"), .Primitive(".Internal"),
+    .Primitive("[["), .Primitive("for"), .Primitive("{"),
+    .Primitive("<-"), .Primitive("function"),
+    # Match the actual local factory below, including standard compiler output.
+    # Its environment is checked separately because each mask owns its reader.
+    compiler::cmpfun(function(generation, name, id) {
+        force(generation); force(name); force(id)
+        function() read(generation, name, id)
+    })
+)
+
 # The mask owns isolated public column handles. Bindings capture a column
 # generation and a fixed group, never the mutable current-group scalar. A
 # call-local lifetime invalidates deferred reads and releases all retained
@@ -43,6 +61,8 @@
     state$id <- 0L
     state$generations <- list()
     state$expired <- new.env(parent = emptyenv())
+    # Register each name after capture. Input names can change by reference
+    # during callbacks; captured names must also survive later input renames.
     state$names <- character()
     state$current <- list()
     state$mask <- NULL
@@ -59,7 +79,14 @@
         if (!name %in% state$names) state$names <- c(state$names, name)
         state$generations[[length(state$generations) + 1L]] <- rlang::new_weakref(generation)
     }
-    for (name in names(columns)) add(name, columns[[name]])
+    .native_admission_call(
+        C_dtatools_select_branch,
+        .native_admission_branches(.native_admission_call(
+            C_dtatools_initial_capture_initial, .initial_capture_profile
+        ), NULL, {
+            for (name in names(columns)) add(name, columns[[name]])
+        }), .native_admission_if
+    )
     columns <- NULL
     obsolete <- function(name) {
         rlang::abort(c("Obsolete data mask.",
@@ -92,10 +119,19 @@
         function() read(generation, name, id)
     }
     make_mask <- function(id = state$id) {
-        bindings <- new.env(parent = emptyenv())
-        for (name in names(state$current)) {
-            makeActiveBinding(name, binding(state$current[[name]], name, id), bindings)
-        }
+        # Admission inspects settled state and the default promise without
+        # forcing either input. Every decline retains the original sequence.
+        .native_admission_call(
+            C_dtatools_select_branch,
+            .native_admission_branches(.native_admission_call(
+                C_dtatools_try_mask_bindings, NULL, NULL, .mask_bindings_expected
+            ), NULL, {
+                bindings <- new.env(parent = emptyenv())
+                for (name in names(state$current)) {
+                    makeActiveBinding(name, binding(state$current[[name]], name, id), bindings)
+                }
+            }), .native_admission_if
+        )
         mask <- rlang::new_data_mask(bindings)
         mask$.data <- rlang::as_data_pronoun(bindings)
         mask
@@ -277,7 +313,13 @@
                         next
                     }
                     value <- if (!is.null(preserved)) preserved else if (length(chunks) == 1L) chunks[[1L]] else
-                        vctrs::list_unchop(chunks, indices = mask$rows)
+                        .native_admission_call(
+                            C_dtatools_select_branch,
+                            .native_admission_branches(
+                                .try_combine_dta_double_indexed(chunks, mask),
+                                value, vctrs::list_unchop(chunks, indices = mask$rows)
+                            ), .native_admission_if
+                        )
                     prior <- mask$values()
                     if (!item$named && is.data.frame(value)) {
                         for (position in seq_along(value)) {

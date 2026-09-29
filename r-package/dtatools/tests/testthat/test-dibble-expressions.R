@@ -436,6 +436,50 @@ test_that("expired capture masks release source payloads on success and failure"
 })
 
 
+test_that("initial mask generations support later appends and repeated cleanup", {
+    groups <- list(rows = list(1:2), names = character(),
+        keys = tibble::new_tibble(list(), nrow = 1L), type = "ungrouped")
+    mask <- dtatools:::.new_dibble_expression_mask(
+        list(x = dta_double(c(1, 2)), y = dta_double(c(3, 4))), groups, 2L, "mutate()")
+    withr::defer(mask$forget())
+    mask$add("z", dta_double(c(5, 6)))
+    saved <- mask$evaluate(rlang::quo(function() z), 1L)
+    mask$add("z", dta_double(c(7, 8)))
+    mask$remove("x")
+    mask$add("x", dta_double(c(9, 10)))
+    expect_identical(names(mask$values()), c("y", "z", "x"))
+    expect_identical(as.double(mask$resolve("z")[[1L]]), c(7, 8))
+    expect_identical(as.double(mask$resolve("x")[[1L]]), c(9, 10))
+    expect_identical(as.double(saved()), c(5, 6))
+    expect_no_error(mask$forget())
+    expect_no_error(mask$forget())
+    expect_error(saved(), "Obsolete data mask")
+    # Cleanup can run again after a later private addition without leaving
+    # empty weak-reference slots or making the expired mask readable again.
+    mask$add("later", dta_double(c(11, 12)))
+    expect_no_error(mask$forget())
+    expect_error(mask$resolve("later"), "Obsolete data mask")
+})
+
+test_that("an initially empty expression mask can append generations", {
+    groups <- list(rows = list(integer()), names = character(),
+        keys = tibble::new_tibble(list(), nrow = 1L), type = "ungrouped")
+    mask <- dtatools:::.new_dibble_expression_mask(
+        stats::setNames(list(), character()), groups, 0L, "mutate()")
+    withr::defer(mask$forget())
+    expect_length(mask$values(), 0L)
+    mask$add("x", dta_double(double()))
+    saved <- mask$evaluate(rlang::quo(function() x), 1L)
+    mask$add("x", dta_double(double()))
+    mask$add("y", dta_double(double()))
+    expect_identical(names(mask$values()), c("x", "y"))
+    expect_identical(as.double(mask$resolve("x")[[1L]]), double())
+    expect_identical(as.double(saved()), double())
+    expect_no_error(mask$forget())
+    expect_error(saved(), "Obsolete data mask")
+})
+
+
 test_that("ungroup preserves raw row names on an already ungrouped dibble", {
     skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = 1:2)

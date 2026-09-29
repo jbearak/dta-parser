@@ -19,6 +19,9 @@ SEXP C_dtatools_replacement_fits(SEXP values, SEXP rows, SEXP row_mode, SEXP kin
     numeric_data encoding;
     if (reader.storage != NULL) { encoding = *reader.storage; reader.storage = &encoding; }
     PROTECT(numeric_payload_root(values));
+    /* Keep the exact record paired with reader.real_values alive across polls.
+       A callback can detach the public handle without moving this reader. */
+    SEXP source_record = PROTECT(owned_real(values) ? R_altrep_data1(values) : R_NilValue);
     reference_rows indices;
     memset(&indices, 0, sizeof(indices));
     numeric_data row_encoding;
@@ -37,8 +40,25 @@ SEXP C_dtatools_replacement_fits(SEXP values, SEXP rows, SEXP row_mode, SEXP kin
     int finite_double = rows == R_NilValue && kind == NUMERIC_DOUBLE &&
         type == REALSXP && (!ALTREP(values) || owned_real(values)) &&
         reader.storage == NULL && reader.real_values != NULL;
+    int certified = finite_double && source_record != R_NilValue &&
+        R_ExternalPtrProtected(source_record) != R_NilValue &&
+        reader.real_values == (const double *) R_ExternalPtrAddr(source_record) &&
+        XLENGTH(R_ExternalPtrProtected(source_record)) == length;
     for (R_xlen_t i = 0; i < count; i++) {
-        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        if ((i & 16383) == 0) {
+            R_CheckUserInterrupt();
+            if (certified) {
+                int *flags = INTEGER(R_ExternalPtrTag(source_record));
+                certified = flags[OWNED_FINITE_DOUBLE] && !flags[OWNED_EXPOSED];
+            }
+        }
+        if (certified) {
+            /* No callback or value-dependent work occurs before the next
+               original poll. The saved record certifies the entire block. */
+            R_xlen_t span = count - i < 16384 ? count - i : 16384;
+            i += span - 1;
+            continue;
+        }
         R_xlen_t from = by_row ? reference_patch_row(&indices, i) : i;
         /* A foreign value reader may change a later live row after initial
            validation. Recheck each consumed offset before reading values. */
@@ -65,7 +85,7 @@ SEXP C_dtatools_replacement_fits(SEXP values, SEXP rows, SEXP row_mode, SEXP kin
         case NUMERIC_DOUBLE: fits = fits && finite && fabs(value) <= DBL_MAX / 2.0; break;
         }
     }
-    UNPROTECT(2);
+    UNPROTECT(3);
     return Rf_ScalarLogical(fits);
 }
 
@@ -178,6 +198,8 @@ static void stage_numeric_slot(numeric_slot_transaction *transaction) {
     if (transaction->is_compact || transaction->is_materialized || transaction->stata_double) {
         reader = numeric_reader_create(transaction->replacement, values.value_count);
     }
+    SEXP replacement_record = PROTECT(owned_real(transaction->replacement)
+        ? R_altrep_data1(transaction->replacement) : R_NilValue);
     if (transaction->is_materialized) {
         validate_materialized_numeric_replacement(&transaction->encoding, &reader, &rows, values);
     }
@@ -187,9 +209,28 @@ static void stage_numeric_slot(numeric_slot_transaction *transaction) {
         TYPEOF(transaction->replacement) == REALSXP &&
         (!ALTREP(transaction->replacement) || owned_real(transaction->replacement)) &&
         reader.storage == NULL && reader.real_values != NULL;
+    int certified = finite_double && replacement_record != R_NilValue &&
+        R_ExternalPtrProtected(replacement_record) != R_NilValue &&
+        reader.real_values == (const double *) R_ExternalPtrAddr(replacement_record) &&
+        XLENGTH(R_ExternalPtrProtected(replacement_record)) == values.value_count;
     int invalid_missing = 0, invalid_range = 0;
     for (R_xlen_t i = 0; i < staged_count; i++) {
-        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        if ((i & 16383) == 0) {
+            R_CheckUserInterrupt();
+            if (certified) {
+                int *flags = INTEGER(R_ExternalPtrTag(replacement_record));
+                certified = flags[OWNED_FINITE_DOUBLE] && !flags[OWNED_EXPOSED];
+            }
+        }
+        if (certified) {
+            /* The exact entry backing stays certified until the next poll.
+               Copy the same bytes, including signed zero, without rescanning. */
+            R_xlen_t span = staged_count - i < 16384 ? staged_count - i : 16384;
+            memcpy(transaction->staged + (size_t) i * sizeof(double),
+                   reader.real_values + i, (size_t) span * sizeof(double));
+            i += span - 1;
+            continue;
+        }
         R_xlen_t row = transaction->positions == NULL || transaction->scalar
             ? i : transaction->positions[i];
         R_xlen_t from = reference_value_index(&values, i, row);
@@ -237,7 +278,7 @@ static void stage_numeric_slot(numeric_slot_transaction *transaction) {
     if (invalid_range) Rf_error("No Stata numeric storage can represent `x`");
     staged_new_bytes += (double) transaction->staged_size;
     if (transaction->scalar && transaction->new_missing) transaction->new_missing = transaction->count;
-    UNPROTECT(2);
+    UNPROTECT(3);
 }
 
 /* These routines receive only plain backing and staged C buffers. There are
@@ -245,6 +286,8 @@ static void stage_numeric_slot(numeric_slot_transaction *transaction) {
    first write. Partial-write rollback remains exercised by the separate
    dictionary, materialized and fused transaction paths. */
 static void commit_numeric_bytes(numeric_slot_transaction *transaction, SEXP column) {
+    if (!transaction->is_compact && !transaction->is_materialized)
+        owned_flags(column)[OWNED_FINITE_DOUBLE] = 0;
     numeric_data *compact = transaction->is_compact ? unmaterialized_numeric_storage(column) : NULL;
     unsigned char *output = transaction->is_compact
         ? (unsigned char *) compact->values : (unsigned char *) REAL(
@@ -530,6 +573,7 @@ static SEXP patch_atomic_target(SEXP data, R_xlen_t slot, SEXP target, SEXP rows
         }
     }
     /* No allocating or dispatching operation occurs after this point. */
+    if (is_owned) owned_flags(detach ? destination : target)[OWNED_FINITE_DOUBLE] = 0;
     for (R_xlen_t i = 0; column != staged && i < count; i++) {
         R_xlen_t row = rows == R_NilValue ? i : (R_xlen_t) REAL(positions)[i];
         R_xlen_t from = values.mode == REFERENCE_VALUES_SCALAR ? 0 : i;

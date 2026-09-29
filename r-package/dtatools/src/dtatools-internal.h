@@ -31,7 +31,10 @@
 #define DTATOOLS_INTERNAL attribute_hidden
 
 /* Descriptors shared across units, including the layouts mirrored in Rust. */
-enum { OWNED_SHARED, OWNED_EXPOSED, OWNED_NO_NA, OWNED_MAX_WIDTH, OWNED_WIDTH_EXACT, OWNED_FLAGS_SIZE };
+enum {
+    OWNED_SHARED, OWNED_EXPOSED, OWNED_NO_NA, OWNED_MAX_WIDTH,
+    OWNED_WIDTH_EXACT, OWNED_FINITE_DOUBLE, OWNED_FLAGS_SIZE
+};
 
 typedef struct {
     void *values;
@@ -324,6 +327,9 @@ DTATOOLS_INTERNAL extern double mutation_target_copy_bytes;
 DTATOOLS_INTERNAL extern double staged_new_bytes;
 DTATOOLS_INTERNAL extern double old_journal_bytes;
 DTATOOLS_INTERNAL extern double native_scratch_allocated;
+DTATOOLS_INTERNAL extern double combine_copied_payload_bytes;
+DTATOOLS_INTERNAL extern double combine_root_r_bytes;
+DTATOOLS_INTERNAL extern double combine_partition_r_bytes;
 
 /* Ordinary owned atomic backing (owned-columns.h). */
 DTATOOLS_INTERNAL int owned_real(SEXP value);
@@ -356,6 +362,13 @@ DTATOOLS_INTERNAL SEXP C_dtatools_owned_coerce(SEXP value, SEXP logical);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_missing_mask(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_info(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_native_copy_stats(SEXP reset);
+DTATOOLS_INTERNAL SEXP C_dtatools_numeric_entry_stats(SEXP reset);
+DTATOOLS_INTERNAL void initialize_numeric_size_gate(void);
+DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_size_minimum(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_numeric_size_stats(SEXP reset);
+DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_size_gate(SEXP route);
+DTATOOLS_INTERNAL SEXP C_dtatools_capture_branch_frame(void);
+DTATOOLS_INTERNAL SEXP C_dtatools_select_branch(SEXP frame, SEXP primitive_if);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_pointer(SEXP value, SEXP writable);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_pointer_write(SEXP pointer, SEXP index, SEXP replacement);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_no_na(SEXP value);
@@ -485,8 +498,65 @@ DTATOOLS_INTERNAL void write_numeric_observed(
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_numeric(
     SEXP value, SEXP kind_value, SEXP temporal_value
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_try_mask_bindings(
+    SEXP frame, SEXP reader_env, SEXP dependencies
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_double_combine_dependencies(SEXP expected);
+enum dtatools_numeric_route {
+    DTATOOLS_NUMERIC_SCALAR = 1U, DTATOOLS_NUMERIC_COMPUTED = 2U,
+    DTATOOLS_NUMERIC_CONSTRUCT = 4U, DTATOOLS_NUMERIC_HOLDS = 8U,
+    DTATOOLS_NUMERIC_COMBINE = 16U,
+    DTATOOLS_NUMERIC_ENCODED_STORAGE = 32U, DTATOOLS_NUMERIC_FLOAT_LIMIT = 64U,
+    DTATOOLS_NUMERIC_OWNED_CONSTRUCT = 128U
+};
+DTATOOLS_INTERNAL int dtatools_execution_function_same(SEXP actual, SEXP expected);
+DTATOOLS_INTERNAL int dtatools_execution_lexical_function_same(
+    SEXP frame, SEXP symbol, SEXP expected
+);
+DTATOOLS_INTERNAL int dtatools_numeric_helpers_unchanged(
+    SEXP frame, SEXP profile, unsigned route, SEXP proof
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_expected_numeric_profile(SEXP profile, SEXP count);
+DTATOOLS_INTERNAL SEXP C_dtatools_numeric_proof_stats(SEXP reset);
+DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_proof(SEXP actual, SEXP proof, SEXP index);
+DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_old_proof(SEXP actual, SEXP expected);
+DTATOOLS_INTERNAL int dtatools_numeric_helpers_admitted(SEXP frame, unsigned route);
+DTATOOLS_INTERNAL SEXP C_dtatools_numeric_entry_state(SEXP expected);
+DTATOOLS_INTERNAL int dtatools_execution_frame_same(SEXP frame, SEXP expected);
+DTATOOLS_INTERNAL int dtatools_numeric_entry_frame_admitted(SEXP frame, unsigned route);
+DTATOOLS_INTERNAL int dtatools_numeric_decoration_admitted(
+    SEXP frame, unsigned route, SEXP names
+);
+DTATOOLS_INTERNAL int dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies, int generation);
+DTATOOLS_INTERNAL SEXP C_dtatools_metadata_execution_profile(SEXP probe);
+DTATOOLS_INTERNAL SEXP C_dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies);
+DTATOOLS_INTERNAL SEXP C_dtatools_canonical_attribute_plan(SEXP source, SEXP state);
+DTATOOLS_INTERNAL SEXP C_dtatools_attribute_plan_stats(SEXP reset);
+DTATOOLS_INTERNAL SEXP dtatools_metadata_profile_from_state(SEXP state);
+DTATOOLS_INTERNAL SEXP dtatools_metadata_source(SEXP frame);
+DTATOOLS_INTERNAL SEXP C_dtatools_canonical_generate_attributes(
+    SEXP source, SEXP frame, SEXP dependencies
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_try_combine_double(
+    SEXP pieces, SEXP indices, SEXP combine, SEXP dependencies, SEXP metadata
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_combine_double_into_current(
+    SEXP indexed, SEXP state, SEXP metadata_state
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_construct_double(
+    SEXP value, SEXP frame, SEXP dependencies
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_double_fits(
+    SEXP value, SEXP frame, SEXP dependencies
+);
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_numeric_trusted(
     SEXP value, SEXP missing_codes, SEXP kind_value, SEXP temporal_value
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_computed_numeric(
+    SEXP value, SEXP frame, SEXP storage_getter, SEXP dependencies
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_scalar_arithmetic(
+    SEXP left, SEXP right, SEXP frame, SEXP storage_getter, SEXP dependencies
 );
 
 /* Dictionary-backed strings. */
@@ -729,5 +799,12 @@ DTATOOLS_INTERNAL SEXP C_dtatools_egen_rows(SEXP columns, SEXP operation, SEXP m
 
 /* Registration. */
 DTATOOLS_INTERNAL int dtatools_owned_numeric_gc(void);
+
+
+/* Initial shell extraction and generation capture. */
+DTATOOLS_INTERNAL SEXP C_dtatools_initial_capture_shell(SEXP profile);
+DTATOOLS_INTERNAL SEXP C_dtatools_initial_capture_initial(SEXP profile);
+DTATOOLS_INTERNAL SEXP C_dtatools_initial_capture_stats(SEXP reset);
+DTATOOLS_INTERNAL SEXP C_dtatools_initial_capture_mode(SEXP value);
 
 #endif /* DTATOOLS_INTERNAL_H */

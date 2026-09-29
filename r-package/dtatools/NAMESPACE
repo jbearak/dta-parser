@@ -1,5 +1,6 @@
 useDynLib(dtatools, .registration = TRUE)
 importFrom(pillar,tbl_sum)
+importFrom(compiler,cmpfun)
 export(egen)
 export(dta_mean)
 export(dta_min)

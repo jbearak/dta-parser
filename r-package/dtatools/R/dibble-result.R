@@ -3,7 +3,12 @@
 # isolated, normalized columns are reused, including repeated output slots.
 .begin_dibble_result <- function(data, caller, operation) {
     stopifnot(operation %in% c("columns", "rows", "computed", "unknown"))
-    columns <- .data_columns(data)
+    columns <- .native_admission_call(
+        C_dtatools_select_branch,
+        .native_admission_branches(.native_admission_call(
+            C_dtatools_initial_capture_shell, .initial_capture_profile
+        ), columns, .data_columns(data)), .native_admission_if
+    )
     metadata <- attributes(data)
     metadata$.dtatools_ref_state <- NULL
     metadata$class <- .reference_base_classes(class(data))

@@ -346,6 +346,14 @@ implementation or tests copied or adapted:
   copy boundary to retain ordinary R read temporaries; public classes and the
   existing fallback dispatch remain unchanged.
 
+Additional R 4.6.1 source study for the scalar bytecode guard:
+  https://svn.r-project.org/R/tags/R-4-6-1/src/main/identical.c
+  R's bytecode, pairlist and plain-leaf equality semantics informed the
+  conservative callback-free comparison in numeric-payload.c. The package
+  still calls R_compute_identical for supported leaves after checking for
+  nested ALTREP values; no R function body was copied. R's preserved license
+  follows below.
+
 Studied as references only, with no dtplyr implementation incorporated:
   dtplyr 1.3.3, revision 2cc627511c34ed461093ae4c5dc94faccffeb93c
   https://github.com/tidyverse/dtplyr/tree/2cc627511c34ed461093ae4c5dc94faccffeb93c
@@ -355,10 +363,32 @@ Studied as references only, with no dtplyr implementation incorporated:
   inspected files contain no separate file-level notices. dtplyr's MIT license
   is reproduced for reference; this is not a claim that its code was copied.
 
+data.table source study and .internal.selfref compatibility credit:
+  data.table 1.18.6.1 (MPL-2.0). Its DESCRIPTION lists Tyson Barrett,
+  Matt Dowle, Arun Srinivasan, Jan Gorecki, Michael Chirico, Toby Hocking,
+  Benjamin Schwendinger, and Ivan Krylov as authors, with further contributors.
+  https://cran.r-project.org/src/contrib/data.table_1.18.6.1.tar.gz
+  Studied archive files: R/data.table.R, src/dogroups.c, src/assign.c,
+    src/wrappers.c, src/utils.c, src/reorder.c, NEWS.md, DESCRIPTION,
+    and LICENSE.
+  Its grouped evaluator, bounded GForce admission, and copy or materialization
+  of ALTREP columns at mutation boundaries informed the architecture review
+  of dtatools' grouped mutation and owned columns. data.table uses
+  by-reference assignment with a different alias contract. The dtatools
+  scalar producer and dependency checks are independent code. For data.table
+  interoperability, dtatools' data_table_reference_valid() checks the
+  .internal.selfref pointer layout defined by data.table's src/assign.c
+  setselfref() and _selfrefok() (1.18.6.1, lines 3-84). That compatibility
+  check is independently written, but the layout and validity rule come
+  from data.table. No data.table grouped evaluator, GForce arithmetic,
+  memrecycle assignment loop, or source text was copied into dtatools.
+
 Public tidyselect, rlang, vctrs, tibble and dplyr APIs remain dependencies.
-Calling those APIs does not incorporate their implementations. Tibble index implementation was inspected to check the public planning API;
-no tibble or data.table source was copied or adapted. The bounded vctrs
-restoration-policy adaptation below is separate from public API use.
+Calling those APIs does not incorporate their implementations. Tibble's index
+implementation was inspected to check its public planning API; no tibble
+source was copied or adapted. The data.table compatibility rule is credited
+above. The bounded vctrs restoration-policy adaptation below is separate
+from public API use.
 
 Adapted from vctrs 0.7.3:
   Source archive: https://cran.r-project.org/src/contrib/vctrs_0.7.3.tar.gz

@@ -42,9 +42,19 @@ double owned_numeric_compatibility_bytes = 0.0;
 #include "egen-groups.h"
 
 static const R_CallMethodDef CallEntries[] = {
+    {"C_dtatools_initial_capture_mode", (DL_FUNC) &C_dtatools_initial_capture_mode, 1},
+    {"C_dtatools_initial_capture_shell", (DL_FUNC) &C_dtatools_initial_capture_shell, 1},
+    {"C_dtatools_initial_capture_initial", (DL_FUNC) &C_dtatools_initial_capture_initial, 1},
+    {"C_dtatools_initial_capture_stats", (DL_FUNC) &C_dtatools_initial_capture_stats, 1},
     {"C_dtatools_owned_numeric_freeze", (DL_FUNC) &C_dtatools_owned_numeric_freeze, 2},
     {"C_dtatools_owned_numeric_info", (DL_FUNC) &C_dtatools_owned_numeric_info, 1},
     {"C_dtatools_native_copy_stats", (DL_FUNC) &C_dtatools_native_copy_stats, 1},
+    {"C_dtatools_numeric_entry_stats", (DL_FUNC) &C_dtatools_numeric_entry_stats, 1},
+    {"C_dtatools_test_numeric_size_minimum", (DL_FUNC) &C_dtatools_test_numeric_size_minimum, 1},
+    {"C_dtatools_numeric_size_stats", (DL_FUNC) &C_dtatools_numeric_size_stats, 1},
+    {"C_dtatools_test_numeric_size_gate", (DL_FUNC) &C_dtatools_test_numeric_size_gate, 1},
+    {"C_dtatools_capture_branch_frame", (DL_FUNC) &C_dtatools_capture_branch_frame, 0},
+    {"C_dtatools_select_branch", (DL_FUNC) &C_dtatools_select_branch, 2},
     {"C_dtatools_mutation_views", (DL_FUNC) &C_dtatools_mutation_views, 1},
     {"C_dtatools_mutation_column_view",
      (DL_FUNC) &C_dtatools_mutation_column_view, 2},
@@ -122,8 +132,39 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_ephemeral_altstring, 1},
     {"C_dtatools_construct_numeric",
      (DL_FUNC) &C_dtatools_construct_numeric, 3},
+    {"C_dtatools_try_mask_bindings",
+     (DL_FUNC) &C_dtatools_try_mask_bindings, 3},
+    {"C_dtatools_expected_numeric_profile", (DL_FUNC) &C_dtatools_expected_numeric_profile, 2},
+    {"C_dtatools_numeric_proof_stats", (DL_FUNC) &C_dtatools_numeric_proof_stats, 1},
+    {"C_dtatools_test_numeric_proof", (DL_FUNC) &C_dtatools_test_numeric_proof, 3},
+    {"C_dtatools_test_numeric_old_proof", (DL_FUNC) &C_dtatools_test_numeric_old_proof, 2},
+    {"C_dtatools_numeric_entry_state",
+     (DL_FUNC) &C_dtatools_numeric_entry_state, 1},
+    {"C_dtatools_double_combine_dependencies",
+     (DL_FUNC) &C_dtatools_double_combine_dependencies, 1},
+    {"C_dtatools_canonical_generate_attributes",
+     (DL_FUNC) &C_dtatools_canonical_generate_attributes, 3},
+    {"C_dtatools_metadata_execution_profile",
+     (DL_FUNC) &C_dtatools_metadata_execution_profile, 1},
+    {"C_dtatools_metadata_dependencies_unchanged",
+     (DL_FUNC) &C_dtatools_metadata_dependencies_unchanged, 2},
+    {"C_dtatools_canonical_attribute_plan",
+     (DL_FUNC) &C_dtatools_canonical_attribute_plan, 2},
+    {"C_dtatools_attribute_plan_stats", (DL_FUNC) &C_dtatools_attribute_plan_stats, 1},
+    {"C_dtatools_try_combine_double",
+     (DL_FUNC) &C_dtatools_try_combine_double, 5},
+    {"C_dtatools_combine_double_into_current",
+     (DL_FUNC) &C_dtatools_combine_double_into_current, 3},
+    {"C_dtatools_construct_double",
+     (DL_FUNC) &C_dtatools_construct_double, 3},
+    {"C_dtatools_double_fits",
+     (DL_FUNC) &C_dtatools_double_fits, 3},
     {"C_dtatools_construct_numeric_trusted",
      (DL_FUNC) &C_dtatools_construct_numeric_trusted, 4},
+    {"C_dtatools_computed_numeric",
+     (DL_FUNC) &C_dtatools_computed_numeric, 4},
+    {"C_dtatools_scalar_arithmetic",
+     (DL_FUNC) &C_dtatools_scalar_arithmetic, 5},
     {"C_dtatools_gather_numeric",
      (DL_FUNC) &C_dtatools_gather_numeric, 4},
     {"C_dtatools_gather_numeric_columns",
@@ -221,6 +262,7 @@ static const R_CallMethodDef CallEntries[] = {
  * reference ownership and column-sharing checks are registered .Call entries.
  */
 void attribute_visible R_init_dtatools(DllInfo *dll) {
+    initialize_numeric_size_gate();
     initialize_owned_columns(dll);
     column_append_blank_names_class = R_make_altstring_class("dtatools_append_blank_names", "dtatools", dll);
     R_set_altrep_Length_method(column_append_blank_names_class, column_append_blank_names_length);

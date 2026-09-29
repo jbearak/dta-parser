@@ -378,6 +378,9 @@
 }
 
 .dta_storage_holds <- function(doubles, storage) {
+    .native_admission_if(.native_admission_call(
+        C_dtatools_double_fits, NULL, NULL, .strict_double_dependencies
+    ), .native_admission_return(TRUE))
     codes <- .tab_missing_codes(doubles)
     observed <- is.na(codes)
     if (any(!is.na(codes) & codes == 256L)) return(FALSE)
