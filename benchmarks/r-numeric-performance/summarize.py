@@ -22,12 +22,12 @@ for batch, version in zip(args.batches, ("main", "candidate", "candidate", "main
 medians = {key: statistics.median(samples) for key, samples in values.items()}
 args.output.mkdir(parents=True, exist_ok=True)
 with (args.output / "medians.csv").open("w", newline="") as target:
-    writer = csv.writer(target)
+    writer = csv.writer(target, lineterminator="\n")
     writer.writerow(("version",) + fields + ("samples", "median_us", "timed_gc_calls"))
     for key in sorted(values):
         writer.writerow(key + (len(values[key]), medians[key], gcs[key]))
 with (args.output / "comparisons.csv").open("w", newline="") as target:
-    writer = csv.writer(target)
+    writer = csv.writer(target, lineterminator="\n")
     writer.writerow(fields + ("main_us", "candidate_us", "main_over_candidate",
                               "candidate_over_dplyr", "candidate_over_data_table"))
     for key in sorted(medians):

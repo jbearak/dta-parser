@@ -87,7 +87,7 @@ fixture <- function(engine, mode, n, width, groups) {
     names(env$expected_attributes) <- names(env$d)
     env
 }
-capture.output(sessionInfo(), file = file.path(out, "session.txt"))
+writeLines(trimws(capture.output(sessionInfo()), which = "right"), file.path(out, "session.txt"))
 writeLines(c(label, getLoadedDLLs()[["dtatools"]][["path"]]), file.path(out, "build.txt"))
 invisible(gc.time(TRUE))
 utils::Rprofmem(NULL)
