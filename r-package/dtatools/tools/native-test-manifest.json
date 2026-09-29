@@ -3660,7 +3660,7 @@
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
-          "sha256": "22532eeb2b22ba68ab94f461caab340c679d4d776ea63a52f055319cf6fc4844"
+          "sha256": "73961b1c8a6550b7a42153cb06bac2c3b4953fe33b3b924e05f85be39d56b9ae"
         },
         {
           "path": "tests/testthat/test-owned-reads.R",
@@ -3676,7 +3676,7 @@
         },
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
-          "sha256": "01a7d6f9dadf79bec54120bd5f94ae5512666c20ab1952072af56f1118e5433e"
+          "sha256": "5a1ef86b318a6356dd7d16c4e0cd5b476d74792434c02a7c3f2aa736e61c9b9c"
         }
       ],
       "blocks": [
@@ -4519,6 +4519,78 @@
           "warnings": 0
         },
         {
+          "file": "test-owned-columns.R",
+          "test": "double promotion scans retain finite limits and exceptional values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 540,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "double promotion preserves attributes and foreign reader callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "numeric slot staging commits finite boundary bytes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 90,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "numeric slot staging canonicalizes missing bytes and isolates metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 22,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "numeric slot staging preserves validation priority and failed targets",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 100,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "numeric slot staging retains scalar selected and foreign readers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 26,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "numeric slot staging retains temporal encoded range checks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "generated doubles preserve boundary bytes and independent payloads",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 105,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-columns.R",
+          "test": "generated doubles report the first invalid value across block boundaries",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 96,
+          "warnings": 0
+        },
+        {
           "file": "test-owned-reads.R",
           "test": "owned integer and logical exports preserve base values and argument evaluation",
           "occurrence": 1,
@@ -4836,6 +4908,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 108,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "retained captures and mutation views survive allocation GC",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 56,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "public copying and replacement preserve retained aliases under GC",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         }
       ],

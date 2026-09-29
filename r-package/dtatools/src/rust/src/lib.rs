@@ -454,7 +454,7 @@ unsafe fn gather_numeric_column(
 }
 
 #[no_mangle]
-/// Gather independent Stata numeric columns in parallel.
+/// Gather independent Stata numeric columns, using a serial path for one column.
 ///
 /// # Safety
 ///
@@ -484,6 +484,11 @@ pub unsafe extern "C" fn dtatools_gather_numeric_columns(
         } else {
             Some(std::slice::from_raw_parts(y_rows, row_count))
         };
+        // Grouped expression reads commonly gather one column at a time.
+        // No column-level parallelism is available in that case.
+        if column_count == 1 {
+            return unsafe { gather_numeric_column(columns[0], x_rows, y_rows) }.is_some();
+        }
         let workers = std::thread::available_parallelism()
             .map_or(1, usize::from)
             .min(column_count.max(1));

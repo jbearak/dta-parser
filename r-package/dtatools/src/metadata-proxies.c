@@ -340,6 +340,10 @@ SEXP metadata_proxy(
         }
         source = next;
     }
+    /* The public proxy state can change in an allocation callback. Retain
+       the exact entry source and optional origin independently of value. */
+    PROTECT(source);
+    PROTECT(read_origin);
     SEXP materialized_snapshot = R_NilValue;
     if (isolate && ALTREP(source) &&
         R_altrep_inherits(source, proxy_class) &&
@@ -380,7 +384,7 @@ SEXP metadata_proxy(
     SEXP result = PROTECT(R_new_altrep(proxy_class, state, R_NilValue));
     SHALLOW_DUPLICATE_ATTRIB(result, value);
     UNPROTECT(
-        2 + (alias != R_NilValue) +
+        4 + (alias != R_NilValue) +
         (materialized_snapshot != R_NilValue)
     );
     return result;
@@ -472,7 +476,7 @@ static SEXP mutation_column_view(SEXP value) {
         while (R_altrep_inherits(source, dtatools_metadata_real_class)) {
             source = metadata_proxy_source(source);
         }
-        SEXP origin = R_altrep_data1(source);
+        SEXP origin = PROTECT(R_altrep_data1(source));
         SEXP descriptor = PROTECT(numeric_payload_retained(numeric)
             ? numeric_handle_copy(source)
             : numeric_from_backing(
@@ -484,7 +488,7 @@ static SEXP mutation_column_view(SEXP value) {
         SET_VECTOR_ELT(state, 2, origin);
         SEXP view = PROTECT(R_new_altrep(dtatools_metadata_real_class, state, R_NilValue));
         SHALLOW_DUPLICATE_ATTRIB(view, value);
-        UNPROTECT(3);
+        UNPROTECT(4);
         return view;
     }
     /* Unknown and unsupported representations retain the physical handle.
@@ -497,12 +501,15 @@ SEXP C_dtatools_mutation_views(SEXP data) {
     SEXP result = PROTECT(Rf_allocVector(VECSXP, XLENGTH(data)));
     SEXP sizes = PROTECT(Rf_allocVector(REALSXP, XLENGTH(data)));
     for (R_xlen_t i = 0; i < XLENGTH(data); i++) {
-        SEXP column = VECTOR_ELT(data, i);
+        SEXP column = PROTECT(VECTOR_ELT(data, i));
         SEXP view = mutation_column_view(column);
         SET_VECTOR_ELT(result, i, view);
         /* An internal view must never reach NROW/length/dim dispatch. Unknown
            classes retain their physical handle and conservative alias guard. */
+        if (i >= XLENGTH(sizes))
+            Rf_error("`data` changed while its columns were being captured");
         REAL(sizes)[i] = view == column ? NA_REAL : (double) XLENGTH(view);
+        UNPROTECT(1);
     }
     Rf_setAttrib(result, R_NamesSymbol, Rf_getAttrib(data, R_NamesSymbol));
     Rf_setAttrib(result, Rf_install(".dtatools_mutation_views"), Rf_ScalarLogical(1));
@@ -528,7 +535,7 @@ static R_xlen_t view_slot(SEXP data, SEXP location) {
 
 SEXP C_dtatools_mutation_column_view(SEXP data, SEXP location) {
     R_xlen_t slot = view_slot(data, location);
-    SEXP column = VECTOR_ELT(data, slot);
+    SEXP column = PROTECT(VECTOR_ELT(data, slot));
     SEXP result = PROTECT(Rf_allocVector(VECSXP, 1));
     SEXP view = mutation_column_view(column);
     SET_VECTOR_ELT(result, 0, view);
@@ -537,7 +544,7 @@ SEXP C_dtatools_mutation_column_view(SEXP data, SEXP location) {
     Rf_setAttrib(result, Rf_install(".dtatools_mutation_views"), Rf_ScalarLogical(1));
     Rf_setAttrib(result, Rf_install(".dtatools_mutation_sizes"), size);
     Rf_setAttrib(result, Rf_install(".dtatools_mutation_slot"), token);
-    UNPROTECT(3);
+    UNPROTECT(4);
     return result;
 }
 
