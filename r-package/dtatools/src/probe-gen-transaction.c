@@ -1,4 +1,4 @@
-/* Owned typed-double, ungrouped gen admission. Unsupported shapes and
+/* Plain and owned typed-double, ungrouped gen admission. Unsupported shapes and
    unaudited public dependencies continue through the ordinary R path. */
 #include "dtatools-internal.h"
 #include <float.h>
@@ -104,10 +104,20 @@ static int probe_typed_column(SEXP column, R_xlen_t n, const char *storage_name,
     if (TYPEOF(column) != REALSXP || XLENGTH(column) != n ||
         !(grouping ? (R_altrep_inherits(column, dtatools_metadata_real_class) ||
                       R_altrep_inherits(column, dtatools_numeric_class))
-                    : owned_real(column)) ||
-        (!grouping && R_altrep_data2(column) != R_NilValue) ||
+                    : (!ALTREP(column) || owned_real(column))) ||
+        (!grouping && ALTREP(column) && R_altrep_data2(column) != R_NilValue) ||
         !Rf_inherits(column, class_name)) return 0;
+    if (!ALTREP(column)) {
+        SEXP classes = Rf_getAttrib(column, R_ClassSymbol);
+        static const char *expected[] = {"dta_numeric", "dta_double", "vctrs_vctr", "double"};
+        if (Rf_isS4(column) || R_getAttribCount(column) != 2 ||
+            TYPEOF(classes) != STRSXP || ALTREP(classes) || ANY_ATTRIB(classes) ||
+            XLENGTH(classes) != 4) return 0;
+        for (int i = 0; i < 4; ++i)
+            if (strcmp(CHAR(STRING_ELT(classes, i)), expected[i])) return 0;
+    }
     SEXP storage = Rf_getAttrib(column, Rf_install("stata.storage"));
+    if (!ALTREP(column) && (ALTREP(storage) || ANY_ATTRIB(storage))) return 0;
     return TYPEOF(storage) == STRSXP && XLENGTH(storage) == 1 &&
         strcmp(CHAR(STRING_ELT(storage, 0)), storage_name) == 0;
 }
@@ -171,7 +181,7 @@ SEXP C_dtatools_probe_direct_final(SEXP data, SEXP base_state,
     R_xlen_t n = XLENGTH(x);
     if (!probe_typed_column(x, n, "double", "dta_double", 0))
         return Rf_ScalarLogical(FALSE);
-    SEXP x_backing = owned_values(x);
+    SEXP x_backing = owned_real(x) ? owned_values(x) : x;
     if (TYPEOF(x_backing) != REALSXP || ALTREP(x_backing))
         return Rf_ScalarLogical(FALSE);
     SEXP needed = PROTECT(Rf_ScalarReal((double) width + 1));
@@ -234,7 +244,7 @@ SEXP C_dtatools_probe_direct_final(SEXP data, SEXP base_state,
         R_getVarEx(Rf_install("placement"), frame, FALSE, R_NilValue) != R_NilValue ||
         XLENGTH(data) != width ||
         VECTOR_ELT(data, source_index) != x ||
-        owned_values(x) != x_backing ||
+        (owned_real(x) ? owned_values(x) : x) != x_backing ||
         !probe_typed_column(x, n, "double", "dta_double", 0) ||
         Rf_getAttrib(data, R_NamesSymbol) != names ||
         Rf_getAttrib(data, R_ClassSymbol) != classes ||

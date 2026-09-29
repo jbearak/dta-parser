@@ -354,7 +354,7 @@ SEXP C_dtatools_probe_dplyr_early_stats(SEXP reset) {
 
 
 static int typed(SEXP col, R_xlen_t n, const char *class_name, const char *storage_name) {
-    if (TYPEOF(col) != REALSXP || XLENGTH(col) != n) {
+    if (TYPEOF(col) != REALSXP || Rf_isS4(col) || XLENGTH(col) != n) {
         return 0;
     }
     SEXP storage = Rf_getAttrib(col, Rf_install("stata.storage"));
@@ -374,7 +374,8 @@ static int typed(SEXP col, R_xlen_t n, const char *class_name, const char *stora
 }
 
 static int ungrouped_column(SEXP col, R_xlen_t n) {
-    return (owned_real(col) && typed(col, n, "dta_double", "double")) ||
+    return ((!ALTREP(col) || owned_real(col)) &&
+         typed(col, n, "dta_double", "double")) ||
         (TYPEOF(col) == REALSXP && ALTREP(col) &&
          R_altrep_inherits(col, dtatools_numeric_class) &&
          R_altrep_data2(col) == R_NilValue &&
@@ -590,7 +591,7 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
         seen_hashes[slot] = hash;
     }
     SEXP x = VECTOR_ELT(data, source_index);
-    if (!owned_real(x)) return R_NilValue;
+    if (ALTREP(x) && !owned_real(x)) return R_NilValue;
     R_xlen_t n = XLENGTH(x);
     if (n < 1 || n > 1000000) return R_NilValue;
     if (!typed(x, n, "dta_double", "double")) {
@@ -749,9 +750,9 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
     /* Read the frozen source fork. The original handle may now point at a
        newer record after a finalizer's supported COW value write. */
     if (!constant)
-        xp = (const double *) R_ExternalPtrAddr(
-            R_altrep_data1(outputs == 0 ? VECTOR_ELT(backings, 1) :
-                           VECTOR_ELT(prepared, source_index)));
+        xp = (const double *) DATAPTR_RO(
+            outputs == 0 ? VECTOR_ELT(backings, 1) :
+                           VECTOR_ELT(prepared, source_index));
     admitted++;
     for (int output_index = 0; output_index <
          (fork_outputs ? 1 : (outputs == 0 ? 1 : outputs)); output_index++) {

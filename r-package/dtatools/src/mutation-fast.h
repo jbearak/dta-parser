@@ -56,6 +56,11 @@ static SEXP mutation_patch_scalar(SEXP data, SEXP variable, SEXP rows,
     if (compact != NULL) kind = compact->kind;
     else if (rows == R_NilValue && materialized_numeric_storage(target, &materialized)) kind = materialized.kind;
     else if (owned_real(target) && owned_real_supported(target)) kind = NUMERIC_DOUBLE;
+    else if (rows == R_NilValue && !ALTREP(target) &&
+             owned_real_supported(target) && Rf_inherits(target, "dta_double") &&
+             TYPEOF(value) == REALSXP && R_FINITE(REAL(value)[0]) &&
+             REAL(value)[0] >= -DBL_MAX / 2.0 && REAL(value)[0] <= DBL_MAX / 2.0)
+        kind = NUMERIC_DOUBLE;
     else return R_NilValue;
     if (promote) {
         if ((rows == R_NilValue ? count : XLENGTH(rows)) == 0) return data;

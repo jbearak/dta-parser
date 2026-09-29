@@ -51,6 +51,16 @@ SEXP C_dtatools_probe_bracket_step_stats(SEXP reset) {
     return result;
 }
 
+/* Read ordinary doubles directly. Owned input must retain an unexposed,
+   unmaterialized backing; unfamiliar ALTREP classes stay on the R path. */
+SEXP dtatools_probe_double_input_values(SEXP column) {
+    if (TYPEOF(column) != REALSXP || Rf_isS4(column)) return R_NilValue;
+    if (!ALTREP(column)) return column;
+    if (!owned_real(column) || owned_flags(column)[OWNED_EXPOSED] ||
+        R_altrep_data2(column) != R_NilValue) return R_NilValue;
+    return owned_values(column);
+}
+
 static int probe_typed_column(SEXP column, R_xlen_t n,
                               const char *storage_name,
                               const char *class_name) {
@@ -150,11 +160,9 @@ static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
                                        R_xlen_t n, int step,
                                        R_xlen_t source_slot,
                                        double offset) {
-    if (TYPEOF(state) != ENVSXP || !owned_real(x) ||
-        owned_flags(x)[OWNED_EXPOSED] ||
-        R_altrep_data2(x) != R_NilValue ||
+    if (TYPEOF(state) != ENVSXP || dtatools_probe_double_input_values(x) == R_NilValue ||
         n > (R_xlen_t) SIZE_MAX / sizeof(double)) return R_NilValue;
-    SEXP values = owned_values(x);
+    SEXP values = dtatools_probe_double_input_values(x);
     if (TYPEOF(values) != REALSXP || ALTREP(values) || XLENGTH(values) != n)
         return R_NilValue;
     size_t bytes = (size_t) n * sizeof(double);
@@ -195,7 +203,7 @@ static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
         Rf_defineVar(storage_tag, storage, state);
         SEXP output = PROTECT(capture_generated_column(seed));
         int source_slot_same = VECTOR_ELT(data, source_slot) == x;
-        int backing_same = owned_values(x) == values;
+        int backing_same = dtatools_probe_double_input_values(x) == values;
         int attrs_same = probe_canonical_source_attrs(x);
         int class_same = Rf_getAttrib(x, R_ClassSymbol) == class;
         int storage_same =
@@ -219,8 +227,7 @@ static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
     }
     const double *xp = REAL(values);
     R_CheckUserInterrupt();
-    if (VECTOR_ELT(data, source_slot) != x || owned_values(x) != values ||
-        owned_flags(x)[OWNED_EXPOSED] ||
+    if (VECTOR_ELT(data, source_slot) != x || dtatools_probe_double_input_values(x) != values ||
         !probe_canonical_source_attrs(x) ||
         Rf_getAttrib(x, R_ClassSymbol) != class ||
         Rf_getAttrib(x, Rf_install("stata.storage")) != storage) {
@@ -235,7 +242,7 @@ static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
         probe_generation_phase_hook();
         SEXP output = PROTECT(capture_generated_column(seed));
         if (VECTOR_ELT(data, source_slot) != x ||
-            owned_values(x) != values ||
+            dtatools_probe_double_input_values(x) != values ||
             !probe_canonical_source_attrs(x) ||
             Rf_getAttrib(x, R_ClassSymbol) != class ||
             Rf_getAttrib(x, Rf_install("stata.storage")) != storage) {
@@ -259,12 +266,12 @@ static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
     Rf_defineVar(Rf_install("pending_rhs"), new_seed, state);
     probe_generation_phase_hook();
     SEXP new_output = PROTECT(capture_generated_column(new_seed));
-    if (VECTOR_ELT(data, source_slot) != x || owned_values(x) != values) {
+    if (VECTOR_ELT(data, source_slot) != x || dtatools_probe_double_input_values(x) != values) {
         UNPROTECT(7);
         return R_NilValue;
     }
     Rf_defineVar(seed_tag, new_seed, state);
-    if (VECTOR_ELT(data, source_slot) != x || owned_values(x) != values ||
+    if (VECTOR_ELT(data, source_slot) != x || dtatools_probe_double_input_values(x) != values ||
         Rf_getAttrib(x, R_ClassSymbol) != class ||
         Rf_getAttrib(x, Rf_install("stata.storage")) != storage) {
         UNPROTECT(7);
@@ -454,11 +461,10 @@ static SEXP general_try_replace(SEXP data, SEXP assignments,
     R_xlen_t n = XLENGTH(x);
     if (!probe_typed_column(x, n, "double", "dta_double") ||
         !probe_canonical_source_attrs(x) ||
-        !owned_real(x) || owned_flags(x)[OWNED_EXPOSED] ||
-        R_altrep_data2(x) != R_NilValue) {
+        dtatools_probe_double_input_values(x) == R_NilValue) {
         UNPROTECT(2); return R_NilValue;
     }
-    SEXP source = PROTECT(owned_values(x));
+    SEXP source = PROTECT(dtatools_probe_double_input_values(x));
     SEXP class = PROTECT(Rf_getAttrib(x, R_ClassSymbol));
     SEXP storage = PROTECT(Rf_getAttrib(x, Rf_install("stata.storage")));
     if (TYPEOF(source) != REALSXP || ALTREP(source) ||
@@ -475,8 +481,7 @@ static SEXP general_try_replace(SEXP data, SEXP assignments,
     if (!general_table_class(data) || XLENGTH(data) != width ||
         Rf_getAttrib(data, R_NamesSymbol) != names ||
         !live_ok ||
-        VECTOR_ELT(data, target_slot) != x || owned_values(x) != source ||
-        owned_flags(x)[OWNED_EXPOSED] || R_altrep_data2(x) != R_NilValue ||
+        VECTOR_ELT(data, target_slot) != x || dtatools_probe_double_input_values(x) != source ||
         Rf_getAttrib(x, R_ClassSymbol) != class ||
         Rf_getAttrib(x, Rf_install("stata.storage")) != storage ||
         !probe_canonical_source_attrs(x)) {
