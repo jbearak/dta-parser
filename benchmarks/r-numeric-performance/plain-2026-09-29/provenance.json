@@ -1,5 +1,5 @@
 {
-  "candidate_commit": "c58b55ec",
+  "candidate_commit": "c0d37ae27b87da011fe0a461a48744f892b802ed",
   "baseline_executable_commit": "19384fe0eb986ed458947f0975e53789e5d0c0e3",
   "source_sha256": {
     "r-package/dtatools/R/egen-values.R": "48c55ff2676ae2cfb4a8f0a067ccfb54c05a4ea6ec8abca3fcc0535f762e5743",
@@ -130,5 +130,6 @@
   "dll_sha256": {
     "experiments": "645a1d405c074d9d2aeb4e5177de001112167c85ac981ab98bd6f4b57d240346",
     "merged-main": "36b515845ffcce1ef1deb5d6cdf64e2d06500c5bb19cad541d4dcb15fb014b5e"
-  }
+  },
+  "measured_commit_before_rebase": "c58b55ec"
 }
