@@ -60,6 +60,14 @@ macOS deployment-target linker warnings, vendored Makefile extensions, the Rust
 abort symbol, a vendored CITATION location, and a generated C file without a
 final newline. Tests were run separately against the installed candidate.
 
+The runner now writes iteration timing and GC data to the requested CSV and
+one separate allocation observation per workload to `<output>.allocations.csv`.
+`expression_allocated_bytes` measures the expression's separate allocation run;
+it is not per-iteration timing data. The original archived CSVs below repeat
+that value in `allocated_bytes` on each timing row. Use it once per workload,
+not as a quantity to sum across rows. This schema correction does not change
+the timing measurements or the allocation comparison above.
+
 Raw measurement artifacts, 800 observations each, were retained with these hashes:
 
 - `benchmark-candidate-1.csv`: `1cf2df420605290b7efcb0b1abe9c05f9a25bb07131dc7080cb24a1a90f7f8c2`

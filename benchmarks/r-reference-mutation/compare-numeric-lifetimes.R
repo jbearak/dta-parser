@@ -30,6 +30,7 @@ expected <- list(TRUE, values, values, values, as.double(compact)[rows], values,
 extract <- list(identity, function(x) as.double(x$x), as.double, as.double, as.double,
     function(x) as.double(x$x), function(x) as.double(x$y), function(x) as.double(x$y))
 observations <- list()
+allocations <- list()
 for (i in seq_along(cases)) {
     operation <- cases[[i]]
     stopifnot(identical(extract[[i]](operation()), expected[[i]]))
@@ -38,9 +39,14 @@ for (i in seq_along(cases)) {
     stopifnot(identical(extract[[i]](operation()), expected[[i]]))
     observations[[i]] <- data.frame(label = args[[2L]], workload = names(cases)[[i]],
         iteration = seq_along(sample$time[[1L]]), seconds = as.numeric(sample$time[[1L]]),
-        allocated_bytes = as.numeric(sample$mem_alloc), gc = rowSums(sample$gc[[1L]]))
+        gc = rowSums(sample$gc[[1L]]))
+    # bench measures allocation in a separate evaluation of the expression.
+    # It is one workload observation, not a measurement of each timed iteration.
+    allocations[[i]] <- data.frame(label = args[[2L]], workload = names(cases)[[i]],
+        expression_allocated_bytes = as.numeric(sample$mem_alloc))
 }
 write.csv(do.call(rbind, observations), args[[3L]], row.names = FALSE)
+write.csv(do.call(rbind, allocations), paste0(args[[3L]], ".allocations.csv"), row.names = FALSE)
 cat("Validated", length(cases), "workloads at", n, "rows\n")
 cat("Package:", find.package("dtatools"), "\nDLL:", getLoadedDLLs()[["dtatools"]][["path"]], "\n")
 print(sessionInfo())
