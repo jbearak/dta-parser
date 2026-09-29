@@ -120,7 +120,15 @@
     .register_dplyr_methods(only = "recode.haven_labelled")
 }
 
+.register_dtatools_dplyr_onload <- function(...) {
+    .register_dplyr_methods(...)
+    .grouped_probe_pin_if_ready()
+    .ungrouped_mutate_pin_if_ready()
+    invisible(NULL)
+}
+
 .clear_dplyr_registrations <- function(...) {
+    .ungrouped_mutate_disable_after_dplyr_unload()
     .dplyr_registration_state$namespace <- NULL
     .dplyr_registration_state$previous <- list()
     invisible(NULL)
@@ -172,7 +180,7 @@
 
 .dtatools_optional_hooks <- function() {
     list(
-        list("dplyr", "onLoad", .register_dplyr_methods),
+        list("dplyr", "onLoad", .register_dtatools_dplyr_onload),
         list("dplyr", "onUnload", .clear_dplyr_registrations),
         list("labelled", "onLoad", .register_dtatools_labelled_recode),
         list("labelled", "onUnload", .discard_labelled_registration),

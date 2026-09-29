@@ -396,6 +396,7 @@ static SEXP apply_numeric_slot(void *data) {
        change. Keep their after-write injection and rollback tests intact. */
     maybe_inject_reference_write_interrupt();
     R_CheckUserInterrupt();
+    dtatools_probe_numeric_precommit();
     validate_numeric_slot_target(transaction);
     int private = numeric_private_handle(transaction);
     SEXP column = PROTECT(private ? transaction->target : new_numeric_destination(transaction));

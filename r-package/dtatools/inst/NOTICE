@@ -818,3 +818,9 @@ proprietary programs.  If your program is a subroutine library, you may
 consider it more useful to permit linking proprietary applications with the
 library.  If this is what you want to do, use the GNU Library General
 Public License instead of this License.
+
+Grouping hash mixer
+
+  src/probe-grouped-bracket-plan.c uses Chris Wellons's lowbias32 mixer from
+  hash-prospector (https://github.com/skeeto/hash-prospector), released under
+  the Unlicense. The surrounding grouping and publication code is original.

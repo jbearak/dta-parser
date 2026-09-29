@@ -3591,6 +3591,94 @@ static int scalar_dependencies_unchanged(SEXP frame, SEXP dependencies) {
     return computed_dependencies_unchanged(frame, VECTOR_ELT(dependencies, 12));
 }
 
+/* Scratch cost screen: the existing build-owned external scalar profile,
+   without the 53-entry package-private helper profile. */
+SEXP C_dtatools_probe_scalar_public_dependencies(SEXP dependencies) {
+    return Rf_ScalarLogical(scalar_dependencies_unchanged(
+        R_GetCurrentEnv(), dependencies));
+}
+
+/* Scratch-only fast continuation after C_dtatools_probe_public_fused_guard()
+   has just qualified the 50 public roots on this same operation. Keep the
+   scalar profile's lexical/export, primitive, and numeric-dependency checks;
+   replace six duplicate source/bytecode walks with fresh value-identity
+   checks against the independently qualified public-root capture. */
+int dtatools_probe_scalar_public_dependencies_after50(
+    SEXP dependencies, SEXP public_state
+) {
+    if (TYPEOF(dependencies) != VECSXP || ALTREP(dependencies) ||
+        XLENGTH(dependencies) != 16 || TYPEOF(public_state) != ENVSXP)
+        return 0;
+    SEXP live_sym = Rf_install("live");
+    R_BindingType_t live_kind = R_GetBindingType(live_sym, public_state);
+    if (live_kind != R_BindingTypeValue && live_kind != R_BindingTypeForced)
+        return 0;
+    SEXP live = R_getVarEx(live_sym, public_state, FALSE, R_NilValue);
+    if (TYPEOF(live) != VECSXP || ALTREP(live) || XLENGTH(live) != 58)
+        return 0;
+    SEXP frame = R_GetCurrentEnv();
+    SEXP ns = VECTOR_ELT(dependencies, 8);
+    if (TYPEOF(ns) != ENVSXP) return 0;
+    SEXP recycle = vctrs_exported_function(
+        frame, ns, "vec_recycle_common", VECTOR_ELT(dependencies, 5));
+    if (recycle != VECTOR_ELT(live, 40) ||
+        !scalar_wrapper_bindings_unchanged(recycle, dependencies))
+        return 0;
+    SEXP list2 = computed_dependency_value(Rf_install("list2"), ns, 16);
+    if (list2 != VECTOR_ELT(live, 39) ||
+        !scalar_wrapper_bindings_unchanged(list2, dependencies))
+        return 0;
+    if (computed_dependency_value(Rf_install("withCallingHandlers"),
+                                  R_BaseEnv, 16) != VECTOR_ELT(live, 32) ||
+        computed_dependency_value(Rf_install("parent.frame"),
+                                  R_BaseEnv, 16) != VECTOR_ELT(live, 12) ||
+        !scalar_same_function(computed_dependency_value(Rf_install("list"),
+                                                        R_BaseEnv, 16),
+                              VECTOR_ELT(dependencies, 13)))
+        return 0;
+    static const char *names[] = {
+        "getExportedValue", "suppressWarnings", "+", "-", "::",
+        "is.numeric", "as.double"
+    };
+    for (int i = 0; i < 7; i++) {
+        SEXP actual = computed_dependency_value(Rf_install(names[i]), frame, 16);
+        if (i == 0 || i == 1) {
+            if (actual != VECTOR_ELT(live, i == 0 ? 14 : 13))
+                return 0;
+        } else if (!dtatools_execution_function_same(
+                       actual, VECTOR_ELT(dependencies, i + 1)))
+            return 0;
+    }
+    return computed_dependencies_unchanged(
+        frame, VECTOR_ELT(dependencies, 12));
+}
+
+/* Scratch caller-operator check for a captured quosure. */
+SEXP C_dtatools_probe_caller_plus(SEXP quosure, SEXP dependencies) {
+    if (TYPEOF(quosure) != LANGSXP || TYPEOF(dependencies) != VECSXP ||
+        XLENGTH(dependencies) != 16) return Rf_ScalarLogical(FALSE);
+    SEXP environment = Rf_getAttrib(quosure, Rf_install(".Environment"));
+    if (TYPEOF(environment) != ENVSXP) return Rf_ScalarLogical(FALSE);
+    SEXP expression = CADR(quosure);
+    if (TYPEOF(expression) != LANGSXP) return Rf_ScalarLogical(FALSE);
+    if (CAR(expression) == Rf_install("+"))
+        return Rf_ScalarLogical(
+            computed_dependency_value(Rf_install("+"), environment, 16) ==
+            VECTOR_ELT(dependencies, 3));
+    if (CAR(expression) == Rf_install("abs")) {
+        SEXP numeric = VECTOR_ELT(dependencies, 12);
+        if (TYPEOF(numeric) != VECSXP || XLENGTH(numeric) != 21)
+            return Rf_ScalarLogical(FALSE);
+        SEXP expected_abs = VECTOR_ELT(numeric, 4);
+        return Rf_ScalarLogical(TYPEOF(expected_abs) == BUILTINSXP &&
+            computed_dependency_value(Rf_install("abs"), environment, 16) ==
+                expected_abs &&
+            computed_dependency_value(Rf_install("-"), environment, 16) ==
+                VECTOR_ELT(dependencies, 4));
+    }
+    return Rf_ScalarLogical(FALSE);
+}
+
 /* .dta_read_is_na uses the primitive branch for the native fallback. If base
    is.na is traced or replaced, preserve that executable callback by declining
    the compact producer before it bypasses the branch. */

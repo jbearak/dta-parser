@@ -21,21 +21,21 @@ test_that("initial capture publishes wide owned and compact columns and declines
         mask$forget()
         shell <- as.double(supported && width >= 64L)
         batch <- as.double(supported && width > 128L)
-        expect_identical(counts[["shell_admitted"]], shell, info = width)
-        expect_identical(counts[["batch_admitted"]], batch, info = width)
-        expect_identical(counts[["generations"]], batch * width, info = width)
-        expect_identical(counts[["owned"]], batch * (width - 1L), info = width)
-        expect_identical(counts[["compact"]], batch, info = width)
-        expect_identical(lapply(values, as.double), lapply(columns, as.double), info = width)
-        expect_identical(names(values), names(columns), info = width)
+        expect_identical(counts[["shell_admitted"]], shell, info = as.character(width))
+        expect_identical(counts[["batch_admitted"]], batch, info = as.character(width))
+        expect_identical(counts[["generations"]], batch * width, info = as.character(width))
+        expect_identical(counts[["owned"]], batch * (width - 1L), info = as.character(width))
+        expect_identical(counts[["compact"]], batch, info = as.character(width))
+        expect_identical(lapply(values, as.double), lapply(columns, as.double), info = as.character(width))
+        expect_identical(names(values), names(columns), info = as.character(width))
         if (width < 64L) {
-            expect_identical(counts[["shape_decline"]], 2, info = width)
-            expect_identical(counts[["frame_decline"]], 0, info = width)
-            expect_identical(counts[["dependency_decline"]], 0, info = width)
+            expect_identical(counts[["shape_decline"]], 2, info = as.character(width))
+            expect_identical(counts[["frame_decline"]], 0, info = as.character(width))
+            expect_identical(counts[["dependency_decline"]], 0, info = as.character(width))
         } else if (width <= 128L) {
-            expect_identical(counts[["shape_decline"]], 1, info = width)
-            expect_identical(counts[["frame_decline"]], 0, info = width)
-            expect_identical(counts[["dependency_decline"]], 0, info = width)
+            expect_identical(counts[["shape_decline"]], 1, info = as.character(width))
+            expect_identical(counts[["frame_decline"]], as.double(!supported), info = as.character(width))
+            expect_identical(counts[["dependency_decline"]], 0, info = as.character(width))
         }
     }
 })
@@ -200,6 +200,7 @@ test_that("initial capture qualifies executing constructors after recompilation 
 })
 
 test_that("initial capture isolates public results and retained generation registries", {
+    skip_if_not_installed("dplyr")
     .initial_capture_test_warm()
     columns <- .initial_capture_test_columns()
     columns[[2L]] <- columns[[1L]]

@@ -1,0 +1,17 @@
+package,name,ordinary_hits,candidate_hits,delta,equal
+dtatools,vec_arith.dta_numeric.numeric,500,0,"1,1,1",TRUE
+vctrs,vec_arith.dta_numeric,500,0,"1,1,1",TRUE
+vctrs,vec_cast.dta_numeric.dta_numeric,500,0,"1,1,1",TRUE
+vctrs,vec_proxy_equal.dta_numeric,1,0,"1,1,1",TRUE
+vctrs,vec_proxy.dibble,1,0,"1,1,1",TRUE
+vctrs,vec_proxy.dta_numeric,10467,0,"1,1,1",TRUE
+vctrs,vec_ptype2.dta_numeric.dta_numeric,495,0,"1,1,1",TRUE
+vctrs,vec_restore.dta_numeric,1996,0,"1,1,1",TRUE
+base,+.vctrs_vctr,500,0,"1,1,1",TRUE
+base,$<-.data.frame,1,0,"1,1,1",TRUE
+base,dim.dibble,4,0,"1,1,1",TRUE
+base,names<-.vctrs_vctr,3490,0,"1,1,1",TRUE
+base,Ops.dta_numeric,500,0,"1,1,1",TRUE
+base,anyDuplicated.default,4,0,"1,1,1",TRUE
+base,Ops.numeric_version,1,0,"1,1,1",TRUE
+base,rev.default,1,0,"1,1,1",TRUE

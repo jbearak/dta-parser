@@ -134,7 +134,7 @@
     },
     {
       "path": "tests/testthat/helper-native-execution-profile.R",
-      "sha256": "2da4597ece7b3b666fad8440cd8ced0f86d964d4b061bee41746dcd22c3a335b"
+      "sha256": "68f85d17d7089b5151af49a9f058fcb61e8ffdba8d0ebb0f99c581156f074f47"
     }
   ],
   "fixtures": [
@@ -1539,7 +1539,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "d280c7784e9ef321dd0304d6347bbc16d1f95521d2073c53ba2faee2f4e43aa0"
+          "sha256": "7a1dcddc7929ea6cbabd48164330d48a9c940fd3647678b4216c8e4631867249"
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
@@ -1599,7 +1599,7 @@
         },
         {
           "path": "tests/testthat/test-folded-return-mutation.R",
-          "sha256": "1b85777e87bbbaeee90249c73f7a23749a707c1ab5729b94fe915b4d395c7e81"
+          "sha256": "9634ed7aa7df87e8e5ebff43fd554bf847bf78f4b31388a0b87fba92e055e933"
         },
         {
           "path": "tests/testthat/test-numeric-secondary-inputs.R",
@@ -1611,11 +1611,11 @@
         },
         {
           "path": "tests/testthat/test-combiner-attribute-isolation.R",
-          "sha256": "a8d5eebe67e43a143c7711aaf5c6e780096a7320dda0e6fb1e1ebce5e945e29f"
+          "sha256": "32bd49c323e6a810c6adc0b8ba64e1a9af5fcf952769436736f15104b401f120"
         },
         {
           "path": "tests/testthat/test-scalar-cache-constant-mutation.R",
-          "sha256": "a27e644fae121f1e6ebd320630316003992a9419cf400d3e5524e4ff6ef99bd1"
+          "sha256": "dd2775d6ece0f02da9d4a7b91011d5b58685dffe1fffc261f43cfa32785c5f33"
         },
         {
           "path": "tests/testthat/test-numeric-bytecode-altrep.R",
@@ -2924,25 +2924,6 @@
         },
         {
           "file": "test-double-combine.R",
-          "test": "fresh public grouped generation reaches combination without test-only warming",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 4,
-          "warnings": 0
-        },
-        {
-          "file": "test-double-combine.R",
-          "test": "fresh public grouped dplyr calls reach combination without test-only warming",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 3,
-          "warnings": 0,
-          "min_pass_before_skip": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-double-combine.R",
           "test": "combination fallback preserves public generation error attribution",
           "occurrence": 1,
           "skip": "forbid",
@@ -3112,6 +3093,25 @@
           "skip": "forbid",
           "min_pass": 2,
           "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "fresh public grouped generation preserves typed results without test-only warming",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "fresh grouped dplyr calls preserve typed results without test-only warming",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-numeric-helper-profile.R",
@@ -6804,6 +6804,18 @@
         {
           "path": "tests/testthat/test-metadata-execution-profile.R",
           "sha256": "380bed1cb2dcadf0ea866e790628d6c92ef941121204d034ed4f48a8972d89b3"
+        },
+        {
+          "path": "tests/testthat/test-bracket-native-admission.R",
+          "sha256": "5f5b54ad1ca870b219037d7b96fcc22dde8c36dcce6dac8a3c11bba1d2e7802d"
+        },
+        {
+          "path": "tests/testthat/test-repl-native-admission.R",
+          "sha256": "f4df779a85e012dc76546b0043398c554d01681ccba23c34b608d055dbece003"
+        },
+        {
+          "path": "tests/testthat/test-grouped-gen-native-admission.R",
+          "sha256": "54e642d3f6e9a8f7407b7b8b3ee29748a96a74e2b6d10d098acb5c6673aa631d"
         }
       ],
       "blocks": [
@@ -8654,6 +8666,71 @@
           "skip": "forbid",
           "min_pass": 4,
           "warnings": 0
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "native brackets publish unfamiliar columns and preserve ordinary fallback",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "bracket fallback retains a completed RHS after a source write",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "grouped bracket late shaping traces preserve the uncommitted prefix",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "generated native siblings have independent mutable metadata",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "pending bracket generation does not repeat reference marker callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-repl-native-admission.R",
+          "test": "native replacement admits an unfamiliar column and preserves public fallback",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-grouped-gen-native-admission.R",
+          "test": "grouped native gen publishes and declines after a staged source change",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
         }
       ],
       "children": [
@@ -8700,6 +8777,62 @@
         {
           "id": "generation-signal-noisy",
           "kind": "r_bg",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-native-admission",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-pending-rhs",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-bracket-pending-rhs",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-generated-metadata-isolation",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "repl-native-clean-session",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-gen-native-clean-session",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-pending-marker",
+          "kind": "r",
           "minimum": 1,
           "maximum": 1,
           "completion": "complete",
@@ -10848,11 +10981,15 @@
         },
         {
           "path": "tests/testthat/test-initial-capture.R",
-          "sha256": "3dec31e00b73f78270269ce19b9dbdb6f4ad3c970c09526d272ee632c8042d85"
+          "sha256": "674aa249d029d9edd3be9b90bfc48600c5863d01d00269c9c9682f740d214d97"
         },
         {
           "path": "tests/testthat/test-initial-capture-names.R",
           "sha256": "c12b0568988dd2fb8a29782cacdd20c80052fb8cc5d00b7b2d722a8c907ae804"
+        },
+        {
+          "path": "tests/testthat/test-ungrouped-dplyr-native-admission.R",
+          "sha256": "1fccbc44e728097de30c77bc8bb55fdf1a81c6c14cf263304e45b4319515583e"
         }
       ],
       "blocks": [
@@ -11918,9 +12055,12 @@
           "file": "test-initial-capture.R",
           "test": "initial capture isolates public results and retained generation registries",
           "occurrence": 1,
-          "skip": "forbid",
+          "skip": "require",
           "min_pass": 12,
-          "warnings": 0
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-initial-capture.R",
@@ -11993,6 +12133,17 @@
           "skip": "forbid",
           "min_pass": 13,
           "warnings": 0
+        },
+        {
+          "file": "test-ungrouped-dplyr-native-admission.R",
+          "test": "ungrouped native mutate isolates five outputs and honors public fallback",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
       "children": [
@@ -12017,6 +12168,14 @@
           "kind": "r",
           "minimum": 1,
           "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "ungrouped-dplyr-native-clean-session",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
           "completion": "complete",
           "allow_error": false
         }

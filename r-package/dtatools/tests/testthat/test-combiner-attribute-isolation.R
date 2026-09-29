@@ -57,6 +57,7 @@
 }
 
 .expect_combiner_attribute_isolation <- function(indexed) {
+    skip_if_not_installed("data.table")
     classes <- c("dta_numeric", "dta_double", "vctrs_vctr", "double")
     expected_attributes <- list(stata.storage = "double", class = classes)
     native <- .dtatools_execution_profile_expected() &&

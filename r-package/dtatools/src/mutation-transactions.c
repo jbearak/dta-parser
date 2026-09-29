@@ -5,6 +5,17 @@
    writes through are complete. */
 #include "dtatools-internal.h"
 
+static SEXP prepared_copy_after_names_hook = NULL;
+SEXP C_dtatools_probe_prepared_copy_after_names_hook(SEXP hook) {
+    if (hook != R_NilValue && TYPEOF(hook) != CLOSXP)
+        Rf_error("after-names hook must be a function or NULL");
+    if (prepared_copy_after_names_hook != NULL)
+        R_ReleaseObject(prepared_copy_after_names_hook);
+    prepared_copy_after_names_hook = hook == R_NilValue ? NULL : hook;
+    if (prepared_copy_after_names_hook != NULL)
+        R_PreserveObject(prepared_copy_after_names_hook);
+    return R_NilValue;
+}
 static int reference_mutable_altrep(SEXP value) {
     return ALTREP(value) &&
         (owned_column(value) || R_altrep_inherits(value, dtatools_numeric_class) ||
@@ -1576,19 +1587,46 @@ typedef struct {
 
 typedef struct {
     SEXP data, original_names, names, new_name, column, result, blank_old, blank_new;
+    SEXP reference_state, reference_classes;
     append_attribute *attributes;
     size_t attribute_count, attribute_capacity;
     R_xlen_t length;
-    int reusable, started;
+    int reusable, started, defer_reference_on_change;
 } column_append_transaction;
 
 static int column_append_failure_stage = 0;
 static int column_append_failure_interrupt = 0;
+static SEXP gen_append_hook = NULL;
+static int gen_append_hook_stage = 0;
+
+/* Internal deterministic finalizer control for the native append route. */
+SEXP C_dtatools_probe_gen_append_hook(SEXP callback, SEXP stage) {
+    int requested = Rf_asInteger(stage);
+    if ((callback != R_NilValue && !Rf_isFunction(callback)) ||
+        requested < 0 || requested > 4)
+        Rf_error("invalid gen append hook");
+    if (gen_append_hook != NULL) R_ReleaseObject(gen_append_hook);
+    gen_append_hook = callback == R_NilValue ? NULL : callback;
+    gen_append_hook_stage = gen_append_hook == NULL ? 0 : requested;
+    if (gen_append_hook != NULL) R_PreserveObject(gen_append_hook);
+    return Rf_ScalarLogical(TRUE);
+}
+
+static void run_gen_append_hook(int stage) {
+    if (gen_append_hook == NULL || gen_append_hook_stage != stage) return;
+    SEXP callback = PROTECT(gen_append_hook);
+    gen_append_hook = NULL;
+    gen_append_hook_stage = 0;
+    R_ReleaseObject(callback);
+    SEXP call = PROTECT(Rf_lang1(callback));
+    Rf_eval(call, R_GlobalEnv);
+    UNPROTECT(2);
+}
 
 SEXP C_dtatools_inject_column_append_failure(SEXP stage, SEXP interrupt) {
     int value = Rf_asInteger(stage);
     int signal = Rf_asLogical(interrupt);
-    if (value < 0 || value > 3 || signal == NA_LOGICAL)
+    if (value < 0 || value > 4 || signal == NA_LOGICAL)
         Rf_error("invalid column append failure injection");
     column_append_failure_stage = value;
     column_append_failure_interrupt = signal;
@@ -1623,8 +1661,79 @@ static SEXP save_append_attribute(SEXP tag, SEXP value, void *context) {
     return NULL;
 }
 
+/* Grouped-bracket recovery: the ordinary append is followed by a
+   fresh R marker that reads the table after append-stage callbacks. If those
+   callbacks changed any table attribute, publish the column but leave its
+   marker for the R adapter instead of restoring a prehook class. */
+typedef struct {
+    column_append_transaction *tx;
+    unsigned long seen;
+    size_t count;
+} bracket_append_attr_scan;
+
+static SEXP bracket_append_attr_unchanged(SEXP tag, SEXP value, void *raw) {
+    bracket_append_attr_scan *scan = (bracket_append_attr_scan *) raw;
+    scan->count++;
+    for (size_t i = 0; i < scan->tx->attribute_count && i < 63; i++) {
+        if (tag != scan->tx->attributes[i].tag) continue;
+        unsigned long bit = 1UL << i;
+        if ((scan->seen & bit) ||
+            (tag != R_NamesSymbol &&
+             value != scan->tx->attributes[i].value) ||
+            (tag == R_NamesSymbol && value != scan->tx->names))
+            return R_NilValue;
+        scan->seen |= bit;
+        return NULL;
+    }
+    return R_NilValue;
+}
+
+static int bracket_append_attrs_unchanged(column_append_transaction *tx) {
+    if (tx->attribute_count > 63) return 0;
+    bracket_append_attr_scan scan = {tx, 0, 0};
+    if (R_mapAttrib(tx->data, bracket_append_attr_unchanged, &scan) != NULL ||
+        scan.count != tx->attribute_count ||
+        scan.seen != ((1UL << tx->attribute_count) - 1UL)) return 0;
+    SEXP classes = Rf_getAttrib(tx->data, R_ClassSymbol);
+    static const char *wanted[] = {
+        "dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame"
+    };
+    if (TYPEOF(classes) != STRSXP || ALTREP(classes) || ANY_ATTRIB(classes) ||
+        XLENGTH(classes) != 5) {
+        return 0;
+    }
+    for (int i = 0; i < 5; i++)
+        if (strcmp(CHAR(STRING_ELT(classes, i)), wanted[i])) {
+            return 0;
+        }
+    return 1;
+}
+
+extern int dtatools_probe_grouped_bracket_marker_admitted(void);
+
+static int bracket_prepared_marker_valid(column_append_transaction *tx) {
+    if (MAYBE_REFERENCED(tx->reference_state)) return 0;
+    SEXP symbol = Rf_install("owner");
+    R_BindingType_t kind = R_GetBindingType(symbol, tx->reference_state);
+    if (kind != R_BindingTypeValue && kind != R_BindingTypeForced) return 0;
+    SEXP owner = R_getVarEx(symbol, tx->reference_state, FALSE, R_NilValue);
+    return TYPEOF(owner) == EXTPTRSXP && R_ExternalPtrAddr(owner) == tx->data &&
+        Rf_getAttrib(tx->data, R_ClassSymbol) == tx->reference_classes;
+}
+
+/* The owner binding and state/class holders already exist. Both attribute
+   tags exist in the sealed table; classes are the identical installed value,
+   and the private state has no R references before installation. R 4.6.1's
+   installAttrib therefore replaces existing cells without allocation or
+   R_FixupRHS. The final public guard is immediately before these setters. */
+static void bracket_mark_prepared_reference(column_append_transaction *tx) {
+    Rf_setAttrib(tx->data, Rf_install(".dtatools_ref_state"), tx->reference_state);
+    Rf_setAttrib(tx->data, R_ClassSymbol, tx->reference_classes);
+}
+
 static SEXP apply_column_append(void *context) {
     column_append_transaction *transaction = context;
+    run_gen_append_hook(1);
     transaction->started = 1;
     if (transaction->reusable)
         Rf_setAttrib(transaction->data, R_NamesSymbol, transaction->blank_old);
@@ -1634,9 +1743,36 @@ static SEXP apply_column_append(void *context) {
     SET_STRING_ELT(transaction->names, transaction->length, transaction->new_name);
     resize_reference_vector(transaction->data, transaction->length + 1);
     SET_VECTOR_ELT(transaction->data, transaction->length, transaction->column);
+    run_gen_append_hook(2);
     maybe_inject_column_append_failure(2);
     Rf_setAttrib(transaction->data, R_NamesSymbol, transaction->names);
     maybe_inject_column_append_failure(3);
+    run_gen_append_hook(4);
+    if (prepared_copy_after_names_hook != NULL) {
+        SEXP callback = PROTECT(prepared_copy_after_names_hook);
+        prepared_copy_after_names_hook = NULL;
+        R_ReleaseObject(callback);
+        SEXP call = PROTECT(Rf_lang1(callback));
+        Rf_eval(call, R_GlobalEnv);
+        UNPROTECT(2);
+    }
+
+    if (transaction->reference_state != R_NilValue &&
+        transaction->defer_reference_on_change &&
+        (!bracket_append_attrs_unchanged(transaction) ||
+         !bracket_prepared_marker_valid(transaction) ||
+         !dtatools_probe_grouped_bracket_marker_admitted())) {
+        INTEGER(transaction->result)[0] = 2;
+    } else if (transaction->reference_state != R_NilValue &&
+               transaction->defer_reference_on_change) {
+        maybe_inject_column_append_failure(4);
+        bracket_mark_prepared_reference(transaction);
+    } else if (transaction->reference_state != R_NilValue) {
+        maybe_inject_column_append_failure(4);
+        C_dtatools_mark_reference_data(transaction->data,
+                                      transaction->reference_state,
+                                      transaction->reference_classes);
+    }
     return transaction->result;
 }
 
@@ -1659,9 +1795,24 @@ static void cleanup_column_append(void *context, Rboolean jump) {
                      transaction->attributes[i].value);
 }
 
+static SEXP bracket_ordinary_append_hook = NULL;
+SEXP C_dtatools_probe_bracket_ordinary_append_hook(SEXP hook) {
+    if (hook != R_NilValue && !Rf_isFunction(hook))
+        Rf_error("invalid ordinary append hook");
+    if (bracket_ordinary_append_hook != NULL)
+        R_ReleaseObject(bracket_ordinary_append_hook);
+    bracket_ordinary_append_hook = hook == R_NilValue ? NULL : hook;
+    if (bracket_ordinary_append_hook != NULL)
+        R_PreserveObject(bracket_ordinary_append_hook);
+    return R_NilValue;
+}
+
 /* Appends the last physical column when outer capacity is sufficient.
    Data tables grow through their own set(). */
-SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column) {
+static SEXP append_data_column_common(SEXP data, SEXP name, SEXP column,
+                                      SEXP reference_state,
+                                      SEXP reference_classes,
+                                      int defer_reference_on_change) {
     if (TYPEOF(data) != VECSXP || TYPEOF(name) != STRSXP ||
         XLENGTH(name) != 1 || Rf_inherits(data, "data.table")) {
         Rf_error("invalid column append");
@@ -1687,7 +1838,16 @@ SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column) {
     SEXP blank_old = PROTECT(reusable ? column_append_blank_names(length) : R_NilValue);
     SEXP blank_new = PROTECT(reusable ? column_append_blank_names(length + 1) : R_NilValue);
     SEXP continuation = PROTECT(R_MakeUnwindCont());
-    SEXP result = PROTECT(Rf_ScalarLogical(1));
+    SEXP result = PROTECT(defer_reference_on_change ?
+        Rf_ScalarInteger(1) : Rf_ScalarLogical(1));
+    if (defer_reference_on_change) {
+        /* Prepare the only native-marker allocation before append callbacks,
+           then check the public marker graph after the final hook/setter. */
+        SEXP owner = PROTECT(R_MakeExternalPtr(data, R_NilValue, R_NilValue));
+        Rf_defineVar(Rf_install("owner"), owner, reference_state);
+        (void) Rf_install(".dtatools_ref_state");
+        UNPROTECT(1);
+    }
     size_t attribute_count = 0;
     R_mapAttrib(data, count_append_attribute, &attribute_count);
     if (attribute_count > (INT_MAX - 7) / 2) Rf_error("too many column append attributes");
@@ -1701,11 +1861,20 @@ SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column) {
     column_append_transaction transaction = {
         .data = data, .original_names = current_names, .names = names,
         .new_name = new_name, .column = column, .result = result,
+        .reference_state = reference_state,
+        .reference_classes = reference_classes,
         .blank_old = blank_old, .blank_new = blank_new,
         .attributes = attributes, .attribute_count = 0, .attribute_capacity = attribute_count,
-        .length = length, .reusable = reusable, .started = 0
+        .length = length, .reusable = reusable, .started = 0,
+        .defer_reference_on_change = defer_reference_on_change
     };
     R_mapAttrib(data, save_append_attribute, &transaction);
+    if (bracket_ordinary_append_hook != NULL) {
+        SEXP callback = PROTECT(bracket_ordinary_append_hook);
+        SEXP call = PROTECT(Rf_lang1(callback));
+        Rf_eval(call, R_GlobalEnv);
+        UNPROTECT(2);
+    }
     /* All operand callbacks and journal allocation precede this final check.
        The public names setter inside the journal still allocates an attr cell. */
     if (XLENGTH(data) != length || mutation_physical_names(data) != current_names ||
@@ -1718,6 +1887,30 @@ SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column) {
                             cleanup_column_append, &transaction, continuation);
     UNPROTECT(7 + 2 * (int) attribute_count);
     return result;
+}
+
+SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column) {
+    return append_data_column_common(data, name, column,
+                                     R_NilValue, R_NilValue, 0);
+}
+
+/* Gen's native append and owner-marker update share the same unwind journal.
+   A marker allocation failure restores the pre-append table. */
+SEXP C_dtatools_append_mark_reference(SEXP data, SEXP name, SEXP column,
+                                      SEXP state, SEXP classes) {
+    if (TYPEOF(state) != ENVSXP || TYPEOF(classes) != STRSXP ||
+        XLENGTH(classes) == 0)
+        Rf_error("invalid append reference state");
+    return append_data_column_common(data, name, column, state, classes, 0);
+}
+
+SEXP C_dtatools_probe_bracket_append_mark_reference(
+    SEXP data, SEXP name, SEXP column, SEXP state, SEXP classes
+) {
+    if (TYPEOF(state) != ENVSXP || TYPEOF(classes) != STRSXP ||
+        XLENGTH(classes) == 0)
+        Rf_error("invalid bracket append reference state");
+    return append_data_column_common(data, name, column, state, classes, 1);
 }
 
 /* Return whether the physical table can hold the requested complete column
@@ -1923,14 +2116,14 @@ static SEXP generate_double_numeric(
     SEXP values, const reference_rows *rows, size_t row_count,
     const reference_value_plan *value_plan, int temporal
 ) {
-    /* Retain the exact ordinary/owned allocation before reader/output
-       allocation. The handle, record and backing are separate roots because
-       a returning callback can detach an owned handle from its old record.
-       Unknown REAL ALTREP readers retain the original generic path. */
-    SEXP leaf = PROTECT(TYPEOF(values) == REALSXP &&
-        (!ALTREP(values) || owned_real(values)) ? values : R_NilValue);
+    /* Capture exact owned backing before reader/output allocations. Core
+       wrappers keep it in data1; their data2 only holds wrapper metadata.
+       Unknown/compact readers retain the original generic root policy. */
+    SEXP leaf = PROTECT(generated_real_reader_leaf(values));
     SEXP record = PROTECT(owned_real(leaf) ? R_altrep_data1(leaf) : R_NilValue);
     SEXP backing = PROTECT(owned_real(leaf) ? owned_values(leaf) : leaf);
+    (void) record;
+    (void) backing;
     numeric_reader reader = numeric_reader_create(
         values, value_plan->value_count
     );
@@ -2250,6 +2443,24 @@ SEXP C_dtatools_generate_character(
     return owned;
 }
 
+static SEXP grouped_output_hook = NULL;
+SEXP C_dtatools_probe_grouped_output_hook(SEXP hook) {
+    if (hook != R_NilValue && !Rf_isFunction(hook))
+        Rf_error("invalid grouped output hook");
+    if (grouped_output_hook != NULL) R_ReleaseObject(grouped_output_hook);
+    grouped_output_hook = hook == R_NilValue ? NULL : hook;
+    if (grouped_output_hook != NULL) R_PreserveObject(grouped_output_hook);
+    return R_NilValue;
+}
+
+void dtatools_probe_grouped_fire_output_hook(void) {
+    if (grouped_output_hook == NULL) return;
+    SEXP callback = PROTECT(grouped_output_hook);
+    SEXP call = PROTECT(Rf_lang1(callback));
+    Rf_eval(call, R_GlobalEnv);
+    UNPROTECT(2);
+}
+
 SEXP C_dtatools_generate_numeric(
     SEXP values, SEXP rows, SEXP row_count_value,
     SEXP kind_value, SEXP temporal_value, SEXP attributes
@@ -2274,6 +2485,8 @@ SEXP C_dtatools_generate_numeric(
         temporal < 0 || temporal > 2) {
         Rf_error("invalid reference generation storage");
     }
+
+    dtatools_probe_grouped_fire_output_hook();
 
     R_xlen_t count = rows == R_NilValue
         ? (R_xlen_t) row_count : XLENGTH(rows);

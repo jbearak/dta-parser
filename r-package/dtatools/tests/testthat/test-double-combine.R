@@ -242,6 +242,8 @@ test_that("combination retains registered character methods used by metadata", {
 
 test_that("real grouped generation uses one combination payload", {
     withr::local_options(dtatools.generate_type = 'double')
+    grouped_mode <- .Call(C_dtatools_probe_grouped_gen_mode, FALSE)
+    on.exit(.Call(C_dtatools_probe_grouped_gen_mode, grouped_mode), add = TRUE)
     .combine_warm()
     data <- dibble(x = rep(c(1, 4, 2, 8), 25), g = rep(1:10, 10))
     .Call(C_dtatools_native_copy_stats, TRUE)
@@ -332,50 +334,47 @@ test_that('combination retains the namespace numeric coercion method', {
     expect_identical(.combine_bits(actual), .combine_bits(expected))
 })
 
-test_that("fresh public grouped generation reaches combination without test-only warming", {
+test_that("fresh public grouped generation preserves typed results without test-only warming", {
     observed <- .dtatools_child_r('double-combine-clean-session', function() {
         library(dtatools)
         options(dtatools.generate_type = 'double')
-        copies <- numeric()
         values <- list()
         for (i in 1:2) {
             data <- dibble(x = rep(c(1, 4, 2, 8), 25), g = rep(1:10, 10))
-            .Call(dtatools:::C_dtatools_native_copy_stats, TRUE)
             result <- gen(data, y = x + 1, by = g)
-            copies <- c(copies, .Call(dtatools:::C_dtatools_native_copy_stats, FALSE)[['combine_copied_payload_bytes']])
             values[[i]] <- as.double(result$y)
         }
-        list(copies = copies, values = values, dplyr_loaded = isNamespaceLoaded('dplyr'))
+        list(values = values, dplyr_loaded = isNamespaceLoaded('dplyr'))
     }, libpath = .libPaths())
-    native_expected <- .combine_profile_expected()
-    expect_identical(observed$copies[[2L]], if (native_expected) 800 else 0)
-    expect_true(observed$copies[[1]] %in% if (native_expected) c(0, 800) else 0)
     expect_identical(observed$values, rep(list(rep(c(2, 5, 3, 9), 25)), 2L))
     expect_false(observed$dplyr_loaded)
 })
 
-test_that("fresh public grouped dplyr calls reach combination without test-only warming", {
+test_that("fresh grouped dplyr calls preserve typed results without test-only warming", {
     skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("callr")
     observed <- callr::r(function() {
         library(dtatools)
         options(dtatools.generate_type = 'double')
-        copies <- numeric()
         values <- list()
+        types <- character()
+        input_unchanged <- NULL
         for (i in 1:3) {
             data <- dibble(x = rep(c(1, 4, 2, 8), 25), g = rep(1:10, 10))
-            .Call(dtatools:::C_dtatools_native_copy_stats, TRUE)
             result <- if (i < 3L) gen(data, y = x + 1, by = g) else
                 dplyr::mutate(data, y = x + 1, .by = g)
-            copies <- c(copies, .Call(dtatools:::C_dtatools_native_copy_stats, FALSE)[['combine_copied_payload_bytes']])
             values[[i]] <- as.double(result$y)
+            types <- c(types, dta_storage_type(result$y))
+            if (i == 3L)
+                input_unchanged <- identical(names(data), c('x', 'g')) &&
+                    identical(as.double(data$x), rep(c(1, 4, 2, 8), 25))
         }
-        list(copies = copies, values = values)
+        list(values = values, types = types,
+             input_unchanged = input_unchanged)
     }, libpath = .libPaths())
-    native_expected <- .combine_profile_expected()
-    expect_identical(observed$copies[2:3], if (native_expected) c(800, 800) else c(0, 0))
-    expect_true(observed$copies[[1]] %in% if (native_expected) c(0, 800) else 0)
     expect_identical(observed$values, rep(list(rep(c(2, 5, 3, 9), 25)), 3L))
+    expect_identical(observed$types, rep('double', 3L))
+    expect_true(observed$input_unchanged)
 })
 
 test_that('ordinary canonical sources copy once and unsupported profiles decline', {

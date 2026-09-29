@@ -383,6 +383,9 @@ DTATOOLS_INTERNAL SEXP C_dtatools_callback_integer_after(SEXP values, SEXP callb
 DTATOOLS_INTERNAL SEXP C_dtatools_callback_length(SEXP values, SEXP callback);
 DTATOOLS_INTERNAL SEXP C_dtatools_arm_callback_character(SEXP value, SEXP callback);
 DTATOOLS_INTERNAL void initialize_owned_columns(DllInfo *dll);
+DTATOOLS_INTERNAL void initialize_generated_real_reader(void);
+DTATOOLS_INTERNAL void release_generated_real_reader(void);
+DTATOOLS_INTERNAL SEXP generated_real_reader_leaf(SEXP value);
 
 /* Row filter reduction (row-filter.h). */
 DTATOOLS_INTERNAL SEXP C_dtatools_filter_start(SEXP size);
@@ -438,6 +441,7 @@ DTATOOLS_INTERNAL void record_reference_row_read(void);
 DTATOOLS_INTERNAL SEXP C_dtatools_reference_row_reads(SEXP enabled);
 DTATOOLS_INTERNAL SEXP C_dtatools_inject_reference_write_interrupt(SEXP enabled);
 DTATOOLS_INTERNAL void maybe_inject_reference_write_interrupt(void);
+DTATOOLS_INTERNAL void dtatools_probe_numeric_precommit(void);
 DTATOOLS_INTERNAL SEXP C_dtatools_mutation_rows(SEXP value, SEXP row_count_value);
 DTATOOLS_INTERNAL int write_string_utf8_status(SEXP value);
 DTATOOLS_INTERNAL int dtatools_write_numeric_region(
@@ -715,6 +719,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_mark_reference_data(
     SEXP data, SEXP state, SEXP classes
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_reference_state_valid(SEXP data);
+DTATOOLS_INTERNAL int dtatools_reference_state_valid_noalloc(SEXP data);
 DTATOOLS_INTERNAL SEXP C_dtatools_set_attribute(SEXP object, SEXP name, SEXP value);
 
 /* Reference table transactions. */

@@ -1,4 +1,5 @@
 test_that("returned folded constants retain fresh numeric execution comparison", {
+    skip_if_not_installed("data.table")
     namespace <- asNamespace("dtatools")
     helper <- get(".dta_storage_candidates", namespace)
     computed <- get(".dta_computed", namespace)

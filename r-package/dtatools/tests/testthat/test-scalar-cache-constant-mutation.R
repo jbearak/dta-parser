@@ -1,4 +1,5 @@
 test_that("scalar admission rechecks in-place compiled helper constants", {
+    skip_if_not_installed("data.table")
     skip_if_not(.dtatools_numeric_entry_expected("scalar"))
 
     ns <- asNamespace("dtatools")

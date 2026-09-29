@@ -1,5 +1,12 @@
 # dtatools (development version)
 
+* Validated native paths speed up supported `repl()`/`replace_values()`,
+  `gen()`, dibble `:=`, and `mutate()` expressions. Public dependency changes
+  retain ordinary evaluation. Bracket fallback preserves an already evaluated
+  right-hand side, and generated siblings have independent metadata. These
+  paths are limited to their qualified input and runtime profiles; they do
+  not imply universal parity with data.table or superiority to dplyr.
+
 * Canonical numeric construction, scalar addition and subtraction, storage
   checks, grouped double assembly, and expression-mask setup use native paths
   when their input and execution profiles are supported. Other profiles keep

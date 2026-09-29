@@ -376,6 +376,14 @@ replace_values <- function(data, ..., where = NULL, by = NULL,
     # `missing()` keeps the two extra quosure captures off the ungrouped
     # path, which `repl()` in a loop depends on.
     fast_promote <- .Call(C_dtatools_peek_promote, environment())
+    # The private primitive aliases let the native screen decline without
+    # introducing callbacks through public base bindings on the R fallback.
+    .native_admission_if(.native_admission_call(
+        C_dtatools_probe_unique_repl, data, shared, arguments,
+        .scalar_arith_dependencies, .probe_s3_state, .probe_base_state,
+        .probe_rlang_state, .probe_vctrs_size_state, .probe_base16_state,
+        .probe_public48_state, .probe_wrapper_state
+    ), .native_admission_return(invisible(data)))
     result <- .mutate_data(
         data, arguments$variable, arguments$values, arguments$where,
         generate = FALSE,
@@ -422,6 +430,23 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         function() rlang::enquos(..., .ignore_empty = "none"),
         function() rlang::enquos0(...)
     )
+    .native_admission_if(.native_admission_call(
+        C_dtatools_probe_direct_final, data,
+        .probe_base_state, .probe_public48_state,
+        .probe_gen_extra_state, .probe_gen_wrapper_state,
+        .probe_rlang_state, .probe_s3_state
+    ), .native_admission_return(.return_mutation(
+        data, data, if (is.null(destination)) target_expr else destination,
+        parent.frame())))
+    .native_admission_if(.native_admission_call(
+        C_dtatools_probe_grouped_gen, data,
+        .probe_base_state, .probe_public48_state,
+        .probe_gen_extra_state, .probe_gen_wrapper_state,
+        .probe_rlang_state, .probe_s3_state,
+        .probe_grouped_gen_state
+    ), .native_admission_return(.return_mutation(
+        data, data, if (is.null(destination)) target_expr else destination,
+        parent.frame())))
     result <- .mutate_data(
         data, arguments$variable, arguments$values, arguments$where,
         generate = TRUE,
@@ -2136,6 +2161,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     # or removed the anchor, and one that is gone stops the call here.
     names <- attr(data, "names", exact = TRUE)
     column_order <- .mutation_placement(placement, names, target$name)
+    .native_admission_call(C_dtatools_probe_bracket_pre_generation_hook, resolved)
     column <- .generated_column(
         resolved$values, resolved$rows, row_count, generate = TRUE,
         carry_metadata = FALSE
@@ -2398,6 +2424,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         return(.generated_logical(values, rows, row_count))
     }
     if (typeof(values) %in% c("logical", "integer", "double")) {
+        .native_admission_call(C_dtatools_probe_bracket_generation_hook, NULL)
         return(.generated_numeric(values, rows, row_count, caller, generate))
     }
     stop(message, call. = FALSE)
@@ -3035,11 +3062,32 @@ mutate.dibble <- function(
     .data, ..., .by = NULL, .keep = c("all", "used", "unused", "none"),
     .before = NULL, .after = NULL
 ) {
-    .dibble_mutate(
-        .data, rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by),
-        .keep, rlang::enquo(.before), rlang::enquo(.after))
+    .native_admission_call(
+        C_dtatools_probe_mutate_selector,
+        .native_admission_branches(NULL, NULL, {
+        .native_admission_if(
+            .native_admission_call(C_dtatools_grouped_guard_early, NULL),
+            .native_admission_if(
+                .native_admission_call(C_dtatools_grouped_active_mutate, NULL),
+                .native_admission_return(.dibble_mutate(
+                    .data, rlang::enquos(..., .ignore_empty = "all"),
+                    rlang::enquo(.by), .keep, rlang::enquo(.before),
+                    rlang::enquo(.after),
+                    .grouped_syntax = substitute(list(...)),
+                    .grouped_by = .native_admission_if(
+                        .native_admission_missing(.by), NULL, substitute(.by)),
+                    .grouped_default = .native_admission_and(
+                        .native_admission_missing(.keep),
+                        .native_admission_and(
+                            .native_admission_missing(.before),
+                            .native_admission_missing(.after))),
+                    .grouped_active = TRUE))))
+        .dibble_mutate(
+            .data, rlang::enquos(..., .ignore_empty = "all"), rlang::enquo(.by),
+            .keep, rlang::enquo(.before), rlang::enquo(.after))
+        })
+    )
 }
-
 #' @export
 transmute.dibble <- function(.data, ...) {
     dots <- rlang::enquos(..., .ignore_empty = "all")

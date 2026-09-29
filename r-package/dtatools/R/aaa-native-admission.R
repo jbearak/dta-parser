@@ -6,6 +6,10 @@
 # enclosing helper is interpreted. These aliases create no extra R frame.
 .native_admission_if <- .Primitive("if")
 .native_admission_return <- .Primitive("return")
+.native_admission_missing <- .Primitive("missing")
+.native_admission_is_null <- .Primitive("is.null")
+.native_admission_not <- .Primitive("!")
+.native_admission_and <- .Primitive("&&")
 
 # Keep the original compiled promises when an admission attempt has an R
 # fallback. Return this capture frame before forcing any argument so callbacks
@@ -13,3 +17,8 @@
 .native_admission_branches <- function(condition, yes, no) {
     .native_admission_call(C_dtatools_capture_branch_frame)
 }
+
+.native_admission_dots_length <- .Primitive("...length")
+
+.native_admission_subset2 <- .Primitive("[[")
+.native_admission_length <- .Primitive("length")

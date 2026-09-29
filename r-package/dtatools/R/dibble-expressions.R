@@ -402,8 +402,40 @@
 
 .dibble_mutate <- function(data, dots, by = rlang::quo(NULL), keep = "all",
                            before = rlang::quo(NULL), after = rlang::quo(NULL),
-                           transmute = FALSE) {
+                           transmute = FALSE, .grouped_syntax = NULL,
+                           .grouped_by = NULL, .grouped_default = FALSE,
+                           .grouped_active = FALSE) {
     keep <- rlang::arg_match0(keep, c("all", "used", "unused", "none"))
+    .native_admission_if(.grouped_active,
+        .native_admission_if(
+            .native_admission_not(.native_admission_is_null(.grouped_syntax)),
+            .native_admission_if(
+                .native_admission_not(.native_admission_is_null(.grouped_by)),
+                .native_admission_if(.grouped_default, {
+                    by <- by
+                    dots <- dots
+                    before <- before
+                    after <- after
+                    grouped_context <- .native_admission_call(
+                        C_dtatools_grouped_begin_context, data)
+                    .native_admission_if(
+                        .native_admission_is_null(grouped_context),
+                        grouped_context <- .begin_dibble_result(
+                            data, "mutate()", "computed"))
+                    direct <- .native_admission_call(
+                        C_dtatools_grouped_entry, data, .grouped_syntax,
+                        .grouped_by, dots, by, grouped_context$columns)
+                    .native_admission_if(
+                        .native_admission_not(.native_admission_is_null(direct)),
+                        .native_admission_return(direct))
+                    groups <- .dibble_expression_groups(data, by)
+                    evaluated <- .dibble_evaluate_columns(
+                        grouped_context$columns, groups, nrow(data), dots,
+                        "mutate()")
+                    .native_admission_return(.dibble_modify_columns(
+                        grouped_context, evaluated, data, groups, keep,
+                        before, after, transmute))
+                }))))
     caller <- if (transmute) "transmute()" else "mutate()"
     context <- .begin_dibble_result(data, caller, "computed")
     groups <- .dibble_expression_groups(data, by)
