@@ -274,25 +274,32 @@ SEXP C_dtatools_probe_grouped_gen(SEXP data, SEXP base_state,
     SEXP g = PROTECT(VECTOR_ELT(data, group_at));
     R_xlen_t n = XLENGTH(x);
     if (n == 0 || n > 1000000 ||
-        !canonical_column(x, n, "dta_double", 0) ||
-        !canonical_column(g, n, "dta_long", 1)) {
+        dtatools_grouped_double_values(x, n) == R_NilValue ||
+        (!canonical_column(g, n, "dta_long", 1) &&
+         dtatools_grouped_double_values(g, n) == R_NilValue)) {
         UNPROTECT(3);
         return Rf_ScalarLogical(FALSE);
     }
-    SEXP xb = owned_values(x);
+    int double_key = dtatools_grouped_double_values(g, n) != R_NilValue;
+    int extra_public = double_key || !ALTREP(x);
+    if (extra_public && !dtatools_probe_plain_public_guard()) {
+        UNPROTECT(3); return Rf_ScalarLogical(FALSE);
+    }
+    SEXP xb = dtatools_grouped_double_values(x, n);
     SEXP slot_roots = PROTECT(Rf_allocVector(VECSXP, width));
     SEXP attr_roots = PROTECT(Rf_allocVector(VECSXP, 16));
     /* A private read snapshot must not expose or materialize the key. */
     SEXP key_roots = PROTECT(Rf_allocVector(VECSXP, 3));
     SET_VECTOR_ELT(key_roots, 2, Rf_allocVector(REALSXP, n));
-    SEXP g_source = numeric_base_source(g);
+    SEXP g_source = double_key ? dtatools_grouped_double_values(g, n) : numeric_base_source(g);
     if (g_source == R_NilValue) {
         UNPROTECT(6); return Rf_ScalarLogical(FALSE);
     }
     SET_VECTOR_ELT(key_roots, 0, g_source);
-    SET_VECTOR_ELT(key_roots, 1, R_altrep_data1(g_source));
+    SET_VECTOR_ELT(key_roots, 1, double_key ? g_source : R_altrep_data1(g_source));
     SEXP group_snapshot = VECTOR_ELT(key_roots, 2);
-    if (numeric_region(g_source, 0, n, REAL(group_snapshot)) != n) {
+    if (double_key) memcpy(REAL(group_snapshot), REAL(g_source), (size_t)n * sizeof(double));
+    else if (numeric_region(g_source, 0, n, REAL(group_snapshot)) != n) {
         UNPROTECT(6); return Rf_ScalarLogical(FALSE);
     }
     for (R_xlen_t i = 0; i < width; ++i)
@@ -307,7 +314,8 @@ SEXP C_dtatools_probe_grouped_gen(SEXP data, SEXP base_state,
     UNPROTECT(1);
     if (!ready || !dtatools_probe_gen_public_guard_plain(frame, base_state,
             public_state, extra_state, wrapper_state, rlang_state, s3_state, 1) ||
-        !grouped_public_guard(caller, grouped_state, s3_state)) {
+        !grouped_public_guard(caller, grouped_state, s3_state) ||
+        (extra_public && !dtatools_probe_plain_public_guard())) {
         UNPROTECT(6);
         return Rf_ScalarLogical(FALSE);
     }
@@ -347,7 +355,8 @@ SEXP C_dtatools_probe_grouped_gen(SEXP data, SEXP base_state,
     if (!dtatools_reference_state_valid_noalloc(data) ||
         !dtatools_probe_gen_public_guard_plain(frame, base_state,
             public_state, extra_state, wrapper_state, rlang_state, s3_state, 1) ||
-        !grouped_public_guard(caller, grouped_state, s3_state)) {
+        !grouped_public_guard(caller, grouped_state, s3_state) ||
+        (extra_public && !dtatools_probe_plain_public_guard())) {
         UNPROTECT(14); return Rf_ScalarLogical(FALSE);
     }
     SEXP type2 = Rf_GetOption1(Rf_install("dtatools.generate_type"));
@@ -366,11 +375,13 @@ SEXP C_dtatools_probe_grouped_gen(SEXP data, SEXP base_state,
                    &source_at2, &group_at2) ||
         source_at2 != source_at || group_at2 != group_at ||
         VECTOR_ELT(data, source_at) != x || VECTOR_ELT(data, group_at) != g ||
-        numeric_base_source(g) != g_source ||
-        R_altrep_data1(g_source) != VECTOR_ELT(key_roots, 1) ||
-        owned_values(x) != xb ||
-        !canonical_column(x, n, "dta_double", 0) ||
-        !canonical_column(g, n, "dta_long", 1)) {
+        (double_key ? dtatools_grouped_double_values(g, n) != g_source :
+         (numeric_base_source(g) != g_source ||
+          R_altrep_data1(g_source) != VECTOR_ELT(key_roots, 1))) ||
+        dtatools_grouped_double_values(x, n) != xb ||
+        dtatools_grouped_double_values(x, n) == R_NilValue ||
+        (!canonical_column(g, n, "dta_long", 1) &&
+         dtatools_grouped_double_values(g, n) == R_NilValue)) {
         UNPROTECT(14); return Rf_ScalarLogical(FALSE);
     }
     for (R_xlen_t i = 0; i < width; ++i)
@@ -382,8 +393,11 @@ SEXP C_dtatools_probe_grouped_gen(SEXP data, SEXP base_state,
     double key_block[256];
     for (R_xlen_t row = 0; row < n; row += 256) {
         R_xlen_t count = n - row < 256 ? n - row : 256;
-        if (numeric_region(g_source, row, count, key_block) != count ||
-            memcmp(key_block, gp + row, (size_t) count * sizeof(double))) {
+        if (double_key) memcpy(key_block, REAL(g_source) + row, (size_t)count * sizeof(double));
+        else if (numeric_region(g_source, row, count, key_block) != count) {
+            UNPROTECT(14); return Rf_ScalarLogical(FALSE);
+        }
+        if (memcmp(key_block, gp + row, (size_t) count * sizeof(double))) {
             UNPROTECT(14); return Rf_ScalarLogical(FALSE);
         }
     }

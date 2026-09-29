@@ -6826,6 +6826,10 @@
         {
           "path": "tests/testthat/test-plain-native-admission.R",
           "sha256": "c8f6461b7d1d12f62a3d17251bde6553cebc9f3909177a740abdf1560ed17b5c"
+        },
+        {
+          "path": "tests/testthat/test-grouped-double-admission.R",
+          "sha256": "595013c9e54a2c3fbf008320d59c60a9725262bb12b20fa5a2a626fb70c37a56"
         }
       ],
       "blocks": [
@@ -8852,6 +8856,66 @@
           "skip": "forbid",
           "min_pass": 1,
           "warnings": 0
+        },
+        {
+          "file": "test-grouped-double-admission.R",
+          "test": "plain and owned double keys admit grouped reference creation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-grouped-double-admission.R",
+          "test": "grouped double mutate preserves complete values metadata and aliases",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-grouped-double-admission.R",
+          "test": "double key plans preserve first appearance metadata and late writes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-grouped-double-admission.R",
+          "test": "grouped double operations preserve public equality and arithmetic traces",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-grouped-double-admission.R",
+          "test": "grouped double brackets retain completed values across foreign writes",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-grouped-double-admission.R",
+          "test": "grouped double brackets normalize values outside Stata storage range",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
       "children": [
@@ -9044,6 +9108,54 @@
           "kind": "r",
           "minimum": 1,
           "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-double-reference",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-double-mutate",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-double-key-plan",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-double-public-traces",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-double-pending-rhs",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-double-storage-range",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
           "completion": "complete",
           "allow_error": false
         }

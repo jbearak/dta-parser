@@ -1,4 +1,4 @@
-/* Frozen selection for canonical long grouping keys. Native publication
+/* Frozen selection for canonical integral Stata grouping keys. Native publication
    additionally requires the bracket dependency and input checks. */
 #include "dtatools-internal.h"
 
@@ -187,23 +187,32 @@ SEXP C_dtatools_probe_plan_key_change(SEXP key, SEXP change, SEXP replacement) {
 }
 
 SEXP C_dtatools_probe_grouped_bracket_selection(SEXP key, SEXP name) {
-    if (!canonical_long(key) || TYPEOF(name) != STRSXP ||
+    int double_key = TYPEOF(key) == REALSXP && (!ALTREP(key) || owned_real(key)) &&
+        dtatools_grouped_double_values(key, XLENGTH(key)) != R_NilValue;
+    if ((!canonical_long(key) && !double_key) || TYPEOF(name) != STRSXP ||
         XLENGTH(name) != 1 || STRING_ELT(name, 0) == NA_STRING ||
         !CHAR(STRING_ELT(name, 0))[0]) return R_NilValue;
     R_xlen_t n = XLENGTH(key);
     if (!n) return R_NilValue;
-    SEXP base = numeric_base_source(key);
-    if (base == R_NilValue) return R_NilValue;
+    SEXP base = double_key ? dtatools_grouped_double_values(key, n) : numeric_base_source(key);
+    if (base == R_NilValue || (double_key && !dtatools_probe_plain_public_guard())) return R_NilValue;
     PROTECT(key);
     PROTECT(base);
     /* Root the old record independently: a callback may replace data1 and
        then collect the old record before the final identity comparison. */
-    SEXP initial_data1 = PROTECT(R_altrep_data1(base));
+    SEXP initial_data1 = PROTECT(double_key ? base : R_altrep_data1(base));
     /* This bounded prototype is meant for a physical floor. A production
        admission would instead size/check these allocations without a row
        threshold or decline based on required bytes. */
     if (n > 10000000) { UNPROTECT(3); return R_NilValue; }
-    SEXP read_handle = PROTECT(private_key_reader(key, base, initial_data1, n));
+    SEXP read_handle = PROTECT(double_key ? Rf_allocVector(REALSXP, n) :
+        private_key_reader(key, base, initial_data1, n));
+    if (double_key) {
+        if (dtatools_grouped_double_values(key, n) != base) {
+            UNPROTECT(4); return R_NilValue;
+        }
+        memcpy(REAL(read_handle), REAL(base), (size_t)n * sizeof(double));
+    }
     if (read_handle == R_NilValue) { UNPROTECT(4); return R_NilValue; }
     size_t buckets = 2;
     while (buckets < (size_t) n * 2) buckets *= 2;
@@ -224,7 +233,8 @@ SEXP C_dtatools_probe_grouped_bracket_selection(SEXP key, SEXP name) {
         Rf_eval(call, R_GlobalEnv);
         UNPROTECT(1);
     }
-    if (numeric_region(read_handle, 0, n, REAL(snapshot)) != n) {
+    if (double_key) memcpy(REAL(snapshot), REAL(read_handle), (size_t)n * sizeof(double));
+    else if (numeric_region(read_handle, 0, n, REAL(snapshot)) != n) {
         UNPROTECT(5); return R_NilValue;
     }
     /* snapshot is a fresh protected ordinary REAL vector. Its storage does
@@ -322,16 +332,18 @@ SEXP C_dtatools_probe_grouped_bracket_selection(SEXP key, SEXP name) {
     }
     /* A callback-capable allocation might have edited the key in place.
        The caller can then run the untouched ordinary selection path. */
-    if (!canonical_long(key) || XLENGTH(key) != n ||
-        numeric_base_source(key) != base ||
-        R_altrep_data1(base) != initial_data1 ||
-        R_altrep_data2(base) != R_NilValue) {
+    if (double_key ?
+        (dtatools_grouped_double_values(key, n) != base || !dtatools_probe_plain_public_guard()) :
+        (!canonical_long(key) || XLENGTH(key) != n ||
+         numeric_base_source(key) != base || R_altrep_data1(base) != initial_data1 ||
+         R_altrep_data2(base) != R_NilValue)) {
         UNPROTECT(15); return R_NilValue;
     }
     /* Use chunks below numeric_for_each_span's retained-payload interrupt
        threshold. This final comparison introduces no new R allocation or
        interrupt boundary and preserves exact bits for admitted long keys. */
-    if (!key_matches_snapshot(key, base, snapshot, n)) {
+    if (double_key ? memcmp(REAL(base), REAL(snapshot), (size_t)n * sizeof(double)) != 0 :
+        !key_matches_snapshot(key, base, snapshot, n)) {
         UNPROTECT(15); return R_NilValue;
     }
     UNPROTECT(15);

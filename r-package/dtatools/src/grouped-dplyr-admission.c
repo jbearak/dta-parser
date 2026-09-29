@@ -1,4 +1,4 @@
-/* Audited grouped mutate admission for owned dibble columns. */
+/* Audited grouped mutate admission for plain and owned dibble doubles. */
 #define ENABLE_LEGACY_NONAPI_FUNS 1
 #include "dtatools-internal.h"
 #include <string.h>
@@ -13,6 +13,22 @@ extern int RDEBUG(SEXP);
 extern SEXP R_PromiseExpr(SEXP);
 
 static int grouped_probe_enabled = 1;
+static int grouped_mode = 1, grouped_attempts = 0, grouped_publications = 0;
+SEXP C_dtatools_grouped_mode(SEXP value) {
+    int next = Rf_asLogical(value);
+    if (next == NA_LOGICAL) Rf_error("grouped mode must be TRUE or FALSE");
+    int prior = grouped_mode;
+    grouped_mode = next;
+    return Rf_ScalarLogical(prior);
+}
+SEXP C_dtatools_grouped_stats(SEXP reset) {
+    SEXP out = PROTECT(Rf_allocVector(INTSXP, 2));
+    INTEGER(out)[0] = grouped_attempts;
+    INTEGER(out)[1] = grouped_publications;
+    if (Rf_asLogical(reset)) grouped_attempts = grouped_publications = 0;
+    UNPROTECT(1);
+    return out;
+}
 
 /* Pins refer to one namespace lifetime. Never reuse them after unload. */
 SEXP C_dtatools_grouped_disable(SEXP ignored) {
@@ -718,6 +734,9 @@ static int probe_canonical_table_values(SEXP data, R_xlen_t n) {
 
 static int probe_frozen_group_snapshot_same(SEXP group, const double *snapshot,
                                             R_xlen_t n) {
+    SEXP double_values = dtatools_grouped_double_values(group, n);
+    if (double_values != R_NilValue)
+        return memcmp(REAL(double_values), snapshot, (size_t)n * sizeof(double)) == 0;
     if (!ALTREP(group) ||
         !R_altrep_inherits(group, dtatools_metadata_real_class) ||
         R_altrep_data2(group) != R_NilValue) return 0;
@@ -839,25 +858,21 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
     SEXP capture_source = captured_columns;
     SEXP x = VECTOR_ELT(capture_source, source_index),
          g = VECTOR_ELT(capture_source, group_index);
-    if (!owned_real(x) || !ALTREP(g) ||
-        !R_altrep_inherits(g, dtatools_numeric_class) ||
-        R_altrep_data2(g) != R_NilValue) {
-        return R_NilValue;
-    }
     R_xlen_t n = XLENGTH(x);
-    if (n > INT_MAX) return R_NilValue;
-    if (!typed(x, n, "dta_double", "double")) {
+    int double_key = dtatools_grouped_double_values(g, n) != R_NilValue;
+    int extra_public = double_key || !ALTREP(x);
+    if (n > INT_MAX || dtatools_grouped_double_values(x, n) == R_NilValue ||
+        (!double_key && (!ALTREP(g) ||
+         !R_altrep_inherits(g, dtatools_numeric_class) ||
+         R_altrep_data2(g) != R_NilValue || !typed(g, n, "dta_long", "long"))))
         return R_NilValue;
-    }
-    if (!typed(g, n, "dta_long", "long")) {
-        return R_NilValue;
-    }
     for (R_xlen_t j = 0; j < width; j++) {
         if (j == source_index || j == group_index) continue;
         SEXP column = VECTOR_ELT(capture_source, j);
-        if (!owned_real(column) ||
-            !typed(column, n, "dta_double", "double")) return R_NilValue;
+        if (dtatools_grouped_double_values(column, n) == R_NilValue) return R_NilValue;
+        extra_public |= !ALTREP(column);
     }
+    if (extra_public && !dtatools_probe_plain_public_guard()) return R_NilValue;
     /* Capture the shallow column and table metadata state before planning
        groups, matching the ordinary begin-result order. */
     R_xlen_t outputs = shape;
@@ -872,11 +887,11 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
     }
     for (R_xlen_t j = 0; j < width; j++) {
         SEXP column = VECTOR_ELT(capture_source, j);
-        if (j != group_index && !owned_real(column)) {
+        if (j != group_index && dtatools_grouped_double_values(column, n) == R_NilValue) {
             UNPROTECT(4); return R_NilValue;
         }
-        if (!typed(column, n, j == group_index ? "dta_long" : "dta_double",
-                   j == group_index ? "long" : "double")) {
+        if (!typed(column, n, j == group_index && !double_key ? "dta_long" : "dta_double",
+                   j == group_index && !double_key ? "long" : "double")) {
             UNPROTECT(4); return R_NilValue;
         }
         SET_VECTOR_ELT(source_classes, j, probe_raw_attribute(column, R_ClassSymbol));
@@ -900,14 +915,19 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
        retained its shallow column shell. That slot may now differ from the
        group's captured output handle. */
     SEXP planning_g = VECTOR_ELT(data, group_index);
-    if (!ALTREP(planning_g) ||
-                    !R_altrep_inherits(planning_g, dtatools_numeric_class) ||
-                    R_altrep_data2(planning_g) != R_NilValue ||
-                    !typed(planning_g, n, "dta_long", "long")) {
-        UNPROTECT(5); return R_NilValue;
-    }
-    if (numeric_region(planning_g, 0, n, REAL(group_snapshot)) != n) {
-        UNPROTECT(5); return R_NilValue;
+    SEXP planning_values = dtatools_grouped_double_values(planning_g, n);
+    if (planning_values != R_NilValue) {
+        if (!dtatools_probe_plain_public_guard()) { UNPROTECT(5); return R_NilValue; }
+        extra_public = 1;
+        memcpy(REAL(group_snapshot), REAL(planning_values), (size_t)n * sizeof(double));
+    } else {
+        if (!ALTREP(planning_g) ||
+            !R_altrep_inherits(planning_g, dtatools_numeric_class) ||
+            R_altrep_data2(planning_g) != R_NilValue ||
+            !typed(planning_g, n, "dta_long", "long") ||
+            numeric_region(planning_g, 0, n, REAL(group_snapshot)) != n) {
+            UNPROTECT(5); return R_NilValue;
+        }
     }
     const double *gp = REAL(group_snapshot);
     for (R_xlen_t row = 0; row < n; row++) {
@@ -925,7 +945,7 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
         SET_STRING_ELT(out_names, j, STRING_ELT(names, j));
     }
     /* The output source fork already isolates values before the last GC.
-       Read its owned backing, not the physical input handle. */
+       Read the frozen output buffer, not the physical input handle. */
     const double *xp = (const double *) DATAPTR_RO(VECTOR_ELT(out, source_index));
     for (int output_index = 0; output_index < outputs; output_index++) {
         SEXP backing = PROTECT(Rf_allocVector(REALSXP, n));
@@ -970,6 +990,7 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
        modify the physical input after this capture, just as it can after the
        ordinary mask capture; publication must read only the frozen result. */
     if (!probe_public_bindings_same(0) ||
+        (extra_public && !dtatools_probe_plain_public_guard()) ||
         !dtatools_reference_state_valid_noalloc(prepared) ||
         !probe_name_prefix_same(prepared, out_names, total) ||
         !probe_canonical_table_values(prepared, n)) {
@@ -981,8 +1002,8 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
             probe_raw_attribute(column, R_ClassSymbol) != VECTOR_ELT(source_classes, j) ||
             probe_raw_attribute(column, Rf_install("stata.storage")) !=
                 VECTOR_ELT(source_storages, j) ||
-            !typed(column, n, j == group_index ? "dta_long" : "dta_double",
-                   j == group_index ? "long" : "double")) {
+            !typed(column, n, j == group_index && !double_key ? "dta_long" : "dta_double",
+                   j == group_index && !double_key ? "long" : "double")) {
             UNPROTECT(11); return R_NilValue;
         }
     }
@@ -1072,7 +1093,8 @@ static int probe_captured_operator(SEXP quo) {
 SEXP C_dtatools_grouped_entry(SEXP data, SEXP dots, SEXP by,
                                    SEXP captured_dots, SEXP captured_by,
                                    SEXP captured_columns) {
-    if (!grouped_probe_enabled) return R_NilValue;
+    if (!grouped_probe_enabled || !grouped_mode) return R_NilValue;
+    grouped_attempts++;
     if (TYPEOF(dots) != LANGSXP || CAR(dots) != Rf_install("list"))
         return R_NilValue;
     if (TYPEOF(captured_dots) != VECSXP ||
@@ -1139,6 +1161,7 @@ SEXP C_dtatools_grouped_entry(SEXP data, SEXP dots, SEXP by,
     SEXP mode_value = PROTECT(Rf_ScalarInteger(mode));
     SEXP result = probe_dplyr_early_impl(data, mode_value, arithmetic_source,
                                           by, captured_names, captured_columns);
+    if (result != R_NilValue) grouped_publications++;
     UNPROTECT(1);
     return result;
 }

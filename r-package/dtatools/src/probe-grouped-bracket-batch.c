@@ -3,6 +3,7 @@
 #define ENABLE_LEGACY_NONAPI_FUNS 1
 #include "dtatools-internal.h"
 #include <time.h>
+#include <float.h>
 
 extern SEXP C_dtatools_probe_grouped_bracket_selection(SEXP key, SEXP name);
 extern SEXP C_dtatools_append_mark_reference(SEXP data, SEXP name,
@@ -369,7 +370,7 @@ static int pre_rhs_column_shapes(SEXP data, R_xlen_t n) {
             if (compact == NULL || compact->length != (size_t) n) return 0;
         } else {
             int type = TYPEOF(column);
-            if (Rf_isObject(column) || IS_S4_OBJECT(column) ||
+            if ((Rf_isObject(column) && dtatools_grouped_double_values(column, n) == R_NilValue) || IS_S4_OBJECT(column) ||
                 (type != REALSXP && type != INTSXP && type != LGLSXP &&
                  type != STRSXP && type != CPLXSXP && type != RAWSXP &&
                  type != VECSXP) || XLENGTH(column) != n) return 0;
@@ -477,42 +478,8 @@ static int table_slot(SEXP names, SEXP wanted) {
     return found;
 }
 
-typedef struct { int count, seen; } column_attrs;
-static SEXP check_column_attr(SEXP tag, SEXP value, void *raw) {
-    (void) value;
-    column_attrs *attrs = (column_attrs *) raw;
-    attrs->count++;
-    if (tag == R_ClassSymbol) attrs->seen |= 1;
-    else if (tag == Rf_install("stata.storage")) attrs->seen |= 2;
-    else return R_NilValue;
-    return NULL;
-}
-
 static int canonical_double(SEXP value, R_xlen_t n) {
-    if (!owned_real(value) || owned_flags(value)[OWNED_EXPOSED] ||
-        TYPEOF(value) != REALSXP || XLENGTH(value) != n ||
-        R_altrep_data2(value) != R_NilValue ||
-        TYPEOF(owned_values(value)) != REALSXP ||
-        ALTREP(owned_values(value))) return 0;
-    column_attrs attrs = {0, 0};
-    if (R_mapAttrib(value, check_column_attr, &attrs) != NULL ||
-        attrs.count != 2 || attrs.seen != 3) return 0;
-    SEXP classes = Rf_getAttrib(value, R_ClassSymbol);
-    static const char *wanted[] = {
-        "dta_numeric", "dta_double", "vctrs_vctr", "double"
-    };
-    if (TYPEOF(classes) != STRSXP || ALTREP(classes) ||
-        ANY_ATTRIB(classes) || OBJECT(classes) || IS_S4_OBJECT(classes) ||
-        XLENGTH(classes) != 4) return 0;
-    for (int i = 0; i < 4; i++)
-        if (strcmp(CHAR(STRING_ELT(classes, i)), wanted[i])) return 0;
-    SEXP storage = PROTECT(Rf_getAttrib(value, Rf_install("stata.storage")));
-    int valid = TYPEOF(storage) == STRSXP && !ALTREP(storage) &&
-        !ANY_ATTRIB(storage) && !OBJECT(storage) && !IS_S4_OBJECT(storage) &&
-        XLENGTH(storage) == 1 &&
-        strcmp(CHAR(STRING_ELT(storage, 0)), "double") == 0;
-    UNPROTECT(1);
-    return valid;
+    return dtatools_grouped_double_values(value, n) != R_NilValue;
 }
 
 static int parsed_value(SEXP assignment, SEXP caller, SEXP *source,
@@ -582,7 +549,9 @@ static int fill_column(SEXP source, SEXP backing) {
     R_xlen_t n = XLENGTH(source);
     for (R_xlen_t row = 0; row < n; row += 8192)
         R_CheckUserInterrupt();
-    const double *input = REAL(owned_values(source));
+    SEXP current = dtatools_grouped_double_values(source, n);
+    if (current == R_NilValue) return 0;
+    const double *input = REAL(current);
     double *output = REAL(backing);
     int okay = 1;
 #if BRACKET_INLINE_BINARY64_FINITE
@@ -591,7 +560,7 @@ static int fill_column(SEXP source, SEXP backing) {
             double value = input[row] + 1.0;
             output[row] = value;
             okay &= bracket_binary64_finite(input[row]) &&
-                bracket_binary64_finite(value);
+                bracket_binary64_finite(value) && value >= -DBL_MAX / 2.0 && value <= DBL_MAX / 2.0;
         }
         return okay;
     }
@@ -599,7 +568,7 @@ static int fill_column(SEXP source, SEXP backing) {
     for (R_xlen_t row = 0; row < n; row++) {
         double value = input[row] + 1.0;
         output[row] = value;
-        okay &= R_FINITE(input[row]) && R_FINITE(value);
+        okay &= R_FINITE(input[row]) && value >= -DBL_MAX / 2.0 && value <= DBL_MAX / 2.0;
     }
     return okay;
 }
@@ -821,8 +790,12 @@ SEXP C_dtatools_probe_grouped_bracket_batch(SEXP data, SEXP assignments,
         UNPROTECT(3); return R_NilValue;
     }
     double tick = profile_on ? profile_clock() : 0.0;
-    int initial_public = benchmark_mode == 0 ||
-        public_admitted(caller, extra_state, s3_state);
+    int double_inputs = !ALTREP(source) || dtatools_grouped_double_values(key, n) != R_NilValue;
+    for (R_xlen_t j = 0; j < width; ++j)
+        double_inputs |= !ALTREP(VECTOR_ELT(data, j)) && Rf_isObject(VECTOR_ELT(data, j));
+    int initial_public = (benchmark_mode == 0 ||
+        public_admitted(caller, extra_state, s3_state)) &&
+        (!double_inputs || dtatools_probe_plain_public_guard());
     if (benchmark_mode != 0) profile_add(0, tick);
     if (!initial_public) {
         UNPROTECT(3); return R_NilValue;
@@ -849,7 +822,8 @@ SEXP C_dtatools_probe_grouped_bracket_batch(SEXP data, SEXP assignments,
     }
     tick = profile_on ? profile_clock() : 0.0;
     int after_plan_public = benchmark_mode != 5 ||
-        public_admitted_quick(caller, extra_state, s3_state);
+        (public_admitted_quick(caller, extra_state, s3_state) &&
+             (!double_inputs || dtatools_probe_plain_public_guard()));
     if (benchmark_mode == 5) profile_add(0, tick);
     if (VECTOR_ELT(data, key_slot) != key || !after_plan_public) {
         UNPROTECT(9); return R_NilValue;
@@ -873,8 +847,8 @@ SEXP C_dtatools_probe_grouped_bracket_batch(SEXP data, SEXP assignments,
         }
         if (step > 0 && benchmark_mode == 5) {
             tick = profile_on ? profile_clock() : 0.0;
-            int good = public_admitted_quick(caller, extra_state,
-                                              s3_state);
+            int good = (public_admitted_quick(caller, extra_state, s3_state) &&
+             (!double_inputs || dtatools_probe_plain_public_guard()));
             profile_add(0, tick);
             if (!good) break;
         }
@@ -893,7 +867,8 @@ SEXP C_dtatools_probe_grouped_bracket_batch(SEXP data, SEXP assignments,
         SEXP backing = PROTECT(Rf_allocVector(REALSXP, n));
         double guard_tick = profile_on ? profile_clock() : 0.0;
         int after_prepare_public = benchmark_mode != 5 ||
-            public_admitted_quick(caller, extra_state, s3_state);
+            (public_admitted_quick(caller, extra_state, s3_state) &&
+             (!double_inputs || dtatools_probe_plain_public_guard()));
         if (benchmark_mode == 5) profile_add(0, guard_tick);
         if ((benchmark_mode == 5 &&
              (!after_prepare_public ||
@@ -919,7 +894,8 @@ SEXP C_dtatools_probe_grouped_bracket_batch(SEXP data, SEXP assignments,
             UNPROTECT(2);
         }
         if (benchmark_mode == 5 &&
-            !public_admitted_quick(caller, extra_state, s3_state)) {
+            (!public_admitted_quick(caller, extra_state, s3_state) ||
+             (double_inputs && !dtatools_probe_plain_public_guard()))) {
             retain_pending(result, (int) step + 1, STRING_ELT(targets, step),
                            n, column, 0);
             UNPROTECT(4);
