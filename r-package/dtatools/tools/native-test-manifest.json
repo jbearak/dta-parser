@@ -1563,7 +1563,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-decoration-profile.R",
-          "sha256": "10b58d0a255e95d8046388c9bddd76f5fab7c06477b688d36b13bf1f9e4b596b"
+          "sha256": "dc39a124ceca4984cbe52700d4a9ddf237505505f4ff11c5ca66c8b47321b477"
         },
         {
           "path": "tests/testthat/test-numeric-entry-admission.R",

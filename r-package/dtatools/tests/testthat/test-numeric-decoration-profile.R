@@ -154,7 +154,11 @@ test_that("names decoration guards leave explicit kernel contracts unchanged", {
     .decoration_with_method("vctrs_vctr", function(x, value) stop("names setter invoked"), function() {
         for (route in c("scalar", "computed", "construct")) {
             result <- .decoration_status(route, source, explicit = TRUE)
-            if (supported) expect_type(result, if (route == "computed") "list" else "double") else
+            # Explicit scalar admission also requires its version-qualified
+            # rlang/vctrs recycling dependencies. The other kernels only
+            # require the R execution profile in this diagnostic frame.
+            admitted <- if (route == "scalar") .dtatools_numeric_entry_expected("scalar") else supported
+            if (admitted) expect_type(result, if (route == "computed") "list" else "double") else
                 expect_null(result)
         }
     })
