@@ -42,10 +42,12 @@ test_that("grouped native gen publishes and declines after a staged source chang
         })
         first <- with_mode(TRUE, function() {
             holder <- make()
+            stopifnot(dtatools:::.is_unmaterialized_numeric_altrep(holder$d$region))
             before <- probe("C_dtatools_probe_grouped_gen_stats", FALSE)
             result <- evalq(gen(d, adjusted = amount + 2.5, by = region),
                             holder)
             after <- probe("C_dtatools_probe_grouped_gen_stats", FALSE)
+            stopifnot(dtatools:::.is_unmaterialized_numeric_altrep(holder$d$region))
             list(result = result, counts = as.integer(after - before))
         })
         same(first$result, ordinary)
@@ -72,6 +74,7 @@ test_that("grouped native gen publishes and declines after a staged source chang
             result <- evalq(gen(d, adjusted = amount + 1, by = region),
                             holder)
             after <- probe("C_dtatools_probe_grouped_gen_stats", FALSE)
+            stopifnot(dtatools:::.is_unmaterialized_numeric_altrep(holder$d$region))
             list(result = result, counts = as.integer(after - before),
                  hook_hits = hook_hits)
         })

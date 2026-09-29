@@ -281,13 +281,18 @@ SEXP C_dtatools_probe_grouped_gen(SEXP data, SEXP base_state,
     SEXP xb = owned_values(x);
     SEXP slot_roots = PROTECT(Rf_allocVector(VECSXP, width));
     SEXP attr_roots = PROTECT(Rf_allocVector(VECSXP, 16));
-    /* Materialize once before staging; refresh after callbacks so in-place
-       key-value changes are read from the current backing vector. */
-    (void) REAL(g);
-    SEXP g_store = PROTECT(R_altrep_data2(g));
-    if (TYPEOF(g_store) != REALSXP || XLENGTH(g_store) != n) {
-        UNPROTECT(6);
-        return Rf_ScalarLogical(FALSE);
+    /* A private read snapshot must not expose or materialize the key. */
+    SEXP key_roots = PROTECT(Rf_allocVector(VECSXP, 3));
+    SET_VECTOR_ELT(key_roots, 2, Rf_allocVector(REALSXP, n));
+    SEXP g_source = numeric_base_source(g);
+    if (g_source == R_NilValue) {
+        UNPROTECT(6); return Rf_ScalarLogical(FALSE);
+    }
+    SET_VECTOR_ELT(key_roots, 0, g_source);
+    SET_VECTOR_ELT(key_roots, 1, R_altrep_data1(g_source));
+    SEXP group_snapshot = VECTOR_ELT(key_roots, 2);
+    if (numeric_region(g_source, 0, n, REAL(group_snapshot)) != n) {
+        UNPROTECT(6); return Rf_ScalarLogical(FALSE);
     }
     for (R_xlen_t i = 0; i < width; ++i)
         SET_VECTOR_ELT(slot_roots, i, VECTOR_ELT(data, i));
@@ -360,7 +365,8 @@ SEXP C_dtatools_probe_grouped_gen(SEXP data, SEXP base_state,
                    &source_at2, &group_at2) ||
         source_at2 != source_at || group_at2 != group_at ||
         VECTOR_ELT(data, source_at) != x || VECTOR_ELT(data, group_at) != g ||
-        R_altrep_data2(g) != g_store ||
+        numeric_base_source(g) != g_source ||
+        R_altrep_data1(g_source) != VECTOR_ELT(key_roots, 1) ||
         owned_values(x) != xb ||
         !canonical_column(x, n, "dta_double", 0) ||
         !canonical_column(g, n, "dta_long", 1)) {
@@ -370,7 +376,16 @@ SEXP C_dtatools_probe_grouped_gen(SEXP data, SEXP base_state,
         if (VECTOR_ELT(data, i) != VECTOR_ELT(slot_roots, i)) {
             UNPROTECT(14); return Rf_ScalarLogical(FALSE);
         }
-    const double *gp = REAL(g);
+    const double *gp = REAL(group_snapshot);
+    /* A supported in-place write may keep the descriptor identity. */
+    double key_block[256];
+    for (R_xlen_t row = 0; row < n; row += 256) {
+        R_xlen_t count = n - row < 256 ? n - row : 256;
+        if (numeric_region(g_source, row, count, key_block) != count ||
+            memcmp(key_block, gp + row, (size_t) count * sizeof(double))) {
+            UNPROTECT(14); return Rf_ScalarLogical(FALSE);
+        }
+    }
     const double *xp = REAL(xb);
     double *out = REAL(backing);
     int bad = 0;

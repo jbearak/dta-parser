@@ -128,6 +128,7 @@
 }
 
 .clear_dplyr_registrations <- function(...) {
+    .grouped_probe_disable_after_dplyr_unload()
     .ungrouped_mutate_disable_after_dplyr_unload()
     .dplyr_registration_state$namespace <- NULL
     .dplyr_registration_state$previous <- list()

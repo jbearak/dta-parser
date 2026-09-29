@@ -6815,7 +6815,7 @@
         },
         {
           "path": "tests/testthat/test-grouped-gen-native-admission.R",
-          "sha256": "54e642d3f6e9a8f7407b7b8b3ee29748a96a74e2b6d10d098acb5c6673aa631d"
+          "sha256": "20cd4e09dd2ec92923815c7fc3e9a6f805dae05d16f546303c4ada7b8fb2ba1a"
         }
       ],
       "blocks": [
@@ -10990,6 +10990,10 @@
         {
           "path": "tests/testthat/test-ungrouped-dplyr-native-admission.R",
           "sha256": "1fccbc44e728097de30c77bc8bb55fdf1a81c6c14cf263304e45b4319515583e"
+        },
+        {
+          "path": "tests/testthat/test-grouped-native-lifecycle.R",
+          "sha256": "0b22eca94faf97f769cfe7c82aa77e72420824d2980f2619975242e4a28ca87e"
         }
       ],
       "blocks": [
@@ -12144,6 +12148,17 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-grouped-native-lifecycle.R",
+          "test": "dplyr reload disables all stale grouped native guards",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
       "children": [
@@ -12173,6 +12188,14 @@
         },
         {
           "id": "ungrouped-dplyr-native-clean-session",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-native-dplyr-reload",
           "kind": "r",
           "minimum": 0,
           "maximum": 0,

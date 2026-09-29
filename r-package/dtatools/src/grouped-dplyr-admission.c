@@ -12,6 +12,15 @@
 extern int RDEBUG(SEXP);
 extern SEXP R_PromiseExpr(SEXP);
 
+static int grouped_probe_enabled = 1;
+
+/* Pins refer to one namespace lifetime. Never reuse them after unload. */
+SEXP C_dtatools_grouped_disable(SEXP ignored) {
+    (void) ignored;
+    grouped_probe_enabled = 0;
+    return R_NilValue;
+}
+
 static SEXP pointer_guard_operators = NULL;
 static SEXP public_guard_roots = NULL;
 static SEXP public_guard_states = NULL;
@@ -371,7 +380,7 @@ SEXP C_dtatools_grouped_pin_public(SEXP functions) {
 }
 
 static int probe_public_bindings_same(int deep) {
-    if (public_guard_roots == NULL || public_guard_states == NULL ||
+    if (!grouped_probe_enabled || public_guard_roots == NULL || public_guard_states == NULL ||
         public_guard_symbols == NULL || !probe_absent_bindings_same()) return 0;
     for (R_xlen_t i = 0; i < XLENGTH(public_guard_roots); i++) {
         SEXP entry = VECTOR_ELT(public_guard_roots, i);
@@ -429,7 +438,7 @@ PUBLIC_GUARD_RECORD_INLINE int probe_public_record_quick(const SEXP *record) {
 }
 
 static int probe_public_root_quick(R_xlen_t i) {
-    if (public_guard_records == NULL ||
+    if (!grouped_probe_enabled || public_guard_records == NULL ||
         i < 0 || i >= XLENGTH(public_guard_roots)) return 0;
     const SEXP *record = VECTOR_PTR_RO(public_guard_records) +
         i * PUBLIC_RECORD_FIELDS;
@@ -437,7 +446,7 @@ static int probe_public_root_quick(R_xlen_t i) {
 }
 
 int dtatools_probe_grouped_guard_quick_plain(void) {
-    if (public_guard_roots == NULL || public_guard_states == NULL ||
+    if (!grouped_probe_enabled || public_guard_roots == NULL || public_guard_states == NULL ||
         public_guard_symbols == NULL || !probe_absent_bindings_same()) return 0;
     if (public_guard_records == NULL) return 0;
     const R_xlen_t count = XLENGTH(public_guard_roots);
@@ -448,14 +457,14 @@ int dtatools_probe_grouped_guard_quick_plain(void) {
 }
 
 int dtatools_probe_grouped_guard_rebind_plain(void) {
-    if (public_guard_roots == NULL || public_guard_states == NULL ||
+    if (!grouped_probe_enabled || public_guard_roots == NULL || public_guard_states == NULL ||
         public_guard_symbols == NULL) return 0;
     return probe_public_root_quick(rebind_public_index[0]) &&
         probe_public_root_quick(rebind_public_index[1]);
 }
 
 int dtatools_probe_grouped_guard_bracket_marker_plain(void) {
-    if (public_guard_roots == NULL || public_guard_states == NULL ||
+    if (!grouped_probe_enabled || public_guard_roots == NULL || public_guard_states == NULL ||
         public_guard_symbols == NULL ||
         bracket_unique_character_table == NULL ||
         bracket_unique_character_symbol == NULL) return 0;
@@ -497,7 +506,7 @@ SEXP C_dtatools_probe_grouped_guard_live(SEXP ignored) {
 /* Early exclusion for callbacks reached before the full grouped guard. */
 SEXP C_dtatools_grouped_guard_early(SEXP ignored) {
     (void) ignored;
-    if (public_guard_roots == NULL || public_guard_states == NULL ||
+    if (!grouped_probe_enabled || public_guard_roots == NULL || public_guard_states == NULL ||
         !probe_absent_bindings_same())
         return Rf_ScalarLogical(FALSE);
     for (int j = 0; j < 4; j++) {
@@ -1063,6 +1072,7 @@ static int probe_captured_operator(SEXP quo) {
 SEXP C_dtatools_grouped_entry(SEXP data, SEXP dots, SEXP by,
                                    SEXP captured_dots, SEXP captured_by,
                                    SEXP captured_columns) {
+    if (!grouped_probe_enabled) return R_NilValue;
     if (TYPEOF(dots) != LANGSXP || CAR(dots) != Rf_install("list"))
         return R_NilValue;
     if (TYPEOF(captured_dots) != VECSXP ||

@@ -2,7 +2,9 @@
    do not link RDEBUG: it is absent from R's installed API declaration. */
 #include <R.h>
 #include <Rinternals.h>
+#if defined(__APPLE__) && defined(__aarch64__)
 #include <dlfcn.h>
+#endif
 #include <stdint.h>
 #include <string.h>
 
@@ -33,7 +35,9 @@ static int step_supported(void) {
 
 int dtatools_probe_public_debugged(SEXP fn) {
     if (!debug_initialized) {
+#if defined(__APPLE__) && defined(__aarch64__)
         debug_fn = (debug_fn_t)dlsym(RTLD_DEFAULT, "RDEBUG");
+#endif
         debug_initialized = 1;
     }
     if (!debug_fn || !step_supported() ||
@@ -54,7 +58,9 @@ SEXP C_probe_public48_same_pointer(SEXP a, SEXP b) {
 SEXP C_probe_public48_debug_available(SEXP unused) {
     (void)unused;
     if (!debug_initialized) {
+#if defined(__APPLE__) && defined(__aarch64__)
         debug_fn = (debug_fn_t)dlsym(RTLD_DEFAULT, "RDEBUG");
+#endif
         debug_initialized = 1;
     }
     return Rf_ScalarLogical(debug_fn != NULL && step_supported());

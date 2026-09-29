@@ -1,11 +1,14 @@
 # Load-time source and artifact qualification of the grouped producer.
 .grouped_probe_state <- new.env(parent = emptyenv())
 .grouped_probe_state$pinned <- FALSE
+.grouped_probe_state$disabled_after_dplyr_unload <- FALSE
 .grouped_probe_state$error <- NULL
 .grouped_probe_state$libname <- NULL
 .grouped_probe_state$pkgname <- NULL
 
 .grouped_probe_pin_if_ready <- function() {
+    if (isTRUE(.grouped_probe_state$disabled_after_dplyr_unload))
+        return(invisible(FALSE))
     # dplyr is optional. Namespace load and non-dplyr operations must not
     # resolve its database, or load tools and the rest of this profile.
     if (!isNamespaceLoaded('dplyr')) return(invisible(FALSE))
@@ -19,6 +22,12 @@
         })
     if (isTRUE(state$pinned)) .probe_grouped_bracket_init()
     invisible(state$pinned)
+}
+
+.grouped_probe_disable_after_dplyr_unload <- function() {
+    .grouped_probe_state$disabled_after_dplyr_unload <- TRUE
+    .grouped_probe_state$pinned <- FALSE
+    invisible(.native_admission_call(C_dtatools_grouped_disable, NULL))
 }
 
 .grouped_probe_artifact_profile <- function(libname, pkgname) {
