@@ -171,20 +171,33 @@ test_that("pending bracket generation does not repeat reference marker callbacks
     observed <- .dtatools_child_r("bracket-pending-marker", function() {
         library(dtatools)
         options(dtatools.generate_type = "double")
-        run<-function(native,step) {
-         env<-new.env(parent=globalenv());env$d<-as_dibble(tibble::tibble(source_value=as.double(1:41)))
-         profile<-dtatools:::.probe_bracket_public_state;saved<-profile$snapshots
-         if(!native)profile$snapshots<-NULL
-         on.exit(profile$snapshots<-saved)
-         events<-new.env();events$hits<-0L;stage<-0L
-         options(dtatools.probe_bracket_generation_hook=function(){stage<<-stage+1L;if(stage==step)trace('obj_address',where=asNamespace('rlang'),tracer=function()events$hits<-events$hits+1L,print=FALSE)})
-         on.exit({options(dtatools.probe_bracket_generation_hook=NULL);untrace('obj_address',where=asNamespace('rlang'))},add=TRUE)
-         eval(quote(d[,`:=`(a=source_value+1,b=source_value+1,c=source_value+1,e=source_value+1,f=source_value+1)]),env)
-         list(hits=events$hits,stage=stage,values=lapply(env$d,as.double))
+        run <- function(native, step) {
+            env <- new.env(parent = globalenv())
+            env$d <- as_dibble(tibble::tibble(source_value = as.double(1:41)))
+            profile <- dtatools:::.probe_bracket_public_state
+            saved <- profile$snapshots
+            if (!native) profile$snapshots <- NULL
+            on.exit(profile$snapshots <- saved)
+            events <- new.env()
+            events$hits <- 0L
+            stage <- 0L
+            options(dtatools.probe_bracket_generation_hook = function() {
+                stage <<- stage + 1L
+                if (stage == step) trace("obj_address", where = asNamespace("rlang"),
+                    tracer = function() events$hits <- events$hits + 1L, print = FALSE)
+            })
+            on.exit({
+                options(dtatools.probe_bracket_generation_hook = NULL)
+                untrace("obj_address", where = asNamespace("rlang"))
+            }, add = TRUE)
+            eval(quote(d[, `:=`(a = source_value + 1, b = source_value + 1,
+                c = source_value + 1, e = source_value + 1, f = source_value + 1)]), env)
+            list(hits = events$hits, stage = stage, values = lapply(env$d, as.double))
         }
-        for(step in c(1L,2L,5L)) {
-         ordinary<-run(FALSE,step);native<-run(TRUE,step)
-         stopifnot(identical(native,ordinary))
+        for (step in c(1L, 2L, 5L)) {
+            ordinary <- run(FALSE, step)
+            native <- run(TRUE, step)
+            stopifnot(identical(native, ordinary))
         }
         TRUE
     }, libpath = .libPaths())

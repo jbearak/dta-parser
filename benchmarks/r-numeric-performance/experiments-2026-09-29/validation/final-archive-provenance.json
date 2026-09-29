@@ -1,0 +1,8 @@
+{
+  "archive_sha256": "7814f3a981cb95b0f20b2aad1b24a9ce6a66130d3877b46d518f3bd34b0d7b5c",
+  "manifest_sha256": "4e6ee25d4280a995a6507c6a68d12da207c2dde1e5e6c915545c9d21ab082666",
+  "installed_dll_sha256": "5686cc3c07d2a9e11430814fb4b58b38c5f442828704a9d316ece614a4030e50",
+  "archive_validation": "PASS",
+  "R_CMD_check": "3 baseline warnings, 2 baseline notes",
+  "installed_native_assertions": 17
+}

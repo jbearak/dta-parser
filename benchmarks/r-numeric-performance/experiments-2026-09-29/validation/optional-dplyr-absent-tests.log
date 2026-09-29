@@ -1,0 +1,42 @@
+Installed package: /private/tmp/dta-existing-experiments-20260929/integrated-lib/dtatools
+Loaded DLL: /private/tmp/dta-existing-experiments-20260929/integrated-lib/dtatools/libs/dtatools.so
+R version 4.6.1 (2026-06-24)
+bracket-native-admission: S.SS.
+combiner-attribute-isolation: S........................................................
+folded-return-mutation: ....................
+initial-capture-names: .............................................................................................................................................................................................................................................................
+initial-capture: .......................................................................................................................................Tracing function ".data_columns" in package "namespace:dtatools"
+......Tracing function ".capture_dibble_nested" in package
+"namespace:dtatools"
+......Tracing function ".metadata_copy" in package "namespace:dtatools"
+......Tracing function "new_weakref" in package "namespace:rlang"
+........Tracing function ".capture_dibble_nested" in package
+"namespace:dtatools"
+.........Tracing function ".begin_dibble_result" in package
+"namespace:dtatools"
+Untracing function ".begin_dibble_result" in package
+"namespace:dtatools"
+........Tracing function ".new_dibble_expression_mask" in package
+"namespace:dtatools"
+Untracing function ".new_dibble_expression_mask" in package
+"namespace:dtatools"
+.....S..........................................................
+scalar-cache-constant-mutation: .............
+ungrouped-dplyr-native-admission: S
+
+══ Skipped ═════════════════════════════════════════════════════════════════════
+1. native brackets publish unfamiliar columns and preserve ordinary fallback ('test-bracket-native-admission.R:2:5') - Reason: {dplyr} is not installed
+
+2. grouped bracket late shaping traces preserve the uncommitted prefix ('test-bracket-native-admission.R:90:5') - Reason: {dplyr} is not installed
+
+3. generated native siblings have independent mutable metadata ('test-bracket-native-admission.R:136:5') - Reason: {dplyr} is not installed
+
+4. grouped mutation keeps returned numeric attributes independent ('test-combiner-attribute-isolation.R:107:5') - Reason: {dplyr} is not installed
+
+5. initial capture isolates public results and retained generation registries ('test-initial-capture.R:203:5') - Reason: {dplyr} is not installed
+
+6. ungrouped native mutate isolates five outputs and honors public fallback ('test-ungrouped-dplyr-native-admission.R:2:5') - Reason: {dplyr} is not installed
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+ passed  failed   error skipped warning
+    585       0       0       6       0

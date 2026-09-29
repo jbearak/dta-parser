@@ -1,0 +1,15 @@
+{
+  "command": [
+    "Rscript",
+    "/private/tmp/dta-correctness-pr-20260929/repo/benchmarks/r-numeric-performance/validate-experiments.R",
+    "/private/tmp/dta-existing-experiments-20260929/integrated-lib",
+    "experiments",
+    "/private/tmp/dta-existing-experiments-20260929/performance/experiments",
+    "20",
+    "290929"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 307.0405750274658,
+  "dll_sha256": "59453d5c94cec8709fb543dd6f2840fd8d3b9edc988fb99277518cda41799409",
+  "script_sha256": "cec681d9ae6f771715d449de380f7e7719245810d42553713053f08a3757a81a"
+}

@@ -1,0 +1,25 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-bracket-native-admission.R","native brackets publish unfamiliar columns and preserve ordinary fallback",0,0,FALSE,TRUE,0
+"test-bracket-native-admission.R","bracket fallback retains a completed RHS after a source write",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","grouped bracket late shaping traces preserve the uncommitted prefix",0,0,FALSE,TRUE,0
+"test-bracket-native-admission.R","generated native siblings have independent mutable metadata",0,0,FALSE,TRUE,0
+"test-bracket-native-admission.R","pending bracket generation does not repeat reference marker callbacks",1,0,FALSE,FALSE,0
+"test-combiner-attribute-isolation.R","grouped mutation keeps returned numeric attributes independent",0,0,FALSE,TRUE,0
+"test-combiner-attribute-isolation.R","grouped generation keeps returned numeric attributes independent",56,0,FALSE,FALSE,0
+"test-folded-return-mutation.R","returned folded constants retain fresh numeric execution comparison",20,0,FALSE,FALSE,0
+"test-initial-capture-names.R","initial capture duplicate checks preserve width limits and full name comparisons",110,0,FALSE,FALSE,0
+"test-initial-capture-names.R","initial capture declines duplicate names introduced after R validation",44,0,FALSE,FALSE,0
+"test-initial-capture-names.R","initial capture keeps ASCII encoding and name length boundaries",86,0,FALSE,FALSE,0
+"test-initial-capture-names.R","initial capture leaves deferred foreign name reads on the fallback route",13,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture publishes wide owned and compact columns and declines narrow inputs early",72,0,FALSE,FALSE,0
+"test-initial-capture.R","bounded-width fallback matches the original R capture loop",42,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture preserves unknown operand forcing and original errors",18,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture retains replaced and executable traced helper callbacks",24,0,FALSE,FALSE,0
+"test-initial-capture.R","bounded-width fallback retains current helper callbacks",10,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture qualifies executing constructors after recompilation and self-untracing",17,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture isolates public results and retained generation registries",0,0,FALSE,TRUE,0
+"test-initial-capture.R","initial capture retains roots under forced GC and independent reentrant finalizers",9,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture leaves genuine database lookups on the original forcing path",29,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture expected profiles remain independent of public source literal mutation",20,0,FALSE,FALSE,0
+"test-scalar-cache-constant-mutation.R","scalar admission rechecks in-place compiled helper constants",13,0,FALSE,FALSE,0
+"test-ungrouped-dplyr-native-admission.R","ungrouped native mutate isolates five outputs and honors public fallback",0,0,FALSE,TRUE,0
