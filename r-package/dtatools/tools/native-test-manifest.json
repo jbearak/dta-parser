@@ -6801,7 +6801,7 @@
         },
         {
           "path": "tests/testthat/test-mutation-fast.R",
-          "sha256": "3d78780ef98040555c5606927966e34039a36c843b40bbac17dc3e58a6af52ef"
+          "sha256": "10fb902c8f57fd9e0d96fd41de3aed33468531b6231639ff2cdcc68f60ff190f"
         },
         {
           "path": "tests/testthat/test-generation-metadata.R",
@@ -8948,6 +8948,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "scalar mutation reads database arguments only at ordinary evaluation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 27,
+          "warnings": 0
         }
       ],
       "children": [
@@ -9196,6 +9204,14 @@
           "kind": "r",
           "minimum": 0,
           "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "mutation-userdb",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
           "completion": "complete",
           "allow_error": false
         }
