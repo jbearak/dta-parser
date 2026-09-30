@@ -27,6 +27,8 @@ static SEXP plain_value(SEXP env, SEXP name) {
 static int no_grouped_method(SEXP caller, SEXP s3_state) {
     SEXP method = Rf_install("vec_proxy_equal.data.frame");
     for (SEXP env = caller;; env = R_ParentEnv(env)) {
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env))
+            return 0;
         if (env == R_BaseEnv || env == R_EmptyEnv ||
             R_GetBindingType(method, env) != R_BindingTypeUnbound)
             return 0;
@@ -34,7 +36,8 @@ static int no_grouped_method(SEXP caller, SEXP s3_state) {
     }
     for (SEXP env = R_ParentEnv(R_GlobalEnv); env != R_BaseEnv;
          env = R_ParentEnv(env)) {
-        if (env == R_EmptyEnv ||
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env) ||
+            env == R_EmptyEnv ||
             R_GetBindingType(method, env) != R_BindingTypeUnbound)
             return 0;
     }

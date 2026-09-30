@@ -31,6 +31,8 @@ static int table_methods_plain(SEXP caller, SEXP base_table,
         SEXP expected = i == 5 ? expected_length : R_NilValue;
         for (SEXP env = caller; env != R_BaseEnv && env != R_EmptyEnv;
              env = R_ParentEnv(env)) {
+            if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env))
+                return 0;
             R_BindingType_t type = R_GetBindingType(symbol, env);
             if (type == R_BindingTypeUnbound) continue;
             if (expected == R_NilValue ||

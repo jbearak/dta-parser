@@ -1105,7 +1105,8 @@ static int probe_captured_operator(SEXP quo) {
     };
     for (SEXP frame = env; frame != R_EmptyEnv && frame != R_BaseEnv;
          frame = R_ParentEnv(frame)) {
-        if (TYPEOF(frame) != ENVSXP) return 0;
+        if (TYPEOF(frame) != ENVSXP || Rf_isObject(frame) ||
+            Rf_isS4(frame)) return 0;
         for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); i++) {
             if (R_GetBindingType(Rf_install(methods[i]), frame) !=
                 R_BindingTypeUnbound) return 0;

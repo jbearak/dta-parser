@@ -91,6 +91,10 @@ SEXP C_dtatools_patch_scalar(SEXP data, SEXP name, SEXP rows, SEXP value, SEXP p
    and then repeat it on fallback. These are public APIs in our minimum R 4.6. */
 static SEXP mutation_bound_value(SEXP expression, SEXP environment) {
     if (TYPEOF(expression) != SYMSXP) return expression;
+    /* ..1 and later dots arguments are evaluator lookups, even when a
+       same-named ordinary binding exists. Leave that lookup to R. */
+    if (strncmp(CHAR(PRINTNAME(expression)), "..", 2) == 0)
+        return R_UnboundValue;
     while (environment != R_EmptyEnv && TYPEOF(environment) == ENVSXP) {
         /* R_GetBindingType can call a user database's getter. Leave every
            lookup in a custom environment to ordinary argument evaluation. */

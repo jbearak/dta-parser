@@ -288,3 +288,70 @@ test_that("native brackets honor debug and debugonce on public helpers", {
     }, libpath = .libPaths())
     expect_true(observed)
 })
+test_that("native mutation guards do not read user database bindings", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    fixture <- normalizePath(test_path("fixtures", "numeric-size-userdb.c"))
+    observed <- .dtatools_child_r("mutation-guard-userdb", function(fixture) {
+        library(dtatools)
+        scratch <- tempfile("mutation-guard-userdb-")
+        dir.create(scratch)
+        on.exit(unlink(scratch, recursive = TRUE), add = TRUE)
+        prior <- setwd(scratch)
+        on.exit(setwd(prior), add = TRUE)
+        stopifnot(file.copy(fixture, "numeric-size-userdb.c"))
+        output <- system2(file.path(R.home("bin"), "R"),
+                          c("CMD", "SHLIB", "numeric-size-userdb.c"),
+                          stdout = TRUE, stderr = TRUE)
+        if (!is.null(attr(output, "status"))) stop(paste(output, collapse = "\n"))
+        dyn.load(file.path(scratch, paste0("numeric-size-userdb", .Platform$dynlib.ext)))
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        calls <- list(bracket = quote(d[, y := x + 1]),
+                      grouped_bracket = quote(d[, y := x + 1, by = g]),
+                      gen = quote(gen(d, y = x + 1)),
+                      grouped_gen = quote(gen(d, y = x + 1, by = g)),
+                      repl = quote(repl(d, x = x + 1)))
+        if (requireNamespace("dplyr", quietly = TRUE)) {
+            calls$mutate <- quote(dplyr::mutate(d, y = x + 1))
+            calls$grouped_mutate <- quote(dplyr::mutate(d, y = x + 1, .by = g))
+        }
+        run <- function(enabled, symbol, changing, attached, call) {
+            cc("C_dtatools_probe_direct_final_mode", enabled)
+            cc("C_dtatools_probe_grouped_gen_mode", enabled)
+            cc("C_dtatools_probe_unique_repl_mode", as.integer(enabled))
+            cc("C_dtatools_probe_mutate_mode", enabled)
+            cc("C_dtatools_grouped_mode", enabled)
+            state <- dtatools:::.probe_bracket_public_state
+            snapshots <- state$snapshots
+            if (!enabled) state$snapshots <- NULL
+            on.exit(state$snapshots <- snapshots)
+            options(dtatools.probe_grouped_bracket = enabled,
+                    dtatools.probe_grouped_bracket_raw = enabled)
+            data <- as_dibble(tibble::tibble(x = c(1, 2, 3, 4), g = c(1, 1, 2, 2)))
+            replacement <- function(...) rep(99, length(..1))
+            pointer <- if (changing) .Call("numeric_size_userdb_create_named_changing",
+                5, replacement, symbol) else .Call("numeric_size_userdb_create_named", 5, symbol)
+            database <- attach(pointer, name = "mutation-guard-userdb", warn.conflicts = FALSE)
+            on.exit(detach("mutation-guard-userdb", character.only = TRUE), add = TRUE)
+            scope <- new.env(parent = if (attached) globalenv() else database)
+            scope$d <- data
+            invisible(.Call("numeric_size_userdb_gets", pointer, TRUE))
+            error <- tryCatch({ result <- eval(call, scope); NULL }, error = conditionMessage)
+            gets <- .Call("numeric_size_userdb_gets", pointer, FALSE)
+            list(gets = gets, error = error,
+                 values = lapply(if (is.null(error)) result else data, as.double))
+        }
+        differences <- character()
+        for (symbol in c("x", "+", "+.dta_numeric", "vec_proxy_equal.data.frame")) {
+            for (changing in c(FALSE, TRUE)) for (attached in c(FALSE, TRUE)) {
+                for (route in names(calls)) {
+                    ordinary <- run(FALSE, symbol, changing, attached, calls[[route]])
+                    native <- run(TRUE, symbol, changing, attached, calls[[route]])
+                    if (!identical(ordinary, native)) differences <- c(differences,
+                        paste(symbol, changing, attached, route))
+                }
+            }
+        }
+        differences
+    }, args = list(fixture = fixture), libpath = .libPaths())
+    expect_identical(observed, character())
+})

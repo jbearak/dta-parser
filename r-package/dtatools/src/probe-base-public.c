@@ -64,6 +64,8 @@ static int no_effective_method(SEXP caller, SEXP table, const char *name) {
         return 0;
     SEXP env = caller;
     for (;;) {
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env))
+            return 0;
         if (R_GetBindingType(method, env) != R_BindingTypeUnbound) return 0;
         if (env == R_GlobalEnv) break;
         if (env == R_BaseEnv || env == R_EmptyEnv) return 0;
@@ -71,7 +73,8 @@ static int no_effective_method(SEXP caller, SEXP table, const char *name) {
     }
     env = R_ParentEnv(R_GlobalEnv);
     while (env != R_BaseEnv) {
-        if (env == R_EmptyEnv ||
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env) ||
+            env == R_EmptyEnv ||
             R_GetBindingType(method, env) != R_BindingTypeUnbound) return 0;
         env = R_ParentEnv(env);
     }

@@ -41,6 +41,34 @@ test_that("computed minimum expressions retain callback order and errors", {
     expect_error(.dta_arith_base("+", source, 1, stop("minimum callback")), "minimum callback")
 })
 
+test_that("compact arithmetic helpers honor a wider minimum storage", {
+    invisible(dta_double(rep(1, 4096L)) + 1)
+    constructors <- list(byte = dta_byte, int = dta_int,
+                         long = dta_long, float = dta_float)
+    values <- rep(c(1, 2), length.out = 4096L)
+    for (kind in names(constructors)) {
+        for (op in c("+", "-")) {
+            operation <- get(op, baseenv())
+            source <- constructors[[kind]](values)
+            right <- .dta_arith_base(op, source, 1, "double")
+            source <- constructors[[kind]](values)
+            left <- .dta_arith_base(op, 1, source, "double")
+            expect_identical(dta_storage_type(right), "double", info = kind)
+            expect_identical(dta_storage_type(left), "double", info = kind)
+            expect_identical(as.double(right), operation(values, 1), info = kind)
+            expect_identical(as.double(left), operation(1, values), info = kind)
+        }
+        source <- constructors[[kind]](values)
+        calls <- 0L
+        result <- .dta_arith_base("+", source, 1, {
+            calls <- calls + 1L
+            "double"
+        })
+        expect_identical(calls, 1L, info = kind)
+        expect_identical(dta_storage_type(result), "double", info = kind)
+    }
+})
+
 test_that("native minimum admission follows the actual source through promises", {
     source <- dta_byte(c(1, 2))
     hint <- dta_double(c(1, 2))

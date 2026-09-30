@@ -100,6 +100,8 @@ int dtatools_probe_bracket_source_unshadowed(SEXP caller, SEXP source) {
      * made about rlang's data-mask conflict rules without its evaluator. */
     for (SEXP env = caller; env != R_EmptyEnv && env != R_BaseEnv;
          env = R_ParentEnv(env)) {
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env))
+            return 0;
         if (R_GetBindingType(source, env) != R_BindingTypeUnbound)
             return 0;
     }

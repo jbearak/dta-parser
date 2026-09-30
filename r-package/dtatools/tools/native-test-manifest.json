@@ -156,7 +156,7 @@
     },
     {
       "path": "tests/testthat/fixtures/numeric-size-userdb.c",
-      "sha256": "cd5a3049f7b2965b88e4a8774d09fa3e5e670dbfafc72639c76b99468c0bbd20"
+      "sha256": "48c2d251111de23cd7389d1861f8be9cb6511d03c868583d0bcac3719c89af7a"
     },
     {
       "path": "tests/testthat/fixtures/initial-capture-helpers.R",
@@ -1547,7 +1547,7 @@
         },
         {
           "path": "tests/testthat/test-computed-minimum-admission.R",
-          "sha256": "b0650955612562d298bb40d183285b68665880668a5530632d4258c25c875f9f"
+          "sha256": "f676ab957562c3194f31e7c3953610940a010f99203fc622b59fec0a8b772d7c"
         },
         {
           "path": "tests/testthat/test-scalar-export-admission.R",
@@ -3271,6 +3271,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-minimum-admission.R",
+          "test": "compact arithmetic helpers honor a wider minimum storage",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 40,
           "warnings": 0
         },
         {
@@ -6809,7 +6817,7 @@
         },
         {
           "path": "tests/testthat/test-mutation-fast.R",
-          "sha256": "10fb902c8f57fd9e0d96fd41de3aed33468531b6231639ff2cdcc68f60ff190f"
+          "sha256": "70e0da2f967b05e3efefffe7a2a72fd7273c4fe312b3e63cddd4e0ef48586f71"
         },
         {
           "path": "tests/testthat/test-generation-metadata.R",
@@ -6821,7 +6829,7 @@
         },
         {
           "path": "tests/testthat/test-bracket-native-admission.R",
-          "sha256": "345f06f7382df637331b4b827eaf2758df65ce6b54394e3fb1a67879a5461706"
+          "sha256": "ac39cb64b3eb499dc7260c28a54fa65555dd1694eaea6203f15bb9d31aa320a3"
         },
         {
           "path": "tests/testthat/test-repl-native-admission.R",
@@ -8779,6 +8787,14 @@
           "warnings": 0
         },
         {
+          "file": "test-bracket-native-admission.R",
+          "test": "native mutation guards do not read user database bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
           "file": "test-repl-native-admission.R",
           "test": "native replacement admits an unfamiliar column and preserves public fallback",
           "occurrence": 1,
@@ -9040,6 +9056,14 @@
           "skip": "forbid",
           "min_pass": 27,
           "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "scalar argument inspection preserves R dots lookup",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
         }
       ],
       "children": [
@@ -9288,6 +9312,14 @@
           "kind": "r",
           "minimum": 0,
           "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "mutation-guard-userdb",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
           "completion": "complete",
           "allow_error": false
         },
