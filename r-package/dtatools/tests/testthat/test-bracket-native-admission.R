@@ -238,3 +238,53 @@ test_that("native bracket replacement preserves complete target attributes", {
     }, args = list(expected = expected), libpath = .libPaths())
     expect_true(observed)
 })
+
+test_that("native brackets honor debug and debugonce on public helpers", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("bracket-public-debug-flags", function() {
+        library(dtatools)
+        options(dtatools.generate_type = "double")
+        run <- function(native, once, step) {
+            env <- new.env(parent = globalenv())
+            env$d <- as_dibble(tibble::tibble(
+                source_value = dta_double(rep(2, 41L))))
+            profile <- dtatools:::.probe_bracket_public_state
+            saved <- profile$snapshots
+            if (!native) profile$snapshots <- NULL
+            helper <- rlang::obj_address
+            arm <- function() {
+                if (once) debugonce(helper) else debug(helper)
+            }
+            stage <- 0L
+            if (step == 0L) arm()
+            options(dtatools.probe_bracket_generation_hook = function() {
+                stage <<- stage + 1L
+                if (stage == step) arm()
+            })
+            on.exit({
+                profile$snapshots <- saved
+                options(dtatools.probe_bracket_generation_hook = NULL)
+                suppressWarnings(undebug(helper))
+            })
+            error <- NULL
+            output <- capture.output(tryCatch(invisible(eval(quote(d[, `:=`(
+                a = source_value + 1, b = source_value + 1,
+                c = source_value + 1, e = source_value + 1,
+                f = source_value + 1)]), env)), error = function(condition) {
+                    error <<- conditionMessage(condition)
+                }))
+            list(entries = sum(grepl("^debugging in:", output)),
+                error = error, stage = stage, values = lapply(env$d, as.double))
+        }
+        for (once in c(FALSE, TRUE)) {
+            for (step in c(0L, 1L, 2L, 5L)) {
+                ordinary <- run(FALSE, once, step)
+                native <- run(TRUE, once, step)
+                stopifnot(ordinary$entries > 0L || !is.null(ordinary$error),
+                    identical(native, ordinary))
+            }
+        }
+        TRUE
+    }, libpath = .libPaths())
+    expect_true(observed)
+})

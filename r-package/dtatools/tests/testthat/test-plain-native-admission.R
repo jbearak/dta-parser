@@ -37,6 +37,48 @@ test_that("plain double generation uses the guarded native route", {
     expect_identical(observed, as.integer(expected))
 })
 
+test_that("owned generation preserves custom source arithmetic dispatch", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    expected <- .dtatools_public_mutation_build_expected()
+    observed <- .dtatools_child_r("owned-generation-custom-arithmetic", function(expected) {
+        library(dtatools)
+        options(dtatools.generate_type = "double")
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        assign("Ops.review_custom", function(e1, e2) rep(123, length(e1)),
+               envir = globalenv())
+        on.exit(rm("Ops.review_custom", envir = globalenv()), add = TRUE)
+        run <- function(enabled, late = FALSE, custom = TRUE) {
+            cc("C_dtatools_probe_direct_final_mode", enabled)
+            d <- as_dibble(tibble::tibble(x = rep(1, 41L)))
+            subclass <- function() {
+                column <- .subset2(d, 1L)
+                class(column) <- c("review_custom", class(column))
+                cc("C_dtatools_set_data_column", d, 1L, column)
+            }
+            if (late && enabled) cc("C_dtatools_probe_gen_after_stage", subclass)
+            else if (custom) subclass()
+            on.exit(cc("C_dtatools_probe_gen_after_stage", NULL), add = TRUE)
+            before <- cc("C_dtatools_probe_direct_final_stats", FALSE)
+            gen(d, y = x + 1)
+            after <- cc("C_dtatools_probe_direct_final_stats", FALSE)
+            list(value = as.double(d$y), published = (after - before)[[3L]])
+        }
+        canonical <- run(TRUE, custom = FALSE)
+        stopifnot(identical(canonical$value, rep(2, 41L)),
+                  canonical$published == as.integer(expected))
+        ordinary <- run(FALSE)
+        native <- run(TRUE)
+        stopifnot(identical(native, ordinary),
+                  identical(native$value, rep(123, 41L)), native$published == 0L)
+        if (expected) {
+            late <- run(TRUE, TRUE)
+            stopifnot(identical(late, ordinary))
+        }
+        TRUE
+    }, args = list(expected = expected), libpath = .libPaths())
+    expect_true(observed)
+})
+
 test_that("plain double mutate preserves frozen columns on its native route", {
     skip_if_not_installed("dplyr")
     if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")

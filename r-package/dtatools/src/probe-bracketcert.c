@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-extern int RDEBUG(SEXP);
+extern int dtatools_probe_public_debugged(SEXP fn);
 
 /* Scratch-only exact same-pointer graph snapshot. A changed pointer declines. */
 #define SNAP_MAX_NODES 131072
@@ -263,7 +263,8 @@ static int snap_node_same(const snap_node *node) {
     case LANGSXP: case LISTSXP: case DOTSXP: case BCODESXP:
         return CAR(value) == node->a && TAG(value) == node->b && CDR(value) == node->c;
     case CLOSXP:
-        return R_ClosureEnv(value) == node->a &&
+        return dtatools_probe_public_debugged(value) == 0 &&
+               R_ClosureEnv(value) == node->a &&
                R_ClosureFormals(value) == node->b &&
                R_ClosureBody(value) == node->c;
     case LGLSXP: case INTSXP:
@@ -317,6 +318,7 @@ int C_snap_check_roots_raw(SEXP ext) {
         if ((type != R_BindingTypeValue && type != R_BindingTypeForced) ||
             R_getVarEx(p->symbols[i], p->env, FALSE, R_NilValue) !=
                 p->functions[i] ||
+            dtatools_probe_public_debugged(p->functions[i]) != 0 ||
             R_ClosureBody(p->functions[i]) != p->bodies[i] ||
             R_ClosureFormals(p->functions[i]) != p->formals[i] ||
             R_ClosureEnv(p->functions[i]) != p->closure_envs[i]) return 0;
@@ -373,4 +375,3 @@ SEXP C_snap_active_parts(SEXP ext, SEXP active) {
     UNPROTECT(1);
     return out;
 }
-

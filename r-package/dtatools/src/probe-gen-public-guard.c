@@ -30,6 +30,36 @@ static SEXP value(SEXP env, const char *name) {
     return R_getVarEx(sym, env, FALSE, R_NilValue);
 }
 
+static int no_caller_method(SEXP caller, const char *name) {
+    SEXP symbol = Rf_install(name);
+    for (SEXP env = caller; env != R_EmptyEnv; env = R_ParentEnv(env))
+        if (R_GetBindingType(symbol, env) != R_BindingTypeUnbound) return 0;
+    return 1;
+}
+
+static int no_method(SEXP caller, SEXP table, const char *name) {
+    return TYPEOF(table) == ENVSXP &&
+        R_GetBindingType(Rf_install(name), table) == R_BindingTypeUnbound &&
+        no_caller_method(caller, name);
+}
+
+static int source_methods_canonical(SEXP caller, SEXP base_table,
+                                    SEXP dta_table) {
+    /* The ordinary arithmetic and result construction dispatch these even
+       when the source has exactly the canonical dta_double classes. */
+    static const char *base_absent[] = {
+        "dim.dta_numeric", "dim.dta_double", "dim.vctrs_vctr",
+        "dim.double", "dim.default", "names.dta_numeric",
+        "names.dta_double", "names.vctrs_vctr", "names.double",
+        "names.default", "names<-.dta_numeric", "names<-.dta_double",
+        "names<-.double", "names<-.default"
+    };
+    for (size_t i = 0; i < sizeof(base_absent) / sizeof(base_absent[0]); ++i)
+        if (!no_method(caller, base_table, base_absent[i])) return 0;
+    return no_method(caller, dta_table, "vec_arith.dta_numeric.double") &&
+        no_caller_method(caller, "vec_proxy.dta_numeric");
+}
+
 typedef struct { int count; unsigned seen; } q_attrs;
 static SEXP visit_q_attr(SEXP tag, SEXP val, void *context) {
     q_attrs *a = (q_attrs *)context;
@@ -106,7 +136,8 @@ static int canonical_caller(SEXP frame, gen_capture *capture) {
         capture->source_symbol == Rf_install(".env") ||
         capture->source_symbol == Rf_install(".") ||
         capture->source_symbol == Rf_install(".n") ||
-        capture->source_symbol == Rf_install(".N")) return 0;
+        capture->source_symbol == Rf_install(".N") ||
+        strncmp(CHAR(PRINTNAME(capture->source_symbol)), "..", 2) == 0) return 0;
     capture->target_name = STRING_ELT(CADR(target), 0);
     capture->increment = REAL(CADDR(expr))[0];
     return TYPEOF(capture->caller) == ENVSXP;
@@ -193,9 +224,11 @@ int dtatools_probe_gen_public_guard_plain(SEXP frame, SEXP base,
         return 0;
     SEXP vctrs_table = VECTOR_ELT(tables, 1);
     SEXP base_table = VECTOR_ELT(tables, 0);
+    SEXP dta_table = VECTOR_ELT(tables, 2);
     SEXP vns = VECTOR_ELT(namespaces, 0);
     SEXP dtans = VECTOR_ELT(namespaces, 1);
-    if (value(vctrs_table, "vec_proxy_equal.dta_numeric") !=
+    if (!source_methods_canonical(capture.caller, base_table, dta_table) ||
+        value(vctrs_table, "vec_proxy_equal.dta_numeric") !=
             value(dtans, "vec_proxy_equal.dta_numeric") ||
         value(vctrs_table, "vec_proxy.dta_numeric") !=
             value(dtans, "vec_proxy.dta_numeric") ||

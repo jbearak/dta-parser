@@ -90,6 +90,11 @@ static int parsed_quosure(SEXP quo, SEXP caller, SEXP *source,
 int dtatools_probe_bracket_source_unshadowed(SEXP caller, SEXP source) {
     if (TYPEOF(caller) != ENVSXP || TYPEOF(source) != SYMSXP)
         return 0;
+    /* These names resolve to pronouns, row helpers, or R dots references,
+       even when the table contains a column with the same name. */
+    if (source == Rf_install(".data") || source == Rf_install(".env") ||
+        source == Rf_install(".n") || source == Rf_install(".N") ||
+        strncmp(CHAR(PRINTNAME(source)), "..", 2) == 0) return 0;
     /* Scan attached environments as well as the immediate caller chain.
      * Declining a harmless function binding is intentional: no promise is
      * made about rlang's data-mask conflict rules without its evaluator. */
@@ -289,6 +294,7 @@ SEXP C_dtatools_probe_bracket_raw_five_parser(SEXP raw_j, SEXP profile) {
             (!tagged && (TAG(node) != R_NilValue ||
                          TYPEOF(target) != SYMSXP ||
                          TAG(CDR(node)) != R_NilValue)) ||
+            target == R_DotsSymbol ||
             !CHAR(PRINTNAME(target))[0] ||
             (!tagged ? raw_one_value_kind(value, &source_symbol,
                                           &offset, &offset_seen) == 0 :

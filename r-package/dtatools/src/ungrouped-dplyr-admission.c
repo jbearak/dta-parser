@@ -824,7 +824,10 @@ static int probe_general_arithmetic(SEXP expression, SEXP *source,
     if (args == R_NilValue || CDR(args) == R_NilValue ||
         CDR(CDR(args)) != R_NilValue || ANY_ATTRIB(args) ||
         ANY_ATTRIB(CDR(args)) || TAG(args) != R_NilValue ||
-        TAG(CDR(args)) != R_NilValue || TYPEOF(CAR(args)) != SYMSXP)
+        TAG(CDR(args)) != R_NilValue || TYPEOF(CAR(args)) != SYMSXP ||
+        CAR(args) == Rf_install(".data") || CAR(args) == Rf_install(".env") ||
+        /* Dots references bypass ordinary same-named column bindings. */
+        strncmp(CHAR(PRINTNAME(CAR(args))), "..", 2) == 0)
         return 0;
     SEXP scalar = CADR(args);
     if (TYPEOF(scalar) != REALSXP || ALTREP(scalar) ||

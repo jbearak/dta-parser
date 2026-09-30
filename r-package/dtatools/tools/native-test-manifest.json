@@ -1623,7 +1623,7 @@
         },
         {
           "path": "tests/testthat/test-altrep-scalar-arithmetic.R",
-          "sha256": "0b6ca3fa3f8f42990a5554b5d8673d94458bc3271974f3e3a0d22d9253ff4e64"
+          "sha256": "6cebe15eb2a544bc5e5600118cc0ade6acd63cdc7c4d77749bda671e68973e04"
         },
         {
           "path": "tests/testthat/test-column-typing.R",
@@ -3883,6 +3883,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-altrep-scalar-arithmetic.R",
+          "test": "compact scalar overflow becomes missing without promoting storage",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 72,
           "warnings": 0
         },
         {
@@ -6813,11 +6821,11 @@
         },
         {
           "path": "tests/testthat/test-bracket-native-admission.R",
-          "sha256": "caf1d3e8bd69b0ab4bcbeee1ab4bdbc32469899e541b3d4afe49ab935821779c"
+          "sha256": "345f06f7382df637331b4b827eaf2758df65ce6b54394e3fb1a67879a5461706"
         },
         {
           "path": "tests/testthat/test-repl-native-admission.R",
-          "sha256": "3396b2a8d8a1afe72c2cb384f13ad392b6baf7f78745077844ec4c9aa637dafb"
+          "sha256": "2da28665b6aa183505e4dce7a67bf574c86d66524c5b39999cdd3bb458ad5d20"
         },
         {
           "path": "tests/testthat/test-grouped-gen-native-admission.R",
@@ -6825,11 +6833,11 @@
         },
         {
           "path": "tests/testthat/test-plain-native-admission.R",
-          "sha256": "7dcd2ee3258549c0700360860423157f1a966f26d21b796d3a8738bcd076a3c7"
+          "sha256": "1e5638d8f8873f018df13587cd01f3beed74485c769e4f914a57ff3aef69b27a"
         },
         {
           "path": "tests/testthat/test-grouped-double-admission.R",
-          "sha256": "86eaec990d6dd22d4195e27dac0a681db2a5e38eefbb8bf20c2f3dd2ac4d5fc7"
+          "sha256": "76893e4e0de2b256ff70c042bdd16b18aeed718c4f2fbf4fc2a64600cd238ca6"
         }
       ],
       "blocks": [
@@ -8763,6 +8771,14 @@
           "warnings": 0
         },
         {
+          "file": "test-bracket-native-admission.R",
+          "test": "native brackets honor debug and debugonce on public helpers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
           "file": "test-repl-native-admission.R",
           "test": "native replacement admits an unfamiliar column and preserves public fallback",
           "occurrence": 1,
@@ -8882,8 +8898,32 @@
           "warnings": 0
         },
         {
+          "file": "test-plain-native-admission.R",
+          "test": "owned generation preserves custom source arithmetic dispatch",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
           "file": "test-repl-native-admission.R",
           "test": "native constant replacement stages a buffer for shared owned targets",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-repl-native-admission.R",
+          "test": "native replacement preserves R dots evaluation errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-repl-native-admission.R",
+          "test": "native generation honors public methods on canonical double sources",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 1,
@@ -8941,6 +8981,50 @@
         {
           "file": "test-grouped-double-admission.R",
           "test": "grouped double brackets normalize values outside Stata storage range",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-grouped-double-admission.R",
+          "test": "grouped native mutate honors local double arithmetic methods",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-grouped-double-admission.R",
+          "test": "grouped native mutate honors configured column capacity",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-grouped-double-admission.R",
+          "test": "native mutate preserves reserved evaluation symbols with colliding columns",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-grouped-double-admission.R",
+          "test": "native brackets preserve reserved source symbol evaluation",
           "occurrence": 1,
           "skip": "require",
           "min_pass": 1,
@@ -9201,6 +9285,70 @@
         },
         {
           "id": "grouped-double-storage-range",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-public-debug-flags",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "owned-generation-custom-arithmetic",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-mutate-local-double-methods",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-mutate-mask-pronouns",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-mutate-column-capacity",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "gen-native-source-methods",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "repl-native-dots-sources",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-reserved-source-symbols",
           "kind": "r",
           "minimum": 0,
           "maximum": 0,

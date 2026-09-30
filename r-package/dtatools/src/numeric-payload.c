@@ -3968,9 +3968,12 @@ static void scalar_compact_write_span(
         int valid = valid_result &&                                          \
             (FLOAT_LIMIT ? fabs(result) <= (double) (UPPER) :                \
              result == trunc(result) && result >= (LOWER) && result <= (UPPER));\
-        if (!valid) {                                                         \
+        if (!valid_result) {                                                  \
+            state->missing_count++;                                          \
+            write_numeric_missing(state->raw, (R_xlen_t) index,              \
+                                  state->kind, 0);                           \
+        } else if (!valid) {                                                  \
             state->fits = 0;                                                  \
-            state->missing_count += !valid_result;                            \
         } else {                                                              \
             TYPE encoded = (TYPE) result;                                     \
             memcpy(state->raw + index * sizeof(TYPE), &encoded, sizeof(TYPE));\

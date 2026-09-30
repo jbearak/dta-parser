@@ -107,7 +107,7 @@ static int probe_typed_column(SEXP column, R_xlen_t n, const char *storage_name,
                     : (!ALTREP(column) || owned_real(column))) ||
         (!grouping && ALTREP(column) && R_altrep_data2(column) != R_NilValue) ||
         !Rf_inherits(column, class_name)) return 0;
-    if (!ALTREP(column)) {
+    if (!grouping) {
         SEXP classes = Rf_getAttrib(column, R_ClassSymbol);
         static const char *expected[] = {"dta_numeric", "dta_double", "vctrs_vctr", "double"};
         if (Rf_isS4(column) || R_getAttribCount(column) != 2 ||
@@ -117,7 +117,7 @@ static int probe_typed_column(SEXP column, R_xlen_t n, const char *storage_name,
             if (strcmp(CHAR(STRING_ELT(classes, i)), expected[i])) return 0;
     }
     SEXP storage = Rf_getAttrib(column, Rf_install("stata.storage"));
-    if (!ALTREP(column) && (ALTREP(storage) || ANY_ATTRIB(storage))) return 0;
+    if (!grouping && (ALTREP(storage) || ANY_ATTRIB(storage))) return 0;
     return TYPEOF(storage) == STRSXP && XLENGTH(storage) == 1 &&
         strcmp(CHAR(STRING_ELT(storage, 0)), storage_name) == 0;
 }

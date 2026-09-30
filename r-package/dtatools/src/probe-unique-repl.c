@@ -76,6 +76,8 @@ static int canonical_missing_where(SEXP where) {
 static int source_unshadowed(SEXP symbol, SEXP caller) {
     if (TYPEOF(symbol) != SYMSXP || TYPEOF(caller) != ENVSXP) return 0;
     const char *name = CHAR(PRINTNAME(symbol));
+    /* R resolves dots through the call frame, not the data-mask column. */
+    if (strncmp(name, "..", 2) == 0) return 0;
     static const char *special[] = {".data", ".env", ".", ".n", ".N"};
     for (int i = 0; i < 5; i++)
         if (strcmp(name, special[i]) == 0) return 0;

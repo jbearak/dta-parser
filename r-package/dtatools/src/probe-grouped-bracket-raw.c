@@ -82,6 +82,7 @@ SEXP C_dtatools_probe_grouped_bracket_raw(SEXP raw_j) {
         if (TYPEOF(argument) != LISTSXP ||
             TAG(argument) != R_NilValue ||
             TYPEOF(CAR(argument)) != SYMSXP ||
+            CAR(argument) == R_DotsSymbol ||
             TYPEOF(CDR(argument)) != LISTSXP ||
             TAG(CDR(argument)) != R_NilValue ||
             !value_expression(CADDR(expression), &source))
@@ -89,6 +90,7 @@ SEXP C_dtatools_probe_grouped_bracket_raw(SEXP raw_j) {
     } else {
         for (SEXP node = argument; node != R_NilValue; node = CDR(node)) {
             if (TYPEOF(node) != LISTSXP || TAG(node) == R_NilValue ||
+                TAG(node) == R_DotsSymbol ||
                 !CHAR(PRINTNAME(TAG(node)))[0] ||
                 !value_expression(CAR(node), &source))
                 return R_NilValue;
