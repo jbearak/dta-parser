@@ -6845,7 +6845,7 @@
         },
         {
           "path": "tests/testthat/test-bracket-native-admission.R",
-          "sha256": "92ead7fe86d8de59d7e6cfa76580fe0a1e4edf8f9478be3acf61b81e47688ed2"
+          "sha256": "afa7642b1febbbc679828148404d8729411a4049444af93071e8ff18e5f7c201"
         },
         {
           "path": "tests/testthat/test-repl-native-admission.R",
@@ -6857,11 +6857,11 @@
         },
         {
           "path": "tests/testthat/test-plain-native-admission.R",
-          "sha256": "9e36d00ed93e02fbdf6ef543d757c8f3a9480fd9fe9705a3d1421368ebc526f7"
+          "sha256": "206fc43cd856816c5ed36923afb3eea940dbd2c6dfec65e0fe7f1b1f83fa883b"
         },
         {
           "path": "tests/testthat/test-grouped-double-admission.R",
-          "sha256": "76893e4e0de2b256ff70c042bdd16b18aeed718c4f2fbf4fc2a64600cd238ca6"
+          "sha256": "d513ff4354bd5fa22c465b6c14d127fe12972eea8152b22c56ab0886b8472d96"
         }
       ],
       "blocks": [
@@ -8834,7 +8834,18 @@
         },
         {
           "file": "test-bracket-native-admission.R",
-          "test": "grouped native brackets revalidate later arithmetic literals",
+          "test": "bracket expressions are captured before row and grouping callbacks",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "grouped native brackets isolate later caller literal changes",
           "occurrence": 1,
           "skip": "require",
           "min_pass": 1,
@@ -8979,6 +8990,14 @@
           "warnings": 0
         },
         {
+          "file": "test-plain-native-admission.R",
+          "test": "native mutations preserve S4 table methods and their errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
           "file": "test-repl-native-admission.R",
           "test": "native constant replacement stages a buffer for shared owned targets",
           "occurrence": 1,
@@ -9107,6 +9126,14 @@
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {
+          "file": "test-grouped-double-admission.R",
+          "test": "grouped native mutations preserve S4 grouping key dispatch",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
           "file": "test-mutation-fast.R",
           "test": "scalar mutation reads database arguments only at ordinary evaluation",
           "occurrence": 1,
@@ -9205,7 +9232,31 @@
           "allow_error": false
         },
         {
+          "id": "bracket-expression-snapshots",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
           "id": "native-mutation-s4-literals",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-native-s4-keys",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-mutation-s4-tables",
           "kind": "r",
           "minimum": 1,
           "maximum": 1,

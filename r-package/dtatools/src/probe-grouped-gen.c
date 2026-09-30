@@ -165,7 +165,7 @@ static SEXP canonical_attr(SEXP tag, SEXP value, void *context) {
 
 static int canonical_column(SEXP column, R_xlen_t n, const char *kind,
                             int group_key) {
-    if (TYPEOF(column) != REALSXP || XLENGTH(column) != n ||
+    if (TYPEOF(column) != REALSXP || Rf_isS4(column) || XLENGTH(column) != n ||
         (group_key ? !(R_altrep_inherits(column, dtatools_numeric_class) ||
                        R_altrep_inherits(column, dtatools_metadata_real_class))
                    : (!owned_real(column) ||

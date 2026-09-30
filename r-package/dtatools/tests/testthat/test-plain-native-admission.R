@@ -1,3 +1,93 @@
+test_that("native mutations preserve S4 table methods and their errors", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("native-mutation-s4-tables", function() {
+        library(dtatools)
+        options(dtatools.generate_type = "double")
+        methods::setOldClass(c("dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame"))
+        calls <- list(
+            gen = quote(gen(d, y = x + 1)),
+            gen_scalar = quote(gen(d, y = 1)),
+            repl = quote(dtatools::repl(d, x = x + 1)),
+            repl_scalar = quote(dtatools::repl(d, x = 1)),
+            bracket = quote(d[, y := x + 1]),
+            bracket_scalar = quote(d[, y := 1]),
+            bracket_five = quote(d[, `:=`(a = x + 1, b = x + 1,
+                c = x + 1, e = x + 1, f = x + 1)]),
+            grouped_gen = quote(gen(d, y = x + 1, by = g)),
+            grouped_repl = quote(dtatools::repl(d, x = x + 1, by = g)),
+            grouped_bracket = quote(d[, y := x + 1, by = g]),
+            grouped_bracket_five = quote(d[, `:=`(a = x + 1, b = x + 1,
+                c = x + 1, e = x + 1, f = x + 1), by = g]))
+        if (requireNamespace("dplyr", quietly = TRUE)) calls <- c(calls, list(
+            mutate = quote(dplyr::mutate(d, y = x + 1)),
+            grouped_mutate = quote(dplyr::mutate(d, y = x + 1, .by = g)),
+            mutate_scalar = quote(dplyr::mutate(d, y = 1))))
+        armed <- FALSE
+        hits <- 0L
+        methods <- list(
+            names = function(x) {
+                if (armed) { hits <<- hits + 1L; stop("S4 table names", call. = FALSE) }
+                attr(x, "names")
+            },
+            dim = function(x) {
+                if (armed) { hits <<- hits + 1L; stop("S4 table dim", call. = FALSE) }
+                c(length(x[[1L]]), length(unclass(x)))
+            },
+            length = function(x) {
+                if (armed) { hits <<- hits + 1L; stop("S4 table length", call. = FALSE) }
+                length(unclass(x))
+            })
+        for (method in names(methods)) {
+            methods::setMethod(method, "dibble", methods[[method]])
+            for (raw in c(FALSE, TRUE)) for (route in names(calls)) {
+                options(dtatools.probe_grouped_bracket_raw = raw)
+                armed <- FALSE
+                d <- asS4(dibble(x = c(1, 2, 3, 4), g = dta_long(c(1, 1, 2, 2))))
+                hits <- 0L
+                armed <- TRUE
+                error <- tryCatch({ suppressWarnings(eval(calls[[route]])); NULL },
+                    error = conditionMessage)
+                armed <- FALSE
+                # These are the ordinary public calls reached on v0.10.0.
+                # Its gen/repl paths do not call names() or dim() here.
+                reached <- method == "length" ||
+                    (method == "names" && (grepl("bracket", route) || route == "grouped_mutate")) ||
+                    (method == "dim" && grepl("mutate", route))
+                wanted <- if (reached) paste("S4 table", method) else NULL
+                if (!identical(error, wanted) || hits != as.integer(reached))
+                    stop(paste(method, raw, route, "lost its ordinary S4 table method"))
+                if (reached) stopifnot(identical(attr(d, "names"), c("x", "g")),
+                    identical(as.double(.subset2(d, 1L)), c(1, 2, 3, 4)))
+            }
+            methods::removeMethod(method, "dibble")
+        }
+        # A successful method must not be called speculatively by the
+        # direct-scalar capacity screen before the ordinary write path.
+        methods::setMethod("length", "dibble", function(x) {
+            if (armed) hits <<- hits + 1L
+            length(unclass(x))
+        })
+        expected_calls <- c(gen = 4L, gen_scalar = 4L, repl = 2L,
+            repl_scalar = 2L, bracket = 6L, bracket_scalar = 6L,
+            bracket_five = 22L, grouped_gen = 4L, grouped_repl = 2L,
+            grouped_bracket = 6L, grouped_bracket_five = 22L,
+            mutate = 4L, grouped_mutate = 4L, mutate_scalar = 4L)
+        for (raw in c(FALSE, TRUE)) for (route in names(calls)) {
+            options(dtatools.probe_grouped_bracket_raw = raw)
+            armed <- FALSE
+            d <- asS4(dibble(x = c(1, 2, 3, 4), g = dta_long(c(1, 1, 2, 2))))
+            hits <- 0L
+            armed <- TRUE
+            suppressWarnings(eval(calls[[route]]))
+            armed <- FALSE
+            if (hits != expected_calls[[route]])
+                stop(paste(raw, route, "changed the ordinary S4 length call count"))
+        }
+        TRUE
+    }, libpath = .libPaths())
+    expect_true(observed)
+})
+
 test_that("native mutations preserve attribute-free S4 arithmetic dispatch", {
     if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
     have_dplyr <- requireNamespace("dplyr", quietly = TRUE)

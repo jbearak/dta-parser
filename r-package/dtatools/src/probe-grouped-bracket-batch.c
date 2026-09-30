@@ -166,7 +166,7 @@ int dtatools_probe_grouped_bracket_marker_admitted(void) {
 }
 
 static int bracket_reference_valid(SEXP data) {
-    if (!Rf_inherits(data, "dtatools_ref_data")) return 0;
+    if (Rf_isS4(data) || !Rf_inherits(data, "dtatools_ref_data")) return 0;
     SEXP state = R_NilValue;
     SEXP state_tag = Rf_install(".dtatools_ref_state");
     for (SEXP node = ATTRIB(data); node != R_NilValue; node = CDR(node))

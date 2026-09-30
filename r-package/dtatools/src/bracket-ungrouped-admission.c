@@ -307,7 +307,7 @@ static int general_reference_owner(SEXP data) {
 }
 
 static int general_table_class(SEXP data) {
-    if (TYPEOF(data) != VECSXP || ALTREP(data) ||
+    if (TYPEOF(data) != VECSXP || ALTREP(data) || Rf_isS4(data) ||
         !general_reference_owner(data)) return 0;
     SEXP classes = Rf_getAttrib(data, R_ClassSymbol);
     static const char *wanted[] = {

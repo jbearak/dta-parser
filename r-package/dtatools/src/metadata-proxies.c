@@ -678,7 +678,7 @@ static SEXP mutation_row_names_attribute(SEXP tag, SEXP value, void *context) {
 /* Exact ungrouped dibble classes and physical row names, without dispatch or
    expanding compact row names. A failed certificate is only a fallback. */
 int mutation_fast_shape(SEXP data, R_xlen_t *row_count) {
-    if (TYPEOF(data) != VECSXP || ALTREP(data)) return 0;
+    if (TYPEOF(data) != VECSXP || ALTREP(data) || Rf_isS4(data)) return 0;
     SEXP classes = Rf_getAttrib(data, R_ClassSymbol);
     const char *expected[] = {"dibble", "dtatools_ref_data", "tbl_df", "tbl", "data.frame"};
     if (TYPEOF(classes) != STRSXP || ALTREP(classes) || ANY_ATTRIB(classes) ||
@@ -774,10 +774,12 @@ static SEXP reference_state_attribute_visit(SEXP tag, SEXP value,
 }
 
 /* A speculative admission must not invoke an active `owner` binding that the
- * ordinary operation has not reached. This check reads only raw attributes
- * and value bindings; all other reference states take the original path. */
+ * ordinary operation has not reached. S4 tables retain their ordinary
+ * names/length/dim methods even with the canonical S3 class vector. This check
+ * reads only raw attributes and value bindings; all other reference states
+ * take the original path. */
 int dtatools_reference_state_valid_noalloc(SEXP data) {
-    if (!Rf_inherits(data, "dtatools_ref_data")) return 0;
+    if (Rf_isS4(data) || !Rf_inherits(data, "dtatools_ref_data")) return 0;
     reference_state_attribute found = {
         Rf_install(".dtatools_ref_state"), R_NilValue
     };

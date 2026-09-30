@@ -1,3 +1,71 @@
+test_that("grouped native mutations preserve S4 grouping key dispatch", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    expected <- c(gen = .dtatools_public_mutation_build_expected(),
+        bracket = requireNamespace("dplyr", quietly = TRUE) &&
+            .dtatools_ungrouped_dplyr_build_expected())
+    observed <- .dtatools_child_r("grouped-native-s4-keys", function(expected) {
+        library(dtatools)
+        if (requireNamespace("dplyr", quietly = TRUE)) loadNamespace("dplyr")
+        options(dtatools.generate_type = "double")
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        calls <- list(gen = quote(gen(d, y = x + 1, by = g)),
+            bracket = quote(d[, y := x + 1, by = g]),
+            bracket_five = quote(d[, `:=`(a = x + 1, b = x + 1,
+                c = x + 1, e = x + 1, f = x + 1), by = g]))
+        methods::setOldClass(c("dta_numeric", "numeric"))
+        hits <- 0L
+        fail <- FALSE
+        methods::setMethod("names", "dta_numeric", function(x) {
+            hits <<- hits + 1L
+            if (fail) stop("S4 grouping names method")
+            NULL
+        })
+        run <- function(route, raw, enabled, type, s4, throwing = FALSE) {
+            cc("C_dtatools_probe_grouped_gen_mode", enabled)
+            options(dtatools.probe_grouped_bracket = enabled,
+                dtatools.probe_grouped_bracket_raw = enabled && raw)
+            stat <- if (route == "gen") "C_dtatools_probe_grouped_gen_stats" else
+                "C_dtatools_probe_grouped_bracket_stats"
+            fail <<- FALSE
+            key <- if (type == "long") dta_long(c(1, 1, 2, 2)) else
+                dta_double(c(1, 1, 2, 2))
+            d <- dibble(x = c(1, 2, 3, 4), g = key)
+            if (s4) d$g <- asS4(d$g)
+            hits <<- 0L
+            fail <<- throwing
+            before <- cc(stat, FALSE)
+            error <- tryCatch({ eval(calls[[route]]); NULL },
+                error = conditionMessage)
+            count <- hits
+            fail <<- FALSE
+            list(error = error, hits = count, columns = names(d),
+                values = lapply(d, as.double),
+                published = as.integer((cc(stat, FALSE) - before)[[3L]]))
+        }
+        for (route in names(calls)) for (raw in if (route == "gen") TRUE else c(FALSE, TRUE))
+        for (type in c("long", "double")) {
+            targets <- if (route == "bracket_five") c("a", "b", "c", "e", "f") else "y"
+            for (throwing in c(FALSE, TRUE)) {
+                ordinary <- run(route, raw, FALSE, type, TRUE, throwing)
+                native <- run(route, raw, TRUE, type, TRUE, throwing)
+                stopifnot(identical(native, ordinary), native$hits > 0L,
+                    native$published == 0L)
+                if (throwing) stopifnot(
+                    identical(native$error, "S4 grouping names method"),
+                    identical(native$columns, c("x", "g"))) else
+                    for (target in targets) stopifnot(identical(native$values[[target]], c(2, 3, 4, 5)))
+            }
+            positive <- run(route, raw, TRUE, type, FALSE)
+            wanted <- expected[[if (route == "gen") "gen" else "bracket"]] * length(targets)
+            stopifnot(is.null(positive$error), positive$hits == 0L,
+                positive$published == as.integer(wanted))
+            for (target in targets) stopifnot(identical(positive$values[[target]], c(2, 3, 4, 5)))
+        }
+        TRUE
+    }, args = list(expected = expected), libpath = .libPaths())
+    expect_true(observed)
+})
+
 test_that("grouped native mutate honors local double arithmetic methods", {
     skip_if_not_installed("dplyr")
     if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")

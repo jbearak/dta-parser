@@ -835,7 +835,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         (!is.null(selection) && !is.null(selection$groups))) return(NULL)
     # A growth warning can run a calling handler that changes row/value
     # bindings. Let the full path prepare capacity before reading either.
-    if (!.column_operation_ready(data, length(data) + 1L)) return(NULL)
+    # This speculative check uses physical width, not a table length method.
+    # The ordinary preparation below retains its original method calls.
+    width <- .Call(C_dtatools_physical_column_count, data)
+    if (!.column_resize_ready(data) || !isTRUE(.Call(
+        C_dtatools_can_select_data_columns, data, as.double(width) + 1
+    ))) return(NULL)
     selected <- .direct_scalar_rows(data, where, selection)
     if (is.null(selected)) return(NULL)
     if (!is.null(selected$rows) &&

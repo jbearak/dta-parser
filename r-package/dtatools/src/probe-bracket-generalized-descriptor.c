@@ -314,7 +314,9 @@ SEXP C_dtatools_probe_bracket_raw_five_parser(SEXP raw_j, SEXP profile) {
     for (int index = 0; index < (tagged ? 5 : 1);
          index++, node = tagged ? CDR(node) : R_NilValue) {
         SEXP target = tagged ? PRINTNAME(TAG(node)) : PRINTNAME(CAR(node));
-        SEXP value = tagged ? CAR(node) : CADDR(expression);
+        /* enquo() snapshots this bounded RHS before later row/group captures
+           can mutate the caller's literal through a public callback. */
+        SEXP value = PROTECT(Rf_duplicate(tagged ? CAR(node) : CADDR(expression)));
         SEXP assignment = PROTECT(Rf_allocVector(VECSXP, 2));
         SEXP name = PROTECT(Rf_ScalarString(target));
         SEXP quo = PROTECT(Rf_lang2(Rf_install("~"), value));
@@ -330,7 +332,7 @@ SEXP C_dtatools_probe_bracket_raw_five_parser(SEXP raw_j, SEXP profile) {
         SET_VECTOR_ELT(assignment, 1, quo);
         Rf_setAttrib(assignment, R_NamesSymbol, field_names);
         SET_VECTOR_ELT(result, index, assignment);
-        UNPROTECT(5);
+        UNPROTECT(6);
     }
     probe_general_phase_add(1, probe_general_clock_ns() - phase_start);
     phase_start = probe_general_clock_ns();

@@ -114,11 +114,55 @@ test_that("grouped native mutations preserve dots in grouping keys", {
     expect_identical(observed, 70L)
 })
 
-test_that("grouped native brackets revalidate later arithmetic literals", {
+test_that("bracket expressions are captured before row and grouping callbacks", {
     skip_if_not_installed("dplyr")
     skip_if_not_installed("data.table")
     if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
-    observed <- .dtatools_child_r("grouped-bracket-late-literals", function() {
+    observed <- .dtatools_child_r("bracket-expression-snapshots", function() {
+        library(dtatools)
+        library(dplyr)
+        options(dtatools.generate_type = "double")
+        checks <- 0L
+        for (raw in c(FALSE, TRUE)) for (enabled in c(FALSE, TRUE))
+            for (five in c(FALSE, TRUE)) for (callback in c("row", "group"))
+                for (scalar_class in c("Date", "custom_scalar")) {
+                    options(dtatools.probe_grouped_bracket = enabled,
+                        dtatools.probe_grouped_bracket_raw = enabled && raw)
+                    d <- dibble(x = c(1, 2, 3, 4), g = dta_long(c(1, 1, 2, 2)))
+                    literal <- as.double(1L)
+                    rhs <- as.call(list(as.name("+"), as.name("x"), literal))
+                    expression <- if (callback == "row")
+                        quote(d[!!mutate_literal(), NULL, by = g]) else
+                        quote(d[, NULL, by = !!mutate_literal()])
+                    targets <- if (five) c("a", "b", "c", "e", "f") else "y"
+                    expression[[4L]] <- if (five)
+                        as.call(c(list(as.name(":=")), setNames(rep(list(rhs), 5L), targets))) else
+                        as.call(list(as.name(":="), as.name("y"), rhs))
+                    hits <- 0L
+                    mutate_literal <- function() {
+                        hits <<- hits + 1L
+                        data.table::setattr(literal, "class", scalar_class)
+                        if (callback == "row") TRUE else "g"
+                    }
+                    eval(expression)
+                    stopifnot(hits == 1L, identical(class(literal), scalar_class))
+                    for (target in targets) stopifnot(
+                        identical(as.double(d[[target]]), c(2, 3, 4, 5)),
+                        identical(class(d[[target]]),
+                            c("dta_numeric", "dta_double", "vctrs_vctr", "double")))
+                    checks <- checks + 1L
+                }
+        checks
+    }, libpath = .libPaths())
+    expect_identical(observed, 32L)
+})
+
+test_that("grouped native brackets isolate later caller literal changes", {
+    skip_if_not_installed("dplyr")
+    skip_if_not_installed("data.table")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    expected <- .dtatools_ungrouped_dplyr_build_expected()
+    observed <- .dtatools_child_r("grouped-bracket-late-literals", function(expected) {
         library(dtatools)
         library(dplyr)
         options(dtatools.generate_type = "double")
@@ -155,18 +199,19 @@ test_that("grouped native brackets revalidate later arithmetic literals", {
                 if (!identical(native[1:3], ordinary[1:3])) stop(sprintf(
                     "raw=%s step=%d class=%s: %s", raw, step, scalar_class,
                     paste(all.equal(native[1:3], ordinary[1:3]), collapse = "; ")))
-                stopifnot(native$published <= step,
-                    "dta_double" %in% native$columns$a$attributes$class)
-                if (step < 5L && scalar_class == "Date")
-                    stopifnot("dta_date" %in% native$columns$f$attributes$class,
-                        native$hits == 5L)
-                if (step < 5L && scalar_class == "custom_scalar")
-                    stopifnot(is.character(native$error), native$hits == step,
-                        length(native$columns) == step + 2L)
+                # Both capture routes snapshot the caller's RHS before a
+                # callback can mutate its original literal by reference.
+                stopifnot(is.null(native$error), native$hits == 5L,
+                    length(native$columns) == 7L,
+                    native$published == if (expected) 5L else 0L)
+                for (target in c("a", "b", "c", "e", "f")) stopifnot(
+                    identical(native$columns[[target]]$values, c(2, 3, 4, 5)),
+                    identical(native$columns[[target]]$attributes$class,
+                        c("dta_numeric", "dta_double", "vctrs_vctr", "double")))
                 checks <- checks + 1L
             }
         checks
-    }, libpath = .libPaths())
+    }, args = list(expected = expected), libpath = .libPaths())
     expect_identical(observed, 12L)
 })
 
