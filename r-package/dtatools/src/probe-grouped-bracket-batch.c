@@ -252,6 +252,12 @@ static int no_grouped_method(SEXP caller) {
 static int source_unshadowed(SEXP caller, SEXP source_symbol) {
     if (TYPEOF(caller) != ENVSXP || TYPEOF(source_symbol) != SYMSXP)
         return 0;
+    /* Group row helpers and data-mask pronouns take precedence over columns;
+       dots references also have special evaluation rules in R. */
+    if (source_symbol == Rf_install(".data") ||
+        source_symbol == Rf_install(".env") ||
+        source_symbol == Rf_install(".n") || source_symbol == Rf_install(".N") ||
+        strncmp(CHAR(PRINTNAME(source_symbol)), "..", 2) == 0) return 0;
     for (SEXP env = caller; env != R_EmptyEnv;
          env = R_ParentEnv(env)) {
         if (env == R_BaseEnv || R_IsNamespaceEnv(env)) return 1;

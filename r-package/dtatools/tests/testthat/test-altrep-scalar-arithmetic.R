@@ -80,6 +80,22 @@ test_that("compact float arithmetic promotes past the Stata observed limit", {
     expect_equal(as.double(result), as.double(source) + 1e38)
 })
 
+test_that("compact scalar overflow becomes missing without promoting storage", {
+    invisible(dta_double(rep(1, 4096L)) + 1)
+    constructors <- list(byte = dta_byte, int = dta_int,
+                         long = dta_long, float = dta_float)
+    for (kind in names(constructors)) {
+        source <- constructors[[kind]](rep(c(-1, 0, 1), length.out = 4096L))
+        for (scalar in c(-.Machine$double.xmax, .Machine$double.xmax)) {
+            for (result in list(source + scalar, source - scalar, scalar - source)) {
+                expect_identical(as.double(result), rep(NA_real_, 4096L), info = kind)
+                expect_identical(dta_storage_type(result), kind, info = kind)
+                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(result), info = kind)
+            }
+        }
+    }
+})
+
 test_that("compact helper admission checks live executable traces after warming", {
     ns <- asNamespace("dtatools")
     counter <- function(reset = FALSE) .Primitive(".Call")(

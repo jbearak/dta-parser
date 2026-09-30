@@ -1,3 +1,169 @@
+test_that("grouped native mutate honors local double arithmetic methods", {
+    skip_if_not_installed("dplyr")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("native-mutate-local-double-methods", function() {
+        library(dtatools)
+        library(dplyr)
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        for (method in c("+.dta_double", "Ops.dta_double")) {
+            for (inherited in c(FALSE, TRUE)) for (five in c(FALSE, TRUE)) {
+                run <- function(enabled) {
+                    cc("C_dtatools_grouped_mode", enabled)
+                    d <- as_dibble(tibble::tibble(x = c(1, 2, 3, 4),
+                                                g = c(1, 1, 2, 2)))
+                    hits <- 0L
+                    replacement <- function(e1, e2) {
+                        hits <<- hits + 1L
+                        rep(99, length(e1))
+                    }
+                    call <- if (five) quote(mutate(d, a = x + 1, b = x + 1,
+                        c = x + 1, e = x + 1, f = x + 1, .by = g)) else
+                        quote(mutate(d, y = x + 1, .by = g))
+                    caller <- new.env(parent = environment())
+                    assign(method, replacement, if (inherited) environment() else caller)
+                    before <- cc("C_dtatools_grouped_stats", FALSE)
+                    result <- eval(call, caller)
+                    count <- as.integer((cc("C_dtatools_grouped_stats", FALSE) - before)[[2L]])
+                    list(values = lapply(result, as.double), hits = hits, count = count)
+                }
+                ordinary <- run(FALSE)
+                native <- run(TRUE)
+                stopifnot(identical(native, ordinary),
+                    native$hits == if (five) 10L else 2L,
+                    native$count == 0L)
+            }
+        }
+        TRUE
+    }, libpath = .libPaths())
+    expect_true(observed)
+})
+
+test_that("native mutate preserves reserved evaluation symbols with colliding columns", {
+    skip_if_not_installed("dplyr")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("native-mutate-mask-pronouns", function() {
+        library(dtatools)
+        library(dplyr)
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        reserved <- c(".data", ".env", "...", "..0", "..1", "..01",
+                      "..+1", "..-1", "..9999999999999999999999")
+        for (name in reserved) for (grouped in c(FALSE, TRUE)) {
+            key_cases <- if (grouped && name %in% c(".data", ".env", tail(reserved, 1L)))
+                c(FALSE, TRUE) else FALSE
+            for (five in c(FALSE, TRUE)) for (key in key_cases) {
+                run <- function(enabled) {
+                    cc("C_dtatools_probe_mutate_mode", enabled)
+                    cc("C_dtatools_grouped_mode", enabled)
+                    d <- as_dibble(setNames(tibble::tibble(x = c(11, 22, 33, 44),
+                        g = c(1, 1, 2, 2)), if (key) c("x", name) else c(name, "g")))
+                    source <- if (key) quote(x) else as.name(name)
+                    call <- if (five) substitute(mutate(d, a = SOURCE + 1,
+                        b = SOURCE + 1, c = SOURCE + 1, e = SOURCE + 1,
+                        f = SOURCE + 1), list(SOURCE = source)) else
+                        substitute(mutate(d, y = SOURCE + 1), list(SOURCE = source))
+                    if (grouped) call$.by <- if (key) as.name(name) else quote(g)
+                    stat <- if (grouped) "C_dtatools_grouped_stats" else
+                        "C_dtatools_probe_dplyr_early_stats"
+                    before <- cc(stat, FALSE)
+                    error <- tryCatch({ eval(call); NULL }, error = conditionMessage)
+                    count <- tail(as.integer(cc(stat, FALSE) - before), 1L)
+                    list(error = error, count = count)
+                }
+                ordinary <- run(FALSE)
+                native <- run(TRUE)
+                stopifnot(is.character(ordinary$error),
+                    identical(native, ordinary), native$count == 0L)
+            }
+        }
+        TRUE
+    }, libpath = .libPaths())
+    expect_true(observed)
+})
+
+test_that("grouped native mutate honors configured column capacity", {
+    skip_if_not_installed("dplyr")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("grouped-mutate-column-capacity", function() {
+        library(dtatools)
+        library(dplyr)
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        for (capacity in list(0L, 7L, -1L, NA_integer_, "invalid")) {
+            run <- function(enabled) {
+                options(dtatools.alloccol = 1024L)
+                d <- as_dibble(tibble::tibble(x = c(1, 2, 3, 4),
+                                            g = c(1, 1, 2, 2)))
+                options(dtatools.alloccol = capacity)
+                cc("C_dtatools_grouped_mode", enabled)
+                before <- cc("C_dtatools_grouped_stats", FALSE)
+                value <- tryCatch({
+                    result <- mutate(d, y = x + 1, .by = g)
+                    list(values = as.double(result$y), capacity = column_capacity(result))
+                }, error = conditionMessage)
+                list(value = value,
+                    count = as.integer((cc("C_dtatools_grouped_stats", FALSE) - before)[[2L]]))
+            }
+            ordinary <- run(FALSE)
+            native <- run(TRUE)
+            stopifnot(identical(native, ordinary), native$count == 0L)
+        }
+        TRUE
+    }, libpath = .libPaths())
+    expect_true(observed)
+})
+
+test_that("native brackets preserve reserved source symbol evaluation", {
+    skip_if_not_installed("dplyr")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("bracket-reserved-source-symbols", function() {
+        library(dtatools)
+        library(dplyr)
+        options(dtatools.generate_type = "double")
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        profile <- dtatools:::.probe_bracket_public_state
+        saved <- profile$snapshots
+        for (name in c(".data", ".env", ".n", ".N", "...", "..1", "..0", "..+1")) {
+            operations <- c("create", "five", "replace", if (name == "...") "scalar")
+            for (grouped in c(FALSE, TRUE)) for (operation in operations) {
+                run <- function(enabled) {
+                    profile$snapshots <- if (enabled) saved else NULL
+                    options(dtatools.probe_grouped_bracket = enabled,
+                            dtatools.probe_grouped_bracket_raw = enabled)
+                    d <- as_dibble(setNames(tibble::tibble(x = c(11, 22, 33, 44),
+                        g = c(1, 1, 2, 2)), c(name, "g")))
+                    call <- if (operation == "scalar")
+                        substitute(d[, TARGET := 1], list(TARGET = as.name(name))) else
+                        if (operation == "five") substitute(d[, `:=`(
+                        a = SOURCE + 1, b = SOURCE + 1, c = SOURCE + 1,
+                        e = SOURCE + 1, f = SOURCE + 1)], list(SOURCE = as.name(name))) else
+                        substitute(d[, TARGET := SOURCE + 1], list(SOURCE = as.name(name),
+                            TARGET = as.name(if (operation == "replace") name else "y")))
+                    if (grouped) call$by <- quote(g)
+                    stat <- if (grouped) "C_dtatools_probe_grouped_bracket_stats" else
+                        "C_dtatools_probe_bracket_step_stats"
+                    before <- cc(stat, FALSE)
+                    error <- tryCatch({ eval(call); NULL }, error = conditionMessage)
+                    list(error = error, columns = lapply(d, function(column)
+                        list(values = as.double(column), attributes = attributes(column))),
+                        published = as.integer((cc(stat, FALSE) - before)[[3L]]))
+                }
+                ordinary <- run(FALSE)
+                native <- run(TRUE)
+                if (!identical(native, ordinary)) stop(sprintf(
+                    "%s grouped=%s operation=%s: %s", name, grouped, operation,
+                    paste(all.equal(native, ordinary), collapse = "; ")))
+                stopifnot(native$published == 0L)
+                if (operation == "create" && name %in% c(".n", ".N")) {
+                    expected <- if (name == ".n") if (grouped) c(2, 3, 2, 3) else 2:5 else
+                        rep(if (grouped) 3 else 5, 4L)
+                    stopifnot(identical(native$columns$y$values, as.double(expected)))
+                }
+            }
+        }
+        TRUE
+    }, libpath = .libPaths())
+    expect_true(observed)
+})
+
 test_that("plain and owned double keys admit grouped reference creation", {
     if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
     expected <- c(.dtatools_public_mutation_build_expected(),

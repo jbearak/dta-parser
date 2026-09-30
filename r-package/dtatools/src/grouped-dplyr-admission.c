@@ -763,6 +763,18 @@ static int probe_reference_valid_noalloc(SEXP data) {
     return TYPEOF(owner) == EXTPTRSXP && R_ExternalPtrAddr(owner) == data;
 }
 
+/* This producer reserves the ordinary default spare capacity. Other values
+   need the R constructor's validation and configured allocation. */
+static int probe_default_alloccol_option(void) {
+    SEXP option = Rf_GetOption1(Rf_install("dtatools.alloccol"));
+    if (option == R_NilValue) return 1;
+    if ((TYPEOF(option) != INTSXP && TYPEOF(option) != REALSXP) ||
+        ALTREP(option) || ANY_ATTRIB(option) || XLENGTH(option) != 1)
+        return 0;
+    return TYPEOF(option) == INTSXP ? INTEGER(option)[0] == 1024 :
+        REAL(option)[0] == 1024.0;
+}
+
 static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
                                     SEXP source_symbol, SEXP group_symbol,
                                     SEXP target_names,
@@ -775,6 +787,7 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
         XLENGTH(captured_columns) != width ||
         TYPEOF(data) != VECSXP || !Rf_inherits(data, "dibble") ||
         !dtatools_reference_state_valid_noalloc(data) ||
+        !probe_default_alloccol_option() ||
         (width < 2 || width > 256)) return R_NilValue;
     SEXP names = Rf_getAttrib(captured_columns, R_NamesSymbol);
     SEXP classes = Rf_getAttrib(data, R_ClassSymbol);
@@ -995,6 +1008,7 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
        modify the physical input after this capture, just as it can after the
        ordinary mask capture; publication must read only the frozen result. */
     if (!probe_public_bindings_same(0) ||
+        !probe_default_alloccol_option() ||
         (extra_public && !dtatools_probe_plain_public_guard()) ||
         !dtatools_reference_state_valid_noalloc(prepared) ||
         !probe_name_prefix_same(prepared, out_names, total) ||
@@ -1051,6 +1065,11 @@ static SEXP probe_arithmetic_source(SEXP expression) {
     if (ANY_ATTRIB(first) || TAG(first) != R_NilValue ||
         ANY_ATTRIB(CDR(first)) || TAG(CDR(first)) != R_NilValue ||
         TYPEOF(CAR(first)) != SYMSXP ||
+        CAR(first) == Rf_install(".data") ||
+        CAR(first) == Rf_install(".env") ||
+        /* R resolves ... and ..n through dots even with a same-named column.
+           Decline the entire prefix rather than reproduce its index parser. */
+        strncmp(CHAR(PRINTNAME(CAR(first))), "..", 2) == 0 ||
         !probe_literal(CADR(first), 1.0)) return R_NilValue;
     return CAR(first);
 }
@@ -1079,14 +1098,15 @@ static int probe_captured_operator(SEXP quo) {
     SEXP env = probe_captured_environment(quo);
     if (env == R_UnboundValue || pointer_guard_operators == NULL) return 0;
     static const char *methods[] = {
-        "+.dta_numeric", "Ops.dta_numeric", "+.vctrs_vctr",
+        "+.dta_numeric", "Ops.dta_numeric", "+.dta_double",
+        "Ops.dta_double", "+.vctrs_vctr",
         "vec_arith.dta_numeric", "vec_arith.dta_numeric.numeric",
         "vec_arith.numeric.dta_numeric"
     };
     for (SEXP frame = env; frame != R_EmptyEnv && frame != R_BaseEnv;
          frame = R_ParentEnv(frame)) {
         if (TYPEOF(frame) != ENVSXP) return 0;
-        for (int i = 0; i < 6; i++) {
+        for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); i++) {
             if (R_GetBindingType(Rf_install(methods[i]), frame) !=
                 R_BindingTypeUnbound) return 0;
         }
@@ -1114,7 +1134,9 @@ SEXP C_dtatools_grouped_entry(SEXP data, SEXP dots, SEXP by,
     SEXP captured_by_expr = probe_captured_expression(captured_by);
     if (captured_by_expr == R_UnboundValue || captured_by_expr != by)
         return R_NilValue;
-    if (TYPEOF(by) != SYMSXP ||
+    if (TYPEOF(by) != SYMSXP || by == Rf_install(".data") ||
+        by == Rf_install(".env") ||
+        strncmp(CHAR(PRINTNAME(by)), "..", 2) == 0 ||
         TYPEOF(captured_columns) != VECSXP ||
         ALTREP(captured_columns) ||
         XLENGTH(captured_columns) != XLENGTH(data))
