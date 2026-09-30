@@ -1,9 +1,5 @@
 # dtatools (development version)
 
-* `gen(before = ...)` and `gen(after = ...)` resolve placement after column
-  construction. Callbacks that add or move columns no longer misplace or
-  discard the new column; removing the anchor stops the call before insertion.
-
 * Validated native paths speed up supported `repl()`/`replace_values()`,
   `gen()`, dibble `:=`, and `mutate()` expressions. Public dependency changes
   retain ordinary evaluation. Bracket fallback preserves an already evaluated
