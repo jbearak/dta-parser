@@ -256,3 +256,65 @@ test_that("native promote inspection declines active and attributed flags", {
     expect_null(peek({ touched <- touched + 1L; TRUE }))
     expect_identical(touched, 0L)
 })
+test_that("scalar mutation reads database arguments only at ordinary evaluation", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    fixture <- normalizePath(test_path("fixtures", "numeric-size-userdb.c"))
+    observed <- .dtatools_child_r("mutation-userdb", function(fixture) {
+        library(dtatools)
+        scratch <- tempfile("mutation-userdb-")
+        dir.create(scratch)
+        on.exit(unlink(scratch, recursive = TRUE), add = TRUE)
+        prior <- setwd(scratch)
+        on.exit(setwd(prior), add = TRUE)
+        stopifnot(file.copy(fixture, "numeric-size-userdb.c"))
+        output <- system2(file.path(R.home("bin"), "R"),
+                          c("CMD", "SHLIB", "numeric-size-userdb.c"),
+                          stdout = TRUE, stderr = TRUE)
+        if (!is.null(attr(output, "status"))) stop(paste(output, collapse = "\n"))
+        dyn.load(file.path(scratch, paste0("numeric-size-userdb", .Platform$dynlib.ext)))
+        # Database finalizers retain DLL pointers until the child exits.
+        run <- function(expression, first, later, invalid = FALSE) {
+            pointer <- .Call("numeric_size_userdb_create_changing", first, later)
+            database <- attach(pointer, name = "mutation-userdb", warn.conflicts = FALSE)
+            on.exit(detach("mutation-userdb", character.only = TRUE))
+            scope <- new.env(parent = database)
+            scope$data <- if (invalid) data.frame(x = c(1, 2)) else
+                dibble(x = dta_byte(c(1, 2)))
+            scope$setter <- set_dta_values
+            scope$replacer <- replace_values
+            scope$generate <- gen
+            invisible(.Call("numeric_size_userdb_gets", pointer, TRUE))
+            error <- tryCatch({ eval(expression, scope); NULL }, error = conditionMessage)
+            list(values = lapply(scope$data, as.double), error = error,
+                 gets = .Call("numeric_size_userdb_gets", pointer, FALSE))
+        }
+        list(
+            value = run(quote(setter(data, "x", operand)), 5, 9),
+            variable = run(quote(setter(data, operand, 5)), "x", "absent"),
+            rows = run(quote(setter(data, "x", 5, rows = operand)), 1L, 2L),
+            create = run(quote(setter(data, "y", 5, create = operand)), TRUE, FALSE),
+            replacement = run(quote(replacer(data, x = operand)), 5, 9),
+            selection = run(quote(replacer(data, x = 5, where = operand)), 1L, 2L),
+            promotion = run(quote(replacer(data, x = 101, promote = operand)), FALSE, TRUE),
+            generation = run(quote(generate(data, y = operand)), 5, 9),
+            invalid = run(quote(setter(data, "x", operand)), 5, 9, invalid = TRUE)
+        )
+    }, args = list(fixture = fixture), libpath = .libPaths())
+    expected <- list(
+        value = list(x = c(5, 5)), variable = list(x = c(5, 5)),
+        rows = list(x = c(5, 2)), create = list(x = c(1, 2), y = c(5, 5)),
+        replacement = list(x = c(5, 5)), selection = list(x = c(5, 2)),
+        generation = list(x = c(1, 2), y = c(5, 5))
+    )
+    for (name in names(expected)) {
+        expect_null(observed[[name]]$error, info = name)
+        expect_identical(observed[[name]]$gets, 1L, info = name)
+        expect_identical(observed[[name]]$values, expected[[name]], info = name)
+    }
+    expect_identical(observed$promotion$gets, 1L)
+    expect_match(observed$promotion$error, "cannot represent")
+    expect_identical(observed$promotion$values, list(x = c(1, 2)))
+    expect_identical(observed$invalid$gets, 0L)
+    expect_match(observed$invalid$error, "must be a dibble")
+    expect_identical(observed$invalid$values, list(x = c(1, 2)))
+})

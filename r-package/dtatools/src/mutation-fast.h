@@ -92,6 +92,9 @@ SEXP C_dtatools_patch_scalar(SEXP data, SEXP name, SEXP rows, SEXP value, SEXP p
 static SEXP mutation_bound_value(SEXP expression, SEXP environment) {
     if (TYPEOF(expression) != SYMSXP) return expression;
     while (environment != R_EmptyEnv && TYPEOF(environment) == ENVSXP) {
+        /* R_GetBindingType can call a user database's getter. Leave every
+           lookup in a custom environment to ordinary argument evaluation. */
+        if (Rf_isObject(environment) || Rf_isS4(environment)) return R_UnboundValue;
         R_BindingType_t type = R_GetBindingType(expression, environment);
         if (type == R_BindingTypeValue || type == R_BindingTypeForced)
             return R_getVar(expression, environment, FALSE);

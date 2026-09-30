@@ -812,8 +812,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     } else if (!is.atomic(expression)) return(NULL) else name <- NULL
     if (!is.null(name)) {
         if (is.na(name) || !nzchar(name)) return(NULL)
-        while (!identical(environment, emptyenv()) &&
-               !exists(name, environment, inherits = FALSE)) environment <- parent.env(environment)
+        while (!identical(environment, emptyenv())) {
+            # A user database can run a getter even while a binding is only
+            # being inspected. Let the normal evaluator read it once.
+            if (is.object(environment) || isS4(environment)) return(NULL)
+            if (exists(name, environment, inherits = FALSE)) break
+            environment <- parent.env(environment)
+        }
         if (identical(environment, emptyenv()) || bindingIsActive(name, environment) ||
             rlang::env_binding_are_lazy(environment, name)[[1L]]) return(NULL)
         value <- get(name, environment, inherits = FALSE)
