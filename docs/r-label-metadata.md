@@ -44,9 +44,10 @@ The three `set_*()` functions mutate a data frame and every binding to it by
 reference. Call `copy_data()` first when another binding must remain unchanged.
 Replacement syntax follows R's assignment rules for the metadata it changes:
 it updates the binding on the left, while another binding keeps its original
-metadata. Later explicit value writes to the separate tables remain isolated,
+metadata. Later dtatools value writes to the separate tables remain isolated,
 including writes to columns that replacement left unchanged. Aliases of the
-same table still observe explicit helper writes.
+same table still observe explicit helper writes. Use `copy_data()` when later
+foreign reference writes must also leave the other table unchanged.
 
 For data frames, `...` and `.labels` are combined into one atomic update. Every update must have a unique, known column name. Positional, duplicate, unknown, or overlapping updates are errors; no column is changed when validation fails. Replacement forms take a named list, while a bare `NULL` clears the corresponding metadata from every column.
 

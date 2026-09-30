@@ -1,5 +1,7 @@
 # Direct dibble epic progress
 
+Contract update: [ADR 0044](../adr/0044-require-explicit-copies-before-foreign-reference-writes.md) supersedes this plan's blanket requirement that ordinary results survive later foreign reference writes. Ordinary R and dtatools mutation isolation remain required, as does two-way foreign-write isolation for `copy_data()`. Historical measurements and acceptance records below describe the contract used for those runs.
+
 Starting main: `5ad44406f9b80db81789dcf7b7e1756c28502559`.
 Issue: https://github.com/jbearak/dta-parser/issues/172, still open.
 Contract: [implementation plan](dibble-result-performance.md), with the user's

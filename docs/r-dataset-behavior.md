@@ -14,9 +14,13 @@ stay logical and factors stay factors. And every dataset operation on a dibble
 returns a dibble: the dplyr verbs, joins and `bind_rows()` with a dibble first, base
 `subset()`, `transform()`, `within()`, `head()`, `rbind()`, `cbind()`, and `[`
 subsetting. Each result is a fresh object following copy-on-modify, so a
-by-reference `:=` or `replace_values()` on the input or the result leaves the
-other as it was; untouched columns are shared copy-on-write, so compact
-columns stay compact. `tibble::as_tibble()` returns a tibble snapshot.
+dibble `:=` or `replace_values()` on the input or the result leaves the
+other as it was. Untouched columns may share storage until an ordinary R or
+dtatools write needs separation; compact columns stay compact. Foreign
+reference writes such as `data.table::set()` can affect shared values or
+metadata. Use `copy_data()` for independence under those writes.
+`tibble::as_tibble()` returns a tibble with ordinary R assignment semantics;
+copy the dibble first when the exported tibble needs foreign-write isolation.
 
 Ordinary `$<-`, `[[<-`, `[<-`, names, row-name, and nested attribute
 replacement use R copy-and-rebind semantics. Existing aliases stay unchanged.
@@ -77,7 +81,7 @@ applying Stata column typing. See the
 Other table-producing operations retain their documented subclass restrictions.
 
 `gen()`, `replace_values()`, `keep_vars()`, and `drop_vars()` mutate the supplied data frame or tibble. Dataset
-aliases observe the change. Separate tables sharing a column remain isolated. Call `copy_data()`
+aliases observe the change. Separate tables sharing a column remain isolated under dtatools writes. Later foreign reference writes require an explicit copy for independence. Call `copy_data()`
 first when the original dataset, its compact storage, and its metadata must
 remain independent. See `?replace_values` for selection, evaluation, formula,
 grouping, and Stata compatibility details, and

@@ -175,8 +175,9 @@ The caller and every other binding to the same data frame see the new
 metadata. Use \code{copy_data()} first when isolation is required. Replacement
 syntax applies R's assignment semantics to the metadata it changes: it
 updates the binding on its left-hand side but not another binding to the
-original data frame. Later explicit value writes to these separate tables
-remain isolated, including writes to columns the replacement left unchanged. Vector
+original data frame. Later dtatools value writes to these separate tables
+remain isolated, including writes to columns the replacement left unchanged.
+Foreign reference writes require \code{\link[=copy_data]{copy_data()}} for independence. Vector
 forms cannot mutate by reference and return a copy. Whole-table label
 replacement also returns a copy and preserves a dibble's type.
 

@@ -7,7 +7,9 @@ status: accepted
 Dibble operations will execute through package-owned column, row, expression,
 and result modules, while optional dplyr methods supply the familiar generics.
 This preserves eager Stata typing and the symmetric isolation required by
-[ADR 0029](0029-use-explicit-mutation-and-copy-rebind-replacement.md), while
+[ADR 0029](0029-use-explicit-mutation-and-copy-rebind-replacement.md), as narrowed
+by [ADR 0044](0044-require-explicit-copies-before-foreign-reference-writes.md) for
+foreign reference writes, while
 removing repeated whole-table delegation and reconstruction. The staged
 [implementation plan](../plans/dibble-result-performance.md) preserves current
 functionality until dplyr can become optional.
@@ -31,9 +33,11 @@ later owned-column stages qualify capture, detachment and every write path.
 
 The selector rules adapt pinned dplyr source with the provenance and full MIT
 notice in the installed package's `NOTICE`. dtplyr's copy planning was studied
-as a reference; its lazy execution and weaker later-write isolation are not the
-dibble contract. Other operation families retain their recorded compatibility
-paths until their own direct implementations pass the plan's gates.
+as a reference; its lazy execution is not the dibble contract. ADR 0044
+replaces this decision's former rejection of weaker isolation from later foreign
+reference writes; ordinary R and dtatools writes must still preserve separate
+results. Other operation families retain their recorded compatibility paths
+until their own direct implementations pass the plan's gates.
 
 Row brackets, `slice_dta_rows()` and the dplyr row hook now share a batch gather
 module. Each entry point resolves its own locations before gathering. Brackets

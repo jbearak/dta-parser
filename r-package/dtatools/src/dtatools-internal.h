@@ -339,6 +339,7 @@ DTATOOLS_INTERNAL SEXP owned_values(SEXP value);
 DTATOOLS_INTERNAL int *owned_flags(SEXP value);
 DTATOOLS_INTERNAL SEXP owned_adopt(SEXP values);
 DTATOOLS_INTERNAL SEXP owned_adopt_real(SEXP values);
+DTATOOLS_INTERNAL int dtatools_probe_plain_public_guard(void);
 DTATOOLS_INTERNAL int known_numeric_classes(SEXP value, int compact);
 DTATOOLS_INTERNAL int owned_real_supported(SEXP value);
 DTATOOLS_INTERNAL int owned_supported(SEXP value);

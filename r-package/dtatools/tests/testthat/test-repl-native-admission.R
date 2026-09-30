@@ -69,3 +69,28 @@ test_that("native replacement admits an unfamiliar column and preserves public f
     expect_identical(observed$traced[[6L]], 0L)
     expect_gt(observed$callbacks, 0L)
 })
+
+test_that("native constant replacement stages a buffer for shared owned targets", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    native_expected <- .dtatools_public_mutation_build_expected()
+    observed <- .dtatools_child_r("repl-native-shared-constant", function(native_expected) {
+        library(dtatools)
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        d <- as_dibble(tibble::tibble(x = rep(2, 41L), spare = rep(7, 41L)))
+        table_alias <- d
+        column_alias <- d$x
+        attrs <- attributes(column_alias)
+        before <- cc("C_dtatools_probe_unique_repl_stats", FALSE)
+        replace_values(d, x = abs(-3))
+        counts <- cc("C_dtatools_probe_unique_repl_stats", FALSE) - before
+        stopifnot(counts[[6L]] == as.integer(native_expected),
+            identical(as.double(d$x), rep(3, 41L)),
+            identical(as.double(table_alias$x), rep(3, 41L)),
+            identical(as.double(column_alias), rep(2, 41L)),
+            identical(attributes(d$x), attrs),
+            identical(attributes(column_alias), attrs),
+            identical(as.double(d$spare), rep(7, 41L)))
+        TRUE
+    }, args = list(native_expected = native_expected), libpath = .libPaths())
+    expect_true(observed)
+})

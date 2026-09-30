@@ -1,4 +1,4 @@
-/* Source-qualified native ungrouped mutate for canonical owned dibbles. */
+/* Source-qualified native ungrouped mutate for canonical plain/owned dibbles. */
 #include "dtatools-internal.h"
 #include <string.h>
 #include <stdint.h>
@@ -354,7 +354,7 @@ SEXP C_dtatools_probe_dplyr_early_stats(SEXP reset) {
 
 
 static int typed(SEXP col, R_xlen_t n, const char *class_name, const char *storage_name) {
-    if (TYPEOF(col) != REALSXP || XLENGTH(col) != n) {
+    if (TYPEOF(col) != REALSXP || Rf_isS4(col) || XLENGTH(col) != n) {
         return 0;
     }
     SEXP storage = Rf_getAttrib(col, Rf_install("stata.storage"));
@@ -374,7 +374,8 @@ static int typed(SEXP col, R_xlen_t n, const char *class_name, const char *stora
 }
 
 static int ungrouped_column(SEXP col, R_xlen_t n) {
-    return (owned_real(col) && typed(col, n, "dta_double", "double")) ||
+    return ((!ALTREP(col) || owned_real(col)) &&
+         typed(col, n, "dta_double", "double")) ||
         (TYPEOF(col) == REALSXP && ALTREP(col) &&
          R_altrep_inherits(col, dtatools_numeric_class) &&
          R_altrep_data2(col) == R_NilValue &&
@@ -590,17 +591,20 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
         seen_hashes[slot] = hash;
     }
     SEXP x = VECTOR_ELT(data, source_index);
-    if (!owned_real(x)) return R_NilValue;
+    if (ALTREP(x) && !owned_real(x)) return R_NilValue;
     R_xlen_t n = XLENGTH(x);
     if (n < 1 || n > 1000000) return R_NilValue;
     if (!typed(x, n, "dta_double", "double")) {
         return R_NilValue;
     }
+    int has_plain = !ALTREP(x);
     for (R_xlen_t j = 0; j < width; j++) {
         if (j == source_index) continue;
         SEXP column = VECTOR_ELT(data, j);
         if (!ungrouped_column(column, n)) return R_NilValue;
+        has_plain |= !ALTREP(column);
     }
+    if (has_plain && !dtatools_probe_plain_public_guard()) return R_NilValue;
     /* Read-only pointers keep owned input handles unexposed. */
     const double *xp = constant ? NULL : (const double *) DATAPTR_RO(x);
     /* Every allocation and output publication precedes the final input and
@@ -641,7 +645,12 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
     SEXP out = PROTECT(Rf_allocVector(VECSXP, total));
     SEXP out_names = PROTECT(Rf_allocVector(STRSXP, total));
     for (R_xlen_t j = 0; j < width; j++) {
-        SEXP fork = PROTECT(C_dtatools_metadata_copy(VECTOR_ELT(data, j)));
+        SEXP column = VECTOR_ELT(data, j);
+        /* Keep the operand's ordered snapshot for evaluation. Other plain
+           columns may share until ordinary R or dtatools writes detach them;
+           later foreign reference writes require an explicit copy_data(). */
+        SEXP fork = PROTECT(j == source_index || ALTREP(column) ?
+            C_dtatools_metadata_copy(column) : column);
         if (outputs == 0 && j == target_index)
             SET_VECTOR_ELT(backings, 1, fork);
         else SET_VECTOR_ELT(out, j, fork);
@@ -713,7 +722,8 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
         R_gc();
     }
     R_CheckUserInterrupt();
-    int public_ok = probe_public_bindings_same();
+    int public_ok = probe_public_bindings_same() &&
+        (!has_plain || dtatools_probe_plain_public_guard());
     int final_ok[] = {
         public_ok,
         probe_default_alloccol_option(),
@@ -735,9 +745,9 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
     }
     for (R_xlen_t j = 0; j < width; j++) {
         SEXP column = VECTOR_ELT(data, j);
-        /* Every ungrouped input column has an ordered isolated fork. A COW
-           value write after its fork may detach the physical input's record,
-           while ordinary mask evaluation continues to use the frozen one. */
+        /* The operand and owned columns retain ordered snapshots. Unchanged
+           plain columns retain their actual handles, which our own writers
+           must treat as shared after publication. */
         if (column != VECTOR_ELT(source_columns, j) ||
             probe_raw_attribute(column, R_ClassSymbol) != VECTOR_ELT(source_classes, j) ||
             probe_raw_attribute(column, Rf_install("stata.storage")) !=
@@ -746,12 +756,12 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
             UNPROTECT(11); return R_NilValue;
         }
     }
-    /* Read the frozen source fork. The original handle may now point at a
-       newer record after a finalizer's supported COW value write. */
+    /* Read the isolated source copy (plain) or frozen source fork (owned).
+       A finalizer may have changed the physical input after this capture. */
     if (!constant)
-        xp = (const double *) R_ExternalPtrAddr(
-            R_altrep_data1(outputs == 0 ? VECTOR_ELT(backings, 1) :
-                           VECTOR_ELT(prepared, source_index)));
+        xp = (const double *) DATAPTR_RO(
+            outputs == 0 ? VECTOR_ELT(backings, 1) :
+                           VECTOR_ELT(prepared, source_index));
     admitted++;
     for (int output_index = 0; output_index <
          (fork_outputs ? 1 : (outputs == 0 ? 1 : outputs)); output_index++) {

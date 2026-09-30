@@ -97,9 +97,25 @@ These return a new object and leave their input alone:
 - base `subset()`, `transform()`, `within()`, `head()`, `rbind()`, `cbind()`, and `[` subsetting without `:=`
 - `slice_dta_rows()`, which returns the selected rows in a new table
 - vector forms of the metadata setters, which return a changed copy
-- `copy_data()` and `tibble::as_tibble()`, whose whole purpose is to produce an independent object
+- `tibble::as_tibble()`, which returns a tibble with ordinary R assignment semantics
+- `copy_data()`, which also guarantees independence from later foreign reference writes
 
-On a dibble those operations still return a dibble, so the two styles mix freely. A verb's result is a fresh dataset: a later `repl()` on it does not reach the input it came from, and a `repl()` on the input does not reach the result.
+Dibble-preserving operations return a fresh dataset: a later `repl()` on the result does not reach the input it came from, and a `repl()` on the input does not reach the result. Ordinary R replacement preserves that separation too.
+
+### Foreign reference writes require an explicit copy
+
+An ordinary result may share unchanged columns with its input. Foreign reference APIs such as `data.table::set()` and `data.table::setattr()` can write into that shared storage without R's usual copy-on-modify checks. Independence under those writes is not guaranteed for ordinary results, whether their columns are plain or owned. Some operations already allocate separate storage, but callers must not depend on that detail.
+
+Use `copy_data()` before a foreign write when another dataset must stay unchanged:
+
+```r
+result <- dplyr::mutate(survey, adjusted = income * 1.1)
+independent <- copy_data(result)
+data.table::set(independent, i = 1L, j = "income", value = 0)
+# survey and result keep their values
+```
+
+The explicit copy also stays unchanged if the foreign write targets its source. Call `copy_data()` before converting to a plain tibble or another container when the exported object needs this independence. Foreign writers still apply their own rules for values and metadata; an independent copy does not make them Stata-aware. [ADR 0044](adr/0044-require-explicit-copies-before-foreign-reference-writes.md) records this boundary and its performance tradeoff.
 
 ## Why
 
@@ -119,11 +135,11 @@ contract on dibbles.
 
 ## What changes in your workflow
 
-**Aliases are the same dataset.** `b <- a` gives you a second name for one dataset, not a snapshot. Ordinary replacement and dibble subsets return independent tables. Explicit mutation detaches columns shared with any separate table while preserving all bindings to the supplied table. A same-storage patch changes all slots pointing to the identical vector within that table. Promotion and metadata setters replace only their named column. When you need an untouchable original, say so:
+**Aliases are the same dataset.** `b <- a` gives you a second name for one dataset, not a snapshot. Ordinary replacement and dibble subsets return separate tables under R and dtatools mutation semantics. Explicit dtatools mutation detaches columns shared with any separate table while preserving all bindings to the supplied table. A same-storage patch changes all slots pointing to the identical vector within that table. Promotion and metadata setters replace only their named column. When you need an untouchable original, say so:
 
 ```r
-original <- copy_data(survey)   # independent, keeps compact columns compact
-snapshot <- tibble::as_tibble(survey)   # a plain tibble with R's semantics
+original <- copy_data(survey)   # independent even under later foreign writes
+snapshot <- tibble::as_tibble(copy_data(survey))   # independent tibble export
 ```
 
 `copy_data()` deep-copies the columns, their compact backing, and mutable dataset metadata. It rejects columns or attributes holding environments, functions, bytecode, external pointers, or weak references, because those cannot be isolated by copying.

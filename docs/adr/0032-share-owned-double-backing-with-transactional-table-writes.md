@@ -4,6 +4,8 @@ status: proposed
 
 # Share owned double backing with transactional table writes
 
+[ADR 0044](0044-require-explicit-copies-before-foreign-reference-writes.md) narrows the public result-isolation contract. The owned backing safeguards described here remain valid implementation choices; ordinary results no longer promise independence from later foreign reference writes without `copy_data()`.
+
 [ADR 0033](0033-share-owned-atomic-backing-and-storage-facts.md) extends this
 Stage 3 decision to ordinary strings, logicals and integer/factor backing.
 

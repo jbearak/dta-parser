@@ -4,6 +4,7 @@
  * It deliberately inspects the actual objects returned by the R parser. */
 #define ENABLE_LEGACY_NONAPI_FUNS 1
 #include "dtatools-internal.h"
+extern SEXP dtatools_probe_double_input_values(SEXP column);
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
@@ -185,11 +186,10 @@ SEXP C_dtatools_probe_bracket_general_descriptor(SEXP data,
         UNPROTECT(1); return R_NilValue;
     }
     SEXP source = VECTOR_ELT(data, source_slot);
-    if (!owned_real(source) || owned_flags(source)[OWNED_EXPOSED] ||
-        R_altrep_data2(source) != R_NilValue ||
-        TYPEOF(owned_values(source)) != REALSXP ||
-        ALTREP(owned_values(source)) ||
-        XLENGTH(owned_values(source)) != XLENGTH(source) ||
+    SEXP values = dtatools_probe_double_input_values(source);
+    if ((!ALTREP(source) && !dtatools_probe_plain_public_guard()) ||
+        TYPEOF(values) != REALSXP || ALTREP(values) ||
+        XLENGTH(values) != XLENGTH(source) ||
         !probe_canonical_source_attrs(source) ||
         !one_field(Rf_getAttrib(source, Rf_install("stata.storage")),
                    "double")) {

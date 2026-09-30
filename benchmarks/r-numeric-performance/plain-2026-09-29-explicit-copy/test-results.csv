@@ -1,0 +1,44 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-dibble-columns.R","direct column selectors match typed tibble selections",199,0,FALSE,FALSE,0
+"test-dibble-columns.R","selectors preserve dataset metadata",228,0,FALSE,FALSE,0
+"test-dibble-columns.R","selectors retain established tibble row-name policies",175,0,FALSE,FALSE,0
+"test-dibble-columns.R","direct selectors retain grouped and rowwise policies",271,0,FALSE,FALSE,0
+"test-dibble-columns.R","shadowing every omitted grouping key clears the grouping attribute",12,0,FALSE,FALSE,0
+"test-dibble-columns.R","selector expressions run once in their captured environment",6,0,FALSE,FALSE,0
+"test-dibble-columns.R","column results isolate later writes in both directions and duplicated slots",40,0,FALSE,FALSE,0
+"test-dibble-columns.R","borrowed and stale strings are checked on every column result",20,0,FALSE,FALSE,0
+"test-dibble-columns.R","string validation counts current UTF-8 bytes",7,0,FALSE,FALSE,0
+"test-dibble-columns.R","isolated string results preserve encodings and complete metadata",68,0,FALSE,FALSE,0
+"test-dibble-columns.R","column results preserve metadata, compact columns and legacy recognition",7,0,FALSE,FALSE,0
+"test-dibble-columns.R","selectors retain automatic row-name bookkeeping and rename policy",9,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain double generation uses the guarded native route",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain double mutate preserves frozen columns on its native route",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain replacement and bracket operations use native admission",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain native operations retain ordinary values metadata and aliases",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain native mutate freezes each source at its ordered copy",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain whole-column scalar replacement avoids general resolution",4,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain native admission preserves traced public arithmetic",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain bracket generation retains the RHS across source writes",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","native mutate retains ordinary isolation and explicit foreign-write copies",1,0,FALSE,FALSE,0
+"test-reference-copy.R","replacement isolates unchanged columns and caller bindings",35,0,FALSE,FALSE,0
+"test-reference-copy.R","explicit helpers isolate distinct tables while preserving table and slot aliases",6,0,FALSE,FALSE,0
+"test-reference-copy.R","explicit helpers reject ordinary containers without touching them",15,0,FALSE,FALSE,0
+"test-reference-copy.R","base copies read physical columns and never rewrite source bookkeeping",24,0,FALSE,FALSE,0
+"test-reference-copy.R","assigned repair isolates serialized copies and restores growth aliases",22,0,FALSE,FALSE,0
+"test-reference-copy.R","preparation and ordinary metadata replacement preserve within-table aliases",29,0,FALSE,FALSE,0
+"test-reference-copy.R","promotion replaces its named column without promoting other slots",6,0,FALSE,FALSE,0
+"test-reference-copy.R","ordinary duplication of compact metadata wrappers keeps both sides compact",9,0,FALSE,FALSE,0
+"test-repl-native-admission.R","native replacement admits an unfamiliar column and preserves public fallback",4,0,FALSE,FALSE,0
+"test-repl-native-admission.R","native constant replacement stages a buffer for shared owned targets",1,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values is exported with the documented signature",2,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values writes by reference by name or position",12,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values keeps the declared storage and refuses what it cannot hold",11,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values checks its arguments before writing",17,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values evaluates its arguments before reading the table",17,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values settles a value that runs code when it is read",32,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values creates a missing column only when asked",23,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values works on grouped dibbles and refuses rowwise ones",7,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values matches repl(promote = FALSE) on every storage",20,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values detaches a column shared with another table",4,0,FALSE,FALSE,0
+"test-set-dta-values.R","a set_dta_values loop allocates nothing proportional to the table",4,0,FALSE,FALSE,0
+"test-ungrouped-dplyr-native-admission.R","ungrouped native mutate isolates five outputs and honors public fallback",5,0,FALSE,FALSE,0

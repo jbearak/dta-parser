@@ -1,4 +1,4 @@
-/* Experimental guarded native replacement for owned Stata doubles. */
+/* Experimental guarded native replacement for plain and owned Stata doubles. */
 #include "dtatools-internal.h"
 #include <float.h>
 #include <math.h>
@@ -420,8 +420,10 @@ SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
         LOGICAL(shared)[cert.target_index] == NA_LOGICAL)
         return Rf_ScalarLogical(FALSE);
     SEXP x = PROTECT(VECTOR_ELT(data, cert.target_index));
-    if (!owned_real(x) || XLENGTH(x) != shape_rows ||
-        !Rf_inherits(x, "dta_double") || R_altrep_data2(x) != R_NilValue) {
+    if (TYPEOF(x) != REALSXP || Rf_isS4(x) ||
+        (!ALTREP(x) && !dtatools_probe_plain_public_guard()) ||
+        (ALTREP(x) && (!owned_real(x) || R_altrep_data2(x) != R_NilValue)) ||
+        XLENGTH(x) != shape_rows || !Rf_inherits(x, "dta_double")) {
         UNPROTECT(1);
         return Rf_ScalarLogical(FALSE);
     }
@@ -434,9 +436,9 @@ SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
     shape++;
     if (LOGICAL(shared)[cert.target_index]) entry_shared_count++;
 
-    SEXP saved_data1 = PROTECT(R_altrep_data1(x));
-    SEXP saved_data2 = PROTECT(R_altrep_data2(x));
-    SEXP source = PROTECT(owned_values(x));
+    SEXP saved_data1 = PROTECT(ALTREP(x) ? R_altrep_data1(x) : R_NilValue);
+    SEXP saved_data2 = PROTECT(ALTREP(x) ? R_altrep_data2(x) : R_NilValue);
+    SEXP source = PROTECT(owned_real(x) ? owned_values(x) : x);
     if (TYPEOF(source) != REALSXP || ALTREP(source) || XLENGTH(source) != shape_rows) {
         UNPROTECT(4);
         return Rf_ScalarLogical(FALSE);
@@ -445,10 +447,13 @@ SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
     int kind = repl_expression_kind(CADR(quosure), cert.target_name,
                                     &constant);
     if (kind == 0) { UNPROTECT(4); return Rf_ScalarLogical(FALSE); }
-    int scalar_mode = kind == 2 && abs_scalar_mode;
+    int scalar_mode = owned_real(x) && kind == 2 && abs_scalar_mode &&
+        !LOGICAL(shared)[cert.target_index] && !MAYBE_SHARED(x) &&
+        !owned_flags(x)[OWNED_SHARED] && !owned_flags(x)[OWNED_EXPOSED];
     /* For an independent owned target, the constant's one-scalar staging
        plan can commit into private backing after all callbacks. If an alias
-       appears meanwhile, decline before any write. */
+       appears meanwhile, decline before any write. A target already shared
+       at entry uses the ordinary replacement-buffer plan instead. */
     SEXP backing = PROTECT(!scalar_mode
         ? Rf_allocVector(REALSXP, shape_rows) : Rf_ScalarReal(constant));
     SEXP replacement = PROTECT(!scalar_mode
@@ -484,9 +489,12 @@ SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
         XLENGTH(final_names) != width ||
         final_names != cert.data_names ||
         VECTOR_ELT(data, cert.target_index) != x || XLENGTH(x) != shape_rows ||
-        R_altrep_data1(x) != saved_data1 ||
-        R_altrep_data2(x) != saved_data2 || owned_values(x) != source ||
-        !owned_real(x) || !canonical_x_attributes(x, &target_attrs) ||
+        (ALTREP(x) && (!owned_real(x) ||
+            R_altrep_data1(x) != saved_data1 ||
+            R_altrep_data2(x) != saved_data2)) ||
+        (owned_real(x) ? owned_values(x) : x) != source ||
+        (!ALTREP(x) && !dtatools_probe_plain_public_guard()) ||
+        Rf_isS4(x) || !canonical_x_attributes(x, &target_attrs) ||
         (!scalar_mode &&
          (!canonical_x_attributes(replacement, &staged_attrs) ||
           target_attrs.tags[0] != staged_attrs.tags[0] ||
