@@ -32,8 +32,11 @@ static SEXP value(SEXP env, const char *name) {
 
 static int no_caller_method(SEXP caller, const char *name) {
     SEXP symbol = Rf_install(name);
-    for (SEXP env = caller; env != R_EmptyEnv; env = R_ParentEnv(env))
+    for (SEXP env = caller; env != R_EmptyEnv; env = R_ParentEnv(env)) {
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env))
+            return 0;
         if (R_GetBindingType(symbol, env) != R_BindingTypeUnbound) return 0;
+    }
     return 1;
 }
 
@@ -209,6 +212,8 @@ int dtatools_probe_gen_public_guard_plain(SEXP frame, SEXP base,
     gen_capture capture;
     if (!canonical_caller(frame, &capture)) return 0;
     for (SEXP env=capture.caller;;env=R_ParentEnv(env)) {
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env))
+            return 0;
         if (env==R_BaseEnv || env==R_EmptyEnv ||
             R_GetBindingType(capture.source_symbol,env)!=R_BindingTypeUnbound)
             return 0;

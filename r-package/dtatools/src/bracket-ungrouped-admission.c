@@ -352,6 +352,8 @@ static int general_assignment(SEXP assignments, int step, SEXP caller,
 
 static int general_caller_unbound(SEXP caller, SEXP symbol) {
     for (SEXP env = caller; env != R_EmptyEnv; env = R_ParentEnv(env)) {
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env))
+            return 0;
         if (env == R_BaseEnv || R_IsNamespaceEnv(env)) return 1;
         if (R_GetBindingType(symbol, env) != R_BindingTypeUnbound) return 0;
         if (env == R_GlobalEnv) return 1;
@@ -747,6 +749,8 @@ int bracket_source_unshadowed(SEXP caller) {
     if (TYPEOF(caller) != ENVSXP) return 0;
     SEXP x_symbol = Rf_install("x");
     for (SEXP env = caller; env != R_EmptyEnv; env = R_ParentEnv(env)) {
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env))
+            return 0;
         if (env == R_BaseEnv || R_IsNamespaceEnv(env))
             return 1;
         if (R_GetBindingType(x_symbol, env) != R_BindingTypeUnbound)
@@ -755,4 +759,3 @@ int bracket_source_unshadowed(SEXP caller) {
     }
     return 1;
 }
-

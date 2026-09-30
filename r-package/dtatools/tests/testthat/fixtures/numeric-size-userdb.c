@@ -59,6 +59,12 @@ SEXP numeric_size_userdb_create_named(SEXP value, SEXP name) {
     db->symbol = Rf_installTrChar(STRING_ELT(name, 0));
     UNPROTECT(1); return pointer;
 }
+SEXP numeric_size_userdb_create_named_changing(SEXP first, SEXP later, SEXP name) {
+    SEXP pointer = PROTECT(numeric_size_userdb_create_changing(first, later));
+    numeric_size_userdb *db = R_ExternalPtrAddr(pointer);
+    db->symbol = Rf_installTrChar(STRING_ELT(name, 0));
+    UNPROTECT(1); return pointer;
+}
 SEXP numeric_size_userdb_gets(SEXP pointer, SEXP reset) {
     numeric_size_userdb *db = R_ExternalPtrAddr(pointer);
     if (!db) Rf_error("dead diagnostic database");

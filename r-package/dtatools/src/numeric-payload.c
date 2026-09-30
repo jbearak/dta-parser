@@ -4190,17 +4190,14 @@ static SEXP C_dtatools_scalar_arithmetic_impl(
         vector = right;
         reverse = 1;
     } else { UNPROTECT(3); return R_NilValue; }
-    int minimum = compact_kind >= NUMERIC_BYTE && compact_kind <= NUMERIC_FLOAT
-        ? compact_kind
-        : computed_storage_kind(computed_minimum(frame, storage_getter));
+    int minimum = computed_storage_kind(computed_minimum(frame, storage_getter));
     numeric_data *compact = unmaterialized_numeric_read_storage(vector);
-    if (minimum < 0 && compact != NULL && compact_kind >= NUMERIC_BYTE &&
-        compact_kind <= NUMERIC_FLOAT) minimum = compact_kind;
     if (TYPEOF(vector) != REALSXP ||
         (compact == NULL && (ANY_ATTRIB(vector) || Rf_isObject(vector))) ||
         Rf_isS4(vector) ||
         (ALTREP(vector) && !owned_real(vector) && compact == NULL) ||
-        minimum < 0 || (compact == NULL && minimum != NUMERIC_DOUBLE)) {
+        minimum < 0 || (compact == NULL && minimum != NUMERIC_DOUBLE) ||
+        (compact != NULL && minimum != compact_kind)) {
         UNPROTECT(3); return R_NilValue;
     }
     if (!scalar_dependencies_unchanged(frame, dependencies) ||
@@ -4244,18 +4241,17 @@ SEXP C_dtatools_scalar_arithmetic(SEXP left, SEXP right, SEXP frame, SEXP storag
         vector = y;
         reverse = 1;
     }
-    int minimum = compact_kind >= NUMERIC_BYTE && compact_kind <= NUMERIC_FLOAT
-        ? compact_kind
-        : computed_storage_kind(computed_minimum(frame, storage_getter));
+    /* Compact backing does not override the helper's minimum argument.
+       Other or unresolved policies retain the ordinary R evaluation. */
+    int minimum = computed_storage_kind(computed_minimum(frame, storage_getter));
     numeric_data *compact = vector == R_NilValue
         ? NULL : unmaterialized_numeric_read_storage(vector);
-    if (minimum < 0 && compact != NULL && compact_kind >= NUMERIC_BYTE &&
-        compact_kind <= NUMERIC_FLOAT) minimum = compact_kind;
     if (vector == R_NilValue || TYPEOF(op) != STRSXP || ALTREP(op) || ANY_ATTRIB(op) ||
         XLENGTH(op) != 1 || STRING_ELT(op, 0) == NA_STRING ||
         (strcmp(CHAR(STRING_ELT(op, 0)), "+") != 0 &&
          strcmp(CHAR(STRING_ELT(op, 0)), "-") != 0) ||
         minimum < 0 || (compact == NULL && minimum != NUMERIC_DOUBLE) ||
+        (compact != NULL && minimum != compact_kind) ||
         (ALTREP(vector) && !owned_real(vector) && compact == NULL) ||
         !scalar_dependencies_unchanged(frame, dependencies) ||
         !scalar_is_na_primitive(frame) ||

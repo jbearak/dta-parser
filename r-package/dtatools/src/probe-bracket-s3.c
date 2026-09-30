@@ -35,7 +35,9 @@ static void init_symbols(void)
 
 static int absent(SEXP env, SEXP name)
 {
-    return R_GetBindingType(name, env) == R_BindingTypeUnbound;
+    /* Object-table binding inspection can call the database's getter. */
+    return TYPEOF(env) == ENVSXP && !Rf_isObject(env) && !Rf_isS4(env) &&
+        R_GetBindingType(name, env) == R_BindingTypeUnbound;
 }
 
 static int same(SEXP env, SEXP name, SEXP expected)
@@ -158,4 +160,3 @@ SEXP C_bracket_s3_init(SEXP ignored) {
 SEXP C_bracket_s3_guard(SEXP caller, SEXP tables, SEXP live, SEXP namespaces) {
     return Rf_ScalarLogical(C_bracket_s3_guard_raw(caller, tables, live, namespaces));
 }
-

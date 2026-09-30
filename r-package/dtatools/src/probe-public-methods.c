@@ -26,7 +26,8 @@ static void init_symbols(void)
 
 static int absent(SEXP env, SEXP name)
 {
-    return R_GetBindingType(name, env) == R_BindingTypeUnbound;
+    return TYPEOF(env) == ENVSXP && !Rf_isObject(env) && !Rf_isS4(env) &&
+        R_GetBindingType(name, env) == R_BindingTypeUnbound;
 }
 
 static int same(SEXP env, SEXP name, SEXP expected)

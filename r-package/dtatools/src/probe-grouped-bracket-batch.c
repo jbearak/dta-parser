@@ -260,6 +260,8 @@ static int source_unshadowed(SEXP caller, SEXP source_symbol) {
         strncmp(CHAR(PRINTNAME(source_symbol)), "..", 2) == 0) return 0;
     for (SEXP env = caller; env != R_EmptyEnv;
          env = R_ParentEnv(env)) {
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env))
+            return 0;
         if (env == R_BaseEnv || R_IsNamespaceEnv(env)) return 1;
         if (R_GetBindingType(source_symbol, env) != R_BindingTypeUnbound)
             return 0;

@@ -27,13 +27,15 @@ static int no_method(SEXP caller, SEXP table, const char *name) {
     if (TYPEOF(caller)!=ENVSXP ||
         R_GetBindingType(sym,table)!=R_BindingTypeUnbound) return 0;
     for (SEXP env=caller;;env=R_ParentEnv(env)) {
+        if (TYPEOF(env)!=ENVSXP || Rf_isObject(env) || Rf_isS4(env)) return 0;
         if (R_GetBindingType(sym,env)!=R_BindingTypeUnbound) return 0;
         if (env==R_GlobalEnv) break;
         if (env==R_BaseEnv || env==R_EmptyEnv) return 0;
     }
     for (SEXP env=R_ParentEnv(R_GlobalEnv);env!=R_BaseEnv;
          env=R_ParentEnv(env)) {
-        if (env==R_EmptyEnv ||
+        if (TYPEOF(env)!=ENVSXP || Rf_isObject(env) || Rf_isS4(env) ||
+            env==R_EmptyEnv ||
             R_GetBindingType(sym,env)!=R_BindingTypeUnbound) return 0;
     }
     return R_GetBindingType(sym,R_BaseEnv)==R_BindingTypeUnbound;

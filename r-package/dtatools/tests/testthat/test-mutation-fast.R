@@ -35,6 +35,46 @@ test_that("native scalar inspection accepts literals and settled bindings only",
     expect_identical(as.double(data$x), rep(6, 3))
 })
 
+test_that("scalar argument inspection preserves R dots lookup", {
+    calls <- list(
+        variable = quote(set_dta_values(data, ..1, 7)),
+        value = quote(set_dta_values(data, "x", ..1)),
+        rows = quote(set_dta_values(data, "x", 7, rows = ..1)),
+        create = quote(set_dta_values(data, "x", 7, create = ..1))
+    )
+    impostors <- list(variable = "x", value = 7, rows = 2L, create = FALSE)
+    for (argument in names(calls)) {
+        caller <- new.env(parent = environment())
+        caller$data <- dibble(x = 1:3)
+        assign("..1", impostors[[argument]], envir = caller)
+        expect_error(eval(calls[[argument]], caller), "incorrect context|no .* to look in",
+                     info = argument)
+        expect_identical(as.double(caller$data$x), as.double(1:3), info = argument)
+    }
+    data <- dibble(x = 1:3)
+    forward <- function(...) {
+        assign("..1", 9, envir = environment())
+        set_dta_values(data, "x", ..1)
+    }
+    forward(4)
+    expect_identical(as.double(data$x), rep(4, 3))
+    forward_second <- function(...) {
+        assign("..2", 9, envir = environment())
+        set_dta_values(data, "x", ..2)
+    }
+    forward_second(0, 5)
+    expect_identical(as.double(data$x), rep(5, 3))
+
+    data <- dibble(x = dta_byte(1:3))
+    promote <- function(...) {
+        assign("..1", FALSE, envir = environment())
+        repl(data, x = 200, promote = ..1)
+    }
+    expect_message(promote(TRUE), "byte now int")
+    expect_identical(as.double(data$x), rep(200, 3))
+    expect_identical(dta_storage_type(data$x), "int")
+})
+
 test_that("native scalar declines preserve diagnostics and unsupported inputs", {
     data <- dibble(x = c(1, 2, 3))
     for (rows in list(0, -1, 4, NA_real_, 1.5, c(TRUE, FALSE, TRUE))) {
