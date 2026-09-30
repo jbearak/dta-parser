@@ -77,10 +77,31 @@ test_that("grouped double mutate preserves complete values metadata and aliases"
                 count <- as.integer((cc("C_dtatools_grouped_stats", FALSE) - before)[[2L]])
                 snapshot <- lapply(result, function(x) list(as.double(x), attributes(x)))
                 input <- lapply(d, as.double)
-                data.table::set(d, i = 1L, j = "x", value = 99)
+                set_dta_values(d, "x", 99, rows = 1L)
                 stopifnot(identical(lapply(result, function(x) list(as.double(x), attributes(x))), snapshot))
-                data.table::set(result, i = 2L, j = "g", value = 77)
+                set_dta_values(result, "g", 77, rows = 2L)
                 stopifnot(identical(as.double(d$g), input$g))
+                if (wide) {
+                    result_alias <- result
+                    input_column <- d$v3
+                    set_dta_values(result, "v3", 93, rows = 1L)
+                    stopifnot(as.double(result_alias$v3)[[1L]] == 93,
+                        identical(as.double(d$v3), rep(3, 37L)),
+                        identical(as.double(input_column), rep(3, 37L)))
+                    set_dta_values(d, "v4", 94, rows = 1L)
+                    stopifnot(identical(as.double(result$v4), rep(4, 37L)))
+                    ordinary <- result
+                    ordinary$v5[1L] <- 95
+                    attr(ordinary$v6, "label") <- "Local change"
+                    stopifnot(identical(as.double(result$v5), rep(5, 37L)),
+                        is.null(attr(result$v6, "label")))
+                    copied <- copy_data(result)
+                    data.table::set(result, i = 1L, j = "v7", value = 96)
+                    stopifnot(identical(as.double(copied$v7), rep(7, 37L)))
+                    data.table::set(copied, i = 1L, j = "v8", value = 97)
+                    stopifnot(identical(as.double(result$v8), rep(8, 37L)),
+                        identical(as.double(d$v8), rep(8, 37L)))
+                }
                 list(value = snapshot, count = count)
             }
             ordinary <- run(FALSE)

@@ -939,7 +939,12 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
     SEXP out = PROTECT(Rf_allocVector(VECSXP, total));
     SEXP out_names = PROTECT(Rf_allocVector(STRSXP, total));
     for (R_xlen_t j = 0; j < width; j++) {
-        SEXP fork = PROTECT(C_dtatools_metadata_copy(VECTOR_ELT(source_columns, j)));
+        SEXP column = VECTOR_ELT(source_columns, j);
+        /* Preserve the ordered operand and key snapshots. Unchanged plain
+           siblings follow ordinary R sharing; dtatools writers detach them,
+           and foreign reference writes require copy_data() for isolation. */
+        SEXP fork = PROTECT(j == source_index || j == group_index || ALTREP(column) ?
+            C_dtatools_metadata_copy(column) : column);
         SET_VECTOR_ELT(out, j, fork);
         UNPROTECT(1);
         SET_STRING_ELT(out_names, j, STRING_ELT(names, j));
