@@ -1,0 +1,2 @@
+list(bytes = 80827480, native_publications = 1L, source = 1,
+    result = 2, pass = FALSE)

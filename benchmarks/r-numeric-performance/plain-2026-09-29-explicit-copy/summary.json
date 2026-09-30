@@ -1,0 +1,39 @@
+{
+  "bootstrap_resamples": 10000,
+  "samples_per_condition": 20,
+  "seed": 20260929,
+  "raw_calls": {
+    "experiments": 4560,
+    "merged-main": 4560
+  },
+  "timed_gc_calls": {
+    "experiments": 119,
+    "merged-main": 120
+  },
+  "plain": {
+    "cells": 66,
+    "faster_than_main": 66,
+    "main_speedup_range": [
+      1.0694326853234588,
+      27.308737614703507
+    ],
+    "faster_dplyr": 56,
+    "dplyr_upper95_below1": 56,
+    "data_table_no_more_than_5pct_slower": 55,
+    "data_table_within_plus_minus5": 4,
+    "data_table_upper95_at_most1_05": 52
+  },
+  "owned": {
+    "cells": 66,
+    "faster_than_main": 31,
+    "main_speedup_range": [
+      0.6712035655174006,
+      2.444523455545507
+    ],
+    "faster_dplyr": 56,
+    "dplyr_upper95_below1": 56,
+    "data_table_no_more_than_5pct_slower": 56,
+    "data_table_within_plus_minus5": 0,
+    "data_table_upper95_at_most1_05": 56
+  }
+}
