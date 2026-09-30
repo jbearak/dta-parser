@@ -336,6 +336,82 @@ test_that("plain bracket generation retains the RHS across source writes", {
     expect_true(observed)
 })
 
+test_that("plain bracket generation honors numeric limits changed between assignments", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    expected <- .dtatools_public_mutation_build_expected()
+    observed <- .dtatools_child_r("plain-native-late-double-limit", function() {
+        library(dtatools)
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        original_machine <- get(".Machine", baseenv())
+        original_lock <- bindingIsLocked(".Machine", baseenv())
+        run <- function(enabled, step = 0L) {
+            profile <- dtatools:::.probe_bracket_public_state
+            saved <- profile$snapshots
+            old_options <- options(dtatools.generate_type = "double",
+                dtatools.probe_bracket_generation_hook = NULL)
+            set_machine <- function(value) {
+                if (bindingIsLocked(".Machine", baseenv()))
+                    unlockBinding(".Machine", baseenv())
+                assign(".Machine", value, baseenv())
+                if (original_lock) lockBinding(".Machine", baseenv())
+            }
+            on.exit({
+                set_machine(original_machine)
+                options(old_options)
+                profile$snapshots <- saved
+            }, add = TRUE)
+            d <- as_dibble(tibble::tibble(x = c(1, 2, 3, 4), spare = rep(7, 4L)))
+            for (i in seq_along(d)) cc("C_dtatools_set_data_column", d, as.integer(i),
+                cc("C_dtatools_owned_plain_snapshot", .subset2(d, i)))
+            stopifnot(!cc("C_dtatools_is_owned_double", .subset2(d, 1L)))
+            if (!enabled) profile$snapshots <- NULL
+            changed_machine <- original_machine
+            changed_machine$double.xmax <- 6
+            hits <- 0L
+            # Deliberately adversarial: the limit changes after this RHS has
+            # been computed. Only later RHS values above 3 become missing.
+            # An entry-only public guard misses this change and publishes
+            # numbers instead. The already computed RHS must remain intact.
+            options(dtatools.probe_bracket_generation_hook = function() {
+                hits <<- hits + 1L
+                if (hits == step) set_machine(changed_machine)
+            })
+            before <- cc("C_dtatools_probe_bracket_step_stats", FALSE)
+            d[, `:=`(one = x + 1, two = x + 1, three = x + 1,
+                     four = x + 1, five = x + 1)]
+            after <- cc("C_dtatools_probe_bracket_step_stats", FALSE)
+            set_machine(original_machine)
+            list(result = list(values = lapply(d, as.double),
+                attributes = lapply(d, attributes), hits = hits),
+                published = (after - before)[[3L]])
+        }
+        control <- run(TRUE)
+        cases <- lapply(seq_len(5L), function(step) {
+            ordinary <- run(FALSE, step)
+            native <- run(TRUE, step)
+            list(ordinary = ordinary$result, native = native$result)
+        })
+        stopifnot(identical(get(".Machine", baseenv()), original_machine),
+            identical(bindingIsLocked(".Machine", baseenv()), original_lock))
+        list(control = control, cases = cases)
+    }, libpath = .libPaths())
+    # A clean control establishes that the supported build exercises the native
+    # route. Changed-limit cases assert results, not how many checks it uses.
+    expect_identical(observed$control$published, if (expected) 5L else 0L)
+    targets <- c("one", "two", "three", "four", "five")
+    for (step in seq_len(5L)) {
+        case <- observed$cases[[step]]
+        info <- paste("limit changed after RHS", step)
+        expect_identical(case$native, case$ordinary, info = info)
+        expected_values <- rep(list(c(2, 3, NA_real_, NA_real_)), 5L)
+        expected_values[seq_len(step)] <- rep(list(c(2, 3, 4, 5)), step)
+        names(expected_values) <- targets
+        expect_identical(case$native$values,
+            c(list(x = c(1, 2, 3, 4), spare = rep(7, 4L)), expected_values), info = info)
+        expect_identical(case$native$hits, 5L, info = info)
+    }
+})
+
 test_that("native mutate retains ordinary isolation and explicit foreign-write copies", {
     skip_if_not_installed("dplyr")
     skip_if_not_installed("data.table")

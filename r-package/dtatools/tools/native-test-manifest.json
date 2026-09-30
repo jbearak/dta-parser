@@ -6825,7 +6825,7 @@
         },
         {
           "path": "tests/testthat/test-plain-native-admission.R",
-          "sha256": "c8f6461b7d1d12f62a3d17251bde6553cebc9f3909177a740abdf1560ed17b5c"
+          "sha256": "7dcd2ee3258549c0700360860423157f1a966f26d21b796d3a8738bcd076a3c7"
         },
         {
           "path": "tests/testthat/test-grouped-double-admission.R",
@@ -8850,6 +8850,14 @@
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {
+          "file": "test-plain-native-admission.R",
+          "test": "plain bracket generation honors numeric limits changed between assignments",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
           "file": "test-repl-native-admission.R",
           "test": "native constant replacement stages a buffer for shared owned targets",
           "occurrence": 1,
@@ -9089,6 +9097,14 @@
         },
         {
           "id": "plain-native-pending-rhs",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "plain-native-late-double-limit",
           "kind": "r",
           "minimum": 1,
           "maximum": 1,
