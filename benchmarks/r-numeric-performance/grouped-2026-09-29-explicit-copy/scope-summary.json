@@ -1,0 +1,32 @@
+{
+  "plain": {
+    "cells": 10,
+    "dplyr_median_below1": 10,
+    "data_table_median_at_most1_05": 10,
+    "both_upper95_meet_target": 10,
+    "speedup_range": [
+      25.044716241008352,
+      111.55324585463333
+    ],
+    "data_table_ratio_range": [
+      0.40420138831482666,
+      0.8640245810470837
+    ],
+    "exceptions": []
+  },
+  "owned": {
+    "cells": 10,
+    "dplyr_median_below1": 10,
+    "data_table_median_at_most1_05": 10,
+    "both_upper95_meet_target": 10,
+    "speedup_range": [
+      24.22776076309715,
+      95.25986186429458
+    ],
+    "data_table_ratio_range": [
+      0.40847023097609014,
+      0.888005448608979
+    ],
+    "exceptions": []
+  }
+}
