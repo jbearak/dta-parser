@@ -114,6 +114,8 @@ read_counters <- function() lapply(counter_names, function(name) {
 shapes <- data.frame(n = c(100L, 100L, 100000L, 100000L, 10000L, 10000L),
                      width = c(2L, 100L, 2L, 100L, 2L, 100L),
                      groups = c(1L, 1L, 1L, 1L, 100L, 100L))
+if (identical(Sys.getenv("DTATOOLS_BENCH_GROUPED_ONLY"), "1"))
+    shapes <- shapes[shapes$groups > 1L, , drop = FALSE]
 for (s in seq_len(nrow(shapes))) {
     shape <- shapes[s, ]
     scenarios <- if (shape$groups > 1L) c("create", "five") else

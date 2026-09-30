@@ -1,0 +1,15 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-bracket-native-admission.R","native brackets publish unfamiliar columns and preserve ordinary fallback",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","bracket fallback retains a completed RHS after a source write",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","grouped bracket late shaping traces preserve the uncommitted prefix",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","generated native siblings have independent mutable metadata",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","pending bracket generation does not repeat reference marker callbacks",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","native bracket replacement preserves complete target attributes",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","plain and owned double keys admit grouped reference creation",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped double mutate preserves complete values metadata and aliases",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","double key plans preserve first appearance metadata and late writes",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped double operations preserve public equality and arithmetic traces",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped double brackets retain completed values across foreign writes",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped double brackets normalize values outside Stata storage range",1,0,FALSE,FALSE,0
+"test-grouped-gen-native-admission.R","grouped native gen publishes and declines after a staged source change",3,0,FALSE,FALSE,0
+"test-grouped-gen-native-admission.R","native generation preserves Stata double range normalization",1,0,FALSE,FALSE,0
