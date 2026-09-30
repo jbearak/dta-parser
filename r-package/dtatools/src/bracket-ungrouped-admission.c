@@ -155,7 +155,9 @@ static SEXP capture_generated_column(SEXP seed) {
 }
 
 /* Generated handles share immutable values and own their metadata. A late
-   decline retains the shaped RHS for ordinary generation. */
+   decline retains the shaped RHS for ordinary generation. Public dependencies
+   may change between assignments: the late-double-limit regression in
+   test-plain-native-admission.R fails if these guards only run at entry. */
 static SEXP probe_prepared_fork_column(SEXP data, SEXP x, SEXP state,
                                        R_xlen_t n, int step,
                                        R_xlen_t source_slot,
