@@ -6765,7 +6765,7 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "986f6c55a6c0a867fdb3d69a76665d9b73c3bdb512eb5e06040a13e2353f1ebe"
+          "sha256": "f39d2255481e2b0cf2c3339bb2eb60ee74d63d4da20d7294abdaa175bc7c5b0d"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
@@ -7870,6 +7870,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "placement follows the anchor after column construction callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "placed generation retains columns added during construction",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "placed generation refuses an anchor removed during construction",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         },
         {

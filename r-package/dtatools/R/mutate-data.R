@@ -479,9 +479,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 
 # The anchor's position among `names`, or `NULL` without a placement. The
 # anchor must be an existing column; the target is not one yet, so it cannot
-# anchor itself. Checked twice per `gen()`: on entry, so a bad anchor fails
-# before anything is evaluated, and at the commit, against the names the
-# table has by then, since evaluating `values` may have mutated it.
+# anchor itself. Checked on entry, before constructing the column, and at
+# insertion: evaluating `values` or constructing the column may mutate the
+# table, so only the final check determines the insertion position.
 .placement_anchor <- function(placement, names) {
     if (is.null(placement)) return(NULL)
     index <- match(placement$anchor, names)
@@ -1961,8 +1961,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # the table. The commit helpers write: the fused adapter, the
 # generated-column append, or the replacement, which chooses promotion
 # or a cast. `bysort` sorts before the resolve step and a failure before
-# the commit undoes the sort. Nothing after the resolve step evaluates
-# user code, and nothing before the commit writes.
+# the commit undoes the sort. Generated-column placement is resolved after
+# construction, which can dispatch caller code.
 #
 # `selection` is a `.mutation_selection()` result. When given, `where` is
 # not evaluated again and the groups it carries stand in for `by` and
@@ -2161,21 +2161,19 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # it; the append and the reference remark run as one uninterruptible step.
 .commit_generated_column <- function(data, target, resolved, row_count,
                                      placement = NULL) {
-    # Resolved against the names the table has now, not the ones read on
-    # entry: a `values` expression that mutated this table may have moved
-    # or removed the anchor, and one that is gone stops the call here.
-    names <- attr(data, "names", exact = TRUE)
-    column_order <- .mutation_placement(placement, names, target$name)
+    # Refuse an anchor removed by the RHS before constructing its column.
+    # Construction can also run caller code, so insertion resolves it again.
+    .placement_anchor(placement, attr(data, "names", exact = TRUE))
     .native_admission_call(C_dtatools_probe_bracket_pre_generation_hook, resolved)
     column <- .generated_column(
         resolved$values, resolved$rows, row_count, generate = TRUE,
         carry_metadata = FALSE
     )
     .prepare_column_operation(data, length(data) + 1L)
-    if (is.null(column_order)) {
+    if (is.null(placement)) {
         .append_generated_column(data, target$name, column)
     } else {
-        .insert_generated_column(data, target$name, column, column_order, row_count)
+        .insert_generated_column(data, target$name, column, placement, row_count)
     }
 }
 
@@ -2183,8 +2181,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # native commit `order_vars()` uses, on the complete column list with the
 # new column in place, so no observer sees it appended and then moved. The
 # columns are read plainly, without dispatch, from the prepared table.
-.insert_generated_column <- function(data, name, column, column_order, row_count) {
+.insert_generated_column <- function(data, name, column, placement, row_count) {
     columns <- .data_columns(data)
+    column_order <- .mutation_placement(placement, names(columns), name)
     columns[[name]] <- column
     suspendInterrupts(
         .install_column_selection(data, list(nrow = row_count), columns[column_order])
