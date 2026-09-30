@@ -1,3 +1,90 @@
+test_that("native mutations preserve attribute-free S4 arithmetic dispatch", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    have_dplyr <- requireNamespace("dplyr", quietly = TRUE)
+    expected <- c(public = .dtatools_public_mutation_build_expected(),
+        dplyr = have_dplyr && .dtatools_ungrouped_dplyr_build_expected())
+    observed <- .dtatools_child_r("native-mutation-s4-literals", function(expected, have_dplyr) {
+        library(dtatools)
+        if (have_dplyr) library(dplyr)
+        options(dtatools.generate_type = "double")
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        calls <- list(gen = quote(gen(d, y = x + OFFSET)),
+            grouped_gen = quote(gen(d, y = x + OFFSET, by = g)),
+            repl = quote(dtatools::repl(d, x = x + OFFSET)),
+            bracket_replace = quote(d[, x := x + OFFSET]),
+            bracket = quote(d[, y := x + OFFSET]),
+            bracket_five = quote(d[, `:=`(a = x + OFFSET, b = x + OFFSET,
+                c = x + OFFSET, e = x + OFFSET, f = x + OFFSET)]),
+            grouped_bracket = quote(d[, y := x + OFFSET, by = g]),
+            grouped_bracket_five = quote(d[, `:=`(a = x + OFFSET, b = x + OFFSET,
+                c = x + OFFSET, e = x + OFFSET, f = x + OFFSET), by = g]))
+        if (have_dplyr) calls <- c(calls, list(
+            mutate = quote(mutate(d, y = x + OFFSET)),
+            mutate_five = quote(mutate(d, a = x + OFFSET, b = x + OFFSET,
+                c = x + OFFSET, e = x + OFFSET, f = x + OFFSET)),
+            grouped_mutate = quote(mutate(d, y = x + OFFSET, .by = g)),
+            grouped_mutate_five = quote(mutate(d, a = x + OFFSET, b = x + OFFSET,
+                c = x + OFFSET, e = x + OFFSET, f = x + OFFSET, .by = g))))
+        # asS4() sets an evaluator-visible flag without adding a class or
+        # other attribute. Attribute-only literal guards cannot detect it.
+        scalar <- asS4(1)
+        stopifnot(isS4(scalar), !is.object(scalar), is.null(attributes(scalar)))
+        methods::setOldClass(c("dta_numeric", "numeric"))
+        hits <- 0L
+        methods::setMethod("+", c("dta_numeric", "numeric"), function(e1, e2) {
+            hits <<- hits + 1L
+            rep(77, length(e1))
+        })
+        run <- function(route, enabled, offset, raw) {
+            cc("C_dtatools_probe_direct_final_mode", enabled)
+            cc("C_dtatools_probe_grouped_gen_mode", enabled)
+            cc("C_dtatools_probe_unique_repl_mode", as.integer(enabled))
+            cc("C_dtatools_probe_mutate_mode", enabled)
+            cc("C_dtatools_grouped_mode", enabled)
+            options(dtatools.probe_grouped_bracket = enabled,
+                dtatools.probe_grouped_bracket_raw = enabled && raw)
+            profile <- dtatools:::.probe_bracket_public_state
+            saved <- profile$snapshots
+            if (!enabled) profile$snapshots <- NULL
+            on.exit(profile$snapshots <- saved)
+            grouped <- startsWith(route, "grouped_")
+            stat <- if (grepl("mutate", route)) {
+                if (grouped) "C_dtatools_grouped_stats" else "C_dtatools_probe_dplyr_early_stats"
+            } else if (grepl("bracket", route)) {
+                if (grouped) "C_dtatools_probe_grouped_bracket_stats" else "C_dtatools_probe_bracket_step_stats"
+            } else if (route == "repl") "C_dtatools_probe_unique_repl_stats" else
+                if (grouped) "C_dtatools_probe_grouped_gen_stats" else "C_dtatools_probe_direct_final_stats"
+            index <- if (route == "repl") 6L else if (grepl("grouped_mutate", route)) 2L else 3L
+            d <- dibble(x = c(1, 2, 3, 4), g = dta_long(c(1, 1, 2, 2)))
+            expression <- do.call(substitute, list(calls[[route]], list(OFFSET = offset)))
+            before <- cc(stat, FALSE)
+            hits <<- 0L
+            result <- eval(expression)
+            list(columns = lapply(result, function(column)
+                list(values = as.double(column), attributes = attributes(column))),
+                hits = hits, published = as.integer((cc(stat, FALSE) - before)[[index]]))
+        }
+        for (route in names(calls)) for (raw in if (grepl("bracket", route)) c(FALSE, TRUE) else TRUE) {
+            targets <- if (grepl("five", route)) c("a", "b", "c", "e", "f") else
+                if (route %in% c("repl", "bracket_replace")) "x" else "y"
+            ordinary <- run(route, FALSE, scalar, raw)
+            native <- run(route, TRUE, scalar, raw)
+            if (!identical(native, ordinary)) stop(paste(route, raw,
+                paste(all.equal(native, ordinary), collapse = "; ")))
+            stopifnot(native$published == 0L,
+                native$hits == length(targets) * if (startsWith(route, "grouped_")) 2L else 1L)
+            for (target in targets) stopifnot(identical(native$columns[[target]]$values, rep(77, 4L)))
+            positive <- run(route, TRUE, 1, raw)
+            wanted <- if (grepl("mutate|grouped_bracket", route)) expected[["dplyr"]] else expected[["public"]]
+            publications <- if (grepl("bracket.*five", route)) 5L else 1L
+            stopifnot(positive$hits == 0L, positive$published == as.integer(wanted) * publications)
+            for (target in targets) stopifnot(identical(positive$columns[[target]]$values, c(2, 3, 4, 5)))
+        }
+        TRUE
+    }, args = list(expected = expected, have_dplyr = have_dplyr), libpath = .libPaths())
+    expect_true(observed)
+})
+
 test_that("plain double generation uses the guarded native route", {
     if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
     expected <- .dtatools_public_mutation_build_expected()

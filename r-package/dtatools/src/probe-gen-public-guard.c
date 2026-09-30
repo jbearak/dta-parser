@@ -129,7 +129,7 @@ static int canonical_caller(SEXP frame, gen_capture *capture) {
         CAR(expr) != Rf_install("+") ||
         TYPEOF(CADR(expr)) != SYMSXP ||
         TYPEOF(CADDR(expr)) != REALSXP ||
-        ALTREP(CADDR(expr)) || ANY_ATTRIB(CADDR(expr)) ||
+        ALTREP(CADDR(expr)) || ANY_ATTRIB(CADDR(expr)) || Rf_isS4(CADDR(expr)) ||
         XLENGTH(CADDR(expr)) != 1 ||
         !R_FINITE(REAL(CADDR(expr))[0]) ||
         CDDDR(expr) != R_NilValue) return 0;

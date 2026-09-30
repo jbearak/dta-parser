@@ -1050,7 +1050,7 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
 
 static int probe_literal(SEXP value, double expected) {
     return TYPEOF(value) == REALSXP && !ALTREP(value) &&
-        !ANY_ATTRIB(value) && XLENGTH(value) == 1 &&
+        !ANY_ATTRIB(value) && !Rf_isS4(value) && XLENGTH(value) == 1 &&
         REAL(value)[0] == expected;
 }
 

@@ -2676,6 +2676,9 @@ static SEXP computed_peek(SEXP expression, SEXP environment, int depth) {
             if (TYPEOF(expression) != LANGSXP) value = expression;
             break;
         }
+        /* Dots references use the evaluator's argument lookup, not a
+           same-named ordinary binding, even through a forwarded promise. */
+        if (strncmp(CHAR(PRINTNAME(expression)), "..", 2) == 0) break;
         /* Binding-type queries themselves call a user database's getter.
            Secondary arguments have not passed the primary size preflight. */
         if (TYPEOF(environment) != ENVSXP || environment == R_EmptyEnv ||
@@ -2716,6 +2719,7 @@ static SEXP numeric_size_peek(SEXP expression, SEXP environment) {
             if (TYPEOF(expression) != LANGSXP) value = expression;
             break;
         }
+        if (strncmp(CHAR(PRINTNAME(expression)), "..", 2) == 0) break;
         if (TYPEOF(environment) != ENVSXP || environment == R_EmptyEnv ||
             Rf_isObject(environment) || Rf_isS4(environment)) break;
         R_BindingType_t type = R_GetBindingType(expression, environment);
@@ -2951,6 +2955,7 @@ static SEXP computed_minimum_expression(
     SEXP value = R_UnboundValue;
     while (depth > 0 && expression != R_MissingArg) {
         if (TYPEOF(expression) == SYMSXP) {
+            if (strncmp(CHAR(PRINTNAME(expression)), "..", 2) == 0) break;
             if (TYPEOF(environment) != ENVSXP || environment == R_EmptyEnv ||
                 Rf_isObject(environment) || Rf_isS4(environment)) break;
             R_BindingType_t type = R_GetBindingType(expression, environment);

@@ -513,12 +513,22 @@ static int parsed_value(SEXP assignment, SEXP caller, SEXP *source,
         return 0;
     SEXP literal = CADDR(expr);
     if (TYPEOF(literal) != REALSXP || ALTREP(literal) ||
+        Rf_isS4(literal) || ANY_ATTRIB(literal) ||
         XLENGTH(literal) != 1 || REAL(literal)[0] != 1.0)
         return 0;
     if (*source == R_NilValue) *source = CADR(expr);
     if (*source != CADR(expr)) return 0;
     *target = STRING_ELT(name, 0);
     return 1;
+}
+
+static int assignment_same(SEXP assignments, R_xlen_t step, SEXP caller,
+                           SEXP source, SEXP target) {
+    if (TYPEOF(assignments) != VECSXP || step >= XLENGTH(assignments))
+        return 0;
+    SEXP current_target = R_NilValue;
+    return parsed_value(VECTOR_ELT(assignments, step), caller,
+                        &source, &current_target) && current_target == target;
 }
 
 static SEXP wrap_column(SEXP backing, SEXP classes, SEXP storage) {
@@ -553,10 +563,16 @@ static inline int bracket_binary64_finite(double value) {
 #define BRACKET_INLINE_BINARY64_FINITE 0
 #endif
 
-static int fill_column(SEXP source, SEXP backing) {
+static int fill_column(SEXP source, SEXP backing, SEXP assignments,
+                       R_xlen_t step, SEXP caller, SEXP source_symbol,
+                       SEXP target) {
     R_xlen_t n = XLENGTH(source);
     for (R_xlen_t row = 0; row < n; row += 8192)
         R_CheckUserInterrupt();
+    /* Earlier outputs and preparation callbacks can change a later literal.
+       Recheck the current expression after the final callback boundary. */
+    if (!assignment_same(assignments, step, caller, source_symbol, target))
+        return 0;
     SEXP current = dtatools_grouped_double_values(source, n);
     if (current == R_NilValue) return 0;
     const double *input = REAL(current);
@@ -752,6 +768,7 @@ SEXP C_dtatools_probe_grouped_bracket_batch(SEXP data, SEXP assignments,
     SEXP by_expr = CADR(by);
     if (where_expr != R_NilValue || by_expr == R_NilValue ||
         TYPEOF(by_expr) != SYMSXP ||
+        strncmp(CHAR(PRINTNAME(by_expr)), "..", 2) == 0 ||
         Rf_getAttrib(where, Rf_install(".Environment")) != R_EmptyEnv ||
         Rf_getAttrib(by, Rf_install(".Environment")) != caller)
         return R_NilValue;
@@ -846,7 +863,9 @@ SEXP C_dtatools_probe_grouped_bracket_batch(SEXP data, SEXP assignments,
         limit = INTEGER(limit_option)[0];
     for (R_xlen_t step = 0; step < XLENGTH(assignments); step++) {
         if (step >= limit) break;
-        if (!double_generation_option()) break;
+        if (!double_generation_option() ||
+            !assignment_same(assignments, step, caller, source_symbol,
+                             STRING_ELT(targets, step))) break;
         if (step > 0 && (benchmark_mode == 2 || benchmark_mode == 3)) {
             tick = profile_on ? profile_clock() : 0.0;
             int good = public_admitted(caller, extra_state, s3_state);
@@ -885,7 +904,8 @@ SEXP C_dtatools_probe_grouped_bracket_batch(SEXP data, SEXP assignments,
               !source_unshadowed(caller, source_symbol) ||
               !canonical_double(source, n) ||
               !double_generation_option())) ||
-            !fill_column(source, backing)) {
+            !fill_column(source, backing, assignments, step, caller,
+                         source_symbol, STRING_ELT(targets, step))) {
             UNPROTECT(1); break;
         }
         SEXP source_classes = PROTECT(Rf_getAttrib(source, R_ClassSymbol));

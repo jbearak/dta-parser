@@ -22,6 +22,7 @@ static int value_expression(SEXP expr, SEXP *source) {
         return 0;
     SEXP literal = CADDR(expr);
     if (TYPEOF(literal) != REALSXP || ALTREP(literal) ||
+        Rf_isS4(literal) || ANY_ATTRIB(literal) ||
         XLENGTH(literal) != 1 || REAL(literal)[0] != 1.0)
         return 0;
     if (*source == R_NilValue) *source = CADR(expr);

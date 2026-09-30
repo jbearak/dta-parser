@@ -233,6 +233,7 @@ static int source_frame(SEXP frame, SEXP data, SEXP *source_symbol,
                                          caller, increment)) return 0;
     *group_symbol = R_DelayedBindingExpression(by, frame);
     return R_DelayedBindingEnvironment(by, frame) == *caller &&
+        strncmp(CHAR(PRINTNAME(*group_symbol)), "..", 2) != 0 &&
         *group_symbol != Rf_install(".data") &&
         *group_symbol != Rf_install(".env") &&
         *group_symbol != Rf_install(".n") &&

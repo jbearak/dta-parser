@@ -831,7 +831,7 @@ static int probe_general_arithmetic(SEXP expression, SEXP *source,
         return 0;
     SEXP scalar = CADR(args);
     if (TYPEOF(scalar) != REALSXP || ALTREP(scalar) ||
-        ANY_ATTRIB(scalar) || XLENGTH(scalar) != 1 ||
+        ANY_ATTRIB(scalar) || Rf_isS4(scalar) || XLENGTH(scalar) != 1 ||
         !R_FINITE(REAL(scalar)[0]) || REAL(scalar)[0] < -1000000 ||
         REAL(scalar)[0] > 1000000) return 0;
     *source = CAR(args);
@@ -840,7 +840,7 @@ static int probe_general_arithmetic(SEXP expression, SEXP *source,
 }
 
 static int probe_finite_literal(SEXP value, double *number) {
-    if (TYPEOF(value) != REALSXP || ALTREP(value) || ANY_ATTRIB(value) ||
+    if (TYPEOF(value) != REALSXP || ALTREP(value) || ANY_ATTRIB(value) || Rf_isS4(value) ||
         XLENGTH(value) != 1 || !R_FINITE(REAL(value)[0]) ||
         REAL(value)[0] < -1000000 || REAL(value)[0] > 1000000)
         return 0;

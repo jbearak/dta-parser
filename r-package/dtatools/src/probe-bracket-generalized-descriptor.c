@@ -52,7 +52,7 @@ static int one_field(SEXP value, const char *wanted) {
 
 static int bounded_offset(SEXP literal, double *offset) {
     if (TYPEOF(literal) != REALSXP || ALTREP(literal) ||
-        ANY_ATTRIB(literal) || XLENGTH(literal) != 1) return 0;
+        ANY_ATTRIB(literal) || Rf_isS4(literal) || XLENGTH(literal) != 1) return 0;
     double value = REAL(literal)[0];
     if (!R_FINITE(value) || value < -1000000.0 || value > 1000000.0)
         return 0;
@@ -229,7 +229,7 @@ SEXP C_dtatools_probe_bracket_general_descriptor(SEXP data,
 static int raw_one_value_kind(SEXP value, SEXP *source_symbol,
                               double *offset, int *offset_seen) {
     if (TYPEOF(value) == REALSXP && !ALTREP(value) &&
-        !ANY_ATTRIB(value) && XLENGTH(value) == 1 &&
+        !ANY_ATTRIB(value) && !Rf_isS4(value) && XLENGTH(value) == 1 &&
         R_FINITE(REAL(value)[0])) return 1;
     if (TYPEOF(value) != LANGSXP || ANY_ATTRIB(value)) return 0;
     if (CAR(value) == Rf_install("abs") &&
@@ -240,6 +240,7 @@ static int raw_one_value_kind(SEXP value, SEXP *source_symbol,
             Rf_length(negative) == 2 &&
             TYPEOF(CADR(negative)) == REALSXP &&
             !ALTREP(CADR(negative)) && !ANY_ATTRIB(CADR(negative)) &&
+            !Rf_isS4(CADR(negative)) &&
             XLENGTH(CADR(negative)) == 1 &&
             R_FINITE(REAL(CADR(negative))[0])) return 2;
         return 0;

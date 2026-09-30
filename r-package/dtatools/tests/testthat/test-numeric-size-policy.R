@@ -105,6 +105,17 @@ test_that("numeric size preflight leaves unknown operands and foreign readers un
     }
 })
 
+test_that("numeric size preflight does not treat dots references as ordinary bindings", {
+    values <- rep(1, 4096L)
+    for (gate in .numeric_size_gates()) {
+        forward <- function(...) {
+            assign("..1", values, envir = environment())
+            gate(..1)
+        }
+        expect_false(forward(values))
+    }
+})
+
 test_that("numeric size preflight rejects custom forwarded environments before lookup", {
     values <- rep(1, 2048L)
     for (gate in .numeric_size_gates()) {
