@@ -6817,7 +6817,7 @@
         },
         {
           "path": "tests/testthat/test-repl-native-admission.R",
-          "sha256": "f4df779a85e012dc76546b0043398c554d01681ccba23c34b608d055dbece003"
+          "sha256": "3396b2a8d8a1afe72c2cb384f13ad392b6baf7f78745077844ec4c9aa637dafb"
         },
         {
           "path": "tests/testthat/test-grouped-gen-native-admission.R",
@@ -6825,7 +6825,7 @@
         },
         {
           "path": "tests/testthat/test-plain-native-admission.R",
-          "sha256": "683d87f666b1264f8edef1a227238e10bafca1e7fd415a7e7c93d708ac92c47b"
+          "sha256": "c8f6461b7d1d12f62a3d17251bde6553cebc9f3909177a740abdf1560ed17b5c"
         }
       ],
       "blocks": [
@@ -8833,6 +8833,25 @@
           "skip": "forbid",
           "min_pass": 1,
           "warnings": 0
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "native mutate retains ordinary isolation and explicit foreign-write copies",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-repl-native-admission.R",
+          "test": "native constant replacement stages a buffer for shared owned targets",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
         }
       ],
       "children": [
@@ -9006,6 +9025,22 @@
         },
         {
           "id": "plain-native-pending-rhs",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "plain-native-result-contract",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "repl-native-shared-constant",
           "kind": "r",
           "minimum": 1,
           "maximum": 1,

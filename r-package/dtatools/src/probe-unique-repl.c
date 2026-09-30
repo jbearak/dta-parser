@@ -447,10 +447,13 @@ SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
     int kind = repl_expression_kind(CADR(quosure), cert.target_name,
                                     &constant);
     if (kind == 0) { UNPROTECT(4); return Rf_ScalarLogical(FALSE); }
-    int scalar_mode = owned_real(x) && kind == 2 && abs_scalar_mode;
+    int scalar_mode = owned_real(x) && kind == 2 && abs_scalar_mode &&
+        !LOGICAL(shared)[cert.target_index] && !MAYBE_SHARED(x) &&
+        !owned_flags(x)[OWNED_SHARED] && !owned_flags(x)[OWNED_EXPOSED];
     /* For an independent owned target, the constant's one-scalar staging
        plan can commit into private backing after all callbacks. If an alias
-       appears meanwhile, decline before any write. */
+       appears meanwhile, decline before any write. A target already shared
+       at entry uses the ordinary replacement-buffer plan instead. */
     SEXP backing = PROTECT(!scalar_mode
         ? Rf_allocVector(REALSXP, shape_rows) : Rf_ScalarReal(constant));
     SEXP replacement = PROTECT(!scalar_mode

@@ -347,7 +347,12 @@ numeric and dictionary-string columns compact, and deep-copies dataset
 attributes such as names and grouped-tibble metadata. It rejects columns or
 attributes containing environments, functions, bytecode, external pointers,
 or weak references because those objects cannot be isolated by ordinary R
-copying.
+copying. Use \code{copy_data()} before foreign reference writes such as
+\code{data.table::set()} or \code{data.table::setattr()} when the input and copy must
+remain independent in both directions. Ordinary operation results preserve
+R and dtatools mutation semantics but may share columns that those foreign
+writers can change. Copy before converting to another container when the
+exported object needs the stronger guarantee.
 }
 
 \examples{

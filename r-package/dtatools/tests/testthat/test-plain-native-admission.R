@@ -167,10 +167,10 @@ test_that("plain native operations retain ordinary values metadata and aliases",
                 names = names(value), class = class(value), rows = attr(value, "row.names"))
             if (identical(expression[[1L]], as.name("mutate")) && length(values)) {
                 source_before <- as.double(value$x)
-                data.table::set(d, i = 1L, j = "x", value = 92.0)
+                set_dta_values(d, "x", 92.0, rows = 1L)
                 stopifnot(identical(as.double(value$x), source_before))
                 input_before <- as.double(d$spare)
-                data.table::set(value, i = 1L, j = "spare", value = 93.0)
+                set_dta_values(value, "spare", 93.0, rows = 1L)
                 stopifnot(identical(as.double(d$spare), input_before))
             }
             result
@@ -333,5 +333,84 @@ test_that("plain bracket generation retains the RHS across source writes", {
         }
         TRUE
     }, libpath = .libPaths())
+    expect_true(observed)
+})
+
+test_that("native mutate retains ordinary isolation and explicit foreign-write copies", {
+    skip_if_not_installed("dplyr")
+    skip_if_not_installed("data.table")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    expected <- .dtatools_ungrouped_dplyr_build_expected()
+    observed <- .dtatools_child_r("plain-native-result-contract", function(expected) {
+        library(dtatools)
+        library(dplyr)
+        if (!expected) return(TRUE)
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        fixture <- function(plain, n = 41L) {
+            columns <- setNames(lapply(seq_len(100L), function(j)
+                rep(as.double(j), n)), c("x", paste0("spare", 2:100)))
+            d <- as_dibble(tibble::as_tibble(columns))
+            if (plain) for (i in seq_along(d))
+                cc("C_dtatools_set_data_column", d, as.integer(i),
+                    cc("C_dtatools_owned_plain_snapshot", .subset2(d, i)))
+            d
+        }
+        expressions <- list(quote(mutate(d, x = 3)),
+            quote(mutate(d, x = abs(-3))), quote(mutate(d, x = x + 1)),
+            quote(mutate(d, y = x + 1)),
+            quote(mutate(d, a = x + 1, b = x + 1, c = x + 1,
+                         e = x + 1, f = x + 1)))
+        for (plain in c(TRUE, FALSE)) for (expression in expressions) {
+            d <- fixture(plain)
+            input_alias <- d
+            input_column <- d$spare2
+            before <- cc("C_dtatools_probe_dplyr_early_stats", FALSE)
+            result <- eval(expression)
+            after <- cc("C_dtatools_probe_dplyr_early_stats", FALSE)
+            stopifnot((after - before)[[3L]] == 1L)
+            result_alias <- result
+            set_dta_values(result, "spare2", 91, rows = 1L)
+            stopifnot(as.double(result_alias$spare2)[[1L]] == 91,
+                identical(as.double(d$spare2), rep(2, 41L)),
+                identical(as.double(input_column), rep(2, 41L)))
+            set_dta_values(d, "spare3", 92, rows = 1L)
+            stopifnot(as.double(input_alias$spare3)[[1L]] == 92,
+                identical(as.double(result$spare3), rep(3, 41L)))
+            ordinary <- result
+            ordinary$spare4[1L] <- 93
+            attr(ordinary$spare5, "label") <- "Changed locally"
+            stopifnot(identical(as.double(result$spare4), rep(4, 41L)),
+                is.null(attr(result$spare5, "label")),
+                is.null(attr(d$spare5, "label")))
+            set_var_label(result, spare6, "Changed explicitly")
+            stopifnot(is.null(attr(d$spare6, "label")))
+            copied <- copy_data(result)
+            data.table::set(result, i = 1L, j = "spare7", value = 94.0)
+            stopifnot(identical(as.double(copied$spare7), rep(7, 41L)))
+            data.table::set(copied, i = 1L, j = "spare8", value = 95.0)
+            stopifnot(identical(as.double(result$spare8), rep(8, 41L)),
+                identical(as.double(d$spare8), rep(8, 41L)))
+        }
+        if (capabilities("profmem")) {
+            d <- fixture(TRUE, 100000L)
+            warm <- mutate(d, y = x + 1)
+            rm(warm)
+            invisible(gc())
+            log <- tempfile()
+            on.exit(unlink(log), add = TRUE)
+            before <- cc("C_dtatools_probe_dplyr_early_stats", FALSE)
+            utils::Rprofmem(log)
+            result <- tryCatch(mutate(d, y = x + 1),
+                               finally = utils::Rprofmem(NULL))
+            after <- cc("C_dtatools_probe_dplyr_early_stats", FALSE)
+            records <- readLines(log, warn = FALSE)
+            sizes <- as.double(sub(" .*", "", records[grepl("^[0-9]+ ", records)]))
+            stopifnot((after - before)[[3L]] == 1L,
+                sum(sizes) < 16 * 1024^2,
+                identical(as.double(result$y), rep(2, 100000L)),
+                identical(as.double(d$x), rep(1, 100000L)))
+        }
+        TRUE
+    }, args = list(expected = expected), libpath = .libPaths())
     expect_true(observed)
 })

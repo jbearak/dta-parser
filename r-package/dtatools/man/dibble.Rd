@@ -60,11 +60,21 @@ dibble returns a dibble: dplyr verbs, joins with a dibble on the left,
 \code{bind_rows()} with a dibble first, base \code{subset()}, \code{transform()},
 \code{within()}, \code{head()}, \code{rbind()}, \code{cbind()}, and \code{[} subsetting. Each
 result is a fresh object holding the current contents; the input is
-unchanged, and a by-reference write on either the input or the result
-leaves the other as it was, and leaves any other frame the operation
-drew columns from as it was. Columns an operation leaves alone are
-isolated for later writes, using copy-on-write for compact columns and
-package-owned ordinary atomic columns.
+unchanged. Ordinary R replacement and dtatools by-reference writes on
+either the input or the result leave the other as it was, including
+unchanged columns and other frames the operation drew columns from.
+Unchanged plain columns may share storage; dtatools writers detach shared
+columns when needed. Compact and owned columns can use copy-on-write.
+
+Foreign reference APIs such as \code{data.table::set()} and
+\code{data.table::setattr()} can change shared values or attributes. Ordinary
+results do not promise isolation from those writes, for plain or owned
+columns. Use \code{\link[=copy_data]{copy_data()}} before a foreign write when the source and
+result must remain independent. Copy the dibble before converting it to
+another container when that exported object needs this guarantee.
+Callers must not depend on whether an ordinary result happens to share
+storage or already has a separate copy.
+
 \code{dplyr::select()}, \code{dplyr::rename()}, and \code{dplyr::relocate()} resolve
 selectors against the actual Stata columns and build their dibble result
 directly. Owned ordinary doubles, strings, logicals and integer/factor
@@ -85,8 +95,9 @@ rule, including inside functions. Return and assign that result in the caller.
 To change a caller's table, use explicit helpers such as \code{\link[=set_var_format]{set_var_format()}},
 \code{\link[=set_var_label]{set_var_label()}}, \code{\link[=set_val_labels]{set_val_labels()}}, \code{\link[=set_dta_metadata]{set_dta_metadata()}}, \code{\link[=set_dta_note]{set_dta_note()}},
 and \code{\link[=set_dta_characteristic]{set_dta_characteristic()}}, or \code{gen()}, \code{repl()}, and dibble \verb{:=}.
-Replacement results isolate unchanged columns too, so subsequent explicit
-writes cannot reach the input. Compact columns retain compact backing.
+Replacement results protect unchanged columns from subsequent dtatools
+writes too. Later foreign reference writes require \code{\link[=copy_data]{copy_data()}} for
+independence. Compact columns retain compact backing.
 A dibble reserves 1,024 spare column slots by default, controlled by
 \code{dtatools.alloccol}. By default, \code{\link[=gen]{gen()}}, \code{\link[=egen]{egen()}} and \verb{:=} rebuild an
 isolated table when additions need more room and warn that aliases retain

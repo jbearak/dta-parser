@@ -159,6 +159,10 @@ _Avoid_: Label attributes, factor levels, variable labels
 A human-readable description of a dataset as a whole, distinct from its file name and its variables' labels.
 _Avoid_: Variable label, file name
 
+**Independent dataset copy**:
+A dibble created by `copy_data()` whose supported values and metadata remain separate from the source even under later foreign by-reference writes. Ordinary result tables preserve R and dtatools mutation semantics but do not promise this stronger independence.
+_Avoid_: Alias, ordinary result
+
 **Mutation target**:
 The dibble that an explicit by-reference helper writes into so that every binding to that table sees the change. Tibbles, base data frames, and data tables are output containers but not mutation targets; they are converted first with an assigned `as_dibble()`.
 _Avoid_: Reference-marked frame, mutable data frame, by-reference table

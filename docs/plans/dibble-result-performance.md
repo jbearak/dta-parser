@@ -1,5 +1,7 @@
 # Direct dibble operations and optional dplyr
 
+Contract update: [ADR 0044](../adr/0044-require-explicit-copies-before-foreign-reference-writes.md) supersedes this plan's blanket requirement that ordinary results survive later foreign reference writes. Ordinary R and dtatools mutation isolation remain required, as does two-way foreign-write isolation for `copy_data()`. Historical measurements and acceptance records below describe the contract used for those runs.
+
 Status: stages 1 through 4 merged as PRs #192 through #195, with supporting
 Stage 4 evidence PRs #196 through #199, for
 [issue #172](https://github.com/jbearak/dta-parser/issues/172). Stage 5 is active

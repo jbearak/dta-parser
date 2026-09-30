@@ -19,7 +19,7 @@ containers do not require data.table.
 
 ## Where the write lands
 
-*Reference* means the operation modifies the dataset itself, so every name bound to it sees the change and no assignment is needed. Column additions have an exception when the table runs out of capacity: automatic growth creates a new table, and old aliases retain the old table. Functions that may grow a table should return it for the caller to assign. *Copy* means R's ordinary copy-on-modify: a new object comes back and the input is untouched. See [mutation by reference](./r-mutation-by-reference.md).
+*Reference* means the operation modifies the dataset itself, so every name bound to it sees the change and no assignment is needed. Column additions have an exception when the table runs out of capacity: automatic growth creates a new table, and old aliases retain the old table. Functions that may grow a table should return it for the caller to assign. *Copy* means R's ordinary copy-on-modify: a new object comes back and the input is untouched. It does not promise independence from later foreign reference writes. Use `copy_data()` on a dibble before those writes when independence is required. See [mutation by reference](./r-mutation-by-reference.md).
 
 | Operation | dibble | tibble | data.frame | data.table |
 | --- | --- | --- | --- | --- |
@@ -36,7 +36,7 @@ containers do not require data.table.
 | `slice_dta_rows(data, i)` | Copy → dibble | Copy → tibble | Copy → data.frame | Copy → data.table |
 | `data[i, ]`, `subset()`, `transform()`, `within()`, `head()`, `rbind()`, `cbind()` | Copy → dibble | Copy → tibble | Copy → data.frame | data.table's own behavior |
 | Joins, `bind_rows()`, `dta_merge()`, `dta_append()` | Copy → dibble when the dibble is first | Copy → tibble | Copy → data.frame | Copy → data.table |
-| `tibble::as_tibble()`, `as.data.frame()` | Copy, independent | Copy, independent | Copy, independent | Copy, independent |
+| `tibble::as_tibble()`, `as.data.frame()` | Copy | Copy | Copy | Copy |
 
 Only a dibble is a mutation target. The by-reference helpers were written before the dibble existed and once accepted every container; [ADR 0036](./adr/0036-mutate-by-reference-only-on-dibbles.md) restricts them to the container built for that contract. A tibble, data frame, or data table stays a copy-on-modify R object throughout; convert with `as_dibble()` when you want the Stata dataset, or use data.table's own operators when you want its by-reference semantics without Stata typing.
 
@@ -47,8 +47,9 @@ their R type or classes. Independent dibble results share those values until a
 write needs isolation. Explicit helpers still modify the supplied physical table
 in a dibble. Capturing a borrowed column can cost one column
 copy; later private sparse writes reuse that backing. A source table and a result
-remain independent in either direction. This storage change requires no new
-mutation API or conversion step.
+remain independent under ordinary R and dtatools writes in either direction.
+Later foreign reference writes require `copy_data()` for this guarantee; see
+[the mutation guide](r-mutation-by-reference.md#foreign-reference-writes-require-an-explicit-copy).
 
 `[i, y := v]` is a dibble form. A data table runs its own bracket implementation, with its own storage and promotion rules; plain tibbles and data frames have no `:=` form. `gen()` and `repl()` are the explicit spellings of the same dibble operations.
 

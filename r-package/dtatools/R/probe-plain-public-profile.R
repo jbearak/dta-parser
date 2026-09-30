@@ -38,15 +38,15 @@
             'vec_math.dta_numeric', 'vec_arith.dta_numeric',
             'vec_arith.dta_numeric.numeric', 'vec_proxy.dta_numeric',
             'as.double.dta_numeric', 'is.na.dta_numeric')
+        owner <- asNamespace('dtatools')
+        db <- new.env(parent = emptyenv())
+        base::lazyLoad(system.file('R', 'dtatools', package = 'dtatools'), envir = db)
         for (name in methods) {
-            owner <- asNamespace('dtatools')
             actual <- get(name, owner, inherits = FALSE)
             generic_pkg <- if (name %in% c('Ops.dta_numeric', 'as.double.dta_numeric', 'is.na.dta_numeric'))
                 'base' else if (name == 'vec_arith.dta_numeric.numeric') 'dtatools' else 'vctrs'
             table <- get('.__S3MethodsTable__.', asNamespace(generic_pkg), inherits = FALSE)
             stopifnot(identical(get(name, table, inherits = FALSE), actual))
-            db <- new.env(parent = emptyenv())
-            base::lazyLoad(system.file('R', 'dtatools', package = 'dtatools'), envir = db)
             frozen <- get(name, db, inherits = FALSE)
             check <- .native_admission_call(C_probe_public48_source_qualification, actual, frozen)
             stopifnot(is.logical(check), length(check) == 4L, all(check))

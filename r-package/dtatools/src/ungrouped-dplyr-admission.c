@@ -645,7 +645,12 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
     SEXP out = PROTECT(Rf_allocVector(VECSXP, total));
     SEXP out_names = PROTECT(Rf_allocVector(STRSXP, total));
     for (R_xlen_t j = 0; j < width; j++) {
-        SEXP fork = PROTECT(C_dtatools_metadata_copy(VECTOR_ELT(data, j)));
+        SEXP column = VECTOR_ELT(data, j);
+        /* Keep the operand's ordered snapshot for evaluation. Other plain
+           columns may share until ordinary R or dtatools writes detach them;
+           later foreign reference writes require an explicit copy_data(). */
+        SEXP fork = PROTECT(j == source_index || ALTREP(column) ?
+            C_dtatools_metadata_copy(column) : column);
         if (outputs == 0 && j == target_index)
             SET_VECTOR_ELT(backings, 1, fork);
         else SET_VECTOR_ELT(out, j, fork);
@@ -740,9 +745,9 @@ static SEXP probe_dplyr_early_config(SEXP data, int mode,
     }
     for (R_xlen_t j = 0; j < width; j++) {
         SEXP column = VECTOR_ELT(data, j);
-        /* Every ungrouped input column has an ordered isolated fork. A COW
-           value write after its fork may detach the physical input's record,
-           while ordinary mask evaluation continues to use the frozen one. */
+        /* The operand and owned columns retain ordered snapshots. Unchanged
+           plain columns retain their actual handles, which our own writers
+           must treat as shared after publication. */
         if (column != VECTOR_ELT(source_columns, j) ||
             probe_raw_attribute(column, R_ClassSymbol) != VECTOR_ELT(source_classes, j) ||
             probe_raw_attribute(column, Rf_install("stata.storage")) !=

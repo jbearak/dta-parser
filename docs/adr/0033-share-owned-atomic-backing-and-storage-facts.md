@@ -4,6 +4,8 @@ status: proposed
 
 # Share owned atomic backing and storage facts
 
+[ADR 0044](0044-require-explicit-copies-before-foreign-reference-writes.md) narrows the public result-isolation contract. The owned backing safeguards described here remain valid implementation choices; ordinary results no longer promise independence from later foreign reference writes without `copy_data()`.
+
 Ordinary strings, logicals and integer/factor columns use the same flat owned
 backing model as [ordinary doubles](0032-share-owned-double-backing-with-transactional-table-writes.md).
 Each result has an independent handle and attributes; unknown borrowed values
