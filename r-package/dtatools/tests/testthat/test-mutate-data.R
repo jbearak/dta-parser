@@ -3384,3 +3384,68 @@ test_that("placement follows an anchor moved or removed while values evaluate", 
     expect_identical(touched, 1L)
     expect_identical(names(data), c("b", "y", "w", "a", "x"))
 })
+
+test_that("placement follows the anchor after column construction callbacks", {
+    data <- dibble(a = 1:2, b = 3:4, c = 5:6)
+    alias <- data
+    # Option validation dispatches length while constructing the new column,
+    # after the RHS has evaluated. This is caller code, without a test hook.
+    rlang::local_bindings(
+        length.dtatools_placement_storage = function(x) {
+            order_vars(data, c, a, b)
+            1L
+        },
+        .env = .GlobalEnv
+    )
+    withr::local_options(dtatools.generate_type = structure(
+        "double", class = "dtatools_placement_storage"
+    ))
+    gen(data, y = c(7, 8), before = b)
+    expect_identical(names(data), c("c", "a", "y", "b"))
+    expect_identical(names(alias), names(data))
+    expect_identical(as.double(data$y), c(7, 8))
+    expect_identical(as.integer(data$a), 1:2)
+    expect_identical(as.integer(data$b), 3:4)
+})
+
+test_that("placed generation retains columns added during construction", {
+    rlang::local_bindings(
+        length.dtatools_placement_storage = function(x) {
+            if (!"z" %in% names(data)) gen(data, z = 9L)
+            1L
+        },
+        .env = .GlobalEnv
+    )
+    withr::local_options(dtatools.generate_type = structure(
+        "double", class = "dtatools_placement_storage"
+    ))
+    data <- dibble(a = 1:2, b = 3:4, c = 5:6)
+    gen(data, y = c(7, 8), before = b)
+    expect_identical(names(data), c("a", "y", "b", "c", "z"))
+    expect_identical(as.double(data$y), c(7, 8))
+    expect_identical(as.integer(data$z), c(9L, 9L))
+
+    data <- dibble(a = 1:2, b = 3:4, c = 5:6)
+    gen(data, y = c(7, 8), after = b)
+    expect_identical(names(data), c("a", "b", "y", "c", "z"))
+    expect_identical(as.double(data$y), c(7, 8))
+    expect_identical(as.integer(data$z), c(9L, 9L))
+})
+
+test_that("placed generation refuses an anchor removed during construction", {
+    data <- dibble(a = 1:2, b = 3:4, c = 5:6)
+    rlang::local_bindings(
+        length.dtatools_placement_storage = function(x) {
+            if ("b" %in% names(data)) drop_vars(data, b)
+            1L
+        },
+        .env = .GlobalEnv
+    )
+    withr::local_options(dtatools.generate_type = structure(
+        "double", class = "dtatools_placement_storage"
+    ))
+    expect_error(gen(data, y = c(7, 8), before = b), "Column `b` does not exist",
+                 fixed = TRUE)
+    expect_identical(names(data), c("a", "c"))
+    expect_identical(as.integer(data$c), 5:6)
+})
