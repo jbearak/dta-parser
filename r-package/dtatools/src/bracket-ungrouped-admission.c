@@ -307,7 +307,7 @@ static int general_reference_owner(SEXP data) {
 }
 
 static int general_table_class(SEXP data) {
-    if (TYPEOF(data) != VECSXP || ALTREP(data) ||
+    if (TYPEOF(data) != VECSXP || ALTREP(data) || Rf_isS4(data) ||
         !general_reference_owner(data)) return 0;
     SEXP classes = Rf_getAttrib(data, R_ClassSymbol);
     static const char *wanted[] = {
@@ -344,6 +344,7 @@ static int general_assignment(SEXP assignments, int step, SEXP caller,
         CADR(expression) != source_symbol ||
         TYPEOF(CADDR(expression)) != REALSXP ||
         ALTREP(CADDR(expression)) || ANY_ATTRIB(CADDR(expression)) ||
+        Rf_isS4(CADDR(expression)) ||
         XLENGTH(CADDR(expression)) != 1 ||
         REAL(CADDR(expression))[0] != offset)
         return 0;
@@ -412,7 +413,7 @@ static SEXP general_try_replace(SEXP data, SEXP assignments,
     double constant = 0.0;
     double offset = 0.0;
     if (TYPEOF(expression) == REALSXP && !ALTREP(expression) &&
-        !ANY_ATTRIB(expression) && XLENGTH(expression) == 1 &&
+        !ANY_ATTRIB(expression) && !Rf_isS4(expression) && XLENGTH(expression) == 1 &&
         R_FINITE(REAL(expression)[0])) {
         kind = 1;
         constant = REAL(expression)[0];
@@ -425,6 +426,7 @@ static SEXP general_try_replace(SEXP data, SEXP assignments,
             Rf_length(negative) == 2 &&
             TYPEOF(CADR(negative)) == REALSXP &&
             !ALTREP(CADR(negative)) && !ANY_ATTRIB(CADR(negative)) &&
+            !Rf_isS4(CADR(negative)) &&
             XLENGTH(CADR(negative)) == 1 &&
             R_FINITE(REAL(CADR(negative))[0]) &&
             general_caller_unbound(caller, Rf_install("abs")) &&
@@ -441,6 +443,7 @@ static SEXP general_try_replace(SEXP data, SEXP assignments,
                        CHAR(target_name)) &&
                TYPEOF(CADDR(expression)) == REALSXP &&
                !ALTREP(CADDR(expression)) && !ANY_ATTRIB(CADDR(expression)) &&
+               !Rf_isS4(CADDR(expression)) &&
                XLENGTH(CADDR(expression)) == 1 &&
                R_FINITE(REAL(CADDR(expression))[0]) &&
                REAL(CADDR(expression))[0] >= -1000000.0 &&

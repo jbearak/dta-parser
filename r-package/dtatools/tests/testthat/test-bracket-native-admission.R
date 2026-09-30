@@ -1,3 +1,220 @@
+test_that("grouped native brackets preserve attributed arithmetic literals", {
+    skip_if_not_installed("dplyr")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("grouped-bracket-attributed-literals", function() {
+        library(dtatools)
+        library(dplyr)
+        options(dtatools.generate_type = "double")
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        values <- list(date = as.Date(1, origin = "1970-01-01"),
+            datetime = as.POSIXct(1, origin = "1970-01-01", tz = "UTC"),
+            duration = as.difftime(1, units = "secs"),
+            custom = structure(1, class = "custom_scalar"),
+            named = c(offset = 1), attributed = structure(1, note = "offset"))
+        checks <- 0L
+        for (raw in c(FALSE, TRUE)) for (five in c(FALSE, TRUE))
+            for (name in names(values)) {
+                run <- function(enabled) {
+                    options(dtatools.probe_grouped_bracket = enabled,
+                        dtatools.probe_grouped_bracket_raw = enabled && raw)
+                    d <- as_dibble(tibble::tibble(x = c(1, 2, 3, 4),
+                        g = dta_long(c(1, 1, 2, 2))))
+                    expression <- if (five) substitute(d[, `:=`(
+                        a = x + OFFSET, b = x + OFFSET, c = x + OFFSET,
+                        e = x + OFFSET, f = x + OFFSET), by = g],
+                        list(OFFSET = values[[name]])) else
+                        substitute(d[, y := x + OFFSET, by = g],
+                            list(OFFSET = values[[name]]))
+                    before <- cc("C_dtatools_probe_grouped_bracket_stats", FALSE)
+                    error <- tryCatch({ eval(expression); NULL },
+                        error = conditionMessage)
+                    list(error = error, columns = lapply(d, function(column)
+                        list(values = as.double(column), attributes = attributes(column))),
+                        published = as.integer((cc(
+                            "C_dtatools_probe_grouped_bracket_stats", FALSE) - before)[[3L]]))
+                }
+                ordinary <- run(FALSE)
+                native <- run(TRUE)
+                if (!identical(native, ordinary)) stop(sprintf(
+                    "raw=%s five=%s literal=%s: %s", raw, five, name,
+                    paste(all.equal(native, ordinary), collapse = "; ")))
+                stopifnot(native$published == 0L)
+                if (name == "date") stopifnot(
+                    "dta_date" %in% native$columns[[3L]]$attributes$class)
+                if (name == "datetime") stopifnot(
+                    "dta_datetime" %in% native$columns[[3L]]$attributes$class)
+                if (name %in% c("duration", "custom"))
+                    stopifnot(is.character(native$error), length(native$columns) == 2L)
+                checks <- checks + 1L
+            }
+        checks
+    }, libpath = .libPaths())
+    expect_identical(observed, 24L)
+})
+
+test_that("grouped native mutations preserve dots in grouping keys", {
+    skip_if_not_installed("dplyr")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("grouped-mutation-dots-keys", function() {
+        library(dtatools)
+        library(dplyr)
+        options(dtatools.generate_type = "double")
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        checks <- 0L
+        for (name in c("..1", "...", "..0", "..01", "..+1", "..-1",
+                       "..9999999999999999999999"))
+            for (forwarded in c(FALSE, TRUE))
+                for (engine in c("gen", "bracket", "five"))
+                    for (raw in if (engine == "gen") FALSE else c(FALSE, TRUE)) {
+                        run <- function(enabled) {
+                            cc("C_dtatools_probe_grouped_gen_mode", enabled)
+                            options(dtatools.probe_grouped_bracket = enabled,
+                                dtatools.probe_grouped_bracket_raw = enabled && raw)
+                            d <- as_dibble(setNames(tibble::tibble(
+                                x = c(1, 2, 3, 4), g = dta_long(c(1, 1, 2, 2))),
+                                c("x", name)))
+                            expression <- switch(engine,
+                                gen = quote(gen(d, y = x + 1, by = GROUP)),
+                                bracket = quote(d[, y := x + 1, by = GROUP]),
+                                five = quote(d[, `:=`(a = x + 1, b = x + 1,
+                                    c = x + 1, e = x + 1, f = x + 1), by = GROUP]))
+                            expression <- do.call(substitute,
+                                list(expression, list(GROUP = as.name(name))))
+                            stat <- if (engine == "gen")
+                                "C_dtatools_probe_grouped_gen_stats" else
+                                "C_dtatools_probe_grouped_bracket_stats"
+                            before <- cc(stat, FALSE)
+                            hits <- 0L
+                            invoke <- function(...) eval(expression)
+                            error <- tryCatch({
+                                if (forwarded) invoke({
+                                    hits <- hits + 1L
+                                    stop("group dots evaluated", call. = FALSE)
+                                }) else eval(expression)
+                                NULL
+                            }, error = conditionMessage)
+                            list(error = error, hits = hits,
+                                columns = lapply(d, function(column)
+                                    list(values = as.double(column), attributes = attributes(column))),
+                                published = as.integer((cc(stat, FALSE) - before)[[3L]]))
+                        }
+                        ordinary <- run(FALSE)
+                        native <- run(TRUE)
+                        if (!identical(native, ordinary)) stop(sprintf(
+                            "name=%s forwarded=%s engine=%s raw=%s: %s",
+                            name, forwarded, engine, raw,
+                            paste(all.equal(native, ordinary), collapse = "; ")))
+                        stopifnot(native$published == 0L)
+                        if (!forwarded && name %in% c("..1", "..01", "..+1"))
+                            stopifnot(is.character(native$error), length(native$columns) == 2L)
+                        checks <- checks + 1L
+                    }
+        checks
+    }, libpath = .libPaths())
+    expect_identical(observed, 70L)
+})
+
+test_that("bracket expressions are captured before row and grouping callbacks", {
+    skip_if_not_installed("dplyr")
+    skip_if_not_installed("data.table")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("bracket-expression-snapshots", function() {
+        library(dtatools)
+        library(dplyr)
+        options(dtatools.generate_type = "double")
+        checks <- 0L
+        for (raw in c(FALSE, TRUE)) for (enabled in c(FALSE, TRUE))
+            for (five in c(FALSE, TRUE)) for (callback in c("row", "group"))
+                for (scalar_class in c("Date", "custom_scalar")) {
+                    options(dtatools.probe_grouped_bracket = enabled,
+                        dtatools.probe_grouped_bracket_raw = enabled && raw)
+                    d <- dibble(x = c(1, 2, 3, 4), g = dta_long(c(1, 1, 2, 2)))
+                    literal <- as.double(1L)
+                    rhs <- as.call(list(as.name("+"), as.name("x"), literal))
+                    expression <- if (callback == "row")
+                        quote(d[!!mutate_literal(), NULL, by = g]) else
+                        quote(d[, NULL, by = !!mutate_literal()])
+                    targets <- if (five) c("a", "b", "c", "e", "f") else "y"
+                    expression[[4L]] <- if (five)
+                        as.call(c(list(as.name(":=")), setNames(rep(list(rhs), 5L), targets))) else
+                        as.call(list(as.name(":="), as.name("y"), rhs))
+                    hits <- 0L
+                    mutate_literal <- function() {
+                        hits <<- hits + 1L
+                        data.table::setattr(literal, "class", scalar_class)
+                        if (callback == "row") TRUE else "g"
+                    }
+                    eval(expression)
+                    stopifnot(hits == 1L, identical(class(literal), scalar_class))
+                    for (target in targets) stopifnot(
+                        identical(as.double(d[[target]]), c(2, 3, 4, 5)),
+                        identical(class(d[[target]]),
+                            c("dta_numeric", "dta_double", "vctrs_vctr", "double")))
+                    checks <- checks + 1L
+                }
+        checks
+    }, libpath = .libPaths())
+    expect_identical(observed, 32L)
+})
+
+test_that("grouped native brackets isolate later caller literal changes", {
+    skip_if_not_installed("dplyr")
+    skip_if_not_installed("data.table")
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    expected <- .dtatools_ungrouped_dplyr_build_expected()
+    observed <- .dtatools_child_r("grouped-bracket-late-literals", function(expected) {
+        library(dtatools)
+        library(dplyr)
+        options(dtatools.generate_type = "double")
+        cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+        checks <- 0L
+        for (raw in c(FALSE, TRUE)) for (step in c(1L, 4L, 5L))
+            for (scalar_class in c("Date", "custom_scalar")) {
+                run <- function(enabled) {
+                    options(dtatools.probe_grouped_bracket = enabled,
+                        dtatools.probe_grouped_bracket_raw = enabled && raw)
+                    d <- as_dibble(tibble::tibble(x = c(1, 2, 3, 4),
+                        g = dta_long(c(1, 1, 2, 2))))
+                    literal <- as.double(1L)
+                    rhs <- as.call(list(as.name("+"), as.name("x"), literal))
+                    expression <- quote(d[, NULL, by = g])
+                    expression[[4L]] <- as.call(c(list(as.name(":=")),
+                        setNames(rep(list(rhs), 5L), c("a", "b", "c", "e", "f"))))
+                    hits <- 0L
+                    options(dtatools.probe_grouped_pre_generation_hook = function(resolved = NULL) {
+                        hits <<- hits + 1L
+                        if (hits == step) data.table::setattr(literal, "class", scalar_class)
+                    })
+                    on.exit(options(dtatools.probe_grouped_pre_generation_hook = NULL))
+                    before <- cc("C_dtatools_probe_grouped_bracket_stats", FALSE)
+                    error <- tryCatch({ eval(expression); NULL }, error = conditionMessage)
+                    list(error = error, hits = hits,
+                        columns = lapply(d, function(column)
+                            list(values = as.double(column), attributes = attributes(column))),
+                        published = as.integer((cc(
+                            "C_dtatools_probe_grouped_bracket_stats", FALSE) - before)[[3L]]))
+                }
+                ordinary <- run(FALSE)
+                native <- run(TRUE)
+                if (!identical(native[1:3], ordinary[1:3])) stop(sprintf(
+                    "raw=%s step=%d class=%s: %s", raw, step, scalar_class,
+                    paste(all.equal(native[1:3], ordinary[1:3]), collapse = "; ")))
+                # Both capture routes snapshot the caller's RHS before a
+                # callback can mutate its original literal by reference.
+                stopifnot(is.null(native$error), native$hits == 5L,
+                    length(native$columns) == 7L,
+                    native$published == if (expected) 5L else 0L)
+                for (target in c("a", "b", "c", "e", "f")) stopifnot(
+                    identical(native$columns[[target]]$values, c(2, 3, 4, 5)),
+                    identical(native$columns[[target]]$attributes$class,
+                        c("dta_numeric", "dta_double", "vctrs_vctr", "double")))
+                checks <- checks + 1L
+            }
+        checks
+    }, args = list(expected = expected), libpath = .libPaths())
+    expect_identical(observed, 12L)
+})
+
 test_that("native brackets publish unfamiliar columns and preserve ordinary fallback", {
     skip_if_not_installed("dplyr")
     if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")

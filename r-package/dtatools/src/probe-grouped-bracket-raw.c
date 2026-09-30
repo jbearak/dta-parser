@@ -22,6 +22,7 @@ static int value_expression(SEXP expr, SEXP *source) {
         return 0;
     SEXP literal = CADDR(expr);
     if (TYPEOF(literal) != REALSXP || ALTREP(literal) ||
+        Rf_isS4(literal) || ANY_ATTRIB(literal) ||
         XLENGTH(literal) != 1 || REAL(literal)[0] != 1.0)
         return 0;
     if (*source == R_NilValue) *source = CADR(expr);
@@ -102,7 +103,9 @@ SEXP C_dtatools_probe_grouped_bracket_raw(SEXP raw_j) {
     SEXP node = argument;
     for (int i = 0; i < (tagged ? 5 : 1); i++) {
         SEXP target = tagged ? PRINTNAME(TAG(node)) : PRINTNAME(CAR(node));
-        SEXP value = tagged ? CAR(node) : CADR(node);
+        /* Match enquo() capture even if later callbacks force a partial
+           native result back through the ordinary evaluator. */
+        SEXP value = PROTECT(Rf_duplicate(tagged ? CAR(node) : CADR(node)));
         SEXP assignment = PROTECT(Rf_allocVector(VECSXP, 2));
         SEXP name = PROTECT(Rf_ScalarString(target));
         SEXP quo = PROTECT(make_quosure(value, caller));
@@ -113,7 +116,7 @@ SEXP C_dtatools_probe_grouped_bracket_raw(SEXP raw_j) {
         SET_VECTOR_ELT(assignment, 1, quo);
         Rf_setAttrib(assignment, R_NamesSymbol, field_names);
         SET_VECTOR_ELT(assignments, i, assignment);
-        UNPROTECT(4);
+        UNPROTECT(5);
         node = CDR(node);
     }
     SEXP by = PROTECT(make_quosure(by_expression, caller));

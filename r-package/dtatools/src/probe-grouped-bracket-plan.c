@@ -14,7 +14,7 @@ static SEXP check_key_attr(SEXP tag, SEXP value, void *raw) {
 }
 
 static int canonical_long(SEXP key) {
-    if (TYPEOF(key) != REALSXP || XLENGTH(key) > INT_MAX ||
+    if (TYPEOF(key) != REALSXP || Rf_isS4(key) || XLENGTH(key) > INT_MAX ||
         !(R_altrep_inherits(key, dtatools_metadata_real_class) ||
           R_altrep_inherits(key, dtatools_numeric_class)) ||
         R_altrep_data2(key) != R_NilValue ||

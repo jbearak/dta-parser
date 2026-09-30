@@ -101,6 +101,7 @@ static int repl_expression_kind(SEXP expression, SEXP target_name,
         strcmp(CHAR(PRINTNAME(CADR(expression))), CHAR(target_name)) == 0 &&
         TYPEOF(CADDR(expression)) == REALSXP &&
         !ALTREP(CADDR(expression)) && !ANY_ATTRIB(CADDR(expression)) &&
+        !Rf_isS4(CADDR(expression)) &&
         XLENGTH(CADDR(expression)) == 1 &&
         R_FINITE(REAL(CADDR(expression))[0]) &&
         CDDDR(expression) == R_NilValue) {
@@ -115,7 +116,7 @@ static int repl_expression_kind(SEXP expression, SEXP target_name,
         CDDR(negation) != R_NilValue) return 0;
     SEXP three = CADR(negation);
     if (TYPEOF(three) == REALSXP && !ALTREP(three) &&
-        !ANY_ATTRIB(three) && XLENGTH(three) == 1 &&
+        !ANY_ATTRIB(three) && !Rf_isS4(three) && XLENGTH(three) == 1 &&
         R_FINITE(REAL(three)[0])) {
         *constant = fabs(-REAL(three)[0]);
         return 2;

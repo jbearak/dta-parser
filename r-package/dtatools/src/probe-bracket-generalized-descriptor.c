@@ -52,7 +52,7 @@ static int one_field(SEXP value, const char *wanted) {
 
 static int bounded_offset(SEXP literal, double *offset) {
     if (TYPEOF(literal) != REALSXP || ALTREP(literal) ||
-        ANY_ATTRIB(literal) || XLENGTH(literal) != 1) return 0;
+        ANY_ATTRIB(literal) || Rf_isS4(literal) || XLENGTH(literal) != 1) return 0;
     double value = REAL(literal)[0];
     if (!R_FINITE(value) || value < -1000000.0 || value > 1000000.0)
         return 0;
@@ -229,7 +229,7 @@ SEXP C_dtatools_probe_bracket_general_descriptor(SEXP data,
 static int raw_one_value_kind(SEXP value, SEXP *source_symbol,
                               double *offset, int *offset_seen) {
     if (TYPEOF(value) == REALSXP && !ALTREP(value) &&
-        !ANY_ATTRIB(value) && XLENGTH(value) == 1 &&
+        !ANY_ATTRIB(value) && !Rf_isS4(value) && XLENGTH(value) == 1 &&
         R_FINITE(REAL(value)[0])) return 1;
     if (TYPEOF(value) != LANGSXP || ANY_ATTRIB(value)) return 0;
     if (CAR(value) == Rf_install("abs") &&
@@ -240,6 +240,7 @@ static int raw_one_value_kind(SEXP value, SEXP *source_symbol,
             Rf_length(negative) == 2 &&
             TYPEOF(CADR(negative)) == REALSXP &&
             !ALTREP(CADR(negative)) && !ANY_ATTRIB(CADR(negative)) &&
+            !Rf_isS4(CADR(negative)) &&
             XLENGTH(CADR(negative)) == 1 &&
             R_FINITE(REAL(CADR(negative))[0])) return 2;
         return 0;
@@ -313,7 +314,9 @@ SEXP C_dtatools_probe_bracket_raw_five_parser(SEXP raw_j, SEXP profile) {
     for (int index = 0; index < (tagged ? 5 : 1);
          index++, node = tagged ? CDR(node) : R_NilValue) {
         SEXP target = tagged ? PRINTNAME(TAG(node)) : PRINTNAME(CAR(node));
-        SEXP value = tagged ? CAR(node) : CADDR(expression);
+        /* enquo() snapshots this bounded RHS before later row/group captures
+           can mutate the caller's literal through a public callback. */
+        SEXP value = PROTECT(Rf_duplicate(tagged ? CAR(node) : CADDR(expression)));
         SEXP assignment = PROTECT(Rf_allocVector(VECSXP, 2));
         SEXP name = PROTECT(Rf_ScalarString(target));
         SEXP quo = PROTECT(Rf_lang2(Rf_install("~"), value));
@@ -329,7 +332,7 @@ SEXP C_dtatools_probe_bracket_raw_five_parser(SEXP raw_j, SEXP profile) {
         SET_VECTOR_ELT(assignment, 1, quo);
         Rf_setAttrib(assignment, R_NamesSymbol, field_names);
         SET_VECTOR_ELT(result, index, assignment);
-        UNPROTECT(5);
+        UNPROTECT(6);
     }
     probe_general_phase_add(1, probe_general_clock_ns() - phase_start);
     phase_start = probe_general_clock_ns();

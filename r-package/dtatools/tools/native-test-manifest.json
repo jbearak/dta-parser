@@ -1595,7 +1595,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-size-policy.R",
-          "sha256": "180e164cc357edf99b3f23f295d860fe4affa477813729f72c80cb4cf66d9865"
+          "sha256": "09ac5a6ff5d45aee363408f6617083cbc88ade9a1a35c545fe3d982284deea95"
         },
         {
           "path": "tests/testthat/test-folded-return-mutation.R",
@@ -1603,7 +1603,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-secondary-inputs.R",
-          "sha256": "0fe73a8d247e5cd39e0cc965df854f09e9ff45a607d321cb82c34a20a6f34d9b"
+          "sha256": "bf2272d551ea959288ccbe86e9e61543110bfe3319fd98fe33478e5c4c4b33b3"
         },
         {
           "path": "tests/testthat/test-numeric-s4-policies.R",
@@ -3781,6 +3781,14 @@
           "warnings": 0
         },
         {
+          "file": "test-numeric-size-policy.R",
+          "test": "numeric size preflight does not treat dots references as ordinary bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
           "file": "test-folded-return-mutation.R",
           "test": "returned folded constants retain fresh numeric execution comparison",
           "occurrence": 1,
@@ -3794,6 +3802,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 50,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-secondary-inputs.R",
+          "test": "numeric argument admission preserves forwarded dots values and policies",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
           "warnings": 0
         },
         {
@@ -6829,7 +6845,7 @@
         },
         {
           "path": "tests/testthat/test-bracket-native-admission.R",
-          "sha256": "ac39cb64b3eb499dc7260c28a54fa65555dd1694eaea6203f15bb9d31aa320a3"
+          "sha256": "afa7642b1febbbc679828148404d8729411a4049444af93071e8ff18e5f7c201"
         },
         {
           "path": "tests/testthat/test-repl-native-admission.R",
@@ -6841,11 +6857,11 @@
         },
         {
           "path": "tests/testthat/test-plain-native-admission.R",
-          "sha256": "1e5638d8f8873f018df13587cd01f3beed74485c769e4f914a57ff3aef69b27a"
+          "sha256": "206fc43cd856816c5ed36923afb3eea940dbd2c6dfec65e0fe7f1b1f83fa883b"
         },
         {
           "path": "tests/testthat/test-grouped-double-admission.R",
-          "sha256": "76893e4e0de2b256ff70c042bdd16b18aeed718c4f2fbf4fc2a64600cd238ca6"
+          "sha256": "d513ff4354bd5fa22c465b6c14d127fe12972eea8152b22c56ab0886b8472d96"
         }
       ],
       "blocks": [
@@ -8795,6 +8811,50 @@
           "warnings": 0
         },
         {
+          "file": "test-bracket-native-admission.R",
+          "test": "grouped native brackets preserve attributed arithmetic literals",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "grouped native mutations preserve dots in grouping keys",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "bracket expressions are captured before row and grouping callbacks",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-bracket-native-admission.R",
+          "test": "grouped native brackets isolate later caller literal changes",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
           "file": "test-repl-native-admission.R",
           "test": "native replacement admits an unfamiliar column and preserves public fallback",
           "occurrence": 1,
@@ -8916,6 +8976,22 @@
         {
           "file": "test-plain-native-admission.R",
           "test": "owned generation preserves custom source arithmetic dispatch",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "native mutations preserve attribute-free S4 arithmetic dispatch",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-plain-native-admission.R",
+          "test": "native mutations preserve S4 table methods and their errors",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 1,
@@ -9050,6 +9126,14 @@
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {
+          "file": "test-grouped-double-admission.R",
+          "test": "grouped native mutations preserve S4 grouping key dispatch",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
           "file": "test-mutation-fast.R",
           "test": "scalar mutation reads database arguments only at ordinary evaluation",
           "occurrence": 1,
@@ -9120,6 +9204,62 @@
           "kind": "r",
           "minimum": 0,
           "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-bracket-attributed-literals",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-mutation-dots-keys",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-bracket-late-literals",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "bracket-expression-snapshots",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-mutation-s4-literals",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "grouped-native-s4-keys",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "native-mutation-s4-tables",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
           "completion": "complete",
           "allow_error": false
         },
