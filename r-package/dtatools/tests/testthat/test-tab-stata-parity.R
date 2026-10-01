@@ -233,7 +233,7 @@ test_that("a dta_tab is a table with a presentation record", {
     # Without category names there is nothing to lay out, so the table
     # prints and converts as a plain one, with every count still in it.
     stripped <- unname(result)
-    expect_identical(format(stripped), utils::capture.output(print(unname(plain))))
+    expect_identical(stripped, unname(plain))
     expect_identical(as.data.frame(stripped), as.data.frame(unname(plain)))
     expect_identical(sum(stripped), 69L)
     expect_identical(
@@ -249,15 +249,15 @@ test_that("tab checks its Stata options the way Stata checks them", {
     expect_error(tab(d, rep78, percent = "row"), "two-way")
     expect_error(tab(d, rep78, expected = TRUE), "two-way")
     expect_error(tab(d, rep78, foreign, mpg, percent = "cell"), "two-way")
-    expect_error(tab(d, rep78, foreign, freq = FALSE), "nothing would be shown")
-    expect_error(tab(d, rep78, freq = FALSE), "nothing would be shown")
+    expect_identical(format(tab(d, rep78, foreign, freq = FALSE)), character())
+    expect_identical(format(tab(d, rep78, freq = FALSE)), character())
     expect_error(tab(d, rep78, foreign, percent = "rows"), "arg")
     expect_error(tab(d, rep78, foreign, percent = 1), "`percent`")
     expect_error(tab(d, rep78, sort = NA), "`sort`")
     expect_error(tab(d, rep78, foreign, expected = "yes"), "`expected`")
     expect_error(tab(d, rep78, freq = c(TRUE, FALSE)), "`freq`")
-    # Stata's `nofreq` alone prints nothing; the R error names the cause.
-    expect_error(tab(d, rep78, foreign, freq = FALSE), "freq = FALSE")
+    # Stata's `nofreq` alone prints nothing, and the R result also prints silently.
+    expect_output(print(tab(d, rep78, foreign, freq = FALSE)), NA)
 })
 
 test_that("three or more variables are an R extension without a Stata layout", {
@@ -373,12 +373,12 @@ test_that("sort keeps a table with one category or none", {
     expect_identical(names(dimnames(tab(x, sort = TRUE))), "x")
 })
 
-test_that("duplicate label text is qualified by code, unlike Stata", {
+test_that("duplicate labels print as Stata but table names retain unique codes", {
     # Stata prints two rows headed `Same`; tab() names every row uniquely.
     x <- set_val_labels(c(1, 2, 2, 3), Same = 1, Same = 2, Three = 3)
     lines <- format(tab(x))
     expect_identical(substr(lines[3:5], 1L, 11L),
-                     c("   Same [1]", "   Same [2]", "      Three"))
+                     c("       Same", "       Same", "      Three"))
     expect_identical(as.character(as.data.frame(tab(x))$x),
                      c("Same [1]", "Same [2]", "Three"))
 })

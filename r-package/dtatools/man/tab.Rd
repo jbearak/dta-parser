@@ -2,6 +2,7 @@
 % Please edit documentation in R/tab.R
 \name{tab}
 \alias{tab}
+\alias{tabulate}
 \title{Tabulate vectors as Stata's \code{tabulate} does}
 \usage{
 tab(
@@ -13,7 +14,91 @@ tab(
   sort = FALSE,
   percent = NULL,
   expected = FALSE,
-  freq = TRUE
+  freq = TRUE,
+  where = NULL,
+  rows = NULL,
+  by = NULL,
+  weights = NULL,
+  weight = c("aweight", "fweight", "iweight"),
+  subpop = NULL,
+  row = FALSE,
+  column = FALSE,
+  cell = FALSE,
+  nofreq = FALSE,
+  nolabel = FALSE,
+  chi2 = FALSE,
+  lrchi2 = FALSE,
+  exact = FALSE,
+  gamma = FALSE,
+  taub = FALSE,
+  V = FALSE,
+  all = FALSE,
+  cchi2 = FALSE,
+  clrchi2 = FALSE,
+  rowsort = FALSE,
+  colsort = FALSE,
+  key = NULL,
+  nokey = FALSE,
+  wrap = FALSE,
+  plot = FALSE,
+  nolog = FALSE,
+  generate = NULL,
+  matcell = FALSE,
+  matrow = FALSE,
+  matcol = FALSE,
+  collect = FALSE,
+  summarize = NULL,
+  means = NULL,
+  standard = NULL,
+  obs = NULL
+)
+
+tabulate(
+  x,
+  ...,
+  data = NULL,
+  missing = FALSE,
+  display = c("label", "value", "both"),
+  sort = FALSE,
+  percent = NULL,
+  expected = FALSE,
+  freq = TRUE,
+  where = NULL,
+  rows = NULL,
+  by = NULL,
+  weights = NULL,
+  weight = c("aweight", "fweight", "iweight"),
+  subpop = NULL,
+  row = FALSE,
+  column = FALSE,
+  cell = FALSE,
+  nofreq = FALSE,
+  nolabel = FALSE,
+  chi2 = FALSE,
+  lrchi2 = FALSE,
+  exact = FALSE,
+  gamma = FALSE,
+  taub = FALSE,
+  V = FALSE,
+  all = FALSE,
+  cchi2 = FALSE,
+  clrchi2 = FALSE,
+  rowsort = FALSE,
+  colsort = FALSE,
+  key = NULL,
+  nokey = FALSE,
+  wrap = FALSE,
+  plot = FALSE,
+  nolog = FALSE,
+  generate = NULL,
+  matcell = FALSE,
+  matrow = FALSE,
+  matcol = FALSE,
+  collect = FALSE,
+  summarize = NULL,
+  means = NULL,
+  standard = NULL,
+  obs = NULL
 )
 }
 \arguments{
@@ -49,8 +134,75 @@ descending frequency, ties in value order, as Stata's \code{sort} does.}
 frequency under independence, as Stata's \code{expected} does.}
 
 \item{freq}{\code{FALSE} omits the frequencies, as Stata's \code{nofreq} does. It
-needs \code{percent} or \code{expected}, since a table with nothing to show is an
-error here where Stata prints nothing.}
+prints nothing without other cell statistics. In summary tables it
+selects or suppresses the sum of weights (unweighted frequency).}
+
+\item{where}{An expression selecting rows within each group. \code{.n} and \code{.N}
+are the within-group row number and row count. Missing selections are omitted.}
+
+\item{rows}{Positive row positions, interpreted within each group.}
+
+\item{by}{Optional unquoted grouping columns, such as \code{by = c(region, sex)}.
+A grouped data frame also produces one table per group.}
+
+\item{weights}{Optional numeric weight expression. Zero and missing weights
+are omitted; negative, infinite, and noninteger frequency weights are errors.}
+
+\item{weight}{Weight type: \code{"aweight"} (normalized to the sample size),
+\code{"fweight"} (integer replication counts), or \code{"iweight"} (raw weight sums).}
+
+\item{subpop}{Numeric or logical expression. Zero excludes an observation
+from counts while retaining its categories. As in Stata, missing is nonzero.}
+
+\item{row, column, cell}{Logical alternatives to \code{percent}.}
+
+\item{nofreq, nolabel}{Stata spellings of \code{freq = FALSE} and \code{display = "value"}.}
+
+\item{chi2, lrchi2}{Two-way Pearson and likelihood-ratio independence tests.}
+
+\item{exact}{Fisher's exact test, including the one-sided probability for
+two-by-two tables. A positive integer multiplies the exact-test workspace.}
+
+\item{gamma, taub, V}{Goodman--Kruskal gamma, Kendall tau-b (with asymptotic
+standard errors), and Cramer's V. V is signed for two-by-two tables.}
+
+\item{all}{Request all association measures except Fisher's exact test.
+Explicit \code{chi2 = FALSE}, \code{lrchi2 = FALSE}, \code{gamma = FALSE}, \code{taub = FALSE},
+or \code{V = FALSE} suppresses that measure even with \code{all = TRUE}.}
+
+\item{cchi2, clrchi2}{Show each cell's Pearson or likelihood-ratio contribution.}
+
+\item{rowsort, colsort}{Sort two-way rows or columns by descending frequency.}
+
+\item{key}{Force or suppress the two-way cell key; \code{NULL} chooses automatically.}
+
+\item{nokey}{Suppress the key, as with \code{key = FALSE}.}
+
+\item{wrap}{Keep a wide frequency table in one panel, as Stata's \code{wrap} does.}
+
+\item{plot}{Print a one-way horizontal bar chart using stars.}
+
+\item{nolog}{Accepted for Stata syntax compatibility. R's exact-test engine
+does not print Stata's enumeration progress log.}
+
+\item{generate}{Optional prefix for indicator columns, returned in the
+result's \code{generated} data-frame attribute in original observation order.
+Excluded observations are missing. Source data are not modified.}
+
+\item{matcell, matrow, matcol}{Save frequency or underlying numeric category
+matrices in \code{attr(result, "r")}. String category matrices are not allowed.}
+
+\item{collect}{\code{TRUE} or a collection name attaches a \code{collection} list
+containing the tidy table and stored results. It is an R value, with no
+global Stata collection state or Stata style-file interpreter.}
+
+\item{summarize}{Optional numeric response expression for a one-way or
+two-way table of means, standard deviations, frequencies, and observations.
+Missing responses are excluded. Only analytic and frequency weights apply.}
+
+\item{means, standard, obs}{Summary-table switches. \code{NULL} uses Stata's defaults;
+\code{TRUE} selects a statistic and \code{FALSE} suppresses it. An affirmative \code{means},
+\code{standard}, or \code{freq} narrows the default display; \code{obs} adds observations.}
 }
 \value{
 A \code{table} of frequencies with class \code{dta_tab}. \code{\link[=as.table]{as.table()}} drops
@@ -59,7 +211,10 @@ and expected frequencies as columns, and \code{\link[=format]{format()}} gives t
 lines. Subsetting, arithmetic, \code{\link[=t]{t()}}, and \code{\link[=aperm]{aperm()}} return plain
 tables. \code{\link[=margin.table]{margin.table()}} is not generic and restores the class itself;
 its result carries no layout and prints as a plain table, and
-\code{as.table(margin.table(x, 1))} is the exact plain table.
+\code{as.table(margin.table(x, 1))} is the exact plain table. \code{attr(result, "r")}
+holds Stata's stored counts and requested tests and matrices. Grouped calls
+return a \code{dta_tab_grouped} list. Summary calls return a \code{dta_tab_summary}
+data frame whose presentation attribute contains cell and marginal moments.
 }
 \description{
 Creates one-way and two-way frequency tables that print as Stata's
@@ -79,7 +234,8 @@ ways to select \code{x} and \code{y}.
 Value labels affect only displayed dimension names. Categories remain
 ordered by their underlying values. Unused value-label definitions do not
 create zero-count categories. If displayed labels collide, their underlying
-values are appended to keep every dimension name unambiguous.
+values are appended to keep every dimension name unambiguous. Printed labels
+remain unchanged, as in Stata.
 
 With \code{missing = TRUE} or \code{"distinguish"}, numeric categories are ordered
 after observed values as system missing, extended missings \code{.a} through
@@ -115,4 +271,7 @@ tab(x, sort = TRUE)
 
 mtcars |>
     tab(cyl, gear, percent = "row")
+tabulate(mtcars, cyl, gear, all = TRUE)
+tab(mtcars, cyl, summarize = mpg)
+tab(mtcars, cyl, by = am, where = .n <= 10)
 }

@@ -1,0 +1,585 @@
+. * Stata 18 tabulate, summarize() oracle. Run from this directory:
+. * /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp -bq do tabulate-sum
+> mary.do
+. set more off
+
+. set linesize 80
+
+. clear
+
+. input g h double y double w
+
+             g          h           y           w
+  1. 1 1 10 1
+  2. 1 1 20 2
+  3. 1 2 40 3
+  4. 2 1 50 4
+  5. 2 2 . 2
+  6. 3 2 . 1
+  7. . 1 60 1
+  8. end
+
+. label variable y "Outcome measure"
+
+. tabulate g, summarize(y)
+
+            |     Summary of Outcome measure
+          g |        Mean   Std. dev.       Freq.
+------------+------------------------------------
+          1 |   23.333333   15.275252           3
+          2 |          50           0           1
+------------+------------------------------------
+      Total |          30   18.257419           4
+
+. tabulate g h, summarize(y)
+
+       Means, Standard Deviations and Frequencies of Outcome measure
+
+           |          h
+         g |         1          2 |     Total
+-----------+----------------------+----------
+         1 |        15         40 | 23.333333
+           | 7.0710678          0 | 15.275252
+           |         2          1 |         3
+-----------+----------------------+----------
+         2 |        50          . |        50
+           |         0          . |         0
+           |         1          0 |         1
+-----------+----------------------+----------
+     Total | 26.666667         40 |        30
+           |  20.81666          0 | 18.257419
+           |         3          1 |         4
+
+. tabulate g [fw=w], summarize(y)
+
+            |           Summary of Outcome measure
+          g |        Mean   Std. dev.       Freq.         Obs
+------------+------------------------------------------------
+          1 |   28.333333   13.291601           6           6
+          2 |          50           0           4           4
+------------+------------------------------------------------
+      Total |          37   14.944341          10          10
+
+. tabulate g [aw=w], summarize(y)
+
+            |           Summary of Outcome measure
+          g |        Mean   Std. dev.       Freq.         Obs
+------------+------------------------------------------------
+          1 |   28.333333   14.860462           6           3
+          2 |          50           0           4           1
+------------+------------------------------------------------
+      Total |          37   16.370706          10           4
+
+. tabulate g h [fw=w], summarize(y)
+
+    Means, Standard Deviations, Frequencies and Number of observations
+                            of Outcome measure
+
+           |          h
+         g |         1          2 |     Total
+-----------+----------------------+----------
+         1 | 16.666667         40 | 28.333333
+           | 5.7735027          0 | 13.291601
+           |         3          3 |         6
+           |         3          3 |         6
+-----------+----------------------+----------
+         2 |        50          . |        50
+           |         0          . |         0
+           |         4          0 |         4
+           |         4          0 |         4
+-----------+----------------------+----------
+     Total | 35.714286         40 |        37
+           | 18.126539          0 | 14.944341
+           |         7          3 |        10
+           |         7          3 |        10
+
+. tabulate g h [aw=w], summarize(y)
+
+    Means, Standard Deviations, Frequencies and Number of observations
+                            of Outcome measure
+
+           |          h
+         g |         1          2 |     Total
+-----------+----------------------+----------
+         1 | 16.666667         40 | 28.333333
+           | 6.6666667          0 | 14.860462
+           |         3          3 |         6
+           |         2          1 |         3
+-----------+----------------------+----------
+         2 |        50          . |        50
+           |         0          . |         0
+           |         4          0 |         4
+           |         1          0 |         1
+-----------+----------------------+----------
+     Total | 35.714286         40 |        37
+           | 20.553564          0 | 16.370706
+           |         7          3 |        10
+           |         3          1 |         4
+
+. tabulate g, summarize(y) means
+
+            | Summary of
+            |   Outcome
+            |   measure
+          g |        Mean
+------------+------------
+          1 |   23.333333
+          2 |          50
+------------+------------
+      Total |          30
+
+. tabulate g, summarize(y) standard
+
+            | Summary of
+            |   Outcome
+            |   measure
+          g |   Std. dev.
+------------+------------
+          1 |   15.275252
+          2 |           0
+------------+------------
+      Total |   18.257419
+
+. tabulate g, summarize(y) freq obs
+
+            |   Summary of Outcome
+            |         measure
+          g |       Freq.         Obs
+------------+------------------------
+          1 |           3           3
+          2 |           1           1
+------------+------------------------
+      Total |           4           4
+
+. tabulate g, summarize(y) nofreq
+
+            |   Summary of Outcome
+            |         measure
+          g |        Mean   Std. dev.
+------------+------------------------
+          1 |   23.333333   15.275252
+          2 |          50           0
+------------+------------------------
+      Total |          30   18.257419
+
+. tabulate g h, summarize(y) obs
+
+    Means, Standard Deviations, Frequencies and Number of observations
+                            of Outcome measure
+
+           |          h
+         g |         1          2 |     Total
+-----------+----------------------+----------
+         1 |        15         40 | 23.333333
+           | 7.0710678          0 | 15.275252
+           |         2          1 |         3
+           |         2          1 |         3
+-----------+----------------------+----------
+         2 |        50          . |        50
+           |         0          . |         0
+           |         1          0 |         1
+           |         1          0 |         1
+-----------+----------------------+----------
+     Total | 26.666667         40 |        30
+           |  20.81666          0 | 18.257419
+           |         3          1 |         4
+           |         3          1 |         4
+
+. tabulate g h, summarize(y) missing
+
+       Means, Standard Deviations and Frequencies of Outcome measure
+
+           |          h
+         g |         1          2 |     Total
+-----------+----------------------+----------
+         1 |        15         40 | 23.333333
+           | 7.0710678          0 | 15.275252
+           |         2          1 |         3
+-----------+----------------------+----------
+         2 |        50          . |        50
+           |         0          . |         0
+           |         1          0 |         1
+-----------+----------------------+----------
+         . |        60          . |        60
+           |         0          . |         0
+           |         1          0 |         1
+-----------+----------------------+----------
+     Total |        35         40 |        36
+           | 23.804761          0 | 20.736441
+           |         4          1 |         5
+
+. tabulate g [fw=w], summarize(y) means
+
+            |   Summary of Outcome
+            |         measure
+          g |        Mean         Obs
+------------+------------------------
+          1 |   28.333333           6
+          2 |          50           4
+------------+------------------------
+      Total |          37          10
+
+. tabulate g [aw=w], summarize(y) freq
+
+            |   Summary of Outcome
+            |         measure
+          g |       Freq.         Obs
+------------+------------------------
+          1 |           6           3
+          2 |           4           1
+------------+------------------------
+      Total |          10           4
+
+. tabulate g h, summarize(y) means standard
+
+             Means and Standard Deviations of Outcome measure
+
+           |          h
+         g |         1          2 |     Total
+-----------+----------------------+----------
+         1 |        15         40 | 23.333333
+           | 7.0710678          0 | 15.275252
+-----------+----------------------+----------
+         2 |        50          . |        50
+           |         0          . |         0
+-----------+----------------------+----------
+     Total | 26.666667         40 |        30
+           |  20.81666          0 | 18.257419
+
+. tabulate g h, summarize(y) nomeans nostandard nofreq
+
+. tabulate g h if g == 3, summarize(y)
+no observations
+
+. label variable g "A very long label for this factor"
+
+. label define g 1 "ABCDEFGHIJKLMNOQRSTUVWXYZABCDEFGHIJKLMNOPQRST" 2 "B"
+
+. label values g g
+
+. tabulate g, summarize(y)
+
+A very long |
+  label for |     Summary of Outcome measure
+this factor |        Mean   Std. dev.       Freq.
+------------+------------------------------------
+  ABCDEFGHI |   23.333333   15.275252           3
+          B |          50           0           1
+------------+------------------------------------
+      Total |          30   18.257419           4
+
+. tabulate g h, summarize(y)
+
+       Means, Standard Deviations and Frequencies of Outcome measure
+
+    A very |
+long label |
+  for this |          h
+    factor |         1          2 |     Total
+-----------+----------------------+----------
+ ABCDEFGHI |        15         40 | 23.333333
+           | 7.0710678          0 | 15.275252
+           |         2          1 |         3
+-----------+----------------------+----------
+         B |        50          . |        50
+           |         0          . |         0
+           |         1          0 |         1
+-----------+----------------------+----------
+     Total | 26.666667         40 |        30
+           |  20.81666          0 | 18.257419
+           |         3          1 |         4
+
+. clear
+
+. input str45 g h double y
+
+                                                 g          h           y
+  1. "ABCDEFGHIJKLMNOQRSTUVWXYZABCDEFGHIJKLMNOPQRST" 1 10
+  2. "B" 2 20
+  3. end
+
+. label variable g "A long grouping label"
+
+. label variable y "A very long outcome label with a trailing word"
+
+. tabulate g, summarize(y)
+
+                                  |   Summary of A very long outcome
+                                  |     label with a trailing word
+            A long grouping label |        Mean   Std. dev.       Freq.
+----------------------------------+------------------------------------
+ABCDEFGHIJKLMNOQRSTUVWXYZABCDEF.. |          10           0           1
+                                B |          20           0           1
+----------------------------------+------------------------------------
+                            Total |          15   7.0710678           2
+
+. tabulate g, summarize(y) means
+
+                                             | Summary of
+                                             | A very long
+                                             |   outcome
+                                             | label with
+                                             | a trailing
+                                             |    word
+                       A long grouping label |        Mean
+---------------------------------------------+------------
+ABCDEFGHIJKLMNOQRSTUVWXYZABCDEFGHIJKLMNOPQ.. |          10
+                                           B |          20
+---------------------------------------------+------------
+                                       Total |          15
+
+. tabulate g h, summarize(y)
+
+                Means, Standard Deviations and Frequencies
+             of A very long outcome label with a trailing word
+
+                                         |          h
+                   A long grouping label |         1          2 |     Total
+-----------------------------------------+----------------------+----------
+ABCDEFGHIJKLMNOQRSTUVWXYZABCDEFGHIJKLM.. |        10          . |        10
+                                         |         0          . |         0
+                                         |         1          0 |         1
+-----------------------------------------+----------------------+----------
+                                       B |         .         20 |        20
+                                         |         .          0 |         0
+                                         |         0          1 |         1
+-----------------------------------------+----------------------+----------
+                                   Total |        10         20 |        15
+                                         |         0          0 | 7.0710678
+                                         |         1          1 |         2
+
+. tabulate g h, summarize(y) means
+
+          Means of A very long outcome label with a trailing word
+
+                                         |          h
+                   A long grouping label |         1          2 |     Total
+-----------------------------------------+----------------------+----------
+ABCDEFGHIJKLMNOQRSTUVWXYZABCDEFGHIJKLM.. |        10          . |        10
+                                       B |         .         20 |        20
+-----------------------------------------+----------------------+----------
+                                   Total |        10         20 |        15
+
+. clear
+
+. set obs 12
+Number of observations (_N) was 0, now 12.
+
+. gen g = 1
+
+. gen h = _n
+
+. gen y = _n
+
+. tabulate g h, summarize(y) means
+
+                                Means of y
+
+           |                         h
+         g |         1          2          3          4          5 |     Total
+-----------+-------------------------------------------------------+----------
+         1 |         1          2          3          4          5 |       6.5
+-----------+-------------------------------------------------------+----------
+     Total |         1          2          3          4          5 |       6.5
+
+           |                         h
+         g |         6          7          8          9         10 |     Total
+-----------+-------------------------------------------------------+----------
+         1 |         6          7          8          9         10 |       6.5
+-----------+-------------------------------------------------------+----------
+     Total |         6          7          8          9         10 |       6.5
+
+           |          h
+         g |        11         12 |     Total
+-----------+----------------------+----------
+         1 |        11         12 |       6.5
+-----------+----------------------+----------
+     Total |        11         12 |       6.5
+
+. set linesize 120
+
+. tabulate g h, summarize(y) means
+
+                                Means of y
+
+           |                         h
+         g |         1          2          3          4          5 |     Total
+-----------+-------------------------------------------------------+----------
+         1 |         1          2          3          4          5 |       6.5
+-----------+-------------------------------------------------------+----------
+     Total |         1          2          3          4          5 |       6.5
+
+           |                         h
+         g |         6          7          8          9         10 |     Total
+-----------+-------------------------------------------------------+----------
+         1 |         6          7          8          9         10 |       6.5
+-----------+-------------------------------------------------------+----------
+     Total |         6          7          8          9         10 |       6.5
+
+           |          h
+         g |        11         12 |     Total
+-----------+----------------------+----------
+         1 |        11         12 |       6.5
+-----------+----------------------+----------
+     Total |        11         12 |       6.5
+
+. set linesize 255
+
+. tabulate g h, summarize(y) means wrap
+
+                                Means of y
+
+           |                                                  h
+         g |         1          2          3          4          5          6          7          8          9         10 |     Total
+-----------+--------------------------------------------------------------------------------------------------------------+----------
+         1 |         1          2          3          4          5          6          7          8          9         10 |       6.5
+-----------+--------------------------------------------------------------------------------------------------------------+----------
+     Total |         1          2          3          4          5          6          7          8          9         10 |       6.5
+
+           |          h
+         g |        11         12 |     Total
+-----------+----------------------+----------
+         1 |        11         12 |       6.5
+-----------+----------------------+----------
+     Total |        11         12 |       6.5
+
+. set linesize 80
+
+. clear
+
+. input g str20 h double y
+
+             g                     h           y
+  1. 1 "ABCDEFGHIJKLMNO" 10
+  2. 1 "Short" 20
+  3. 2 "B" 30
+  4. end
+
+. label variable h "A very long column heading this is"
+
+. tabulate g h, summarize(y)
+
+              Means, Standard Deviations and Frequencies of y
+
+           |  A very long column heading
+           |            this is
+         g | ABCDEFG..          B      Short |     Total
+-----------+---------------------------------+----------
+         1 |        10          .         20 |        15
+           |         0          .          0 | 7.0710678
+           |         1          0          1 |         2
+-----------+---------------------------------+----------
+         2 |         .         30          . |        30
+           |         .          0          . |         0
+           |         0          1          0 |         1
+-----------+---------------------------------+----------
+     Total |        10         30         20 |        20
+           |         0          0          0 |        10
+           |         1          1          1 |         3
+
+. clear
+
+. set obs 2
+Number of observations (_N) was 0, now 2.
+
+. gen g = 1
+
+. gen double y = 1e100
+
+. tabulate g, summarize(y)
+
+            |            Summary of y
+          g |        Mean   Std. dev.       Freq.
+------------+------------------------------------
+          1 |   1.00e+100           0           2
+------------+------------------------------------
+      Total |   1.00e+100           0           2
+
+. replace y = 1e-100
+(2 real changes made)
+
+. tabulate g, summarize(y)
+
+            |            Summary of y
+          g |        Mean   Std. dev.       Freq.
+------------+------------------------------------
+          1 |   1.00e-100           0           2
+------------+------------------------------------
+      Total |   1.00e-100           0           2
+
+. clear
+
+. input g h double y
+
+             g          h           y
+  1. 1 1 10
+  2. 2 1 20
+  3. end
+
+. label define duplicate 1 "Same" 2 "Same"
+
+. label values g duplicate
+
+. tabulate g, summarize(y)
+
+            |            Summary of y
+          g |        Mean   Std. dev.       Freq.
+------------+------------------------------------
+       Same |          10           0           1
+       Same |          20           0           1
+------------+------------------------------------
+      Total |          15   7.0710678           2
+
+. tabulate g h, summarize(y)
+
+              Means, Standard Deviations and Frequencies of y
+
+           |     h
+         g |         1 |     Total
+-----------+-----------+----------
+      Same |        10 |        10
+           |         0 |         0
+           |         1 |         1
+-----------+-----------+----------
+      Same |        20 |        20
+           |         0 |         0
+           |         1 |         1
+-----------+-----------+----------
+     Total |        15 |        15
+           | 7.0710678 | 7.0710678
+           |         2 |         2
+
+. label values g
+
+. replace g = g / 10
+(2 real changes made)
+
+. format g %9.2f
+
+. tabulate g, summarize(y)
+
+            |            Summary of y
+          g |        Mean   Std. dev.       Freq.
+------------+------------------------------------
+       0.10 |          10           0           1
+       0.20 |          20           0           1
+------------+------------------------------------
+      Total |          15   7.0710678           2
+
+. replace g = td(01jan2020) + _n - 1
+(2 real changes made)
+
+. format g %td
+
+. tabulate g, summarize(y)
+
+            |            Summary of y
+          g |        Mean   Std. dev.       Freq.
+------------+------------------------------------
+  01jan2020 |          10           0           1
+  02jan2020 |          20           0           1
+------------+------------------------------------
+      Total |          15   7.0710678           2
+
+. 
+end of do-file

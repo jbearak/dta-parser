@@ -106,6 +106,10 @@
     "summarise",
     "summarize",
     "tab",
+    "tab1",
+    "tab2",
+    "tabi",
+    "tabulate",
     "tagged_missing",
     "val_code",
     "val_label",
@@ -176,6 +180,62 @@
     {
       "path": "tests/testthat/fixtures/numeric-bytecode-probe.c",
       "sha256": "51d16e03ece28a5cdee9dc33fc0e9ab0b6124adff2087f0921b928841446485f"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-association.do",
+      "sha256": "0d14c0ebc3c446464add4b1bc90c3ff55818932ecf4f34037c096f949c39e3ae"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-association.log",
+      "sha256": "8163ba55579230d7cf014ff625f4f47f90096cb57f07344d6c0dfcd1ca6854e5"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-features.do",
+      "sha256": "7b3bcba2028e173227d800274c0bf4dfeb96e5dd15baaff5f38861163ae44843"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-features.log",
+      "sha256": "0d94b4424d0a9ae97f3733aa38f5fc6db1b3ce0599b05e825e6a7de364bfb092"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-grouped.do",
+      "sha256": "0dff383e440061892c0796726f49385028702c60e962f662be1af32ff5732fcc"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-grouped.log",
+      "sha256": "ed9085487ae238a10175872a9421a579e2a680c1a0bcfbc7e5e3e03abfd703bd"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-indicators.do",
+      "sha256": "1aa0d8ae1517c9d8094c37435951bcb696026e2df5811fc483a61155c2356f95"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-indicators.log",
+      "sha256": "e66b4ffbb0a70247fd44d4521ce6f9da4c7da3c621fd3bf485dff453f9e38f1c"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-multiple.do",
+      "sha256": "272c9c7fb3e0a666b46f5443c1aedcfad809127af0cf7e9233f35da95c2839e8"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-multiple.log",
+      "sha256": "b63443a6ed2413ff432d0f558d5f2fe14803b0b03d5ddd5df651b6cbd6b39094"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-presentation.do",
+      "sha256": "39a4ac4505d4a6176a4984728d87138d59dd6cbbff2a45abeb96d0a3547f8f9d"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-presentation.log",
+      "sha256": "ce07b9feef5719895e3c5e327982a3c755bc4d9f62268cf89fc3c9590cc615c5"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-summary.do",
+      "sha256": "c8588114618f0f41e5baa87c37547c7dea3580645cbcfd27517a6195bdf122bc"
+    },
+    {
+      "path": "tests/testthat/fixtures/tabulate-summary.log",
+      "sha256": "576302a58f6384a92f4533d95c601866259ce247472242954f33ee02524c7faf"
     }
   ],
   "families": [
@@ -6880,7 +6940,7 @@
         },
         {
           "path": "tests/testthat/test-raven-nse.R",
-          "sha256": "102dab4126f62b5f4ccd5d1e2b1187ff74d0e2c710e4a7268189ff265f05f5a8"
+          "sha256": "ec342fb231426ea897db527b90408079732449bebb1eefcee610bdd82593fcb0"
         },
         {
           "path": "tests/testthat/test-auto-grow.R",
@@ -9626,7 +9686,7 @@
         },
         {
           "path": "tests/testthat/test-dplyr-optional.R",
-          "sha256": "79828023e28da0dca0a1cefa299595da6c01c648273a4c2829dcc3ca43e393cd"
+          "sha256": "7fa5143c27e75778faa9d5c11c8d2b9f1fa5be346fb72682526651a08c032650"
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
@@ -14094,7 +14154,7 @@
         },
         {
           "path": "tests/testthat/test-tab.R",
-          "sha256": "e2ad85800b192203c7ea04478fe8989a6d6ce40c6706d3eebfada558a067678f"
+          "sha256": "9664d6b315ed492706cf65a5630c7f02bb71c3ebeb9bd0874ea0a7a245372a78"
         },
         {
           "path": "tests/testthat/test-codebooks.R",
@@ -14106,7 +14166,35 @@
         },
         {
           "path": "tests/testthat/test-tab-stata-parity.R",
-          "sha256": "fd3e20081686da5de344a3c71414348628c53f59019bd412e53c8e054bbee265"
+          "sha256": "c160e9a1186f321b39205df546a0b29a9681b59dcba618552e135194db818468"
+        },
+        {
+          "path": "tests/testthat/test-tab-association.R",
+          "sha256": "aa66001a7bc577a70ce75b97daf2c837ab60cbd51d21d6c170701fd2c4ee91e7"
+        },
+        {
+          "path": "tests/testthat/test-tab-features.R",
+          "sha256": "8c03d8390d0a2eb72724c3629f88974ac986420b2e13b26b12b72cd0bb522289"
+        },
+        {
+          "path": "tests/testthat/test-tab-grouped.R",
+          "sha256": "679ae3dede048d26cecb3ce06693a5f013eb009a00fde9630c1598b88e09b31d"
+        },
+        {
+          "path": "tests/testthat/test-tab-indicators.R",
+          "sha256": "241f07a8f7de7ffe0174dfb64f00d45d7a6650faa180966751e661f3bc76ee0c"
+        },
+        {
+          "path": "tests/testthat/test-tab-multiple.R",
+          "sha256": "228caaf7af7586a11a47ca882150252832b42b208318ecb9e226dcbf6792e22d"
+        },
+        {
+          "path": "tests/testthat/test-tab-presentation.R",
+          "sha256": "c3db2df8426a18b6a3cc5d9cd466bf361b7156eb2ec7310392a0697ba00fdf93"
+        },
+        {
+          "path": "tests/testthat/test-tab-summary.R",
+          "sha256": "1e593727b4003cdc399ac7e40abcc60563b48eb4e55aecca427f5f1fbe2c7a40"
         }
       ],
       "blocks": [
@@ -14822,19 +14910,246 @@
         },
         {
           "file": "test-tab-stata-parity.R",
-          "test": "duplicate label text is qualified by code, unlike Stata",
+          "test": "sort keeps a table with one category or none",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-stata-parity.R",
+          "test": "duplicate labels print as Stata but table names retain unique codes",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 2,
           "warnings": 0
         },
         {
-          "file": "test-tab-stata-parity.R",
-          "test": "sort keeps a table with one category or none",
+          "file": "test-tab-association.R",
+          "test": "association measures match Stata's stored results and printed lines",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 7,
+          "min_pass": 235,
           "warnings": 0
+        },
+        {
+          "file": "test-tab-association.R",
+          "test": "weighted association accepts fweights and rejects other weights",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 29,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-association.R",
+          "test": "unused levels and empty tables do not create association tests",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-association.R",
+          "test": "ordinal errors remain stable for large frequency counts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-features.R",
+          "test": "tabulate is an exact alias and Stata selections and weights agree",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 22,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-features.R",
+          "test": "joint samples, subpop categories and indicators follow native rules",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-features.R",
+          "test": "by groups evaluate sample and weights within each group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-features.R",
+          "test": "new tabulate options reject invalid requests before returning results",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-grouped.R",
+          "test": "grouped tabulation headers replay native by-prefix output",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-grouped.R",
+          "test": "by headers preserve group order and distinguish empty and unlabelled keys",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-indicators.R",
+          "test": "generated indicator labels match Stata's metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-multiple.R",
+          "test": "tab1 tab2 and tabi print identically to native Stata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-multiple.R",
+          "test": "multiple table forwarding preserves selection and option environments",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-multiple.R",
+          "test": "immediate frequencies retain compact data even for large totals",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-multiple.R",
+          "test": "multiple tabulation evaluates its data source only once",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-multiple.R",
+          "test": "immediate matrix labels are presentation labels with numeric stored rows",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-presentation.R",
+          "test": "presentation options replay Stata's output",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 56,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-presentation.R",
+          "test": "nofreq without cell statistics is silent and keeps the counts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-presentation.R",
+          "test": "fractional weighted frequencies survive data-frame conversion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-presentation.R",
+          "test": "empty nofreq output follows native one- and two-way behavior",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-presentation.R",
+          "test": "replacing counts or labels cannot retain stale tabulation results",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-summary.R",
+          "test": "summary tables reproduce native Stata's printed statistics and layouts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 67,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-summary.R",
+          "test": "summary cells and margins retain native weighted moments",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-summary.R",
+          "test": "summary options and sample validation follow the summary command",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-summary.R",
+          "test": "grouped summary tables evaluate samples and weights inside each group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-summary.R",
+          "test": "editing summary cells drops the saved display and marginal moments",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-summary.R",
+          "test": "binding and transforming summaries cannot retain the original moments",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-summary.R",
+          "test": "dplyr operations on summaries drop the original moments",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
       "children": [],
