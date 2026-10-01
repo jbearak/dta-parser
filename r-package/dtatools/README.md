@@ -164,11 +164,27 @@ The [full-cache report](../../benchmarks/reader-corpus/results-2026-10-01-full-c
 records source `61954ee8`, all coverage and resource totals, background-load
 samples, and input/build checks before and after timing.
 
-The [September 16 corpus report](../../benchmarks/reader-corpus/results-2026-09-16-base-r/README.md)
-retains DTA, Arrow, Haven and Stata comparisons for its historical 1,812-file
-subset. That differs from this run's inventory and instrumentation. No Haven,
-Stata or Arrow timing was rerun in this full-cache read benchmark, so the old
-comparator totals are not divided into the new results.
+#### Comparison with Haven and native Stata
+
+The historical comparison below covers the same 1,812 files for all four
+readers. The dtatools measurements are from September 16, 2026; Haven and
+Stata measurements are retained from August 24 on the same files and computer.
+These are warm-cache batch totals from one fresh-process read per file.
+
+| Corpus | Files | DTA GB | `read_dta()` | `read_arrow()` | `haven::read_dta()` | Stata native `use` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| DHS | 641 | 46.903 | 38.684 s | 26.878 s | 2,727.051 s | 68.806 s |
+| MICS | 949 | 3.690 | 6.575 s | 5.656 s | 216.732 s | 1.155 s |
+| NSFG | 222 | 5.772 | 8.724 s | 6.602 s | 234.588 s | 0.885 s |
+
+The dtatools rows use default dibble output and automatic thread selection
+on an Apple M4 Max. Arrow files were preconverted; read times include checksum
+verification and exclude conversion. The
+[September 16 corpus report](../../benchmarks/reader-corpus/results-2026-09-16-base-r/README.md)
+records CPU time, peak RSS, coverage and the original comparator sources.
+Comparisons span measurement dates. The October 1 survey totals above use a
+larger inventory and different instrumentation, so they remain a separate
+series. No Haven, Stata or Arrow timing was rerun for that full-cache benchmark.
 
 Projected reads load specified columns and can help when the needed variables
 are known in advance. See [details and examples](../../docs/r-reader-projections.md).
@@ -203,11 +219,29 @@ JIT remains inside the first read call. This protocol differs from the
 full-cache rerun. Both used a shared Apple M4 Max, and the
 reports retain observations affected by background activity.
 
-The [September 16 India comparison](../../benchmarks/reader-parity/results-2026-09-16-india/README.md)
-retains ten-read Haven and Stata results. The earlier
-[October 1 release comparison](../../benchmarks/io-merge-review/results-2026-10-01/README.md)
-uses v0.10.0 as its baseline and a different measurement protocol. Neither is
-a new competitor comparison for this optimized build. The
+#### Comparison with Haven and native Stata on the India file
+
+The September 16, 2026 comparison measured ten full reads per tool on this
+same India file, each in a fresh process with a warm filesystem cache.
+
+| Reader | Median read wall time | Range | Median process CPU | Median peak RSS |
+| --- | ---: | ---: | ---: | ---: |
+| `dtatools::read_dta()` | 0.6135 s | 0.607–0.827 s | 5.1551 s | 5.237 GB |
+| `dtatools::read_arrow()` | 0.2950 s | 0.289–1.022 s | 3.0291 s | 5.400 GB |
+| `haven::read_dta()` | 472.9965 s | 422.801–572.189 s | 473.0478 s | 35.113 GB |
+| Stata native `use` | 0.4725 s | 0.471–0.542 s | 0.5070 s | 5.257 GB |
+
+Wall time covers the read call; process CPU and peak RSS include startup,
+package loading, dimension checks and shutdown. The shared host was an Apple
+M4 Max. Arrow checksum verification was enabled and conversion was outside
+timing. The dtatools options measured then subsequently became defaults.
+These historical ten-read results retain their original source and protocol,
+separately from the October 1 eight-read comparison above. The
+[September 16 India report](../../benchmarks/reader-parity/results-2026-09-16-india/README.md)
+records all observations, settings and background activity.
+
+The earlier [October 1 release comparison](../../benchmarks/io-merge-review/results-2026-10-01/README.md)
+uses v0.10.0 as its baseline and a different measurement protocol. The
 [reader CPU assessment](../../docs/research/r-reader-cpu-assessment-2026-10-01.md)
 discusses thread scaling.
 
