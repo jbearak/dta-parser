@@ -321,10 +321,7 @@ pub(crate) fn prepare_from_arrow(
             return Err("owned compact Arrow chunks cannot contain nulls".to_owned());
         }
         macro_rules! buffer {
-            ($array:ty, $missing:expr) => {
-                buffer!($array, $missing, usize)
-            };
-            ($array:ty, $missing:expr, $count:ty) => {{
+            ($array:ty, $missing:expr) => {{
                 let typed = array
                     .as_any()
                     .downcast_ref::<$array>()
@@ -335,23 +332,22 @@ pub(crate) fn prepare_from_arrow(
                     }
                     // No callbacks or atomics in the typed reduction. Each
                     // block is bounded so workers respond to cancellation.
+                    // A span fits in u32, including wider storage kinds;
+                    // widen its subtotal after the contiguous reduction.
                     missing_count += values
                         .iter()
-                        .map(|&value| <$count>::from(($missing)(value)))
-                        .sum::<$count>() as usize;
+                        .map(|&value| u32::from(($missing)(value)))
+                        .sum::<u32>() as usize;
                 }
                 typed.values().inner().clone()
             }};
         }
         let buffer = match kind {
             NumericKind::Byte => {
-                // One scan span fits in u32. Widen only its subtotal so the
-                // contiguous byte reduction need not use usize-width lanes.
-                buffer!(
-                    Int8Array,
-                    |value| crate::classify_byte_missing_for_version(value, version).is_some(),
-                    u32
+                buffer!(Int8Array, |value| crate::classify_byte_missing_for_version(
+                    value, version
                 )
+                .is_some())
             }
             NumericKind::Int => {
                 buffer!(Int16Array, |value| crate::classify_int_missing_for_version(
@@ -550,6 +546,204 @@ pub unsafe extern "C" fn dtatools_owned_numeric_chunks(data: *const c_void) -> u
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const RELEASES: [u16; 10] = [105, 108, 110, 111, 113, 114, 115, 117, 118, 119];
+
+    fn assert_sliced_values_and_missing_count(
+        arrays: Vec<ArrayRef>,
+        kind: NumericKind,
+        release: u16,
+        expected_missing: usize,
+        expected_bytes: &[u8],
+    ) {
+        let row_count = expected_bytes.len() / width(kind);
+        let prepared = prepare_from_arrow(
+            &arrays,
+            kind,
+            TemporalKind::None,
+            FormatVersion::try_from(release).unwrap(),
+            row_count,
+            || false,
+        )
+        .expect("sliced compact chunks retain values and release-specific missings");
+        let descriptor = prepared.into_descriptor();
+        assert_eq!(descriptor.missing_count, expected_missing);
+        let read = unsafe { RetainedRead::from_owner(descriptor.native_owner).unwrap() };
+        drop(descriptor);
+        drop(arrays);
+        let mut observed = Vec::new();
+        let mut row = 0;
+        while row < read.len() {
+            let (values, count) = read.region(row, row_count).unwrap();
+            observed.extend_from_slice(unsafe {
+                std::slice::from_raw_parts(values, count * width(kind))
+            });
+            row += count;
+        }
+        assert_eq!(observed, expected_bytes);
+    }
+
+    #[test]
+    fn owned_int_missing_counts_cover_every_value_and_release_in_sliced_chunks() {
+        let expected: Vec<i16> = (i16::MIN..=i16::MAX).collect();
+        let expected_bytes: Vec<u8> = expected
+            .iter()
+            .flat_map(|value| value.to_ne_bytes())
+            .collect();
+        for release in RELEASES {
+            let mut padded = vec![i16::MAX; 2];
+            padded.extend_from_slice(&expected);
+            padded.extend_from_slice(&[i16::MAX; 3]);
+            let whole = Int16Array::from(padded);
+            let arrays: Vec<ArrayRef> = vec![
+                Arc::new(Int16Array::from(Vec::<i16>::new())),
+                Arc::new(whole.slice(2, 13)),
+                Arc::new(whole.slice(15, 4096)),
+                Arc::new(whole.slice(4111, expected.len() - 4109)),
+            ];
+            drop(whole);
+            assert_sliced_values_and_missing_count(
+                arrays,
+                NumericKind::Int,
+                release,
+                if release <= 111 { 1 } else { 27 },
+                &expected_bytes,
+            );
+        }
+    }
+
+    #[test]
+    fn owned_long_missing_counts_cover_sentinels_and_signed_boundaries_for_every_release() {
+        let mut expected = vec![i32::MIN, i32::MIN + 1, -1, 0, 1, 2_147_483_620];
+        expected.extend(2_147_483_621..=i32::MAX);
+        let expected_bytes: Vec<u8> = expected
+            .iter()
+            .flat_map(|value| value.to_ne_bytes())
+            .collect();
+        for release in RELEASES {
+            let mut padded = vec![i32::MAX; 2];
+            padded.extend_from_slice(&expected);
+            padded.extend_from_slice(&[i32::MAX; 3]);
+            let whole = Int32Array::from(padded);
+            let arrays: Vec<ArrayRef> = vec![
+                Arc::new(Int32Array::from(Vec::<i32>::new())),
+                Arc::new(whole.slice(2, 7)),
+                Arc::new(whole.slice(9, expected.len() - 7)),
+            ];
+            drop(whole);
+            assert_sliced_values_and_missing_count(
+                arrays,
+                NumericKind::Long,
+                release,
+                if release <= 111 { 1 } else { 27 },
+                &expected_bytes,
+            );
+        }
+    }
+
+    #[test]
+    fn owned_float_missing_counts_preserve_nan_payloads_and_legacy_ranges() {
+        // These finite values and negative infinity are observed in every
+        // release. Positive infinity belongs to the legacy missing range.
+        let mut bits = vec![
+            0,
+            0x8000_0000,
+            0x3f80_0000,
+            0xbf80_0000,
+            0x7eff_ffff,
+            0xfeff_ffff,
+            0xff00_0000,
+            0xff80_0000,
+        ];
+        bits.extend((0..=26).map(|tag| 0x7f00_0000 + tag * 0x800));
+        bits.extend([
+            0x7f00_0001,
+            0x7f00_07ff,
+            0x7f00_d001,
+            0x7f7f_ffff,
+            0x7f80_0000,
+        ]);
+        // Both signs, quiet/signalling encodings and payload extremes remain
+        // bit-exact in retained backing and count as missing in every release.
+        bits.extend([
+            0x7f80_0001,
+            0x7fc0_0000,
+            0x7fff_ffff,
+            0xff80_0001,
+            0xffc0_0000,
+            0xffff_ffff,
+        ]);
+        let expected: Vec<f32> = bits.iter().copied().map(f32::from_bits).collect();
+        let expected_bytes: Vec<u8> = bits.iter().flat_map(|value| value.to_ne_bytes()).collect();
+        for release in RELEASES {
+            let mut padded = vec![f32::NAN; 2];
+            padded.extend_from_slice(&expected);
+            padded.extend_from_slice(&[f32::NAN; 3]);
+            let whole = Float32Array::from(padded);
+            let arrays: Vec<ArrayRef> = vec![
+                Arc::new(Float32Array::from(Vec::<f32>::new())),
+                Arc::new(whole.slice(2, 11)),
+                Arc::new(whole.slice(13, expected.len() - 11)),
+            ];
+            drop(whole);
+            assert_sliced_values_and_missing_count(
+                arrays,
+                NumericKind::Float,
+                release,
+                if release <= 111 { 38 } else { 33 },
+                &expected_bytes,
+            );
+        }
+    }
+
+    #[test]
+    fn wider_owned_missing_scans_accumulate_spans_and_keep_cancellation_bounds() {
+        let rows = MISSING_SCAN_ROWS * 2 + 1;
+        let cases: Vec<(NumericKind, ArrayRef)> = vec![
+            (
+                NumericKind::Int,
+                Arc::new(Int16Array::from(vec![i16::MAX; rows])),
+            ),
+            (
+                NumericKind::Long,
+                Arc::new(Int32Array::from(vec![i32::MAX; rows])),
+            ),
+            (
+                NumericKind::Float,
+                Arc::new(Float32Array::from(vec![f32::NAN; rows])),
+            ),
+        ];
+        for (kind, array) in cases {
+            let arrays = [array];
+            // Initial poll, three bounded scan spans, and the final poll.
+            for stop_at in 1..=5 {
+                let mut polls = 0;
+                let result = prepare_from_arrow(
+                    &arrays,
+                    kind,
+                    TemporalKind::None,
+                    FormatVersion::V118,
+                    rows,
+                    || {
+                        polls += 1;
+                        polls == stop_at
+                    },
+                );
+                assert_eq!(result.err().as_deref(), Some("Arrow read interrupted"));
+                assert_eq!(polls, stop_at);
+            }
+            let prepared = prepare_from_arrow(
+                &arrays,
+                kind,
+                TemporalKind::None,
+                FormatVersion::V118,
+                rows,
+                || false,
+            )
+            .expect("complete wider-storage scan spanning full blocks and a tail");
+            assert_eq!(prepared.into_descriptor().missing_count, rows);
+        }
+    }
 
     #[test]
     fn owned_byte_missing_counts_preserve_sliced_chunk_values_for_every_release() {

@@ -2279,12 +2279,77 @@ unsafe fn set_class(
     classes: &[&str],
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
-    let values = classes
-        .iter()
-        .map(|value| (*value).to_owned())
-        .collect::<Vec<_>>();
-    let class = string_vector(&values, guard)?;
+    let class = string_vector_iter(classes.iter().copied(), guard)?;
     set_symbol_attr(object, R_ClassSymbol, class)
+}
+
+/// Reuse immutable attribute values while publishing one reader result.
+/// The guard roots every cached vector through allocation and finalization;
+/// R's attribute setters retain their ordinary copy-on-modify behavior.
+/// Labels and arbitrary metadata bypass this cache. Bound scalar entries so
+/// distinct format strings do not create an unbounded temporary registry.
+struct ReaderAttributeValues {
+    classes: AHashMap<Vec<&'static str>, Sexp>,
+    scalars: AHashMap<String, Sexp>,
+    symbols: AHashMap<&'static str, Sexp>,
+    guard: ProtectGuard,
+}
+
+impl ReaderAttributeValues {
+    const MAX_SCALARS: usize = 128;
+
+    fn new() -> Self {
+        Self {
+            classes: AHashMap::new(),
+            scalars: AHashMap::new(),
+            symbols: AHashMap::new(),
+            guard: ProtectGuard::new(),
+        }
+    }
+
+    unsafe fn scalar(&mut self, value: &str, guard: &mut ProtectGuard) -> Result<Sexp, String> {
+        if let Some(&cached) = self.scalars.get(value) {
+            return Ok(cached);
+        }
+        if self.scalars.len() >= Self::MAX_SCALARS {
+            return scalar_string(value, guard);
+        }
+        let scalar = scalar_string(value, &mut self.guard)?;
+        self.scalars.insert(value.to_owned(), scalar);
+        Ok(scalar)
+    }
+
+    unsafe fn set_class(&mut self, object: Sexp, classes: &[&'static str]) -> Result<(), String> {
+        let class = if let Some(&cached) = self.classes.get(classes) {
+            cached
+        } else {
+            let class = string_vector_iter(classes.iter().copied(), &mut self.guard)?;
+            self.classes.insert(classes.to_vec(), class);
+            class
+        };
+        set_symbol_attr(object, R_ClassSymbol, class)
+    }
+
+    unsafe fn set_attr(
+        &mut self,
+        object: Sexp,
+        name: &'static str,
+        value: Sexp,
+    ) -> Result<(), String> {
+        let symbol = if let Some(&cached) = self.symbols.get(name) {
+            cached
+        } else {
+            let encoded = CString::new(name).map_err(|_| "invalid R attribute name".to_owned())?;
+            let mut symbol = ptr::null_mut();
+            if dtatools_install(encoded.as_ptr(), &mut symbol) == 0 || symbol.is_null() {
+                return Err("R could not install an attribute name".to_owned());
+            }
+            // Installed R symbols are rooted by R's symbol table.
+            self.symbols.insert(name, symbol);
+            symbol
+        };
+        set_symbol_attr(object, symbol, value)
+    }
 }
 
 unsafe fn label_attribute_from_entries<L: AsRef<str>>(
@@ -2312,6 +2377,7 @@ unsafe fn attach_variable_attributes(
     value_label_name: Option<&str>,
     labels_attribute: Option<Sexp>,
     preserve_value_label_name: bool,
+    values: &mut ReaderAttributeValues,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     attach_variable_attribute_view(
@@ -2320,6 +2386,7 @@ unsafe fn attach_variable_attributes(
         value_label_name,
         labels_attribute,
         preserve_value_label_name,
+        values,
         guard,
     )
 }
@@ -2351,17 +2418,18 @@ unsafe fn attach_variable_attribute_view(
     value_label_name: Option<&str>,
     labels_attribute: Option<Sexp>,
     preserve_value_label_name: bool,
+    values: &mut ReaderAttributeValues,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     check_interrupt()?;
     attach_dta_metadata(vector, attributes.notes, attributes.characteristics, guard)?;
     if !attributes.label.is_empty() {
         let value = scalar_string(attributes.label, guard)?;
-        set_attr(vector, "label", value)?;
+        values.set_attr(vector, "label", value)?;
     }
     if !attributes.format.is_empty() {
-        let value = scalar_string(attributes.format, guard)?;
-        set_attr(vector, "format.stata", value)?;
+        let value = values.scalar(attributes.format, guard)?;
+        values.set_attr(vector, "format.stata", value)?;
     }
     let string_storage = match attributes.dta_type {
         DtaType::FixedString(width) => Some(format!("str{width}")),
@@ -2369,9 +2437,9 @@ unsafe fn attach_variable_attribute_view(
         _ => None,
     };
     if let Some(string_storage) = string_storage {
-        let value = scalar_string(&string_storage, guard)?;
-        set_attr(vector, "stata.string.storage", value)?;
-        set_class(vector, &["dta_string", "vctrs_vctr", "character"], guard)?;
+        let value = values.scalar(&string_storage, guard)?;
+        values.set_attr(vector, "stata.string.storage", value)?;
+        values.set_class(vector, &["dta_string", "vctrs_vctr", "character"])?;
     }
     if let Some(table_name) = value_label_name {
         let labels = labels_attribute.ok_or_else(|| {
@@ -2380,10 +2448,10 @@ unsafe fn attach_variable_attribute_view(
                 table_name
             )
         })?;
-        set_attr(vector, "labels", labels)?;
+        values.set_attr(vector, "labels", labels)?;
         if preserve_value_label_name {
             let name = scalar_string(table_name, guard)?;
-            set_attr(vector, "value.label.name", name)?;
+            values.set_attr(vector, "value.label.name", name)?;
         }
     }
 
@@ -2396,25 +2464,24 @@ unsafe fn attach_variable_attribute_view(
         DtaType::FixedString(_) | DtaType::StrL => None,
     };
     if let Some((storage_name, _)) = storage {
-        let storage_value = scalar_string(storage_name, guard)?;
-        set_attr(vector, "stata.storage", storage_value)?;
+        let storage_value = values.scalar(storage_name, guard)?;
+        values.set_attr(vector, "stata.storage", storage_value)?;
     }
 
     match (temporal_kind(attributes.format), storage) {
         (TemporalKind::Date, Some(_)) => {
-            set_class(vector, &["dta_temporal", "dta_date", "Date"], guard)?;
+            values.set_class(vector, &["dta_temporal", "dta_date", "Date"])?;
         }
         (TemporalKind::Datetime, Some(_)) => {
-            set_class(
+            values.set_class(
                 vector,
                 &["dta_temporal", "dta_datetime", "POSIXct", "POSIXt"],
-                guard,
             )?;
-            let timezone = scalar_string("UTC", guard)?;
-            set_attr(vector, "tzone", timezone)?;
+            let timezone = values.scalar("UTC", guard)?;
+            values.set_attr(vector, "tzone", timezone)?;
         }
         (TemporalKind::None, Some((_, storage_class))) if value_label_name.is_some() => {
-            set_class(
+            values.set_class(
                 vector,
                 &[
                     "dta_numeric",
@@ -2423,22 +2490,20 @@ unsafe fn attach_variable_attribute_view(
                     "vctrs_vctr",
                     "double",
                 ],
-                guard,
             )?;
         }
-        (TemporalKind::None, Some((_, storage_class))) => set_class(
+        (TemporalKind::None, Some((_, storage_class))) => values.set_class(
             vector,
             &["dta_numeric", storage_class, "vctrs_vctr", "double"],
-            guard,
         )?,
-        (TemporalKind::Date, None) => set_class(vector, &["Date"], guard)?,
+        (TemporalKind::Date, None) => values.set_class(vector, &["Date"])?,
         (TemporalKind::Datetime, None) => {
-            set_class(vector, &["POSIXct", "POSIXt"], guard)?;
-            let timezone = scalar_string("UTC", guard)?;
-            set_attr(vector, "tzone", timezone)?;
+            values.set_class(vector, &["POSIXct", "POSIXt"])?;
+            let timezone = values.scalar("UTC", guard)?;
+            values.set_attr(vector, "tzone", timezone)?;
         }
         (TemporalKind::None, None) if value_label_name.is_some() => {
-            set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
+            values.set_class(vector, &["haven_labelled", "vctrs_vctr", "double"])?;
         }
         (TemporalKind::None, None) => {}
     }
@@ -3514,6 +3579,7 @@ impl DtaSink for RDataFrameSink {
                 &mut self._guard,
             )
             .map_err(DtaError::Output)?;
+            let mut attribute_values = ReaderAttributeValues::new();
             for (output_index, column) in self.columns.iter_mut().enumerate() {
                 check_interrupt().map_err(DtaError::Output)?;
                 let vector = match column {
@@ -3565,6 +3631,7 @@ impl DtaSink for RDataFrameSink {
                     table_name,
                     labels_attribute,
                     preserve_value_label_name(variable, table_name, &value_label_reference_counts),
+                    &mut attribute_values,
                     &mut attribute_guard,
                 )
                 .map_err(DtaError::Output)?;

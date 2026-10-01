@@ -1450,3 +1450,126 @@ test_that("declared strings take the same default format as save_dta", {
     expect_identical(datasig(from_arrow), datasig(data))
     expect_identical(datasig(from_dta), datasig(data))
 })
+
+test_that("reader attribute reuse keeps column edits and subsequent reads independent", {
+    left <- dta_byte(c(1, NA, tagged_missing("a")))
+    val_labels(left) <- c(One = 1)
+    attr(left, "label") <- "Left variable"
+    attr(left, "format.stata") <- "%8.0g"
+    right <- left
+    attr(right, "label") <- "Right variable"
+    data <- dibble(
+        left = left, right = right,
+        date1 = as.Date(c("2020-01-01", NA, "1970-01-01")),
+        date2 = as.Date(c("2020-01-01", NA, "1970-01-01")),
+        time1 = as.POSIXct(c("2020-01-01 00:00:00", NA, "1970-01-01 00:00:00"), tz = "UTC"),
+        time2 = as.POSIXct(c("2020-01-01 00:00:00", NA, "1970-01-01 00:00:00"), tz = "UTC"),
+        text1 = dta_string(c("alpha", "", "\u00e9")),
+        text2 = dta_string(c("alpha", "", "\u00e9"))
+    )
+    dta_path <- tempfile(fileext = ".dta")
+    arrow_path <- arrow_tempfile()
+    on.exit(unlink(c(dta_path, arrow_path)), add = TRUE)
+    save_dta(data, dta_path)
+    expect_warning(
+        save_arrow(data, arrow_path),
+        "Dropped attributes the Arrow profile does not represent: `time1` (tzone); `time2` (tzone)",
+        fixed = TRUE
+    )
+    sources <- list(
+        list(read = read_dta, path = dta_path),
+        list(read = read_arrow, path = arrow_path)
+    )
+    for (source in sources) {
+        tibble <- source$read(source$path, output = "tibble")
+        reference_signature <- datasig(tibble)
+        for (output in c("tibble", "dibble")) {
+            actual <- source$read(source$path, output = output)
+            expect_identical(datasig(actual), reference_signature)
+            expect_identical(as.double(actual$left), c(1, NA_real_, tagged_missing("a")))
+            expect_identical(as.numeric(actual$date1), as.numeric(data$date1))
+            expect_s3_class(actual$date1, "Date")
+            expect_s3_class(actual$time1, "POSIXct")
+            expect_identical(as.numeric(actual$time1), as.numeric(data$time1))
+            expect_identical(as.character(actual$text1), c("alpha", "", "\u00e9"))
+
+            changed <- actual$left
+            attr(changed, "format.stata")[[1L]] <- "%9.2f"
+            attr(changed, "stata.storage")[[1L]] <- "int"
+            attr(changed, "labels")[[1L]] <- 99
+            attr(changed, "label")[[1L]] <- "Changed variable"
+            class(changed)[[1L]] <- "changed_numeric"
+            changed_time <- actual$time1
+            attr(changed_time, "tzone")[[1L]] <- "America/New_York"
+            changed_text <- actual$text1
+            attr(changed_text, "stata.string.storage")[[1L]] <- "strL"
+            class(changed_text)[[1L]] <- "changed_string"
+            expect_identical(attr(changed, "format.stata"), "%9.2f")
+            expect_identical(attr(changed, "stata.storage"), "int")
+            expect_identical(attr(changed_time, "tzone"), "America/New_York")
+
+            expect_identical(attr(actual$right, "format.stata"), "%8.0g")
+            expect_identical(attr(actual$right, "stata.storage"), "byte")
+            expect_identical(attr(actual$right, "label"), "Right variable")
+            expect_identical(attr(actual$right, "labels"), c(One = 1))
+            expect_identical(class(actual$right),
+                             c("dta_numeric", "dta_byte", "haven_labelled", "vctrs_vctr", "double"))
+            expect_identical(attr(actual$time2, "tzone"), "UTC")
+            expect_identical(attr(actual$text2, "stata.string.storage"), "str5")
+            expect_identical(class(actual$text2), c("dta_string", "vctrs_vctr", "character"))
+            expect_identical(datasig(actual), reference_signature)
+            expect_identical(datasig(source$read(source$path, output = output)), reference_signature)
+        }
+    }
+})
+
+test_that("reader attribute values remain rooted during collection", {
+    data <- dibble(
+        a = dta_byte(c(1, NA)), b = dta_byte(c(2, tagged_missing("z"))),
+        s = dta_string(c("first", "")), t = dta_string(c("other", ""))
+    )
+    dta_path <- tempfile(fileext = ".dta")
+    arrow_path <- arrow_tempfile()
+    on.exit(unlink(c(dta_path, arrow_path)), add = TRUE)
+    save_dta(data, dta_path)
+    save_arrow(data, arrow_path)
+    on.exit(gctorture(FALSE), add = TRUE)
+    for (source in list(list(read = read_dta, path = dta_path),
+                        list(read = read_arrow, path = arrow_path))) {
+        gctorture(TRUE)
+        actual <- source$read(source$path, output = "tibble", threads = 1L)
+        gctorture(FALSE)
+        expect_identical(as.double(actual$a), c(1, NA_real_))
+        expect_identical(as.double(actual$b), c(2, tagged_missing("z")))
+        expect_identical(dta_storage_type(actual$a), "byte")
+        expect_identical(dta_storage_type(actual$b), "byte")
+        expect_identical(as.character(actual$s), c("first", ""))
+        expect_identical(as.character(actual$t), c("other", ""))
+        expect_identical(attr(actual$a, "format.stata"), "%8.0g")
+        expect_identical(class(actual$a), class(actual$b))
+    }
+})
+
+test_that("readers preserve formats beyond the shared scalar cache limit", {
+    formats <- sprintf("%%%d.0f", 9:148)
+    columns <- lapply(seq_along(formats), function(index) {
+        value <- dta_byte(c(1, NA))
+        attr(value, "format.stata") <- formats[[index]]
+        attr(value, "label") <- paste("Variable", index)
+        value
+    })
+    names(columns) <- paste0("v", seq_along(columns))
+    data <- tibble::new_tibble(columns, nrow = 2L)
+    dta_path <- tempfile(fileext = ".dta")
+    arrow_path <- arrow_tempfile()
+    on.exit(unlink(c(dta_path, arrow_path)), add = TRUE)
+    save_dta(data, dta_path)
+    save_arrow(data, arrow_path)
+    for (actual in list(read_dta(dta_path, output = "tibble"),
+                        read_arrow(arrow_path, output = "tibble"))) {
+        expect_identical(unname(vapply(actual, attr, character(1), which = "format.stata")), formats)
+        expect_identical(unname(vapply(actual, attr, character(1), which = "label")),
+                         paste("Variable", seq_along(formats)))
+        expect_true(all(vapply(actual, inherits, logical(1), what = "dta_byte")))
+    }
+})

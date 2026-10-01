@@ -54,7 +54,7 @@
     names(native) <- repaired
     # Native readers already return a rectangular tibble. Keep its shell
     # until metadata is attached, then publish through the reader constructor.
-    if (reader && identical(output, "dibble")) return(native)
+    if (reader && output %in% c("tibble", "dibble")) return(native)
     if (output %in% c("tibble", "dibble")) {
         # A dibble starts as this tibble and is marked by
         # `.complete_output_container()` once the caller has attached
