@@ -41,5 +41,50 @@ class MeasurementTests(unittest.TestCase):
             self.assertEqual(result["read_wall"]["paired_ratio"], "1.0")
 
 
+class QualificationTests(unittest.TestCase):
+    def test_only_signature_read_only_omits_consumption(self):
+        for kind in ("values", "signature"):
+            for modes in (["read"], ["consume"], ["read", "consume"]):
+                plan = RUN.qualification_plan({"qualification": kind}, modes)
+                omit = kind == "signature" and modes == ["read"]
+                with self.subTest(kind=kind, modes=modes):
+                    self.assertEqual(plan["consumption"], "omitted_read_only" if omit else "complete")
+                    self.assertEqual(plan["worker_mode"], "qualify-" + kind + ("-read" if omit else ""))
+        self.assertEqual(RUN.qualification_plan({}, ["read"])["consumption"], "omitted_read_only")
+
+    def test_consumption_records_cannot_claim_unperformed_work(self):
+        read_plan = RUN.qualification_plan({}, ["read"])
+        full_plan = RUN.qualification_plan({}, ["read", "consume"])
+        read_fields = ["QUALIFIED", "signature", "omitted_read_only", "-"]
+        full_fields = ["QUALIFIED", "signature", "complete", "a" * 64]
+        self.assertIsNone(RUN.validate_qualification(read_fields, read_plan)["consumption_sha256"])
+        self.assertEqual(RUN.validate_qualification(full_fields, full_plan)["consumption_sha256"], "a" * 64)
+        for fields, plan in (
+                (read_fields, full_plan), (full_fields, read_plan),
+                (read_fields[:-1] + ["a" * 64], read_plan),
+                (full_fields[:-1] + ["-"], full_plan),
+                (full_fields[:-1] + ["invalid"], full_plan),
+                (full_fields[:-1], full_plan)):
+            with self.subTest(fields=fields, plan=plan), self.assertRaises(RuntimeError):
+                RUN.validate_qualification(fields, plan)
+
+    def test_absent_consumption_does_not_replace_or_compare_real_hash(self):
+        signatures, consumed = {}, {}
+        record = dict(signature="signature", consumption_sha256=None)
+        RUN.check_qualification(record, "fixture", "first", signatures, consumed, True)
+        self.assertEqual(consumed, {})
+        record["consumption_sha256"] = "a" * 64
+        RUN.check_qualification(record, "fixture", "second", signatures, consumed, True)
+        record["consumption_sha256"] = None
+        RUN.check_qualification(record, "fixture", "third", signatures, consumed, True)
+        self.assertEqual(consumed, {"fixture": "a" * 64})
+        record["consumption_sha256"] = "b" * 64
+        with self.assertRaisesRegex(RuntimeError, "Full-consumption results differ"):
+            RUN.check_qualification(record, "fixture", "changed-consumption", signatures, consumed, True)
+        record.update(signature="changed", consumption_sha256=None)
+        with self.assertRaisesRegex(RuntimeError, "Complete dataset signatures differ"):
+            RUN.check_qualification(record, "fixture", "changed-signature", signatures, consumed, True)
+
+
 if __name__ == "__main__":
     unittest.main()

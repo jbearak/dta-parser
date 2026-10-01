@@ -92,6 +92,42 @@ def validate_record(fields, fixture):
                 total_wall=values[6], total_cpu=values[7] + values[8])
 
 
+def qualification_plan(fixture, modes):
+    kind = fixture.get("qualification", "signature")
+    complete = kind == "values" or "consume" in modes
+    return dict(qualification=kind,
+        consumption="complete" if complete else "omitted_read_only",
+        worker_mode="qualify-" + kind + ("-read" if not complete else ""))
+
+
+def validate_qualification(fields, plan):
+    if len(fields) != 4 or fields[0] != "QUALIFIED" or not fields[1]:
+        raise RuntimeError("Invalid qualification record")
+    if fields[2] != plan["consumption"]:
+        raise RuntimeError("Unexpected qualification consumption policy")
+    if plan["consumption"] == "complete":
+        if not re.fullmatch(r"[a-f0-9]{64}", fields[3]):
+            raise RuntimeError("Invalid qualification consumption hash")
+        consumption_sha256 = fields[3]
+    else:
+        if fields[3] != "-":
+            raise RuntimeError("Unexpected read-only qualification consumption hash")
+        consumption_sha256 = None
+    return dict(qualification=plan["qualification"], signature=fields[1],
+        consumption=plan["consumption"], consumption_sha256=consumption_sha256)
+
+
+def check_qualification(record, fixture_id, key, signatures, consumption_signatures,
+                        compare_signature):
+    consumption_hash = record["consumption_sha256"]
+    if consumption_hash is not None:
+        if consumption_signatures.setdefault(fixture_id, consumption_hash) != consumption_hash:
+            raise RuntimeError("Full-consumption results differ: " + key)
+    if compare_signature:
+        if signatures.setdefault(fixture_id, record["signature"]) != record["signature"]:
+            raise RuntimeError("Complete dataset signatures differ: " + key)
+
+
 def write_summaries(work, rows, pairs):
     rng = random.Random(20261001)
     summaries = []
@@ -196,7 +232,7 @@ def main():
         vroom_altrep_environment={key: value for key, value in os.environ.items()
             if key.startswith("VROOM_USE_ALTREP")}),
         fixtures=[dict(id=item["id"], rows=item["rows"], columns=item["columns"],
-            qualification=item.get("qualification", "signature")) for item in fixtures],
+            **qualification_plan(item, args.modes)) for item in fixtures],
         generation=manifest.get("generation"),
         protocol=dict(pairs=args.pairs, threads=args.threads, modes=args.modes,
             methods=args.methods, cache="warm filesystem", reference_variants="baseline-library dependencies",
@@ -204,6 +240,7 @@ def main():
             endpoints="external readers return tibble; dtatools explicit tibble and dibble",
             clocks="R proc.time elapsed, user.self and sys.self in identical intervals; wait4 whole-process CPU/RSS",
             consumption="traversal of every cell with numeric sums/NA counts and string byte lengths",
+            qualification_consumption="mandatory for values fixtures or any consume mode; omitted for signature-only fixtures with read mode alone, which still compare complete datasig",
             checksums="dtatools read_arrow verify=TRUE; qs2 validate_checksum=TRUE; generic Feather has no dtatools checksums",
             missing_packages="recorded unavailable; no substitution"))
     (args.work / "provenance-before.json").write_text(json.dumps(before, indent=2) + "\n")
@@ -232,9 +269,9 @@ def main():
 
     def invoke(item, method, threads, mode, variant, key, qualify=False):
         path_key = METHODS[method][0]
-        qual_mode = item.get("qualification", "signature")
+        plan = qualification_plan(item, args.modes)
         command = [rscript, "--vanilla", str(HERE / "worker.R"),
-            "qualify-" + qual_mode if qualify else mode, method, item[path_key], str(threads),
+            plan["worker_mode"] if qualify else mode, method, item[path_key], str(threads),
             str(item["rows"]), str(item["columns"]), item.get("reference", "-")]
         log = args.work / (key + ".log")
         started = time.monotonic()
@@ -256,10 +293,7 @@ def main():
         if len(records) != 1:
             raise RuntimeError("Missing or duplicate worker record: " + key)
         if qualify:
-            if len(records[0]) != 3 or not re.fullmatch(r"[a-f0-9]{64}", records[0][2]):
-                raise RuntimeError("Invalid qualification consumption hash")
-            return dict(qualification=qual_mode, signature=records[0][1],
-                consumption_sha256=records[0][2], log_sha256=sha(log))
+            return dict(**validate_qualification(records[0], plan), log_sha256=sha(log))
         return dict(**validate_record(records[0], item), process_wall=process_wall,
             process_cpu=usage.ru_utime + usage.ru_stime,
             maxrss_bytes=usage.ru_maxrss * (1 if sys.platform == "darwin" else 1024), log_sha256=sha(log))
@@ -274,11 +308,8 @@ def main():
         for variant in variants:
             record = invoke(item, method, threads, "read", variant, "qualify-" + key + "-" + variant, True)
             qualifications[key][variant] = record
-            if consumption_signatures.setdefault(item["id"], record["consumption_sha256"]) != record["consumption_sha256"]:
-                raise RuntimeError("Full-consumption results differ: " + key)
-            if method.startswith("dtatools_"):
-                if signatures.setdefault(item["id"], record["signature"]) != record["signature"]:
-                    raise RuntimeError("Complete dataset signatures differ: " + key)
+            check_qualification(record, item["id"], key, signatures, consumption_signatures,
+                                method.startswith("dtatools_"))
         print("Qualified " + key, flush=True)
     (args.work / "qualification.json").write_text(json.dumps(qualifications, indent=2) + "\n")
     rows = []

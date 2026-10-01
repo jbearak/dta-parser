@@ -7,7 +7,8 @@ activate_library()
 mode <- args[[1L]]
 method <- args[[2L]]
 threads <- as.integer(args[[4L]])
-stopifnot(mode %in% c("read", "consume", "qualify-values", "qualify-signature"),
+stopifnot(mode %in% c("read", "consume", "qualify-values", "qualify-signature",
+    "qualify-signature-read"),
     !is.na(threads), threads >= 0L)
 reader <- make_reader(method, normalizePath(args[[3L]], mustWork = TRUE), threads)
 # Methods and full-consumption bytecode are compiled before timing. JIT effects
@@ -30,8 +31,13 @@ if (startsWith(mode, "qualify")) {
         stop("Unexpected qualification warning: ", conditionMessage(condition)))
     shape(value)
     assert_container(value)
-    consumed <- consume_all(value)
-    consumption_sha256 <- unname(tools::sha256sum(bytes = serialize(consumed, NULL, version = 3L)))
+    consumption <- if (mode == "qualify-signature-read") "omitted_read_only" else "complete"
+    consumption_sha256 <- "-"
+    if (consumption == "complete") {
+        # Consume before datasig/plain_values can force lazy columns.
+        consumed <- consume_all(value)
+        consumption_sha256 <- unname(tools::sha256sum(bytes = serialize(consumed, NULL, version = 3L)))
+    }
     if (mode == "qualify-values") {
         reference <- readRDS(args[[7L]])
         stopifnot(identical(plain_values(value), plain_values(reference)),
@@ -40,10 +46,11 @@ if (startsWith(mode, "qualify")) {
         if (method == "readr") stopifnot(nrow(readr::problems(value)) == 0L)
         if (startsWith(method, "vroom")) stopifnot(nrow(vroom::problems(value)) == 0L)
         cat("QUALIFIED\t", if (startsWith(method, "dtatools_")) dtatools::datasig(value) else "values",
-            "\t", consumption_sha256, "\n", sep = "")
+            "\t", consumption, "\t", consumption_sha256, "\n", sep = "")
     } else {
         stopifnot(requireNamespace("dtatools", quietly = TRUE))
-        cat("QUALIFIED\t", dtatools::datasig(value), "\t", consumption_sha256, "\n", sep = "")
+        cat("QUALIFIED\t", dtatools::datasig(value), "\t", consumption,
+            "\t", consumption_sha256, "\n", sep = "")
     }
     quit(status = 0L)
 }

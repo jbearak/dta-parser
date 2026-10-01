@@ -42,6 +42,10 @@ test_that("direct reader tibbles preserve repaired names metadata and compact co
                 }
             }
             expect_identical(ordinary, tibble::as_tibble(ordinary, .name_repair = "minimal"))
+            expect_identical(
+                attributes(ordinary),
+                attributes(tibble::as_tibble(ordinary, .name_repair = "minimal"))
+            )
             calls <- 0L
             repair <- function(names) {
                 calls <<- calls + 1L

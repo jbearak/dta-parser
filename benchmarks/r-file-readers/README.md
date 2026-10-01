@@ -128,7 +128,7 @@ CSV and RDS are written directly from independently generated plain R values.
 Preparation checks the DTA values against that reference before saving Arrow.
 
 Every available reader/library/thread combination runs once in a separate
-qualification process before timing. Qualification first compares the complete
+qualification process before timing. For synthetic value fixtures, qualification first compares the complete
 consumption result against the independent reference. It then compares every
 column name and value to the plain RDS reference after removing container
 metadata and numeric integer/double differences, using exact
@@ -142,7 +142,17 @@ Existing private configurations from `io-optimization/read-screen.py` also
 work. Their `reads` entries need only opaque `id`, `dta`, `arrow`, `rows`, and
 `columns` fields. Entries without `qualification = "values"` use full
 `datasig()` comparisons across dtatools formats, containers, libraries and
-threads. Other readers are recorded as unavailable for this mode because
+threads. With `--modes read` alone, these signature-only fixtures do not run the
+separate R full-consumption traversal during qualification. Their records say
+`consumption = "omitted_read_only"` with a null `consumption_sha256`; the full
+dataset signature is still required. This avoids an additional R traversal of
+large controls whose timed workload only reads. Any run containing `consume`
+requires complete consumption before computing signatures and compares its
+hash across every variant, format, container and thread setting. Value fixtures
+always require complete consumption, including with `--modes read` alone.
+Missing consumption hashes are never treated as computed results. The chosen
+policy appears in both fixture provenance and each qualification record.
+Other readers are recorded as unavailable for signature-only fixtures because
 historical Stata metadata and encoding behavior can differ across packages.
 
 ## Measure
@@ -287,9 +297,26 @@ Preserve the dependency libraries during a run. Report input sizes alongside
 cross-format results: these deterministic numeric fixtures compress well,
 and compressed-reader rankings do not predict arbitrary datasets.
 
-Run the lightweight measurement-parser and build-record checks with:
+Run the lightweight measurement-parser, qualification-policy and build-record checks with:
 
 ```sh
 python3 benchmarks/r-file-readers/test-run.py -v
 python3 benchmarks/r-file-readers/test-builds.py -v
 ```
+
+Exercise the qualification policies with real readers using two existing
+independent installations and a new private work directory:
+
+```sh
+python3 benchmarks/r-file-readers/smoke-qualification.py \
+  --baseline /path/to/baseline-library \
+  --candidate /path/to/candidate-library \
+  --work /private/tmp/reader-qualification-smoke
+```
+
+This smoke creates a four-row fixture and runs all four dtatools methods with
+both libraries and thread settings 1/0. It checks signature-only read
+qualification, signature qualification with consumption, and value
+qualification in read-only mode. Complete signatures must match across all
+48 fresh processes; consumption hashes must match wherever required and be
+absent only for signature-only read qualification. It collects no timings.

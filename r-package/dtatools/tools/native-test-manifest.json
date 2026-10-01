@@ -9651,7 +9651,7 @@
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
-          "sha256": "f6b364a13163af3327620fc63aee1aee24599a288fef0d3316643cd4a558236c"
+          "sha256": "09ed090a41ba8967f4c354c381b4db9090403190e9852d67c891c5add652083c"
         }
       ],
       "blocks": [
