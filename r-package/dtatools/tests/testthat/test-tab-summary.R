@@ -161,3 +161,33 @@ test_that("editing summary cells drops the saved display and marginal moments", 
     expect_equal(double_bracket$mean, c(400, 500))
     expect_equal(result$mean, c(70 / 3, 50))
 })
+
+test_that("binding and transforming summaries cannot retain the original moments", {
+    result <- tab(tab_summary_fixture(), g, summarize = y, collect = TRUE)
+    plain <- as.data.frame(result)
+    combined <- list(rbind(result, result), rbind(result, plain), rbind(plain, result))
+    for (value in combined) {
+        expect_identical(value, rbind(plain, plain))
+        expect_false(any(grepl("Summary of", capture.output(print(value)), fixed = TRUE)))
+    }
+    expect_identical(rbind(first = result, second = plain), rbind(first = plain, second = plain))
+    expect_identical(rbind(result, plain, make.row.names = FALSE),
+        rbind(plain, plain, make.row.names = FALSE))
+    expect_identical(cbind(result, added = 1), cbind(plain, added = 1))
+    expect_identical(cbind(added = 1, result), cbind(added = 1, plain))
+    expect_identical(within(result, mean <- mean * 2), within(plain, mean <- mean * 2))
+    expect_identical(transform(result, mean = mean * 2), transform(plain, mean = mean * 2))
+})
+
+test_that("dplyr operations on summaries drop the original moments", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    result <- tab(tab_summary_fixture(), g, summarize = y, collect = TRUE)
+    plain <- as.data.frame(result)
+    expect_identical(dplyr::mutate(result, mean = mean * 2),
+        dplyr::mutate(plain, mean = mean * 2))
+    expect_identical(dplyr::filter(result, g == 1), dplyr::filter(plain, g == 1))
+    expect_identical(dplyr::slice(result, 1), dplyr::slice(plain, 1))
+    expect_identical(dplyr::bind_rows(result, result), dplyr::bind_rows(plain, plain))
+    expect_identical(dplyr::bind_rows(result, plain), dplyr::bind_rows(plain, plain))
+    expect_identical(dplyr::bind_rows(plain, result), dplyr::bind_rows(plain, plain))
+})

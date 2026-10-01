@@ -148,6 +148,20 @@ as.data.frame.dta_tab_summary <- function(x, row.names = NULL, optional = FALSE,
 }
 
 #' @export
+rbind.dta_tab_summary <- function(..., deparse.level = 1) {
+    values <- lapply(list(...), function(value) {
+        if (inherits(value, "dta_tab_summary")) as.data.frame(value) else value
+    })
+    do.call(base::rbind.data.frame, c(values, list(deparse.level = deparse.level)))
+}
+
+# Registered only while the optional dplyr namespace is loaded. Row slicing
+# and binding reconstruct their result from the original table's attributes.
+dplyr_reconstruct.dta_tab_summary <- function(data, template) {
+    as.data.frame.dta_tab_summary(data)
+}
+
+#' @export
 print.dta_tab_summary <- function(x, ..., width = getOption("width", 80L)) {
     lines <- format(x, ..., width = width)
     if (length(lines)) cat(lines, sep = "\n")

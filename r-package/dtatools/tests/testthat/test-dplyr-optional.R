@@ -172,7 +172,7 @@ test_that("optional method hooks and registry ownership survive real reloads", {
                         get(key, ns, inherits = FALSE)))
                     count <- count + 1L
                 }
-                stopifnot(count == 46L, identical(hook_counts(ns), rep(1L, 5L)),
+                stopifnot(count == 47L, identical(hook_counts(ns), rep(1L, 5L)),
                     !has_owner(getNamespaceInfo(generic_ns, "S3methods"), ns))
                 d <- dtatools::as_dibble(data.frame(x = c(1, 2)))
                 out <- dplyr::mutate(d, y = x + 1)
@@ -198,10 +198,10 @@ test_that("optional method hooks and registry ownership survive real reloads", {
             counts <- verify(ns, generic_ns)
             suppressPackageStartupMessages(library("dtatools", character.only = TRUE))
             suppressPackageStartupMessages(library("dplyr", character.only = TRUE))
-            stopifnot(verify(ns, generic_ns) == 46L)
+            stopifnot(verify(ns, generic_ns) == 47L)
             detach("package:dtatools", unload = FALSE)
             detach("package:dplyr", unload = FALSE)
-            stopifnot(verify(ns, generic_ns) == 46L)
+            stopifnot(verify(ns, generic_ns) == 47L)
             metadata <- getNamespaceInfo(generic_ns, "S3methods")
             for (i in seq_len(3L)) {
                 old <- ns
@@ -244,7 +244,7 @@ test_that("optional method hooks and registry ownership survive real reloads", {
                 hooks = hook_counts(ns), dplyr_loaded = isNamespaceLoaded("dplyr"))
         }, args = list(.libPaths(), order, normalizePath(getNamespaceInfo(asNamespace("dtatools"), "path"))),
             libpath = .libPaths(), timeout = 120)
-        expect_identical(observed$counts, rep(46L, 6L))
+        expect_identical(observed$counts, rep(47L, 6L))
         expect_identical(observed$later_method, "later legitimate method")
         expect_identical(observed$hooks, rep(0L, 5L))
         expect_true(observed$dplyr_loaded)

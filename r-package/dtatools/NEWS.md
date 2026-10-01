@@ -8,6 +8,8 @@
   Native Stata fixtures cover numerical results and printed output.
   `nofreq` can suppress all output, and duplicate value labels now print as
   Stata prints them while retaining unique R category names.
+  Attaching dtatools masks R's `base::tabulate()`; use `base::tabulate()`
+  explicitly for integer bin counts.
 
 * Validated native paths speed up supported `repl()`/`replace_values()`,
   `gen()`, dibble `:=`, and `mutate()` expressions. Public dependency changes

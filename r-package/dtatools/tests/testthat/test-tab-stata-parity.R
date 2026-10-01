@@ -256,7 +256,7 @@ test_that("tab checks its Stata options the way Stata checks them", {
     expect_error(tab(d, rep78, sort = NA), "`sort`")
     expect_error(tab(d, rep78, foreign, expected = "yes"), "`expected`")
     expect_error(tab(d, rep78, freq = c(TRUE, FALSE)), "`freq`")
-    # Stata's `nofreq` alone prints nothing; the R error names the cause.
+    # Stata's `nofreq` alone prints nothing, and the R result also prints silently.
     expect_output(print(tab(d, rep78, foreign, freq = FALSE)), NA)
 })
 

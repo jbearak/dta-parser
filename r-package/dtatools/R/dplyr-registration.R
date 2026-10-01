@@ -11,7 +11,7 @@
     nest_by = "dibble",
     reframe = "dibble",
     dplyr_col_modify = "dibble",
-    dplyr_reconstruct = "dibble",
+    dplyr_reconstruct = c("dibble", "dta_tab_summary"),
     dplyr_row_slice = "dibble",
     filter = "dibble",
     filter_out = "dibble",

@@ -68,8 +68,9 @@ cells have zero standard deviation. Marginal means and deviations are calculated
 from their observations, not averaged from cell summaries.
 
 Summary results are `dta_tab_summary` data frames; cell and marginal arrays are
-in `attr(result, "dta_tab_summary")$margins`. Subsetting returns an ordinary data
-frame so the old table layout cannot be reused for a different result.
+in `attr(result, "dta_tab_summary")$margins`. Subsetting, editing, binding, and
+dplyr transformations return ordinary data frames so the old table layout cannot
+be reused for a different result.
 
 ## Returned values and R adaptations
 
