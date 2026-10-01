@@ -1,0 +1,5 @@
+method,observations,median_seconds,min_seconds,max_seconds,median_read_cpu_seconds,median_process_cpu_seconds,median_peak_rss_bytes,measurement_date
+read_dta_tibble,10,0.628,0.618,0.646,4.831,5.137701,5250342912.0,2026-10-01
+read_arrow_tibble,10,0.2275,0.224,0.23,2.418,2.7539785,5435736064.0,2026-10-01
+read_dta_dibble,10,0.6415,0.631,0.682,4.8575,5.1698395,5250490368.0,2026-10-01
+read_arrow_dibble,10,0.24,0.238,0.244,2.416,2.7497155,5435858944.0,2026-10-01

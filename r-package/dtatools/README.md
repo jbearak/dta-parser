@@ -191,54 +191,44 @@ are known in advance. See [details and examples](../../docs/r-reader-projections
 
 ### Performance on a demanding dataset
 
-The October 1, 2026 paired reader comparison includes the 5.2 GB India
-2021 DHS women's file, with 724,115 rows and 5,972 columns. These candidate
-medians come from eight fresh-process reads per reader and output, using
-automatic threads and a warm filesystem cache.
+The October 1, 2026 refresh measures the 5.2 GB India 2021 DHS women's file,
+with 724,115 rows and 5,972 columns. Each dtatools row uses ten new full reads,
+in fresh R processes with a warm filesystem cache. Haven and Stata native
+`use` values are retained unchanged from September 16 on the same file and
+computer; neither comparator was rerun.
 
-| Reader and output | Read wall time | Read CPU time | Process CPU time | Peak RSS |
-| --- | ---: | ---: | ---: | ---: |
-| `read_dta()`, tibble | 0.6250 s | 4.8165 s | 5.1596 s | 5.249 GB |
-| `read_dta()`, dibble | 0.6365 s | 4.8575 s | 5.1921 s | 5.252 GB |
-| `read_arrow()`, tibble | 0.2265 s | 2.3655 s | 2.7311 s | 5.434 GB |
-| `read_arrow()`, dibble | 0.2440 s | 2.3705 s | 2.7296 s | 5.430 GB |
+| Reader and output | Median read wall | Range | Median read CPU | Median process CPU | Median peak RSS |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `read_dta()`, tibble | 0.6280 s | 0.618–0.646 s | 4.8310 s | 5.1377 s | 5.250 GB |
+| `read_dta()`, dibble | 0.6415 s | 0.631–0.682 s | 4.8575 s | 5.1698 s | 5.250 GB |
+| `read_arrow()`, tibble | 0.2275 s | 0.224–0.230 s | 2.4180 s | 2.7540 s | 5.436 GB |
+| `read_arrow()`, dibble | 0.2400 s | 0.238–0.244 s | 2.4160 s | 2.7497 s | 5.436 GB |
+| `haven::read_dta()` | 472.9965 s | 422.801–572.189 s | n/a | 473.0478 s | 35.113 GB |
+| Stata native `use` | 0.4725 s | 0.471–0.542 s | n/a | 0.5070 s | 5.257 GB |
 
-Against the source before these reader changes, paired tibble read wall time
-fell 6.13% for DTA and 15.22% for Arrow. The India CPU intervals include zero,
-and most RSS differences are small and inconclusive. DTA dibble wall time
-fell 0.92%; the automatic-thread Arrow dibble interval includes zero. The
+CPU time sums work across cores. Read wall and read CPU cover the same first
+reader call; process CPU and peak RSS include startup, loading, checks and
+shutdown. The readers use automatic threads and numeric ALTREP. Arrow reads
+verify checksums; conversion and qualification are outside timing. The four
+DTA/Arrow and tibble/dibble combinations passed complete value-and-metadata
+qualification before the timed reads.
+
+This refresh follows the original India timing protocol, including jsonlite
+job setup and no forced garbage collection or compiled timing wrapper. The
+host is an Apple M4 Max with R 4.6.1. Current measurements use macOS 26.7;
+the retained comparators used 26.6.2. The different measurement dates prevent
+treating this as a newly paired comparison with Haven or Stata. The
+[India refresh report](../../benchmarks/reader-parity/results-2026-10-01-india-refresh/README.md)
+records every observation, source and input binding, historical comparator
+source, and sampled host activity.
+
+The separate paired optimization experiment found tibble read wall reductions
+of 6.13% for DTA and 15.22% for Arrow on this file. Its CPU intervals include
+zero, and most RSS differences are small and inconclusive. DTA dibble wall
+time fell 0.92%; the automatic-thread Arrow dibble interval includes zero.
+That experiment used eight reads and a different setup. The
 [large-file results](../../benchmarks/r-file-readers/results-2026-10-01.md#large-input-controls)
-include the baseline, single-thread controls and all intervals.
-
-CPU time sums work across cores, so a subsecond read can consume several
-CPU-seconds. Read wall and CPU times cover the same read-call interval.
-Process CPU and peak RSS cover startup, package loading, reading and shutdown.
-Arrow checksum verification is enabled. Packages were loaded and the timing
-wrapper compiled before timing, followed by garbage collection. Package-code
-JIT remains inside the first read call. This protocol differs from the
-full-cache rerun. Both used a shared Apple M4 Max, and the
-reports retain observations affected by background activity.
-
-#### Comparison with Haven and native Stata on the India file
-
-The September 16, 2026 comparison measured ten full reads per tool on this
-same India file, each in a fresh process with a warm filesystem cache.
-
-| Reader | Median read wall time | Range | Median process CPU | Median peak RSS |
-| --- | ---: | ---: | ---: | ---: |
-| `dtatools::read_dta()` | 0.6135 s | 0.607–0.827 s | 5.1551 s | 5.237 GB |
-| `dtatools::read_arrow()` | 0.2950 s | 0.289–1.022 s | 3.0291 s | 5.400 GB |
-| `haven::read_dta()` | 472.9965 s | 422.801–572.189 s | 473.0478 s | 35.113 GB |
-| Stata native `use` | 0.4725 s | 0.471–0.542 s | 0.5070 s | 5.257 GB |
-
-Wall time covers the read call; process CPU and peak RSS include startup,
-package loading, dimension checks and shutdown. The shared host was an Apple
-M4 Max. Arrow checksum verification was enabled and conversion was outside
-timing. The dtatools options measured then subsequently became defaults.
-These historical ten-read results retain their original source and protocol,
-separately from the October 1 eight-read comparison above. The
-[September 16 India report](../../benchmarks/reader-parity/results-2026-09-16-india/README.md)
-records all observations, settings and background activity.
+retain its baseline, single-thread controls and uncertainty intervals.
 
 The earlier [October 1 release comparison](../../benchmarks/io-merge-review/results-2026-10-01/README.md)
 uses v0.10.0 as its baseline and a different measurement protocol. The

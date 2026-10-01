@@ -1,0 +1,58 @@
+[
+  {
+    "completed_attempts": 1,
+    "cpu_threshold": 50,
+    "nonowned_heavy": [],
+    "sample_period_seconds": 5,
+    "source": "ps pcpu",
+    "utc": "2026-10-01T20:42:08+00:00"
+  },
+  {
+    "completed_attempts": 7,
+    "cpu_threshold": 50,
+    "nonowned_heavy": [],
+    "sample_period_seconds": 5,
+    "source": "ps pcpu",
+    "utc": "2026-10-01T20:42:13+00:00"
+  },
+  {
+    "completed_attempts": 14,
+    "cpu_threshold": 50,
+    "nonowned_heavy": [],
+    "sample_period_seconds": 5,
+    "source": "ps pcpu",
+    "utc": "2026-10-01T20:42:18+00:00"
+  },
+  {
+    "completed_attempts": 21,
+    "cpu_threshold": 50,
+    "nonowned_heavy": [],
+    "sample_period_seconds": 5,
+    "source": "ps pcpu",
+    "utc": "2026-10-01T20:42:23+00:00"
+  },
+  {
+    "completed_attempts": 27,
+    "cpu_threshold": 50,
+    "nonowned_heavy": [],
+    "sample_period_seconds": 5,
+    "source": "ps pcpu",
+    "utc": "2026-10-01T20:42:28+00:00"
+  },
+  {
+    "completed_attempts": 34,
+    "cpu_threshold": 50,
+    "nonowned_heavy": [],
+    "sample_period_seconds": 5,
+    "source": "ps pcpu",
+    "utc": "2026-10-01T20:42:33+00:00"
+  },
+  {
+    "completed_attempts": 40,
+    "cpu_threshold": 50,
+    "nonowned_heavy": [],
+    "sample_period_seconds": 5,
+    "source": "ps pcpu",
+    "utc": "2026-10-01T20:42:38+00:00"
+  }
+]
