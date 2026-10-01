@@ -1,0 +1,15 @@
+{
+  "loads-raw.jsonl": {
+    "omitted_fields": [
+      "command",
+      "output"
+    ],
+    "private_record_sha256": "1b54c78c53febd62097347e26960bf31ef5fb075571c4f2519b8ae1d3a72ca68",
+    "published_record_sha256": "74489ca6051afa37a24914a458a729c986b80b107f909d0f9ffab9849e395479"
+  },
+  "loads-summary.csv": {
+    "omitted_fields": [],
+    "private_record_sha256": "ea23f4459f2c5bf7a08af68a521df5fcb0b93045ee22774ab7741ba8b97e3b3c",
+    "published_record_sha256": "ea23f4459f2c5bf7a08af68a521df5fcb0b93045ee22774ab7741ba8b97e3b3c"
+  }
+}

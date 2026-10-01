@@ -66,6 +66,8 @@ typedef struct {
     int storage;
     int string_storage;
     int ordered;
+    /* The rooted character payload is ordinary STRSXP, not foreign ALTSTRING. */
+    int ordinary_strings;
     const char *tz;
     const char *units;
     const void *values;
@@ -82,6 +84,13 @@ typedef struct {
     const void *dictstring;
     const void *compact_owner;
 } dtatools_arrow_column;
+
+#if UINTPTR_MAX == UINT64_MAX
+_Static_assert(offsetof(dtatools_arrow_column, ordinary_strings) == 44,
+               "Arrow ordinary-string admission offset must match Rust");
+_Static_assert(sizeof(dtatools_arrow_column) == 144,
+               "Arrow column descriptor size must match Rust");
+#endif
 
 enum dtatools_arrow_specification_slot {
     DTATOOLS_ARROW_SPECIFICATION_DATASET_LABEL = 0,

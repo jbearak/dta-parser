@@ -1,0 +1,240 @@
+--- a/r-package/dtatools/src/rust/src/lib.rs
++++ b/r-package/dtatools/src/rust/src/lib.rs
+@@ -5788,8 +5788,13 @@
+         };
+         for version in [
+             FormatVersion::V105,
++            FormatVersion::V108,
++            FormatVersion::V110,
+             FormatVersion::V111,
+             FormatVersion::V113,
++            FormatVersion::V114,
++            FormatVersion::V115,
++            FormatVersion::V117,
+             FormatVersion::V118,
+             FormatVersion::V119,
+         ] {
+@@ -5832,6 +5837,54 @@
+     }
+ 
+     #[test]
++    fn compact_byte_batch_preserves_short_tails_and_accumulated_counts() {
++        use crate::{
++            classify_byte_missing_for_version, DtaColumnSink, FormatVersion, NumericKind, RColumn,
++            RNumericData,
++        };
++        for version in [FormatVersion::V111, FormatVersion::V118] {
++            for count in [0, 1, 15, 16, 17, 31, 32, 33, 255, 256, 257] {
++                for stride in [1, 3, 17] {
++                    let values: Vec<u8> = (0..count).map(|row| (row + 99) as u8).collect();
++                    let mut source = vec![42_u8; count * stride];
++                    for (row, &value) in values.iter().enumerate() {
++                        source[row * stride] = value;
++                    }
++                    let mut output = vec![42_u8; count + 2];
++                    let mut column = RColumn::NumericAltRep {
++                        vector: ptr::null_mut(),
++                        data: RNumericData {
++                            backing: ptr::null_mut(),
++                            values: output.as_mut_ptr(),
++                            length: output.len(),
++                            kind: NumericKind::Byte,
++                            temporal: TemporalKind::None,
++                            format_version: version,
++                            missing_count: 7,
++                        },
++                    };
++                    assert!(column
++                        .try_push_byte_rows(1, count, &source, stride, version)
++                        .unwrap());
++                    assert_eq!(output[0], 42);
++                    assert_eq!(output[count + 1], 42);
++                    assert_eq!(&output[1..count + 1], values.as_slice());
++                    let expected = values
++                        .iter()
++                        .filter(|&&value| {
++                            classify_byte_missing_for_version(value as i8, version).is_some()
++                        })
++                        .count();
++                    let RColumn::NumericAltRep { data, .. } = column else {
++                        unreachable!()
++                    };
++                    assert_eq!(data.missing_count, 7 + expected);
++                }
++            }
++        }
++    }
++
++    #[test]
+     fn compact_byte_batch_validates_ranges_before_writing() {
+         use crate::{DtaColumnSink, FormatVersion, NumericKind, RColumn, RNumericData};
+         let mut output = vec![42_u8; 4];
+--- a/r-package/dtatools/src/rust/src/owned_numeric.rs
++++ b/r-package/dtatools/src/rust/src/owned_numeric.rs
+@@ -285,6 +285,7 @@
+ }
+ 
+ const MISSING_SCAN_ROWS: usize = 65_536;
++const _: () = assert!(MISSING_SCAN_ROWS <= u32::MAX as usize);
+ 
+ pub(crate) fn prepare_from_arrow(
+     arrays: &[ArrayRef],
+@@ -320,7 +321,10 @@
+             return Err("owned compact Arrow chunks cannot contain nulls".to_owned());
+         }
+         macro_rules! buffer {
+-            ($array:ty, $missing:expr) => {{
++            ($array:ty, $missing:expr) => {
++                buffer!($array, $missing, usize)
++            };
++            ($array:ty, $missing:expr, $count:ty) => {{
+                 let typed = array
+                     .as_any()
+                     .downcast_ref::<$array>()
+@@ -331,17 +335,23 @@
+                     }
+                     // No callbacks or atomics in the typed reduction. Each
+                     // block is bounded so workers respond to cancellation.
+-                    missing_count += values.iter().filter(|&&value| ($missing)(value)).count();
++                    missing_count += values
++                        .iter()
++                        .map(|&value| <$count>::from(($missing)(value)))
++                        .sum::<$count>() as usize;
+                 }
+                 typed.values().inner().clone()
+             }};
+         }
+         let buffer = match kind {
+             NumericKind::Byte => {
+-                buffer!(Int8Array, |value| crate::classify_byte_missing_for_version(
+-                    value, version
++                // One scan span fits in u32. Widen only its subtotal so the
++                // contiguous byte reduction need not use usize-width lanes.
++                buffer!(
++                    Int8Array,
++                    |value| crate::classify_byte_missing_for_version(value, version).is_some(),
++                    u32
+                 )
+-                .is_some())
+             }
+             NumericKind::Int => {
+                 buffer!(Int16Array, |value| crate::classify_int_missing_for_version(
+@@ -536,3 +546,118 @@
+     }
+     (&*source.native_owner.cast::<Owner>()).chunks.len()
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn owned_byte_missing_counts_preserve_sliced_chunk_values_for_every_release() {
++        for (format_release, expected_missing) in [
++            (105, 1),
++            (108, 1),
++            (110, 1),
++            (111, 1),
++            (113, 27),
++            (114, 27),
++            (115, 27),
++            (117, 27),
++            (118, 27),
++            (119, 27),
++        ] {
++            let expected: Vec<i8> = (0..256).map(|value| value as i8).collect();
++            let mut padded = vec![127_i8; 3];
++            padded.extend_from_slice(&expected);
++            padded.extend_from_slice(&[127; 5]);
++            let whole = Int8Array::from(padded);
++            let arrays: Vec<ArrayRef> = vec![
++                Arc::new(Int8Array::from(Vec::<i8>::new())),
++                Arc::new(whole.slice(3, 15)),
++                Arc::new(whole.slice(18, 17)),
++                Arc::new(whole.slice(35, 223)),
++                Arc::new(whole.slice(258, 1)),
++            ];
++            let prepared = prepare_from_arrow(
++                &arrays,
++                NumericKind::Byte,
++                TemporalKind::None,
++                FormatVersion::try_from(format_release).unwrap(),
++                256,
++                || false,
++            )
++            .expect("sliced byte chunks preserve their values and release-specific missings");
++            let descriptor = prepared.into_descriptor();
++            assert_eq!(descriptor.missing_count, expected_missing);
++            let read = unsafe { RetainedRead::from_owner(descriptor.native_owner).unwrap() };
++            drop(descriptor);
++            drop(arrays);
++            drop(whole);
++            let mut observed = Vec::new();
++            while observed.len() < read.len() {
++                let (values, count) = read.region(observed.len(), 256).unwrap();
++                observed.extend_from_slice(unsafe {
++                    std::slice::from_raw_parts(values.cast::<i8>(), count)
++                });
++            }
++            assert_eq!(observed, expected);
++        }
++    }
++
++    #[test]
++    fn owned_byte_missing_scan_remains_interruptible_between_bounded_spans() {
++        let rows = MISSING_SCAN_ROWS + 1;
++        let arrays: Vec<ArrayRef> = vec![Arc::new(Int8Array::from(vec![127; rows]))];
++        for stop_at in 1..=4 {
++            let mut polls = 0;
++            let result = prepare_from_arrow(
++                &arrays,
++                NumericKind::Byte,
++                TemporalKind::None,
++                FormatVersion::V118,
++                rows,
++                || {
++                    polls += 1;
++                    polls == stop_at
++                },
++            );
++            assert_eq!(result.err().as_deref(), Some("Arrow read interrupted"));
++            assert_eq!(polls, stop_at);
++        }
++        let prepared = prepare_from_arrow(
++            &arrays,
++            NumericKind::Byte,
++            TemporalKind::None,
++            FormatVersion::V118,
++            rows,
++            || false,
++        )
++        .expect("complete bounded byte scan");
++        let descriptor = prepared.into_descriptor();
++        assert_eq!(descriptor.missing_count, rows);
++    }
++
++    #[test]
++    fn owned_byte_missing_counts_accumulate_across_full_spans_and_chunk_tails() {
++        let arrays: Vec<ArrayRef> = vec![
++            Arc::new(Int8Array::from(vec![127; 65_535])),
++            Arc::new(Int8Array::from(vec![101; 65_536])),
++            Arc::new(Int8Array::from(vec![-1; 65_537])),
++            Arc::new(Int8Array::from(vec![127; 131_073])),
++        ];
++        for (version, expected_missing) in [
++            (FormatVersion::V111, 196_608),
++            (FormatVersion::V118, 262_144),
++        ] {
++            let prepared = prepare_from_arrow(
++                &arrays,
++                NumericKind::Byte,
++                TemporalKind::None,
++                version,
++                327_681,
++                || false,
++            )
++            .expect("missing counts span complete scan blocks and chunk tails");
++            assert_eq!(prepared.into_descriptor().missing_count, expected_missing);
++        }
++    }
++}

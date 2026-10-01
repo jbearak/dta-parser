@@ -1,0 +1,27 @@
+{
+  "provenance-after.json": {
+    "omitted_fields": [],
+    "private_record_sha256": "637603afccb14b89e901e97ba9b4a6d279a1f34bf1905e5fd78c4a2f04b15e82",
+    "published_record_sha256": "637603afccb14b89e901e97ba9b4a6d279a1f34bf1905e5fd78c4a2f04b15e82"
+  },
+  "provenance-before.json": {
+    "omitted_fields": [],
+    "private_record_sha256": "17973441db3b068b3236aace26dfbe9b6d1cd42f3ef322e0d064a7b8a99f44ea",
+    "published_record_sha256": "17973441db3b068b3236aace26dfbe9b6d1cd42f3ef322e0d064a7b8a99f44ea"
+  },
+  "qualification.json": {
+    "omitted_fields": [],
+    "private_record_sha256": "830eab68f0d797ca862aa5ada29a29385755acde47ec497fbfa4f549436e6173",
+    "published_record_sha256": "830eab68f0d797ca862aa5ada29a29385755acde47ec497fbfa4f549436e6173"
+  },
+  "raw.jsonl": {
+    "omitted_fields": [],
+    "private_record_sha256": "af259ef281df2278f1552f03e34c63c3d474ddcc1d1a5e15205d75cc7a79706b",
+    "published_record_sha256": "af259ef281df2278f1552f03e34c63c3d474ddcc1d1a5e15205d75cc7a79706b"
+  },
+  "summary.csv": {
+    "omitted_fields": [],
+    "private_record_sha256": "bc7435a8bb1c1647f179b42050121cebc0a93275eae478492c8dc07166112fa9",
+    "published_record_sha256": "bc7435a8bb1c1647f179b42050121cebc0a93275eae478492c8dc07166112fa9"
+  }
+}

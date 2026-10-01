@@ -181,7 +181,7 @@
       "files": [
         {
           "path": "tests/testthat/test-arrow.R",
-          "sha256": "939c2041bb5da77de2bda33dceaea6e6dde1e0e1d3ef92e421bf2f652d9bd4e2"
+          "sha256": "9cbaa84aea798d400e308042c69b775d2f36ef4fbf2efadb21ee82ce7e5678e4"
         },
         {
           "path": "tests/testthat/test-read-dta.R",
@@ -189,7 +189,7 @@
         },
         {
           "path": "tests/testthat/test-save-dta.R",
-          "sha256": "8669fc7374709d462233a1973bcc91e8be8c6cd66cebfd49b5b64ad18ae4de5c"
+          "sha256": "15bc7b1e8a2664abbf1be61917cb626f85f38f676dbb7180cd50ef5c20168545"
         },
         {
           "path": "tests/testthat/test-write-column.R",
@@ -201,7 +201,7 @@
         },
         {
           "path": "tests/testthat/test-reader-dta-experiments.R",
-          "sha256": "d22179ed2f4edfe77140e8b0006d8b8eb694d3a8a80b7759b62532a61c2108e5"
+          "sha256": "cd29b7b6239d437467af72132555392c3790e0393c20b6c1791d2a34b0c809a3"
         },
         {
           "path": "tests/testthat/test-reader-dta-prepared.R",
@@ -691,6 +691,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow.R",
+          "test": "Arrow string writes preserve Unicode and missing values across regions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 105,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow.R",
+          "test": "Arrow string writes retain owned and ephemeral values through collection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
           "warnings": 0
         },
         {
@@ -1215,6 +1231,38 @@
           "warnings": 0
         },
         {
+          "file": "test-save-dta.R",
+          "test": "mixed ordinary strings retain row order and numeric replacement warnings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 28,
+          "warnings": 0
+        },
+        {
+          "file": "test-save-dta.R",
+          "test": "mixed fixed-string failures keep row-major error order and destination",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-save-dta.R",
+          "test": "ordinary integer Stata-reserved values are replacements in both write routes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-save-dta.R",
+          "test": "ordinary integer writes observe preceding row callbacks at the read point",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
           "file": "test-read-dta.R",
           "test": "parallel compact byte batches preserve serial values and missingness",
           "occurrence": 1,
@@ -1300,6 +1348,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dta-experiments.R",
+          "test": "DTA double fills preserve numeric and temporal values across row windows",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 81,
           "warnings": 0
         },
         {
@@ -9567,7 +9623,7 @@
         },
         {
           "path": "tests/testthat/test-dplyr-optional.R",
-          "sha256": "cb2fbb54c589eabbcd9a92513c6c78a20fd9beb81b3c485b95e84b6eae59e869"
+          "sha256": "13771985a7b9b5e3f8cd89a1f5538842f94ddb389e55431df0027a5266bf0b60"
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
@@ -10647,6 +10703,14 @@
         },
         {
           "file": "test-dplyr-optional.R",
+          "test": "namespace profile setup preserves generation and traced fallbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dplyr-optional.R",
           "test": "optional method hooks and registry ownership survive real reloads",
           "occurrence": 1,
           "skip": "require",
@@ -10752,6 +10816,14 @@
           "kind": "r",
           "minimum": 1,
           "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "startup-generation-profile",
+          "kind": "r",
+          "minimum": 3,
+          "maximum": 3,
           "completion": "complete",
           "allow_error": false
         },

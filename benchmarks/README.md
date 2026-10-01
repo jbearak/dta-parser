@@ -26,6 +26,11 @@ compares same-interval CPU and wall time across Stata processor settings and
 R thread counts. These reports retain raw observations and describe their
 different timing boundaries; none imposes a performance gate.
 
+The [I/O optimization screens](io-optimization/README.md) compare individual
+reader and writer candidates against the reviewed build. They use separate
+correctness qualification and fresh-process timing, with wall time, CPU time,
+and peak memory recorded together.
+
 `DTA_BENCH_ITERATIONS` uses the same grammar in the Rust and TypeScript
 benchmarks: `0` or a non-zero ASCII digit followed by ASCII digits. Leading
 zeros, signs, whitespace, decimal points, exponents, non-decimal prefixes, and

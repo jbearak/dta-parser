@@ -1,0 +1,12 @@
+{
+  "primary-1gb-arrow-0": {
+    "baseline": {
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "log_sha256": "0c0fb412886837a0a14a03ac69e02dc91fb41a9c2762fb294fd68e07cc105c85"
+    },
+    "candidate": {
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "log_sha256": "0c0fb412886837a0a14a03ac69e02dc91fb41a9c2762fb294fd68e07cc105c85"
+    }
+  }
+}

@@ -1,0 +1,154 @@
+[
+  {
+    "key": "ordinary-100mb-save_dta-baseline-1",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t222711\t40\t222711:40:5cd47aa137f897b5"
+    ]
+  },
+  {
+    "key": "ordinary-100mb-save_dta-baseline-4",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t222711\t40\t222711:40:5cd47aa137f897b5"
+    ]
+  },
+  {
+    "key": "ordinary-100mb-save_dta-candidate-1",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t222711\t40\t222711:40:5cd47aa137f897b5"
+    ]
+  },
+  {
+    "key": "ordinary-100mb-save_dta-candidate-4",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t222711\t40\t222711:40:5cd47aa137f897b5"
+    ]
+  },
+  {
+    "key": "ordinary-100mb-save_arrow-baseline-1",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t222711\t40\t222711:40:af028d9a1df57af5"
+    ]
+  },
+  {
+    "key": "ordinary-100mb-save_arrow-baseline-4",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t222711\t40\t222711:40:af028d9a1df57af5"
+    ]
+  },
+  {
+    "key": "ordinary-100mb-save_arrow-candidate-1",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t222711\t40\t222711:40:af028d9a1df57af5"
+    ]
+  },
+  {
+    "key": "ordinary-100mb-save_arrow-candidate-4",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t222711\t40\t222711:40:af028d9a1df57af5"
+    ]
+  },
+  {
+    "key": "ordinary-1gb-save_dta-baseline-1",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t2227111\t40\t2227111:40:7d6afc8b2ef68d9b"
+    ]
+  },
+  {
+    "key": "ordinary-1gb-save_dta-baseline-4",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t2227111\t40\t2227111:40:7d6afc8b2ef68d9b"
+    ]
+  },
+  {
+    "key": "ordinary-1gb-save_dta-candidate-1",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t2227111\t40\t2227111:40:7d6afc8b2ef68d9b"
+    ]
+  },
+  {
+    "key": "ordinary-1gb-save_dta-candidate-4",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t2227111\t40\t2227111:40:7d6afc8b2ef68d9b"
+    ]
+  },
+  {
+    "key": "ordinary-1gb-save_arrow-baseline-1",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t2227111\t40\t2227111:40:1caab8387913f366"
+    ]
+  },
+  {
+    "key": "ordinary-1gb-save_arrow-baseline-4",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t2227111\t40\t2227111:40:1caab8387913f366"
+    ]
+  },
+  {
+    "key": "ordinary-1gb-save_arrow-candidate-1",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t2227111\t40\t2227111:40:1caab8387913f366"
+    ]
+  },
+  {
+    "key": "ordinary-1gb-save_arrow-candidate-4",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t2227111\t40\t2227111:40:1caab8387913f366"
+    ]
+  },
+  {
+    "key": "ordinary-100mb-save_dta-preservation",
+    "library": "baseline",
+    "records": []
+  },
+  {
+    "key": "ordinary-100mb-save_dta-preservation",
+    "library": "candidate",
+    "records": []
+  },
+  {
+    "key": "ordinary-100mb-save_arrow-preservation",
+    "library": "baseline",
+    "records": []
+  },
+  {
+    "key": "ordinary-100mb-save_arrow-preservation",
+    "library": "candidate",
+    "records": []
+  },
+  {
+    "key": "ordinary-1gb-save_dta-preservation",
+    "library": "baseline",
+    "records": []
+  },
+  {
+    "key": "ordinary-1gb-save_dta-preservation",
+    "library": "candidate",
+    "records": []
+  },
+  {
+    "key": "ordinary-1gb-save_arrow-preservation",
+    "library": "baseline",
+    "records": []
+  },
+  {
+    "key": "ordinary-1gb-save_arrow-preservation",
+    "library": "candidate",
+    "records": []
+  }
+]

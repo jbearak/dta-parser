@@ -145,6 +145,12 @@
   `read_arrow()` retains native compact numeric buffers without copying them
   into R byte vectors. The private reader experiment switches are removed;
   existing thread, projection, eager-output and verification options still apply.
+* `save_arrow()` copies ordinary R character columns directly into owned Arrow
+  buffers, reducing intermediate allocations. Foreign ALTREP character columns
+  retain their existing handling.
+* `save_dta()` avoids double conversion for eligible ordinary integer columns.
+  R missing values and integers in Stata's reserved range retain their existing
+  conversion and warning behavior.
 * `read_dta()` and `read_arrow()` avoid loading source-adapter dependencies
   for ordinary local datasets. This removes most first-read overhead on
   small DTA files and reduces repeated-read overhead. Compressed files,

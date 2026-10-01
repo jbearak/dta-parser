@@ -285,6 +285,7 @@ impl PreparedOwnedNumeric {
 }
 
 const MISSING_SCAN_ROWS: usize = 65_536;
+const _: () = assert!(MISSING_SCAN_ROWS <= u32::MAX as usize);
 
 pub(crate) fn prepare_from_arrow(
     arrays: &[ArrayRef],
@@ -320,7 +321,10 @@ pub(crate) fn prepare_from_arrow(
             return Err("owned compact Arrow chunks cannot contain nulls".to_owned());
         }
         macro_rules! buffer {
-            ($array:ty, $missing:expr) => {{
+            ($array:ty, $missing:expr) => {
+                buffer!($array, $missing, usize)
+            };
+            ($array:ty, $missing:expr, $count:ty) => {{
                 let typed = array
                     .as_any()
                     .downcast_ref::<$array>()
@@ -331,17 +335,23 @@ pub(crate) fn prepare_from_arrow(
                     }
                     // No callbacks or atomics in the typed reduction. Each
                     // block is bounded so workers respond to cancellation.
-                    missing_count += values.iter().filter(|&&value| ($missing)(value)).count();
+                    missing_count += values
+                        .iter()
+                        .map(|&value| <$count>::from(($missing)(value)))
+                        .sum::<$count>() as usize;
                 }
                 typed.values().inner().clone()
             }};
         }
         let buffer = match kind {
             NumericKind::Byte => {
-                buffer!(Int8Array, |value| crate::classify_byte_missing_for_version(
-                    value, version
+                // One scan span fits in u32. Widen only its subtotal so the
+                // contiguous byte reduction need not use usize-width lanes.
+                buffer!(
+                    Int8Array,
+                    |value| crate::classify_byte_missing_for_version(value, version).is_some(),
+                    u32
                 )
-                .is_some())
             }
             NumericKind::Int => {
                 buffer!(Int16Array, |value| crate::classify_int_missing_for_version(
@@ -535,4 +545,119 @@ pub unsafe extern "C" fn dtatools_owned_numeric_chunks(data: *const c_void) -> u
         return 0;
     }
     (&*source.native_owner.cast::<Owner>()).chunks.len()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn owned_byte_missing_counts_preserve_sliced_chunk_values_for_every_release() {
+        for (format_release, expected_missing) in [
+            (105, 1),
+            (108, 1),
+            (110, 1),
+            (111, 1),
+            (113, 27),
+            (114, 27),
+            (115, 27),
+            (117, 27),
+            (118, 27),
+            (119, 27),
+        ] {
+            let expected: Vec<i8> = (0..256).map(|value| value as i8).collect();
+            let mut padded = vec![127_i8; 3];
+            padded.extend_from_slice(&expected);
+            padded.extend_from_slice(&[127; 5]);
+            let whole = Int8Array::from(padded);
+            let arrays: Vec<ArrayRef> = vec![
+                Arc::new(Int8Array::from(Vec::<i8>::new())),
+                Arc::new(whole.slice(3, 15)),
+                Arc::new(whole.slice(18, 17)),
+                Arc::new(whole.slice(35, 223)),
+                Arc::new(whole.slice(258, 1)),
+            ];
+            let prepared = prepare_from_arrow(
+                &arrays,
+                NumericKind::Byte,
+                TemporalKind::None,
+                FormatVersion::try_from(format_release).unwrap(),
+                256,
+                || false,
+            )
+            .expect("sliced byte chunks preserve their values and release-specific missings");
+            let descriptor = prepared.into_descriptor();
+            assert_eq!(descriptor.missing_count, expected_missing);
+            let read = unsafe { RetainedRead::from_owner(descriptor.native_owner).unwrap() };
+            drop(descriptor);
+            drop(arrays);
+            drop(whole);
+            let mut observed = Vec::new();
+            while observed.len() < read.len() {
+                let (values, count) = read.region(observed.len(), 256).unwrap();
+                observed.extend_from_slice(unsafe {
+                    std::slice::from_raw_parts(values.cast::<i8>(), count)
+                });
+            }
+            assert_eq!(observed, expected);
+        }
+    }
+
+    #[test]
+    fn owned_byte_missing_scan_remains_interruptible_between_bounded_spans() {
+        let rows = MISSING_SCAN_ROWS + 1;
+        let arrays: Vec<ArrayRef> = vec![Arc::new(Int8Array::from(vec![127; rows]))];
+        for stop_at in 1..=4 {
+            let mut polls = 0;
+            let result = prepare_from_arrow(
+                &arrays,
+                NumericKind::Byte,
+                TemporalKind::None,
+                FormatVersion::V118,
+                rows,
+                || {
+                    polls += 1;
+                    polls == stop_at
+                },
+            );
+            assert_eq!(result.err().as_deref(), Some("Arrow read interrupted"));
+            assert_eq!(polls, stop_at);
+        }
+        let prepared = prepare_from_arrow(
+            &arrays,
+            NumericKind::Byte,
+            TemporalKind::None,
+            FormatVersion::V118,
+            rows,
+            || false,
+        )
+        .expect("complete bounded byte scan");
+        let descriptor = prepared.into_descriptor();
+        assert_eq!(descriptor.missing_count, rows);
+    }
+
+    #[test]
+    fn owned_byte_missing_counts_accumulate_across_full_spans_and_chunk_tails() {
+        let arrays: Vec<ArrayRef> = vec![
+            Arc::new(Int8Array::from(vec![127; 65_535])),
+            Arc::new(Int8Array::from(vec![101; 65_536])),
+            Arc::new(Int8Array::from(vec![-1; 65_537])),
+            Arc::new(Int8Array::from(vec![127; 131_073])),
+        ];
+        for (version, expected_missing) in [
+            (FormatVersion::V111, 196_608),
+            (FormatVersion::V118, 262_144),
+        ] {
+            let prepared = prepare_from_arrow(
+                &arrays,
+                NumericKind::Byte,
+                TemporalKind::None,
+                version,
+                327_681,
+                || false,
+            )
+            .expect("missing counts span complete scan blocks and chunk tails");
+            assert_eq!(prepared.into_descriptor().missing_count, expected_missing);
+        }
+    }
 }

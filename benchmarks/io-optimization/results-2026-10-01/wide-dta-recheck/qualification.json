@@ -1,0 +1,12 @@
+{
+  "india-dta-1": {
+    "baseline": {
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "log_sha256": "aaba8d7349dec5eac7cdaf10bd8fea1992ee7f730faa536cc953f9288e7430c9"
+    },
+    "candidate": {
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "log_sha256": "aaba8d7349dec5eac7cdaf10bd8fea1992ee7f730faa536cc953f9288e7430c9"
+    }
+  }
+}
