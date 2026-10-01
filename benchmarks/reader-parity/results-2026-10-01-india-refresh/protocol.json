@@ -1,0 +1,89 @@
+{
+  "arrow_profile": true,
+  "arrow_verify": true,
+  "cache": "warm filesystem; hashing before qualification and before timing",
+  "calls_per_process": 1,
+  "conversion": "none; exact historical Arrow bytes",
+  "dimensions": {
+    "columns": 5972,
+    "rows": 724115
+  },
+  "historical_comparator_date": "2026-09-16",
+  "historical_comparators_run": false,
+  "initialization": "jsonlite job parsing before dtatools namespace loading, matching historical india.R",
+  "orders": [
+    [
+      "read_dta_tibble",
+      "read_arrow_tibble",
+      "read_dta_dibble",
+      "read_arrow_dibble"
+    ],
+    [
+      "read_arrow_dibble",
+      "read_dta_dibble",
+      "read_arrow_tibble",
+      "read_dta_tibble"
+    ],
+    [
+      "read_arrow_tibble",
+      "read_dta_dibble",
+      "read_arrow_dibble",
+      "read_dta_tibble"
+    ],
+    [
+      "read_dta_tibble",
+      "read_arrow_dibble",
+      "read_dta_dibble",
+      "read_arrow_tibble"
+    ],
+    [
+      "read_dta_dibble",
+      "read_arrow_dibble",
+      "read_dta_tibble",
+      "read_arrow_tibble"
+    ],
+    [
+      "read_arrow_tibble",
+      "read_dta_tibble",
+      "read_arrow_dibble",
+      "read_dta_dibble"
+    ],
+    [
+      "read_arrow_dibble",
+      "read_dta_tibble",
+      "read_arrow_tibble",
+      "read_dta_dibble"
+    ],
+    [
+      "read_dta_dibble",
+      "read_arrow_tibble",
+      "read_dta_tibble",
+      "read_arrow_dibble"
+    ],
+    [
+      "read_dta_tibble",
+      "read_arrow_tibble",
+      "read_dta_dibble",
+      "read_arrow_dibble"
+    ],
+    [
+      "read_arrow_dibble",
+      "read_dta_dibble",
+      "read_arrow_tibble",
+      "read_dta_tibble"
+    ]
+  ],
+  "output_containers": [
+    "tibble",
+    "dibble"
+  ],
+  "peak_rss": "wait4 maximum resident bytes for the whole fresh process",
+  "process_cpu": "wait4 user plus system CPU for the whole fresh process",
+  "qualification": "full DTA/Arrow signatures within each output; zero warnings; separate untimed processes",
+  "read_cpu": "user.self plus sys.self over exactly the read-wall interval",
+  "read_wall": "public reader call including first initialization; no GC or compiled timing closure",
+  "rounds": 10,
+  "smoke": false,
+  "threads": 0,
+  "use_numeric_altrep": true
+}

@@ -1,0 +1,26 @@
+{
+  "measured_source_commit": "b89e532d4a90fb0b3daa93d66ed679bc3617295c",
+  "measurement_started_utc": "2026-10-01T20:42:07.291996+00:00",
+  "measurement_finished_utc": "2026-10-01T20:42:38.158232+00:00",
+  "host_samples": 7,
+  "samples_with_nonowned_cpu_ge_50": 0,
+  "artifacts": {
+    ".gitattributes": "efd2bcc7d42cd7f7190c8d78f49dc947f7a64f623597ccd3dc5cd56d7edc07ac",
+    "COMPLETE": "6c8b186ac25fdbb92f4014f91ccb1eb15fc353a717521c583297f54ca1bcb606",
+    "MEASUREMENT_STARTED.json": "cab26d23627f061c6dbd53c0f5648a072f01ff3ef127e74c7915ccc85646cfcd",
+    "QUALIFIED.json": "13bfb923ed806af9d9b664b4fa21ee8ec07b3246ec89796bcceeff0c0c07bf68",
+    "binding-after.json": "158dd057ed16bdcc785cb4781caa14b56365c559824c63509f5e35927745d69d",
+    "binding-before.json": "158dd057ed16bdcc785cb4781caa14b56365c559824c63509f5e35927745d69d",
+    "completion.json": "2de7bf7994d78e65ec36aeb7b6034c1ed040c9019c6a1ea0183dfa7993f619a1",
+    "historical-comparators.csv": "b53e2d7b97450dbd56401e854ebc1d006a00a4251bb7c88e35365d563ffd2ccc",
+    "historical-summary.csv": "00c8f33688dc62a938cae16abcd82b3e5f396ce2f3f30df4b5f5a5ef48f46900",
+    "host-observations.json": "3b43bb389f71570a0f9e7c1793662c332e7480f47eda2307648f70b3ec7b914f",
+    "monitor-host.py": "bf4df80a9c5e34517ea77d4c318d6de72580dae046e8a71641f67dbb2e7d2c84",
+    "observations.csv": "2d8de56d37bd052a43ee9802b9f7fe427c29720fe65d1978cb2e27fb8c46ce92",
+    "protocol.json": "009b9ade408204b11c5e38c84466426704976cecd30787c46d5846c865e6a8f8",
+    "qualification.json": "0f8b215437bb6bf497bc267b97df0369a097cc41afb00c0afd5a349fe9fd6ea8",
+    "source-commit-audit.json": "6489a8ff44b4baeb3b6334eb9df101a90b56c3afdbbdbc5ab3a7fb7ae16019ef",
+    "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "summary.csv": "21bec7fc1aee7bb599036c4123ac668eed6c2b6426255db8d8fb28c681032cfd"
+  }
+}

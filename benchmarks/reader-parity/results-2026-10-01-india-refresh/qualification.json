@@ -1,0 +1,30 @@
+{
+  "read_arrow_dibble": {
+    "columns": 5972,
+    "output": "dibble",
+    "rows": 724115,
+    "signature": "724115:5972:e404e6f1cf51f55a",
+    "warnings": []
+  },
+  "read_arrow_tibble": {
+    "columns": 5972,
+    "output": "tibble",
+    "rows": 724115,
+    "signature": "724115:5972:e404e6f1cf51f55a",
+    "warnings": []
+  },
+  "read_dta_dibble": {
+    "columns": 5972,
+    "output": "dibble",
+    "rows": 724115,
+    "signature": "724115:5972:e404e6f1cf51f55a",
+    "warnings": []
+  },
+  "read_dta_tibble": {
+    "columns": 5972,
+    "output": "tibble",
+    "rows": 724115,
+    "signature": "724115:5972:e404e6f1cf51f55a",
+    "warnings": []
+  }
+}

@@ -1,5 +1,12 @@
 # R corpus write qualification and benchmark
 
+The [October 1, 2026 Stata oracle](results-2026-10-01.md) passed
+both DTA and Arrow round trips for all 1,879 readable inputs across five
+survey corpora, with two known malformed-input exclusions. That run used live Stata
+without Haven. See [exact Stata verification](#exact-stata-verification) and
+the [supplemental protocol](verify-extra-cache.md) for that workflow. The
+write-performance workflow below has a different scope and invokes Haven.
+
 This manual workflow qualifies `dtatools::save_dta()` against every DTA file
 in the DHS, MICS, and NSFG directories beneath `/opt/aww_cache`, then compares
 its write performance with Stata. It refuses CI and requires Stata/MP 18 or
@@ -127,9 +134,9 @@ writes a direct DTA copy, an Arrow copy, and a DTA copy read back from Arrow.
 Stata compares the original with both DTA outputs. The comparison covers
 dimensions, variable order and names, storage types, display formats, dataset
 and variable labels, value-label assignments and definitions, notes, and every
-stored value. Notes means the dataset notes represented by the package; Stata
-variable notes are arbitrary variable characteristics and are outside the
-package's documented read model.
+stored value. The oracle checks dataset notes, but does not compare arbitrary
+dataset or variable characteristics, including variable notes. Those metadata
+have separate package coverage; they are outside this comparator's checks.
 
 Start with the smallest files:
 

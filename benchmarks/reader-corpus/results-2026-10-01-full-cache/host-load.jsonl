@@ -1,0 +1,40 @@
+{"completed_attempts": 0, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:35:33+00:00"}
+{"completed_attempts": 16, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:36:03+00:00"}
+{"completed_attempts": 113, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:36:34+00:00"}
+{"completed_attempts": 211, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:37:04+00:00"}
+{"completed_attempts": 307, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:37:34+00:00"}
+{"completed_attempts": 404, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 78.7, "kind": "cliproxyapi", "parent": 1, "pid": 80320, "state": "Ss"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:38:05+00:00"}
+{"completed_attempts": 502, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:38:35+00:00"}
+{"completed_attempts": 564, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 117.5, "kind": "bun", "parent": 3801, "pid": 3803, "state": "R"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:39:05+00:00"}
+{"completed_attempts": 656, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 130.6, "kind": "bun", "parent": 3801, "pid": 3803, "state": "R"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:39:36+00:00"}
+{"completed_attempts": 745, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 118.9, "kind": "bun", "parent": 3801, "pid": 3803, "state": "R"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:40:06+00:00"}
+{"completed_attempts": 838, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 117.1, "kind": "bun", "parent": 3801, "pid": 3803, "state": "R"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:40:36+00:00"}
+{"completed_attempts": 926, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 150.5, "kind": "bun", "parent": 3801, "pid": 3803, "state": "R"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:41:06+00:00"}
+{"completed_attempts": 1020, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:41:37+00:00"}
+{"completed_attempts": 1116, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:42:07+00:00"}
+{"completed_attempts": 1209, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 131.5, "kind": "bun", "parent": 8916, "pid": 10758, "state": "Rs"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:42:37+00:00"}
+{"completed_attempts": 1303, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 111.7, "kind": "bun", "parent": 8916, "pid": 10758, "state": "Rs"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:43:07+00:00"}
+{"completed_attempts": 1404, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 107.6, "kind": "bun", "parent": 8916, "pid": 10758, "state": "Rs"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:43:38+00:00"}
+{"completed_attempts": 1508, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 118.7, "kind": "bun", "parent": 8916, "pid": 10758, "state": "Rs"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:44:08+00:00"}
+{"completed_attempts": 1615, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:44:38+00:00"}
+{"completed_attempts": 1724, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:45:09+00:00"}
+{"completed_attempts": 1834, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:45:39+00:00"}
+{"completed_attempts": 1943, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:46:09+00:00"}
+{"completed_attempts": 2053, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:46:40+00:00"}
+{"completed_attempts": 2163, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:47:10+00:00"}
+{"completed_attempts": 2272, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:47:40+00:00"}
+{"completed_attempts": 2382, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:48:11+00:00"}
+{"completed_attempts": 2492, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:48:41+00:00"}
+{"completed_attempts": 2600, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:49:11+00:00"}
+{"completed_attempts": 2709, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:49:41+00:00"}
+{"completed_attempts": 2819, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:50:12+00:00"}
+{"completed_attempts": 2928, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:50:42+00:00"}
+{"completed_attempts": 3037, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:51:12+00:00"}
+{"completed_attempts": 3143, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 125.2, "kind": "bun", "parent": 33628, "pid": 33630, "state": "R"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:51:43+00:00"}
+{"completed_attempts": 3245, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 124.7, "kind": "bun", "parent": 33628, "pid": 33630, "state": "R"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:52:13+00:00"}
+{"completed_attempts": 3345, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 124.5, "kind": "bun", "parent": 33628, "pid": 33630, "state": "R"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:52:43+00:00"}
+{"completed_attempts": 3440, "cpu_threshold": 50, "nonowned_heavy": [{"cpu_percent": 116.0, "kind": "bun", "parent": 33628, "pid": 33630, "state": "R"}], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:53:13+00:00"}
+{"completed_attempts": 3536, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:53:44+00:00"}
+{"completed_attempts": 3631, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:54:14+00:00"}
+{"completed_attempts": 3733, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:54:44+00:00"}
+{"completed_attempts": 3764, "cpu_threshold": 50, "nonowned_heavy": [], "sample_period_seconds": 30, "source": "ps pcpu", "utc": "2026-10-01T18:55:15+00:00"}

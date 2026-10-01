@@ -243,7 +243,7 @@
       "files": [
         {
           "path": "tests/testthat/test-arrow.R",
-          "sha256": "9cbaa84aea798d400e308042c69b775d2f36ef4fbf2efadb21ee82ce7e5678e4"
+          "sha256": "b0bcae38fdb14840a34cf0a2fb63980c0e7ccf1008cffd11eeabec0e7936939e"
         },
         {
           "path": "tests/testthat/test-read-dta.R",
@@ -769,6 +769,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow.R",
+          "test": "reader attribute reuse keeps column edits and subsequent reads independent",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 81,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow.R",
+          "test": "reader attribute values remain rooted during collection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow.R",
+          "test": "readers preserve formats beyond the shared scalar cache limit",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
           "warnings": 0
         },
         {
@@ -9689,7 +9713,7 @@
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
-          "sha256": "5154deac1fae513351405fa3bbe57aabbdf60885f5b9732f22837b6b16c39508"
+          "sha256": "94c18a47b555582c098b38dee27dc8f0cedc3117d4429ffc7bf0dd5619f35465"
         }
       ],
       "blocks": [
@@ -10861,6 +10885,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dibble.R",
+          "test": "direct reader tibbles preserve repaired names metadata and compact columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 70,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dibble.R",
+          "test": "reader columns are independent of tibble row-name configuration",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 34,
           "warnings": 0
         }
       ],

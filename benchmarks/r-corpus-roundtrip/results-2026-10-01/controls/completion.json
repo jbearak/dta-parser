@@ -1,0 +1,13 @@
+{
+  "exit_code": 0,
+  "pre_post_bindings_equal": true,
+  "intentional_mismatch_categories": 10,
+  "source_self_comparisons": 5,
+  "reserved_variable_name_guard": 1,
+  "wide_comparison_rows": 10000,
+  "wide_comparison_columns": 1000,
+  "wide_elapsed_limit_seconds": 2.5,
+  "no_haven_reader_or_test": true,
+  "log_sha256": "3957758d50a5933fb9c12dfd6a271c371da052d3201c4b681fdb433faa52515f",
+  "finished_unix": 1790877461.2829309
+}

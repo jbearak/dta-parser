@@ -26,6 +26,24 @@ compares same-interval CPU and wall time across Stata processor settings and
 R thread counts. These reports retain raw observations and describe their
 different timing boundaries; none imposes a performance gate.
 
+The [R reader comparison](r-file-readers/results-2026-10-01.md) measures
+reader construction changes with tibble and dibble outputs, alongside base R
+and major package readers. It reports read-call and first-consumption costs,
+paired uncertainty intervals, CPU time and peak RSS. The
+[reader survey](../docs/research/r-file-reader-performance-2026-10-01.md)
+describes the formats and metadata contracts behind those comparisons.
+
+The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
+reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
+ENADID and WFS survey datasets, with both tibble and dibble outputs. Its 3,762
+survey attempts include the two known malformed inputs for both containers;
+aggregate times cover 1,879 readable files.
+
+The [full-cache Stata oracle](r-corpus-roundtrip/results-2026-10-01.md)
+qualifies DTA and Arrow round trips across all 1,879 readable files in the
+five survey datasets, with two hash-bound malformed-input exclusions. It reruns
+live Stata comparisons without invoking Haven.
+
 The [I/O optimization screens](io-optimization/README.md) compare individual
 reader and writer candidates against the reviewed build. They use separate
 correctness qualification and fresh-process timing, with wall time, CPU time,

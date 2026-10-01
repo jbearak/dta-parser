@@ -24,6 +24,88 @@ test_that("direct reader dibbles preserve the general constructor's semantics", 
     }
 })
 
+test_that("direct reader tibbles preserve repaired names metadata and compact columns", {
+    dta_path <- fixture("all_types_v118.dta")
+    arrow_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(arrow_path), add = TRUE)
+    save_arrow(read_dta(dta_path, output = "tibble"), arrow_path)
+    for (reader in list(read_dta, read_arrow)) {
+        input <- if (identical(reader, read_dta)) dta_path else arrow_path
+        for (window in list(list(), list(skip = 1, n_max = 2), list(n_max = 0))) {
+            args <- c(list(file = input, output = "tibble"), window)
+            ordinary <- do.call(reader, args)
+            expect_s3_class(ordinary, "tbl_df")
+            expect_false(is_dibble(ordinary))
+            for (column in ordinary) {
+                if (.is_numeric_altrep(column)) {
+                    expect_true(.is_unmaterialized_numeric_altrep(column))
+                }
+            }
+            expect_identical(ordinary, tibble::as_tibble(ordinary, .name_repair = "minimal"))
+            expect_identical(
+                attributes(ordinary),
+                attributes(tibble::as_tibble(ordinary, .name_repair = "minimal"))
+            )
+            calls <- 0L
+            repair <- function(names) {
+                calls <<- calls + 1L
+                paste0("renamed ", seq_along(names))
+            }
+            renamed <- do.call(reader, c(args, list(.name_repair = repair)))
+            expect_identical(calls, 1L)
+            expect_identical(names(renamed), paste0("renamed ", seq_len(ncol(renamed))))
+            names(renamed) <- names(ordinary)
+            expect_identical(datasig(renamed), datasig(ordinary))
+            expect_identical(lapply(renamed, attributes), lapply(ordinary, attributes))
+        }
+        duplicate <- reader(input, output = "tibble",
+                            .name_repair = function(x) rep("x", length(x)))
+        expect_true(anyDuplicated(names(duplicate)) > 0L)
+        empty <- reader(input, output = "tibble", col_select = integer(), skip = 1, n_max = 2)
+        expect_identical(dim(empty), c(2L, 0L))
+    }
+})
+
+test_that("reader columns are independent of tibble row-name configuration", {
+    skip_if_not_installed("pkgconfig")
+    # pkgconfig is tibble's dependency, not a reader dependency.
+    get_config <- getExportedValue("pkgconfig", "get_config")
+    set_config <- getExportedValue("pkgconfig", "set_config_in")
+    old_config <- get_config("tibble::rownames", NULL)
+    on.exit(set_config("tibble::rownames" = old_config, .in = globalenv()), add = TRUE)
+
+    dta_path <- fixture("all_types_v118.dta")
+    source <- read_dta(dta_path, output = "tibble")
+    signature <- datasig(source)
+    arrow_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(arrow_path), add = TRUE)
+    save_arrow(source, arrow_path)
+    set_config("tibble::rownames" = "row_id", .in = globalenv())
+    expect_identical(get_config("tibble::rownames"), "row_id")
+    expect_identical(names(tibble::as_tibble(data.frame(value = 1))),
+                     c("row_id", "value"))
+
+    for (reader in list(read_dta, read_arrow)) {
+        input <- if (identical(reader, read_dta)) dta_path else arrow_path
+        for (output in c("tibble", "dibble")) {
+            actual <- reader(input, output = output, datasig = TRUE)
+            expect_identical(names(actual), names(source))
+            expect_identical(dim(actual), dim(source))
+            expect_identical(datasig(actual), signature)
+            expect_identical(attr(actual, "datasig"), datasig(input))
+
+            selected <- reader(input, output = output,
+                               col_select = c(renamed = 2, 1), n_max = 2)
+            expect_identical(names(selected), c("renamed", names(source)[[1L]]))
+            expect_identical(dim(selected), c(2L, 2L))
+            empty <- reader(input, output = output,
+                            col_select = integer(), n_max = 2)
+            expect_identical(names(empty), character())
+            expect_identical(dim(empty), c(2L, 0L))
+        }
+    }
+})
+
 test_that("direct readers retain name repair and empty projection rules", {
     dta_path <- fixture("all_types_v118.dta")
     arrow_path <- tempfile(fileext = ".arrow")

@@ -46,9 +46,9 @@ use crate::{
     parse_dta_metadata_sexp, poll_interrupt, r_char, r_missing, scalar_integer, scalar_string,
     set_attr, set_class, set_symbol_attr, should_preserve_value_label_name, string_vector,
     temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen, RStringData, RWriteError,
-    R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol, R_RowNamesSymbol, Sexp,
-    TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL, REAL, REALSXP,
-    SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT, STRSXP, VECSXP,
+    R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol, R_RowNamesSymbol,
+    ReaderAttributeValues, Sexp, TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL,
+    REAL, REALSXP, SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT, STRSXP, VECSXP,
 };
 
 /// One column handed from C for `save_arrow()`. Field meanings depend on
@@ -2220,6 +2220,7 @@ impl ColumnAttributes<'_> {
 unsafe fn attach_simple_attributes(
     vector: Sexp,
     attributes: &ColumnAttributes<'_>,
+    values: &mut ReaderAttributeValues,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     if let Some(document) = attributes.document {
@@ -2227,19 +2228,19 @@ unsafe fn attach_simple_attributes(
     }
     if !attributes.label().is_empty() {
         let label = scalar_string(attributes.label(), guard)?;
-        set_attr(vector, "label", label)?;
+        values.set_attr(vector, "label", label)?;
     }
     if !attributes.format().is_empty() {
-        let format = scalar_string(attributes.format(), guard)?;
-        set_attr(vector, "format.stata", format)?;
+        let format = values.scalar(attributes.format(), guard)?;
+        values.set_attr(vector, "format.stata", format)?;
     }
     if let Some(storage) = attributes
         .document
         .and_then(|document| document.string_storage.as_deref())
     {
-        let storage = scalar_string(storage, guard)?;
-        set_attr(vector, "stata.string.storage", storage)?;
-        set_class(vector, &["dta_string", "vctrs_vctr", "character"], guard)?;
+        let storage = values.scalar(storage, guard)?;
+        values.set_attr(vector, "stata.string.storage", storage)?;
+        values.set_class(vector, &["dta_string", "vctrs_vctr", "character"])?;
     }
     Ok(())
 }
@@ -3318,6 +3319,7 @@ fn run_column_fills(
 unsafe fn apply_difftime_attributes(
     vector: Sexp,
     attributes: &ColumnAttributes<'_>,
+    values: &mut ReaderAttributeValues,
     guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
     let units = attributes
@@ -3325,9 +3327,9 @@ unsafe fn apply_difftime_attributes(
         .and_then(|semantics| semantics.units.as_deref())
         .filter(|units| !units.is_empty())
         .unwrap_or("secs");
-    let units_value = scalar_string(units, guard)?;
-    set_attr(vector, "units", units_value)?;
-    set_class(vector, &["difftime"], guard)?;
+    let units_value = values.scalar(units, guard)?;
+    values.set_attr(vector, "units", units_value)?;
+    values.set_class(vector, &["difftime"])?;
     Ok(vector)
 }
 
@@ -3337,15 +3339,16 @@ unsafe fn value_label_attributes(
     labels: Sexp,
     add_haven_class: bool,
     preserve_value_label_name: bool,
+    values: &mut ReaderAttributeValues,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
-    set_attr(vector, "labels", labels)?;
+    values.set_attr(vector, "labels", labels)?;
     if preserve_value_label_name {
         let name = scalar_string(table_name, guard)?;
-        set_attr(vector, "value.label.name", name)?;
+        values.set_attr(vector, "value.label.name", name)?;
     }
     if add_haven_class {
-        set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
+        values.set_class(vector, &["haven_labelled", "vctrs_vctr", "double"])?;
     }
     Ok(())
 }
@@ -3354,6 +3357,7 @@ unsafe fn attach_cached_value_labels(
     vector: Sexp,
     column_name: &str,
     attributes: &ColumnAttributes<'_>,
+    values: &mut ReaderAttributeValues,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     if let Some((table_name, labels)) = attributes.value_labels() {
@@ -3363,6 +3367,7 @@ unsafe fn attach_cached_value_labels(
             labels,
             false,
             attributes.preserve_value_label_name(column_name),
+            values,
             guard,
         )?;
     }
@@ -3374,29 +3379,30 @@ unsafe fn apply_double_class(
     vector: Sexp,
     column_name: &str,
     attributes: &ColumnAttributes<'_>,
+    values: &mut ReaderAttributeValues,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     match attributes.class() {
         Some("haven_labelled") => {
-            set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
+            values.set_class(vector, &["haven_labelled", "vctrs_vctr", "double"])?;
         }
-        Some("Date") => set_class(vector, &["Date"], guard)?,
+        Some("Date") => values.set_class(vector, &["Date"])?,
         Some("POSIXct") => {
-            set_class(vector, &["POSIXct", "POSIXt"], guard)?;
+            values.set_class(vector, &["POSIXct", "POSIXt"])?;
             if let Some(tz) = attributes
                 .semantics()
                 .and_then(|semantics| semantics.tz.as_deref())
             {
-                let timezone = scalar_string(tz, guard)?;
-                set_attr(vector, "tzone", timezone)?;
+                let timezone = values.scalar(tz, guard)?;
+                values.set_attr(vector, "tzone", timezone)?;
             }
         }
         Some("difftime") => {
-            apply_difftime_attributes(vector, attributes, guard)?;
+            apply_difftime_attributes(vector, attributes, values, guard)?;
         }
         _ => {}
     }
-    attach_cached_value_labels(vector, column_name, attributes, guard)
+    attach_cached_value_labels(vector, column_name, attributes, values, guard)
 }
 
 /// Turn one filled plan into the final R vector: wrap compact numerics and
@@ -3407,6 +3413,7 @@ unsafe fn finalize_read_column(
     plan: PlannedColumn,
     outcome: FillOutcome,
     attribute_cache: &ReadAttributeCache<'_>,
+    attribute_values: &mut ReaderAttributeValues,
     row_count: usize,
     guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
@@ -3432,15 +3439,15 @@ unsafe fn finalize_read_column(
                 return Err(mismatch());
             };
             let level_vector = optional_string_vector(&levels, guard)?;
-            set_attr(plan.vector, "levels", level_vector)?;
+            attribute_values.set_attr(plan.vector, "levels", level_vector)?;
             let ordered = attributes
                 .semantics()
                 .and_then(|semantics| semantics.ordered)
                 .unwrap_or(column.dictionary_ordered);
             if ordered {
-                set_class(plan.vector, &["ordered", "factor"], guard)?;
+                attribute_values.set_class(plan.vector, &["ordered", "factor"])?;
             } else {
-                set_class(plan.vector, &["factor"], guard)?;
+                attribute_values.set_class(plan.vector, &["factor"])?;
             }
             guard.adopt_atomic(plan.vector)?
         }
@@ -3479,16 +3486,17 @@ unsafe fn finalize_read_column(
                 value_label_name,
                 labels_attribute,
                 attributes.preserve_value_label_name(&column.name),
+                attribute_values,
                 guard,
             )?;
         }
         ColumnShape::Date32 => {
-            set_class(vector, &["Date"], guard)?;
-            attach_simple_attributes(vector, &attributes, guard)?;
-            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
+            attribute_values.set_class(vector, &["Date"])?;
+            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
+            attach_cached_value_labels(vector, &column.name, &attributes, attribute_values, guard)?;
         }
         ColumnShape::Timestamp => {
-            set_class(vector, &["POSIXct", "POSIXt"], guard)?;
+            attribute_values.set_class(vector, &["POSIXct", "POSIXt"])?;
             let type_tz = match &column.data_type {
                 DataType::Timestamp(_, tz) => tz.as_deref(),
                 _ => None,
@@ -3501,30 +3509,30 @@ unsafe fn finalize_read_column(
                 Some(type_tz.unwrap_or("UTC"))
             };
             if let Some(tz) = tz {
-                let timezone = scalar_string(tz, guard)?;
-                set_attr(vector, "tzone", timezone)?;
+                let timezone = attribute_values.scalar(tz, guard)?;
+                attribute_values.set_attr(vector, "tzone", timezone)?;
             }
-            attach_simple_attributes(vector, &attributes, guard)?;
-            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
+            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
+            attach_cached_value_labels(vector, &column.name, &attributes, attribute_values, guard)?;
         }
         ColumnShape::Duration { .. } => {
-            apply_difftime_attributes(vector, &attributes, guard)?;
-            attach_simple_attributes(vector, &attributes, guard)?;
-            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
+            apply_difftime_attributes(vector, &attributes, attribute_values, guard)?;
+            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
+            attach_cached_value_labels(vector, &column.name, &attributes, attribute_values, guard)?;
         }
         ColumnShape::PayloadDouble | ColumnShape::SemanticDouble => {
-            apply_double_class(vector, &column.name, &attributes, guard)?;
-            attach_simple_attributes(vector, &attributes, guard)?;
+            apply_double_class(vector, &column.name, &attributes, attribute_values, guard)?;
+            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
         }
         ColumnShape::Integer => {
-            attach_simple_attributes(vector, &attributes, guard)?;
-            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
+            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
+            attach_cached_value_labels(vector, &column.name, &attributes, attribute_values, guard)?;
         }
         ColumnShape::Logical
         | ColumnShape::Raw
         | ColumnShape::Strings { .. }
         | ColumnShape::Factor => {
-            attach_simple_attributes(vector, &attributes, guard)?;
+            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
         }
     }
     Ok(vector)
@@ -3709,6 +3717,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
         let outcomes = run_column_fills(&result.columns, fills, threads)?;
 
         // Finalize on the R thread: ALTREP wrapping, classes, attributes.
+        let mut attribute_values = ReaderAttributeValues::new();
         for (index, ((column, plan), outcome)) in
             result.columns.iter().zip(plans).zip(outcomes).enumerate()
         {
@@ -3719,6 +3728,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                 plan,
                 outcome,
                 &attribute_cache,
+                &mut attribute_values,
                 row_count,
                 &mut column_guard,
             )?;

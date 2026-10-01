@@ -1,0 +1,1143 @@
+--- a/r-package/dtatools/NEWS.md
++++ b/r-package/dtatools/NEWS.md
+@@ -145,6 +145,12 @@
+   `read_arrow()` retains native compact numeric buffers without copying them
+   into R byte vectors. The private reader experiment switches are removed;
+   existing thread, projection, eager-output and verification options still apply.
++* Both readers reuse repeated column attributes within a read and return native
++  tibbles directly. Arrow scans compact numeric missing values with narrower
++  counters, preserving validation, missing codes, and interrupt checks.
++* Reader tibble output now returns only selected file columns, matching dibble
++  and data.table output. The global `tibble::rownames` configuration no longer
++  adds a row-name column; add one explicitly after reading if needed.
+ * `save_arrow()` copies ordinary R character columns directly into owned Arrow
+   buffers, reducing intermediate allocations. Foreign ALTREP character columns
+   retain their existing handling.
+--- a/r-package/dtatools/R/output-container.R
++++ b/r-package/dtatools/R/output-container.R
+@@ -54,7 +54,20 @@
+     names(native) <- repaired
+     # Native readers already return a rectangular tibble. Keep its shell
+     # until metadata is attached, then publish through the reader constructor.
+-    if (reader && identical(output, "dibble")) return(native)
++    if (reader && output %in% c("tibble", "dibble")) {
++        if (identical(output, "tibble")) {
++            # Match the tibble constructor's attribute order without walking
++            # the columns. Keep automatic row names in their compact form.
++            attributes <- attributes(native)
++            attributes[["row.names"]] <- .row_names_info(native, 0L)
++            frame_attributes <- c("names", "row.names", "class")
++            attributes(native) <- c(
++                attributes[setdiff(names(attributes), frame_attributes)],
++                attributes[frame_attributes]
++            )
++        }
++        return(native)
++    }
+     if (output %in% c("tibble", "dibble")) {
+         # A dibble starts as this tibble and is marked by
+         # `.complete_output_container()` once the caller has attached
+--- a/r-package/dtatools/R/read-arrow.R
++++ b/r-package/dtatools/R/read-arrow.R
+@@ -55,13 +55,16 @@
+ #'   `FALSE` reads the file as plain Arrow data with standard semantics only,
+ #'   which also disables checksum verification: the checksums are profile
+ #'   metadata.
+-#' @param .name_repair Name repair passed to [tibble::as_tibble()].
++#' @param .name_repair Name repair applied to the selected column names by
++#'   [vctrs::vec_as_names()].
+ #' @param output Output container. An explicit `"dibble"`, `"tibble"`, or
+ #'   `"data.table"` overrides stored Arrow provenance. `"default"` restores a
+ #'   container recorded by [save_arrow()] and otherwise uses the
+ #'   `dtatools.output` option, falling back to `"dibble"`. A recorded
+ #'   container this release does not know reads as a tibble.
+-#'   `profile = FALSE` ignores stored provenance.
++#'   `profile = FALSE` ignores stored provenance. Every container returns the
++#'   selected file columns; the global `tibble::rownames` configuration does
++#'   not add columns.
+ #' @param use_numeric_altrep Whether profiled byte, int, long, and float
+ #'   columns should retain their compact Stata storage through ALTREP. Set to
+ #'   `FALSE` to create eager R double vectors while reading.
+--- a/r-package/dtatools/R/read-dta.R
++++ b/r-package/dtatools/R/read-dta.R
+@@ -171,11 +171,13 @@
+ #'   R double vectors during decoding, which uses more memory but avoids later
+ #'   widening when a workload requires a contiguous double data pointer.
+ #'   Character-column ALTREP is unaffected.
+-#' @param .name_repair Name repair passed to [tibble::as_tibble()].
++#' @param .name_repair Name repair applied to the selected column names by
++#'   [vctrs::vec_as_names()].
+ #' @param output Output container. `"default"` uses the `dtatools.output`
+ #'   option, falling back to `"dibble"`. Supply `"dibble"`, `"tibble"`, or
+ #'   `"data.table"` to override the option. Data-table output requires the
+-#'   suggested data.table package.
++#'   suggested data.table package. Every container returns the selected file
++#'   columns; the global `tibble::rownames` configuration does not add columns.
+ #' @param datasig Whether to record the file's [datasig()] signature in the
+ #'   result's `datasig` attribute, as a load-time record of what the file on
+ #'   disk signed as; it is never updated afterwards, so it is not a claim
+--- a/r-package/dtatools/man/read_arrow.Rd
++++ b/r-package/dtatools/man/read_arrow.Rd
+@@ -45,14 +45,17 @@
+ which also disables checksum verification: the checksums are profile
+ metadata.}
+ 
+-\item{.name_repair}{Name repair passed to \code{\link[tibble:as_tibble]{tibble::as_tibble()}}.}
++\item{.name_repair}{Name repair applied to the selected column names by
++\code{\link[vctrs:vec_as_names]{vctrs::vec_as_names()}}.}
+ 
+ \item{output}{Output container. An explicit \code{"dibble"}, \code{"tibble"}, or
+ \code{"data.table"} overrides stored Arrow provenance. \code{"default"} restores a
+ container recorded by \code{\link[=save_arrow]{save_arrow()}} and otherwise uses the
+ \code{dtatools.output} option, falling back to \code{"dibble"}. A recorded
+ container this release does not know reads as a tibble.
+-\code{profile = FALSE} ignores stored provenance.}
++\code{profile = FALSE} ignores stored provenance. Every container returns the
++selected file columns; the global \code{tibble::rownames} configuration does
++not add columns.}
+ 
+ \item{use_numeric_altrep}{Whether profiled byte, int, long, and float
+ columns should retain their compact Stata storage through ALTREP. Set to
+--- a/r-package/dtatools/man/read_dta.Rd
++++ b/r-package/dtatools/man/read_dta.Rd
+@@ -34,11 +34,14 @@
+ negative finite values read all remaining rows, following haven's unlimited-row
+ convention. Non-negative values must be whole numbers no larger than
+ \code{2^53}.}
+-\item{.name_repair}{Name repair passed to \code{tibble::as_tibble()}.}
++\item{.name_repair}{Name repair applied to the selected column names by
++\code{\link[vctrs:vec_as_names]{vctrs::vec_as_names()}}.}
+ \item{output}{Output container. \code{"default"} uses the
+ \code{dtatools.output} option, falling back to \code{"dibble"}. Supply
+ \code{"dibble"}, \code{"tibble"}, or \code{"data.table"} to override the
+-option. Data-table output requires the suggested data.table package.}
++option. Data-table output requires the suggested data.table package.
++Every container returns the selected file columns; the global
++\code{tibble::rownames} configuration does not add columns.}
+ \item{threads}{Number of decoder threads. Zero chooses an automatic count
+ within the CPUs available to the process. With compact numeric output,
+ selected storage types, column widths, and the requested rows may reduce
+--- a/r-package/dtatools/src/rust/src/arrow_ffi.rs
++++ b/r-package/dtatools/src/rust/src/arrow_ffi.rs
+@@ -46,9 +46,9 @@
+     parse_dta_metadata_sexp, poll_interrupt, r_char, r_missing, scalar_integer, scalar_string,
+     set_attr, set_class, set_symbol_attr, should_preserve_value_label_name, string_vector,
+     temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen, RStringData, RWriteError,
+-    R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol, R_RowNamesSymbol, Sexp,
+-    TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL, REAL, REALSXP,
+-    SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT, STRSXP, VECSXP,
++    R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol, R_RowNamesSymbol,
++    ReaderAttributeValues, Sexp, TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL,
++    REAL, REALSXP, SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT, STRSXP, VECSXP,
+ };
+ 
+ /// One column handed from C for `save_arrow()`. Field meanings depend on
+@@ -2220,6 +2220,7 @@
+ unsafe fn attach_simple_attributes(
+     vector: Sexp,
+     attributes: &ColumnAttributes<'_>,
++    values: &mut ReaderAttributeValues,
+     guard: &mut ProtectGuard,
+ ) -> Result<(), String> {
+     if let Some(document) = attributes.document {
+@@ -2227,19 +2228,19 @@
+     }
+     if !attributes.label().is_empty() {
+         let label = scalar_string(attributes.label(), guard)?;
+-        set_attr(vector, "label", label)?;
++        values.set_attr(vector, "label", label)?;
+     }
+     if !attributes.format().is_empty() {
+-        let format = scalar_string(attributes.format(), guard)?;
+-        set_attr(vector, "format.stata", format)?;
++        let format = values.scalar(attributes.format(), guard)?;
++        values.set_attr(vector, "format.stata", format)?;
+     }
+     if let Some(storage) = attributes
+         .document
+         .and_then(|document| document.string_storage.as_deref())
+     {
+-        let storage = scalar_string(storage, guard)?;
+-        set_attr(vector, "stata.string.storage", storage)?;
+-        set_class(vector, &["dta_string", "vctrs_vctr", "character"], guard)?;
++        let storage = values.scalar(storage, guard)?;
++        values.set_attr(vector, "stata.string.storage", storage)?;
++        values.set_class(vector, &["dta_string", "vctrs_vctr", "character"])?;
+     }
+     Ok(())
+ }
+@@ -3318,6 +3319,7 @@
+ unsafe fn apply_difftime_attributes(
+     vector: Sexp,
+     attributes: &ColumnAttributes<'_>,
++    values: &mut ReaderAttributeValues,
+     guard: &mut ProtectGuard,
+ ) -> Result<Sexp, String> {
+     let units = attributes
+@@ -3325,9 +3327,9 @@
+         .and_then(|semantics| semantics.units.as_deref())
+         .filter(|units| !units.is_empty())
+         .unwrap_or("secs");
+-    let units_value = scalar_string(units, guard)?;
+-    set_attr(vector, "units", units_value)?;
+-    set_class(vector, &["difftime"], guard)?;
++    let units_value = values.scalar(units, guard)?;
++    values.set_attr(vector, "units", units_value)?;
++    values.set_class(vector, &["difftime"])?;
+     Ok(vector)
+ }
+ 
+@@ -3337,15 +3339,16 @@
+     labels: Sexp,
+     add_haven_class: bool,
+     preserve_value_label_name: bool,
++    values: &mut ReaderAttributeValues,
+     guard: &mut ProtectGuard,
+ ) -> Result<(), String> {
+-    set_attr(vector, "labels", labels)?;
++    values.set_attr(vector, "labels", labels)?;
+     if preserve_value_label_name {
+         let name = scalar_string(table_name, guard)?;
+-        set_attr(vector, "value.label.name", name)?;
++        values.set_attr(vector, "value.label.name", name)?;
+     }
+     if add_haven_class {
+-        set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
++        values.set_class(vector, &["haven_labelled", "vctrs_vctr", "double"])?;
+     }
+     Ok(())
+ }
+@@ -3354,6 +3357,7 @@
+     vector: Sexp,
+     column_name: &str,
+     attributes: &ColumnAttributes<'_>,
++    values: &mut ReaderAttributeValues,
+     guard: &mut ProtectGuard,
+ ) -> Result<(), String> {
+     if let Some((table_name, labels)) = attributes.value_labels() {
+@@ -3363,6 +3367,7 @@
+             labels,
+             false,
+             attributes.preserve_value_label_name(column_name),
++            values,
+             guard,
+         )?;
+     }
+@@ -3374,29 +3379,30 @@
+     vector: Sexp,
+     column_name: &str,
+     attributes: &ColumnAttributes<'_>,
++    values: &mut ReaderAttributeValues,
+     guard: &mut ProtectGuard,
+ ) -> Result<(), String> {
+     match attributes.class() {
+         Some("haven_labelled") => {
+-            set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
+-        }
+-        Some("Date") => set_class(vector, &["Date"], guard)?,
++            values.set_class(vector, &["haven_labelled", "vctrs_vctr", "double"])?;
++        }
++        Some("Date") => values.set_class(vector, &["Date"])?,
+         Some("POSIXct") => {
+-            set_class(vector, &["POSIXct", "POSIXt"], guard)?;
++            values.set_class(vector, &["POSIXct", "POSIXt"])?;
+             if let Some(tz) = attributes
+                 .semantics()
+                 .and_then(|semantics| semantics.tz.as_deref())
+             {
+-                let timezone = scalar_string(tz, guard)?;
+-                set_attr(vector, "tzone", timezone)?;
++                let timezone = values.scalar(tz, guard)?;
++                values.set_attr(vector, "tzone", timezone)?;
+             }
+         }
+         Some("difftime") => {
+-            apply_difftime_attributes(vector, attributes, guard)?;
++            apply_difftime_attributes(vector, attributes, values, guard)?;
+         }
+         _ => {}
+     }
+-    attach_cached_value_labels(vector, column_name, attributes, guard)
++    attach_cached_value_labels(vector, column_name, attributes, values, guard)
+ }
+ 
+ /// Turn one filled plan into the final R vector: wrap compact numerics and
+@@ -3407,6 +3413,7 @@
+     plan: PlannedColumn,
+     outcome: FillOutcome,
+     attribute_cache: &ReadAttributeCache<'_>,
++    attribute_values: &mut ReaderAttributeValues,
+     row_count: usize,
+     guard: &mut ProtectGuard,
+ ) -> Result<Sexp, String> {
+@@ -3432,15 +3439,15 @@
+                 return Err(mismatch());
+             };
+             let level_vector = optional_string_vector(&levels, guard)?;
+-            set_attr(plan.vector, "levels", level_vector)?;
++            attribute_values.set_attr(plan.vector, "levels", level_vector)?;
+             let ordered = attributes
+                 .semantics()
+                 .and_then(|semantics| semantics.ordered)
+                 .unwrap_or(column.dictionary_ordered);
+             if ordered {
+-                set_class(plan.vector, &["ordered", "factor"], guard)?;
++                attribute_values.set_class(plan.vector, &["ordered", "factor"])?;
+             } else {
+-                set_class(plan.vector, &["factor"], guard)?;
++                attribute_values.set_class(plan.vector, &["factor"])?;
+             }
+             guard.adopt_atomic(plan.vector)?
+         }
+@@ -3479,16 +3486,17 @@
+                 value_label_name,
+                 labels_attribute,
+                 attributes.preserve_value_label_name(&column.name),
++                attribute_values,
+                 guard,
+             )?;
+         }
+         ColumnShape::Date32 => {
+-            set_class(vector, &["Date"], guard)?;
+-            attach_simple_attributes(vector, &attributes, guard)?;
+-            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
++            attribute_values.set_class(vector, &["Date"])?;
++            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
++            attach_cached_value_labels(vector, &column.name, &attributes, attribute_values, guard)?;
+         }
+         ColumnShape::Timestamp => {
+-            set_class(vector, &["POSIXct", "POSIXt"], guard)?;
++            attribute_values.set_class(vector, &["POSIXct", "POSIXt"])?;
+             let type_tz = match &column.data_type {
+                 DataType::Timestamp(_, tz) => tz.as_deref(),
+                 _ => None,
+@@ -3501,30 +3509,30 @@
+                 Some(type_tz.unwrap_or("UTC"))
+             };
+             if let Some(tz) = tz {
+-                let timezone = scalar_string(tz, guard)?;
+-                set_attr(vector, "tzone", timezone)?;
++                let timezone = attribute_values.scalar(tz, guard)?;
++                attribute_values.set_attr(vector, "tzone", timezone)?;
+             }
+-            attach_simple_attributes(vector, &attributes, guard)?;
+-            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
++            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
++            attach_cached_value_labels(vector, &column.name, &attributes, attribute_values, guard)?;
+         }
+         ColumnShape::Duration { .. } => {
+-            apply_difftime_attributes(vector, &attributes, guard)?;
+-            attach_simple_attributes(vector, &attributes, guard)?;
+-            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
++            apply_difftime_attributes(vector, &attributes, attribute_values, guard)?;
++            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
++            attach_cached_value_labels(vector, &column.name, &attributes, attribute_values, guard)?;
+         }
+         ColumnShape::PayloadDouble | ColumnShape::SemanticDouble => {
+-            apply_double_class(vector, &column.name, &attributes, guard)?;
+-            attach_simple_attributes(vector, &attributes, guard)?;
++            apply_double_class(vector, &column.name, &attributes, attribute_values, guard)?;
++            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
+         }
+         ColumnShape::Integer => {
+-            attach_simple_attributes(vector, &attributes, guard)?;
+-            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
++            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
++            attach_cached_value_labels(vector, &column.name, &attributes, attribute_values, guard)?;
+         }
+         ColumnShape::Logical
+         | ColumnShape::Raw
+         | ColumnShape::Strings { .. }
+         | ColumnShape::Factor => {
+-            attach_simple_attributes(vector, &attributes, guard)?;
++            attach_simple_attributes(vector, &attributes, attribute_values, guard)?;
+         }
+     }
+     Ok(vector)
+@@ -3709,6 +3717,7 @@
+         let outcomes = run_column_fills(&result.columns, fills, threads)?;
+ 
+         // Finalize on the R thread: ALTREP wrapping, classes, attributes.
++        let mut attribute_values = ReaderAttributeValues::new();
+         for (index, ((column, plan), outcome)) in
+             result.columns.iter().zip(plans).zip(outcomes).enumerate()
+         {
+@@ -3719,6 +3728,7 @@
+                 plan,
+                 outcome,
+                 &attribute_cache,
++                &mut attribute_values,
+                 row_count,
+                 &mut column_guard,
+             )?;
+--- a/r-package/dtatools/src/rust/src/lib.rs
++++ b/r-package/dtatools/src/rust/src/lib.rs
+@@ -2279,12 +2279,77 @@
+     classes: &[&str],
+     guard: &mut ProtectGuard,
+ ) -> Result<(), String> {
+-    let values = classes
+-        .iter()
+-        .map(|value| (*value).to_owned())
+-        .collect::<Vec<_>>();
+-    let class = string_vector(&values, guard)?;
++    let class = string_vector_iter(classes.iter().copied(), guard)?;
+     set_symbol_attr(object, R_ClassSymbol, class)
++}
++
++/// Reuse immutable attribute values while publishing one reader result.
++/// The guard roots every cached vector through allocation and finalization;
++/// R's attribute setters retain their ordinary copy-on-modify behavior.
++/// Labels and arbitrary metadata bypass this cache. Bound scalar entries so
++/// distinct format strings do not create an unbounded temporary registry.
++struct ReaderAttributeValues {
++    classes: AHashMap<Vec<&'static str>, Sexp>,
++    scalars: AHashMap<String, Sexp>,
++    symbols: AHashMap<&'static str, Sexp>,
++    guard: ProtectGuard,
++}
++
++impl ReaderAttributeValues {
++    const MAX_SCALARS: usize = 128;
++
++    fn new() -> Self {
++        Self {
++            classes: AHashMap::new(),
++            scalars: AHashMap::new(),
++            symbols: AHashMap::new(),
++            guard: ProtectGuard::new(),
++        }
++    }
++
++    unsafe fn scalar(&mut self, value: &str, guard: &mut ProtectGuard) -> Result<Sexp, String> {
++        if let Some(&cached) = self.scalars.get(value) {
++            return Ok(cached);
++        }
++        if self.scalars.len() >= Self::MAX_SCALARS {
++            return scalar_string(value, guard);
++        }
++        let scalar = scalar_string(value, &mut self.guard)?;
++        self.scalars.insert(value.to_owned(), scalar);
++        Ok(scalar)
++    }
++
++    unsafe fn set_class(&mut self, object: Sexp, classes: &[&'static str]) -> Result<(), String> {
++        let class = if let Some(&cached) = self.classes.get(classes) {
++            cached
++        } else {
++            let class = string_vector_iter(classes.iter().copied(), &mut self.guard)?;
++            self.classes.insert(classes.to_vec(), class);
++            class
++        };
++        set_symbol_attr(object, R_ClassSymbol, class)
++    }
++
++    unsafe fn set_attr(
++        &mut self,
++        object: Sexp,
++        name: &'static str,
++        value: Sexp,
++    ) -> Result<(), String> {
++        let symbol = if let Some(&cached) = self.symbols.get(name) {
++            cached
++        } else {
++            let encoded = CString::new(name).map_err(|_| "invalid R attribute name".to_owned())?;
++            let mut symbol = ptr::null_mut();
++            if dtatools_install(encoded.as_ptr(), &mut symbol) == 0 || symbol.is_null() {
++                return Err("R could not install an attribute name".to_owned());
++            }
++            // Installed R symbols are rooted by R's symbol table.
++            self.symbols.insert(name, symbol);
++            symbol
++        };
++        set_symbol_attr(object, symbol, value)
++    }
+ }
+ 
+ unsafe fn label_attribute_from_entries<L: AsRef<str>>(
+@@ -2312,6 +2377,7 @@
+     value_label_name: Option<&str>,
+     labels_attribute: Option<Sexp>,
+     preserve_value_label_name: bool,
++    values: &mut ReaderAttributeValues,
+     guard: &mut ProtectGuard,
+ ) -> Result<(), String> {
+     attach_variable_attribute_view(
+@@ -2320,6 +2386,7 @@
+         value_label_name,
+         labels_attribute,
+         preserve_value_label_name,
++        values,
+         guard,
+     )
+ }
+@@ -2351,17 +2418,18 @@
+     value_label_name: Option<&str>,
+     labels_attribute: Option<Sexp>,
+     preserve_value_label_name: bool,
++    values: &mut ReaderAttributeValues,
+     guard: &mut ProtectGuard,
+ ) -> Result<(), String> {
+     check_interrupt()?;
+     attach_dta_metadata(vector, attributes.notes, attributes.characteristics, guard)?;
+     if !attributes.label.is_empty() {
+         let value = scalar_string(attributes.label, guard)?;
+-        set_attr(vector, "label", value)?;
++        values.set_attr(vector, "label", value)?;
+     }
+     if !attributes.format.is_empty() {
+-        let value = scalar_string(attributes.format, guard)?;
+-        set_attr(vector, "format.stata", value)?;
++        let value = values.scalar(attributes.format, guard)?;
++        values.set_attr(vector, "format.stata", value)?;
+     }
+     let string_storage = match attributes.dta_type {
+         DtaType::FixedString(width) => Some(format!("str{width}")),
+@@ -2369,9 +2437,9 @@
+         _ => None,
+     };
+     if let Some(string_storage) = string_storage {
+-        let value = scalar_string(&string_storage, guard)?;
+-        set_attr(vector, "stata.string.storage", value)?;
+-        set_class(vector, &["dta_string", "vctrs_vctr", "character"], guard)?;
++        let value = values.scalar(&string_storage, guard)?;
++        values.set_attr(vector, "stata.string.storage", value)?;
++        values.set_class(vector, &["dta_string", "vctrs_vctr", "character"])?;
+     }
+     if let Some(table_name) = value_label_name {
+         let labels = labels_attribute.ok_or_else(|| {
+@@ -2380,10 +2448,10 @@
+                 table_name
+             )
+         })?;
+-        set_attr(vector, "labels", labels)?;
++        values.set_attr(vector, "labels", labels)?;
+         if preserve_value_label_name {
+             let name = scalar_string(table_name, guard)?;
+-            set_attr(vector, "value.label.name", name)?;
++            values.set_attr(vector, "value.label.name", name)?;
+         }
+     }
+ 
+@@ -2396,25 +2464,24 @@
+         DtaType::FixedString(_) | DtaType::StrL => None,
+     };
+     if let Some((storage_name, _)) = storage {
+-        let storage_value = scalar_string(storage_name, guard)?;
+-        set_attr(vector, "stata.storage", storage_value)?;
++        let storage_value = values.scalar(storage_name, guard)?;
++        values.set_attr(vector, "stata.storage", storage_value)?;
+     }
+ 
+     match (temporal_kind(attributes.format), storage) {
+         (TemporalKind::Date, Some(_)) => {
+-            set_class(vector, &["dta_temporal", "dta_date", "Date"], guard)?;
++            values.set_class(vector, &["dta_temporal", "dta_date", "Date"])?;
+         }
+         (TemporalKind::Datetime, Some(_)) => {
+-            set_class(
++            values.set_class(
+                 vector,
+                 &["dta_temporal", "dta_datetime", "POSIXct", "POSIXt"],
+-                guard,
+             )?;
+-            let timezone = scalar_string("UTC", guard)?;
+-            set_attr(vector, "tzone", timezone)?;
++            let timezone = values.scalar("UTC", guard)?;
++            values.set_attr(vector, "tzone", timezone)?;
+         }
+         (TemporalKind::None, Some((_, storage_class))) if value_label_name.is_some() => {
+-            set_class(
++            values.set_class(
+                 vector,
+                 &[
+                     "dta_numeric",
+@@ -2423,22 +2490,20 @@
+                     "vctrs_vctr",
+                     "double",
+                 ],
+-                guard,
+             )?;
+         }
+-        (TemporalKind::None, Some((_, storage_class))) => set_class(
++        (TemporalKind::None, Some((_, storage_class))) => values.set_class(
+             vector,
+             &["dta_numeric", storage_class, "vctrs_vctr", "double"],
+-            guard,
+         )?,
+-        (TemporalKind::Date, None) => set_class(vector, &["Date"], guard)?,
++        (TemporalKind::Date, None) => values.set_class(vector, &["Date"])?,
+         (TemporalKind::Datetime, None) => {
+-            set_class(vector, &["POSIXct", "POSIXt"], guard)?;
+-            let timezone = scalar_string("UTC", guard)?;
+-            set_attr(vector, "tzone", timezone)?;
++            values.set_class(vector, &["POSIXct", "POSIXt"])?;
++            let timezone = values.scalar("UTC", guard)?;
++            values.set_attr(vector, "tzone", timezone)?;
+         }
+         (TemporalKind::None, None) if value_label_name.is_some() => {
+-            set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
++            values.set_class(vector, &["haven_labelled", "vctrs_vctr", "double"])?;
+         }
+         (TemporalKind::None, None) => {}
+     }
+@@ -3514,6 +3579,7 @@
+                 &mut self._guard,
+             )
+             .map_err(DtaError::Output)?;
++            let mut attribute_values = ReaderAttributeValues::new();
+             for (output_index, column) in self.columns.iter_mut().enumerate() {
+                 check_interrupt().map_err(DtaError::Output)?;
+                 let vector = match column {
+@@ -3565,6 +3631,7 @@
+                     table_name,
+                     labels_attribute,
+                     preserve_value_label_name(variable, table_name, &value_label_reference_counts),
++                    &mut attribute_values,
+                     &mut attribute_guard,
+                 )
+                 .map_err(DtaError::Output)?;
+--- a/r-package/dtatools/src/rust/src/owned_numeric.rs
++++ b/r-package/dtatools/src/rust/src/owned_numeric.rs
+@@ -321,10 +321,7 @@
+             return Err("owned compact Arrow chunks cannot contain nulls".to_owned());
+         }
+         macro_rules! buffer {
+-            ($array:ty, $missing:expr) => {
+-                buffer!($array, $missing, usize)
+-            };
+-            ($array:ty, $missing:expr, $count:ty) => {{
++            ($array:ty, $missing:expr) => {{
+                 let typed = array
+                     .as_any()
+                     .downcast_ref::<$array>()
+@@ -335,23 +332,22 @@
+                     }
+                     // No callbacks or atomics in the typed reduction. Each
+                     // block is bounded so workers respond to cancellation.
++                    // A span fits in u32, including wider storage kinds;
++                    // widen its subtotal after the contiguous reduction.
+                     missing_count += values
+                         .iter()
+-                        .map(|&value| <$count>::from(($missing)(value)))
+-                        .sum::<$count>() as usize;
++                        .map(|&value| u32::from(($missing)(value)))
++                        .sum::<u32>() as usize;
+                 }
+                 typed.values().inner().clone()
+             }};
+         }
+         let buffer = match kind {
+             NumericKind::Byte => {
+-                // One scan span fits in u32. Widen only its subtotal so the
+-                // contiguous byte reduction need not use usize-width lanes.
+-                buffer!(
+-                    Int8Array,
+-                    |value| crate::classify_byte_missing_for_version(value, version).is_some(),
+-                    u32
++                buffer!(Int8Array, |value| crate::classify_byte_missing_for_version(
++                    value, version
+                 )
++                .is_some())
+             }
+             NumericKind::Int => {
+                 buffer!(Int16Array, |value| crate::classify_int_missing_for_version(
+@@ -550,6 +546,204 @@
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++
++    const RELEASES: [u16; 10] = [105, 108, 110, 111, 113, 114, 115, 117, 118, 119];
++
++    fn assert_sliced_values_and_missing_count(
++        arrays: Vec<ArrayRef>,
++        kind: NumericKind,
++        release: u16,
++        expected_missing: usize,
++        expected_bytes: &[u8],
++    ) {
++        let row_count = expected_bytes.len() / width(kind);
++        let prepared = prepare_from_arrow(
++            &arrays,
++            kind,
++            TemporalKind::None,
++            FormatVersion::try_from(release).unwrap(),
++            row_count,
++            || false,
++        )
++        .expect("sliced compact chunks retain values and release-specific missings");
++        let descriptor = prepared.into_descriptor();
++        assert_eq!(descriptor.missing_count, expected_missing);
++        let read = unsafe { RetainedRead::from_owner(descriptor.native_owner).unwrap() };
++        drop(descriptor);
++        drop(arrays);
++        let mut observed = Vec::new();
++        let mut row = 0;
++        while row < read.len() {
++            let (values, count) = read.region(row, row_count).unwrap();
++            observed.extend_from_slice(unsafe {
++                std::slice::from_raw_parts(values, count * width(kind))
++            });
++            row += count;
++        }
++        assert_eq!(observed, expected_bytes);
++    }
++
++    #[test]
++    fn owned_int_missing_counts_cover_every_value_and_release_in_sliced_chunks() {
++        let expected: Vec<i16> = (i16::MIN..=i16::MAX).collect();
++        let expected_bytes: Vec<u8> = expected
++            .iter()
++            .flat_map(|value| value.to_ne_bytes())
++            .collect();
++        for release in RELEASES {
++            let mut padded = vec![i16::MAX; 2];
++            padded.extend_from_slice(&expected);
++            padded.extend_from_slice(&[i16::MAX; 3]);
++            let whole = Int16Array::from(padded);
++            let arrays: Vec<ArrayRef> = vec![
++                Arc::new(Int16Array::from(Vec::<i16>::new())),
++                Arc::new(whole.slice(2, 13)),
++                Arc::new(whole.slice(15, 4096)),
++                Arc::new(whole.slice(4111, expected.len() - 4109)),
++            ];
++            drop(whole);
++            assert_sliced_values_and_missing_count(
++                arrays,
++                NumericKind::Int,
++                release,
++                if release <= 111 { 1 } else { 27 },
++                &expected_bytes,
++            );
++        }
++    }
++
++    #[test]
++    fn owned_long_missing_counts_cover_sentinels_and_signed_boundaries_for_every_release() {
++        let mut expected = vec![i32::MIN, i32::MIN + 1, -1, 0, 1, 2_147_483_620];
++        expected.extend(2_147_483_621..=i32::MAX);
++        let expected_bytes: Vec<u8> = expected
++            .iter()
++            .flat_map(|value| value.to_ne_bytes())
++            .collect();
++        for release in RELEASES {
++            let mut padded = vec![i32::MAX; 2];
++            padded.extend_from_slice(&expected);
++            padded.extend_from_slice(&[i32::MAX; 3]);
++            let whole = Int32Array::from(padded);
++            let arrays: Vec<ArrayRef> = vec![
++                Arc::new(Int32Array::from(Vec::<i32>::new())),
++                Arc::new(whole.slice(2, 7)),
++                Arc::new(whole.slice(9, expected.len() - 7)),
++            ];
++            drop(whole);
++            assert_sliced_values_and_missing_count(
++                arrays,
++                NumericKind::Long,
++                release,
++                if release <= 111 { 1 } else { 27 },
++                &expected_bytes,
++            );
++        }
++    }
++
++    #[test]
++    fn owned_float_missing_counts_preserve_nan_payloads_and_legacy_ranges() {
++        // These finite values and negative infinity are observed in every
++        // release. Positive infinity belongs to the legacy missing range.
++        let mut bits = vec![
++            0,
++            0x8000_0000,
++            0x3f80_0000,
++            0xbf80_0000,
++            0x7eff_ffff,
++            0xfeff_ffff,
++            0xff00_0000,
++            0xff80_0000,
++        ];
++        bits.extend((0..=26).map(|tag| 0x7f00_0000 + tag * 0x800));
++        bits.extend([
++            0x7f00_0001,
++            0x7f00_07ff,
++            0x7f00_d001,
++            0x7f7f_ffff,
++            0x7f80_0000,
++        ]);
++        // Both signs, quiet/signalling encodings and payload extremes remain
++        // bit-exact in retained backing and count as missing in every release.
++        bits.extend([
++            0x7f80_0001,
++            0x7fc0_0000,
++            0x7fff_ffff,
++            0xff80_0001,
++            0xffc0_0000,
++            0xffff_ffff,
++        ]);
++        let expected: Vec<f32> = bits.iter().copied().map(f32::from_bits).collect();
++        let expected_bytes: Vec<u8> = bits.iter().flat_map(|value| value.to_ne_bytes()).collect();
++        for release in RELEASES {
++            let mut padded = vec![f32::NAN; 2];
++            padded.extend_from_slice(&expected);
++            padded.extend_from_slice(&[f32::NAN; 3]);
++            let whole = Float32Array::from(padded);
++            let arrays: Vec<ArrayRef> = vec![
++                Arc::new(Float32Array::from(Vec::<f32>::new())),
++                Arc::new(whole.slice(2, 11)),
++                Arc::new(whole.slice(13, expected.len() - 11)),
++            ];
++            drop(whole);
++            assert_sliced_values_and_missing_count(
++                arrays,
++                NumericKind::Float,
++                release,
++                if release <= 111 { 38 } else { 33 },
++                &expected_bytes,
++            );
++        }
++    }
++
++    #[test]
++    fn wider_owned_missing_scans_accumulate_spans_and_keep_cancellation_bounds() {
++        let rows = MISSING_SCAN_ROWS * 2 + 1;
++        let cases: Vec<(NumericKind, ArrayRef)> = vec![
++            (
++                NumericKind::Int,
++                Arc::new(Int16Array::from(vec![i16::MAX; rows])),
++            ),
++            (
++                NumericKind::Long,
++                Arc::new(Int32Array::from(vec![i32::MAX; rows])),
++            ),
++            (
++                NumericKind::Float,
++                Arc::new(Float32Array::from(vec![f32::NAN; rows])),
++            ),
++        ];
++        for (kind, array) in cases {
++            let arrays = [array];
++            // Initial poll, three bounded scan spans, and the final poll.
++            for stop_at in 1..=5 {
++                let mut polls = 0;
++                let result = prepare_from_arrow(
++                    &arrays,
++                    kind,
++                    TemporalKind::None,
++                    FormatVersion::V118,
++                    rows,
++                    || {
++                        polls += 1;
++                        polls == stop_at
++                    },
++                );
++                assert_eq!(result.err().as_deref(), Some("Arrow read interrupted"));
++                assert_eq!(polls, stop_at);
++            }
++            let prepared = prepare_from_arrow(
++                &arrays,
++                kind,
++                TemporalKind::None,
++                FormatVersion::V118,
++                rows,
++                || false,
++            )
++            .expect("complete wider-storage scan spanning full blocks and a tail");
++            assert_eq!(prepared.into_descriptor().missing_count, rows);
++        }
++    }
+ 
+     #[test]
+     fn owned_byte_missing_counts_preserve_sliced_chunk_values_for_every_release() {
+--- a/r-package/dtatools/tests/testthat/test-arrow.R
++++ b/r-package/dtatools/tests/testthat/test-arrow.R
+@@ -1450,3 +1450,126 @@
+     expect_identical(datasig(from_arrow), datasig(data))
+     expect_identical(datasig(from_dta), datasig(data))
+ })
++
++test_that("reader attribute reuse keeps column edits and subsequent reads independent", {
++    left <- dta_byte(c(1, NA, tagged_missing("a")))
++    val_labels(left) <- c(One = 1)
++    attr(left, "label") <- "Left variable"
++    attr(left, "format.stata") <- "%8.0g"
++    right <- left
++    attr(right, "label") <- "Right variable"
++    data <- dibble(
++        left = left, right = right,
++        date1 = as.Date(c("2020-01-01", NA, "1970-01-01")),
++        date2 = as.Date(c("2020-01-01", NA, "1970-01-01")),
++        time1 = as.POSIXct(c("2020-01-01 00:00:00", NA, "1970-01-01 00:00:00"), tz = "UTC"),
++        time2 = as.POSIXct(c("2020-01-01 00:00:00", NA, "1970-01-01 00:00:00"), tz = "UTC"),
++        text1 = dta_string(c("alpha", "", "\u00e9")),
++        text2 = dta_string(c("alpha", "", "\u00e9"))
++    )
++    dta_path <- tempfile(fileext = ".dta")
++    arrow_path <- arrow_tempfile()
++    on.exit(unlink(c(dta_path, arrow_path)), add = TRUE)
++    save_dta(data, dta_path)
++    expect_warning(
++        save_arrow(data, arrow_path),
++        "Dropped attributes the Arrow profile does not represent: `time1` (tzone); `time2` (tzone)",
++        fixed = TRUE
++    )
++    sources <- list(
++        list(read = read_dta, path = dta_path),
++        list(read = read_arrow, path = arrow_path)
++    )
++    for (source in sources) {
++        tibble <- source$read(source$path, output = "tibble")
++        reference_signature <- datasig(tibble)
++        for (output in c("tibble", "dibble")) {
++            actual <- source$read(source$path, output = output)
++            expect_identical(datasig(actual), reference_signature)
++            expect_identical(as.double(actual$left), c(1, NA_real_, tagged_missing("a")))
++            expect_identical(as.numeric(actual$date1), as.numeric(data$date1))
++            expect_s3_class(actual$date1, "Date")
++            expect_s3_class(actual$time1, "POSIXct")
++            expect_identical(as.numeric(actual$time1), as.numeric(data$time1))
++            expect_identical(as.character(actual$text1), c("alpha", "", "\u00e9"))
++
++            changed <- actual$left
++            attr(changed, "format.stata")[[1L]] <- "%9.2f"
++            attr(changed, "stata.storage")[[1L]] <- "int"
++            attr(changed, "labels")[[1L]] <- 99
++            attr(changed, "label")[[1L]] <- "Changed variable"
++            class(changed)[[1L]] <- "changed_numeric"
++            changed_time <- actual$time1
++            attr(changed_time, "tzone")[[1L]] <- "America/New_York"
++            changed_text <- actual$text1
++            attr(changed_text, "stata.string.storage")[[1L]] <- "strL"
++            class(changed_text)[[1L]] <- "changed_string"
++            expect_identical(attr(changed, "format.stata"), "%9.2f")
++            expect_identical(attr(changed, "stata.storage"), "int")
++            expect_identical(attr(changed_time, "tzone"), "America/New_York")
++
++            expect_identical(attr(actual$right, "format.stata"), "%8.0g")
++            expect_identical(attr(actual$right, "stata.storage"), "byte")
++            expect_identical(attr(actual$right, "label"), "Right variable")
++            expect_identical(attr(actual$right, "labels"), c(One = 1))
++            expect_identical(class(actual$right),
++                             c("dta_numeric", "dta_byte", "haven_labelled", "vctrs_vctr", "double"))
++            expect_identical(attr(actual$time2, "tzone"), "UTC")
++            expect_identical(attr(actual$text2, "stata.string.storage"), "str5")
++            expect_identical(class(actual$text2), c("dta_string", "vctrs_vctr", "character"))
++            expect_identical(datasig(actual), reference_signature)
++            expect_identical(datasig(source$read(source$path, output = output)), reference_signature)
++        }
++    }
++})
++
++test_that("reader attribute values remain rooted during collection", {
++    data <- dibble(
++        a = dta_byte(c(1, NA)), b = dta_byte(c(2, tagged_missing("z"))),
++        s = dta_string(c("first", "")), t = dta_string(c("other", ""))
++    )
++    dta_path <- tempfile(fileext = ".dta")
++    arrow_path <- arrow_tempfile()
++    on.exit(unlink(c(dta_path, arrow_path)), add = TRUE)
++    save_dta(data, dta_path)
++    save_arrow(data, arrow_path)
++    on.exit(gctorture(FALSE), add = TRUE)
++    for (source in list(list(read = read_dta, path = dta_path),
++                        list(read = read_arrow, path = arrow_path))) {
++        gctorture(TRUE)
++        actual <- source$read(source$path, output = "tibble", threads = 1L)
++        gctorture(FALSE)
++        expect_identical(as.double(actual$a), c(1, NA_real_))
++        expect_identical(as.double(actual$b), c(2, tagged_missing("z")))
++        expect_identical(dta_storage_type(actual$a), "byte")
++        expect_identical(dta_storage_type(actual$b), "byte")
++        expect_identical(as.character(actual$s), c("first", ""))
++        expect_identical(as.character(actual$t), c("other", ""))
++        expect_identical(attr(actual$a, "format.stata"), "%8.0g")
++        expect_identical(class(actual$a), class(actual$b))
++    }
++})
++
++test_that("readers preserve formats beyond the shared scalar cache limit", {
++    formats <- sprintf("%%%d.0f", 9:148)
++    columns <- lapply(seq_along(formats), function(index) {
++        value <- dta_byte(c(1, NA))
++        attr(value, "format.stata") <- formats[[index]]
++        attr(value, "label") <- paste("Variable", index)
++        value
++    })
++    names(columns) <- paste0("v", seq_along(columns))
++    data <- tibble::new_tibble(columns, nrow = 2L)
++    dta_path <- tempfile(fileext = ".dta")
++    arrow_path <- arrow_tempfile()
++    on.exit(unlink(c(dta_path, arrow_path)), add = TRUE)
++    save_dta(data, dta_path)
++    save_arrow(data, arrow_path)
++    for (actual in list(read_dta(dta_path, output = "tibble"),
++                        read_arrow(arrow_path, output = "tibble"))) {
++        expect_identical(unname(vapply(actual, attr, character(1), which = "format.stata")), formats)
++        expect_identical(unname(vapply(actual, attr, character(1), which = "label")),
++                         paste("Variable", seq_along(formats)))
++        expect_true(all(vapply(actual, inherits, logical(1), what = "dta_byte")))
++    }
++})
+--- a/r-package/dtatools/tests/testthat/test-reader-dibble.R
++++ b/r-package/dtatools/tests/testthat/test-reader-dibble.R
+@@ -21,6 +21,88 @@
+             }
+         }
+         unlink(arrow_path)
++    }
++})
++
++test_that("direct reader tibbles preserve repaired names metadata and compact columns", {
++    dta_path <- fixture("all_types_v118.dta")
++    arrow_path <- tempfile(fileext = ".arrow")
++    on.exit(unlink(arrow_path), add = TRUE)
++    save_arrow(read_dta(dta_path, output = "tibble"), arrow_path)
++    for (reader in list(read_dta, read_arrow)) {
++        input <- if (identical(reader, read_dta)) dta_path else arrow_path
++        for (window in list(list(), list(skip = 1, n_max = 2), list(n_max = 0))) {
++            args <- c(list(file = input, output = "tibble"), window)
++            ordinary <- do.call(reader, args)
++            expect_s3_class(ordinary, "tbl_df")
++            expect_false(is_dibble(ordinary))
++            for (column in ordinary) {
++                if (.is_numeric_altrep(column)) {
++                    expect_true(.is_unmaterialized_numeric_altrep(column))
++                }
++            }
++            expect_identical(ordinary, tibble::as_tibble(ordinary, .name_repair = "minimal"))
++            expect_identical(
++                attributes(ordinary),
++                attributes(tibble::as_tibble(ordinary, .name_repair = "minimal"))
++            )
++            calls <- 0L
++            repair <- function(names) {
++                calls <<- calls + 1L
++                paste0("renamed ", seq_along(names))
++            }
++            renamed <- do.call(reader, c(args, list(.name_repair = repair)))
++            expect_identical(calls, 1L)
++            expect_identical(names(renamed), paste0("renamed ", seq_len(ncol(renamed))))
++            names(renamed) <- names(ordinary)
++            expect_identical(datasig(renamed), datasig(ordinary))
++            expect_identical(lapply(renamed, attributes), lapply(ordinary, attributes))
++        }
++        duplicate <- reader(input, output = "tibble",
++                            .name_repair = function(x) rep("x", length(x)))
++        expect_true(anyDuplicated(names(duplicate)) > 0L)
++        empty <- reader(input, output = "tibble", col_select = integer(), skip = 1, n_max = 2)
++        expect_identical(dim(empty), c(2L, 0L))
++    }
++})
++
++test_that("reader columns are independent of tibble row-name configuration", {
++    skip_if_not_installed("pkgconfig")
++    # pkgconfig is tibble's dependency, not a reader dependency.
++    get_config <- getExportedValue("pkgconfig", "get_config")
++    set_config <- getExportedValue("pkgconfig", "set_config_in")
++    old_config <- get_config("tibble::rownames", NULL)
++    on.exit(set_config("tibble::rownames" = old_config, .in = globalenv()), add = TRUE)
++
++    dta_path <- fixture("all_types_v118.dta")
++    source <- read_dta(dta_path, output = "tibble")
++    signature <- datasig(source)
++    arrow_path <- tempfile(fileext = ".arrow")
++    on.exit(unlink(arrow_path), add = TRUE)
++    save_arrow(source, arrow_path)
++    set_config("tibble::rownames" = "row_id", .in = globalenv())
++    expect_identical(get_config("tibble::rownames"), "row_id")
++    expect_identical(names(tibble::as_tibble(data.frame(value = 1))),
++                     c("row_id", "value"))
++
++    for (reader in list(read_dta, read_arrow)) {
++        input <- if (identical(reader, read_dta)) dta_path else arrow_path
++        for (output in c("tibble", "dibble")) {
++            actual <- reader(input, output = output, datasig = TRUE)
++            expect_identical(names(actual), names(source))
++            expect_identical(dim(actual), dim(source))
++            expect_identical(datasig(actual), signature)
++            expect_identical(attr(actual, "datasig"), datasig(input))
++
++            selected <- reader(input, output = output,
++                               col_select = c(renamed = 2, 1), n_max = 2)
++            expect_identical(names(selected), c("renamed", names(source)[[1L]]))
++            expect_identical(dim(selected), c(2L, 2L))
++            empty <- reader(input, output = output,
++                            col_select = integer(), n_max = 2)
++            expect_identical(names(empty), character())
++            expect_identical(dim(empty), c(2L, 0L))
++        }
+     }
+ })
+ 
+--- a/r-package/dtatools/tools/native-test-manifest.json
++++ b/r-package/dtatools/tools/native-test-manifest.json
+@@ -181,7 +181,7 @@
+       "files": [
+         {
+           "path": "tests/testthat/test-arrow.R",
+-          "sha256": "9cbaa84aea798d400e308042c69b775d2f36ef4fbf2efadb21ee82ce7e5678e4"
++          "sha256": "b0bcae38fdb14840a34cf0a2fb63980c0e7ccf1008cffd11eeabec0e7936939e"
+         },
+         {
+           "path": "tests/testthat/test-read-dta.R",
+@@ -707,6 +707,30 @@
+           "occurrence": 1,
+           "skip": "forbid",
+           "min_pass": 5,
++          "warnings": 0
++        },
++        {
++          "file": "test-arrow.R",
++          "test": "reader attribute reuse keeps column edits and subsequent reads independent",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 81,
++          "warnings": 0
++        },
++        {
++          "file": "test-arrow.R",
++          "test": "reader attribute values remain rooted during collection",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 16,
++          "warnings": 0
++        },
++        {
++          "file": "test-arrow.R",
++          "test": "readers preserve formats beyond the shared scalar cache limit",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 6,
+           "warnings": 0
+         },
+         {
+@@ -9627,7 +9651,7 @@
+         },
+         {
+           "path": "tests/testthat/test-reader-dibble.R",
+-          "sha256": "5154deac1fae513351405fa3bbe57aabbdf60885f5b9732f22837b6b16c39508"
++          "sha256": "94c18a47b555582c098b38dee27dc8f0cedc3117d4429ffc7bf0dd5619f35465"
+         }
+       ],
+       "blocks": [
+@@ -10799,6 +10823,22 @@
+           "occurrence": 1,
+           "skip": "forbid",
+           "min_pass": 4,
++          "warnings": 0
++        },
++        {
++          "file": "test-reader-dibble.R",
++          "test": "direct reader tibbles preserve repaired names metadata and compact columns",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 70,
++          "warnings": 0
++        },
++        {
++          "file": "test-reader-dibble.R",
++          "test": "reader columns are independent of tibble row-name configuration",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 34,
+           "warnings": 0
+         }
+       ],

@@ -1,0 +1,3 @@
+method,observations,median_seconds,min_seconds,max_seconds,median_process_cpu_seconds,median_peak_rss_bytes,measurement_date
+haven,10,472.99649999999997,422.801,572.189,473.047814,35112640512.0,2026-09-16
+stata,10,0.4725,0.471,0.542,0.5070254999999999,5256937472.0,2026-09-16

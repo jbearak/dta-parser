@@ -6,12 +6,13 @@ missing values, merge and append datasets, and save Stata or Arrow files.
 Use the Arrow-based `.arrow` format for performance-sensitive workloads or
 data frames that mix Stata and ordinary R column types.
 
-In the September 16, 2026 corpus run across 641 DHS survey files totaling
-46.9 GB, `read_dta()` took 38.7 seconds and `read_arrow()` took 26.9 seconds,
-compared with haven's recorded 2,727 seconds. That makes `read_dta()` about
-**70 times as fast**. In the ten-read India comparison, median read time for the
-5.2 GB file was well under a second, compared with several minutes for haven.
-See the [benchmark results and methods](#why-use-dtatools).
+The October 1, 2026 benchmark covered 1,879 readable survey files totaling
+57.1 GB. Summed `read_dta()` call times were 31.792 seconds for tibbles and
+37.323 seconds for dibbles, using a warm filesystem cache. A separate paired
+comparison on the 5.2 GB India survey file recorded a 0.2265-second median
+`read_arrow()` call for tibble output. See the
+[benchmark results and methods](#why-use-dtatools) for CPU time, peak RSS and
+timing boundaries.
 
 Stata columns can live in ordinary data frames, tibbles, data.tables, or
 dtatools' own table class, the dibble. They carry Stata storage types, labels,
@@ -104,74 +105,158 @@ for benchmarks of `gen()`, `replace_values()`, `:=`, and dibble `mutate()`.
 
 ## Why use dtatools?
 
-In the historical benchmarks below, `read_dta()` took about **30% longer than Stata** to
-load the India file, while the synthetic merge workflows took about **61%
-less time for `1:m` and 71% less for `m:1`**. The merge comparison starts with
-both inputs loaded in R; Stata's timer includes reading the using file.
+The October 1 reader changes reduce repeated table and metadata construction.
+In the paired synthetic comparison, tibble read wall time fell 29% to 73%
+for DTA and 48% to 76% for Arrow, with lower read CPU time. Wide dibble reads
+improved about 8% to 9%; most other dibble differences were inconclusive.
+Wide tibble peak RSS fell about 14%. One single-thread read-plus-consumption
+case used 2.5 MB more peak RSS, a 0.5% increase. Complete workflows often show
+smaller gains than the read call alone.
+
+The [reader comparison](../../benchmarks/r-file-readers/results-2026-10-01.md)
+contains 1,728 observations, paired uncertainty intervals and resource costs.
+It also measures base R, data.table, readr, vroom, haven, Arrow, fst and qs2.
+The [reader survey](../../docs/research/r-file-reader-performance-2026-10-01.md)
+explains their formats and metadata tradeoffs. These comparisons were completed
+before the subsequent full-cache rerun below; Haven was not rerun for that work.
 
 ### Fast imports from existing Stata files
 
-The September 16, 2026 corpus run measures both readers with default settings.
-Arrow times use preconverted files and include checksum verification; conversion
-time is excluded. Haven measurements are retained from August 24 on the same
-files and computer.
+The October 1, 2026 benchmark covers every regular `.dta` file in the DHS,
+MICS, NSFG, ENADID and WFS survey datasets under `/opt/aww_cache`: 1,881 files,
+with both tibble and dibble outputs. All 1,879 readable files passed. The two
+known malformed MICS files were attempted for both outputs and retained as exact, hash-checked
+exclusions. Two directory symlinks alias files already counted and were not
+followed.
 
-| Workload | `read_dta()` | `read_arrow()` | haven |
+The tables select the five survey datasets from the completed measurements
+and sum one successful `read_dta()` call per file and output. GB means
+1,000,000,000 bytes. CPU time sums work across cores.
+
+| Corpus | Readable files | DTA GB | Tibble read wall | Dibble read wall |
+| --- | ---: | ---: | ---: | ---: |
+| DHS | 643 | 46.963 | 21.863 s | 25.644 s |
+| MICS | 949 | 3.690 | 4.463 s | 5.288 s |
+| NSFG | 229 | 5.777 | 4.812 s | 5.648 s |
+| ENADID | 17 | 0.554 | 0.454 s | 0.500 s |
+| WFS | 41 | 0.130 | 0.200 s | 0.243 s |
+| Total | 1,879 | 57.114 | 31.792 s | 37.323 s |
+
+| Output | Read CPU total | Process CPU total | Maximum individual peak RSS |
 | --- | ---: | ---: | ---: |
-| 641 DHS files, 46.9 GB total | 38.7 seconds | 26.9 seconds | 2,727 seconds |
-| 949 MICS files, 3.7 GB total | 6.6 seconds | 5.7 seconds | 216.7 seconds |
-| 222 NSFG files, 5.8 GB total | 8.7 seconds | 6.6 seconds | 234.6 seconds |
+| tibble | 83.446 s | 583.614 s | 5.257 GB |
+| dibble | 89.014 s | 589.140 s | 5.254 GB |
 
-These are batch totals from one fresh-process read per file with a warm
-filesystem cache, default dibble output and automatic thread selection on an
-Apple M4 Max. Both readers were faster than the recorded haven time on all
-1,812 comparable files. The
-[full-corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-corpus/results-2026-09-16-base-r/README.md)
-includes Stata comparisons, CPU time, peak memory, coverage and methodology.
+Each attempt used a fresh R process, automatic threads and default numeric
+ALTREP on a shared Apple M4 Max. Hashing each source immediately before its
+two reads warmed the filesystem cache. There was no forced pre-read garbage
+collection or compiled timing wrapper. These are summed read-call times,
+not the elapsed time to execute the benchmark. Process CPU and peak RSS also
+include startup, package loading, result checks and shutdown; peak RSS is the
+largest individual process peak, not a sum over files.
 
-Projected reads, which load specified columns instead of the whole dataset,
-were substantially faster than Stata in our wide-survey benchmarks and can
-help when the needed variables are known in advance or when writing a test
-suite. See [details and examples](../../docs/r-reader-projections.md).
+Before timing, these survey files had 7,524 untimed reads comparing complete
+value-and-metadata signatures, dimensions and warning/error behavior between
+the baseline and optimized builds, separately for each container. The baseline
+was used for correctness qualification only. These batch totals do not estimate a
+before/after speedup.
+The [full-cache report](../../benchmarks/reader-corpus/results-2026-10-01-full-cache/README.md)
+records source `61954ee8`, all coverage and resource totals, background-load
+samples, and input/build checks before and after timing.
+
+#### Comparison with Haven and native Stata
+
+The historical comparison below covers the same 1,812 files for all four
+readers. The dtatools measurements are from September 16, 2026; Haven and
+Stata measurements are retained from August 24 on the same files and computer.
+These are warm-cache batch totals from one fresh-process read per file.
+
+| Corpus | Files | DTA GB | `read_dta()` | `read_arrow()` | `haven::read_dta()` | Stata native `use` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| DHS | 641 | 46.903 | 38.684 s | 26.878 s | 2,727.051 s | 68.806 s |
+| MICS | 949 | 3.690 | 6.575 s | 5.656 s | 216.732 s | 1.155 s |
+| NSFG | 222 | 5.772 | 8.724 s | 6.602 s | 234.588 s | 0.885 s |
+
+The dtatools rows use default dibble output and automatic thread selection
+on an Apple M4 Max. Arrow files were preconverted; read times include checksum
+verification and exclude conversion. The
+[September 16 corpus report](../../benchmarks/reader-corpus/results-2026-09-16-base-r/README.md)
+records CPU time, peak RSS, coverage and the original comparator sources.
+Comparisons span measurement dates. The October 1 survey totals above use a
+larger inventory and different instrumentation, so they remain a separate
+series. No Haven, Stata or Arrow timing was rerun for that full-cache benchmark.
+
+Projected reads load specified columns and can help when the needed variables
+are known in advance. See [details and examples](../../docs/r-reader-projections.md).
 
 ### Performance on a demanding dataset
 
-Performance on the largest, widest files matters alongside the averages.
-The September 16, 2026 comparison uses the 5.2 GB India 2021 DHS women's file,
-with 724,115 rows and 5,972 columns, and measures ten full reads per tool.
+The October 1, 2026 refresh measures the 5.2 GB India 2021 DHS women's file,
+with 724,115 rows and 5,972 columns. Each dtatools row uses ten new full reads,
+in fresh R processes with a warm filesystem cache. Haven and Stata native
+`use` values are retained unchanged from September 16 on the same file and
+computer; neither comparator was rerun.
 
-| Reader | Median wall time | Range | Median process CPU time | Median peak RSS |
-| --- | ---: | ---: | ---: | ---: |
-| `dtatools::read_dta()` | 0.6135 seconds | 0.607 to 0.827 seconds | 5.1551 seconds | 5.237 GB |
-| `dtatools::read_arrow()` | 0.2950 seconds | 0.289 to 1.022 seconds | 3.0291 seconds | 5.400 GB |
-| `haven::read_dta()` | 472.9965 seconds | 422.801 to 572.189 seconds | 473.0478 seconds | 35.113 GB |
-| Stata native `use` | 0.4725 seconds | 0.471 to 0.542 seconds | 0.5070 seconds | 5.257 GB |
+| Reader and output | Median read wall | Range | Median read CPU | Median process CPU | Median peak RSS |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `read_dta()`, tibble | 0.6280 s | 0.618–0.646 s | 4.8310 s | 5.1377 s | 5.250 GB |
+| `read_dta()`, dibble | 0.6415 s | 0.631–0.682 s | 4.8575 s | 5.1698 s | 5.250 GB |
+| `read_arrow()`, tibble | 0.2275 s | 0.224–0.230 s | 2.4180 s | 2.7540 s | 5.436 GB |
+| `read_arrow()`, dibble | 0.2400 s | 0.238–0.244 s | 2.4160 s | 2.7497 s | 5.436 GB |
+| `haven::read_dta()` | 472.9965 s | 422.801–572.189 s | n/a | 473.0478 s | 35.113 GB |
+| Stata native `use` | 0.4725 s | 0.471–0.542 s | n/a | 0.5070 s | 5.257 GB |
 
-`read_dta()` approaches Stata's wall time here, but at a higher CPU cost: its
-process uses about ten times as much CPU time. Wall time measures how long you
-wait for the read; CPU time adds up the time spent working across CPU cores.
-Using several cores at once can therefore consume several CPU-seconds during
-a subsecond read. Here, process CPU time also includes startup, package loading
-and shutdown, so the figures do not isolate the reader's CPU efficiency.
+CPU time sums work across cores. Read wall and read CPU cover the same first
+reader call; process CPU and peak RSS include startup, loading, checks and
+shutdown. The readers use automatic threads and numeric ALTREP. Arrow reads
+verify checksums; conversion and qualification are outside timing. The four
+DTA/Arrow and tibble/dibble combinations passed complete value-and-metadata
+qualification before the timed reads.
 
-These measurements were collected on a shared Apple M4 Max. Arrow verification
-is enabled. Wall time covers the read call; CPU and peak RSS cover the entire
-fresh process. The
-[report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-parity/results-2026-09-16-india/README.md)
-records cache handling, background activity, settings and all observations.
+This refresh follows the original India timing protocol, including jsonlite
+job setup and no forced garbage collection or compiled timing wrapper. The
+host is an Apple M4 Max with R 4.6.1. Current measurements use macOS 26.7;
+the retained comparators used 26.6.2. The different measurement dates prevent
+treating this as a newly paired comparison with Haven or Stata. The
+[India refresh report](../../benchmarks/reader-parity/results-2026-10-01-india-refresh/README.md)
+records every observation, source and input binding, historical comparator
+source, and sampled host activity.
 
-An October 1, 2026 paired comparison against v0.10.0 found mixed changes on
-this file. For the first read in each fresh R process, the reviewed build's
-`read_arrow()` median fell from 0.2910 to 0.2625 seconds, while `read_dta()`
-rose from 0.5995 to 0.6365 seconds. In a separate repeated-read control,
-`read_dta()` fell from 0.4070 to 0.3925 seconds and Arrow was essentially
-unchanged. Package loading rose from 0.083 to 0.195 seconds, outside those
-read-call timers, so neither gain implies faster fresh-process execution.
-The [release comparison](https://github.com/jbearak/dta-parser/blob/main/benchmarks/io-merge-review/results-2026-10-01/README.md)
-reports both timing boundaries and uncertainty. It does not replace the full
-corpus or historical competitor measurements above. See the
-[reader CPU assessment](https://github.com/jbearak/dta-parser/blob/main/docs/research/r-reader-cpu-assessment-2026-10-01.md)
-for thread scaling and optimization opportunities.
+The separate paired optimization experiment found tibble read wall reductions
+of 6.13% for DTA and 15.22% for Arrow on this file. Its CPU intervals include
+zero, and most RSS differences are small and inconclusive. DTA dibble wall
+time fell 0.92%; the automatic-thread Arrow dibble interval includes zero.
+That experiment used eight reads and a different setup. The
+[large-file results](../../benchmarks/r-file-readers/results-2026-10-01.md#large-input-controls)
+retain its baseline, single-thread controls and uncertainty intervals.
+
+The earlier [October 1 release comparison](../../benchmarks/io-merge-review/results-2026-10-01/README.md)
+uses v0.10.0 as its baseline and a different measurement protocol. The
+[reader CPU assessment](../../docs/research/r-reader-cpu-assessment-2026-10-01.md)
+discusses thread scaling.
+
+### Full-cache Stata conformance
+
+The October 1 conformance suite covers all 1,881 regular `.dta` files in the
+DHS, MICS, NSFG, ENADID and WFS survey datasets beneath `/opt/aww_cache`. All
+1,879 readable inputs passed both direct DTA and Arrow-mediated round trips,
+for 3,758 successful live-Stata comparisons.
+The two known malformed MICS inputs were the only exclusions, each matched
+by identity, byte count and SHA-256. No Haven reader or comparator was rerun.
+
+For each input, the suite calls `read_dta()`, `save_dta()`, `save_arrow()` and
+`read_arrow()`. Stata compares the original with the direct DTA output and
+with a DTA written from the Arrow result. It checks every stored value,
+dimensions, variable order and names, storage types, formats, dataset and
+variable labels, value-label assignments and definitions, and dataset notes.
+
+This oracle uses default dibble output. It does not check arbitrary dataset
+or variable characteristics, including variable notes, or add projected reads
+and synthetic release-119 cases. The
+[full oracle report](../../benchmarks/r-corpus-roundtrip/results-2026-10-01.md)
+records the corpus coverage, comparator controls, exact source build and
+before/after input and executable audits. The full-cache reader qualification
+separately compares baseline and optimized signatures within each container.
 
 ### Using `.arrow` dataset files
 

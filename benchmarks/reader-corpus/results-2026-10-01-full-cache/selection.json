@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "derived_utc": "2026-10-01T19:20:47.977960+00:00",
+  "policy": "Select only observations whose input corpus is in the exact survey-root allowlist; preserve source order and every selected observation",
+  "survey_roots": [
+    "DHS",
+    "MICS",
+    "NSFG",
+    "ENADID",
+    "WFS"
+  ],
+  "new_read_attempts": 0,
+  "original": {
+    "input_files": 1882,
+    "attempts": 3764,
+    "successful_attempts": 3760
+  },
+  "selected": {
+    "input_files": 1881,
+    "attempts": 3762,
+    "successful_attempts": 3758,
+    "error_attempts": 4,
+    "source_bytes": 57114293618
+  },
+  "excluded_scope": {
+    "input_files": 1,
+    "attempts": 2,
+    "successful_attempts": 2,
+    "source_bytes": 812515,
+    "reason": "Input is outside the five survey roots; project names and identities remain private"
+  },
+  "source_artifact_sha256": {
+    "inputs-private.json": "60853b6271689a3365f25cb72c6e645517a39cd19b8039f0a77b71a15b6773b0",
+    "observations.jsonl": "9aa03de0df3db023ef1d67c65bf7dd9d9556c32651ee18bd49798dac6fb31d1c",
+    "observations.csv": "89f25c5741d0f67f41acd595f5a66e8301b6d0978a1a0c54e98b0eafbd4e2f94",
+    "summary.csv": "737e3875ecaeec77e82d54683ece8160d5481a4a488d195c7855e829b2485383",
+    "run.json": "7ea482502a2013117c96ea8fec11b7ce5ebfc1672522e662b5521e4bbcf4f21a",
+    "binding-before.json": "8f04bb85701517a4011388d44420b82de4ff6f5279edbb070a5fc6dab986dd82",
+    "binding-after.json": "8f04bb85701517a4011388d44420b82de4ff6f5279edbb070a5fc6dab986dd82",
+    "QUALIFIED": "084105f42ed6ade9e68d597c8fdb9b5e689c73f1ee6e284c5899b7887015c184",
+    "COMPLETE": "93e8ddc56e1c4df2862455cb48343fa78b48706b8a68b6d108e2a081f4e39613",
+    "baseline-qualification-private.jsonl": "b8448faa7d24b11d70c426ee08f0dc3f7bef11f5dbc28706bdb0e92f521989d8",
+    "candidate-qualification-private.jsonl": "b8448faa7d24b11d70c426ee08f0dc3f7bef11f5dbc28706bdb0e92f521989d8"
+  },
+  "original_published_provenance_sha256": "7d5ed51e753c43527517c6e5e30381e5ab3c049caa5377dbd9890eea9f62b614",
+  "derived_artifact_sha256": {
+    "selected-inputs-private.json": "075f4e43c7aca5ffc7710648abd4a216905cb58c6656fe48ad6f5d84ec045e3b",
+    "selected-observations-private.jsonl": "3ce78c29184832c209706f9b97ef8421c6ef865035dc6b6e2c967dc37d027eb6",
+    "excluded-observations-private.jsonl": "2debccedd189ab0719a35623dacb09b3606294b9deed9740c44a7c32eea5c239",
+    "summary.csv": "911a390123d6eaa54fb77f8df91abba83286c40410c575904dbdbc91fdf16a56"
+  },
+  "derivation_script_sha256": "2a5ea56b420f88a854cd237da44eddbd3b11c810f2c1114013b91e68851b0a1b",
+  "survey_controller_sha256": "9805addfd54224818122032285181d9af766eba26ca83e0a1057d3dffa477eb2",
+  "measured_controller_sha256": "fea2d6bb4cbb82ed36ac8a7f22039e3f421b99ee1a2f7017badd30a21036d76b",
+  "source_observations_unchanged": true,
+  "selected_observations_copied_byte_for_byte": true
+}

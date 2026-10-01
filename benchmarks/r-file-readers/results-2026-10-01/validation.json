@@ -1,0 +1,55 @@
+{
+  "implementation_commit": "70866ae8c747359ebfaffd590243a59a69104b03",
+  "candidate_source_matches_implementation_commit": true,
+  "full_r_suite": {
+    "passed": 27520,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "warnings": 7,
+    "observations_sha256": "ca60b90c5f39abb0aaf09b128b8d0a5a37456cf0992d69ea18eedd56e55d4d2f",
+    "log_sha256": "4e18e68dc730195c9a965a895160ec33c1c4030c4784187cc3bfa84447a7799c"
+  },
+  "interoperability": {
+    "test-haven-conformance": {
+      "exit_code": 0,
+      "log_sha256": "f7b7e6791d8abcd367773da59cb8b89192f099d72ede92ddc19c963f1ea26f42"
+    },
+    "test-labelled-interop": {
+      "exit_code": 0,
+      "log_sha256": "5f321f89084e0c9f683f838e9a567ba1e173e9e7c38dc5d0135b265220e20e81"
+    },
+    "test-haven-helper-interop": {
+      "exit_code": 0,
+      "log_sha256": "5011d3acfd81210ac1b1604f6764b114ee2e71f462cad35b8237956a45e65264"
+    }
+  },
+  "rust_bridge": {
+    "unit_tests_passed": 37,
+    "format_check": "passed",
+    "clippy_warnings_denied": "passed"
+  },
+  "benchmark_tool_tests": {
+    "lightweight_tests_passed": 20,
+    "fresh_r_qualification_smokes_passed": 48
+  },
+  "notes": [
+    "The final source-bound candidate installation passed the full R suite and all three repository interoperability scripts.",
+    "Rust sources are unchanged from the separately tested bridge revision.",
+    "The seven R warnings predate this optimization.",
+    "Pull-request CI validates the committed source on the repository platform and dependency matrix; consult the PR for final status.",
+    "After timing, documentation and schema regression coverage were added. The full suite was not rerun locally; the changed reader test file passed against the timed installation, and final-head CI covers the complete source."
+  ],
+  "post_benchmark_schema_regression": {
+    "runtime_implementation_unchanged": true,
+    "reader_test_file_passed": 428,
+    "new_assertions": 34,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "warnings": 0,
+    "configuration_restored": true,
+    "log_sha256": "961e6f93da81b307100a9466c4afe33427177c7cae8bc0c9734cc3a3111ad95e",
+    "observations_sha256": "75fe44b0b29900f235af373b490ee2d79a1e52153090d5f9cc05540cb4f4f2af"
+  }
+}

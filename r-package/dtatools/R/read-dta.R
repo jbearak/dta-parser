@@ -171,11 +171,13 @@
 #'   R double vectors during decoding, which uses more memory but avoids later
 #'   widening when a workload requires a contiguous double data pointer.
 #'   Character-column ALTREP is unaffected.
-#' @param .name_repair Name repair passed to [tibble::as_tibble()].
+#' @param .name_repair Name repair applied to the selected column names by
+#'   [vctrs::vec_as_names()].
 #' @param output Output container. `"default"` uses the `dtatools.output`
 #'   option, falling back to `"dibble"`. Supply `"dibble"`, `"tibble"`, or
 #'   `"data.table"` to override the option. Data-table output requires the
-#'   suggested data.table package.
+#'   suggested data.table package. Every container returns the selected file
+#'   columns; the global `tibble::rownames` configuration does not add columns.
 #' @param datasig Whether to record the file's [datasig()] signature in the
 #'   result's `datasig` attribute, as a load-time record of what the file on
 #'   disk signed as; it is never updated afterwards, so it is not a claim

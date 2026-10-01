@@ -1,0 +1,20 @@
+{
+  "samples": 40,
+  "first_utc": "2026-10-01T18:35:33+00:00",
+  "last_utc": "2026-10-01T18:55:15+00:00",
+  "samples_with_competing_processes": 14,
+  "samples_with_competing_R": 0,
+  "competing_process_samples": {
+    "cliproxyapi": 1,
+    "bun": 13
+  },
+  "maximum_sampled_process_cpu_percent": {
+    "cliproxyapi": 78.7,
+    "bun": 150.5
+  },
+  "maximum_sum_of_sampled_competing_cpu_percent": 150.5,
+  "threshold_cpu_percent": 50,
+  "sample_period_seconds": 30,
+  "limitation": "Thresholded ps percent-CPU samples exclude benchmark descendants and do not establish continuous quiet or total machine utilization.",
+  "scope": "Original execution before the later survey-root selection; attempt counters are unchanged."
+}

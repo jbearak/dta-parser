@@ -1,0 +1,22 @@
+{
+  "started_utc": "2026-10-01T18:35:58.671871+00:00",
+  "finished_utc": "2026-10-01T18:55:13.378291+00:00",
+  "smoke": false,
+  "attempted_files": 1882,
+  "attempts": 3764,
+  "outputs": [
+    "tibble",
+    "dibble"
+  ],
+  "threads": 0,
+  "source_inventory_files": 1882,
+  "skipped_symlink_aliases": 2,
+  "platform": "macOS-26.7-arm64-arm-64bit-Mach-O",
+  "logical_cpus": 16,
+  "qualification_policy": "complete-signature-within-output-v2",
+  "qualification_origin": "revalidated-complete-records",
+  "protocol": "One first read per fresh process/output; no forced pre-read GC; per-file hashing warms cache; output order alternates by file",
+  "haven_invocations": 0,
+  "stata_invocations": 0,
+  "arrow_invocations": 0
+}

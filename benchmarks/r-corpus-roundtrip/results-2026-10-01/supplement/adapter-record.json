@@ -1,0 +1,52 @@
+{
+  "adapter_patch_sha256": "d6dec9874f43e24c0fa475768faa58d65aecbb5eb3710f3d3a5ef4541ef769bb",
+  "adapter_runner_sha256": "ebf3dfc4fbb4d77bc18d964272d56e7244954f3a30b5353ddecde964a119563a",
+  "build_record_sha256": "63e491731a6442f4f56d3a37307b30ef7f56001b514520dad56824fff92eb300",
+  "canonical_source_sha256": {
+    "benchmarks/benchmark-common.R": "1652c6d1225d8b945b3451df23d703d6710341365cd2b503a66513e917c3c75b",
+    "benchmarks/r-corpus-roundtrip/common.R": "a5fa2faf1ea378919e1d32cacd5831a2dd135a7911dc0b0c4b7d82d4e93bad67",
+    "benchmarks/r-corpus-roundtrip/stata-compare.do": "5e94e22e25b1d26b49277fca13253eb648c292fa52f8b3894253904dadcfc1d7",
+    "benchmarks/r-corpus-roundtrip/verify-worker.R": "c0c8cb60271aa54a09b039a91768a7ea66a1072487548311a3f5489e69e827f3",
+    "benchmarks/r-corpus-roundtrip/verify.R": "b92dcee79b4e7dcc1c9b4d567191e14e963de9c8352a6293d2c75c0bdb06872f"
+  },
+  "command": [
+    "<Rscript>",
+    "--vanilla",
+    "<staged verify.R>",
+    "<cache root>",
+    "<results directory>",
+    "full"
+  ],
+  "exit_code": 0,
+  "expected_exclusions": 0,
+  "expected_files": {
+    "ENADID": 17,
+    "WFS": 41
+  },
+  "expected_passes": 58,
+  "haven": "No Haven reader or test invocation; shared runtime binding fingerprints installed package",
+  "input_audit_log_sha256": "181a4cfe706f27762bb3e0b3ebc05e3a482d463a21e78d977f5803ddb1fe6a64",
+  "input_audit_source_sha256": "140c95845e4e36c395ed22743c330a17ef07abf5f094a17a5d3169c61802a13a",
+  "input_rehash_exit_code": 0,
+  "jobs": 16,
+  "memory_gib": 96,
+  "output_container": "public default: dibble; Arrow restores saved container",
+  "pre_post_bindings_equal": true,
+  "prepared_only": false,
+  "private_command_sha256": "e2a87283e715a51fe6f283a4c8da2173c114e692ad24b5c9d0acea236a289631",
+  "schema_version": 1,
+  "scope": "Supplement only; unchanged canonical full gate remains required separately",
+  "staged_source_sha256": {
+    "benchmarks/benchmark-common.R": "1652c6d1225d8b945b3451df23d703d6710341365cd2b503a66513e917c3c75b",
+    "benchmarks/r-corpus-roundtrip/common.R": "413711ad531c7ae84a49d2307da5926858d45015a22ba69e36d35af928be4684",
+    "benchmarks/r-corpus-roundtrip/stata-compare.do": "5e94e22e25b1d26b49277fca13253eb648c292fa52f8b3894253904dadcfc1d7",
+    "benchmarks/r-corpus-roundtrip/verify-worker.R": "c0c8cb60271aa54a09b039a91768a7ea66a1072487548311a3f5489e69e827f3",
+    "benchmarks/r-corpus-roundtrip/verify.R": "5a8f5390fe0ac4fdb553e815f97ffd154ea5054eb60ea62eea0ed006197a66d4"
+  },
+  "supported_source_releases": [
+    118
+  ],
+  "verification-binding_tsv_sha256": "af96fd5082ab0e47f130e086ee20d95c49f48e2ce879b5a093769c587dfa48ec",
+  "verification_log_sha256": "04ded2a4e08c33ce1fec73dca24bc743fe5fdcb85c9aac86c304f19df0b69ca2",
+  "verification_tsv_sha256": "5c09cf1108feddced097ff550079c9f3affe2cb1120458f86851490182fb2ccf"
+}

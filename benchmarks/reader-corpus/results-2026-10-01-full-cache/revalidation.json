@@ -1,0 +1,17 @@
+{
+  "policy": "complete-signature-within-output-v2",
+  "revalidated_utc": "2026-10-01T18:34:53.782619+00:00",
+  "original_controller_sha256": "3e4e230a7e620e627d188e0606682183177c60534fc02e0214237f68df181464",
+  "current_controller_sha256": "fea2d6bb4cbb82ed36ac8a7f22039e3f421b99ee1a2f7017badd30a21036d76b",
+  "original_artifact_sha256": {
+    "config-private.json": "bc30920a81d8d50f9de4a9037d5e96f79d77ed485b0eb42005debb3ca969f08e",
+    "inventory-private.json": "6175fb47763df437ef53255ac4f7a9270fb8282e06f2400b5e174c67a619482e",
+    "inputs-private.json": "60853b6271689a3365f25cb72c6e645517a39cd19b8039f0a77b71a15b6773b0",
+    "binding-before.json": "aae961f4397d6dd6de2db8e4bcf846cb3e987170d26b2621800a2ef7f93a9994",
+    "baseline-qualification-private.jsonl": "b8448faa7d24b11d70c426ee08f0dc3f7bef11f5dbc28706bdb0e92f521989d8",
+    "candidate-qualification-private.jsonl": "b8448faa7d24b11d70c426ee08f0dc3f7bef11f5dbc28706bdb0e92f521989d8"
+  },
+  "original_status": "Complete qualification records; no qualification seal or timed reads",
+  "new_r_qualification_reads": 0,
+  "rationale": "Require complete baseline/candidate parity within each output. Dibble construction can widen string storage declarations to fit decoded UTF-8; cross-output signatures are recorded, while status, shape and conditions must match."
+}
