@@ -224,8 +224,62 @@ format.dta_tab_grouped <- function(x, ..., width = getOption("width", 80L)) {
     keys <- attr(x, "groups", exact = TRUE)
     unlist(lapply(seq_along(x), function(i) c(
         if (i > 1L) "", strrep("-", width),
-        paste0("-> ", .mutation_group_label(keys, i)), "", format(x[[i]], ..., width = width))),
+        paste0("-> ", .tab_group_label(keys, i)), "", format(x[[i]], ..., width = width))),
         use.names = FALSE)
+}
+
+# The by prefix formats its own keys: tabulate's nolabel option changes the
+# table only. String keys are unquoted, and calendar formats retain their
+# full text rather than the nine-column abbreviation used inside tables.
+.tab_group_label <- function(keys, index) {
+    parts <- vapply(names(keys), function(name) {
+        value <- .tab_slice(keys[[name]], index)
+        text <- if (is.character(value) || is.factor(value)) {
+            if (is.na(value)) "" else as.character(value)
+        } else if (is.numeric(value) || inherits(value, c("Date", "POSIXct"))) {
+            category <- .tab_categories(value, "distinguish", "label")
+            label <- .tab_category_labels(value, category, "distinguish")
+            if (length(label) && !is.na(label[[1L]])) {
+                label[[1L]]
+            } else if (is.na(value)) {
+                .tab_missing_name(.tab_missing_codes(as.double(unclass(value))))
+            } else {
+                fmt <- attr(value, "format.stata", exact = TRUE)
+                if (is.null(fmt) && inherits(value, c("Date", "POSIXct"))) {
+                    as.character(value)
+                } else {
+                    if (is.null(fmt)) fmt <- "%9.0g"
+                    fmt <- sub("^%(-?[0-9]*)?d", "%\\1td", fmt)
+                    number <- .summarize_numeric(value)
+                    parsed <- regmatches(fmt,
+                        regexec("^%-?([0-9]+)[.,]([0-9]+)([fge])(c?)$", fmt))[[1L]]
+                    if (!length(parsed)) {
+                        trimws(.summarize_number(number, fmt))
+                    } else {
+                        width <- as.integer(parsed[[2L]])
+                        digits <- as.integer(parsed[[3L]])
+                        comma <- nzchar(parsed[[5L]])
+                        if (parsed[[4L]] == "g") {
+                            .summarize_general(number, digits, comma, width)
+                        } else {
+                            text <- if (parsed[[4L]] == "f") formatC(number,
+                                format = "f", digits = digits,
+                                big.mark = if (comma) "," else "") else ""
+                            if (comma && nchar(text) > width) text <- formatC(number,
+                                format = "f", digits = digits)
+                            if (!nzchar(text) || nchar(text) > width) {
+                                text <- if (number == 0) sprintf(paste0("%.", digits, "e"), 0) else
+                                    .summarize_exponential(number, digits, width)
+                            }
+                            text
+                        }
+                    }
+                }
+            }
+        } else as.character(value)
+        paste0(name, " = ", text)
+    }, character(1))
+    paste(parts, collapse = ", ")
 }
 
 # Base subsetting drops descriptive attributes on plain R vectors. These

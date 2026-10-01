@@ -107,7 +107,7 @@ R's console width and omit Stata's terminal page header.
 `tests/testthat/fixtures/tabulate*.do` and their `.log` outputs are checked-in
 native oracles, replayed by `test-tab-stata-parity.R`, `test-tab-features.R`,
 `test-tab-presentation.R`, `test-tab-association.R`, `test-tab-summary.R`, and
-`test-tab-multiple.R`. They cover the original 62 output cases plus weights,
+`test-tab-multiple.R`, `test-tab-grouped.R`, and `test-tab-indicators.R`. They cover the original 62 output cases plus weights,
 selection, subpopulations, tests/standard errors, formatting options, summary
 moments, and multiple/immediate forms. Numerical tests also cover missing tags,
 zero margins, exact tails, generated observations, and grouped evaluation.
