@@ -49,9 +49,9 @@ names removed.
 `sort`, `percent`, `expected`, and `freq` are `tabulate`'s `sort`, `row`
 `column` `cell`, `expected`, and `nofreq`. They are checked as Stata checks
 them: `sort` is refused on a two-way table and the two-way options on a
-one-way table. One check is stricter. Stata's `nofreq` with nothing else
-prints an empty table silently; `freq = FALSE` without `percent` or
-`expected` is an error, since a call that shows nothing is a mistake.
+one-way table. `freq = FALSE` without other displayed statistics now suppresses all
+output, matching Stata. Explicitly requested association statistics still
+print below a suppressed frequency table.
 
 ## The string missing
 
@@ -81,10 +81,19 @@ split. `tests/testthat/fixtures/tabulate.do` is the measurement and
 compares every printed line. A new layout rule is a new case in the
 do-file, a regenerated log, and a matching R call.
 
-## What is deferred
+## Expanded tabulation interface
 
-Weights, `subpop()`, `tab1`, `tab2`, `tabi`, the association tests,
-`generate()`, and `nokey` are `tabulate` features with a natural place in
-`tab()` and are tracked in their own issues. Each fits the shape here: a
-weighted table is still a `table`, a test statistic is an attribute the
-printer shows under the table, and none needs a different return value.
+Weights, `subpop()`, `tab1`, `tab2`, `tabi`, association tests, indicator
+creation, and the remaining display options are now implemented. A weighted
+frequency table retains the `dta_tab` contract with double counts. Summary
+tabulations return a data frame with a separate presentation record because
+means and standard deviations are not frequencies. Grouped and multiple calls
+return lists of the individual tables.
+
+The R interface returns Stata side effects with the result: stored scalars and
+requested matrices in `r`, full-length indicator columns in `generated`, and
+an exportable table with its stored results in `collection`. This keeps a
+read-only reporting call from modifying a dataset by reference or overwriting
+caller bindings. `tabi(replace = TRUE)` similarly returns its compact data in
+the `data` attribute. The compatibility matrix distinguishes these R return
+conventions from Stata's global command state and collection interpreter.

@@ -175,13 +175,43 @@ formals = ["data", "...", ".names"]
 captured = []
 captured_dots = true
 
-# tab(mtcars, cyl, gear): `x` and the dots are quoted column expressions. The
-# explicit `data` argument, and the literal controls after the dots, are not.
+# Tabulated variables, filters, grouping names, weights, and summary responses
+# are evaluated against the data mask. `data` and display controls are ordinary
+# arguments, so Raven should still check their expressions.
 [[function]]
 name = "tab"
-formals = ["x", "...", "data", "missing", "display", "sort", "percent", "expected", "freq"]
+formals = [
+    "x", "...", "data", "missing", "display", "sort", "percent", "expected", "freq",
+    "where", "rows", "by", "weights", "weight", "subpop", "row", "column", "cell",
+    "nofreq", "nolabel", "chi2", "lrchi2", "exact", "gamma", "taub", "V", "all",
+    "cchi2", "clrchi2", "rowsort", "colsort", "key", "nokey", "wrap", "plot",
+    "nolog", "generate", "matcell", "matrow", "matcol", "collect", "summarize",
+    "means", "standard", "obs",
+]
+captured = ["x", "where", "by", "weights", "subpop", "summarize"]
+captured_dots = true
+
+# Multiple-table calls capture variable selections and forward named options
+# through the dots to tab(). `data` and `firstonly` are ordinary controls.
+[[function]]
+name = "tab1"
+formals = ["x", "...", "data"]
 captured = ["x"]
 captured_dots = true
+
+[[function]]
+name = "tab2"
+formals = ["x", "...", "data", "firstonly"]
+captured = ["x"]
+captured_dots = true
+
+# Immediate tables evaluate their matrix and every option in the caller's
+# environment. Quoting the options internally does not make them data-masking.
+[[function]]
+name = "tabi"
+formals = ["x", "...", "replace"]
+captured = []
+captured_dots = false
 
 # Summary variables, filters, grouping names and weights are captured.
 [[function]]

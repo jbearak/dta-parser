@@ -77,7 +77,13 @@ expected_policy <- list(
     keep_vars = list(captured = character(), captured_dots = TRUE),
     drop_vars = list(captured = character(), captured_dots = TRUE),
     set_var_label = list(captured = "variable", captured_dots = FALSE),
-    tab = list(captured = "x", captured_dots = TRUE),
+    tab = list(
+        captured = c("x", "where", "by", "weights", "subpop", "summarize"),
+        captured_dots = TRUE
+    ),
+    tab1 = list(captured = "x", captured_dots = TRUE),
+    tab2 = list(captured = "x", captured_dots = TRUE),
+    tabi = list(captured = character(), captured_dots = FALSE),
     summarize = list(captured = c("x", "where", "by", "weights"), captured_dots = TRUE),
     summarise = list(captured = c("x", "where", "by", "weights"), captured_dots = TRUE),
     summ = list(captured = c("x", "where", "by", "weights"), captured_dots = TRUE),

@@ -1,112 +1,124 @@
 # tab() and Stata's tabulate
 
-`tab()` is dtatools' `tabulate`. This page is the compatibility matrix
-[ADR 0001](./adr/0001-match-stata-tabulation-semantics.md) asks for: every
-syntax form and option of Stata 19's one-way and two-way `tabulate`, how
-far `tab()` matches it, and what each claim covers. The claims are checked
-by `tests/testthat/test-tab-stata-parity.R`, which replays
-`tests/testthat/fixtures/tabulate.do` in R and compares the printed lines
-with `tabulate.log`, the output of that do-file under Stata 19 MP. A row
-marked *matched* below means the printed text is identical, character for
-character, on the cases in that log. See
-[ADR 0042](./adr/0042-tab-prints-as-stata-tabulate-does.md) for the return
-contract behind the table.
+`tab()` implements Stata's one-way and two-way
+frequency tabulations and `tabulate, summarize()`. `tab1()`, `tab2()`, and
+`tabi()` provide the multiple-variable and immediate forms. The reference
+specifications are Stata's [one-way manual](https://www.stata.com/manuals/rtabulateoneway.pdf),
+[two-way manual](https://www.stata.com/manuals/rtabulatetwoway.pdf), and
+[summary-table manual](https://www.stata.com/manuals/rtabulatesummarize.pdf).
 
-The result is a `table` of frequencies with class `dta_tab`. Printing it,
-or calling `format()` on it, gives Stata's layout. `as.table()` gives the
-plain frequency table, `as.data.frame()` adds the percentages and expected
-frequencies as columns, and the usual `table` arithmetic, subsetting,
-transposition, and `aperm()` work on it and return plain tables.
-`margin.table()` is not generic and puts the class back on its own result;
-that result has no layout behind it and prints as a plain table, and
-`as.table()` strips the class when an exact plain table is needed.
+The compatibility target is the command's calculation and plain-text output,
+with the R interfaces below for command syntax and side effects. It does not
+include Stata's SMCL renderer, command prefixes such as `svy:`, or the separate
+`collect` styling/export command language. A feature's native fixtures establish
+parity for those cases, not every possible floating-point value or format.
 
-## Syntax
+## Calls and calculation sample
 
-| Stata | R | Status |
+| Stata | R | Behavior |
 | --- | --- | --- |
-| `tabulate x` | `tab(data, x)`, `tab(x)`, `data \|> tab(x)` | Matched |
-| `tabulate x y` | `tab(data, x, y)` | Matched |
-| `tabulate x y z` | `tab(data, x, y, z)` | R extension: Stata refuses more than two variables; `tab()` gives an R multidimensional table that prints as base R prints it |
-| `tabulate x if exp` | `tab(data[which(exp), ], x)` | Matched; the row subset is R's |
-| `tabulate x in range` | `tab(data[range, ], x)` | Matched; the row subset is R's |
-| `tabulate x [weight]` | none | Planned; tracked separately |
-| `tabulate x, subpop(v)` | none | Planned; tracked separately |
-| `by g: tabulate x` | `tab(x, g)` or dplyr `group_map()` | Out of scope: use a two-way table |
-| `tab1`, `tab2`, `tabi` | none | Planned; tracked separately |
+| `tabulate x` / `tabulate x y` | `tab(d, x)` / `tab(d, x, y)` | Frequency tables; direct vectors and `data = d` also work |
+| `if`, `in` | `where = expression`, `rows = positions` | Evaluated within each group; `.n` and `.N` expose its row number/count |
+| `by g:` | `by = g`, or a grouped data frame | List of tables with group keys; explicit `by` follows the package's first-appearance ordering |
+| `fweight`, `aweight`, `iweight` | `weights = w, weight = "fweight"` (etc.) | Replication counts, normalized analytic weights, or raw importance-weight sums |
+| `subpop(s)` | `subpop = s` | Zero excludes counts but retains categories, in one- and two-way tables; missing is nonzero |
+| `missing` | `missing = TRUE` | Numeric `.`, `.a` through `.z` after observed values; string `""`/`NA` is one blank category sorted first |
+| `nolabel` | `nolabel = TRUE` or `display = "value"` | Underlying codes displayed with the variable's format |
+| `tab1 x y z` | `tab1(d, x, y, z)` | One table per variable, with common options |
+| `tab2 x y z` | `tab2(d, x, y, z)` | All pairs; `firstonly = TRUE` limits pairs to the first variable |
+| `tabi` | `tabi(matrix_of_counts)` | Immediate frequencies without expanding observations; default exact test for 2 by 2, Pearson otherwise |
 
-## Result contents
+The calculation sample jointly excludes missing category variables unless
+`missing` is requested, and excludes zero/missing weights. Invalid weights are
+checked on that sample. Analytic weights normalize to its observation count,
+including subpopulation selection. Frequency weights must be integers.
 
-| Stata | R | Status |
+## Statistics and display
+
+| Stata options | R options | Behavior |
 | --- | --- | --- |
-| One-way `Freq.`, `Percent`, `Cum.`, `Total` | printed; `as.data.frame()` columns `Freq`, `percent`, `cum` | Matched |
-| Two-way cell counts with row and column totals | printed; the table's values and `margin.table()` | Matched |
-| Categories in value order | same | Matched |
-| Value labels as category names | same, `display = "label"` | Matched |
-| Two codes with the same label text | `Same [1]`, `Same [2]` | R divergence: Stata prints two identical `Same` rows; `tab()` appends the code so every row name is unambiguous, as `factor_from_labels()` does |
-| `nolabel` | `display = "value"` | Matched |
-| `missing`: numeric `.`, `.a` to `.z` after the observed values | `missing = TRUE` | Matched |
-| `missing`: the empty string as the string missing | `missing = TRUE` | Matched: `""` and `NA_character_` are one blank category, sorted first |
-| Missing excluded by default | `missing = FALSE` | Matched |
-| R `NaN` as its own category | `missing = TRUE` | R extension: Stata has no `NaN`; it sorts after `.z` |
-| One combined missing category | `missing = "combine"` | R extension: base R's `useNA` behavior |
-| `[code] label` category names | `display = "both"` | R extension |
-| `sort` | `sort = TRUE` | Matched: descending frequency, ties in value order, missing sorted with the rest |
-| `sort` on a two-way table | error | Matched: Stata refuses it too |
-| `row`, `column`, `cell` | `percent = c("row", "column", "cell")`, any subset | Matched, in Stata's fixed order whatever order is given |
-| `expected` | `expected = TRUE` | Matched |
-| `nofreq` | `freq = FALSE` | Matched with a percentage or `expected`; alone it is an error where Stata prints nothing |
-| `row`, `column`, `cell`, `expected` on a one-way table | error | Matched: Stata refuses them too |
-| `chi2`, `exact`, `gamma`, `lrchi2`, `taub`, `V` | none | Planned; tracked separately |
-| `generate(stub)` | none | Planned; tracked separately |
-| `matcell()`, `matrow()`, `matcol()` | `as.table()`, `dimnames()` | Matched in substance; there are no Stata matrices |
-| `plot` | none | Out of scope |
-| `wrap` | none | Out of scope: `tab()` wraps by console width, see below |
-| `nokey` | none | Planned |
-| `nolog`, `all`, `summarize()`, collection options | none | Out of scope for this page |
+| `sort` | `sort = TRUE` | One-way descending frequency, ties in value order |
+| `rowsort`, `colsort` | same logical arguments | Descending two-way marginal frequencies; association measures follow the resulting order |
+| `row column cell` | same logical arguments, or `percent = c("row", "column", "cell")` | Cell percentages in Stata's display order |
+| `expected`, `cchi2`, `clrchi2` | same logical arguments | Expected counts and each cell's Pearson / likelihood-ratio contribution |
+| `chi2`, `lrchi2` | same logical arguments | Independence tests without continuity correction |
+| `exact[(#)]` | `exact = TRUE` or positive integer | Exact Fisher probabilities; one- and two-sided probabilities for 2 by 2; integer increases R FEXACT workspace |
+| `gamma`, `taub`, `V` | same logical arguments | Ordinal measures with asymptotic standard errors; signed V for 2 by 2 |
+| `all` | `all = TRUE` | All association measures except exact; explicitly setting a measure to FALSE suppresses it |
+| `nofreq` | `nofreq = TRUE` or `freq = FALSE` | Suppress frequencies; without other cell statistics, the table is silent |
+| `key`, `nokey` | `key = TRUE/FALSE`, `nokey = TRUE` | Force or suppress the cell key; default is automatic |
+| `wrap` | `wrap = TRUE` | Keep frequency tables in one panel; summary tables follow their legacy panel layout |
+| `plot` | `plot = TRUE` | One-way horizontal star plot |
+| `nolog` | `nolog = TRUE` | Accepted; R's exact-test engine has no Stata enumeration progress log |
 
-## Printed layout
+Association tests reject analytic and importance weights. Positive observed
+margins determine test degrees of freedom; subpopulation zero categories remain
+in the table and stored dimensions. Fisher uses R's deterministic FEXACT engine,
+never a simulated substitute; resource exhaustion is an error. Its workspace
+units and progress messages are implementation-specific.
 
-| Element | Status |
+## Summary tables
+
+`tab(d, group, summarize = outcome)` and
+`tab(d, row_group, column_group, summarize = outcome)` return means, standard
+deviations, frequencies, and observation counts. `means`, `standard`, `freq`,
+and `obs` select/suppress displayed statistics. Analytic and frequency weights
+are supported. Missing outcomes are excluded from category discovery. Singleton
+cells have zero standard deviation. Marginal means and deviations are calculated
+from their observations, not averaged from cell summaries.
+
+Summary results are `dta_tab_summary` data frames; cell and marginal arrays are
+in `attr(result, "dta_tab_summary")$margins`. Subsetting, editing, binding, and
+dplyr transformations return ordinary data frames so the old table layout cannot
+be reused for a different result.
+
+## Returned values and R adaptations
+
+Frequency results remain `table` objects with class `dta_tab`. `as.table()`
+removes reporting attributes, `as.data.frame()` includes percentages and expected
+counts (and requested cell contributions), and arithmetic/subsetting returns
+plain tables. `margin.table()` is not generic; its stale class has no layout
+record and therefore prints as a plain table.
+
+| Stata result or side effect | R return convention |
 | --- | --- |
-| Stub width: longest level, or the string variable's storage width, within 11 to 39 (one-way) or 10 to 21 (two-way) | Matched |
-| Header from the variable label, or the name without one, wrapped by word in the stub or centered over the columns; long words cut | Matched |
-| Column levels cut to nine characters in ten-wide columns | Matched |
-| Percentages to two decimals, expected frequencies to one, thousands separators in counts | Matched |
-| Key box when more than one statistic is shown, followed by a blank line | Matched |
-| Rules between rows when more than one statistic is shown | Matched |
-| `no observations` for an empty table | Matched: Stata's message is an error return code, `tab()` prints it and returns the empty table |
-| Panels when the table is wider than the console | Matched at `getOption("width")`; Stata splits at its own line size and shows a page-width header dtatools does not print |
-| Zero-row categories from unused factor levels | R only: Stata cannot produce them; their percentages print as `.` |
+| `r(N)`, `r(r)`, `r(c)`, requested test results | `attr(result, "r")` using Stata's result names |
+| `matcell()`, `matrow()`, `matcol()` | Set corresponding argument TRUE; matrix is in `attr(result, "r")` |
+| `generate(stub)` | `generate = "stub"`; full-length byte indicator columns in `attr(result, "generated")`, with excluded rows missing |
+| `collect` / named collection | `collect = TRUE` / a name; `attr(result, "collection")` contains a tidy table and stored results |
+| `tabi ..., replace` | `replace = TRUE`; compact `row`, `col`, `pop` data in `attr(result, "data")` |
 
-## What the claim covers
+Reporting does not modify a caller's data or bind matrices into its environment.
+R collections are returned data, with no global append/replace state or Stata
+label/style-file interpreter. Those export/styling operations belong to consumers
+of the returned data. This is an explicit R adaptation rather than a claim to
+reproduce Stata's entire interactive environment.
 
-*Matched* means the numbers and the printed text. `tab()` builds the
-statistics from the frequency table with the same rounding Stata shows,
-and the tests compare Stata's console lines with `format()`'s lines, so
-layout drift is a test failure. The claim does not cover Stata's return
-values, `r(N)` and the rest, and it does not cover the terminal
-formatting Stata applies through SMCL, only the plain text.
+Other R adaptations are retained: three or more variables give an ordinary
+multidimensional table; unused R factor levels remain zero-count categories;
+`NaN` can be distinct; `missing = "combine"` combines numeric missings;
+`display = "both"` shows codes and labels. Duplicate labels print identically
+to Stata, while R dimension names remain unique (for example `Same [1]`). Empty
+samples return an empty result printing `no observations`, rather than Stata's
+error code; a fully suppressed two-way table remains silent. Group keys follow package ordering. Wide frequency panels respect
+R's console width and omit Stata's terminal page header.
 
-*R extension* marks behavior Stata does not have. It never changes what a
-matched call prints.
+## Native evidence
 
-*Planned* marks Stata behavior with a natural place in `tab()` that is
-not built. Each has, or will get, its own issue; none blocks a matched
-claim above.
+`tests/testthat/fixtures/tabulate*.do` and their `.log` outputs are checked-in
+native oracles, replayed by `test-tab-stata-parity.R`, `test-tab-features.R`,
+`test-tab-presentation.R`, `test-tab-association.R`, `test-tab-summary.R`, and
+`test-tab-multiple.R`, `test-tab-grouped.R`, and `test-tab-indicators.R`. They cover the original 62 output cases plus weights,
+selection, subpopulations, tests/standard errors, formatting options, summary
+moments, and multiple/immediate forms. Numerical tests also cover missing tags,
+zero margins, exact tails, generated observations, and grouped evaluation.
 
-*Out of scope* marks Stata behavior that belongs to another R tool or has
-no R counterpart.
-
-## Regenerating the log
-
-The log is Stata's output, so it is regenerated with Stata, never edited:
+Regenerate a log with Stata, never by editing expected output:
 
 ```sh
 cd r-package/dtatools/tests/testthat/fixtures
-stata -q -b do tabulate.do
+stata -q -b do tabulate-features.do
 ```
 
-A new case goes into the do-file and its R counterpart into the parity
-test at the same position. The test checks that the do-file, the log,
-and the R replay carry the same `tabulate` commands in the same order.
+Add each new case to both the do-file and its R replay. Fixtures requiring Stata
+19 collection commands are not used to infer a collection interpreter in R.

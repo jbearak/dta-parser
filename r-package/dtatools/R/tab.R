@@ -31,8 +31,51 @@
 #' @param expected Two-way tables only. `TRUE` shows each cell's expected
 #'   frequency under independence, as Stata's `expected` does.
 #' @param freq `FALSE` omits the frequencies, as Stata's `nofreq` does. It
-#'   needs `percent` or `expected`, since a table with nothing to show is an
-#'   error here where Stata prints nothing.
+#'   prints nothing without other cell statistics. In summary tables it
+#'   selects or suppresses the sum of weights (unweighted frequency).
+#' @param where An expression selecting rows within each group. `.n` and `.N`
+#'   are the within-group row number and row count. Missing selections are omitted.
+#' @param rows Positive row positions, interpreted within each group.
+#' @param by Optional unquoted grouping columns, such as `by = c(region, sex)`.
+#'   A grouped data frame also produces one table per group.
+#' @param weights Optional numeric weight expression. Zero and missing weights
+#'   are omitted; negative, infinite, and noninteger frequency weights are errors.
+#' @param weight Weight type: `"aweight"` (normalized to the sample size),
+#'   `"fweight"` (integer replication counts), or `"iweight"` (raw weight sums).
+#' @param subpop Numeric or logical expression. Zero excludes an observation
+#'   from counts while retaining its categories. As in Stata, missing is nonzero.
+#' @param row,column,cell Logical alternatives to `percent`.
+#' @param nofreq,nolabel Stata spellings of `freq = FALSE` and `display = "value"`.
+#' @param chi2,lrchi2 Two-way Pearson and likelihood-ratio independence tests.
+#' @param exact Fisher's exact test, including the one-sided probability for
+#'   two-by-two tables. A positive integer multiplies the exact-test workspace.
+#' @param gamma,taub,V Goodman--Kruskal gamma, Kendall tau-b (with asymptotic
+#'   standard errors), and Cramer's V. V is signed for two-by-two tables.
+#' @param all Request all association measures except Fisher's exact test.
+#'   Explicit `chi2 = FALSE`, `lrchi2 = FALSE`, `gamma = FALSE`, `taub = FALSE`,
+#'   or `V = FALSE` suppresses that measure even with `all = TRUE`.
+#' @param cchi2,clrchi2 Show each cell's Pearson or likelihood-ratio contribution.
+#' @param rowsort,colsort Sort two-way rows or columns by descending frequency.
+#' @param key Force or suppress the two-way cell key; `NULL` chooses automatically.
+#' @param nokey Suppress the key, as with `key = FALSE`.
+#' @param wrap Keep a wide frequency table in one panel, as Stata's `wrap` does.
+#' @param plot Print a one-way horizontal bar chart using stars.
+#' @param nolog Accepted for Stata syntax compatibility. R's exact-test engine
+#'   does not print Stata's enumeration progress log.
+#' @param generate Optional prefix for indicator columns, returned in the
+#'   result's `generated` data-frame attribute in original observation order.
+#'   Excluded observations are missing. Source data are not modified.
+#' @param matcell,matrow,matcol Save frequency or underlying numeric category
+#'   matrices in `attr(result, "r")`. String category matrices are not allowed.
+#' @param collect `TRUE` or a collection name attaches a `collection` list
+#'   containing the tidy table and stored results. It is an R value, with no
+#'   global Stata collection state or Stata style-file interpreter.
+#' @param summarize Optional numeric response expression for a one-way or
+#'   two-way table of means, standard deviations, frequencies, and observations.
+#'   Missing responses are excluded. Only analytic and frequency weights apply.
+#' @param means,standard,obs Summary-table switches. `NULL` uses Stata's defaults;
+#'   `TRUE` selects a statistic and `FALSE` suppresses it. An affirmative `means`,
+#'   `standard`, or `freq` narrows the default display; `obs` adds observations.
 #'
 #' @details
 #' Calls may supply vectors directly, select unquoted names from `data`, or
@@ -44,7 +87,8 @@
 #' Value labels affect only displayed dimension names. Categories remain
 #' ordered by their underlying values. Unused value-label definitions do not
 #' create zero-count categories. If displayed labels collide, their underlying
-#' values are appended to keep every dimension name unambiguous.
+#' values are appended to keep every dimension name unambiguous. Printed labels
+#' remain unchanged, as in Stata.
 #'
 #' With `missing = TRUE` or `"distinguish"`, numeric categories are ordered
 #' after observed values as system missing, extended missings `.a` through
@@ -72,7 +116,10 @@
 #'   lines. Subsetting, arithmetic, [t()], and [aperm()] return plain
 #'   tables. [margin.table()] is not generic and restores the class itself;
 #'   its result carries no layout and prints as a plain table, and
-#'   `as.table(margin.table(x, 1))` is the exact plain table.
+#'   `as.table(margin.table(x, 1))` is the exact plain table. `attr(result, "r")`
+#'   holds Stata's stored counts and requested tests and matrices. Grouped calls
+#'   return a `dta_tab_grouped` list. Summary calls return a `dta_tab_summary`
+#'   data frame whose presentation attribute contains cell and marginal moments.
 #' @export
 #' @examples
 #' x <- set_val_labels(
@@ -88,69 +135,111 @@
 #'
 #' mtcars |>
 #'     tab(cyl, gear, percent = "row")
+#' tab(mtcars, cyl, gear, all = TRUE)
+#' tab(mtcars, cyl, summarize = mpg)
+#' tab(mtcars, cyl, by = am, where = .n <= 10)
 tab <- function(x, ..., data = NULL, missing = FALSE,
                 display = c("label", "value", "both"), sort = FALSE,
-                percent = NULL, expected = FALSE, freq = TRUE) {
+                percent = NULL, expected = FALSE, freq = TRUE,
+                where = NULL, rows = NULL, by = NULL, weights = NULL,
+                weight = c("aweight", "fweight", "iweight"), subpop = NULL,
+                row = FALSE, column = FALSE, cell = FALSE, nofreq = FALSE,
+                nolabel = FALSE, chi2 = FALSE, lrchi2 = FALSE, exact = FALSE,
+                gamma = FALSE, taub = FALSE, V = FALSE, all = FALSE,
+                cchi2 = FALSE, clrchi2 = FALSE, rowsort = FALSE, colsort = FALSE,
+                key = NULL, nokey = FALSE, wrap = FALSE, plot = FALSE,
+                nolog = FALSE, generate = NULL, matcell = FALSE,
+                matrow = FALSE, matcol = FALSE, collect = FALSE,
+                summarize = NULL, means = NULL, standard = NULL, obs = NULL) {
     caller <- rlang::caller_env()
-    x_is_missing <- missing(x)
-    x_quo <- if (x_is_missing) NULL else rlang::enquo(x)
+    x_quo <- if (missing(x)) NULL else rlang::enquo(x)
     dots <- rlang::enquos(...)
-
-    missing <- .normalize_tab_missing(missing)
-    display <- match.arg(display)
-    inputs <- .tab_inputs(x_quo, dots, data, caller)
-    x <- data <- x_quo <- dots <- NULL
-    options <- .tab_options(sort, percent, expected, freq, length(inputs$values))
-    headers <- .tab_headers(inputs$values, inputs$names)
-    widths <- vapply(inputs$values, .tab_string_width, integer(1))
-    for (index in seq_along(inputs$values)) {
-        inputs$values[[index]] <- .prepare_tab_argument(
-            inputs$values[[index]],
-            missing = missing,
-            display = display
-        )
+    # Retain the pre-existing named-vector call tab(row = vector, ...).
+    if (is.null(x_quo) && !(is.logical(row) && length(row) == 1L)) {
+        dots <- c(list(row = rlang::enquo(row)), dots)
+        row <- FALSE
     }
-    names(inputs$values) <- inputs$names
-
-    counts <- base::table(
-        inputs$values,
-        useNA = if (identical(missing, "exclude")) "no" else "ifany"
-    )
-    if (options$sort) counts <- .sort_tab(counts)
-    .new_dta_tab(counts, headers, widths, options)
+    summary_quo <- rlang::enquo(summarize)
+    summary <- !rlang::quo_is_null(summary_quo)
+    flags <- list(sort = sort, expected = expected, freq = freq, row = row,
+        column = column, cell = cell, nofreq = nofreq, nolabel = nolabel,
+        chi2 = chi2, lrchi2 = lrchi2, gamma = gamma, taub = taub, V = V,
+        all = all, cchi2 = cchi2, clrchi2 = clrchi2, rowsort = rowsort,
+        colsort = colsort, nokey = nokey, wrap = wrap, plot = plot, nolog = nolog,
+        matcell = matcell, matrow = matrow, matcol = matcol)
+    for (name in names(flags)) .dta_group_flag(flags[[name]], name)
+    for (name in c("key", "means", "standard", "obs"))
+        if (!is.null(get(name))) .dta_group_flag(get(name), name)
+    if (!(is.logical(exact) && length(exact) == 1L && !is.na(exact)) &&
+        !(is.numeric(exact) && length(exact) == 1L && is.finite(exact) &&
+          exact >= 1 && exact == floor(exact)))
+        stop("`exact` must be TRUE, FALSE, or a positive integer", call. = FALSE)
+    for (name in c("chi2", "lrchi2", "gamma", "taub", "V")) {
+        # An explicitly disabled test overrides `all`, like Stata's no-options.
+        flags[[paste0("no", name)]] <- all && !get(name) &&
+            !eval(call("missing", as.name(name)))
+    }
+    flags$exact <- exact
+    flags$key <- key
+    missing <- .normalize_tab_missing(missing)
+    display <- if (nolabel) "value" else match.arg(display)
+    weight <- match.arg(weight)
+    inputs <- .tab_inputs(x_quo, dots, data, caller)
+    if (!length(inputs$values)) stop("nothing to tabulate", call. = FALSE)
+    if (length(unique(lengths(inputs$values))) != 1L)
+        stop("tabulation vectors must have the same length", call. = FALSE)
+    for (value in inputs$values)
+        if (!is.atomic(value) || !is.null(dim(value)))
+            stop("tabulation inputs must be vectors", call. = FALSE)
+    count <- length(inputs$values)
+    options <- .tab_options(flags, percent, count, summary)
+    if (!is.null(generate) && (!is.character(generate) || length(generate) != 1L ||
+        is.na(generate) || !grepl("^[A-Za-z_][A-Za-z0-9_]*$", generate)))
+        stop("`generate` must be an indicator variable name prefix", call. = FALSE)
+    if (!is.null(generate) && (count != 1L || summary))
+        stop("`generate` applies to one-way frequency tables only", call. = FALSE)
+    subpop_quo <- rlang::enquo(subpop)
+    if (!rlang::quo_is_null(subpop_quo) && (count > 2L || summary))
+        stop("`subpop` applies to one-way and two-way frequency tables only", call. = FALSE)
+    if (!summary && (!is.null(means) || !is.null(standard) || !is.null(obs)))
+        stop("`means`, `standard`, and `obs` require `summarize`", call. = FALSE)
+    options$subpop <- !rlang::quo_is_null(subpop_quo)
+    options$means <- means
+    options$standard <- standard
+    options$obs <- obs
+    options$summary_freq <- if (missing(freq) && !nofreq) NULL else options$freq
+    .tab_run(inputs, options, missing, display, rlang::enquo(where), rows,
+        rlang::enquo(by), rlang::enquo(weights), weight, subpop_quo,
+        summary_quo, generate, collect, caller)
 }
 
-# Stata's `tabulate` options, checked against the number of variables the
-# way Stata checks them: `sort` is a one-way option and `row`, `column`,
-# `cell`, and `expected` are two-way options. `nofreq` with nothing else to
-# show is an error rather than Stata's silent empty output.
-.tab_options <- function(sort, percent, expected, freq, count) {
-    for (flag in c("sort", "expected", "freq")) {
-        value <- get(flag)
-        if (!is.logical(value) || length(value) != 1L || is.na(value)) {
-            stop(sprintf("`%s` must be `TRUE` or `FALSE`", flag), call. = FALSE)
-        }
-    }
+.tab_options <- function(flags, percent, count, summary = FALSE) {
     if (!is.null(percent)) {
-        if (!is.character(percent) || anyNA(percent) || length(percent) == 0L) {
+        if (!is.character(percent) || anyNA(percent) || length(percent) == 0L)
             stop("`percent` must name any of \"row\", \"column\", and \"cell\"",
                  call. = FALSE)
-        }
         percent <- match.arg(percent, c("row", "column", "cell"), several.ok = TRUE)
     }
-    if (sort && count != 1L) {
-        stop("`sort` applies to one-way tabulations only", call. = FALSE)
-    }
-    if ((length(percent) || expected) && count != 2L) {
-        stop("`percent` and `expected` apply to two-way tabulations only",
-             call. = FALSE)
-    }
-    if (!freq && !length(percent) && !expected) {
-        stop("`freq = FALSE` needs `percent` or `expected`; nothing would be shown",
-             call. = FALSE)
-    }
-    list(sort = sort, percent = c("row", "column", "cell")[c("row", "column", "cell") %in% percent],
-         expected = expected, freq = freq)
+    flags$percent <- c("row", "column", "cell")[
+        c("row", "column", "cell") %in% percent |
+            c(flags$row, flags$column, flags$cell)]
+    flags$freq <- flags$freq && !flags$nofreq
+    if ((flags$sort || flags$plot) && count != 1L)
+        stop("`sort` and `plot` apply to one-way tabulations only", call. = FALSE)
+    two_way <- c("expected", "chi2", "lrchi2", "gamma", "taub", "V", "all",
+                 "cchi2", "clrchi2", "rowsort", "colsort", "wrap", "nokey", "nolog",
+                 "matcol")
+    if ((any(unlist(flags[two_way])) || length(flags$percent) ||
+         !identical(flags$exact, FALSE) || !is.null(flags$key)) && count != 2L &&
+        !(summary && flags$wrap && !any(unlist(flags[setdiff(two_way, "wrap")]))))
+        stop("two-way options apply to two-way tabulations only", call. = FALSE)
+    if (summary && (any(unlist(flags[setdiff(two_way, "wrap")])) ||
+        length(flags$percent) || flags$sort || flags$plot || flags$matcell ||
+        flags$matrow || !identical(flags$exact, FALSE) || !is.null(flags$key)))
+        stop("frequency-table options may not be combined with `summarize`", call. = FALSE)
+    if (summary && !count %in% 1:2)
+        stop("summary tabulation needs one or two grouping variables", call. = FALSE)
+    flags
 }
 
 # The header text of each variable: its label, or its name without one, as
@@ -180,7 +269,7 @@ tab <- function(x, ..., data = NULL, missing = FALSE,
 # Stata's `sort`: descending frequency, and ties keep their value order, so
 # the sort is stable over the already ordered categories.
 .sort_tab <- function(counts) {
-    ordering <- order(-as.integer(counts), seq_along(counts))
+    ordering <- order(-as.double(counts), seq_along(counts))
     # `drop = FALSE` keeps the one dimension of a table with a single
     # category, or none, which plain `[` would flatten to a bare vector.
     counts[ordering, drop = FALSE]
@@ -196,7 +285,7 @@ tab <- function(x, ..., data = NULL, missing = FALSE,
 
 #' @export
 as.table.dta_tab <- function(x, ...) {
-    attr(x, "dta_tab") <- NULL
+    for (name in c("dta_tab", "r", "generated", "collection", "data")) attr(x, name) <- NULL
     class(x) <- "table"
     x
 }
@@ -223,9 +312,11 @@ as.table.dta_tab <- function(x, ...) {
         }
         quosures <- c(if (is.null(x)) list() else list(x), dots)
         if (length(quosures) == 0L) {
-            return(list(values = as.list(data), names = names(data)))
+            return(list(values = as.list(data), names = names(data), data = data))
         }
-        return(.eval_tab_quosures(quosures, data = data, caller = caller))
+        result <- .eval_tab_quosures(quosures, data = data, caller = caller)
+        result$data <- data
+        return(result)
     }
 
     if (is.null(x)) {
@@ -236,9 +327,11 @@ as.table.dta_tab <- function(x, ...) {
     first <- rlang::eval_tidy(x, env = caller)
     if (is.data.frame(first)) {
         if (length(dots) == 0L) {
-            return(list(values = as.list(first), names = names(first)))
+            return(list(values = as.list(first), names = names(first), data = first))
         }
-        return(.eval_tab_quosures(dots, data = first, caller = caller))
+        result <- .eval_tab_quosures(dots, data = first, caller = caller)
+        result$data <- first
+        return(result)
     }
     if (is.list(first) && !is.object(first) && length(dots) == 0L) {
         input_names <- names(first)
@@ -421,13 +514,13 @@ as.table.dta_tab <- function(x, ...) {
     result
 }
 
-.tab_level_labels <- function(labels, observed_values, missing_codes) {
+.tab_level_labels <- function(labels, observed_values, missing_codes, allow_empty = FALSE) {
     count <- length(observed_values) + length(missing_codes)
     result <- rep(NA_character_, count)
     if (is.null(labels) || length(labels) == 0L) return(result)
 
     label_names <- names(labels)
-    usable <- !is.na(label_names) & nzchar(label_names)
+    usable <- !is.na(label_names) & (allow_empty | nzchar(label_names))
     if (!any(usable)) return(result)
     labels <- labels[usable]
     label_names <- label_names[usable]
@@ -484,325 +577,4 @@ as.table.dta_tab <- function(x, ...) {
 
 .tab_missing_codes <- function(value) {
     .Call(C_dtatools_missing_codes, value)
-}
-
-# Printing. A `dta_tab` prints as Stata prints `tabulate`; the layout rules
-# below were measured on Stata 19 output over auto.dta and are pinned by
-# the tests in test-tab-stata-parity.R. Row levels sit in a stub whose
-# width is the longest level, or the string variable's storage width, kept
-# between 11 and 39 characters for a one-way table and between 10 and 21
-# for a two-way table, plus one space before the bar. Two-way columns are
-# ten characters wide with a single space between them, and column levels
-# are cut to nine. Headers are variable labels, wrapped by word within the
-# stub or centered over the columns, and bottom-aligned with the column
-# levels. A two-way table wider than the console prints in panels.
-
-#' @export
-print.dta_tab <- function(x, ..., width = getOption("width", 80L)) {
-    if (is.null(.dta_tab_info(x))) {
-        print(as.table(x), ...)
-    } else {
-        cat(format(x, width = width), sep = "\n")
-    }
-    invisible(x)
-}
-
-#' @export
-format.dta_tab <- function(x, ..., width = getOption("width", 80L)) {
-    info <- .dta_tab_info(x)
-    if (is.null(info)) return(utils::capture.output(print(as.table(x))))
-    if (length(dim(x)) == 1L) {
-        .format_one_way_tab(x, info)
-    } else {
-        .format_two_way_tab(x, info, width)
-    }
-}
-
-# The presentation record, or `NULL` for a table this printer cannot
-# describe: three or more variables, a result that arithmetic or a
-# reshaping has turned into something other than integer counts, or one
-# whose category names were removed.
-.dta_tab_info <- function(x) {
-    info <- attr(x, "dta_tab", exact = TRUE)
-    extents <- dim(x)
-    names <- dimnames(x)
-    if (is.null(info) || !is.integer(x) || !length(extents) %in% 1:2 ||
-        length(info$headers) != length(extents) ||
-        length(names) != length(extents) ||
-        !all(lengths(names) == extents)) {
-        return(NULL)
-    }
-    info
-}
-
-#' @export
-`[.dta_tab` <- function(x, ...) as.table(x)[...]
-
-#' @export
-Math.dta_tab <- function(x, ...) get(.Generic)(as.table(x), ...)
-
-#' @export
-t.dta_tab <- function(x) t(as.table(x))
-
-#' @export
-aperm.dta_tab <- function(a, perm = NULL, ...) aperm(as.table(a), perm, ...)
-
-#' @export
-Ops.dta_tab <- function(e1, e2) {
-    if (inherits(e1, "dta_tab")) e1 <- as.table(e1)
-    if (!missing(e2) && inherits(e2, "dta_tab")) e2 <- as.table(e2)
-    if (missing(e2)) get(.Generic)(e1) else get(.Generic)(e1, e2)
-}
-
-#' @export
-as.data.frame.dta_tab <- function(x, ...) {
-    result <- as.data.frame(as.table(x), ...)
-    if (is.null(.dta_tab_info(x))) return(result)
-    counts <- as.integer(x)
-    total <- sum(counts)
-    if (length(dim(x)) == 1L) {
-        percent <- 100 * counts / total
-        statistics <- list(percent = percent, cum = cumsum(percent))
-    } else {
-        counts <- matrix(counts, nrow = dim(x)[[1L]])
-        row_total <- rowSums(counts)
-        column_total <- colSums(counts)
-        statistics <- list(
-            expected = as.vector(outer(row_total, column_total) / total),
-            row_percent = as.vector(100 * counts / row_total),
-            column_percent = as.vector(100 * sweep(counts, 2L, column_total, "/")),
-            cell_percent = as.vector(100 * counts / total)
-        )
-    }
-    # A variable named like a statistic keeps its column; the statistic
-    # takes the next free name, as `make.unique()` spells it.
-    names(statistics) <- utils::tail(
-        make.unique(c(names(result), names(statistics))), length(statistics)
-    )
-    for (name in names(statistics)) result[[name]] <- statistics[[name]]
-    result
-}
-
-.format_one_way_tab <- function(x, info) {
-    counts <- as.integer(x)
-    total <- sum(counts)
-    if (total == 0L) return("no observations")
-    levels <- .tab_level_text(dimnames(x)[[1L]])
-    stub <- .tab_stub_width(levels, info$widths[[1L]], 11L, 39L)
-    header <- .tab_wrap(info$headers[[1L]], stub - 1L)
-    percent <- 100 * counts / total
-    columns <- sprintf("%11s%12s%12s", "Freq.", "Percent", "Cum.")
-    rule <- paste0(strrep("-", stub), "+", strrep("-", 35L))
-    c(
-        .tab_stub_lines(header, stub, c(rep("", length(header) - 1L), columns)),
-        rule,
-        .tab_stub_lines(
-            levels, stub,
-            paste0(
-                .tab_pad(.tab_count_text(counts), 11L),
-                .tab_pad(sprintf("%.2f", percent), 12L),
-                .tab_pad(sprintf("%.2f", cumsum(percent)), 12L)
-            )
-        ),
-        rule,
-        .tab_stub_lines(
-            "Total", stub,
-            paste0(.tab_pad(.tab_count_text(total), 11L), .tab_pad("100.00", 12L))
-        )
-    )
-}
-
-.format_two_way_tab <- function(x, info, width) {
-    counts <- matrix(as.integer(x), nrow = dim(x)[[1L]])
-    total <- sum(counts)
-    if (total == 0L) return("no observations")
-    rows <- .tab_level_text(dimnames(x)[[1L]])
-    columns <- .tab_cut(.tab_level_text(dimnames(x)[[2L]]), 9L)
-    stub <- .tab_stub_width(rows, info$widths[[1L]], 10L, 21L)
-    statistics <- .tab_two_way_statistics(counts, info$options)
-    # A panel line is the stub, a bar, eleven columns per level, a bar, the
-    # ten-wide total, and its trailing space: `stub + 11 * k + 13` columns.
-    per_panel <- max(1L, (as.integer(width) - stub - 13L) %/% 11L)
-    panels <- split(seq_len(ncol(counts)), (seq_len(ncol(counts)) - 1L) %/% per_panel)
-    lines <- lapply(panels, function(selected) {
-        .format_tab_panel(rows, columns, info$headers, stub, statistics, selected)
-    })
-    c(
-        if (length(statistics) > 1L) c(.tab_key(names(statistics)), ""),
-        unlist(Map(function(panel, index) {
-            if (index > 1L) c("", "", panel) else panel
-        }, lines, seq_along(lines)), use.names = FALSE)
-    )
-}
-
-# Every statistic the options ask for, in Stata's order, each as a
-# character matrix with the row totals as its last column and the column
-# totals as its last row.
-.tab_two_way_statistics <- function(counts, options) {
-    row_total <- rowSums(counts)
-    column_total <- colSums(counts)
-    total <- sum(counts)
-    with_margins <- function(cells, right, bottom, corner) {
-        rbind(cbind(cells, right), c(bottom, corner))
-    }
-    percent <- function(values) .tab_decimal_text(values, 2L)
-    statistics <- list()
-    if (options$freq) {
-        statistics$frequency <- .tab_count_text(
-            with_margins(counts, row_total, column_total, total)
-        )
-    }
-    if (options$expected) {
-        statistics[["expected frequency"]] <- .tab_decimal_text(with_margins(
-            outer(row_total, column_total) / total, row_total, column_total, total
-        ), 1L)
-    }
-    if ("row" %in% options$percent) {
-        statistics[["row percentage"]] <- percent(with_margins(
-            100 * counts / row_total, 100 * row_total / row_total,
-            100 * column_total / total, 100
-        ))
-    }
-    if ("column" %in% options$percent) {
-        statistics[["column percentage"]] <- percent(with_margins(
-            100 * sweep(counts, 2L, column_total, "/"), 100 * row_total / total,
-            100 * column_total / column_total, 100
-        ))
-    }
-    if ("cell" %in% options$percent) {
-        statistics[["cell percentage"]] <- percent(with_margins(
-            100 * counts / total, 100 * row_total / total,
-            100 * column_total / total, 100
-        ))
-    }
-    lapply(statistics, function(cells) matrix(cells, nrow = nrow(counts) + 1L))
-}
-
-.format_tab_panel <- function(rows, columns, headers, stub, statistics, selected) {
-    block <- 11L * length(selected)
-    row_header <- .tab_wrap(headers[[1L]], stub - 1L)
-    column_header <- .tab_wrap(headers[[2L]], block - 1L)
-    column_header <- paste0(
-        strrep(" ", pmax(0L, ceiling((block - .tab_width(column_header)) / 2))),
-        column_header
-    )
-    cells <- function(values) paste0(paste(.tab_pad(values, 10L), collapse = " "), " ")
-    levels_line <- paste0(cells(columns[selected]), "|", .tab_pad("Total", 10L))
-    height <- max(length(row_header), length(column_header) + 1L)
-    stub_text <- c(rep("", height - length(row_header)), row_header)
-    right <- c(rep("", height - 1L - length(column_header)), column_header, levels_line)
-    rule <- paste0(strrep("-", stub), "+", strrep("-", block), "+", strrep("-", 10L))
-    total_column <- ncol(statistics[[1L]])
-    body <- function(index, label) {
-        .tab_stub_lines(
-            c(label, rep("", length(statistics) - 1L)), stub,
-            vapply(statistics, function(statistic) {
-                paste0(cells(statistic[index, selected]), "|",
-                       .tab_pad(statistic[index, total_column], 10L), " ")
-            }, character(1))
-        )
-    }
-    separated <- length(statistics) > 1L
-    c(
-        .tab_stub_lines(stub_text, stub, right),
-        rule,
-        unlist(lapply(seq_along(rows), function(index) {
-            c(body(index, rows[[index]]), if (separated && index < length(rows)) rule)
-        }), use.names = FALSE),
-        rule,
-        body(length(rows) + 1L, "Total")
-    )
-}
-
-.tab_key <- function(items) {
-    inner <- max(.tab_width(items)) + 2L
-    border <- paste0("+", strrep("-", inner), "+")
-    lead <- (inner - .tab_width(items)) %/% 2L
-    c(
-        border,
-        paste0("| Key", strrep(" ", inner - 4L), "|"),
-        paste0("|", strrep("-", inner), "|"),
-        paste0("|", strrep(" ", lead), items,
-               strrep(" ", inner - .tab_width(items) - lead), "|"),
-        border
-    )
-}
-
-# `text` right-justified in the stub and cut to it, a space, the bar, and
-# whatever follows on that line.
-.tab_stub_lines <- function(text, stub, rest) {
-    paste0(.tab_pad(.tab_cut(text, stub - 1L), stub - 1L), " |", rest)
-}
-
-.tab_stub_width <- function(levels, storage_width, minimum, maximum) {
-    widest <- max(minimum, .tab_width(levels),
-                  if (!is.na(storage_width)) storage_width else 0L)
-    min(widest, maximum) + 1L
-}
-
-# The fixed-width layout measures terminal columns, not characters, so a
-# double-width label takes the room it occupies on screen. `formatC()` and
-# `substr()` count characters and are not used here.
-.tab_width <- function(text) nchar(text, type = "width", allowNA = FALSE)
-
-.tab_pad <- function(text, width) {
-    paste0(strrep(" ", pmax(0L, width - .tab_width(text))), text)
-}
-
-# The longest prefix of each string that fits in `width` columns.
-.tab_cut <- function(text, width) {
-    vapply(text, function(string) {
-        if (is.na(string) || .tab_width(string) <= width) return(string)
-        characters <- strsplit(string, "", fixed = TRUE)[[1L]]
-        paste(characters[cumsum(.tab_width(characters)) <= width], collapse = "")
-    }, character(1), USE.NAMES = FALSE)
-}
-
-.tab_level_text <- function(names) {
-    names[is.na(names)] <- "."
-    names
-}
-
-# A percentage or expected frequency; a value with nothing to divide by,
-# the row of an unused factor level, is shown as Stata shows a missing.
-.tab_decimal_text <- function(values, digits) {
-    text <- sprintf(paste0("%.", digits, "f"), values)
-    text[!is.finite(values)] <- "."
-    text
-}
-
-.tab_count_text <- function(counts) {
-    text <- formatC(counts, big.mark = ",", format = "d")
-    if (is.matrix(counts)) dim(text) <- dim(counts)
-    text
-}
-
-# Greedy word wrap at `width`; a word longer than the width is cut into
-# pieces of that width first, as Stata cuts a long label.
-.tab_wrap <- function(text, width) {
-    words <- strsplit(text, " ", fixed = TRUE)[[1L]]
-    words <- words[nzchar(words)]
-    if (length(words) == 0L) return("")
-    pieces <- unlist(lapply(words, function(word) {
-        cuts <- character()
-        while (.tab_width(word) > width) {
-            piece <- .tab_cut(word, width)
-            if (!nzchar(piece)) break # one character wider than the whole width
-            cuts <- c(cuts, piece)
-            word <- substring(word, nchar(piece) + 1L)
-        }
-        c(cuts, word)
-    }), use.names = FALSE)
-    lines <- character()
-    current <- ""
-    for (piece in pieces) {
-        candidate <- if (nzchar(current)) paste(current, piece) else piece
-        if (.tab_width(candidate) <= width) {
-            current <- candidate
-        } else {
-            lines <- c(lines, current)
-            current <- piece
-        }
-    }
-    c(lines, current)
 }
