@@ -1,0 +1,588 @@
+
+. * Native Stata oracle for association measures and stored results.
+. * Regenerate, never edit tabulate-association.log:
+. * cd r-package/dtatools/tests/testthat/fixtures
+. * stata -q -b do tabulate-association.do
+. set more off
+
+. set linesize 120
+
+. tabi 30 18 \ 38 14, all exact nolog
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |        30         18 |        48 
+         2 |        38         14 |        52 
+-----------+----------------------+----------
+     Total |        68         32 |       100 
+
+          Pearson chi2(1) =   1.2832   Pr = 0.257
+ Likelihood-ratio chi2(1) =   1.2846   Pr = 0.257
+               Cramér's V =  -0.1133
+                    gamma =  -0.2391  ASE = 0.204
+          Kendall's tau-b =  -0.1133  ASE = 0.099
+           Fisher's exact =                 0.289
+   1-sided Fisher's exact =                 0.179
+
+. return list
+
+scalars:
+           r(p1_exact) =  .1792711488757825
+            r(p_exact) =  .2889139526596246
+           r(ase_taub) =  .0994192275225421
+               r(taub) =  -.1132797262535998
+            r(ase_gam) =  .2036534399243979
+              r(gamma) =  -.2391304347826087
+           r(CramersV) =  -.1132797262535998
+               r(p_lr) =  .2570404391112016
+            r(chi2_lr) =  1.284627287283094
+                  r(p) =  .2572994013084036
+               r(chi2) =  1.28322963800905
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  100
+
+. tabi 20 10 2 \ 16 12 4 \ 10 16 6, all exact nolog
+
+           |               col
+       row |         1          2          3 |     Total
+-----------+---------------------------------+----------
+         1 |        20         10          2 |        32 
+         2 |        16         12          4 |        32 
+         3 |        10         16          6 |        32 
+-----------+---------------------------------+----------
+     Total |        46         38         12 |        96 
+
+          Pearson chi2(4) =   6.7780   Pr = 0.148
+ Likelihood-ratio chi2(4) =   6.9844   Pr = 0.137
+               Cramér's V =   0.1879
+                    gamma =   0.3689  ASE = 0.129
+          Kendall's tau-b =   0.2378  ASE = 0.086
+           Fisher's exact =                 0.145
+
+. return list
+
+scalars:
+            r(p_exact) =  .1449312607713402
+           r(ase_taub) =  .0864977681910191
+               r(taub) =  .2378241110847593
+            r(ase_gam) =  .1287238675356933
+              r(gamma) =  .3688699360341152
+           r(CramersV) =  .1878889304634366
+               r(p_lr) =  .1367131638757419
+            r(chi2_lr) =  6.98443293527804
+                  r(p) =  .1480935725623843
+               r(chi2) =  6.778032036613272
+                  r(c) =  3
+                  r(r) =  3
+                  r(N) =  96
+
+. tabi 0 8 \ 5 0, all exact nolog
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |         0          8 |         8 
+         2 |         5          0 |         5 
+-----------+----------------------+----------
+     Total |         5          8 |        13 
+
+          Pearson chi2(1) =  13.0000   Pr = 0.000
+ Likelihood-ratio chi2(1) =  17.3232   Pr = 0.000
+               Cramér's V =  -1.0000
+                    gamma =  -1.0000  ASE = 0.000
+          Kendall's tau-b =  -1.0000  ASE = 0.000
+           Fisher's exact =                 0.001
+   1-sided Fisher's exact =                 0.001
+
+. return list
+
+scalars:
+           r(p1_exact) =  .0007770007770008
+            r(p_exact) =  .0007770007770008
+           r(ase_taub) =  0
+               r(taub) =  -1
+            r(ase_gam) =  0
+              r(gamma) =  -1
+           r(CramersV) =  -1
+               r(p_lr) =  .0000315307132589
+            r(chi2_lr) =  17.32323950278158
+                  r(p) =  .0003114909767674
+               r(chi2) =  13
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  13
+
+. tabi 1 1 \ 1 1, all exact nolog
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |         1          1 |         2 
+         2 |         1          1 |         2 
+-----------+----------------------+----------
+     Total |         2          2 |         4 
+
+          Pearson chi2(1) =   0.0000   Pr = 1.000
+ Likelihood-ratio chi2(1) =   0.0000   Pr = 1.000
+               Cramér's V =   0.0000
+                    gamma =   0.0000  ASE = 1.000
+          Kendall's tau-b =   0.0000  ASE = 0.500
+           Fisher's exact =                 1.000
+   1-sided Fisher's exact =                 0.833
+
+. return list
+
+scalars:
+           r(p1_exact) =  .8333333333333333
+            r(p_exact) =  1
+           r(ase_taub) =  .5
+               r(taub) =  0
+            r(ase_gam) =  1
+              r(gamma) =  0
+           r(CramersV) =  0
+               r(p_lr) =  1
+            r(chi2_lr) =  0
+                  r(p) =  1
+               r(chi2) =  0
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  4
+
+. tabi 1 2 \ 2 4, exact nolog
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |         1          2 |         3 
+         2 |         2          4 |         6 
+-----------+----------------------+----------
+     Total |         3          6 |         9 
+
+           Fisher's exact =                 1.000
+   1-sided Fisher's exact =                 0.762
+
+. return list
+
+scalars:
+           r(p1_exact) =  .7619047619047621
+            r(p_exact) =  1
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  9
+
+. tabi 3 1 \ 9 3, exact nolog
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |         3          1 |         4 
+         2 |         9          3 |        12 
+-----------+----------------------+----------
+     Total |        12          4 |        16 
+
+           Fisher's exact =                 1.000
+   1-sided Fisher's exact =                 0.728
+
+. return list
+
+scalars:
+           r(p1_exact) =  .7280219780219744
+            r(p_exact) =  .9999999999999946
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  16
+
+. tabi 30 18 \ 38 14, V
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |        30         18 |        48 
+         2 |        38         14 |        52 
+-----------+----------------------+----------
+     Total |        68         32 |       100 
+
+               Cramér's V =  -0.1133
+
+. return list
+
+scalars:
+           r(CramersV) =  -.1132797262535998
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  100
+
+. tabi 30 18 \ 38 14, gamma
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |        30         18 |        48 
+         2 |        38         14 |        52 
+-----------+----------------------+----------
+     Total |        68         32 |       100 
+
+                    gamma =  -0.2391  ASE = 0.204
+
+. return list
+
+scalars:
+            r(ase_gam) =  .2036534399243979
+              r(gamma) =  -.2391304347826087
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  100
+
+. tabi 30 18 \ 38 14, taub
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |        30         18 |        48 
+         2 |        38         14 |        52 
+-----------+----------------------+----------
+     Total |        68         32 |       100 
+
+          Kendall's tau-b =  -0.1133  ASE = 0.099
+
+. return list
+
+scalars:
+           r(ase_taub) =  .0994192275225421
+               r(taub) =  -.1132797262535998
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  100
+
+. tabi 30 18 \ 38 14, all nochi2 nogamma notaub noV
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |        30         18 |        48 
+         2 |        38         14 |        52 
+-----------+----------------------+----------
+     Total |        68         32 |       100 
+
+ Likelihood-ratio chi2(1) =   1.2846   Pr = 0.257
+
+. return list
+
+scalars:
+               r(p_lr) =  .2570404391112016
+            r(chi2_lr) =  1.284627287283094
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  100
+
+. tabi 30 18 \ 38 14, all rowsort colsort
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         2 |        38         14 |        52 
+         1 |        30         18 |        48 
+-----------+----------------------+----------
+     Total |        68         32 |       100 
+
+          Pearson chi2(1) =   1.2832   Pr = 0.257
+ Likelihood-ratio chi2(1) =   1.2846   Pr = 0.257
+               Cramér's V =   0.1133
+                    gamma =   0.2391  ASE = 0.204
+          Kendall's tau-b =   0.1133  ASE = 0.099
+
+. return list
+
+scalars:
+           r(ase_taub) =  .0994192275225421
+               r(taub) =  .1132797262535998
+            r(ase_gam) =  .2036534399243979
+              r(gamma) =  .2391304347826087
+           r(CramersV) =  .1132797262535998
+               r(p_lr) =  .2570404391112016
+            r(chi2_lr) =  1.284627287283094
+                  r(p) =  .2572994013084036
+               r(chi2) =  1.28322963800905
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  100
+
+. tabi 1 0 0 \ 0 1 0 \ 0 0 1, all exact nolog
+
+           |               col
+       row |         1          2          3 |     Total
+-----------+---------------------------------+----------
+         1 |         1          0          0 |         1 
+         2 |         0          1          0 |         1 
+         3 |         0          0          1 |         1 
+-----------+---------------------------------+----------
+     Total |         1          1          1 |         3 
+
+          Pearson chi2(4) =   6.0000   Pr = 0.199
+ Likelihood-ratio chi2(4) =   6.5917   Pr = 0.159
+               Cramér's V =   1.0000
+                    gamma =   1.0000  ASE = 0.000
+          Kendall's tau-b =   1.0000  ASE = 0.000
+           Fisher's exact =                 1.000
+
+. return list
+
+scalars:
+            r(p_exact) =  1
+           r(ase_taub) =  0
+               r(taub) =  1
+            r(ase_gam) =  0
+              r(gamma) =  1
+           r(CramersV) =  1
+               r(p_lr) =  .1591050691112714
+            r(chi2_lr) =  6.591673732008658
+                  r(p) =  .1991482734714557
+               r(chi2) =  6.000000000000001
+                  r(c) =  3
+                  r(r) =  3
+                  r(N) =  3
+
+. tabi 30 18 38 \ 13 7 22, all exact nolog
+
+           |               col
+       row |         1          2          3 |     Total
+-----------+---------------------------------+----------
+         1 |        30         18         38 |        86 
+         2 |        13          7         22 |        42 
+-----------+---------------------------------+----------
+     Total |        43         25         60 |       128 
+
+          Pearson chi2(2) =   0.7967   Pr = 0.671
+ Likelihood-ratio chi2(2) =   0.7985   Pr = 0.671
+               Cramér's V =   0.0789
+                    gamma =   0.1204  ASE = 0.160
+          Kendall's tau-b =   0.0630  ASE = 0.084
+           Fisher's exact =                 0.707
+
+. return list
+
+scalars:
+            r(p_exact) =  .7073160180668107
+           r(ase_taub) =  .0839723560850059
+               r(taub) =  .0630348463272197
+            r(ase_gam) =  .160296920350576
+              r(gamma) =  .120353982300885
+           r(CramersV) =  .0788958633055713
+               r(p_lr) =  .6708284539344793
+            r(chi2_lr) =  .7984836640440491
+                  r(p) =  .671412441590592
+               r(chi2) =  .7967433275816185
+                  r(c) =  3
+                  r(r) =  2
+                  r(N) =  128
+
+. tabi 1 2 0 1 3 \ 4 1 2 0 1 \ 0 2 3 2 1 \ 1 0 2 1 4, all exact nolog
+
+           |                          col
+       row |         1          2          3          4          5 |     Total
+-----------+-------------------------------------------------------+----------
+         1 |         1          2          0          1          3 |         7 
+         2 |         4          1          2          0          1 |         8 
+         3 |         0          2          3          2          1 |         8 
+         4 |         1          0          2          1          4 |         8 
+-----------+-------------------------------------------------------+----------
+     Total |         6          5          7          4          9 |        31 
+
+         Pearson chi2(12) =  15.6753   Pr = 0.207
+Likelihood-ratio chi2(12) =  19.5996   Pr = 0.075
+               Cramér's V =   0.4106
+                    gamma =   0.2407  ASE = 0.200
+          Kendall's tau-b =   0.1927  ASE = 0.162
+           Fisher's exact =                 0.209
+
+. return list
+
+scalars:
+            r(p_exact) =  .2086741939549447
+           r(ase_taub) =  .1615567974341303
+               r(taub) =  .1927242761704017
+            r(ase_gam) =  .2002302697524496
+              r(gamma) =  .2406779661016949
+           r(CramersV) =  .4105503468535708
+               r(p_lr) =  .0750486704762433
+            r(chi2_lr) =  19.5996393209439
+                  r(p) =  .2065646734133761
+               r(chi2) =  15.67529761904762
+                  r(c) =  5
+                  r(r) =  4
+                  r(N) =  31
+
+. tabi 1 0 0 \ 2 0 0 \ 0 0 5, all exact nolog
+
+           |          col
+       row |         1          3 |     Total
+-----------+----------------------+----------
+         1 |         1          0 |         1 
+         2 |         2          0 |         2 
+         3 |         0          5 |         5 
+-----------+----------------------+----------
+     Total |         3          5 |         8 
+
+          Pearson chi2(2) =   8.0000   Pr = 0.018
+ Likelihood-ratio chi2(2) =  10.5850   Pr = 0.005
+               Cramér's V =   1.0000
+                    gamma =   1.0000  ASE = 0.000
+          Kendall's tau-b =   0.9393  ASE = 0.046
+           Fisher's exact =                 0.018
+
+. return list
+
+scalars:
+            r(p_exact) =  .0178571428571428
+           r(ase_taub) =  .0462297204701973
+               r(taub) =  .9393364366277243
+            r(ase_gam) =  0
+              r(gamma) =  1
+           r(CramersV) =  1
+               r(p_lr) =  .0050291419029236
+            r(chi2_lr) =  10.58501181052771
+                  r(p) =  .0183156388887342
+               r(chi2) =  8
+                  r(c) =  2
+                  r(r) =  3
+                  r(N) =  8
+
+. tabi 300000 180000 \ 380000 140000, all
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |   300,000    180,000 |   480,000 
+         2 |   380,000    140,000 |   520,000 
+-----------+----------------------+----------
+     Total |   680,000    320,000 | 1,000,000 
+
+          Pearson chi2(1) =  1.3e+04   Pr = 0.000
+ Likelihood-ratio chi2(1) =  1.3e+04   Pr = 0.000
+               Cramér's V =  -0.1133
+                    gamma =  -0.2391  ASE = 0.002
+          Kendall's tau-b =  -0.1133  ASE = 0.001
+
+. return list
+
+scalars:
+           r(ase_taub) =  .0009941922752254
+               r(taub) =  -.1132797262535997
+            r(ase_gam) =  .002036534399244
+              r(gamma) =  -.2391304347826087
+           r(CramersV) =  -.1132797262535997
+               r(p_lr) =  0
+            r(chi2_lr) =  12846.27287283094
+                  r(p) =  0
+               r(chi2) =  12832.2963800905
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  1000000
+
+. tabi 2 2 \ 0 0, all exact nolog
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |         2          2 |         4 
+-----------+----------------------+----------
+     Total |         2          2 |         4 
+
+. return list
+
+scalars:
+                  r(c) =  2
+                  r(r) =  1
+                  r(N) =  4
+
+. tabi 1 0 \ 0 0, all exact nolog
+
+           |    col
+       row |         1 |     Total
+-----------+-----------+----------
+         1 |         1 |         1 
+-----------+-----------+----------
+     Total |         1 |         1 
+
+. return list
+
+scalars:
+                  r(c) =  1
+                  r(r) =  1
+                  r(N) =  1
+
+. tabi 1 0 \ 0 1, all exact nolog
+
+           |          col
+       row |         1          2 |     Total
+-----------+----------------------+----------
+         1 |         1          0 |         1 
+         2 |         0          1 |         1 
+-----------+----------------------+----------
+     Total |         1          1 |         2 
+
+          Pearson chi2(1) =   2.0000   Pr = 0.157
+ Likelihood-ratio chi2(1) =   2.7726   Pr = 0.096
+               Cramér's V =   1.0000
+                    gamma =   1.0000  ASE = 0.000
+          Kendall's tau-b =   1.0000  ASE = 0.000
+           Fisher's exact =                 1.000
+   1-sided Fisher's exact =                 0.500
+
+. return list
+
+scalars:
+           r(p1_exact) =  .5
+            r(p_exact) =  1
+           r(ase_taub) =  0
+               r(taub) =  1
+            r(ase_gam) =  0
+              r(gamma) =  1
+           r(CramersV) =  1
+               r(p_lr) =  .0958909671424654
+            r(chi2_lr) =  2.772588722239781
+                  r(p) =  .1572992070502852
+               r(chi2) =  2
+                  r(c) =  2
+                  r(r) =  2
+                  r(N) =  2
+
+. tabi 2 1 0 \ 0 3 2 \ 0 0 5, all exact(2) nolog
+
+           |               col
+       row |         1          2          3 |     Total
+-----------+---------------------------------+----------
+         1 |         2          1          0 |         3 
+         2 |         0          3          2 |         5 
+         3 |         0          0          5 |         5 
+-----------+---------------------------------+----------
+     Total |         2          4          7 |        13 
+
+          Pearson chi2(4) =  13.3714   Pr = 0.010
+ Likelihood-ratio chi2(4) =  15.0338   Pr = 0.005
+               Cramér's V =   0.7171
+                    gamma =   1.0000  ASE = 0.000
+          Kendall's tau-b =   0.8009  ASE = 0.084
+           Fisher's exact =                 0.011
+
+. return list
+
+scalars:
+            r(p_exact) =  .0112665112665113
+           r(ase_taub) =  .0841646127750626
+               r(taub) =  .8009085749662975
+            r(ase_gam) =  0
+              r(gamma) =  1
+           r(CramersV) =  .7171371656006361
+               r(p_lr) =  .0046316330014773
+            r(chi2_lr) =  15.03379591616522
+                  r(p) =  .0095965562617236
+               r(chi2) =  13.37142857142857
+                  r(c) =  3
+                  r(r) =  3
+                  r(N) =  13
+
+. 
+end of do-file

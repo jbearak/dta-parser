@@ -63,8 +63,8 @@
             length(rows) != 0L && (min(rows) < 1L || max(rows) > row_count)
         } else any(rows < 1L | rows > row_count)
         incomplete <- function() if (ordinary_rows) {
-            row_count != 0L && min(tabulate(rows, nbins = row_count)) != 1L
-        } else any(tabulate(as.integer(rows), nbins = row_count) != 1L)
+            row_count != 0L && min(base::tabulate(rows, nbins = row_count)) != 1L
+        } else any(base::tabulate(as.integer(rows), nbins = row_count) != 1L)
         if (anyNA(rows) || outside() ||
             !all(group_names %in% names) ||
             any(vapply(groups$.rows, is.unsorted, logical(1), strictly = TRUE)) ||

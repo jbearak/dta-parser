@@ -7,3 +7,6 @@
 /r-package/dtatools/tests/testthat/fixtures/*.c text eol=lf
 /r-package/dtatools/tests/testthat/fixtures/*.R text eol=lf
 /r-package/dtatools/tests/testthat/fixtures/*.txt text eol=lf
+
+# Stata console spaces are part of the byte-for-byte tabulation oracles.
+/r-package/dtatools/tests/testthat/fixtures/tabulate*.log whitespace=-blank-at-eol,-blank-at-eof

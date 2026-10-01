@@ -192,9 +192,9 @@ adding casts to an R translation that reproduce information loss.
 
 **Reports are data, not printed output.** `codebook()` and `labelbook()` return structured results — underlying numeric codes, missing counts, notes, diagnostics, and Stata-style missingness implications — so callers need not parse a printed report. `tab()` is the exception: it prints as Stata prints `tabulate`, and its result is still a `table` of frequencies with `as.table()`, `as.data.frame()`, and the usual table operations behind it. The [parity matrix](./r-tab-stata-parity.md) lists every `tabulate` form and option.
 
-**`tab()` refuses an empty display.** Stata's `tabulate x y, nofreq` prints nothing and returns. `tab(d, x, y, freq = FALSE)` without `percent` or `expected` is an error, since a table with nothing to show is a mistake in the call.
+**Tabulation side effects are returned values.** Stored results are in `attr(result, "r")`; generated indicators are in `attr(result, "generated")`; `collect` attaches an R collection. These do not overwrite caller data, create global Stata matrices, or interpret Stata collection style files.
 
-**`tab()` qualifies duplicate label text.** Stata's `tabulate` prints two rows both headed `Same` when two codes share that label. `tab()` prints `Same [1]` and `Same [2]`, so every row name is unambiguous and `as.data.frame()` never yields two identical categories.
+**Tabulation category names remain unambiguous.** Printed duplicate labels match Stata, but R table dimension names and data-frame categories retain `Same [1]` and `Same [2]` so distinct source values remain distinct.
 
 **`tab()` takes three or more variables.** Stata's `tabulate` is one- or two-way. `tab(d, x, y, z)` returns an R multidimensional table printed as base R prints it.
 

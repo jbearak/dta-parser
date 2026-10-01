@@ -1,7 +1,7 @@
 test_that("tab is exported and wraps ordinary table objects", {
     expect_true("tab" %in% getNamespaceExports("dtatools"))
     expect_identical(
-        names(formals(tab)),
+        names(formals(tab))[1:9],
         c("x", "...", "data", "missing", "display", "sort", "percent",
           "expected", "freq")
     )
