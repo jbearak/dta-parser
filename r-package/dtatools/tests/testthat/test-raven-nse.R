@@ -81,10 +81,6 @@ expected_policy <- list(
         captured = c("x", "where", "by", "weights", "subpop", "summarize"),
         captured_dots = TRUE
     ),
-    tabulate = list(
-        captured = c("x", "where", "by", "weights", "subpop", "summarize"),
-        captured_dots = TRUE
-    ),
     tab1 = list(captured = "x", captured_dots = TRUE),
     tab2 = list(captured = "x", captured_dots = TRUE),
     tabi = list(captured = character(), captured_dots = FALSE),

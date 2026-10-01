@@ -109,7 +109,6 @@
     "tab1",
     "tab2",
     "tabi",
-    "tabulate",
     "tagged_missing",
     "val_code",
     "val_label",
@@ -6940,7 +6939,7 @@
         },
         {
           "path": "tests/testthat/test-raven-nse.R",
-          "sha256": "ec342fb231426ea897db527b90408079732449bebb1eefcee610bdd82593fcb0"
+          "sha256": "2e0349cd66a19355c857ac157cc2642874b7a70f65522cb1596dc21d61c9c18c"
         },
         {
           "path": "tests/testthat/test-auto-grow.R",
@@ -9686,7 +9685,7 @@
         },
         {
           "path": "tests/testthat/test-dplyr-optional.R",
-          "sha256": "7fa5143c27e75778faa9d5c11c8d2b9f1fa5be346fb72682526651a08c032650"
+          "sha256": "06e8b84faa849723d64ae9d9673408bb0b00672ed0d0437a400eb0d893670f60"
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
@@ -14174,7 +14173,7 @@
         },
         {
           "path": "tests/testthat/test-tab-features.R",
-          "sha256": "8c03d8390d0a2eb72724c3629f88974ac986420b2e13b26b12b72cd0bb522289"
+          "sha256": "a4c4f6629a38cbf19f92ea02d4ccae1a0be2d417467b0fe58227322ac2b3066b"
         },
         {
           "path": "tests/testthat/test-tab-grouped.R",
@@ -14958,14 +14957,6 @@
         },
         {
           "file": "test-tab-features.R",
-          "test": "tabulate is an exact alias and Stata selections and weights agree",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 22,
-          "warnings": 0
-        },
-        {
-          "file": "test-tab-features.R",
           "test": "joint samples, subpop categories and indicators follow native rules",
           "occurrence": 1,
           "skip": "forbid",
@@ -14986,6 +14977,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-features.R",
+          "test": "Stata selections and weights agree",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 21,
           "warnings": 0
         },
         {

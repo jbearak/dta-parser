@@ -1,6 +1,6 @@
 # tab() and Stata's tabulate
 
-`tab()` and its exact alias `tabulate()` implement Stata's one-way and two-way
+`tab()` implements Stata's one-way and two-way
 frequency tabulations and `tabulate, summarize()`. `tab1()`, `tab2()`, and
 `tabi()` provide the multiple-variable and immediate forms. The reference
 specifications are Stata's [one-way manual](https://www.stata.com/manuals/rtabulateoneway.pdf),

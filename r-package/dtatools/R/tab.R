@@ -135,7 +135,7 @@
 #'
 #' mtcars |>
 #'     tab(cyl, gear, percent = "row")
-#' tabulate(mtcars, cyl, gear, all = TRUE)
+#' tab(mtcars, cyl, gear, all = TRUE)
 #' tab(mtcars, cyl, summarize = mpg)
 #' tab(mtcars, cyl, by = am, where = .n <= 10)
 tab <- function(x, ..., data = NULL, missing = FALSE,
@@ -212,10 +212,6 @@ tab <- function(x, ..., data = NULL, missing = FALSE,
         rlang::enquo(by), rlang::enquo(weights), weight, subpop_quo,
         summary_quo, generate, collect, caller)
 }
-
-#' @rdname tab
-#' @export
-tabulate <- tab
 
 .tab_options <- function(flags, percent, count, summary = FALSE) {
     if (!is.null(percent)) {

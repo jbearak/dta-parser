@@ -461,11 +461,11 @@ Use explicit column names with base `cbind()`, such as `cbind(data, extra = x)`,
 when the output name matters. An unnamed argument following a dibble can retain
 a value-derived name from the existing base-binding adapter.
 
-`tab()` and its alias `tabulate()` create Stata-style frequency and summary tables. They support weights, group and row selection, subpopulations, association tests, cell percentages and contributions, sorting, keys, and plots. `tab1()` and `tab2()` create multiple tables; `tabi()` accepts a matrix of counts. With `missing = TRUE`, it keeps `.`, `.a` through `.z`, and R `NaN` as separate categories when they occur, and the empty string as the string missing:
+`tab()` creates Stata-style frequency and summary tables. It supports weights, group and row selection, subpopulations, association tests, cell percentages and contributions, sorting, keys, and plots. `tab1()` and `tab2()` create multiple tables; `tabi()` accepts a matrix of counts. With `missing = TRUE`, it keeps `.`, `.a` through `.z`, and R `NaN` as separate categories when they occur, and the empty string as the string missing:
 
 ```r
 tab(cars, foreign, missing = TRUE)
-tabulate(cars, rep78, foreign, row = TRUE, all = TRUE)
+tab(cars, rep78, foreign, row = TRUE, all = TRUE)
 tab(cars, foreign, summarize = mpg)
 tab(cars, rep78, weights = weight, weight = "aweight")
 as.table(tab(cars, rep78))  # the plain frequency table
@@ -794,7 +794,7 @@ Use the installed help for exact behavior and examples:
 | `slice_dta_rows()`, `reorder_dta_rows()` | Select rows into a new table, or permute a table's rows in place, gathering compact Stata columns in native code. |
 | `resolve_var_name()`, `confirm_var()` | Resolve or check an exact variable name or unique abbreviation, with configurable failure behavior. |
 | `copy_data()` | Make an independent copy of a dataset and its metadata. |
-| `tab()`, `tabulate()` | Stata frequency and summary tables, weights, association tests, indicators, and stored results. `tab1()`, `tab2()`, and `tabi()` provide multiple and immediate forms. |
+| `tab()` | Stata frequency and summary tables, weights, association tests, indicators, and stored results. `tab1()`, `tab2()`, and `tabi()` provide multiple and immediate forms. |
 | `summarize()`, `summarise()`, `summ()` | Stata summary statistics, weights, detailed distributions, grouping, and factor/time-series varlists. |
 | `labelbook()` | Structured reports on named value-label tables, assignments, mappings, and problems. |
 | `codebook()` | Structured variable metadata, observed-data summaries, missingness relationships, and problems. |

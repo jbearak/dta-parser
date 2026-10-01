@@ -191,19 +191,6 @@ formals = [
 captured = ["x", "where", "by", "weights", "subpop", "summarize"]
 captured_dots = true
 
-[[function]]
-name = "tabulate"
-formals = [
-    "x", "...", "data", "missing", "display", "sort", "percent", "expected", "freq",
-    "where", "rows", "by", "weights", "weight", "subpop", "row", "column", "cell",
-    "nofreq", "nolabel", "chi2", "lrchi2", "exact", "gamma", "taub", "V", "all",
-    "cchi2", "clrchi2", "rowsort", "colsort", "key", "nokey", "wrap", "plot",
-    "nolog", "generate", "matcell", "matrow", "matcol", "collect", "summarize",
-    "means", "standard", "obs",
-]
-captured = ["x", "where", "by", "weights", "subpop", "summarize"]
-captured_dots = true
-
 # Multiple-table calls capture variable selections and forward named options
 # through the dots to tab(). `data` and `firstonly` are ordinary controls.
 [[function]]

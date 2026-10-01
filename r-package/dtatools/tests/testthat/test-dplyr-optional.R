@@ -44,6 +44,8 @@ test_that("native namespace loading and recoding leave dplyr unloaded", {
             rows = as.double(y$x), exports = sort(getNamespaceExports(ns)),
             dplyr_loaded = isNamespaceLoaded("dplyr"),
             namespace_path = getNamespaceInfo(ns, "path"))
+        suppressPackageStartupMessages(library(dtatools))
+        result$base_counts <- tabulate(c(1L, 3L, 3L), nbins = 4L)
         stopifnot(!isNamespaceLoaded("dplyr"))
         result
     }, args = list(.libPaths(), normalizePath(getNamespaceInfo(asNamespace("dtatools"), "path"))),
@@ -54,7 +56,8 @@ test_that("native namespace loading and recoding leave dplyr unloaded", {
     expect_identical(observed$rows, c(2, 1))
     expect_false(observed$dplyr_loaded)
     expect_identical(observed$exports, sort(getNamespaceExports("dtatools")))
-    expect_length(observed$exports, 116L)
+    expect_length(observed$exports, 115L)
+    expect_identical(observed$base_counts, c(1L, 0L, 2L, 0L))
     expect_identical(normalizePath(observed$namespace_path),
         normalizePath(getNamespaceInfo(asNamespace("dtatools"), "path")))
 })

@@ -1,16 +1,5 @@
 # dtatools (development version)
 
-* `tabulate()` is an exact alias of `tab()`. Tabulation now supports analytic,
-  frequency, and importance weights; row and group selection; subpopulations;
-  association tests and cell contributions; sorting, keys, plots, and wrapping;
-  summary tables; returned indicators, matrices, and tidy collections.
-  `tab1()`, `tab2()`, and `tabi()` add multiple and immediate tabulations.
-  Native Stata fixtures cover numerical results and printed output.
-  `nofreq` can suppress all output, and duplicate value labels now print as
-  Stata prints them while retaining unique R category names.
-  Attaching dtatools masks R's `base::tabulate()`; use `base::tabulate()`
-  explicitly for integer bin counts.
-
 * Validated native paths speed up supported `repl()`/`replace_values()`,
   `gen()`, dibble `:=`, and `mutate()` expressions. Public dependency changes
   retain ordinary evaluation. Bracket fallback preserves an already evaluated
