@@ -91,3 +91,38 @@ test_that("DTA default ring completes multiple blocks with ordered strings", {
         ), window)
     }
 })
+
+test_that("DTA double fills preserve numeric and temporal values across row windows", {
+    count <- 32769L
+    tags <- c(NA_real_, tagged_missing("a"), tagged_missing("z"))
+    expected <- list(
+        number = rep(c(-1.25, 0, 1.25, -42.5, tags), length.out = count),
+        date = rep(c(-3653, 0, 11016, tags), length.out = count),
+        time = rep(c(-315619200, 0, 1, 1577836800, tags), length.out = count)
+    )
+    data <- tibble::tibble(
+        number = dta_double(expected$number),
+        date = structure(expected$date, class = "Date", stata.storage = "double"),
+        time = structure(expected$time, class = c("POSIXct", "POSIXt"),
+                         tzone = "UTC", stata.storage = "double")
+    )
+    path <- withr::local_tempfile(fileext = ".dta")
+    save_dta(data, path)
+    bits <- function(x) writeBin(as.double(x), raw(), size = 8L, endian = "little")
+    for (threads in c(1L, 4L, 0L)) {
+        for (window in list(c(0L, count), c(16380L, 9L), c(count, 0L))) {
+            actual <- .read_dta_default(
+                path, threads = threads, skip = window[[1L]], n_max = window[[2L]]
+            )
+            rows <- seq_len(window[[2L]]) + window[[1L]]
+            for (name in names(expected)) {
+                info <- paste(name, threads, paste(window, collapse = ":"))
+                expect_identical(bits(actual[[name]]), bits(expected[[name]][rows]), info = info)
+                expect_identical(dta_storage_type(actual[[name]]), "double", info = info)
+            }
+            expect_s3_class(actual$date, "Date")
+            expect_s3_class(actual$time, "POSIXct")
+            expect_identical(attr(actual$time, "tzone"), "UTC")
+        }
+    }
+})

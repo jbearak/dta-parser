@@ -36,19 +36,19 @@ use arrow_array::{
     Float32Array, Float64Array, Int16Array, Int32Array, Int64Array, Int8Array, PrimitiveArray,
     StringArray, TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array, UInt8Array,
 };
-use arrow_buffer::{ArrowNativeType, Buffer, ScalarBuffer};
+use arrow_buffer::{ArrowNativeType, Buffer, NullBufferBuilder, OffsetBuffer, ScalarBuffer};
 use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
     attach_dta_metadata, attach_source_rows, attach_variable_attribute_view, boundary,
-    check_interrupt, coarse_interrupt, direct_r_missing_code, fill_string_region,
-    label_attribute_from_entries, missing_from_code, observed_value, parse_dta_metadata_sexp,
-    poll_interrupt, r_char, r_missing, scalar_integer, scalar_string, set_attr, set_class,
-    set_symbol_attr, should_preserve_value_label_name, string_vector, temporal_kind,
-    write_numeric_value, NumericKind, ProtectGuard, RLen, RStringData, R_ClassSymbol, R_NaInt,
-    R_NaReal, R_NaString, R_NamesSymbol, R_RowNamesSymbol, Sexp, TemporalKind, DAYS_1960_TO_1970,
-    INTEGER, INTSXP, LGLSXP, LOGICAL, REAL, REALSXP, SECONDS_1960_TO_1970, SET_STRING_ELT,
-    SET_VECTOR_ELT, STRSXP, VECSXP,
+    check_interrupt, coarse_interrupt, direct_r_missing_code, fill_r_string_region,
+    fill_string_region, label_attribute_from_entries, missing_from_code, observed_value,
+    parse_dta_metadata_sexp, poll_interrupt, r_char, r_missing, scalar_integer, scalar_string,
+    set_attr, set_class, set_symbol_attr, should_preserve_value_label_name, string_vector,
+    temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen, RStringData, RWriteError,
+    R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol, R_RowNamesSymbol, Sexp,
+    TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL, REAL, REALSXP,
+    SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT, STRSXP, VECSXP,
 };
 
 /// One column handed from C for `save_arrow()`. Field meanings depend on
@@ -66,6 +66,8 @@ pub struct RArrowColumnDescriptor {
     /// -1 none; 0 strL; 1..=2045 fixed-string byte width.
     string_storage: c_int,
     ordered: c_int,
+    /// The rooted character payload is ordinary STRSXP after owned unwrapping.
+    ordinary_strings: c_int,
     tz: *const c_char,
     units: *const c_char,
     /// Direct data: `int*` for logical/integer/factor codes, `double*` for
@@ -99,6 +101,7 @@ const _: () = {
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, storage) == 32);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, string_storage) == 36);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, ordered) == 40);
+    assert!(std::mem::offset_of!(RArrowColumnDescriptor, ordinary_strings) == 44);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, tz) == 48);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, units) == 56);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, values) == 64);
@@ -311,6 +314,125 @@ fn classify_doubles(values: &[f64], _name: &str) -> Result<(Vec<c_int>, bool), S
 
 fn uses_large_string_offsets(total_bytes: usize) -> bool {
     total_bytes > i32::MAX as usize
+}
+
+fn checked_string_offset(total: usize, length: usize, name: &str) -> Result<(usize, i64), String> {
+    let total = total
+        .checked_add(length)
+        .ok_or_else(|| format!("column `{name}` overflows the Arrow string buffer"))?;
+    let offset = i64::try_from(total)
+        .map_err(|_| format!("column `{name}` overflows the Arrow string buffer"))?;
+    Ok((total, offset))
+}
+
+/// Owned bytes, offsets and validity, never pointers into R storage. Capture
+/// uses wide offsets until the final byte count selects Utf8 or LargeUtf8.
+struct CapturedStringArray {
+    offsets: Vec<i64>,
+    bytes: Vec<u8>,
+    validity: NullBufferBuilder,
+}
+
+impl CapturedStringArray {
+    fn new(rows: usize) -> Result<Self, String> {
+        let count = rows
+            .checked_add(1)
+            .ok_or_else(|| "could not allocate character values".to_owned())?;
+        let mut offsets = Vec::new();
+        offsets
+            .try_reserve_exact(count)
+            .map_err(|_| "could not allocate character values".to_owned())?;
+        offsets.push(0);
+        Ok(Self {
+            offsets,
+            bytes: Vec::new(),
+            validity: NullBufferBuilder::new(rows),
+        })
+    }
+
+    fn append(&mut self, value: Option<&[u8]>, name: &str) -> Result<(), String> {
+        let mut offset = *self
+            .offsets
+            .last()
+            .expect("capture starts with a zero offset");
+        if let Some(value) = value {
+            std::str::from_utf8(value)
+                .map_err(|_| "character values contains invalid UTF-8".to_owned())?;
+            let (_, next) = checked_string_offset(self.bytes.len(), value.len(), name)?;
+            self.bytes
+                .try_reserve(value.len())
+                .map_err(|_| "could not allocate character values".to_owned())?;
+            self.bytes.extend_from_slice(value);
+            offset = next;
+        }
+        self.offsets.push(offset);
+        self.validity.append(value.is_some());
+        Ok(())
+    }
+
+    fn finish(mut self) -> ArrayRef {
+        let large = uses_large_string_offsets(self.bytes.len());
+        let nulls = self.validity.finish();
+        let values = Buffer::from_vec(self.bytes);
+        if large {
+            let offsets = OffsetBuffer::new(self.offsets.into());
+            // Each appended non-null slice passed UTF-8 validation. Offsets
+            // start at zero, are checked and monotone, and end at values.len().
+            Arc::new(unsafe {
+                arrow_array::LargeStringArray::new_unchecked(offsets, values, nulls)
+            })
+        } else {
+            // Monotonicity and the final total <= i32::MAX prove every offset
+            // fits. Only offsets are converted; the owned value buffer moves.
+            let offsets: Vec<i32> = self
+                .offsets
+                .into_iter()
+                .map(|offset| offset as i32)
+                .collect();
+            let offsets = OffsetBuffer::new(offsets.into());
+            Arc::new(unsafe { StringArray::new_unchecked(offsets, values, nulls) })
+        }
+    }
+}
+
+/// Capture a C-certified ordinary STRSXP on the R thread. Every borrowed
+/// region is consumed before another R callback; only owned Arrow buffers
+/// survive extraction or cross to an encoding worker. The C descriptor roots
+/// the exact ordinary allocation, including unwrapped owned-string backing.
+unsafe fn capture_string_array(values: Sexp, rows: usize, name: &str) -> Result<ArrayRef, String> {
+    let mut captured = CapturedStringArray::new(rows)?;
+    let capacity = rows.min(65_536);
+    let mut strings = vec![ptr::null(); capacity];
+    let mut lengths = vec![0; capacity];
+    let mut start = 0;
+    while start < rows {
+        check_interrupt()?;
+        let length = (rows - start).min(capacity);
+        fill_r_string_region(
+            values,
+            start,
+            None,
+            &mut strings[..length],
+            &mut lengths[..length],
+            "could not read character values from R",
+        )
+        .map_err(|error| match error {
+            RWriteError::Interrupted => "interrupted".to_owned(),
+            RWriteError::Message(message) => message,
+        })?;
+        // No R API, interrupt polling or worker scheduling until these spans
+        // have all been copied. CHARSXP bytes are not retained by the builder.
+        for (&bytes, &length) in strings[..length].iter().zip(&lengths[..length]) {
+            let value = if bytes.is_null() {
+                None
+            } else {
+                Some(std::slice::from_raw_parts(bytes.cast::<u8>(), length))
+            };
+            captured.append(value, name)?;
+        }
+        start += length;
+    }
+    Ok(captured.finish())
 }
 
 fn string_array(values: &[Option<String>], name: &str) -> Result<ArrayRef, String> {
@@ -929,6 +1051,10 @@ enum ColumnInput {
     CharacterEager {
         values: Vec<Option<String>>,
     },
+    /// Final owned Arrow buffers captured on the R thread, with no R pointers.
+    CharacterCaptured {
+        array: ArrayRef,
+    },
     CharacterDict {
         data: *const c_void,
     },
@@ -1111,8 +1237,14 @@ unsafe fn extract_column(
         }
         RArrowKind::Character => {
             if descriptor.dictstring.is_null() {
-                ColumnInput::CharacterEager {
-                    values: read_strings(descriptor.strings, row_count, "character values")?,
+                if descriptor.ordinary_strings != 0 {
+                    ColumnInput::CharacterCaptured {
+                        array: capture_string_array(descriptor.strings, row_count, &name)?,
+                    }
+                } else {
+                    ColumnInput::CharacterEager {
+                        values: read_strings(descriptor.strings, row_count, "character values")?,
+                    }
                 }
             } else {
                 ColumnInput::CharacterDict {
@@ -1314,6 +1446,14 @@ unsafe fn encode_column(mut column: ExtractedColumn) -> Result<EncodedColumn, St
             (
                 needs_document(&document).then_some(document),
                 string_array(values, name)?,
+                0,
+            )
+        }
+        ColumnInput::CharacterCaptured { array } => {
+            let document = base_document;
+            (
+                needs_document(&document).then_some(document),
+                Arc::clone(array),
                 0,
             )
         }
@@ -3859,6 +3999,45 @@ mod tests {
         let array = unsafe { zero_copy_array::<Int32Type>(sentinel, 0) };
         assert_eq!(array.len(), 0);
         assert_eq!(array.data_type(), &DataType::Int32);
+    }
+
+    #[test]
+    fn captured_string_buffers_preserve_utf8_empty_and_null_values() {
+        let mut captured = CapturedStringArray::new(5).expect("allocate offsets");
+        for value in [Some("ascii"), None, Some(""), Some("東京"), Some("🌍")] {
+            captured
+                .append(value.map(str::as_bytes), "text")
+                .expect("valid text");
+        }
+        let array = captured.finish();
+        let strings = array
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .expect("small Utf8");
+        assert_eq!(
+            strings.iter().collect::<Vec<_>>(),
+            vec![Some("ascii"), None, Some(""), Some("東京"), Some("🌍")]
+        );
+
+        let empty = CapturedStringArray::new(0).expect("empty offsets").finish();
+        assert_eq!(empty.data_type(), &DataType::Utf8);
+        assert_eq!(empty.len(), 0);
+        let mut invalid = CapturedStringArray::new(1).expect("one offset");
+        assert_eq!(
+            invalid.append(Some(&[0xff]), "text").unwrap_err(),
+            "character values contains invalid UTF-8"
+        );
+    }
+
+    #[test]
+    fn captured_string_offsets_are_checked_before_allocating_values() {
+        assert_eq!(checked_string_offset(3, 4, "text").unwrap(), (7, 7));
+        assert!(checked_string_offset(usize::MAX, 1, "text").is_err());
+        if usize::BITS >= 64 {
+            assert!(checked_string_offset(i64::MAX as usize, 1, "text").is_err());
+        }
+        assert!(!uses_large_string_offsets(i32::MAX as usize));
+        assert!(uses_large_string_offsets(i32::MAX as usize + 1));
     }
 
     #[test]

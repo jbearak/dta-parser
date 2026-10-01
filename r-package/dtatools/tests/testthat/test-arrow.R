@@ -237,6 +237,58 @@ test_that("multithreaded Arrow writes match single-threaded writes", {
     expect_identical(read_arrow(parallel_path), data)
 })
 
+test_that("Arrow string writes preserve Unicode and missing values across regions", {
+    latin <- rawToChar(as.raw(c(0x63, 0x61, 0x66, 0xe9)))
+    Encoding(latin) <- "latin1"
+    values <- c("ascii", "", NA_character_, "\u6771\u4eac", latin,
+                "\U0001f30d", strrep("long-", 53L))
+    expected <- enc2utf8(values)
+    for (rows in c(0L, 1L, 65535L, 65536L, 65537L)) {
+        text <- rep_len(values, rows)
+        owned <- text
+        owned[is.na(owned)] <- ""
+        data <- tibble::tibble(text = text, owned = dta_string(owned))
+        signature <- datasig(data)
+        for (compression in c("uncompressed", "lz4", "zstd")) {
+            serial_path <- arrow_tempfile()
+            parallel_path <- arrow_tempfile()
+            expect_silent(save_arrow(data, serial_path,
+                                     compression = compression, threads = 1L))
+            expect_silent(save_arrow(data, parallel_path,
+                                     compression = compression, threads = 4L))
+            expect_identical(
+                readBin(parallel_path, "raw", file.size(parallel_path)),
+                readBin(serial_path, "raw", file.size(serial_path))
+            )
+            restored <- read_arrow(parallel_path, output = "tibble")
+            expect_identical(restored$text, rep_len(expected, rows))
+            expect_identical(as.character(restored$owned), enc2utf8(owned))
+            expect_identical(datasig(restored), signature)
+            expect_identical(datasig(data), signature)
+        }
+    }
+})
+
+test_that("Arrow string writes retain owned and ephemeral values through collection", {
+    values <- c("first", "", NA_character_, "\u00e9\u6771\u4eac")
+    foreign <- .Call(dtatools:::C_dtatools_ephemeral_altstring, values)
+    owned <- dta_string(c("kept", "", "later", "\U0001f30d"))
+    data <- tibble::tibble(owned = owned, foreign = foreign)
+    signature <- datasig(data)
+    path <- arrow_tempfile()
+
+    gctorture(TRUE)
+    on.exit(gctorture(FALSE), add = TRUE)
+    expect_silent(save_arrow(data, path, threads = 4L))
+    expect_identical(datasig(data), signature)
+    gctorture(FALSE)
+
+    restored <- read_arrow(path, output = "tibble")
+    expect_identical(restored$foreign, values)
+    expect_identical(as.character(restored$owned), as.character(owned))
+    expect_identical(datasig(restored), signature)
+})
+
 test_that("native Arrow write cancellation remains an interrupt", {
     skip_on_os("windows")
 

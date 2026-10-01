@@ -641,6 +641,10 @@ static void arrow_write_column_descriptor(
         }
         descriptor->strings = owned_column(values) ? owned_values(values) : values;
         descriptor->string_count = row_count;
+        /* Capture only this rooted ordinary allocation in the owned-buffer
+           path. Foreign ALTSTRING retains its existing eager-copy callback
+           path, even when a preceding R encoding helper returned it. */
+        descriptor->ordinary_strings = !ALTREP(descriptor->strings);
         SEXP dictionary_source = unmaterialized_dictstring_source(values);
         if (dictionary_source != R_NilValue) {
             descriptor->dictstring = R_ExternalPtrAddr(dictionary_root);

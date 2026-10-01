@@ -12,10 +12,10 @@ use std::os::unix::fs::OpenOptionsExt;
 
 use ahash::AHashMap;
 use dta_tools::{
-    classify_byte_missing_for_version, classify_float_missing_bits_for_version,
-    classify_int_missing_for_version, classify_long_missing_for_version,
-    dta_write_numeric_value_is_representable, encode_numeric, valid_canonical_characteristic,
-    valid_canonical_note, valid_characteristic, valid_note,
+    classify_byte_missing_for_version, classify_double_missing_bits_for_version,
+    classify_float_missing_bits_for_version, classify_int_missing_for_version,
+    classify_long_missing_for_version, dta_write_numeric_value_is_representable, encode_numeric,
+    valid_canonical_characteristic, valid_canonical_note, valid_characteristic, valid_note,
     write_prevalidated_dta_with_value_label_registry_to, DtaColumnSink, DtaError, DtaFile,
     DtaMetadata, DtaSink, DtaType, DtaWriteCharacteristic, DtaWriteColumn, DtaWriteColumnSource,
     DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue, DtaWriteNote,
@@ -3081,6 +3081,64 @@ impl DtaColumnSink for RColumn {
         byte_order: dta_tools::ByteOrder,
         version: FormatVersion,
     ) -> Result<bool, DtaError> {
+        if let Self::NumericEager {
+            output,
+            length,
+            source_kind,
+            temporal,
+            system_missing,
+            ..
+        } = self
+        {
+            if dta_type != DtaType::Double || *source_kind != EagerNumericKind::Double {
+                return Ok(false);
+            }
+            let output_end = output_start
+                .checked_add(row_count)
+                .ok_or(DtaError::ArithmeticOverflow("numeric batch output range"))?;
+            if output_end > *length {
+                return Err(RNumericData::row_error(output_end, *length));
+            }
+            if row_count == 0 {
+                return Ok(true);
+            }
+            let width = std::mem::size_of::<f64>();
+            let input_end = (row_count - 1)
+                .checked_mul(stride)
+                .and_then(|last| last.checked_add(width))
+                .ok_or(DtaError::ArithmeticOverflow("numeric batch input range"))?;
+            if stride < width || input_end > source.len() {
+                return Err(DtaError::Output(
+                    "numeric batch input range is out of bounds".to_owned(),
+                ));
+            }
+            let output_bytes = length
+                .checked_mul(width)
+                .ok_or(DtaError::ArithmeticOverflow("numeric batch output bytes"))?;
+            if output_bytes > isize::MAX as usize {
+                return Err(DtaError::ArithmeticOverflow("numeric batch output bytes"));
+            }
+            // The R thread allocated and protected this vector before workers
+            // received disjoint columns. Both ranges are checked above; this
+            // loop does not allocate or call R, and uses the scalar conversions.
+            let values =
+                unsafe { std::slice::from_raw_parts_mut(output.add(output_start), row_count) };
+            let little = byte_order == dta_tools::ByteOrder::Lsf;
+            for (row, value) in values.iter_mut().enumerate() {
+                let bytes = unsafe {
+                    ptr::read_unaligned(source.as_ptr().add(row * stride).cast::<[u8; 8]>())
+                };
+                let bits = if little {
+                    u64::from_le_bytes(bytes)
+                } else {
+                    u64::from_be_bytes(bytes)
+                };
+                *value = classify_double_missing_bits_for_version(bits, version)
+                    .map(|missing| r_missing_with_system(missing, *system_missing))
+                    .unwrap_or_else(|| observed_value(f64::from_bits(bits), *temporal));
+            }
+            return Ok(true);
+        }
         let Self::NumericAltRep { data, .. } = self else {
             return Ok(false);
         };
@@ -4296,6 +4354,7 @@ struct RWriteSource<'a> {
     direct_owned: Option<owned_numeric::CompactRead>,
     direct_owned_region: Cell<(usize, usize, usize)>,
     raw_numeric: bool,
+    raw_integer_long: bool,
     numeric_region: Option<Box<RWriteNumericRegionCache>>,
     string_region: Option<Box<RWriteStringRegionCache>>,
     numeric_replacements: Cell<u64>,
@@ -4391,6 +4450,19 @@ fn direct_numeric_is_output_encoded(
                     && descriptor.numeric_scale == 1000.0
             }
         }
+}
+
+fn write_integer_long(value: c_int) -> (i32, u64) {
+    let system_missing = MissingTag::System.long_value();
+    if value == c_int::MIN {
+        (system_missing, 0)
+    } else if value < -MissingTag::Z.long_value() || value >= system_missing {
+        // Ordinary R integers in Stata's reserved range are observed values,
+        // not encoded tagged missings.
+        (system_missing, 1)
+    } else {
+        (value, 0)
+    }
 }
 
 fn missing_from_code(code: c_int) -> Result<Option<MissingTag>, String> {
@@ -4739,6 +4811,12 @@ impl<'a> RWriteSource<'a> {
                 direct_numeric_kind,
                 direct_numeric_temporal,
             ),
+            raw_integer_long: matches!(direct_numeric_kind, DirectNumericKind::Integer)
+                && !descriptor.direct_numeric_values.is_null()
+                && descriptor.dta_type == 2
+                && matches!(direct_numeric_temporal, TemporalKind::None)
+                && descriptor.numeric_shift == 0.0
+                && descriptor.numeric_scale == 1.0,
             numeric_region: uses_numeric_callback.then(|| {
                 Box::new(RWriteNumericRegionCache {
                     rows: numeric_region_rows.max(1),
@@ -4797,6 +4875,26 @@ impl<'a> RWriteSource<'a> {
         &self,
         row: u64,
     ) -> Result<Option<DtaWriteRawNumericValue>, RWriteError> {
+        if self.raw_integer_long {
+            if row >= self.row_count {
+                return Err("R row index is outside the integer source".into());
+            }
+            let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
+            let value = unsafe {
+                ptr::read(
+                    self.descriptor
+                        .direct_numeric_values
+                        .cast::<c_int>()
+                        .add(index),
+                )
+            };
+            let (value, replacements) = write_integer_long(value);
+            if replacements != 0 {
+                self.numeric_replacements
+                    .set(self.numeric_replacements.get() + replacements);
+            }
+            return Ok(Some(DtaWriteRawNumericValue::Long(value)));
+        }
         if !self.raw_numeric {
             return Ok(None);
         }
@@ -4999,6 +5097,33 @@ unsafe fn encode_direct_observation_column(
     let output = output as *mut u8;
     match column.dta_type {
         DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
+            if source.raw_integer_long {
+                if start_index
+                    .checked_add(rows)
+                    .is_none_or(|end| end as u64 > source.row_count)
+                {
+                    return Err(DtaWriteError::Source {
+                        column: column.name.to_string(),
+                        row: start,
+                        message: "R row range is outside the integer source".into(),
+                    });
+                }
+                let values = source.descriptor.direct_numeric_values.cast::<c_int>();
+                let mut replacements = 0_u64;
+                for offset in 0..rows {
+                    let (value, count) =
+                        write_integer_long(ptr::read(values.add(start_index + offset)));
+                    replacements += count;
+                    write_raw_numeric_to_ptr(
+                        output.add(offset * row_width + column_offset),
+                        DtaWriteRawNumericValue::Long(value),
+                    );
+                }
+                source
+                    .numeric_replacements
+                    .set(source.numeric_replacements.get() + replacements);
+                return Ok(());
+            }
             if source.raw_numeric {
                 let mut replacements = 0_u64;
                 for offset in 0..rows {
@@ -5702,6 +5827,71 @@ mod tests {
         descriptor
     }
 
+    #[test]
+    fn ordinary_integer_longs_supply_raw_values_without_stata_tag_reinterpretation() {
+        use dta_tools::DtaWriteRawNumericValue;
+
+        let mut values = vec![c_int::MIN, c_int::MIN + 1, -1, 0, 2_147_483_620];
+        values.extend(2_147_483_621..=c_int::MAX);
+        let mut expected = vec![2_147_483_621_i32, -2_147_483_647, -1, 0, 2_147_483_620];
+        expected.extend([2_147_483_621; 27]);
+        let descriptor = direct_numeric_descriptor(2, values.as_ptr().cast(), 1, 0.0, 1.0);
+        let source = RWriteSource::new(&descriptor, values.len() as u64, 1, 1).unwrap();
+        for (row, &expected) in expected.iter().enumerate() {
+            assert_eq!(
+                source.raw_numeric_value_at(row as u64).unwrap(),
+                Some(DtaWriteRawNumericValue::Long(expected)),
+            );
+        }
+        assert_eq!(source.numeric_replacements.get(), 27);
+        assert!(source.raw_numeric_value_at(values.len() as u64).is_err());
+
+        // No eager numeric snapshot: a preceding callback's write must be
+        // visible when the next ordinary integer cell is requested.
+        values[1] = 42;
+        assert_eq!(
+            source.raw_numeric_value_at(1).unwrap(),
+            Some(DtaWriteRawNumericValue::Long(42)),
+        );
+        assert_eq!(source.numeric_replacements.get(), 27);
+        values[1] = c_int::MIN + 1;
+
+        let (bytes, replacements, _) =
+            encode_direct_test_rows(&[descriptor], &[DtaType::Long], values.len(), 1);
+        let expected_bytes = expected
+            .iter()
+            .flat_map(|value| value.to_le_bytes())
+            .collect::<Vec<_>>();
+        assert_eq!(bytes, expected_bytes);
+        assert_eq!(replacements, [27]);
+    }
+
+    #[test]
+    fn ordinary_integer_raw_values_decline_transforms_and_other_sources() {
+        let values = [42_i32];
+        for variant in 0..8 {
+            let mut descriptor = direct_numeric_descriptor(2, values.as_ptr().cast(), 1, 0.0, 1.0);
+            match variant {
+                0 => descriptor.direct_numeric_values = ptr::null(),
+                1 => descriptor.direct_numeric_kind = 0,
+                2 => descriptor.direct_numeric_kind = 2,
+                3 => descriptor.dta_type = 0,
+                4 => descriptor.dta_type = 4,
+                5 => descriptor.numeric_shift = 1.0,
+                6 => descriptor.numeric_scale = 2.0,
+                7 => descriptor.direct_numeric_temporal = 1,
+                _ => unreachable!(),
+            }
+            let source = RWriteSource::new(&descriptor, 1, 1, 1).unwrap();
+            assert_eq!(
+                source.raw_numeric_value_at(0).unwrap(),
+                None,
+                "variant {variant}"
+            );
+            assert_eq!(source.numeric_replacements.get(), 0);
+        }
+    }
+
     fn encode_direct_test_rows(
         descriptors: &[RWriteColumnDescriptor],
         dta_types: &[DtaType],
@@ -5788,8 +5978,13 @@ mod tests {
         };
         for version in [
             FormatVersion::V105,
+            FormatVersion::V108,
+            FormatVersion::V110,
             FormatVersion::V111,
             FormatVersion::V113,
+            FormatVersion::V114,
+            FormatVersion::V115,
+            FormatVersion::V117,
             FormatVersion::V118,
             FormatVersion::V119,
         ] {
@@ -5827,6 +6022,54 @@ mod tests {
                     unreachable!()
                 };
                 assert_eq!(data.missing_count, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn compact_byte_batch_preserves_short_tails_and_accumulated_counts() {
+        use crate::{
+            classify_byte_missing_for_version, DtaColumnSink, FormatVersion, NumericKind, RColumn,
+            RNumericData,
+        };
+        for version in [FormatVersion::V111, FormatVersion::V118] {
+            for count in [0, 1, 15, 16, 17, 31, 32, 33, 255, 256, 257] {
+                for stride in [1, 3, 17] {
+                    let values: Vec<u8> = (0..count).map(|row| (row + 99) as u8).collect();
+                    let mut source = vec![42_u8; count * stride];
+                    for (row, &value) in values.iter().enumerate() {
+                        source[row * stride] = value;
+                    }
+                    let mut output = vec![42_u8; count + 2];
+                    let mut column = RColumn::NumericAltRep {
+                        vector: ptr::null_mut(),
+                        data: RNumericData {
+                            backing: ptr::null_mut(),
+                            values: output.as_mut_ptr(),
+                            length: output.len(),
+                            kind: NumericKind::Byte,
+                            temporal: TemporalKind::None,
+                            format_version: version,
+                            missing_count: 7,
+                        },
+                    };
+                    assert!(column
+                        .try_push_byte_rows(1, count, &source, stride, version)
+                        .unwrap());
+                    assert_eq!(output[0], 42);
+                    assert_eq!(output[count + 1], 42);
+                    assert_eq!(&output[1..count + 1], values.as_slice());
+                    let expected = values
+                        .iter()
+                        .filter(|&&value| {
+                            classify_byte_missing_for_version(value as i8, version).is_some()
+                        })
+                        .count();
+                    let RColumn::NumericAltRep { data, .. } = column else {
+                        unreachable!()
+                    };
+                    assert_eq!(data.missing_count, 7 + expected);
+                }
             }
         }
     }
@@ -5878,6 +6121,177 @@ mod tests {
             unreachable!()
         };
         assert_eq!(data.missing_count, 2);
+    }
+
+    #[test]
+    fn eager_double_batches_preserve_scalar_bits_for_every_release_and_temporal_kind() {
+        use crate::{DtaColumnSink, EagerNumericKind, FormatVersion, MissingTag, RColumn};
+        use dta_tools::{ByteOrder, DOUBLE_MISSING_DOT_BITS, DOUBLE_MISSING_Z_BITS};
+
+        let system_missing = f64::from_bits(0x7ff0_0000_0000_07a2);
+        for release in [105, 108, 110, 111, 113, 114, 115, 117, 118, 119] {
+            let version = FormatVersion::try_from(release).unwrap();
+            let legacy = release <= 111;
+            let mut cases = vec![
+                (0, None),
+                (0x8000_0000_0000_0000, None),
+                (1.25_f64.to_bits(), None),
+                ((-42.5_f64).to_bits(), None),
+                (1, None),
+                (f64::NEG_INFINITY.to_bits(), None),
+                (0xfff8_0000_0000_1234, None),
+                (DOUBLE_MISSING_DOT_BITS - 1, None),
+                (
+                    0x54c0_0000_0000_0000,
+                    (release == 105).then_some(MissingTag::System),
+                ),
+            ];
+            for bits in [
+                DOUBLE_MISSING_DOT_BITS + 1,
+                DOUBLE_MISSING_Z_BITS + 1,
+                f64::MAX.to_bits(),
+                f64::INFINITY.to_bits(),
+                0x7ff0_0000_0000_0001,
+                0x7ff8_0000_0000_1234,
+            ] {
+                cases.push((bits, legacy.then_some(MissingTag::System)));
+            }
+            for offset in 0..=26 {
+                let tag = MissingTag::from_offset(offset).unwrap();
+                cases.push((
+                    tag.double_bits(),
+                    Some(if legacy { MissingTag::System } else { tag }),
+                ));
+            }
+            for order in [ByteOrder::Lsf, ByteOrder::Msf] {
+                for temporal in [
+                    TemporalKind::None,
+                    TemporalKind::Date,
+                    TemporalKind::Datetime,
+                ] {
+                    let stride = 19;
+                    let mut source = vec![42_u8; 3 + cases.len() * stride];
+                    let mut scalar_values = vec![123.0; cases.len() + 2];
+                    let mut batch_values = scalar_values.clone();
+                    let column = |output: &mut [f64]| RColumn::NumericEager {
+                        vector: ptr::null_mut(),
+                        output: output.as_mut_ptr(),
+                        length: output.len(),
+                        source_kind: EagerNumericKind::Double,
+                        temporal,
+                        system_missing,
+                    };
+                    let mut scalar = column(&mut scalar_values);
+                    let mut batch = column(&mut batch_values);
+                    for (row, &(bits, missing)) in cases.iter().enumerate() {
+                        let bytes = match order {
+                            ByteOrder::Lsf => bits.to_le_bytes(),
+                            ByteOrder::Msf => bits.to_be_bytes(),
+                        };
+                        source[3 + row * stride..3 + row * stride + 8].copy_from_slice(&bytes);
+                        scalar
+                            .push_double(row + 1, f64::from_bits(bits), missing)
+                            .unwrap();
+                    }
+                    assert!(batch
+                        .try_push_numeric_rows(
+                            1,
+                            cases.len(),
+                            &source[3..],
+                            stride,
+                            DtaType::Double,
+                            order,
+                            version,
+                        )
+                        .unwrap());
+                    assert_eq!(
+                        batch_values
+                            .iter()
+                            .map(|value| value.to_bits())
+                            .collect::<Vec<_>>(),
+                        scalar_values
+                            .iter()
+                            .map(|value| value.to_bits())
+                            .collect::<Vec<_>>(),
+                        "release {release}, order {order:?}, temporal {}",
+                        temporal as c_int,
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn eager_double_batches_validate_ranges_before_writing_and_decline_other_kinds() {
+        use crate::{DtaColumnSink, EagerNumericKind, FormatVersion, RColumn};
+        use dta_tools::ByteOrder;
+
+        let mut output = vec![123.0; 4];
+        let mut column = RColumn::NumericEager {
+            vector: ptr::null_mut(),
+            output: output.as_mut_ptr(),
+            length: output.len(),
+            source_kind: EagerNumericKind::Double,
+            temporal: TemporalKind::None,
+            system_missing: f64::from_bits(0x7ff0_0000_0000_07a2),
+        };
+        for (start, count, source, stride) in [
+            (3, 2, &[0_u8; 16][..], 8),
+            (usize::MAX, 2, &[0_u8; 16][..], 8),
+            (0, 2, &[0_u8; 15][..], 8),
+            (0, 2, &[0_u8; 16][..], 7),
+            (0, 3, &[0_u8; 16][..], usize::MAX),
+        ] {
+            assert!(column
+                .try_push_numeric_rows(
+                    start,
+                    count,
+                    source,
+                    stride,
+                    DtaType::Double,
+                    ByteOrder::Lsf,
+                    FormatVersion::V118,
+                )
+                .is_err());
+            assert_eq!(output, vec![123.0; 4]);
+        }
+        assert!(column
+            .try_push_numeric_rows(
+                4,
+                0,
+                &[],
+                0,
+                DtaType::Double,
+                ByteOrder::Lsf,
+                FormatVersion::V118,
+            )
+            .unwrap());
+        assert!(!column
+            .try_push_numeric_rows(
+                0,
+                1,
+                &[0_u8; 8],
+                8,
+                DtaType::Float,
+                ByteOrder::Lsf,
+                FormatVersion::V118,
+            )
+            .unwrap());
+        if let RColumn::NumericEager { source_kind, .. } = &mut column {
+            *source_kind = EagerNumericKind::Float;
+        }
+        assert!(!column
+            .try_push_numeric_rows(
+                0,
+                1,
+                &[0_u8; 8],
+                8,
+                DtaType::Double,
+                ByteOrder::Lsf,
+                FormatVersion::V118,
+            )
+            .unwrap());
+        assert_eq!(output, vec![123.0; 4]);
     }
 
     #[test]

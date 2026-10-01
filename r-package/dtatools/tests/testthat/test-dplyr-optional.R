@@ -59,6 +59,78 @@ test_that("native namespace loading and recoding leave dplyr unloaded", {
         normalizePath(getNamespaceInfo(asNamespace("dtatools"), "path")))
 })
 
+test_that("namespace profile setup preserves generation and traced fallbacks", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    expected <- .dtatools_public_mutation_build_expected()
+    for (stage in c("clean", "before-load", "after-load")) {
+        observed <- .dtatools_child_r("startup-generation-profile", function(stage, expected) {
+            stopifnot(!isNamespaceLoaded("dtatools"), !isNamespaceLoaded("dplyr"))
+            events <- new.env(parent = emptyenv())
+            events$hits <- 0L
+            events$throw <- FALSE
+            install_trace <- function() {
+                loadNamespace("vctrs")
+                suppressMessages(trace("vec_arith", where = asNamespace("vctrs"),
+                    tracer = function() {
+                        events$hits <- events$hits + 1L
+                        if (events$throw) stop("startup arithmetic callback", call. = FALSE)
+                    }, print = FALSE))
+            }
+            if (stage == "before-load") install_trace()
+            suppressPackageStartupMessages(library(dtatools))
+            if (stage == "after-load") install_trace()
+            if (stage != "clean") on.exit(suppressMessages(
+                untrace("vec_arith", where = asNamespace("vctrs"))), add = TRUE)
+            options(dtatools.generate_type = "double")
+            probe <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
+            run <- function(grouped, native, throwing = FALSE) {
+                probe("C_dtatools_probe_direct_final_mode", native)
+                probe("C_dtatools_probe_grouped_gen_mode", native)
+                events$throw <- FALSE
+                caller <- new.env(parent = globalenv())
+                caller$data <- as_dibble(tibble::tibble(
+                    x = dta_double(rep(c(1, 3), length.out = 41L)),
+                    g = dta_long(rep(c(1, 2), length.out = 41L))))
+                stat <- if (grouped) "C_dtatools_probe_grouped_gen_stats" else
+                    "C_dtatools_probe_direct_final_stats"
+                before <- probe(stat, FALSE)
+                events$hits <- 0L
+                events$throw <- throwing
+                error <- tryCatch({
+                    eval(if (grouped) quote(gen(data, y = x + 1, by = g)) else
+                        quote(gen(data, y = x + 1)), caller)
+                    NULL
+                }, error = conditionMessage)
+                hits <- events$hits
+                events$throw <- FALSE
+                published <- as.integer((probe(stat, FALSE) - before)[[3L]])
+                list(result = list(error = error, names = names(caller$data),
+                    values = lapply(caller$data, as.double),
+                    attributes = lapply(caller$data, attributes), hits = hits),
+                    published = published)
+            }
+            for (grouped in c(FALSE, TRUE)) {
+                ordinary <- run(grouped, FALSE)
+                native <- run(grouped, TRUE)
+                stopifnot(identical(native$result, ordinary$result),
+                    identical(native$result$values$y, rep(c(2, 4), length.out = 41L)),
+                    native$published == as.integer(expected && stage == "clean"))
+                if (stage != "clean") {
+                    stopifnot(native$result$hits > 0L)
+                    ordinary_error <- run(grouped, FALSE, TRUE)
+                    native_error <- run(grouped, TRUE, TRUE)
+                    stopifnot(identical(native_error, ordinary_error),
+                        identical(native_error$result$error, "startup arithmetic callback"),
+                        identical(native_error$result$names, c("x", "g")))
+                }
+            }
+            stopifnot(!isNamespaceLoaded("dplyr"))
+            TRUE
+        }, args = list(stage = stage, expected = expected), libpath = .libPaths())
+        expect_true(observed, info = stage)
+    }
+})
+
 test_that("optional method hooks and registry ownership survive real reloads", {
     skip_if_not_installed("callr")
     skip_if_not_installed("dplyr", "1.2.1")

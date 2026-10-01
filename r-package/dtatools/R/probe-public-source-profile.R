@@ -22,7 +22,7 @@
                   'NextMethod', 'sys.frame', 'tryCatch')
 )
 
-.probe_installed_public_profile <- function() {
+.probe_validate_public_artifacts <- function() {
     if (!identical(as.character(getRversion()), '4.6.1') ||
         !identical(as.character(R.version[['svn rev']]), '90187') ||
         !identical(as.character(getNamespaceVersion('rlang')), '1.3.0') ||
@@ -51,6 +51,11 @@
             C_dtatools_profile_file_fingerprints, native_paths)),
                    unname(native_fingerprints)))
         stop('public profile native dependencies differ')
+    invisible(NULL)
+}
+
+.probe_installed_public_profile <- function() {
+    .probe_validate_public_artifacts()
     owners <- sub('_tail$', '', names(.probe_public_source_manifest))
     dbs <- list()
     for (pkg in unique(owners)) {

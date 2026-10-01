@@ -26,7 +26,7 @@
     tryCatch({
         if (is.null(.probe_gen_extra_state$bodies))
             stop('gen profile unavailable')
-        .probe_installed_public_profile()
+        .probe_validate_public_artifacts()
         records <- list()
         for (pkg in names(.probe_grouped_gen_manifest)) {
             path <- system.file('R', pkg, package = pkg)
@@ -82,7 +82,7 @@
             stop('shared public profile unavailable')
         # This checks the exact external RDB and native artifacts before
         # fetching any additional installed source.
-        .probe_installed_public_profile()
+        .probe_validate_public_artifacts()
         records <- list()
         for (pkg in names(.probe_gen_extra_manifest)) {
             path <- system.file('R', pkg, package = pkg)

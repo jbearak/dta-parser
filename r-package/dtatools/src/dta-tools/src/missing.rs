@@ -259,7 +259,8 @@ pub fn classify_float_missing_bits_for_version(
     classify_float_missing_bits(bits)
 }
 
-pub(crate) fn classify_double_missing_bits_for_version(
+#[doc(hidden)]
+pub fn classify_double_missing_bits_for_version(
     bits: u64,
     version: FormatVersion,
 ) -> Option<MissingTag> {

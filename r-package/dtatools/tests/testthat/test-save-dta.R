@@ -993,3 +993,133 @@ test_that("numeric Stata calendar formats that remain numeric are preserved", {
     expect_identical(attr(actual, "format.stata", exact = TRUE), "%tmcY_m")
     expect_false(inherits(actual, c("Date", "POSIXct")))
 })
+
+test_that("mixed ordinary strings retain row order and numeric replacement warnings", {
+    rows <- 16385L
+    first_text <- rep_len(c("", "café", "row-three", NA_character_), rows)
+    second_text <- rep_len(c("last", "", "é", "first"), rows)
+    amount <- rep_len(c(1.25, Inf, NA_real_, tagged_missing("a")), rows)
+    other <- rep_len(c(-Inf, 2.5, NaN, 4.5), rows)
+    code <- rep_len(c(1, 100, NA_real_, tagged_missing("z")), rows)
+    data <- data.frame(
+        first_text = first_text, amount = amount, second_text = second_text,
+        other = other, code = dta_byte(code),
+        date = as.Date("2000-01-01") + rep_len(c(0, 1, NA_real_, 3), rows),
+        stringsAsFactors = FALSE
+    )
+    before <- datasig(data)
+    paths <- c(tempfile(fileext = ".dta"), tempfile(fileext = ".dta"))
+    on.exit(unlink(paths), add = TRUE)
+    warnings <- vector("list", 2L)
+    for (index in seq_along(paths)) {
+        observed <- list()
+        result <- withCallingHandlers(
+            save_dta(data, paths[[index]], strl_threshold = c(2045L, 1L)[[index]]),
+            warning = function(w) {
+                observed[[length(observed) + 1L]] <<- list(
+                    class = class(w)[[1L]], message = conditionMessage(w))
+                invokeRestart("muffleWarning")
+            }
+        )
+        warnings[[index]] <- observed
+        expect_identical(result, data)
+        actual <- read_dta(paths[[index]])
+        expected_first <- first_text
+        expected_first[is.na(expected_first)] <- ""
+        expected_amount <- amount
+        expected_amount[is.infinite(expected_amount)] <- NA_real_
+        expected_other <- other
+        expected_other[!is.finite(expected_other)] <- NA_real_
+        expect_identical(names(actual), names(data))
+        expect_identical(as.character(actual$first_text), expected_first)
+        expect_identical(as.character(actual$second_text), second_text)
+        expect_identical(as.double(actual$amount), expected_amount)
+        expect_identical(missing_tag(actual$amount), missing_tag(expected_amount))
+        expect_identical(as.double(actual$other), expected_other)
+        expect_identical(as.double(actual$code), code)
+        expect_identical(missing_tag(actual$code), missing_tag(code))
+        expect_identical(dta_storage_type(actual$code), "byte")
+        expect_identical(as.double(actual$date), as.double(data$date))
+        expect_s3_class(actual$date, "Date")
+    }
+    expect_identical(warnings[[1L]], warnings[[2L]])
+    expect_identical(vapply(warnings[[1L]], `[[`, "", "class"), c(
+        "dtatools_write_character_missing_warning",
+        "dtatools_write_numeric_replacement_warning"
+    ))
+    expect_match(warnings[[1L]][[2L]]$message,
+        "`amount` \\(4,096\\), `other` \\(8,193\\)")
+    expect_identical(datasig(data), before)
+})
+
+test_that("mixed fixed-string failures keep row-major error order and destination", {
+    invalid <- rawToChar(as.raw(0xff))
+    Encoding(invalid) <- "UTF-8"
+    data <- data.frame(
+        first_text = c("valid", invalid), amount = c(Inf, 1),
+        second_text = c(invalid, "valid"), stringsAsFactors = FALSE
+    )
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    sentinel <- charToRaw("existing destination")
+    writeBin(sentinel, path)
+    warnings <- character()
+    error <- tryCatch(withCallingHandlers(
+        save_dta(data, path),
+        warning = function(w) {
+            warnings <<- c(warnings, conditionMessage(w))
+            invokeRestart("muffleWarning")
+        }
+    ), error = identity)
+    expect_s3_class(error, "dtatools_write_native_error")
+    expect_identical(conditionMessage(error), paste0(
+        'column source failed for variable "second_text" at row 0: ',
+        "R character value is not valid UTF-8"
+    ))
+    expect_identical(warnings, character())
+    expect_identical(readBin(path, "raw", n = length(sentinel)), sentinel)
+})
+
+test_that("ordinary integer Stata-reserved values are replacements in both write routes", {
+    values <- c(NA_integer_, -.Machine$integer.max, -1L, 0L,
+        2147483620L, seq.int(2147483621L, .Machine$integer.max))
+    expected <- c(NA_real_, -2147483647, -1, 0, 2147483620, rep(NA_real_, 27L))
+    for (mixed in c(FALSE, TRUE)) {
+        data <- data.frame(x = values)
+        if (mixed) {
+            # Keep this base sequence lazy: a numeric callback must not
+            # prevent a later ordinary integer column's scalar raw read.
+            data <- data.frame(id = as.double(seq_along(values)), x = values,
+                text = rep("row", length(values)))
+        }
+        path <- tempfile(fileext = ".dta")
+        on.exit(unlink(path), add = TRUE)
+        expect_warning(save_dta(data, path), "`x`.*27")
+        actual <- read_dta(path, use_numeric_altrep = FALSE)
+        expect_identical(as.double(actual$x), expected)
+        expect_identical(missing_tag(actual$x), rep(NA_character_, length(values)))
+        expect_identical(dta_storage_type(actual$x), "long")
+        expect_identical(data$x, values)
+    }
+})
+
+test_that("ordinary integer writes observe preceding row callbacks at the read point", {
+    for (callback_first in c(FALSE, TRUE)) {
+        source <- c(1L, 2L, 3L)
+        called <- 0L
+        callback <- .Call(dtatools:::C_dtatools_callback_double, c(4, 5, 6), function() {
+            called <<- called + 1L
+            .Call(dtatools:::C_dtatools_patch_vector, source, NULL, 9L)
+        }, TRUE)
+        columns <- if (callback_first) list(callback = callback, x = source) else
+            list(x = source, callback = callback)
+        data <- structure(columns, class = "data.frame", row.names = c(NA_integer_, -3L))
+        path <- tempfile(fileext = ".dta")
+        on.exit(unlink(path), add = TRUE)
+        expect_silent(save_dta(data, path))
+        expect_identical(called, 1L)
+        actual <- read_dta(path, use_numeric_altrep = FALSE)
+        expect_identical(as.double(actual$x), if (callback_first) c(9, 9, 9) else c(1, 9, 9))
+        expect_identical(as.double(actual$callback), c(4, 5, 6))
+    }
+})
