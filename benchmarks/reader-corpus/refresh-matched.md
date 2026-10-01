@@ -26,7 +26,8 @@ qualification reads and twelve timed reads. Its timings are not publishable
 performance estimates. Focused tests run with
 `python3 -m unittest discover -s benchmarks/reader-corpus -p test_refresh_matched.py`.
 
-Preparation uses one fresh R process per file. It saves Arrow from an explicit
+Preparation uses one fresh R process per file, in bounded batches of four.
+`--prepare-workers 1` or `2` lowers that limit. It saves Arrow from an explicit
 tibble to retain the source's declared string widths, then compares complete
 DTA/Arrow signatures and dimensions within both tibble and dibble outputs.
 Warnings fail qualification. Cross-container signatures may differ under

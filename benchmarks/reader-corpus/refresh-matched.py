@@ -2,6 +2,7 @@
 """Refresh only dtatools on the recovered historical 1,812-file comparison set."""
 import argparse
 import csv
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import importlib.util
 import io
@@ -221,11 +222,12 @@ def prepare(args):
         peak_rss="wait4 maximum resident bytes of whole process", order="rotations each paired with its reverse by file",
         qualification="separate untimed DTA/Arrow complete signatures within each output; matching shapes; no warnings",
         preparation="Arrow saved from explicit tibble to preserve source declarations; converted before all timing",
+        preparation_workers=args.prepare_workers,
         historical_comparator_date="2026-08-24", historical_comparators_run=False,
         original_raw_tsv_recovered=False, membership="uniquely recovered historical set, bound to exact inventory bytes"))
     qualifications = {}
     environment = child_environment(Path(config["candidate_build_work"]) / "library")
-    for index, row in enumerate(inputs, 1):
+    def qualify(row):
         result_path = args.work / "qualification-private" / (row["id"] + ".json")
         job = dict(id=row["id"], dta=row["dta"], arrow=row["arrow"], reuse=row["reuse"],
                    library=str(Path(config["candidate_build_work"]) / "library"))
@@ -235,9 +237,17 @@ def prepare(args):
                   [job_path, result_path], environment)
         record = json.loads(result_path.read_text())
         validate_qualification(record, row["id"])
-        qualifications[row["id"]] = record
-        if index % 25 == 0 or index == len(inputs):
-            print(f"QUALIFIED {index}/{len(inputs)} files", flush=True)
+        return row["id"], record
+
+    # Only untimed preparation overlaps. Bound pending work to one batch so a
+    # failure finishes at most the other children in that batch before stopping.
+    with ThreadPoolExecutor(max_workers=args.prepare_workers) as pool:
+        for start in range(0, len(inputs), args.prepare_workers):
+            batch = inputs[start:start + args.prepare_workers]
+            qualifications.update(pool.map(qualify, batch))
+            completed = start + len(batch)
+            if completed // 25 != start // 25 or completed == len(inputs):
+                print(f"QUALIFIED {completed}/{len(inputs)} files", flush=True)
     write_json(args.work / "qualification.json", qualifications)
     require(binding(config, inputs) == before, "Bindings changed during preparation")
     qualified = binding(config, inputs, arrows=True)
@@ -317,6 +327,7 @@ def main():
     preparation.add_argument("--cache", type=lambda x: Path(x).resolve(), default=Path("/opt/aww_cache"))
     preparation.add_argument("--arrow-manifest", type=lambda x: Path(x).resolve())
     preparation.add_argument("--smoke", action="store_true")
+    preparation.add_argument("--prepare-workers", type=int, choices=(1, 2, 4), default=4)
     measurement = sub.add_parser("measure")
     measurement.add_argument("--work", type=lambda x: Path(x).resolve(), required=True)
     args = parser.parse_args()
