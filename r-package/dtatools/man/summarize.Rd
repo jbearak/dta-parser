@@ -129,6 +129,9 @@ as \code{"i.group##c.age"}, and time-series terms such as \code{"L.income"}.
 Supply \code{time}, and \code{panel} when needed, for time-series terms.
 Gaps in time produce missing lags or leads. Variable labels appear in
 detailed headings and value labels appear in factor-level rows.
+Numlist increments use their magnitude, with the direction determined by
+the endpoints. Each numlist may expand to at most 100,000 entries before
+duplicates are removed.
 
 R arguments provide the roles of Stata qualifiers and prefixes:
 \code{where} for \code{if}, \code{rows} for \code{in}, and \code{by} or an

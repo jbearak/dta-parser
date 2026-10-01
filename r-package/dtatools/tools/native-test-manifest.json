@@ -14853,7 +14853,7 @@
         },
         {
           "path": "tests/testthat/test-summarize-varlist.R",
-          "sha256": "ea12385d504b154b2fd6c98ce54ffe44377bba65152ab1b12b340ed0f04e1313"
+          "sha256": "a1490630faa31ebfc4d99516a6fa1ccffb5b0592cc4f7824f7d8a8e49a00c496"
         },
         {
           "path": "tests/testthat/test-summarize.R",
@@ -15075,6 +15075,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize bounds numlists before expanding any range",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize numlist increments follow native endpoint direction",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 19,
           "warnings": 0
         },
         {

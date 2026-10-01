@@ -487,19 +487,43 @@
 
 .summarize_numlist <- function(text) {
     tokens <- strsplit(trimws(text), "[[:space:],]+")[[1L]]
-    result <- unlist(lapply(tokens, function(token) {
+    limit <- 100000L
+    too_large <- function() stop("Factor or time-series numlist is too large", call. = FALSE)
+    if (length(tokens) > limit) too_large()
+    ranges <- vector("list", length(tokens))
+    total <- 0
+    for (i in seq_along(tokens)) {
+        token <- tokens[[i]]
         if (grepl("^[0-9]+/[0-9]+$", token)) {
             bounds <- as.double(strsplit(token, "/", fixed = TRUE)[[1L]])
-            seq.int(bounds[[1L]], bounds[[2L]])
-        } else if (grepl("^[0-9]+\\([0-9]+\\)[0-9]+$", token)) {
+            increment <- 1
+        } else if (grepl("^[0-9]+\\(-?[0-9]+\\)[0-9]+$", token)) {
             values <- as.double(strsplit(token, "[()]")[[1L]])
             if (values[[2L]] == 0) stop("Invalid zero numlist increment", call. = FALSE)
-            seq(values[[1L]], values[[3L]], by = values[[2L]])
-        } else if (grepl("^[0-9]+$", token)) as.double(token)
+            bounds <- values[c(1L, 3L)]
+            increment <- abs(values[[2L]])
+        } else if (grepl("^[0-9]+$", token)) {
+            bounds <- rep(as.double(token), 2L)
+            increment <- 1
+        }
         else stop("Invalid factor or time-series numlist: ", text, call. = FALSE)
-    }), use.names = FALSE)
-    if (length(result) > 100000L || any(result > .Machine$integer.max))
-        stop("Factor or time-series numlist is too large", call. = FALSE)
+        if (any(!is.finite(bounds)) || !is.finite(increment))
+            too_large()
+        difference <- bounds[[2L]] - bounds[[1L]]
+        count <- floor(abs(difference) / increment) + 1
+        total <- total + count
+        if (total > limit) too_large()
+        # Stata takes the increment's magnitude and the endpoints' direction.
+        step <- if (difference < 0) -increment else increment
+        last <- bounds[[1L]] + step * (count - 1)
+        if (!is.finite(last) || max(bounds[[1L]], last) > .Machine$integer.max) too_large()
+        ranges[[i]] <- c(from = bounds[[1L]], by = step, count = count)
+    }
+    # Validate every token, including the cumulative length, before allocating
+    # any expanded range. Duplicates still count toward the expansion limit.
+    result <- unlist(lapply(ranges, function(range)
+        seq.int(from = range[["from"]], by = range[["by"]], length.out = range[["count"]])),
+        use.names = FALSE)
     unique(result)
 }
 

@@ -26,6 +26,53 @@ test_that("summarize preserves literal names containing Stata punctuation", {
     expect_identical(result$statistics$mean, c(2, 5, 8, 11))
 })
 
+test_that("summarize bounds numlists before expanding any range", {
+    expanded <- FALSE
+    bounded <- .summarize_numlist
+    no_expansion <- function(...) {
+        expanded <<- TRUE
+        stop("Range expanded before validation")
+    }
+    environment(bounded) <- list2env(list(seq.int = no_expansion, seq = no_expansion),
+                                    parent = environment(bounded))
+    for (spec in c("0/2147483647", "0(1)2147483647", "2147483647(-1)0",
+                   "0/60000 0/60000", "0/99999 1", "0/99999 2147483648",
+                   paste0("0/", strrep("9", 400)))) {
+        expect_error(bounded(spec), "numlist is too large", info = spec)
+        expect_false(expanded, info = spec)
+    }
+    expect_error(bounded(paste(rep("1", 100001), collapse = " ")), "numlist is too large")
+    expect_false(expanded)
+    expect_equal(.summarize_numlist("0/49999 50000/99999"), 0:99999)
+    expect_equal(.summarize_numlist("0/49999 0/49999"), 0:49999)
+})
+
+test_that("summarize numlist increments follow native endpoint direction", {
+    expect_equal(.summarize_numlist("3(-1)1"), 3:1)
+    expect_equal(.summarize_numlist("3(1)1"), 3:1)
+    expect_equal(.summarize_numlist("1(-1)3"), 1:3)
+    expect_equal(.summarize_numlist("3(-2)0"), c(3, 1))
+    expect_equal(.summarize_numlist("3/1"), 3:1)
+    expect_equal(.summarize_numlist("3(-2)3"), 3)
+    expect_equal(.summarize_numlist("1(3000000000)2"), 1)
+    expect_error(.summarize_numlist("1(0)3"), "Invalid zero numlist increment")
+    expect_error(.summarize_numlist("1(-0)3"), "Invalid zero numlist increment")
+    expect_error(.summarize_numlist("1(+1)3"), "Invalid factor or time-series numlist")
+    data <- data.frame(a = c(0, 1, 2, 3, 0, 1), x = 1:6, t = 1:6)
+    expand <- function(spec) .summarize_varlist(data, spec, rep(TRUE, 6), time = "t")
+    expect_identical(expand("i(3(-1)1).a")$names, c("1.a", "2.a", "3.a"))
+    expect_identical(expand("i(3(1)1).a"), expand("i(3(-1)1).a"))
+    expect_identical(expand("i(1(-1)3).a"), expand("i(3(-1)1).a"))
+    expect_identical(expand("L(3(-1)1).x")$names, c("L3.x", "L2.x", "L.x"))
+    expect_identical(expand("L(3(-1)1).x")$values,
+                     list(c(NA, NA, NA, 1, 2, 3), c(NA, NA, 1, 2, 3, 4),
+                          c(NA, 1, 2, 3, 4, 5)))
+    expect_identical(expand("L(3(1)1).x"), expand("L(3(-1)1).x"))
+    expect_identical(expand("L(1(3000000000)2).x"), expand("L.x"))
+    expect_error(expand("i(0/2147483647).a"), "numlist is too large")
+    expect_error(expand("L(0(1)2147483647).x"), "numlist is too large")
+})
+
 test_that("summarize includes every default factor level and retains labels", {
     data <- data.frame(a = c(0, 1, 2, 0, 1, 2, NA), x = 1:7)
     attr(data$a, "labels") <- c(zero = 0, one = 1, two = 2)
