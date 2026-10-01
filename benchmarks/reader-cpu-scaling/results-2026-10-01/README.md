@@ -136,3 +136,8 @@ Their original versions are archived under [timing-harness](timing-harness/)
 and match the clean provenance's hashes. The read worker, Stata clock and clean
 timing controller were unchanged. The added postprocessor did not execute in
 any clean timed child.
+
+The profiler and tests used for the successful captures are retained at
+[revision ebc7204b](https://github.com/jbearak/dta-parser/tree/ebc7204bb46c8459c047abca213e48e72a9abf35/benchmarks/reader-cpu-scaling).
+Later sampler-timeout handling in the current runner does not change these
+measurements or their recorded hashes.

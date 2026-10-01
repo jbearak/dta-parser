@@ -1,7 +1,11 @@
 import importlib.util
+import io
+import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -78,6 +82,69 @@ Binary Images:
 """)
         self.assertEqual(counts, {"memcpy": 17, "_RNv_try_push_byte_rows": 2365})
         self.assertEqual(rejected, 7)
+
+    def run_profile(self, sampler_exit):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data = root / "input.dta"
+            data.write_bytes(b"fixture")
+            library = root / "library"
+            dll = library / "dtatools/libs/dtatools.so"
+            dll.parent.mkdir(parents=True)
+            dll.write_bytes(b"library")
+            timing = root / "provenance.json"
+            timing.write_text(json.dumps(dict(
+                inputs=dict(dta=dict(sha256=run.sha(data))),
+                installed={"libs/dtatools.so": run.sha(dll)},
+                protocol=dict(dimensions=dict(rows=7, columns=3)))))
+            timing.with_name("completion.json").write_text(json.dumps(dict(
+                final_bindings_matched=True, smoke=False)))
+            output, work = root / "public", root / "private"
+            worker = mock.Mock(pid=123, returncode=0)
+            worker.stdout = io.StringIO("READY\n")
+            worker.communicate.return_value = ("DONE\n", None)
+            worker.poll.return_value = 0
+
+            def sample(command, **kwargs):
+                Path(command[-1]).write_text(
+                    "Sort by top of stack:\n  17 memcpy (in R)\nBinary Images:\n")
+                if sampler_exit is None:
+                    raise profile.subprocess.TimeoutExpired(command, 60)
+                return profile.subprocess.CompletedProcess(command, sampler_exit)
+
+            argv = ["profile.py", "--library", str(library), "--dta", str(data),
+                "--output", str(output), "--work", str(work),
+                "--timing-provenance", str(timing), "--threads", "1",
+                "--rows", "7", "--columns", "3"]
+            with mock.patch.object(sys, "argv", argv), \
+                    mock.patch.object(profile.shutil, "which", return_value="Rscript"), \
+                    mock.patch.object(profile.subprocess, "Popen", return_value=worker), \
+                    mock.patch.object(profile.subprocess, "run", side_effect=sample) as sampler:
+                profile.main()
+            self.assertEqual(sampler.call_args.kwargs["timeout"], 60)
+            worker.communicate.assert_called_once_with(timeout=120)
+            worker.poll.assert_called_once_with()
+            worker.kill.assert_not_called()
+            self.assertEqual((work / "worker.log").read_text(), "READY\nDONE\n")
+            record = json.loads((output / "provenance.json").read_text())
+            self.assertTrue(record["final_bindings_matched"])
+            self.assertEqual(record["sampler_exit"], sampler_exit)
+            self.assertEqual(record["sampler_timeout_seconds"], 60)
+            return record, (output / "leaf-functions.csv").read_text()
+
+    def test_profile_sampler_exit_status(self):
+        for status in (0, 255):
+            with self.subTest(status=status):
+                record, leaves = self.run_profile(status)
+                self.assertEqual(record["available"], status == 0)
+                self.assertFalse(record["sampler_timed_out"])
+                self.assertIn("memcpy,17", leaves)
+
+    def test_profile_sampler_timeout_records_unavailable(self):
+        record, leaves = self.run_profile(None)
+        self.assertFalse(record["available"])
+        self.assertTrue(record["sampler_timed_out"])
+        self.assertEqual(leaves, "function,stack_sample_count\n")
 
     def test_qualification_binds_build_and_input(self):
         binding = dict(installed={"libs/dtatools.so": "dll"},

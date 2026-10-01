@@ -75,6 +75,9 @@ same library, DTA, dimensions, public output and private work arguments, plus
 `--timing-provenance` pointing to the completed, non-smoke clean run's
 `provenance.json`. The input and full installed package must match that run. This
 diagnostic is optional if sampling is unavailable or useful symbols are absent.
+The sampler has a 60-second limit. A timeout records `available = false` and
+`sampler_timed_out = true`, excludes partial stacks from the public summary,
+and continues through worker completion and cleanup.
 
 Only sanitized function names and collapsed leaf-stack counts are published.
 Raw stacks remain private. Sampling includes all threads, including idle waits,

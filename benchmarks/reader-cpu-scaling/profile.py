@@ -12,6 +12,8 @@ import subprocess
 
 from run import HERE, sha, overlapping_paths
 
+SAMPLER_TIMEOUT_SECONDS = 60
+
 
 def leaf_counts(text):
     """Accept only the collapsed leaf section, with no paths or addresses."""
@@ -91,22 +93,32 @@ def main():
             worker_lines.append(line)
             if line.strip() == "READY":
                 break
+        sampler_exit = None
+        sampler_timed_out = False
         with (args.work / "sampler.log").open("w") as stream:
-            sampler = subprocess.run(["/usr/bin/sample", str(process.pid), "5", "1",
-                "-mayDie", "-file", str(raw)], stdout=stream, stderr=subprocess.STDOUT)
+            try:
+                sampler = subprocess.run(["/usr/bin/sample", str(process.pid), "5", "1",
+                    "-mayDie", "-file", str(raw)], stdout=stream, stderr=subprocess.STDOUT,
+                    timeout=SAMPLER_TIMEOUT_SECONDS)
+                sampler_exit = sampler.returncode
+            except subprocess.TimeoutExpired:
+                sampler_timed_out = True
+                stream.write("\nSampler exceeded the 60-second limit.\n")
         tail, _ = process.communicate(timeout=120)
         worker_lines.append(tail)
         if process.returncode:
             raise RuntimeError("Profile worker failed")
         if input_hash != sha(args.dta) or installed != installed_inventory():
             raise ValueError("Profile input or candidate DLL changed")
-        counts, rejected = leaf_counts(raw.read_text()) if raw.exists() else ({}, 0)
+        counts, rejected = (leaf_counts(raw.read_text())
+            if raw.exists() and not sampler_timed_out else ({}, 0))
         with (args.output / "leaf-functions.csv").open("w", newline="") as stream:
             writer = csv.writer(stream)
             writer.writerow(("function", "stack_sample_count"))
             writer.writerows(sorted(counts.items(), key=lambda pair: (-pair[1], pair[0])))
-        record = dict(available=sampler.returncode == 0 and bool(counts),
-            sampler_exit=sampler.returncode, requested_threads=args.threads,
+        record = dict(available=sampler_exit == 0 and bool(counts),
+            sampler_exit=sampler_exit, sampler_timed_out=sampler_timed_out,
+            sampler_timeout_seconds=SAMPLER_TIMEOUT_SECONDS, requested_threads=args.threads,
             sample_seconds=5, sampling_interval_ms=1, worker_minimum_seconds=12,
             dimensions=dict(rows=args.rows, columns=args.columns),
             input_sha256=input_hash, package_dll_sha256=installed["libs/dtatools.so"],
