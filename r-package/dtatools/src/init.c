@@ -41,6 +41,8 @@ double owned_numeric_compatibility_bytes = 0.0;
 #include "egen-values.h"
 #include "egen-groups.h"
 
+SEXP C_dtatools_summarize_sum(SEXP x);
+
 /* THROWAWAY unique-target function-entry floor. */
 SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
                                   SEXP dependencies, SEXP s3_state,
@@ -164,6 +166,7 @@ SEXP C_dtatools_probe_bracket_generation_hook(SEXP ignored);
 SEXP C_dtatools_probe_bracket_pre_generation_hook(SEXP resolved);
 
 static const R_CallMethodDef CallEntries[] = {
+    {"C_dtatools_summarize_sum", (DL_FUNC) &C_dtatools_summarize_sum, 1},
     {"C_dtatools_grouped_active_mutate", (DL_FUNC) &C_dtatools_grouped_active_mutate, 1},
     {"C_dtatools_grouped_mode", (DL_FUNC) &C_dtatools_grouped_mode, 1},
     {"C_dtatools_grouped_stats", (DL_FUNC) &C_dtatools_grouped_stats, 1},
