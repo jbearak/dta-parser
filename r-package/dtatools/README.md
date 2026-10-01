@@ -99,10 +99,12 @@ The [dataset behavior guide](../../docs/r-dataset-behavior.md) covers copying,
 grouping and other advanced details. The
 [container guide](../../docs/r-containers.md) compares supported operations,
 and the [egen guide](../../docs/r-egen.md) explains grouped calculations.
+See the separate [generation and mutation performance guide](https://github.com/jbearak/dta-parser/blob/main/docs/r-generation-mutation-performance.md)
+for benchmarks of `gen()`, `replace_values()`, `:=`, and dibble `mutate()`.
 
 ## Why use dtatools?
 
-In the benchmarks below, `read_dta()` took about **30% longer than Stata** to
+In the historical benchmarks below, `read_dta()` took about **30% longer than Stata** to
 load the India file, while the synthetic merge workflows took about **61%
 less time for `1:m` and 71% less for `m:1`**. The merge comparison starts with
 both inputs loaded in R; Stata's timer includes reading the using file.
@@ -158,6 +160,19 @@ fresh process. The
 [report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/reader-parity/results-2026-09-16-india/README.md)
 records cache handling, background activity, settings and all observations.
 
+An October 1, 2026 paired comparison against v0.10.0 found mixed changes on
+this file. For the first read in each fresh R process, the reviewed build's
+`read_arrow()` median fell from 0.2910 to 0.2625 seconds, while `read_dta()`
+rose from 0.5995 to 0.6365 seconds. In a separate repeated-read control,
+`read_dta()` fell from 0.4070 to 0.3925 seconds and Arrow was essentially
+unchanged. Package loading rose from 0.083 to 0.195 seconds, outside those
+read-call timers, so neither gain implies faster fresh-process execution.
+The [release comparison](https://github.com/jbearak/dta-parser/blob/main/benchmarks/io-merge-review/results-2026-10-01/README.md)
+reports both timing boundaries and uncertainty. It does not replace the full
+corpus or historical competitor measurements above. See the
+[reader CPU assessment](https://github.com/jbearak/dta-parser/blob/main/docs/research/r-reader-cpu-assessment-2026-10-01.md)
+for thread scaling and optimization opportunities.
+
 ### Using `.arrow` dataset files
 
 Call `save_dta()` to write a standalone Stata 18/19 dataset or `save_arrow()`
@@ -201,6 +216,13 @@ and seven Stata iterations. The
 contains the source version, correctness checks, allocation measurements,
 dplyr and base R comparisons, and reproduction commands.
 
+The [October 1 release comparison](https://github.com/jbearak/dta-parser/blob/main/benchmarks/io-merge-review/results-2026-10-01/README.md)
+uses the same fixture schema but a different process and warmup protocol.
+Typed-column merges were unchanged from v0.10.0, at about 0.355 seconds for
+`1:m` and 0.382 seconds for `m:1`. Ordinary-R-column `m:1` rose from 0.109 to
+0.132 seconds, a repeatable regression; ordinary `1:m` was unchanged. These
+are release-to-release measurements, not a new comparison with Stata.
+
 ### Synthetic write benchmarks
 
 In the August 29, 2026 comparison on a 1 GB synthetic Stata-class fixture,
@@ -213,6 +235,12 @@ columns to double. The
 [Arrow report](../../benchmarks/arrow-interchange/results-2026-08-29.md)
 include the ordinary-R-column controls, Arrow comparisons, output sizes and
 memory measurements.
+
+In the [October 1 release comparison](https://github.com/jbearak/dta-parser/blob/main/benchmarks/io-merge-review/results-2026-10-01/README.md),
+the 1 GB typed fixture showed no clear improvement over v0.10.0 for either
+writer, at about 0.165 seconds for `save_dta()` and 0.246 for `save_arrow()`.
+The ordinary-R-column controls showed a small `save_dta()` slowdown. The
+historical Stata and haven comparisons above were not rerun.
 
 Keep using haven when you need to write older DTA releases or work with SAS and
 SPSS formats.

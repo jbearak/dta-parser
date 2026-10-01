@@ -1,0 +1,19 @@
+{
+  "stata-1": {
+    "processors": "1",
+    "MP": "1",
+    "processors_lic": "8",
+    "stata_version": "18"
+  },
+  "stata-8": {
+    "processors": "8",
+    "MP": "1",
+    "processors_lic": "8",
+    "stata_version": "18"
+  },
+  "R": [
+    "R version 4.6.1 (2026-06-24)",
+    "aarch64-apple-darwin25.4.0",
+    "0.10.0"
+  ]
+}

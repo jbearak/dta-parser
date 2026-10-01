@@ -17,6 +17,15 @@ regression gate for the R package's reference mutation paths. Its exact
 allocation, traversal, aliasing, and timing limits fail the run when a compact
 path regresses.
 
+The [October 1 correctness-review comparison](r-numeric-performance/review-2026-10-01/README.md)
+measures retained generation and mutation optimizations. The separate
+[I/O and merge comparison](io-merge-review/results-2026-10-01/README.md)
+compares the reviewed build with v0.10.0, including namespace startup and
+fresh versus repeated reads. The [reader CPU scaling study](reader-cpu-scaling/results-2026-10-01/README.md)
+compares same-interval CPU and wall time across Stata processor settings and
+R thread counts. These reports retain raw observations and describe their
+different timing boundaries; none imposes a performance gate.
+
 `DTA_BENCH_ITERATIONS` uses the same grammar in the Rust and TypeScript
 benchmarks: `0` or a non-zero ASCII digit followed by ASCII digits. Leading
 zeros, signs, whitespace, decimal points, exponents, non-decimal prefixes, and

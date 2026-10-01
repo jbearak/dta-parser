@@ -1,0 +1,31 @@
+{
+  "before_description": "Exact published grouped explicit-copy benchmark library; all recorded R/C implementation hashes match public pre-review code",
+  "before_commit": "c6c480c6d29c0d78bc6518e3420aeb770f809d7b",
+  "before_commit_availability": "Original local build identifier is not available in this checkout",
+  "before_public_R_C_source_match": "4a3687cbca9006ab46003c0307f051a60c63afeb",
+  "before_source_audit": "All 115 recorded R/C implementation SHA-256 values match the public revision; among these files immediate pre-review 87cf7680c5c30f17bc066b5e9c798ce36a8c5d2c changes one C comment only. Rust and build configuration are outside this audit.",
+  "after_commit": "cbabff67950308f67595af1808af4f99cdb9bc59",
+  "measurement_boundary": "After review PRs 270 through 274; before the subsequent configurable grouped-mutate capacity fix",
+  "worker_sha256": {
+    "validate-plain-grouped.R": "75cb0dc2a3a587ba7b5416afbde0f90b31d8d5497ecf3dc1df5d027bc2c27de2",
+    "analyze-experiments.py": "0a3c28f52def5982ddd76392a259059d9509b1394987fdbe4472acee555ff493"
+  },
+  "order": [
+    "before-a",
+    "after-a",
+    "after-b",
+    "before-b"
+  ],
+  "samples_per_case_per_build": 20,
+  "seeds": [
+    261001,
+    261002,
+    261003,
+    261004
+  ],
+  "scope": "Full unchanged validate-plain-grouped.R matrix, fixtures and validation outside timing",
+  "dll_sha256": {
+    "before": "7e7676c71d54f76bfcd78c5fbc8e762f766ed7957abe0a92312d6025317fc941",
+    "after": "1f27b1e6eff165a22f2ec13a86f3e2c361357c0038ace9da2ba9be6143ab6e80"
+  }
+}

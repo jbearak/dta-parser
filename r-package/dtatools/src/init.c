@@ -96,6 +96,7 @@ void dtatools_probe_gen_primitive_init(void);
 SEXP C_dtatools_grouped_active_mutate(SEXP ignored);
 SEXP C_dtatools_grouped_mode(SEXP);
 SEXP C_dtatools_grouped_stats(SEXP);
+SEXP C_dtatools_probe_grouped_capacity_hook(SEXP, SEXP);
 SEXP C_dtatools_grouped_disable(SEXP ignored);
 SEXP C_dtatools_grouped_guard_early(SEXP ignored);
 SEXP C_dtatools_grouped_guard_public(SEXP ignored);
@@ -166,6 +167,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_grouped_active_mutate", (DL_FUNC) &C_dtatools_grouped_active_mutate, 1},
     {"C_dtatools_grouped_mode", (DL_FUNC) &C_dtatools_grouped_mode, 1},
     {"C_dtatools_grouped_stats", (DL_FUNC) &C_dtatools_grouped_stats, 1},
+    {"C_dtatools_probe_grouped_capacity_hook", (DL_FUNC) &C_dtatools_probe_grouped_capacity_hook, 2},
     {"C_dtatools_grouped_disable", (DL_FUNC) &C_dtatools_grouped_disable, 1},
     {"C_dtatools_grouped_guard_early", (DL_FUNC) &C_dtatools_grouped_guard_early, 1},
     {"C_dtatools_grouped_guard_public", (DL_FUNC) &C_dtatools_grouped_guard_public, 1},

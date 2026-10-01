@@ -7,6 +7,11 @@
   paths are limited to their qualified input and runtime profiles; they do
   not imply universal parity with data.table or superiority to dplyr.
 
+* Grouped native `mutate()` creation honors valid non-default
+  `dtatools.alloccol` settings without falling back to R. Result capacity is
+  captured at reservation; invalid and dispatch-capable settings keep ordinary
+  R validation.
+
 * Canonical numeric construction, scalar addition and subtraction, storage
   checks, grouped double assembly, and expression-mask setup use native paths
   when their input and execution profiles are supported. Other profiles keep

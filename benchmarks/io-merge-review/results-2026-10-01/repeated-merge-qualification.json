@@ -1,0 +1,62 @@
+[
+  {
+    "kind": "typed",
+    "direction": "1:m",
+    "variant": "baseline",
+    "result": "QUALIFIED\ttyped\t1:m\t440044:201:37cf2f85174f84f6"
+  },
+  {
+    "kind": "typed",
+    "direction": "1:m",
+    "variant": "candidate",
+    "result": "QUALIFIED\ttyped\t1:m\t440044:201:37cf2f85174f84f6"
+  },
+  {
+    "kind": "typed",
+    "direction": "m:1",
+    "variant": "baseline",
+    "result": "QUALIFIED\ttyped\tm:1\t440044:201:c1960a5636d14771"
+  },
+  {
+    "kind": "typed",
+    "direction": "m:1",
+    "variant": "candidate",
+    "result": "QUALIFIED\ttyped\tm:1\t440044:201:c1960a5636d14771"
+  },
+  {
+    "kind": "ordinary",
+    "direction": "1:m",
+    "variant": "baseline",
+    "result": "QUALIFIED\tordinary\t1:m\t440044:201:65203ef08f3a6daf"
+  },
+  {
+    "kind": "ordinary",
+    "direction": "1:m",
+    "variant": "candidate",
+    "result": "QUALIFIED\tordinary\t1:m\t440044:201:65203ef08f3a6daf"
+  },
+  {
+    "kind": "ordinary",
+    "direction": "m:1",
+    "variant": "baseline",
+    "result": "QUALIFIED\tordinary\tm:1\t440044:201:88957c16eac0ba70"
+  },
+  {
+    "kind": "ordinary",
+    "direction": "m:1",
+    "variant": "candidate",
+    "result": "QUALIFIED\tordinary\tm:1\t440044:201:88957c16eac0ba70"
+  },
+  {
+    "kind": "one-column",
+    "direction": "1:m",
+    "variant": "baseline",
+    "result": "QUALIFIED\tone-column\t1:m\t440044:3:439e292fa4bb4121"
+  },
+  {
+    "kind": "one-column",
+    "direction": "1:m",
+    "variant": "candidate",
+    "result": "QUALIFIED\tone-column\t1:m\t440044:3:439e292fa4bb4121"
+  }
+]

@@ -6861,7 +6861,7 @@
         },
         {
           "path": "tests/testthat/test-grouped-double-admission.R",
-          "sha256": "d513ff4354bd5fa22c465b6c14d127fe12972eea8152b22c56ab0886b8472d96"
+          "sha256": "e324c77b9306e78cb9ad62e785603f43bb0416c591e3dc70906a350db63f73a4"
         }
       ],
       "blocks": [

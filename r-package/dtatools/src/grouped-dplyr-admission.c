@@ -14,6 +14,30 @@ extern SEXP R_PromiseExpr(SEXP);
 
 static int grouped_probe_enabled = 1;
 static int grouped_mode = 1, grouped_attempts = 0, grouped_publications = 0;
+/* One-shot diagnostic callback at the option-capture boundaries. */
+static SEXP grouped_capacity_hook = NULL;
+static int grouped_capacity_hook_phase = 0;
+SEXP C_dtatools_probe_grouped_capacity_hook(SEXP hook, SEXP phase) {
+    if (hook != R_NilValue &&
+        (TYPEOF(hook) != CLOSXP || TYPEOF(phase) != INTSXP ||
+         XLENGTH(phase) != 1 || INTEGER(phase)[0] < 1 || INTEGER(phase)[0] > 3))
+        Rf_error("invalid grouped capacity hook");
+    if (hook != R_NilValue) R_PreserveObject(hook);
+    if (grouped_capacity_hook != NULL) R_ReleaseObject(grouped_capacity_hook);
+    grouped_capacity_hook = hook == R_NilValue ? NULL : hook;
+    grouped_capacity_hook_phase = hook == R_NilValue ? 0 : INTEGER(phase)[0];
+    return R_NilValue;
+}
+static void probe_capacity_checkpoint(int phase) {
+    if (grouped_capacity_hook == NULL || grouped_capacity_hook_phase != phase) return;
+    SEXP hook = PROTECT(grouped_capacity_hook);
+    grouped_capacity_hook = NULL;
+    grouped_capacity_hook_phase = 0;
+    R_ReleaseObject(hook);
+    SEXP call = PROTECT(Rf_lang1(hook));
+    Rf_eval(call, R_GlobalEnv);
+    UNPROTECT(2);
+}
 SEXP C_dtatools_grouped_mode(SEXP value) {
     int next = Rf_asLogical(value);
     if (next == NA_LOGICAL) Rf_error("grouped mode must be TRUE or FALSE");
@@ -763,16 +787,23 @@ static int probe_reference_valid_noalloc(SEXP data) {
     return TYPEOF(owner) == EXTPTRSXP && R_ExternalPtrAddr(owner) == data;
 }
 
-/* This producer reserves the ordinary default spare capacity. Other values
-   need the R constructor's validation and configured allocation. */
-static int probe_default_alloccol_option(void) {
+/* Mirror .validate_alloccol only for scalars whose validation cannot dispatch
+   or materialize an ALTREP. All other options retain the ordinary R path. */
+static int probe_alloccol_capacity(R_xlen_t columns, double *capacity) {
     SEXP option = Rf_GetOption1(Rf_install("dtatools.alloccol"));
-    if (option == R_NilValue) return 1;
-    if ((TYPEOF(option) != INTSXP && TYPEOF(option) != REALSXP) ||
-        ALTREP(option) || ANY_ATTRIB(option) || XLENGTH(option) != 1)
+    double spare = 1024;
+    if (option != R_NilValue) {
+        if ((TYPEOF(option) != INTSXP && TYPEOF(option) != REALSXP) ||
+            ALTREP(option) || ANY_ATTRIB(option) || Rf_isS4(option) ||
+            XLENGTH(option) != 1) return 0;
+        spare = TYPEOF(option) == INTSXP ? INTEGER(option)[0] : REAL(option)[0];
+    }
+    if (!R_FINITE(spare) || spare < 0 || spare != floor(spare) ||
+        spare > 4503599627370495.0 - (double) columns ||
+        spare + (double) columns > (double) R_XLEN_T_MAX)
         return 0;
-    return TYPEOF(option) == INTSXP ? INTEGER(option)[0] == 1024 :
-        REAL(option)[0] == 1024.0;
+    *capacity = (double) columns + spare;
+    return 1;
 }
 
 static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
@@ -782,13 +813,15 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
     int mode = Rf_asInteger(mode_arg);
     int shape = mode % 10;
     R_xlen_t width = XLENGTH(data);
+    double reserved_capacity;
     if ((mode != 11 && mode != 15) ||
         TYPEOF(captured_columns) != VECSXP || ALTREP(captured_columns) ||
         XLENGTH(captured_columns) != width ||
         TYPEOF(data) != VECSXP || !Rf_inherits(data, "dibble") ||
         !dtatools_reference_state_valid_noalloc(data) ||
-        !probe_default_alloccol_option() ||
-        (width < 2 || width > 256)) return R_NilValue;
+        (width < 2 || width > 256) ||
+        !probe_alloccol_capacity(width + shape, &reserved_capacity)) return R_NilValue;
+    probe_capacity_checkpoint(1);
     SEXP names = Rf_getAttrib(captured_columns, R_NamesSymbol);
     SEXP classes = Rf_getAttrib(data, R_ClassSymbol);
     R_xlen_t source_index = width, group_index = width;
@@ -992,8 +1025,16 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
         Rf_setAttrib(out, tag,
                      tag == R_NamesSymbol ? out_names : saved_table_attrs.values[i]);
     }
-    SEXP capacity = PROTECT(Rf_ScalarReal((double) total + 1024));
+    /* The ordinary constructor forces its option at result reservation, not
+       at early admission. Honor changes made while the result was staged.
+       Once captured, later callbacks cannot change this result's capacity. */
+    probe_capacity_checkpoint(2);
+    if (!probe_alloccol_capacity(total, &reserved_capacity)) {
+        UNPROTECT(7); return R_NilValue;
+    }
+    SEXP capacity = PROTECT(Rf_ScalarReal(reserved_capacity));
     SEXP prepared = PROTECT(C_dtatools_reserve_column_capacity(out, capacity));
+    probe_capacity_checkpoint(3);
     SEXP state = PROTECT(R_NewEnv(R_EmptyEnv, TRUE, 29));
     SEXP base_classes = PROTECT(Rf_allocVector(STRSXP, 3));
     for (int i = 0; i < 3; i++)
@@ -1008,7 +1049,6 @@ static SEXP probe_dplyr_early_impl(SEXP data, SEXP mode_arg,
        modify the physical input after this capture, just as it can after the
        ordinary mask capture; publication must read only the frozen result. */
     if (!probe_public_bindings_same(0) ||
-        !probe_default_alloccol_option() ||
         (extra_public && !dtatools_probe_plain_public_guard()) ||
         !dtatools_reference_state_valid_noalloc(prepared) ||
         !probe_name_prefix_same(prepared, out_names, total) ||

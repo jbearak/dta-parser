@@ -1,0 +1,17 @@
+{
+  "root": "<checkout>",
+  "directory": "<run-dir>/warm",
+  "baseline": "<baseline-library>",
+  "candidate": "<candidate-library>",
+  "merge_directory": "<merge-fixtures>",
+  "reads": [
+    {
+      "id": "india",
+      "dta": "<input:india-dta>",
+      "arrow": "<input:india-arrow>",
+      "rows": 724115,
+      "columns": 5972
+    }
+  ],
+  "writes": []
+}

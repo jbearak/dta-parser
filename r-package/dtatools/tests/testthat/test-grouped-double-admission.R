@@ -151,31 +151,159 @@ test_that("native mutate preserves reserved evaluation symbols with colliding co
 test_that("grouped native mutate honors configured column capacity", {
     skip_if_not_installed("dplyr")
     if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
-    observed <- .dtatools_child_r("grouped-mutate-column-capacity", function() {
+    expected <- .dtatools_ungrouped_dplyr_build_expected()
+    observed <- .dtatools_child_r("grouped-mutate-column-capacity", function(expected) {
         library(dtatools)
         library(dplyr)
         cc <- function(name, ...) .Call(get(name, asNamespace("dtatools")), ...)
-        for (capacity in list(0L, 7L, -1L, NA_integer_, "invalid")) {
-            run <- function(enabled) {
-                options(dtatools.alloccol = 1024L)
-                d <- as_dibble(tibble::tibble(x = c(1, 2, 3, 4),
-                                            g = c(1, 1, 2, 2)))
-                options(dtatools.alloccol = capacity)
-                cc("C_dtatools_grouped_mode", enabled)
-                before <- cc("C_dtatools_grouped_stats", FALSE)
-                value <- tryCatch({
-                    result <- mutate(d, y = x + 1, .by = g)
-                    list(values = as.double(result$y), capacity = column_capacity(result))
-                }, error = conditionMessage)
-                list(value = value,
-                    count = as.integer((cc("C_dtatools_grouped_stats", FALSE) - before)[[2L]]))
-            }
-            ordinary <- run(FALSE)
-            native <- run(TRUE)
+        run <- function(capacity, enabled, five = FALSE, owned = FALSE) {
+            options(dtatools.alloccol = 1024L)
+            d <- if (owned) dibble(x = dta_double(c(1, 2, 3, 4)),
+                g = dta_long(c(1, 1, 2, 2))) else
+                as_dibble(tibble::tibble(x = c(1, 2, 3, 4), g = c(1, 1, 2, 2)))
+            options(dtatools.alloccol = capacity)
+            cc("C_dtatools_grouped_mode", enabled)
+            before <- cc("C_dtatools_grouped_stats", FALSE)
+            warnings <- character()
+            value <- tryCatch(withCallingHandlers({
+                result <- if (five) mutate(d, a = x + 1, b = x + 1,
+                    c = x + 1, e = x + 1, f = x + 1, .by = g) else
+                    mutate(d, y = x + 1, .by = g)
+                list(values = lapply(result, as.double),
+                    classes = lapply(result, class), capacity = column_capacity(result))
+            }, warning = function(w) {
+                warnings <<- c(warnings, conditionMessage(w))
+                invokeRestart("muffleWarning")
+            }), error = conditionMessage)
+            list(value = value, warnings = warnings,
+                count = as.integer((cc("C_dtatools_grouped_stats", FALSE) - before)[[2L]]))
+        }
+        for (capacity in list(NULL, 0L, 0, 1L, 7L, 7, 1024L, 2048L, 4096))
+        for (five in c(FALSE, TRUE)) for (owned in c(FALSE, TRUE)) {
+            ordinary <- run(capacity, FALSE, five, owned)
+            native <- run(capacity, TRUE, five, owned)
+            stopifnot(identical(native$value, ordinary$value),
+                identical(native$warnings, ordinary$warnings))
+            spare <- if (is.null(capacity)) 1024 else capacity
+            stopifnot(native$value$capacity == 2 + (if (five) 5 else 1) + spare,
+                native$count == as.integer(expected), ordinary$count == 0L)
+        }
+        altrep_capacity <- dta_long(7)
+        attributes(altrep_capacity) <- NULL
+        for (capacity in list(-1L, NA_integer_, NA_real_, NaN, Inf, 0.5,
+                              TRUE, "invalid", numeric(), c(1, 2),
+                              2^52 - 1, setNames(7, "spare"), asS4(7), altrep_capacity)) {
+            ordinary <- run(capacity, FALSE)
+            native <- run(capacity, TRUE)
             stopifnot(identical(native, ordinary), native$count == 0L)
         }
+        hits <- 0L
+        fail <- FALSE
+        assign("is.na.alloccol_probe", function(x) {
+            hits <<- hits + 1L
+            warning("column capacity method warning")
+            if (fail) stop("column capacity method error")
+            NextMethod()
+        }, envir = .GlobalEnv)
+        for (throwing in c(FALSE, TRUE)) {
+            fail <- throwing
+            hits <- 0L
+            ordinary <- run(structure(7, class = "alloccol_probe"), FALSE)
+            ordinary_hits <- hits
+            hits <- 0L
+            native <- run(structure(7, class = "alloccol_probe"), TRUE)
+            stopifnot(identical(native, ordinary), native$count == 0L,
+                hits == ordinary_hits, hits > 0L,
+                identical(native$warnings, "column capacity method warning"))
+            if (throwing) stopifnot(identical(native$value, "column capacity method error"))
+        }
+        if (expected) {
+            fail <- FALSE
+            late_option <- function(phase, next_capacity, enabled, five) {
+                options(dtatools.alloccol = 1024L)
+                d <- dibble(x = c(1, 2, 3, 4), g = dta_long(c(1, 1, 2, 2)))
+                options(dtatools.alloccol = 7L)
+                cc("C_dtatools_grouped_mode", enabled)
+                callbacks <- 0L
+                hits <<- 0L
+                change <- function() {
+                    callbacks <<- callbacks + 1L
+                    options(dtatools.alloccol = next_capacity)
+                }
+                if (enabled) {
+                    cc("C_dtatools_probe_grouped_capacity_hook", change, phase)
+                    on.exit(cc("C_dtatools_probe_grouped_capacity_hook", NULL, 0L))
+                } else {
+                    name <- if (phase == 3L) ".mark_fresh_reference" else ".reserve_column_capacity"
+                    tracer <- substitute({
+                        if (AFTER) force(data)
+                        CHANGE()
+                    }, list(AFTER = phase == 3L, CHANGE = change))
+                    suppressMessages(trace(name, tracer = tracer,
+                        where = asNamespace("dtatools"), print = FALSE))
+                    on.exit(suppressMessages(untrace(name, where = asNamespace("dtatools"))))
+                }
+                before <- cc("C_dtatools_grouped_stats", FALSE)
+                warnings <- character()
+                value <- tryCatch(withCallingHandlers({
+                    result <- if (five) mutate(d, a = x + 1, b = x + 1,
+                        c = x + 1, e = x + 1, f = x + 1, .by = g) else
+                        mutate(d, y = x + 1, .by = g)
+                    list(values = lapply(result, as.double), capacity = column_capacity(result))
+                }, warning = function(w) {
+                    warnings <<- c(warnings, conditionMessage(w))
+                    invokeRestart("muffleWarning")
+                }), error = conditionMessage)
+                list(value = value, warnings = warnings, callbacks = callbacks,
+                    hits = hits, option = getOption("dtatools.alloccol"),
+                    count = as.integer((cc("C_dtatools_grouped_stats", FALSE) - before)[[2L]]))
+            }
+            for (phase in 1:3) for (five in c(FALSE, TRUE))
+            for (next_capacity in list(0L, 2048L, NULL, -1L,
+                                       structure(7, class = "alloccol_probe"))) {
+                ordinary <- late_option(phase, next_capacity, FALSE, five)
+                native <- late_option(phase, next_capacity, TRUE, five)
+                stopifnot(identical(native[names(native) != "count"],
+                                    ordinary[names(ordinary) != "count"]),
+                    native$callbacks == 1L, ordinary$count == 0L)
+                admitted <- phase == 3L || is.null(next_capacity) ||
+                    (is.null(attributes(next_capacity)) && next_capacity >= 0)
+                stopifnot(native$count == as.integer(admitted))
+                if (phase == 3L) stopifnot(native$value$capacity ==
+                    2 + (if (five) 5 else 1) + 7)
+            }
+            options(dtatools.alloccol = 7L)
+            d <- dibble(x = c(1, 2, 3, 4), g = dta_long(c(1, 1, 2, 2)))
+            cc("C_dtatools_grouped_mode", TRUE)
+            on.exit(cc("C_dtatools_probe_grouped_capacity_hook", NULL, 0L), add = TRUE)
+            callbacks <- 0L
+            local({
+                cc("C_dtatools_probe_grouped_capacity_hook", function() {
+                    callbacks <<- callbacks + 1L
+                    gc()
+                    nested <- mutate(d, y = x + 1, .by = g)
+                    stopifnot(column_capacity(nested) == 10)
+                }, 2L)
+            })
+            gc()
+            before <- cc("C_dtatools_grouped_stats", FALSE)
+            result <- mutate(d, y = x + 1, .by = g)
+            stopifnot(callbacks == 1L, column_capacity(result) == 10,
+                (cc("C_dtatools_grouped_stats", FALSE) - before)[[2L]] == 2L)
+            for (phase in 1:3) {
+                cc("C_dtatools_probe_grouped_capacity_hook", function()
+                    stop("column capacity checkpoint error"), phase)
+                error <- tryCatch({ mutate(d, y = x + 1, .by = g); NULL },
+                    error = conditionMessage)
+                stopifnot(identical(error, "column capacity checkpoint error"))
+                before <- cc("C_dtatools_grouped_stats", FALSE)
+                result <- mutate(d, y = x + 1, .by = g)
+                stopifnot(column_capacity(result) == 10, identical(names(d), c("x", "g")),
+                    (cc("C_dtatools_grouped_stats", FALSE) - before)[[2L]] == 1L)
+            }
+        }
         TRUE
-    }, libpath = .libPaths())
+    }, args = list(expected = expected), libpath = .libPaths())
     expect_true(observed)
 })
 
