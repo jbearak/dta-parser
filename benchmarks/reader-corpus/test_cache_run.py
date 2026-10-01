@@ -31,22 +31,38 @@ class InventoryTests(unittest.TestCase):
             with self.subTest(actual=actual, expected=expected), self.assertRaises(RuntimeError):
                 RUN.validate_inventory_count(actual, expected)
 
-    def test_all_corpora_and_case_suffixes_but_no_symlink_aliases(self):
+    def test_only_survey_roots_and_case_suffixes_but_no_symlink_aliases(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for corpus in ("DHS", "MICS", "NSFG", "ENADID", "WFS", "CFR"):
+            for corpus in RUN.SURVEY_CORPORA:
                 directory = root / corpus
                 directory.mkdir()
                 (directory / "data.DTA").write_bytes(b"\x71fixture")
                 (directory / "ignored.csv").write_text("x\n")
             (root / "MICS/empty.dta").write_bytes(b"")
+            (root / "unrelated-project").mkdir()
+            (root / "unrelated-project/research.dta").write_bytes(b"\x71excluded")
+            (root / "top-level.dta").write_bytes(b"\x71excluded")
             (root / "MICS/alias").symlink_to(root / "DHS", target_is_directory=True)
             (root / "MICS/linked.dta").symlink_to(root / "DHS/data.DTA")
             observed = RUN.inventory(root)
-            self.assertEqual(len(observed["files"]), 7)
+            self.assertEqual(len(observed["files"]), 6)
             self.assertEqual(len(observed["skipped_symlinks"]), 2)
-            self.assertEqual(len({row["id"] for row in observed["files"]}), 7)
+            self.assertEqual(len({row["id"] for row in observed["files"]}), 6)
+            self.assertEqual({row["corpus"] for row in observed["files"]}, set(RUN.SURVEY_CORPORA))
             self.assertEqual(sum(row["bytes"] == 0 for row in observed["files"]), 1)
+
+    def test_missing_survey_root_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name in RUN.SURVEY_CORPORA[:-1]:
+                (root / name).mkdir()
+            with self.assertRaisesRegex(RuntimeError, "All five survey roots"):
+                RUN.inventory(root)
+            (root / "unrelated-storage").mkdir()
+            (root / RUN.SURVEY_CORPORA[-1]).symlink_to(root / "unrelated-storage", target_is_directory=True)
+            with self.assertRaisesRegex(RuntimeError, "All five survey roots"):
+                RUN.inventory(root)
 
     def test_exclusion_requires_stable_id_corpus_bytes_and_hash(self):
         digest = "a" * 64

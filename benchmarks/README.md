@@ -34,13 +34,14 @@ paired uncertainty intervals, CPU time and peak RSS. The
 describes the formats and metadata contracts behind those comparisons.
 
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
-measures `read_dta()` for every regular DTA input in all six cache collections,
-with both tibble and dibble outputs. Its 3,764 attempts include the two known
-malformed inputs for both containers; aggregate times cover 1,880 readable files.
+reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
+ENADID and WFS survey datasets, with both tibble and dibble outputs. Its 3,762
+survey attempts include the two known malformed inputs for both containers;
+aggregate times cover 1,879 readable files.
 
 The [full-cache Stata oracle](r-corpus-roundtrip/results-2026-10-01.md)
-qualifies DTA and Arrow round trips across all 1,880 readable files in the
-six-corpus cache, with two hash-bound malformed-input exclusions. It reruns
+qualifies DTA and Arrow round trips across all 1,879 readable files in the
+five survey datasets, with two hash-bound malformed-input exclusions. It reruns
 live Stata comparisons without invoking Haven.
 
 The [I/O optimization screens](io-optimization/README.md) compare individual

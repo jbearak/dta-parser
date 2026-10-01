@@ -23,12 +23,13 @@ class AdapterTests(unittest.TestCase):
             self.assertEqual(changed, {"benchmarks/r-corpus-roundtrip/common.R",
                 "benchmarks/r-corpus-roundtrip/verify.R"})
             staged = work / "harness/benchmarks/r-corpus-roundtrip"
-            self.assertIn('c("ENADID", "WFS", "CFR")', (staged / "common.R").read_text())
+            self.assertEqual(ORACLE.COUNTS, {"ENADID": 17, "WFS": 41})
+            self.assertIn('c("ENADID", "WFS")', (staged / "common.R").read_text())
             verifier = (staged / "verify.R").read_text()
-            self.assertIn('nrow(results) == 59L', verifier)
-            self.assertIn('sum(results$status == "pass") == 59L', verifier)
+            self.assertIn('nrow(results) == 58L', verifier)
+            self.assertIn('sum(results$status == "pass") == 58L', verifier)
             self.assertIn('sum(results$status == "expected-exclusion") == 0L', verifier)
-            self.assertIn('c(17L, 41L, 1L)', verifier)
+            self.assertIn('c(17L, 41L)', verifier)
             self.assertIn('any(inventory$release != 118L)', verifier)
             self.assertIn('full verification', verifier)
             self.assertNotIn('1823L', verifier)

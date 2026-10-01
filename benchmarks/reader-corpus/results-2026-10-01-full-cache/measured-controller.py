@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Qualify every DTA in the five survey roots, then time tibble/dibble reads."""
+"""Qualify every cache DTA, then time current tibble/dibble reads without comparators."""
 import argparse
 import csv
 from datetime import datetime, timezone
@@ -25,7 +25,6 @@ SPEC = importlib.util.spec_from_file_location("cache_build_records", HERE.parent
 BUILDS = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUILDS)
 OUTPUTS = ("tibble", "dibble")
-SURVEY_CORPORA = ("DHS", "MICS", "NSFG", "ENADID", "WFS")
 QUALIFICATION_POLICY = "complete-signature-within-output-v2"
 CONTROLLER = "benchmarks/reader-corpus/cache-run.py"
 SOURCE_ARTIFACTS = ("config-private.json", "inventory-private.json", "inputs-private.json",
@@ -54,15 +53,10 @@ def write_csv(path, rows):
 
 def inventory(cache):
     require(cache.is_dir() and not cache.is_symlink(), "Cache root must be an ordinary directory")
-    require(all((cache / name).is_dir() and not (cache / name).is_symlink()
-                for name in SURVEY_CORPORA), "All five survey roots must be ordinary directories")
     files, aliases = [], []
     def fail(error):
         raise error
     for parent, directories, names in os.walk(cache, followlinks=False, onerror=fail):
-        if Path(parent) == cache:
-            directories[:] = [name for name in directories if name in SURVEY_CORPORA]
-            names = []
         for name in directories[:]:
             path = Path(parent) / name
             if path.is_symlink():
@@ -90,7 +84,7 @@ def inventory(cache):
     files.sort(key=lambda row: row["relative_path"])
     require(files and len({r["id"] for r in files}) == len(files), "Empty or duplicate inventory")
     return dict(files=files, skipped_symlinks=sorted(aliases),
-        policy="Every regular case-insensitive .dta file within DHS, MICS, NSFG, ENADID and WFS; no file or directory symlinks")
+        policy="Every regular case-insensitive .dta file; no file or directory symlinks")
 
 
 def qualification_records(path, files):

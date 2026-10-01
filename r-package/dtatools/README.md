@@ -6,9 +6,9 @@ missing values, merge and append datasets, and save Stata or Arrow files.
 Use the Arrow-based `.arrow` format for performance-sensitive workloads or
 data frames that mix Stata and ordinary R column types.
 
-The October 1, 2026 full-cache benchmark covered 1,880 readable files totaling
-57.1 GB. Summed `read_dta()` call times were 31.794 seconds for tibbles and
-37.325 seconds for dibbles, using a warm filesystem cache. A separate paired
+The October 1, 2026 benchmark covered 1,879 readable survey files totaling
+57.1 GB. Summed `read_dta()` call times were 31.792 seconds for tibbles and
+37.323 seconds for dibbles, using a warm filesystem cache. A separate paired
 comparison on the 5.2 GB India survey file recorded a 0.2265-second median
 `read_arrow()` call for tibble output. See the
 [benchmark results and methods](#why-use-dtatools) for CPU time, peak RSS and
@@ -122,14 +122,15 @@ before the subsequent full-cache rerun below; Haven was not rerun for that work.
 
 ### Fast imports from existing Stata files
 
-The October 1, 2026 rerun attempted every regular `.dta` file under
-`/opt/aww_cache`: 1,882 files across six collections, with both tibble and
-dibble outputs. All 1,880 readable files passed. The two known malformed MICS
-files were attempted for both outputs and retained as exact, hash-checked
+The October 1, 2026 benchmark covers every regular `.dta` file in the DHS,
+MICS, NSFG, ENADID and WFS survey datasets under `/opt/aww_cache`: 1,881 files,
+with both tibble and dibble outputs. All 1,879 readable files passed. The two
+known malformed MICS files were attempted for both outputs and retained as exact, hash-checked
 exclusions. Two directory symlinks alias files already counted and were not
 followed.
 
-The tables sum one successful `read_dta()` call per file and output. GB means
+The tables select the five survey datasets from the completed measurements
+and sum one successful `read_dta()` call per file and output. GB means
 1,000,000,000 bytes. CPU time sums work across cores.
 
 | Corpus | Readable files | DTA GB | Tibble read wall | Dibble read wall |
@@ -139,13 +140,12 @@ The tables sum one successful `read_dta()` call per file and output. GB means
 | NSFG | 229 | 5.777 | 4.812 s | 5.648 s |
 | ENADID | 17 | 0.554 | 0.454 s | 0.500 s |
 | WFS | 41 | 0.130 | 0.200 s | 0.243 s |
-| CFR | 1 | 0.001 | 0.002 s | 0.002 s |
-| Total | 1,880 | 57.115 | 31.794 s | 37.325 s |
+| Total | 1,879 | 57.114 | 31.792 s | 37.323 s |
 
 | Output | Read CPU total | Process CPU total | Maximum individual peak RSS |
 | --- | ---: | ---: | ---: |
-| tibble | 83.447 s | 583.876 s | 5.257 GB |
-| dibble | 89.016 s | 589.402 s | 5.254 GB |
+| tibble | 83.446 s | 583.614 s | 5.257 GB |
+| dibble | 89.014 s | 589.140 s | 5.254 GB |
 
 Each attempt used a fresh R process, automatic threads and default numeric
 ALTREP on a shared Apple M4 Max. Hashing each source immediately before its
@@ -155,10 +155,10 @@ not the elapsed time to execute the benchmark. Process CPU and peak RSS also
 include startup, package loading, result checks and shutdown; peak RSS is the
 largest individual process peak, not a sum over files.
 
-Before timing, 7,528 untimed reads compared complete value-and-metadata
-signatures, dimensions and warning/error behavior between the baseline and
-optimized builds, separately for each container. The baseline was used for
-correctness qualification only. These batch totals do not estimate a
+Before timing, these survey files had 7,524 untimed reads comparing complete
+value-and-metadata signatures, dimensions and warning/error behavior between
+the baseline and optimized builds, separately for each container. The baseline
+was used for correctness qualification only. These batch totals do not estimate a
 before/after speedup.
 The [full-cache report](../../benchmarks/reader-corpus/results-2026-10-01-full-cache/README.md)
 records source `61954ee8`, all coverage and resource totals, background-load
@@ -213,9 +213,10 @@ discusses thread scaling.
 
 ### Full-cache Stata conformance
 
-The October 1 rerun covered all 1,882 regular `.dta` files beneath
-`/opt/aww_cache`. All 1,880 readable inputs passed both direct DTA and
-Arrow-mediated round trips, for 3,760 successful live-Stata comparisons.
+The October 1 conformance suite covers all 1,881 regular `.dta` files in the
+DHS, MICS, NSFG, ENADID and WFS survey datasets beneath `/opt/aww_cache`. All
+1,879 readable inputs passed both direct DTA and Arrow-mediated round trips,
+for 3,758 successful live-Stata comparisons.
 The two known malformed MICS inputs were the only exclusions, each matched
 by identity, byte count and SHA-256. No Haven reader or comparator was rerun.
 

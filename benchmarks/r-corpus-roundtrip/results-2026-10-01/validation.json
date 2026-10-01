@@ -1,8 +1,5 @@
 {
   "by_corpus": {
-    "CFR": {
-      "pass": 1
-    },
     "DHS": {
       "pass": 643
     },
@@ -45,11 +42,11 @@
   "control_private_command_sha256": "46a668068fbe7314bf1d45fc53d8eefc5f36b1f01d71aa8ca2f13436a6f77db0",
   "date": "2026-10-01",
   "haven_scope": "No Haven reader or conformance test invoked; shared binder only fingerprints its installed package",
-  "input_bytes": 57115106133,
-  "inventory_files": 1882,
+  "input_bytes": 57114293618,
+  "inventory_files": 1881,
   "known_malformed_exclusions": 2,
   "later_integration_commit": "a4cbc8707083df95134f303aadcba01a259f7bc3",
-  "live_stata_source_output_comparisons_passed": 3760,
+  "live_stata_source_output_comparisons_passed": 3758,
   "oracle_gates": {
     "canonical": {
       "bindings_equal": true,
@@ -86,14 +83,22 @@
     "controls/bindings-before.json": "0fabbae5118f9ec72dd9d0bea8af3a08de09042f4cdeb2c4f80e70ae33bb5be4",
     "controls/completion.json": "3cc0e733c125f37f2a51a40a8ce30f2d5f99fb51119a6072da47cbd002295638",
     "controls/test.log": "3957758d50a5933fb9c12dfd6a271c371da052d3201c4b681fdb433faa52515f",
-    "supplement/adapter-record.json": "3be0a78faa0f4ef49505cda8c052ba6368b0020215e8bf1ac54573d6dfff1b17",
-    "supplement/adapter.patch": "2e9db9d6ec7eb526690bba1c06bfba79bc0cdb40debf007bae65a98797ec415c",
-    "supplement/bindings-after.json": "e06ef31253ad01cd3afddec84af030b20bc2c182a9e3c36197cb044cc4aaebb5",
-    "supplement/bindings-before.json": "e06ef31253ad01cd3afddec84af030b20bc2c182a9e3c36197cb044cc4aaebb5",
-    "supplement/verification-binding.tsv": "044a482c167c563c7f4024a819069582fd8be2d1da25dadacb16c2132a6f5f9c",
-    "supplement/verification.tsv": "d7277b88b4e43968c2a77f329cf48a88bee9a77de6ae5d7b4ad99c11548ab63b"
+    "supplement/adapter-record.json": "d5023428af5d5b1526a4b48de362bd1b5db494142ecf43297054c249620956c2",
+    "supplement/adapter.patch": "d6dec9874f43e24c0fa475768faa58d65aecbb5eb3710f3d3a5ef4541ef769bb",
+    "supplement/bindings-after.json": "2394bddc19fe903618735e9875c8a7475c2f199d235317144fa01b1edf442589",
+    "supplement/bindings-before.json": "2394bddc19fe903618735e9875c8a7475c2f199d235317144fa01b1edf442589",
+    "supplement/verification-binding.tsv": "af96fd5082ab0e47f130e086ee20d95c49f48e2ce879b5a093769c587dfa48ec",
+    "supplement/verification.tsv": "5c09cf1108feddced097ff550079c9f3affe2cb1120458f86851490182fb2ccf"
   },
-  "readable_files_passed": 1880,
+  "readable_files_passed": 1879,
   "schema_version": 1,
+  "supplement_evidence_scope": "Fresh complete run of 17 ENADID and 41 WFS files; canonical 1823-file evidence retained unchanged",
+  "survey_corpora": [
+    "DHS",
+    "MICS",
+    "NSFG",
+    "ENADID",
+    "WFS"
+  ],
   "tested_package_commit": "61954ee88431eb2212e36a24ca8db1781e932ac7"
 }

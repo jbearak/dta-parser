@@ -5,9 +5,9 @@ for current `read_dta()` totals and the
 [September 16 results](results-2026-09-16-base-r/README.md) for the historical
 DTA/Arrow comparison.
 
-For the expanded six-corpus `read_dta()` rerun with explicit tibble and dibble
-outputs, use the [full-cache protocol](cache-run.md). It inventories all 1,882
-current regular DTA files and has separate qualification and measurement
+For the expanded five-survey `read_dta()` rerun with explicit tibble and dibble
+outputs, use the [survey-cache protocol](cache-run.md). It inventories all 1,881
+current regular DTA files within DHS, MICS, NSFG, ENADID and WFS, and has separate qualification and measurement
 commands. The historical DTA/Arrow workflow below retains its original
 1,823-file inventory and 1,812-file comparator subset.
 

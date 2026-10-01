@@ -1,14 +1,15 @@
-# Full-cache Stata oracle without Haven reads
+# Stata oracle for five survey corpora without Haven reads
 
 The exact Stata verifier in `verify.R` covers the established DHS, MICS and
 NSFG corpus. Its full gate remains unchanged: 1,823 files must produce
 1,821 passes and the two known MICS exclusions, each bound to its stable ID,
-byte length and SHA-256. `verify-extra-cache.py` adds the 59 regular DTA files
-in ENADID, WFS and CFR. The two gates together cover 1,882 files. Directory
-and file symlinks are excluded by the shared inventory walker.
+byte length and SHA-256. `verify-extra-cache.py` adds the 58 regular DTA files
+in ENADID and WFS. The two gates together cover 1,881 files in these five
+survey directories. Directory and file symlinks are excluded by the shared
+inventory walker.
 
-The supplement requires exactly 17 ENADID files, 41 WFS files and one CFR
-file, all release 118, with 59 passes and no exclusions. Changed corpus counts
+The supplement requires exactly 17 ENADID files and 41 WFS files, all
+release 118, with 58 passes and no exclusions. Changed corpus counts
 or releases fail the gate. The runner copies the canonical verifier, worker,
 comparator and helpers into a private work directory. Guarded text replacements
 change the corpus list and full-gate assertions; the Stata comparator and

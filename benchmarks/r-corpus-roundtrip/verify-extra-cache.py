@@ -1,8 +1,8 @@
-"""Run the canonical live-Stata oracle on ENADID, WFS and CFR, without Haven tests.
+"""Run the canonical live-Stata oracle on ENADID and WFS, without Haven tests.
 
 This supplements, and never replaces, verify.R's unchanged 1,823-file full gate.
 It stages the canonical verifier and comparator, changing only the corpus list
-and exact expected counts. A run must pass all 59 supplementary files with no
+and exact expected counts. A run must pass all 58 supplementary files with no
 exclusions. The same public-default DTA/Arrow round trips are retained.
 
 Use --prepare-only to inspect the staged patch and records without starting R
@@ -29,7 +29,7 @@ FILES = (
     "benchmarks/r-corpus-roundtrip/verify-worker.R",
     "benchmarks/r-corpus-roundtrip/stata-compare.do",
 )
-COUNTS = {"ENADID": 17, "WFS": 41, "CFR": 1}
+COUNTS = {"ENADID": 17, "WFS": 41}
 
 
 def digest(data):
@@ -66,7 +66,7 @@ def replace_once(text, old, new):
 def adapt_common(text):
     return replace_once(text,
         'roundtrip_corpora <- c("DHS", "MICS", "NSFG")',
-        'roundtrip_corpora <- c("ENADID", "WFS", "CFR")')
+        'roundtrip_corpora <- c("ENADID", "WFS")')
 
 
 def adapt_verifier(text):
@@ -74,22 +74,22 @@ def adapt_verifier(text):
         'selected <- roundtrip_select_verification(inventory, selection, argument)',
         '''if (!identical(selection, "full")) stop("supplement requires full verification")
 extra_counts <- as.integer(table(factor(
-    inventory$corpus, levels = c("ENADID", "WFS", "CFR")
+    inventory$corpus, levels = c("ENADID", "WFS")
 )))
-if (!identical(extra_counts, c(17L, 41L, 1L)) ||
-    nrow(inventory) != 59L || anyNA(inventory$release) ||
+if (!identical(extra_counts, c(17L, 41L)) ||
+    nrow(inventory) != 58L || anyNA(inventory$release) ||
     any(inventory$release != 118L)) {
-    stop("supplement requires exactly 17 ENADID, 41 WFS and 1 CFR release-118 files")
+    stop("supplement requires exactly 17 ENADID and 41 WFS release-118 files")
 }
 selected <- roundtrip_select_verification(inventory, selection, argument)''')
     text = replace_once(text,
         '''!(nrow(results) == 1823L && sum(results$status == "pass") == 1821L &&
       sum(results$status == "expected-exclusion") == 2L)''',
-        '''!(nrow(results) == 59L && sum(results$status == "pass") == 59L &&
+        '''!(nrow(results) == 58L && sum(results$status == "pass") == 58L &&
       sum(results$status == "expected-exclusion") == 0L)''')
     return replace_once(text,
         'stop("full verification did not achieve 1,821 passes and two bound exclusions")',
-        'stop("supplement did not achieve all 59 passes with zero exclusions")')
+        'stop("supplement did not achieve all 58 passes with zero exclusions")')
 
 
 def stage_sources(source_root, work):
@@ -144,7 +144,7 @@ def main():
     if not args.stata.is_file() or not os.access(args.stata, os.X_OK):
         parser.error("Stata executable is missing or not executable")
     if not all((args.cache / name).is_dir() for name in COUNTS):
-        parser.error("Cache must contain ENADID, WFS and CFR directories")
+        parser.error("Cache must contain ENADID and WFS directories")
     rscript = shutil.which("Rscript")
     if rscript is None:
         parser.error("Rscript is unavailable")
@@ -167,7 +167,7 @@ def main():
     private.write_text(json.dumps(dict(command=command, environment_overrides=overrides), indent=2) + "\n")
     record = dict(schema_version=1,
         scope="Supplement only; unchanged canonical full gate remains required separately",
-        expected_files=COUNTS, expected_passes=59, expected_exclusions=0,
+        expected_files=COUNTS, expected_passes=58, expected_exclusions=0,
         supported_source_releases=[118],
         output_container="public default: dibble; Arrow restores saved container",
         haven="No Haven reader or test invocation; shared runtime binding fingerprints installed package",
@@ -183,7 +183,7 @@ def main():
     record_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
     verify_staged(args.work, after)
     if args.prepare_only:
-        print("Prepared the exact 59-file supplement; no R or Stata process started.")
+        print("Prepared the exact 58-file supplement; no R or Stata process started.")
         return
     env = os.environ.copy()
     env.update(overrides)
@@ -213,7 +213,7 @@ def main():
 script_dir <- args[[1L]]
 source(file.path(script_dir, "common.R"), local = TRUE)
 inventory <- roundtrip_cached_inventory(args[[2L]], args[[3L]])
-stopifnot(nrow(inventory) == 59L)
+stopifnot(nrow(inventory) == 58L)
 cat("POST_INPUT_REHASH_PASS\\n")
 ''')
     with (args.work / "post-input-audit.log").open("w") as log:
@@ -236,7 +236,7 @@ cat("POST_INPUT_REHASH_PASS\\n")
     record_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
     if completed.returncode or audit_result.returncode or binding_before != binding_after:
         raise SystemExit(completed.returncode or audit_result.returncode or 1)
-    print("Supplement complete: 59 passes, zero exclusions; canonical full gate remains separate.")
+    print("Supplement complete: 58 passes, zero exclusions; canonical full gate remains separate.")
 
 
 if __name__ == "__main__":

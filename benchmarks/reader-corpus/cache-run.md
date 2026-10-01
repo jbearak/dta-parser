@@ -1,14 +1,16 @@
-# Full-cache `read_dta()` rerun
+# Survey-cache `read_dta()` rerun
 
 `cache-run.py` measures the current `read_dta()` on every regular file with a
-case-insensitive `.dta` suffix beneath the supplied cache root. Each file has
+case-insensitive `.dta` suffix within the DHS, MICS, NSFG, ENADID and WFS roots
+beneath the supplied cache root. Only those five survey roots are included,
+and all must be present as ordinary directories. Each file has
 one fresh-process attempt with `output = "tibble"` and one with
 `output = "dibble"`, both using `threads = 0L` and default numeric ALTREP.
 The runner invokes neither haven nor Stata and does not convert or read Arrow
 files. Separate Stata-oracle work, when used, must finish before this runner's
 qualification and measurement phases.
 
-The October 1, 2026 inventory contains 1,882 files totaling 57,115,106,133
+The October 1, 2026 survey inventory contains 1,881 files totaling 57,114,293,618
 bytes:
 
 | Corpus | Files |
@@ -18,8 +20,7 @@ bytes:
 | NSFG | 229 |
 | ENADID | 17 |
 | WFS | 41 |
-| CFR | 1 |
-| Total | 1,882 |
+| Total | 1,881 |
 
 File and directory symlinks are excluded. The two directory symlinks in this
 inventory are MICS aliases to directories already included, so following them
@@ -45,11 +46,11 @@ work has finished, qualify the complete inventory:
 python3 benchmarks/reader-corpus/cache-run.py prepare \
   --baseline-build-work /private/tmp/reader-build-baseline \
   --candidate-build-work /private/tmp/reader-build-candidate \
-  --cache /opt/aww_cache --expected-files 1882 \
+  --cache /opt/aww_cache --expected-files 1881 \
   --output /private/tmp/reader-cache-full
 ```
 
-Preparation reads each file as both containers in each library: 7,528 untimed
+Preparation reads each file as both containers in each library: 7,524 untimed
 reads for this inventory. It uses one sequential batch process per library,
 removing each result and collecting garbage before continuing. For each file,
 it checks the requested container and requires exact baseline/candidate
@@ -84,7 +85,7 @@ the two phases.
 
 For a bounded runtime smoke, use the same preparation command with `--smoke`
 and a different output directory. It selects the smallest nonempty file in
-each of the six corpora and both known malformed files: eight files in the
+each of the five corpora and both known malformed files: seven files in the
 current cache. The expected count still checks the complete cache inventory.
 Smoke runs are marked explicitly and cannot serve as full-cache evidence.
 
@@ -121,6 +122,43 @@ Use the new directory with `measure`. Publish the policy correction and
 revalidation provenance with the results; do not label the original failed
 run as successful or imply that new qualification reads occurred.
 
+That recorded revalidation preceded the later survey-only scope correction.
+It used the archived [measured controller](results-2026-10-01-full-cache/measured-controller.py).
+The current inventory policy requires the five survey roots, so it cannot
+revalidate the earlier, broader inventory. Use the current `prepare` and
+`measure` commands above and below for a new survey-only run.
+
+## Select the published survey results
+
+The published October 1 survey results select DHS, MICS, NSFG, ENADID and WFS from the
+completed observations without rerunning reads or changing any values. The
+original 1,882-input, 3,764-attempt records remain private and unchanged;
+the selected subset has 1,881 inputs and 3,762 attempts. It retains all
+3,758 successful observations and four expected malformed-input errors within
+the survey roots.
+
+The [selection record](results-2026-10-01-full-cache/selection.json) binds the
+original, selected and excluded records by hash and records the exact root
+allowlist. Aggregates are recomputed from the selected records. Source-run
+metadata and host samples still describe the original execution and are
+labeled accordingly. The measured controller remains available by its exact
+hash; the [scope patch](results-2026-10-01-full-cache/inventory-scope.patch)
+records the later inventory restriction for future runs.
+
+The reproducible selector verifies the original published provenance and
+qualification seal before copying selected raw records into a new private
+directory and recomputing the twelve aggregate rows:
+
+```sh
+python3 benchmarks/reader-corpus/select-surveys.py \
+  --source-output /private/tmp/reader-cache-completed \
+  --source-provenance /private/tmp/reader-cache-original-provenance.json \
+  --output /private/tmp/reader-survey-selection --expected-files 1881
+```
+
+Only `summary.csv` and the sanitized `selection.json` are published from that
+directory. Its selected inputs and per-file observations remain private.
+
 ## Measure
 
 Run measurement after qualification succeeds and the host is ready:
@@ -130,7 +168,7 @@ python3 benchmarks/reader-corpus/cache-run.py measure \
   --output /private/tmp/reader-cache-full
 ```
 
-This produces 3,764 attempts, including both containers for each malformed
+This produces 3,762 attempts, including both containers for each malformed
 input. Files and outputs run sequentially, with at most one timed R child at
 a time. Output order alternates by file. Every attempt launches a fresh R
 process, loads the selected dtatools package, then times its first public
@@ -174,7 +212,7 @@ read-CPU and process-CPU totals sum one successful observation per file;
 peak RSS is the largest individual process peak. These are batch totals,
 not repeated-run medians or paired baseline/candidate speed estimates. The
 baseline participates in correctness qualification only. With the two known
-malformed files unchanged, this inventory has 1,880 readable inputs per
+malformed files unchanged, this inventory has 1,879 readable inputs per
 container.
 
 Keep the entire run directory private. It contains source paths, survey
@@ -186,8 +224,8 @@ inventory, input, configuration, qualification or job files wholesale.
 Record host interference honestly and retain every timing observation.
 
 The earlier README table used 1,812 comparable files selected from a
-1,823-file DHS/MICS/NSFG inventory. This run includes 59 additional files from
-ENADID, WFS and CFR, plus readable files outside the historical comparator
+1,823-file DHS/MICS/NSFG inventory. This run includes 58 additional files from
+ENADID and WFS, plus readable files outside the historical comparator
 subset. The retained historical archive is not required or reconstructed by
 this runner. Historical haven, Stata and Arrow totals must remain explicitly
 dated and separate; do not divide them into this run's totals or claim a new

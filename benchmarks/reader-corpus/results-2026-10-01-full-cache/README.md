@@ -1,10 +1,18 @@
-# Full-cache `read_dta()` results, October 1, 2026
+# Survey-cache `read_dta()` results, October 1, 2026
 
-Across all 1,880 readable inputs, `read_dta()` totaled **31.794 seconds for
-tibbles** and **37.325 seconds for dibbles**. This run attempted every one of
-the 1,882 regular DTA files in the current six-corpus cache, separately for
-each output. All 3,764 attempts completed: 3,760 successful reads and four
-expected errors from the two existing malformed inputs.
+Across all 1,879 readable survey inputs, `read_dta()` totaled **31.792 seconds
+for tibbles** and **37.323 seconds for dibbles**. The benchmark covers DHS,
+MICS, NSFG, ENADID and WFS: 1,881 regular DTA files and 3,762 attempts across
+both outputs, with 3,758 successful reads and four expected errors from the
+two existing malformed inputs.
+
+These totals select only the five survey roots from the completed
+observations. Every selected observation is retained byte-for-byte, without
+rerunning reads or filtering by performance. The original records remain
+private and unchanged. The
+[selection record](selection.json) binds the original, selected and excluded
+records and the derivation script by hash. [Source-run metadata](source-run.json)
+and host-load counters still describe the original execution.
 
 The candidate is the source-bound package snapshot at
 [`61954ee`](https://github.com/jbearak/dta-parser/commit/61954ee88431eb2212e36a24ca8db1781e932ac7).
@@ -33,11 +41,10 @@ baseline/candidate performance estimates. Size and memory use decimal GB.
 | NSFG | 229 | 5.777 GB | 4.812 s | 5.648 s |
 | ENADID | 17 | 0.554 GB | 0.454 s | 0.500 s |
 | WFS | 41 | 0.130 GB | 0.200 s | 0.243 s |
-| CFR | 1 | 0.001 GB | 0.002 s | 0.002 s |
-| **All** | **1,880** | **57.115 GB** | **31.794 s** | **37.325 s** |
+| **All** | **1,879** | **57.114 GB** | **31.792 s** | **37.323 s** |
 
-The complete inventory contains 57,115,106,133 bytes; successful inputs
-contain 57,115,078,341 bytes. MICS contributes the two excluded files: one
+The survey inventory contains 57,114,293,618 bytes; successful inputs
+contain 57,114,265,826 bytes. MICS contributes the two malformed files: one
 empty input and one 27,792-byte malformed input. Their exact identity, size
 and SHA-256 tuples are fixed in the [protocol](../cache-run.md). Both were
 attempted in both containers and retained as errors. Two directory symlinks
@@ -53,20 +60,23 @@ successful reads; RSS is the largest individual process peak.
 
 | Output | Read CPU | Process CPU | Maximum peak RSS |
 | --- | ---: | ---: | ---: |
-| Tibble | 83.447 s | 583.876 s | 5.257 GB |
-| Dibble | 89.016 s | 589.402 s | 5.254 GB |
+| Tibble | 83.446 s | 583.614 s | 5.257 GB |
+| Dibble | 89.014 s | 589.140 s | 5.254 GB |
 
 The [aggregate CSV](summary.csv) includes these metrics for each corpus and
-the exact byte counts. No timing observations were filtered or discarded.
+the exact byte counts. Every observation within the five survey roots is
+included; no outlier or slow-read filtering was applied.
 
 ## Qualification and the container-policy correction
 
-Untimed qualification read all 1,882 files as both outputs in both source-bound
-libraries: 7,528 reads. It computed complete `datasig()` values and recorded
+The original untimed qualification read 1,882 files as both outputs in both
+source-bound libraries: 7,528 reads, including 7,524 records for the selected
+survey inputs. It computed complete `datasig()` values and recorded
 dimensions, warning messages, error classes and error messages. The baseline
 and candidate's complete 3,764-record files are byte-for-byte identical.
 Separate [Stata-oracle checks](../../r-corpus-roundtrip/results-2026-10-01.md)
-also passed for all 1,880 readable inputs before benchmarking began.
+also passed for all 1,879 readable survey inputs. The survey-only supplemental
+oracle and its audits were rerun after the scope correction.
 
 The initial controller additionally required tibble and dibble signatures to
 match each other. It stopped before timing because 29 files had different
@@ -90,14 +100,20 @@ and the executed-source, record and log hashes.
 The corrected controller requires complete baseline/candidate equality
 separately for each output, plus cross-output equality of status, shape and
 conditions. It records raw signature differences explicitly. All 18 lightweight
-controller tests and a fresh eight-file smoke run passed. An explicit
+controller tests and a fresh eight-file smoke run under the original scope
+passed. An explicit
 `revalidate` command then copied the unchanged full qualification records into
 a new directory and checked all input, source, library, runtime and worker
 bindings. Only the controller hash changed; neither R worker changed. The
 original failed run remains unsealed and untimed. Revalidation performed no
 new corpus reads and created a new seal before the first full timed attempt.
 See the [revalidation record](revalidation.json) and the
-[controller correction](qualification-policy.patch).
+[controller correction](qualification-policy.patch). The later survey-root
+restriction is separate: the exact [measured controller](measured-controller.py)
+retains its original hash, while the [scope patch](inventory-scope.patch)
+maps the current five-root controller back to that measured source. The
+current controller searches only the five survey roots and rejects missing
+or symlinked required roots. All 22 data-free controller and selection checks pass.
 
 ## Measurement conditions
 
@@ -116,7 +132,7 @@ See the [revalidation record](revalidation.json) and the
   dtatools 0.10.0 with tibble 3.3.1. The timed phase ran from
   18:35:58 to 18:55:13 UTC. No owned build, test, oracle or other benchmark
   overlapped it.
-- The [host monitor](host-monitor.py) sampled competing processes at or above
+- The [host monitor](host-monitor.py) sampled the original execution's competing processes at or above
   50% CPU every 30 seconds, excluding the benchmark process tree. Its
   [40 samples](host-load.jsonl) span 18:35:33–18:55:15 UTC. Thirteen samples
   caught Bun, reaching 150.5% CPU, and one caught cliproxyapi at 78.7%; none
@@ -129,13 +145,14 @@ See the [revalidation record](revalidation.json) and the
 The [September 16 report](../results-2026-09-16-base-r/README.md) used a
 1,812-file comparison subset from the earlier 1,823-file DHS/MICS/NSFG
 inventory. This run includes nine other readable files from those corpora
-and 59 from ENADID, WFS and CFR. Its totals therefore remain separate from
+and 58 from ENADID and WFS. Its totals therefore remain separate from
 historical haven, Stata and Arrow totals. No such comparator was timed here,
 and no historical speed ratio is inferred. The warning handler and post-read
 condition hashing also differ from the historical worker's instrumentation.
 
-The [full-cache protocol](../cache-run.md) gives exact preparation,
-revalidation and measurement commands. The [provenance](provenance.json)
+The [survey-cache protocol](../cache-run.md) gives exact preparation,
+selection and measurement commands, plus the historical revalidation details.
+The [provenance](provenance.json)
 binds the R workers, original and corrected qualification evidence, all
 unfiltered private observations, and the verified
 [source/build records](../../r-corpus-roundtrip/results-2026-10-01/build/build-bindings.json).

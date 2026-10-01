@@ -1,8 +1,8 @@
 # R corpus write qualification and benchmark
 
-The [October 1, 2026 full-cache Stata oracle](results-2026-10-01.md) passed
-both DTA and Arrow round trips for all 1,880 readable inputs across six
-corpora, with two known malformed-input exclusions. That run used live Stata
+The [October 1, 2026 Stata oracle](results-2026-10-01.md) passed
+both DTA and Arrow round trips for all 1,879 readable inputs across five
+survey corpora, with two known malformed-input exclusions. That run used live Stata
 without Haven. See [exact Stata verification](#exact-stata-verification) and
 the [supplemental protocol](verify-extra-cache.md) for that workflow. The
 write-performance workflow below has a different scope and invokes Haven.

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "candidate_source_commit": "61954ee88431eb2212e36a24ca8db1781e932ac7",
   "baseline_source_commit": "dced75ff5350e58c9f772fd0c9f9c07dc11f7929",
   "source_binding": {
@@ -42,29 +42,19 @@
   },
   "rscript_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f",
   "coverage": {
-    "attempted_files": 1882,
-    "readable_files": 1880,
+    "attempted_files": 1881,
+    "readable_files": 1879,
     "excluded_files": 2,
-    "timed_attempts": 3764,
-    "successful_timed_attempts": 3760,
+    "timed_attempts": 3762,
+    "successful_timed_attempts": 3758,
     "expected_error_attempts": 4,
-    "source_bytes": 57115106133,
+    "source_bytes": 57114293618,
     "skipped_symlink_aliases": 2,
     "corpora": [
-      {
-        "corpus": "CFR",
-        "attempted_files": 1,
-        "source_bytes": 812515
-      },
       {
         "corpus": "DHS",
         "attempted_files": 643,
         "source_bytes": 46963195724
-      },
-      {
-        "corpus": "ENADID",
-        "attempted_files": 17,
-        "source_bytes": 554254930
       },
       {
         "corpus": "MICS",
@@ -75,6 +65,11 @@
         "corpus": "NSFG",
         "attempted_files": 229,
         "source_bytes": 5776831694
+      },
+      {
+        "corpus": "ENADID",
+        "attempted_files": 17,
+        "source_bytes": 554254930
       },
       {
         "corpus": "WFS",
@@ -92,14 +87,26 @@
     "cross_output_signature_differences": 29,
     "warning_files": 0,
     "expected_malformed_files": 2,
-    "sealed": true
+    "sealed": true,
+    "selected_records": 7524,
+    "scope_note": "Original qualification records are retained privately; selected survey records inherit the same exact per-output baseline/candidate parity."
   },
   "audits": {
-    "input_source_install_runtime_worker_bindings_equal_before_after": true,
-    "exact_attempt_completeness": true,
-    "aggregate_totals_independently_recomputed": true,
-    "raw_observations_retained_unfiltered": true,
-    "original_failed_run_unchanged_unsealed_and_untimed": true
+    "original_completed_run": {
+      "input_source_install_runtime_worker_bindings_equal_before_after": true,
+      "exact_attempt_completeness": true,
+      "aggregate_totals_independently_recomputed": true,
+      "raw_observations_retained_unfiltered": true,
+      "original_failed_run_unchanged_unsealed_and_untimed": true
+    },
+    "survey_selection": {
+      "original_published_provenance_verified": true,
+      "selected_records_copied_byte_for_byte": true,
+      "all_five_roots_present": true,
+      "complete_selected_attempt_matrix": true,
+      "aggregates_recomputed": true,
+      "no_read_rerun": true
+    }
   },
   "private_artifact_sha256": {
     "binding-before.json": "8f04bb85701517a4011388d44420b82de4ff6f5279edbb070a5fc6dab986dd82",
@@ -115,14 +122,49 @@
     "COMPLETE": "93e8ddc56e1c4df2862455cb48343fa78b48706b8a68b6d108e2a081f4e39613"
   },
   "public_artifact_sha256": {
-    "summary.csv": "737e3875ecaeec77e82d54683ece8160d5481a4a488d195c7855e829b2485383",
+    "summary.csv": "911a390123d6eaa54fb77f8df91abba83286c40410c575904dbdbc91fdf16a56",
     "container-signatures.json": "cb676a539a5fcd21ff4c999d456f4a24fd1090bbd9d28899e108677171ed9e0e",
     "host-monitor.py": "58f98819dce37b2850e152347f41b429b27a3fbe158ba2b3473f36956e017ed6",
     "qualification-policy.patch": "0c60902710e228f39a0fe2e8b1029068e6975f2152a97df3f5b2df036f5509b7",
-    "host-summary.json": "2f63997aa98135480edee6835c19e0dac38cd2d27b7476b3235903b206b901b4",
+    "host-summary.json": "1946000492f2f25990cf66305d56bf075a084f59e4304f5bb17df961dba755b2",
+    "measured-controller.py": "fea2d6bb4cbb82ed36ac8a7f22039e3f421b99ee1a2f7017badd30a21036d76b",
+    ".gitattributes": "71a197e33e652d2851671a1ad7eb1d5fc00d92eb58de1c0519dbeb4bbc34d04b",
+    "selection.json": "3b7ed0d887c64e162c2e0f2e3993cfc9d640b477bf921be45d7706ca3f0788b9",
     "revalidation.json": "da29a229e70c8bbc5bbad3415352d3c725d0f87725224a278181715b48ecc08f",
-    "run.json": "7ea482502a2013117c96ea8fec11b7ce5ebfc1672522e662b5521e4bbcf4f21a",
+    "inventory-scope.patch": "e7320aa1f87cf49b2058e3f7998170a3a289636b572d5d2f9ab2371fad2d8f61",
+    "source-run.json": "7ea482502a2013117c96ea8fec11b7ce5ebfc1672522e662b5521e4bbcf4f21a",
     "host-load.jsonl": "4edba6248058ad910ff0d312576d7c079220b914c45501da659f36b117e721a7"
   },
-  "privacy": "Input paths, survey identities, exact signatures, detailed conditions, commands and per-file observations remain private; public tables contain corpus aggregates."
+  "privacy": "Only five survey roots, aggregates and artifact digests are public. Original source paths, unrelated project identities, per-file observations, signatures and detailed conditions remain private.",
+  "scope": "Survey-only aggregates derived from the unchanged completed source run; no new reads",
+  "original_public_provenance_sha256": "7d5ed51e753c43527517c6e5e30381e5ab3c049caa5377dbd9890eea9f62b614",
+  "private_artifact_scope": "Original completed run, before survey-root selection; all bytes retained unchanged.",
+  "selected_private_artifact_sha256": {
+    "selected-inputs-private.json": "075f4e43c7aca5ffc7710648abd4a216905cb58c6656fe48ad6f5d84ec045e3b",
+    "selected-observations-private.jsonl": "3ce78c29184832c209706f9b97ef8421c6ef865035dc6b6e2c967dc37d027eb6",
+    "excluded-observations-private.jsonl": "2debccedd189ab0719a35623dacb09b3606294b9deed9740c44a7c32eea5c239",
+    "summary.csv": "911a390123d6eaa54fb77f8df91abba83286c40410c575904dbdbc91fdf16a56"
+  },
+  "scope_selection": {
+    "path": "selection.json",
+    "sha256": "3b7ed0d887c64e162c2e0f2e3993cfc9d640b477bf921be45d7706ca3f0788b9",
+    "derivation_script": "../select-surveys.py",
+    "derivation_script_sha256": "2a5ea56b420f88a854cd237da44eddbd3b11c810f2c1114013b91e68851b0a1b"
+  },
+  "measured_source_archive": {
+    "path": "measured-controller.py",
+    "sha256": "fea2d6bb4cbb82ed36ac8a7f22039e3f421b99ee1a2f7017badd30a21036d76b"
+  },
+  "future_inventory_scope": {
+    "survey_roots": [
+      "DHS",
+      "MICS",
+      "NSFG",
+      "ENADID",
+      "WFS"
+    ],
+    "controller_sha256": "9805addfd54224818122032285181d9af766eba26ca83e0a1057d3dffa477eb2",
+    "patch": "inventory-scope.patch",
+    "patch_direction": "Current survey controller to exact measured controller; applies without reversing"
+  }
 }
