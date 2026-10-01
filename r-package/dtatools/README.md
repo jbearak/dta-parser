@@ -471,6 +471,27 @@ as.table(tab(cars, rep78))  # the plain frequency table
 
 The [parity matrix](https://github.com/jbearak/dta-parser/blob/main/docs/r-tab-stata-parity.md) lists every `tabulate` form and option and how far each is matched.
 
+`summarize()`, `summarise()`, and `summ()` compute Stata summary statistics.
+Use `detail = TRUE` for percentiles, moments, and the four smallest and largest
+values, or `meanonly = TRUE` for a silent result without variance calculations.
+
+```r
+summarize(cars, price, mpg)
+summ(cars, mpg, detail = TRUE, by = foreign)
+result <- summarize(cars, mpg, weights = weight, weight = "aweight")
+result$r$mean                  # Stata's r(mean) for the last variable
+as.data.frame(result)          # statistics for every variable and group
+summarize(cars, "i.rep78")     # proportions for each observed level
+```
+
+The interface supports analytic, frequency, and importance weights, `where`
+and `rows` sample selection, factor interactions, and time-series operators
+with `time` and optional `panel` column names. See `?summarize` for the full
+argument and return-value reference. Use `dplyr::summarise()` explicitly for
+dplyr aggregation when both packages are attached.
+The [Stata comparison](https://github.com/jbearak/dta-parser/blob/main/docs/r-summarize-stata-parity.md)
+lists equivalent calls and describes the native conformance fixtures.
+
 `labelbook()` describes named value-label tables rather than observations.
 An R data frame reports tables assigned to its current columns. A direct DTA
 path reads the complete on-disk registry without decoding observations, so it
@@ -772,6 +793,7 @@ Use the installed help for exact behavior and examples:
 | `resolve_var_name()`, `confirm_var()` | Resolve or check an exact variable name or unique abbreviation, with configurable failure behavior. |
 | `copy_data()` | Make an independent copy of a dataset and its metadata. |
 | `tab()` | Stata `tabulate` in R: one-way and two-way tables printed as Stata prints them, with `sort`, `percent`, `expected`, and `freq`. |
+| `summarize()`, `summarise()`, `summ()` | Stata summary statistics, weights, detailed distributions, grouping, and factor/time-series varlists. |
 | `labelbook()` | Structured reports on named value-label tables, assignments, mappings, and problems. |
 | `codebook()` | Structured variable metadata, observed-data summaries, missingness relationships, and problems. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |

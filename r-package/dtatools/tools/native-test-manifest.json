@@ -102,6 +102,9 @@
     "set_var_label",
     "set_var_labels",
     "slice_dta_rows",
+    "summ",
+    "summarise",
+    "summarize",
     "tab",
     "tagged_missing",
     "val_code",
@@ -6901,7 +6904,7 @@
         },
         {
           "path": "tests/testthat/test-raven-nse.R",
-          "sha256": "d87eaaece1d130b16db480a9ac8bdf9a06a84ae4cd136160e9e3305717cdd911"
+          "sha256": "102dab4126f62b5f4ccd5d1e2b1187ff74d0e2c710e4a7268189ff265f05f5a8"
         },
         {
           "path": "tests/testthat/test-auto-grow.R",
@@ -8245,7 +8248,7 @@
           "test": "every declared function is exported by the package",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 27,
+          "min_pass": 30,
           "warnings": 0
         },
         {
@@ -8253,7 +8256,7 @@
           "test": "the declaration file still carries the expected policy",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 53,
+          "min_pass": 59,
           "warnings": 0
         },
         {
@@ -8261,7 +8264,7 @@
           "test": "declared formals match the function signatures",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 26,
+          "min_pass": 29,
           "warnings": 0
         },
         {
@@ -8269,7 +8272,7 @@
           "test": "captured arguments name real formals",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 26,
+          "min_pass": 29,
           "warnings": 0
         },
         {
@@ -9647,7 +9650,7 @@
         },
         {
           "path": "tests/testthat/test-dplyr-optional.R",
-          "sha256": "13771985a7b9b5e3f8cd89a1f5538842f94ddb389e55431df0027a5266bf0b60"
+          "sha256": "79828023e28da0dca0a1cefa299595da6c01c648273a4c2829dcc3ca43e393cd"
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
@@ -14871,6 +14874,394 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        }
+      ],
+      "children": [],
+      "forks": []
+    },
+    {
+      "id": "summarize",
+      "files": [
+        {
+          "path": "tests/testthat/test-print-summarize.R",
+          "sha256": "e2e649eeb13d1c1641f625e62960f978e0d129e2331bf311085b69c75a9ad552"
+        },
+        {
+          "path": "tests/testthat/test-summarize-stata.R",
+          "sha256": "256c53fce358a2c1a781c1326292639b4c091de46a427e1a2461ab54e0cfb63b"
+        },
+        {
+          "path": "tests/testthat/test-summarize-varlist.R",
+          "sha256": "a1490630faa31ebfc4d99516a6fa1ccffb5b0592cc4f7824f7d8a8e49a00c496"
+        },
+        {
+          "path": "tests/testthat/test-summarize.R",
+          "sha256": "504c7dcdd6b2e81eab9448846f0c44fced6344a1da8c388779e1cc2268fedeb0"
+        }
+      ],
+      "blocks": [
+        {
+          "file": "test-print-summarize.R",
+          "test": "summarize prints Stata's ordinary and weighted tables",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "summarize detail matches Stata's four-extreme layout",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "summary display observes labels, separators and stored formats",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "factor displays retain native stubs and empty-cell flags",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "meanonly is silent and data frames retain group keys",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "group headings distinguish extended missing keys",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "summary format uses calendar dates only for location statistics",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "factor wrapping keeps native leading and final label lines",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "stored numeric formats follow summarize's normalization",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "calendar pictures match Stata's documented tokens and padding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "datetime/C prints leap seconds and truncates fractions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "missing calendars use native numeric fallback and unknown pictures fail",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "business-calendar omit rules match native Stata calendars",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "general formats retain small values and drop commas before precision",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "calendar formats use numeric fallback outside years 0100 through 9999",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "left-aligned calendar formats preserve date pictures and padding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "numeric format families preserve Stata's halfway rounding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "observation counts switch from commas to integers to exponentials",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "weight totals use their own precision and detailed comma format",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-print-summarize.R",
+          "test": "unavailable counts and totals remain printable after weight overflow",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-stata.R",
+          "test": "summarize scalars and weight validation match native Stata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7806,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-stata.R",
+          "test": "detail extremes use original rows with frequency weights",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-stata.R",
+          "test": "native percentile boundary tolerance preserves weight intervals",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 19,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-stata.R",
+          "test": "overflowing weight totals preserve native unavailable statistics",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 30,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-stata.R",
+          "test": "empty and string summaries preserve native last-variable r()",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize resolves Stata variable lists in dataset order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize preserves literal names containing Stata punctuation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize bounds numlists before expanding any range",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize numlist increments follow native endpoint direction",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 19,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize includes every default factor level and retains labels",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 26,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize interactions use per-variable missingness and full factorial order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize marks explicit bases and omissions as native Stata does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 25,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize time operators respect panels, time gaps, and the full source",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize normalizes omitted continuous interactions and repeated terms",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 22,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize resolves repeated factor omission declarations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize carries sequential interaction omissions into equivalent terms",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize merges omitted cells within equivalent factor terms",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "summarize supports temporal scales, fractional deltas and lagged factors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize.R",
+          "test": "summary aliases and vector/data-frame calls share one interface",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize.R",
+          "test": "where and rows select each group's calculation sample",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize.R",
+          "test": "summary grouping preserves Stata missing identities and dplyr groups",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 10,
+          "warnings": 0,
+          "min_pass_before_skip": 7,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summarize.R",
+          "test": "summary temporals contribute Stata codes and missing values are excluded",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize.R",
+          "test": "summary flags, empty samples, and quiet results are validated",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize.R",
+          "test": "factor summaries retain hidden results and expand levels within groups",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize.R",
+          "test": "summaries accept haven-compatible columns and evaluate vectors once",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         }
       ],
