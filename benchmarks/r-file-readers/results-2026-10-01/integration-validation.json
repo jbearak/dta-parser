@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "scope": "Merged-package integration validation; no benchmark, Stata oracle or separate Haven comparator rerun",
+  "base_commit": "c6a655367ad6f3875f03ad9e05a4b88136dc0ff3",
+  "merged_head": "a4cbc8707083df95134f303aadcba01a259f7bc3",
+  "runtime_reader_source_commit": "61954ee88431eb2212e36a24ca8db1781e932ac7",
+  "build_receipt_sha256": "b388503752f88438209c6840e06558c037daad96979b5760421102bb46d47588",
+  "source_files": 421,
+  "installed_files": 208,
+  "test_files": 118,
+  "test_blocks": 1637,
+  "counts": {
+    "passed": 35822,
+    "failed": 0,
+    "error": 0,
+    "warning": 7,
+    "skipped": 0
+  },
+  "warning_blocks": [
+    {
+      "file": "test-dibble.R",
+      "test": "gen and := accept factors as mutate does",
+      "warnings": 1
+    },
+    {
+      "file": "test-dibble.R",
+      "test": "logical replacement storage through dplyr",
+      "warnings": 1
+    },
+    {
+      "file": "test-dibble.R",
+      "test": "copying replacement isolates vectors and preserves grouping",
+      "warnings": 2
+    },
+    {
+      "file": "test-dibble.R",
+      "test": "copying replacement and regrouping through dplyr",
+      "warnings": 2
+    },
+    {
+      "file": "test-owned-columns.R",
+      "test": "reading a column with $ or [[ leaves its handle private for the next write",
+      "warnings": 1
+    }
+  ],
+  "receipt_verified_after_tests": true,
+  "manifest_refresh": {
+    "files_rehashed": 0,
+    "blocks_added": 0,
+    "blocks_removed": 0,
+    "counts_changed": 0
+  },
+  "file_sha256": {
+    "full-tests.csv": "16df7afe4c32ca1e5e9ea96116ebfee46a306ea7213a74eda6ce9b2016c5fd44",
+    "full-tests.log": "7451109eaebc01c62557b70c5561d3dbb34e3a243900ee4450520432bb9eae50",
+    "manifest-refresh.log": "1db22e62f44bb994622d3fa285cab1a588cc1cea49a4a0aa4fe1e56be25f8f10",
+    "source-commit-audit.json": "b1032f5daf805032baaf9f99d42da37971cc7d80dc56905eeb9e01cd6fca38f8"
+  },
+  "test_protocol": "Rscript --vanilla; testthat::test_dir on all frozen source-snapshot tests against the installed package with load_package=installed; stop on any failure, error or skip. No separate Haven comparator scripts.",
+  "source_audit": {
+    "merged_head": "a4cbc8707083df95134f303aadcba01a259f7bc3",
+    "base_commit": "c6a655367ad6f3875f03ad9e05a4b88136dc0ff3",
+    "measured_reader_source_commit": "61954ee88431eb2212e36a24ca8db1781e932ac7",
+    "package_files": 421,
+    "changes_from_merged_head": [
+      "README.md"
+    ],
+    "reader_runtime_files_equal_to_measured_source": [
+      "R/output-container.R",
+      "R/read-arrow.R",
+      "R/read-dta.R",
+      "src/rust/src/arrow_ffi.rs",
+      "src/rust/src/lib.rs",
+      "src/rust/src/owned_numeric.rs"
+    ],
+    "build_receipt_sha256": "b388503752f88438209c6840e06558c037daad96979b5760421102bb46d47588",
+    "native_manifest_sha256": "3e634b5eea32f1a06e77fde9a265ff806f463fcb3bb8afe8b09aea8911a4a970",
+    "test_runner_sha256": "73128ff190849f16d795bfe0f4b67f8574ead2924b5bd9c24173a7ff58dbf47b"
+  },
+  "timing_scope": "This record covers integration correctness only. Reader timings and full-cache oracle evidence remain bound to their separately recorded pre-integration builds.",
+  "private_evidence": "Build receipt, frozen source/installation inventories, observations and full logs retained privately; hashes above bind those files."
+}

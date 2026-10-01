@@ -1,0 +1,210 @@
+--- a/benchmarks/reader-corpus/cache-run.py
++++ b/benchmarks/reader-corpus/cache-run.py
+@@ -25,6 +25,11 @@
+ BUILDS = importlib.util.module_from_spec(SPEC)
+ SPEC.loader.exec_module(BUILDS)
+ OUTPUTS = ("tibble", "dibble")
++QUALIFICATION_POLICY = "complete-signature-within-output-v2"
++CONTROLLER = "benchmarks/reader-corpus/cache-run.py"
++SOURCE_ARTIFACTS = ("config-private.json", "inventory-private.json", "inputs-private.json",
++    "binding-before.json", "baseline-qualification-private.jsonl",
++    "candidate-qualification-private.jsonl")
+ # Exact exclusions from r-corpus-roundtrip/common.R, including its stable ID contract.
+ KNOWN_EXCLUSIONS = {
+     "MICS-9fcbb54ada2fcece459bca33": dict(corpus="MICS", bytes=0,
+@@ -98,21 +103,32 @@
+ def validate_qualification(files, baseline, candidate, known_errors):
+     expected = {(row["id"], output) for row in files for output in OUTPUTS}
+     require(set(baseline) == set(candidate) == expected, "Incomplete qualification matrix")
++    differences = []
+     for row in files:
+-        records = [variant[(row["id"], output)] for variant in (baseline, candidate) for output in OUTPUTS]
+-        comparable = [{k: v for k, v in record.items() if k != "output"} for record in records]
++        for output in OUTPUTS:
++            require(baseline[(row["id"], output)] == candidate[(row["id"], output)],
++                    "Value, metadata, warning, or error parity failed within output: " + row["id"])
++        records = [baseline[(row["id"], output)] for output in OUTPUTS]
++        # Dibble construction can widen a string's declared Stata storage to
++        # fit decoded UTF-8. Its signature therefore need not equal a tibble's.
++        comparable = [{k: v for k, v in record.items() if k not in ("output", "signature")}
++                      for record in records]
+         require(all(record == comparable[0] for record in comparable),
+-                "Value, metadata, warning, or error parity failed: " + row["id"])
+-        record = records[0]
+-        require(record["status"] in ("ok", "dta_error"), "Unknown qualification status")
+-        if record["status"] == "dta_error":
+-            require(row["id"] in known_errors, "Unexpected DTA failure: " + row["id"])
+-        else:
+-            require(row["id"] not in known_errors, "Historically malformed input changed status")
+-            require(all(type(record[k]) is int and record[k] >= 0 for k in ("rows", "columns")),
+-                    "Invalid qualified dimensions")
+-            require(isinstance(record["signature"], str) and record["signature"], "Missing complete signature")
+-        require(re.fullmatch(r"[a-f0-9]{64}", record["conditions_sha256"]), "Missing condition identity")
++                "Shape, warning, or error parity failed across outputs: " + row["id"])
++        for record in records:
++            require(record["status"] in ("ok", "dta_error"), "Unknown qualification status")
++            if record["status"] == "dta_error":
++                require(row["id"] in known_errors, "Unexpected DTA failure: " + row["id"])
++            else:
++                require(row["id"] not in known_errors, "Historically malformed input changed status")
++                require(all(type(record[k]) is int and record[k] >= 0 for k in ("rows", "columns")),
++                        "Invalid qualified dimensions")
++                require(isinstance(record["signature"], str) and record["signature"], "Missing complete signature")
++            require(re.fullmatch(r"[a-f0-9]{64}", record["conditions_sha256"]), "Missing condition identity")
++        if records[0].get("signature") != records[1].get("signature"):
++            differences.append(dict(id=row["id"], tibble_signature=records[0]["signature"],
++                dibble_signature=records[1]["signature"]))
++    return differences
+ 
+ 
+ def validate_observations(rows, files):
+@@ -181,7 +197,90 @@
+     names = ("config-private.json", "inventory-private.json", "inputs-private.json",
+         "binding-before.json", "baseline-qualification-private.jsonl",
+         "candidate-qualification-private.jsonl", "qualification.json")
++    config = json.loads((output / "config-private.json").read_text())
++    if config.get("qualification_origin") == "revalidated-complete-records":
++        names += ("revalidation.json", "original-controller.py", "original-binding.json")
+     return {name: sha(output / name) for name in names}
++
++
++def qualification_summary(files, qualified, known_errors, before, differences):
++    return dict(files=len(files), attempts_per_library=len(files)*2,
++        outputs=OUTPUTS, matched=True, policy=QUALIFICATION_POLICY,
++        cross_output_signature_differences=differences,
++        malformed=[dict(id=r["id"], **known_errors[r["id"]], **before["inputs"][r["id"]])
++                   for r in files if r["id"] in known_errors],
++        warning_files=[r["id"] for r in files
++                       if qualified[(r["id"], "dibble")]["conditions"]["warnings"]])
++
++
++def validate_revalidation_bindings(original, current, original_controller):
++    require(sha(original_controller) == original["workers"][CONTROLLER],
++            "Archived original controller does not match its binding")
++    adjusted = dict(current, workers=dict(current["workers"]))
++    adjusted["workers"][CONTROLLER] = original["workers"][CONTROLLER]
++    require(adjusted == original, "Binding changed beyond the qualification controller")
++
++
++def revalidation_source(source):
++    require(source.is_dir() and not source.is_symlink(), "Need an ordinary source run directory")
++    require(not any((source / name).exists() for name in
++                    ("QUALIFIED", "MEASUREMENT_STARTED", "COMPLETE", "observations.jsonl",
++                     "observations.csv", "summary.csv", "run.json")),
++            "Revalidation requires an unsealed run without timing")
++    require(all((source / name).is_file() and not (source / name).is_symlink()
++                for name in SOURCE_ARTIFACTS), "Incomplete or nonordinary source qualification artifacts")
++    return {name: sha(source / name) for name in SOURCE_ARTIFACTS}
++
++
++def revalidate(args):
++    source = args.source_output
++    source_hashes = revalidation_source(source)
++    config = json.loads((source / "config-private.json").read_text())
++    require("qualification_origin" not in config, "Cannot chain revalidations")
++    files = json.loads((source / "inputs-private.json").read_text())
++    full_inventory = json.loads((source / "inventory-private.json").read_text())
++    validate_inventory_count(full_inventory["files"], config["expected_files"])
++    require(files == selected_inputs(full_inventory["files"], config["smoke"]), "Source selection changed")
++    require(inventory(Path(config["cache"])) == full_inventory, "Cache inventory changed since source qualification")
++    original = json.loads((source / "binding-before.json").read_text())
++    before = bindings(config, files)
++    validate_revalidation_bindings(original, before, args.original_controller)
++    known_errors = {r["id"]: exclusion for r in files
++        if (exclusion := expected_exclusion(r, before["inputs"][r["id"]]))}
++    require(len(known_errors) == 2, "Both canonical hash-bound malformed inputs must be present")
++    qualified = {variant: qualification_records(source / (variant + "-qualification-private.jsonl"), files)
++                 for variant in ("baseline", "candidate")}
++    differences = validate_qualification(files, qualified["baseline"], qualified["candidate"], known_errors)
++    args.output.mkdir(parents=True, exist_ok=False, mode=0o700)
++    for name in ("inventory-private.json", "inputs-private.json",
++                 "baseline-qualification-private.jsonl", "candidate-qualification-private.jsonl"):
++        shutil.copyfile(source / name, args.output / name)
++        require(sha(args.output / name) == source_hashes[name], "Copied qualification artifact changed")
++    config.update(qualification_policy=QUALIFICATION_POLICY,
++                  qualification_origin="revalidated-complete-records")
++    write_json(args.output / "config-private.json", config)
++    write_json(args.output / "binding-before.json", before)
++    shutil.copyfile(args.original_controller, args.output / "original-controller.py")
++    shutil.copyfile(source / "binding-before.json", args.output / "original-binding.json")
++    require(sha(args.output / "original-controller.py") == original["workers"][CONTROLLER],
++            "Archived controller changed while copying")
++    require(sha(args.output / "original-binding.json") == source_hashes["binding-before.json"],
++            "Original binding changed while copying")
++    write_json(args.output / "revalidation.json", dict(
++        policy=QUALIFICATION_POLICY, revalidated_utc=datetime.now(timezone.utc).isoformat(),
++        original_controller_sha256=original["workers"][CONTROLLER],
++        current_controller_sha256=before["workers"][CONTROLLER],
++        original_artifact_sha256=source_hashes,
++        original_status="Complete qualification records; no qualification seal or timed reads",
++        new_r_qualification_reads=0,
++        rationale="Require complete baseline/candidate parity within each output. Dibble construction can widen string storage declarations to fit decoded UTF-8; cross-output signatures are recorded, while status, shape and conditions must match."))
++    require(inventory(Path(config["cache"])) == full_inventory, "Cache inventory changed during revalidation")
++    require(bindings(config, files) == before, "Binding changed during revalidation")
++    require(revalidation_source(source) == source_hashes, "Original qualification artifacts changed")
++    write_json(args.output / "qualification.json", qualification_summary(
++        files, qualified["candidate"], known_errors, before, differences))
++    write_json(args.output / "QUALIFIED", qualified_seal(args.output))
++    print("Revalidated " + str(len(files)) + " files from unchanged complete records; timing has not started", flush=True)
+ 
+ 
+ def prepare(args):
+@@ -189,6 +288,8 @@
+         ("baseline_build_work", "candidate_build_work", "cache")}
+     config["smoke"] = args.smoke
+     config["expected_files"] = args.expected_files
++    config["qualification_policy"] = QUALIFICATION_POLICY
++    config["qualification_origin"] = "fresh-r-reads"
+     all_files = inventory(args.cache)
+     validate_inventory_count(all_files["files"], args.expected_files)
+     files = selected_inputs(all_files["files"], args.smoke)
+@@ -208,12 +309,11 @@
+             child_environment(library))
+     qualified = {variant: qualification_records(args.output / (variant + "-qualification-private.jsonl"), files)
+                  for variant in ("baseline", "candidate")}
+-    validate_qualification(files, qualified["baseline"], qualified["candidate"], known_errors)
++    differences = validate_qualification(files, qualified["baseline"], qualified["candidate"], known_errors)
+     require(inventory(args.cache) == all_files, "Cache inventory changed during qualification")
+     require(bindings(config, files) == before, "Binding changed during qualification")
+-    write_json(args.output / "qualification.json", dict(files=len(files), attempts_per_library=len(files)*2,
+-        outputs=OUTPUTS, matched=True, malformed=[dict(id=r["id"], **known_errors[r["id"]], **before["inputs"][r["id"]]) for r in files if r["id"] in known_errors],
+-        warning_files=[r["id"] for r in files if qualified["candidate"][(r["id"], "dibble")]["conditions"]["warnings"]]))
++    write_json(args.output / "qualification.json", qualification_summary(
++        files, qualified["candidate"], known_errors, before, differences))
+     write_json(args.output / "QUALIFIED", qualified_seal(args.output))
+     print("Qualified " + str(len(files)) + " files for both outputs; timing has not started", flush=True)
+ 
+@@ -223,6 +323,7 @@
+     require((output / "QUALIFIED").is_file() and not (output / "MEASUREMENT_STARTED").exists(),
+             "Need a qualified directory without prior timing")
+     config = json.loads((output / "config-private.json").read_text())
++    require(config.get("qualification_policy") == QUALIFICATION_POLICY, "Unrecognized qualification policy")
+     files = json.loads((output / "inputs-private.json").read_text())
+     full_inventory = json.loads((output / "inventory-private.json").read_text())
+     before = json.loads((output / "binding-before.json").read_text())
+@@ -285,6 +386,8 @@
+         outputs=OUTPUTS, threads=0, source_inventory_files=len(full_inventory["files"]),
+         skipped_symlink_aliases=len(full_inventory["skipped_symlinks"]),
+         platform=platform.platform(), logical_cpus=os.cpu_count(),
++        qualification_policy=config["qualification_policy"],
++        qualification_origin=config["qualification_origin"],
+         protocol="One first read per fresh process/output; no forced pre-read GC; per-file hashing warms cache; output order alternates by file",
+         haven_invocations=0, stata_invocations=0, arrow_invocations=0))
+     (output / "COMPLETE").write_text("smoke\n" if config["smoke"] else "full-cache\n")
+@@ -299,12 +402,15 @@
+         prep.add_argument("--"+name, type=lambda value: Path(value).resolve(), required=True)
+     prep.add_argument("--smoke", action="store_true")
+     prep.add_argument("--expected-files", type=int, required=True)
++    audit = sub.add_parser("revalidate")
++    for name in ("source-output", "original-controller", "output"):
++        audit.add_argument("--"+name, type=lambda value: Path(value).resolve(), required=True)
+     timed = sub.add_parser("measure")
+     timed.add_argument("--output", type=lambda value: Path(value).resolve(), required=True)
+     args = parser.parse_args()
+     require(sys.platform in ("darwin", "linux"), "Unsupported wait4 RSS platform")
+     require(shutil.which("Rscript") is not None, "Rscript unavailable")
+-    (prepare if args.phase == "prepare" else measure)(args)
++    dict(prepare=prepare, revalidate=revalidate, measure=measure)[args.phase](args)
+ 
+ 
+ if __name__ == "__main__":

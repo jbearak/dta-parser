@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "candidate_source_commit": "61954ee88431eb2212e36a24ca8db1781e932ac7",
+  "baseline_source_commit": "dced75ff5350e58c9f772fd0c9f9c07dc11f7929",
+  "source_binding": {
+    "relative_path": "../../r-corpus-roundtrip/results-2026-10-01/build/build-bindings.json",
+    "sha256": "63e491731a6442f4f56d3a37307b30ef7f56001b514520dad56824fff92eb300",
+    "source_commit_audit_sha256": "bf740340f2ea9a822df13a182f08c1c062c3ef32d8d742a61303ca6a6124ac4e"
+  },
+  "runtime": {
+    "baseline": {
+      "r_version": "R version 4.6.1 (2026-06-24)",
+      "r_platform": "aarch64-apple-darwin25.4.0",
+      "r_executable_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+      "dtatools_version": "0.10.0",
+      "tibble_version": "3.3.1"
+    },
+    "candidate": {
+      "r_version": "R version 4.6.1 (2026-06-24)",
+      "r_platform": "aarch64-apple-darwin25.4.0",
+      "r_executable_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+      "dtatools_version": "0.10.0",
+      "tibble_version": "3.3.1"
+    }
+  },
+  "build_receipt_sha256": {
+    "baseline": "470f8f60d62b0bcf456284822d86d5918c511460fffb3476c4ae7e5f82b977a3",
+    "candidate": "5a553b2e17fb9d2f774d2851035841857e9c9e4a0e4fd89fc0f29e134a983b60"
+  },
+  "installed_dll_sha256": {
+    "baseline": "225e736b08fcfcd75e78555158ac5cf98519a474e615c24e852afed7e605310b",
+    "candidate": "7b2c1fccefda04a76250e96393766d28f19a6e2196da89f831f67326dee2bd2d"
+  },
+  "worker_sha256": {
+    "benchmarks/reader-corpus/cache-run.py": "fea2d6bb4cbb82ed36ac8a7f22039e3f421b99ee1a2f7017badd30a21036d76b",
+    "benchmarks/reader-corpus/cache-worker.R": "32affb1c518af08ab54beb3cf8a4e91de7245be0a7722ad76682edf3ae3c0805",
+    "benchmarks/reader-corpus/cache-qualify.R": "dd996fbf8c833fc8e93f799483e2ba76a87ca9dc39c403f420a14334e435c228",
+    "benchmarks/reader-corpus/run.py": "1d6a96fee124a6f814babc5aad38d28502bf386238b70fc51b6eabb7ce17aa5d",
+    "benchmarks/reader-refresh/driver_common.py": "4cd4f21ffa5278fdb1d1d4543c929429cca83447e8c6055153e619ab46d7c085",
+    "benchmarks/reader-refresh/workers/benchmark-common.R": "1652c6d1225d8b945b3451df23d703d6710341365cd2b503a66513e917c3c75b",
+    "benchmarks/r-corpus-roundtrip/common.R": "a5fa2faf1ea378919e1d32cacd5831a2dd135a7911dc0b0c4b7d82d4e93bad67"
+  },
+  "rscript_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f",
+  "coverage": {
+    "attempted_files": 1882,
+    "readable_files": 1880,
+    "excluded_files": 2,
+    "timed_attempts": 3764,
+    "successful_timed_attempts": 3760,
+    "expected_error_attempts": 4,
+    "source_bytes": 57115106133,
+    "skipped_symlink_aliases": 2,
+    "corpora": [
+      {
+        "corpus": "CFR",
+        "attempted_files": 1,
+        "source_bytes": 812515
+      },
+      {
+        "corpus": "DHS",
+        "attempted_files": 643,
+        "source_bytes": 46963195724
+      },
+      {
+        "corpus": "ENADID",
+        "attempted_files": 17,
+        "source_bytes": 554254930
+      },
+      {
+        "corpus": "MICS",
+        "attempted_files": 951,
+        "source_bytes": 3690422413
+      },
+      {
+        "corpus": "NSFG",
+        "attempted_files": 229,
+        "source_bytes": 5776831694
+      },
+      {
+        "corpus": "WFS",
+        "attempted_files": 41,
+        "source_bytes": 129588857
+      }
+    ]
+  },
+  "qualification": {
+    "policy": "complete-signature-within-output-v2",
+    "origin": "revalidated-complete-records",
+    "original_r_reads": 7528,
+    "new_r_reads_during_revalidation": 0,
+    "baseline_candidate_records_byte_identical": true,
+    "cross_output_signature_differences": 29,
+    "warning_files": 0,
+    "expected_malformed_files": 2,
+    "sealed": true
+  },
+  "audits": {
+    "input_source_install_runtime_worker_bindings_equal_before_after": true,
+    "exact_attempt_completeness": true,
+    "aggregate_totals_independently_recomputed": true,
+    "raw_observations_retained_unfiltered": true,
+    "original_failed_run_unchanged_unsealed_and_untimed": true
+  },
+  "private_artifact_sha256": {
+    "binding-before.json": "8f04bb85701517a4011388d44420b82de4ff6f5279edbb070a5fc6dab986dd82",
+    "binding-after.json": "8f04bb85701517a4011388d44420b82de4ff6f5279edbb070a5fc6dab986dd82",
+    "inventory-private.json": "6175fb47763df437ef53255ac4f7a9270fb8282e06f2400b5e174c67a619482e",
+    "inputs-private.json": "60853b6271689a3365f25cb72c6e645517a39cd19b8039f0a77b71a15b6773b0",
+    "baseline-qualification-private.jsonl": "b8448faa7d24b11d70c426ee08f0dc3f7bef11f5dbc28706bdb0e92f521989d8",
+    "candidate-qualification-private.jsonl": "b8448faa7d24b11d70c426ee08f0dc3f7bef11f5dbc28706bdb0e92f521989d8",
+    "qualification.json": "3a83e8a4b03a5371e28146184fc538e0b512c51dc4a64b6249bb80510b1e94b6",
+    "QUALIFIED": "084105f42ed6ade9e68d597c8fdb9b5e689c73f1ee6e284c5899b7887015c184",
+    "observations.jsonl": "9aa03de0df3db023ef1d67c65bf7dd9d9556c32651ee18bd49798dac6fb31d1c",
+    "observations.csv": "89f25c5741d0f67f41acd595f5a66e8301b6d0978a1a0c54e98b0eafbd4e2f94",
+    "COMPLETE": "93e8ddc56e1c4df2862455cb48343fa78b48706b8a68b6d108e2a081f4e39613"
+  },
+  "public_artifact_sha256": {
+    "summary.csv": "737e3875ecaeec77e82d54683ece8160d5481a4a488d195c7855e829b2485383",
+    "container-signatures.json": "cb676a539a5fcd21ff4c999d456f4a24fd1090bbd9d28899e108677171ed9e0e",
+    "host-monitor.py": "58f98819dce37b2850e152347f41b429b27a3fbe158ba2b3473f36956e017ed6",
+    "qualification-policy.patch": "0c60902710e228f39a0fe2e8b1029068e6975f2152a97df3f5b2df036f5509b7",
+    "host-summary.json": "2f63997aa98135480edee6835c19e0dac38cd2d27b7476b3235903b206b901b4",
+    "revalidation.json": "da29a229e70c8bbc5bbad3415352d3c725d0f87725224a278181715b48ecc08f",
+    "run.json": "7ea482502a2013117c96ea8fec11b7ce5ebfc1672522e662b5521e4bbcf4f21a",
+    "host-load.jsonl": "4edba6248058ad910ff0d312576d7c079220b914c45501da659f36b117e721a7"
+  },
+  "privacy": "Input paths, survey identities, exact signatures, detailed conditions, commands and per-file observations remain private; public tables contain corpus aggregates."
+}

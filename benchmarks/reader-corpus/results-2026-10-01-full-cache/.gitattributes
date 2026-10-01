@@ -1,0 +1,3 @@
+# Preserve provenance-bound bytes and valid unified-patch context lines.
+* -text
+*.patch -whitespace

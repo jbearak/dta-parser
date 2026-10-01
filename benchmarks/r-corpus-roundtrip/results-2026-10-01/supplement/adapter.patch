@@ -1,0 +1,41 @@
+--- a/benchmarks/r-corpus-roundtrip/common.R
++++ b/benchmarks/r-corpus-roundtrip/common.R
+@@ -1,6 +1,6 @@
+ source(file.path(script_dir, "..", "benchmark-common.R"), local = TRUE)
+ 
+-roundtrip_corpora <- c("DHS", "MICS", "NSFG")
++roundtrip_corpora <- c("ENADID", "WFS", "CFR")
+ 
+ roundtrip_order_smallest <- function(inventory) {
+     inventory[
+--- a/benchmarks/r-corpus-roundtrip/verify.R
++++ b/benchmarks/r-corpus-roundtrip/verify.R
+@@ -32,6 +32,15 @@
+ } else {
+     if (length(args) > 4L) stop("too many verification arguments")
+     roundtrip_inventory(cache_root)
++}
++if (!identical(selection, "full")) stop("supplement requires full verification")
++extra_counts <- as.integer(table(factor(
++    inventory$corpus, levels = c("ENADID", "WFS", "CFR")
++)))
++if (!identical(extra_counts, c(17L, 41L, 1L)) ||
++    nrow(inventory) != 59L || anyNA(inventory$release) ||
++    any(inventory$release != 118L)) {
++    stop("supplement requires exactly 17 ENADID, 41 WFS and 1 CFR release-118 files")
+ }
+ selected <- roundtrip_select_verification(inventory, selection, argument)
+ inventory_hash <- benchmark_file_sha256({
+@@ -224,9 +233,9 @@
+     )
+ }
+ if (selection == "full" &&
+-    !(nrow(results) == 1823L && sum(results$status == "pass") == 1821L &&
+-      sum(results$status == "expected-exclusion") == 2L)) {
+-    stop("full verification did not achieve 1,821 passes and two bound exclusions")
++    !(nrow(results) == 59L && sum(results$status == "pass") == 59L &&
++      sum(results$status == "expected-exclusion") == 0L)) {
++    stop("supplement did not achieve all 59 passes with zero exclusions")
+ }
+ message("verification complete: ", sum(results$status == "pass"), " passes, ",
+         sum(results$status == "expected-exclusion"), " exclusions")

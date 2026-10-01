@@ -1,0 +1,8 @@
+{
+  "runtime_recheck_exit_code": 0,
+  "native_R_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+  "native_R_matches_v3_build_receipt": true,
+  "native_R_reference_scope": "Build receipt, not a separate pre-oracle native-R measurement",
+  "audit_source_sha256": "a8e2589b6977270b15045a1ce807692385849c0f80910dce3f0090e0372c2bfa",
+  "audit_log_sha256": "7f14672b1621bfe89b223a177d36a1e4a9a6662e36e44f8548152d841f6a9b2d"
+}

@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "scope": "Untimed diagnosis of existing tibble/dibble signature differences in the complete cache qualification",
+  "baseline_source_commit": "dced75ff5350e58c9f772fd0c9f9c07dc11f7929",
+  "candidate_source_commit": "61954ee88431eb2212e36a24ca8db1781e932ac7",
+  "qualification_records_per_build": 3764,
+  "qualification_records_total": 7528,
+  "baseline_candidate_records_byte_identical": true,
+  "baseline_candidate_qualification_sha256": "b8448faa7d24b11d70c426ee08f0dc3f7bef11f5dbc28706bdb0e92f521989d8",
+  "affected_files": 29,
+  "affected_by_corpus": {
+    "DHS": 15,
+    "MICS": 14
+  },
+  "string_columns_with_required_fixed_width_widening": 117,
+  "fixed_to_strL_changes": 0,
+  "internal_metadata_class_markers_removed": 6,
+  "files_with_internal_marker_removal": 2,
+  "all_values_names_shapes_and_other_logical_metadata_equal": true,
+  "string_storage_attributes_alone_normalize_all29_complete_signatures": true,
+  "original_tibble_content_and_signatures_unchanged": true,
+  "synthetic_check": {
+    "baseline": {
+      "exit_code": 0,
+      "reproduced_raw_signature_difference": true,
+      "storage_only_normalization_equal": true,
+      "table_class_alone_ignored": true
+    },
+    "candidate": {
+      "exit_code": 0,
+      "reproduced_raw_signature_difference": true,
+      "storage_only_normalization_equal": true,
+      "table_class_alone_ignored": true
+    },
+    "scope": "One constructed non-ASCII string with a fixed declaration narrower than its decoded UTF-8 byte width; no private survey value used"
+  },
+  "cause": "The existing dibble constructor validates decoded string widths and widens fixed storage declarations. Tibble output retains source declarations. datasig includes declared storage metadata, so raw signatures can differ despite equal values and all other logical metadata. Removing the optional internal metadata class marker does not explain the signatures.",
+  "qualification_policy": "Require exact baseline/candidate agreement separately for each requested output. Check cross-output shape and conditions, and disclose rather than waive raw signature differences caused by established storage normalization.",
+  "diagnostic_execution": {
+    "pair_reads": "Candidate only; both containers for all 29 affected files",
+    "comparison_assertions_passed": 29,
+    "r_process_exit_code": 1,
+    "exit_reason": "After all 29 successful comparison records were flushed, final summary serialization rejected an R table object. The aggregate below was derived from the complete JSONL; the formatter was corrected without rereading inputs.",
+    "summary_derivation": "All 29 records require equal values/names/shapes/other logical metadata, only required string-width changes plus optional internal marker removal, equal complete signatures after changing only string storage, and unchanged original tibble."
+  },
+  "retained_artifact_sha256": {
+    "executed_all29_diagnostic_R": "0404d038093b914c4658018a6f0d1d1596e7b7a1f0bb250fdc09d1955074fea5",
+    "corrected_reproduction_R": "5f87b92f02cbced7e0445fd6381eb34c234624200a614e6d23417bf5b00d35d3",
+    "executed_synthetic_diagnostic_R": "f7be72b278d90fe205ad6b7088ac5ea46e6773ce774e25c0763112dd5be63441",
+    "all29_successful_comparison_records_jsonl": "fdf199a3e6ff9eba8136cef62b4975e14822517cefeaa7f7d8aeefa2b6784896",
+    "all29_execution_log": "6a3b8f5e49ef51376497fef17a78a0c8aac492281feafbac266df74892b17255",
+    "derived_private_summary_json": "a82beb7be34d3e4acd8ae9805ca0211882745fc02c49e2ff443454ba53899130"
+  },
+  "privacy": "Only aggregate findings and hashes are published. Private input paths, variable names, survey values, exact signatures and per-column positions remain outside Git.",
+  "diagnostic_ids_exactly_match_original_qualification_differences": true,
+  "diagnostic_ids_complete_and_unique": true
+}

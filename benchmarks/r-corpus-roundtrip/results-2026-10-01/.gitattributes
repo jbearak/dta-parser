@@ -1,0 +1,5 @@
+# Preserve the bytes bound by validation.json, including patch context lines
+# and empty trailing TSV fields.
+* -text
+*.patch -whitespace
+*.tsv -whitespace

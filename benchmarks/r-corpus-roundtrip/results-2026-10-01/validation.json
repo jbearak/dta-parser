@@ -1,0 +1,99 @@
+{
+  "by_corpus": {
+    "CFR": {
+      "pass": 1
+    },
+    "DHS": {
+      "pass": 643
+    },
+    "ENADID": {
+      "pass": 17
+    },
+    "MICS": {
+      "expected-exclusion": 2,
+      "pass": 949
+    },
+    "NSFG": {
+      "pass": 229
+    },
+    "WFS": {
+      "pass": 41
+    }
+  },
+  "canonical_private_record_sha256": {
+    "audit-inputs.R": "ba9ed5fe7d05a2bbd8ec4437117a17ffc1f8c2e3ac8a7e14385e05dcf0e9803e",
+    "audit-runtime.R": "a8e2589b6977270b15045a1ce807692385849c0f80910dce3f0090e0372c2bfa",
+    "command.private.json": "cf25abcaa453490190cbb52eb68a0dee27473c65082cb0aaf1369080eb68a5cc",
+    "post-input-audit.log": "181a4cfe706f27762bb3e0b3ebc05e3a482d463a21e78d977f5803ddb1fe6a64",
+    "runtime-audit-command.private.json": "0f96b515189bc2127848041b685caaab0120eb0d436004bf7bf2fc8fee6fc636",
+    "runtime-audit.log": "7f14672b1621bfe89b223a177d36a1e4a9a6662e36e44f8548152d841f6a9b2d",
+    "verification.log": "dd9f64c4bc16f568a8b4d7e044375a6d1f52c19845e6c40d78479f7deec975f4"
+  },
+  "comparator_controls": {
+    "exit_code": 0,
+    "finished_unix": 1790877461.2829309,
+    "intentional_mismatch_categories": 10,
+    "log_sha256": "3957758d50a5933fb9c12dfd6a271c371da052d3201c4b681fdb433faa52515f",
+    "no_haven_reader_or_test": true,
+    "pre_post_bindings_equal": true,
+    "reserved_variable_name_guard": 1,
+    "source_self_comparisons": 5,
+    "wide_comparison_columns": 1000,
+    "wide_comparison_rows": 10000,
+    "wide_elapsed_limit_seconds": 2.5
+  },
+  "control_private_command_sha256": "46a668068fbe7314bf1d45fc53d8eefc5f36b1f01d71aa8ca2f13436a6f77db0",
+  "date": "2026-10-01",
+  "haven_scope": "No Haven reader or conformance test invoked; shared binder only fingerprints its installed package",
+  "input_bytes": 57115106133,
+  "inventory_files": 1882,
+  "known_malformed_exclusions": 2,
+  "later_integration_commit": "a4cbc8707083df95134f303aadcba01a259f7bc3",
+  "live_stata_source_output_comparisons_passed": 3760,
+  "oracle_gates": {
+    "canonical": {
+      "bindings_equal": true,
+      "finished_unix": 1790877375.155603,
+      "input_rehash_exit_code": 0,
+      "verifier_exit_code": 0
+    },
+    "supplement": {
+      "exit_code": 0,
+      "input_rehash_exit_code": 0,
+      "pre_post_bindings_equal": true
+    }
+  },
+  "output_container": "public default dibble; Arrow restores saved container",
+  "preflight_log_sha256": {
+    "process.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stata-preflight-result.tsv": "dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22",
+    "stata-preflight.log": "af3cc730ccae0cc607022c8a15ab9811577f673d074fac47660b4eb0cff477ba"
+  },
+  "private_data_policy": "Detailed input inventory, source paths, signatures, private commands and corpus work products retained outside Git",
+  "published_artifact_sha256": {
+    "build/baseline.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build/build-bindings.json": "63e491731a6442f4f56d3a37307b30ef7f56001b514520dad56824fff92eb300",
+    "build/candidate.patch": "22677ab062b03bd6b3445f45df61ad92ed4821e8f05ce4f2c76d7a0776d94198",
+    "build/source-commit-audit.json": "bf740340f2ea9a822df13a182f08c1c062c3ef32d8d742a61303ca6a6124ac4e",
+    "canonical/bindings-after.json": "dc8edf25d3b9bd31e5fe237390436c6c28640c47121bbc740d5901cef7876a53",
+    "canonical/bindings-before.json": "dc8edf25d3b9bd31e5fe237390436c6c28640c47121bbc740d5901cef7876a53",
+    "canonical/completion.json": "b9c5ccee57199c3125f15369ec4c9b7a64f6b15b8c40a999673dc33ca546933d",
+    "canonical/runtime-audit.json": "fb8f4e3fc3d7736fc480a12d30dce154889648e9eee8f727346f6a101e9c42b9",
+    "canonical/runtime-binding-after.tsv": "afc26ea1abd1c0b989fab35b2839d03e53f50894d1fa3a746d35affab53b6877",
+    "canonical/verification-binding.tsv": "dceef543ebbb3957efaf48c5b1be20682c6a258895befe4ab8038367ebed1367",
+    "canonical/verification.tsv": "79a76639aa162c4cb366a08d0d69a4b76d45cd84f88c42cd63bca54434d01dc0",
+    "controls/bindings-after.json": "0fabbae5118f9ec72dd9d0bea8af3a08de09042f4cdeb2c4f80e70ae33bb5be4",
+    "controls/bindings-before.json": "0fabbae5118f9ec72dd9d0bea8af3a08de09042f4cdeb2c4f80e70ae33bb5be4",
+    "controls/completion.json": "3cc0e733c125f37f2a51a40a8ce30f2d5f99fb51119a6072da47cbd002295638",
+    "controls/test.log": "3957758d50a5933fb9c12dfd6a271c371da052d3201c4b681fdb433faa52515f",
+    "supplement/adapter-record.json": "3be0a78faa0f4ef49505cda8c052ba6368b0020215e8bf1ac54573d6dfff1b17",
+    "supplement/adapter.patch": "2e9db9d6ec7eb526690bba1c06bfba79bc0cdb40debf007bae65a98797ec415c",
+    "supplement/bindings-after.json": "e06ef31253ad01cd3afddec84af030b20bc2c182a9e3c36197cb044cc4aaebb5",
+    "supplement/bindings-before.json": "e06ef31253ad01cd3afddec84af030b20bc2c182a9e3c36197cb044cc4aaebb5",
+    "supplement/verification-binding.tsv": "044a482c167c563c7f4024a819069582fd8be2d1da25dadacb16c2132a6f5f9c",
+    "supplement/verification.tsv": "d7277b88b4e43968c2a77f329cf48a88bee9a77de6ae5d7b4ad99c11548ab63b"
+  },
+  "readable_files_passed": 1880,
+  "schema_version": 1,
+  "tested_package_commit": "61954ee88431eb2212e36a24ca8db1781e932ac7"
+}
