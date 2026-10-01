@@ -1,0 +1,21 @@
+{
+  "root": "/absolute/path/to/checkout",
+  "directory": "/absolute/path/to/private-run-directory",
+  "baseline": "/absolute/path/to/baseline-library",
+  "candidate": "/absolute/path/to/candidate-library",
+  "baseline_source": "/absolute/path/to/archived-v0.10.0-checkout",
+  "baseline_install_log": "/absolute/path/to/baseline-install.log",
+  "candidate_install_log": "/absolute/path/to/candidate-install.log",
+  "merge_directory": "/absolute/path/to/private-run-directory/merge-fixtures",
+  "reads": [
+    {"id": "primary-100mb", "dta": "/local/primary-100mb.dta", "arrow": "/local/new-primary-100mb.arrow", "rows": 231956, "columns": 40},
+    {"id": "primary-1gb", "dta": "/local/primary-1gb.dta", "arrow": "/local/new-primary-1gb.arrow", "rows": 2320123, "columns": 40},
+    {"id": "india", "dta": "/local/india.dta", "arrow": "/local/new-india.arrow", "rows": 724115, "columns": 5972}
+  ],
+  "writes": [
+    {"id": "primary-100mb", "kind": "primary", "input": "/local/primary-100mb.dta", "rows": 231956},
+    {"id": "primary-1gb", "kind": "primary", "input": "/local/primary-1gb.dta", "rows": 2320123},
+    {"id": "ordinary-100mb", "kind": "ordinary", "input": 222711, "rows": 222711},
+    {"id": "ordinary-1gb", "kind": "ordinary", "input": 2227111, "rows": 2227111}
+  ]
+}

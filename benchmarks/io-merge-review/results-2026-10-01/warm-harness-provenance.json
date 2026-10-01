@@ -1,0 +1,13 @@
+{
+  "capture": "post-run",
+  "pre_run_harness_inventory_captured": false,
+  "reason": "The main collector enumerated root-level harness files, not the supplemental warm directory.",
+  "libraries_and_inputs_covered_by_later_pre_post_records": true,
+  "published_files_match_executed_files": true,
+  "sha256": {
+    "warm/run.py": "b9c83fce17353caf1d101dcbcd74f6d2b8de4b2d4bb1e9473603604a6a67c644",
+    "warm/worker.R": "b20a0e26944cf4fa167c409ec45da027a1c4cde852eac0dd83ae9b7e4e963db4",
+    "warm/qualify-merge.R": "cc478190965c94efddfa12df61d8ba3486ad1ea859acc3e12734cc364317beec",
+    "warm/qualify-merge.py": "1115602dae6fa177259e62ba758d4003bdbea089b17b738c662f852adb48b057"
+  }
+}

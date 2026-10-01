@@ -1,0 +1,166 @@
+[
+  {
+    "key": "primary-100mb-read_dta",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t231956\t40\t231956:40:bab4b8dee5b66170"
+    ]
+  },
+  {
+    "key": "primary-100mb-read_dta",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\tread_dta\t231956\t40\t231956:40:bab4b8dee5b66170"
+    ]
+  },
+  {
+    "key": "primary-100mb-read_arrow",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t231956\t40\t231956:40:bab4b8dee5b66170"
+    ]
+  },
+  {
+    "key": "primary-100mb-read_arrow",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\tread_arrow\t231956\t40\t231956:40:bab4b8dee5b66170"
+    ]
+  },
+  {
+    "key": "primary-1gb-read_dta",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t2320123\t40\t2320123:40:7cb9bebf47711cf7"
+    ]
+  },
+  {
+    "key": "primary-1gb-read_dta",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\tread_dta\t2320123\t40\t2320123:40:7cb9bebf47711cf7"
+    ]
+  },
+  {
+    "key": "primary-1gb-read_arrow",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t2320123\t40\t2320123:40:7cb9bebf47711cf7"
+    ]
+  },
+  {
+    "key": "primary-1gb-read_arrow",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\tread_arrow\t2320123\t40\t2320123:40:7cb9bebf47711cf7"
+    ]
+  },
+  {
+    "key": "india-read_dta",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_dta\t724115\t5972\t724115:5972:e404e6f1cf51f55a"
+    ]
+  },
+  {
+    "key": "india-read_dta",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\tread_dta\t724115\t5972\t724115:5972:e404e6f1cf51f55a"
+    ]
+  },
+  {
+    "key": "india-read_arrow",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tread_arrow\t724115\t5972\t724115:5972:e404e6f1cf51f55a"
+    ]
+  },
+  {
+    "key": "india-read_arrow",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\tread_arrow\t724115\t5972\t724115:5972:e404e6f1cf51f55a"
+    ]
+  },
+  {
+    "key": "merge-typed-1m",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\ttyped\t440044\t201\t440044:201:37cf2f85174f84f6",
+      "WARNINGS\t60 variables are in both inputs besides the keys; matched rows keep the `x` values: s1, s2, s3, s4, s5, and 55 more"
+    ]
+  },
+  {
+    "key": "merge-typed-1m",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\ttyped\t440044\t201\t440044:201:37cf2f85174f84f6",
+      "WARNINGS\t60 variables are in both inputs besides the keys; matched rows keep the `x` values: s1, s2, s3, s4, s5, and 55 more"
+    ]
+  },
+  {
+    "key": "merge-typed-m1",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\ttyped\t440044\t201\t440044:201:c1960a5636d14771",
+      "WARNINGS\t60 variables are in both inputs besides the keys; matched rows keep the `x` values: s1, s2, s3, s4, s5, and 55 more"
+    ]
+  },
+  {
+    "key": "merge-typed-m1",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\ttyped\t440044\t201\t440044:201:c1960a5636d14771",
+      "WARNINGS\t60 variables are in both inputs besides the keys; matched rows keep the `x` values: s1, s2, s3, s4, s5, and 55 more"
+    ]
+  },
+  {
+    "key": "merge-ordinary-1m",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tordinary\t440044\t201\t440044:201:65203ef08f3a6daf",
+      "WARNINGS\t60 variables are in both inputs besides the keys; matched rows keep the `x` values: s1, s2, s3, s4, s5, and 55 more"
+    ]
+  },
+  {
+    "key": "merge-ordinary-1m",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\tordinary\t440044\t201\t440044:201:65203ef08f3a6daf",
+      "WARNINGS\t60 variables are in both inputs besides the keys; matched rows keep the `x` values: s1, s2, s3, s4, s5, and 55 more"
+    ]
+  },
+  {
+    "key": "merge-ordinary-m1",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tordinary\t440044\t201\t440044:201:88957c16eac0ba70",
+      "WARNINGS\t60 variables are in both inputs besides the keys; matched rows keep the `x` values: s1, s2, s3, s4, s5, and 55 more"
+    ]
+  },
+  {
+    "key": "merge-ordinary-m1",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\tordinary\t440044\t201\t440044:201:88957c16eac0ba70",
+      "WARNINGS\t60 variables are in both inputs besides the keys; matched rows keep the `x` values: s1, s2, s3, s4, s5, and 55 more"
+    ]
+  },
+  {
+    "key": "merge-one-column-1m",
+    "library": "baseline",
+    "records": [
+      "QUALIFIED\tone-column\t440044\t3\t440044:3:439e292fa4bb4121",
+      "WARNINGS\t1 variable is in both inputs besides the keys; matched rows keep the `x` values: s1"
+    ]
+  },
+  {
+    "key": "merge-one-column-1m",
+    "library": "candidate",
+    "records": [
+      "QUALIFIED\tone-column\t440044\t3\t440044:3:439e292fa4bb4121",
+      "WARNINGS\t1 variable is in both inputs besides the keys; matched rows keep the `x` values: s1"
+    ]
+  }
+]

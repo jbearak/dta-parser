@@ -1,0 +1,29 @@
+{
+  "available": true,
+  "sampler_exit": 0,
+  "requested_threads": 1,
+  "sample_seconds": 5,
+  "sampling_interval_ms": 1,
+  "worker_minimum_seconds": 12,
+  "dimensions": {
+    "rows": 724115,
+    "columns": 5972
+  },
+  "input_sha256": "53acf9bc37e4c207e026379f156758bfc47020cbdbf0aa26667e9e1a617ab3fc",
+  "package_dll_sha256": "ceecbf65aea0b898d8a99a729154508df08f7d344248caa1d102332f42a9ea06",
+  "full_installed_inventory_matched": true,
+  "timing_provenance_sha256": "43569cf79f06c4d0bf9b56b4e3d380af1704de74d0d1bdf64b11baaad580613c",
+  "timing_completion_sha256": "b40b29686c9569bd0625a1a9b9c698d700c9452be06da06b12b9383c775c222e",
+  "final_bindings_matched": true,
+  "workers": {
+    "profile.R": "5d9f0100936d182f2e1b1b81719a265ec0db3caf6a30be8b4d10b510de960880",
+    "profile.py": "98fe549b869b7f9822bb20b4970b8a319e9d33f00a6d23d7ad29a7e331d53f0e"
+  },
+  "excluded_opaque_stack_samples": 7,
+  "interpretation": "Repeated public reads include allocation, collection and loop overhead. All threads are sampled, including waits. Counts are not CPU-time percentages or energy measurements.",
+  "reprocessed_from_capture_sha256": "8ca55a4cbac83ece23a6a5d842b77a0fea507fe377011ffe59e079230a9be9d2",
+  "raw_sample_sha256": "ad948a891e75f159463f1bf3d5aab645fb268774a6d5d39e4f200aa6fb619d2b",
+  "postprocessor_sha256": "44ae3a7f1fb8c8181da4d11badc923edd77371bfe6ee53bc2b2b3a0c2c6bf2e2",
+  "parser_sha256": "713b514c1611d7125800935278af67ff41487e3efc3075cb8385fa38df775cfc",
+  "workload_repeated": false
+}
