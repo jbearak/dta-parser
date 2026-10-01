@@ -1,5 +1,0 @@
-Command excerpt from archived tool call, August 25, 2026:
-nl -ba <repo>/target/r-corpus-performance/pr46-legacy-refresh-2d09478/summary.tsv
-nl -ba <repo>/target/r-corpus-performance/20260824T142432Z/summary.tsv
-
-The first summary is reproduced in historical-format-summary.tsv after removing nl line-number prefixes. The source command also printed a few private inventory paths; those unrelated lines are omitted.
