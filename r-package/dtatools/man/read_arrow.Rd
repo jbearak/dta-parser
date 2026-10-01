@@ -45,14 +45,17 @@ dtatools Arrow profile.}
 which also disables checksum verification: the checksums are profile
 metadata.}
 
-\item{.name_repair}{Name repair passed to \code{\link[tibble:as_tibble]{tibble::as_tibble()}}.}
+\item{.name_repair}{Name repair applied to the selected column names by
+\code{\link[vctrs:vec_as_names]{vctrs::vec_as_names()}}.}
 
 \item{output}{Output container. An explicit \code{"dibble"}, \code{"tibble"}, or
 \code{"data.table"} overrides stored Arrow provenance. \code{"default"} restores a
 container recorded by \code{\link[=save_arrow]{save_arrow()}} and otherwise uses the
 \code{dtatools.output} option, falling back to \code{"dibble"}. A recorded
 container this release does not know reads as a tibble.
-\code{profile = FALSE} ignores stored provenance.}
+\code{profile = FALSE} ignores stored provenance. Every container returns the
+selected file columns; the global \code{tibble::rownames} configuration does
+not add columns.}
 
 \item{use_numeric_altrep}{Whether profiled byte, int, long, and float
 columns should retain their compact Stata storage through ALTREP. Set to

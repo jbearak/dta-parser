@@ -9651,7 +9651,7 @@
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
-          "sha256": "09ed090a41ba8967f4c354c381b4db9090403190e9852d67c891c5add652083c"
+          "sha256": "94c18a47b555582c098b38dee27dc8f0cedc3117d4429ffc7bf0dd5619f35465"
         }
       ],
       "blocks": [
@@ -10831,6 +10831,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 70,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-dibble.R",
+          "test": "reader columns are independent of tibble row-name configuration",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 34,
           "warnings": 0
         }
       ],

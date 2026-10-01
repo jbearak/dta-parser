@@ -34,11 +34,14 @@ number no larger than \code{2^53}.}
 negative finite values read all remaining rows, following haven's unlimited-row
 convention. Non-negative values must be whole numbers no larger than
 \code{2^53}.}
-\item{.name_repair}{Name repair passed to \code{tibble::as_tibble()}.}
+\item{.name_repair}{Name repair applied to the selected column names by
+\code{\link[vctrs:vec_as_names]{vctrs::vec_as_names()}}.}
 \item{output}{Output container. \code{"default"} uses the
 \code{dtatools.output} option, falling back to \code{"dibble"}. Supply
 \code{"dibble"}, \code{"tibble"}, or \code{"data.table"} to override the
-option. Data-table output requires the suggested data.table package.}
+option. Data-table output requires the suggested data.table package.
+Every container returns the selected file columns; the global
+\code{tibble::rownames} configuration does not add columns.}
 \item{threads}{Number of decoder threads. Zero chooses an automatic count
 within the CPUs available to the process. With compact numeric output,
 selected storage types, column widths, and the requested rows may reduce

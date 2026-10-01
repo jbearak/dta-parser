@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "package": "vroom",
+  "version": "1.7.1",
+  "description_sha256": "e3ea971ac7e3ecf9e8c05ad7249fe158823c89e87a64777888d769e1eed9a050",
+  "runtime_inventory_field": "vroom_altrep_flags",
+  "runtime_inventory_meaning": "package default, not the explicit reader argument",
+  "package_default_flags": 1,
+  "method_settings": {
+    "vroom_eager": {
+      "altrep_argument": false,
+      "resolved_flags": 0
+    },
+    "vroom_lazy": {
+      "altrep_argument": true,
+      "resolved_flags": 1023,
+      "enabled_type_count": 10
+    }
+  },
+  "measurement_common_R_sha256": "72df2bf2e66f2f706ab3816f065932d2d79d4971a1a43f97ea09b18532012cf3",
+  "inspection_log_sha256": "0041e71c08e8ce0bde55d62cfc4bc53a3fda64c99f8454073914b6a3f0b6a7de",
+  "evidence": "Installed vroom_altrep implementation and explicit logical-argument resolutions, inspected outside benchmark timing."
+}

@@ -1,0 +1,386 @@
+{
+  "primary-100mb-dtatools_dta_tibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    }
+  },
+  "primary-100mb-dtatools_dta_tibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    }
+  },
+  "primary-100mb-dtatools_dta_dibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    }
+  },
+  "primary-100mb-dtatools_dta_dibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    }
+  },
+  "primary-100mb-dtatools_arrow_tibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    }
+  },
+  "primary-100mb-dtatools_arrow_tibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    }
+  },
+  "primary-100mb-dtatools_arrow_dibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    }
+  },
+  "primary-100mb-dtatools_arrow_dibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "231956:40:bab4b8dee5b66170",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "6e93faf221bfb39cd3a53cb61989d3dcd9064c4c8daffbae5b5d3630dab31960"
+    }
+  },
+  "primary-1gb-dtatools_dta_tibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    }
+  },
+  "primary-1gb-dtatools_dta_tibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    }
+  },
+  "primary-1gb-dtatools_dta_dibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    }
+  },
+  "primary-1gb-dtatools_dta_dibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    }
+  },
+  "primary-1gb-dtatools_arrow_tibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    }
+  },
+  "primary-1gb-dtatools_arrow_tibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    }
+  },
+  "primary-1gb-dtatools_arrow_dibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    }
+  },
+  "primary-1gb-dtatools_arrow_dibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "792574ef99051ae518a796df4bc0b0115ec18fe610852352851ecdf6be0d02b0"
+    }
+  },
+  "india-dtatools_dta_tibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    }
+  },
+  "india-dtatools_dta_tibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    }
+  },
+  "india-dtatools_dta_dibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    }
+  },
+  "india-dtatools_dta_dibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    }
+  },
+  "india-dtatools_arrow_tibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    }
+  },
+  "india-dtatools_arrow_tibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    }
+  },
+  "india-dtatools_arrow_dibble-t1": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    }
+  },
+  "india-dtatools_arrow_dibble-t0": {
+    "baseline": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    },
+    "candidate": {
+      "qualification": "signature",
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "consumption": "omitted_read_only",
+      "consumption_sha256": null,
+      "log_sha256": "96769bc3336c0e690bf4cb7906ef5802f84d122249e01c31d727db16077e22c5"
+    }
+  }
+}

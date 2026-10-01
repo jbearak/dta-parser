@@ -278,8 +278,11 @@ seed. Any unresolved clock pair suppresses that metric's ratio and interval
 while preserving raw values and medians.
 
 Before/after records bind all input bytes, installed dtatools package files,
-R/Rscript executable hashes, R/package versions, package DESCRIPTION hashes, resolved vroom ALTREP flags,
-thread settings, and measurement source hashes. Source revisions, patches,
+R/Rscript executable hashes, R/package versions, package DESCRIPTION hashes,
+vroom's package-default ALTREP flags, thread settings, and measurement source
+hashes. The vroom methods explicitly pass `altrep = FALSE` or `TRUE`; these
+override the recorded package default. The published report records their
+resolved flags for the measured version. Source revisions, patches,
 compiler/toolchain and build logs come from the snapshot/receipt workflow
 above. Published acceptance runs must pass
 `--build-records /private/path/build-bindings.json`. The runner checks its

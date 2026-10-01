@@ -55,13 +55,16 @@
 #'   `FALSE` reads the file as plain Arrow data with standard semantics only,
 #'   which also disables checksum verification: the checksums are profile
 #'   metadata.
-#' @param .name_repair Name repair passed to [tibble::as_tibble()].
+#' @param .name_repair Name repair applied to the selected column names by
+#'   [vctrs::vec_as_names()].
 #' @param output Output container. An explicit `"dibble"`, `"tibble"`, or
 #'   `"data.table"` overrides stored Arrow provenance. `"default"` restores a
 #'   container recorded by [save_arrow()] and otherwise uses the
 #'   `dtatools.output` option, falling back to `"dibble"`. A recorded
 #'   container this release does not know reads as a tibble.
-#'   `profile = FALSE` ignores stored provenance.
+#'   `profile = FALSE` ignores stored provenance. Every container returns the
+#'   selected file columns; the global `tibble::rownames` configuration does
+#'   not add columns.
 #' @param use_numeric_altrep Whether profiled byte, int, long, and float
 #'   columns should retain their compact Stata storage through ALTREP. Set to
 #'   `FALSE` to create eager R double vectors while reading.
