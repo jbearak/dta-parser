@@ -6,7 +6,7 @@ display formats, and Stata missing values. The R package also writes Stata
 18/19 `.dta` files. Its Arrow-based `.arrow` format preserves supported R column
 classes alongside Stata storage types and metadata in the same data frame.
 The R package also supplies Stata-aware metadata, storage, recoding, tabulation,
-merge, and data-signature operations.
+summary statistics, merge, and data-signature operations.
 
 ## Choose a library
 
