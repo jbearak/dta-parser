@@ -64,6 +64,11 @@ test_that("namespace profile setup preserves generation and traced fallbacks", {
     expected <- .dtatools_public_mutation_build_expected()
     for (stage in c("clean", "before-load", "after-load")) {
         observed <- .dtatools_child_r("startup-generation-profile", function(stage, expected) {
+            # The checked native child preloads dtatools to verify its identity.
+            # Reload it here so before-load tracing still exercises .onLoad().
+            if (!is.null(getOption("dtatools.native.child"))) {
+                detach("package:dtatools", unload = TRUE)
+            }
             stopifnot(!isNamespaceLoaded("dtatools"), !isNamespaceLoaded("dplyr"))
             events <- new.env(parent = emptyenv())
             events$hits <- 0L

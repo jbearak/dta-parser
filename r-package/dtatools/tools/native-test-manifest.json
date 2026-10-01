@@ -9623,7 +9623,7 @@
         },
         {
           "path": "tests/testthat/test-dplyr-optional.R",
-          "sha256": "d4105d649ce47c3915214ffc0248ef2d00755aa02f47b12e85825c89332551f9"
+          "sha256": "13771985a7b9b5e3f8cd89a1f5538842f94ddb389e55431df0027a5266bf0b60"
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
