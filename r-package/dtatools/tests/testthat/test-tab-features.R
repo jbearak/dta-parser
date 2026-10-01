@@ -1,5 +1,4 @@
-test_that("tabulate is an exact alias and Stata selections and weights agree", {
-    expect_identical(tabulate, tab)
+test_that("Stata selections and weights agree", {
     d <- data.frame(x = c(1, 1, 2, 2, 3, NA), y = c(1, 2, 1, 2, NA, 1),
                     w = c(.5, 2, 3, 0, 4, 1), s = c(1, 0, NA, 0, 1, 1))
     lines <- readLines(test_path("fixtures", "tabulate-features.log"), warn = FALSE)

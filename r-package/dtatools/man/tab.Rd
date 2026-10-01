@@ -2,58 +2,9 @@
 % Please edit documentation in R/tab.R
 \name{tab}
 \alias{tab}
-\alias{tabulate}
 \title{Tabulate vectors as Stata's \code{tabulate} does}
 \usage{
 tab(
-  x,
-  ...,
-  data = NULL,
-  missing = FALSE,
-  display = c("label", "value", "both"),
-  sort = FALSE,
-  percent = NULL,
-  expected = FALSE,
-  freq = TRUE,
-  where = NULL,
-  rows = NULL,
-  by = NULL,
-  weights = NULL,
-  weight = c("aweight", "fweight", "iweight"),
-  subpop = NULL,
-  row = FALSE,
-  column = FALSE,
-  cell = FALSE,
-  nofreq = FALSE,
-  nolabel = FALSE,
-  chi2 = FALSE,
-  lrchi2 = FALSE,
-  exact = FALSE,
-  gamma = FALSE,
-  taub = FALSE,
-  V = FALSE,
-  all = FALSE,
-  cchi2 = FALSE,
-  clrchi2 = FALSE,
-  rowsort = FALSE,
-  colsort = FALSE,
-  key = NULL,
-  nokey = FALSE,
-  wrap = FALSE,
-  plot = FALSE,
-  nolog = FALSE,
-  generate = NULL,
-  matcell = FALSE,
-  matrow = FALSE,
-  matcol = FALSE,
-  collect = FALSE,
-  summarize = NULL,
-  means = NULL,
-  standard = NULL,
-  obs = NULL
-)
-
-tabulate(
   x,
   ...,
   data = NULL,
@@ -271,7 +222,7 @@ tab(x, sort = TRUE)
 
 mtcars |>
     tab(cyl, gear, percent = "row")
-tabulate(mtcars, cyl, gear, all = TRUE)
+tab(mtcars, cyl, gear, all = TRUE)
 tab(mtcars, cyl, summarize = mpg)
 tab(mtcars, cyl, by = am, where = .n <= 10)
 }
