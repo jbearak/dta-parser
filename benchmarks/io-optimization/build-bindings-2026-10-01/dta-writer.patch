@@ -1,0 +1,580 @@
+--- a/r-package/dtatools/src/dtatools-internal.h
++++ b/r-package/dtatools/src/dtatools-internal.h
+@@ -162,6 +162,9 @@
+     void *numeric_values;
+     SEXP string_values;
+     int value_label_index;
++    /* string_values is a rooted, unwrapped, non-ALTREP STRSXP. This does
++       not certify its bytes as UTF-8; writing still validates row order. */
++    int ordinary_strings;
+     SEXP dta_metadata;
+     double numeric_shift;
+     double numeric_scale;
+--- a/r-package/dtatools/src/io.c
++++ b/r-package/dtatools/src/io.c
+@@ -496,6 +496,7 @@
+                 Rf_error("internal string write column must be character");
+             }
+             descriptor->string_values = owned_column(values) ? owned_values(values) : values;
++            descriptor->ordinary_strings = !ALTREP(descriptor->string_values);
+             SET_VECTOR_ELT(payload_roots, (R_xlen_t) (table_count + index), descriptor->string_values);
+             SEXP dictionary_source = unmaterialized_dictstring_source(values);
+             if (dictionary_source != R_NilValue) {
+@@ -1067,4 +1068,3 @@
+     }
+     return result;
+ }
+-
+--- a/r-package/dtatools/src/numeric-payload.c
++++ b/r-package/dtatools/src/numeric-payload.c
+@@ -867,6 +867,7 @@
+ DTATOOLS_LAYOUT_ASSERT(write_column_numeric_values, offsetof(dtatools_write_column, numeric_values) == 32);
+ DTATOOLS_LAYOUT_ASSERT(write_column_string_values, offsetof(dtatools_write_column, string_values) == 40);
+ DTATOOLS_LAYOUT_ASSERT(write_column_value_label_index, offsetof(dtatools_write_column, value_label_index) == 48);
++DTATOOLS_LAYOUT_ASSERT(write_column_ordinary_strings, offsetof(dtatools_write_column, ordinary_strings) == 52);
+ DTATOOLS_LAYOUT_ASSERT(write_column_dta_metadata, offsetof(dtatools_write_column, dta_metadata) == 56);
+ DTATOOLS_LAYOUT_ASSERT(write_column_numeric_shift, offsetof(dtatools_write_column, numeric_shift) == 64);
+ DTATOOLS_LAYOUT_ASSERT(write_column_numeric_scale, offsetof(dtatools_write_column, numeric_scale) == 72);
+--- a/r-package/dtatools/src/rust/src/lib.rs
++++ b/r-package/dtatools/src/rust/src/lib.rs
+@@ -4059,6 +4059,9 @@
+     numeric_values: *const c_void,
+     string_values: Sexp,
+     value_label_index: c_int,
++    // C roots and unwraps this non-ALTREP STRSXP. Its bytes still need
++    // row-major UTF-8/width/NUL validation on R's main thread.
++    ordinary_strings: c_int,
+     dta_metadata: Sexp,
+     numeric_shift: f64,
+     numeric_scale: f64,
+@@ -4080,6 +4083,7 @@
+     assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_values) == 32);
+     assert!(std::mem::offset_of!(RWriteColumnDescriptor, string_values) == 40);
+     assert!(std::mem::offset_of!(RWriteColumnDescriptor, value_label_index) == 48);
++    assert!(std::mem::offset_of!(RWriteColumnDescriptor, ordinary_strings) == 52);
+     assert!(std::mem::offset_of!(RWriteColumnDescriptor, dta_metadata) == 56);
+     assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_shift) == 64);
+     assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_scale) == 72);
+@@ -5107,6 +5111,121 @@
+             })
+     }
+ 
++    fn has_mixed_fixed_observations(&self) -> bool {
++        let mut ordinary = false;
++        let mut numeric = false;
++        for (column, source) in self.data.columns.iter().zip(self.sources) {
++            match column.dta_type {
++                DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
++                    if matches!(source.direct_numeric_kind, DirectNumericKind::Callback)
++                        || (source.descriptor.direct_numeric_values.is_null()
++                            && source.direct_owned.is_none())
++                    {
++                        return false;
++                    }
++                    numeric = true;
++                }
++                DtaType::FixedString(_) => {
++                    if source.descriptor.direct_string_data.is_null() {
++                        if source.descriptor.ordinary_strings != 1 {
++                            return false;
++                        }
++                        ordinary = true;
++                    }
++                }
++                DtaType::StrL => return false,
++            }
++        }
++        ordinary && numeric
++    }
++
++    fn append_mixed_fixed_observation_rows(
++        &self,
++        buffer: &mut Vec<u8>,
++        start: u64,
++        end: u64,
++    ) -> Result<(), DtaWriteError> {
++        if start > end || self.sources.iter().any(|source| end > source.row_count) {
++            return Err(DtaWriteError::Source {
++                column: "<dataset>".into(),
++                row: end,
++                message: "mixed observation range is outside the source".into(),
++            });
++        }
++        let start_index =
++            usize::try_from(start).map_err(|_| DtaWriteError::Overflow("row index"))?;
++        let rows = usize::try_from(end - start)
++            .map_err(|_| DtaWriteError::Overflow("observation row count"))?;
++        let mut offsets = Vec::with_capacity(self.data.columns.len());
++        let mut strings = Vec::new();
++        let mut row_width = 0_usize;
++        for (index, column) in self.data.columns.iter().enumerate() {
++            offsets.push(row_width);
++            row_width = row_width
++                .checked_add(write_type_width(&column.dta_type))
++                .ok_or(DtaWriteError::Overflow("observation width"))?;
++            if let DtaType::FixedString(width) = column.dta_type {
++                strings.push((index, width));
++            }
++        }
++        let region_bytes = rows
++            .checked_mul(row_width)
++            .ok_or(DtaWriteError::Overflow("observation buffer"))?;
++        let buffer_start = buffer.len();
++        buffer.resize(
++            buffer_start
++                .checked_add(region_bytes)
++                .ok_or(DtaWriteError::Overflow("observation buffer"))?,
++            0,
++        );
++
++        // C admits only rooted ordinary strings here. The bounded pointer/length
++        // cache still runs on R's main thread. UTF-8, width and NUL errors can
++        // remain after planning, so visit every string in row-major order,
++        // including dictionary strings, before numeric conversion.
++        for offset in 0..rows {
++            let row = start + offset as u64;
++            self.begin_row(row)?;
++            for &(index, width) in &strings {
++                let value = self.string_value(index, row)?;
++                if value.contains('\0') || value.len() > usize::from(width) {
++                    return Err(DtaWriteError::InvalidValue {
++                        column: self.data.columns[index].name.to_string(),
++                        row,
++                        message: format!(
++                            "string must contain at most {width} UTF-8 bytes and no NUL"
++                        ),
++                    });
++                }
++                let destination = buffer_start + offset * row_width + offsets[index];
++                buffer[destination..destination + value.len()].copy_from_slice(value.as_bytes());
++            }
++        }
++
++        // Keep this new route serial. Direct numeric encoding reuses the same
++        // conversion and replacement-count rules as the all-direct writer.
++        for offset in (0..rows).step_by(INTERRUPT_STRIDE) {
++            self.check_interrupt()?;
++            let region = DirectObservationRegion {
++                output: unsafe { buffer.as_mut_ptr().add(buffer_start + offset * row_width) }
++                    as usize,
++                start: start + offset as u64,
++                start_index: start_index + offset,
++                rows: (rows - offset).min(INTERRUPT_STRIDE),
++                row_width,
++            };
++            for (index, (column, source)) in self.data.columns.iter().zip(self.sources).enumerate()
++            {
++                if !matches!(column.dta_type, DtaType::FixedString(_)) {
++                    unsafe {
++                        encode_direct_observation_column(column, source, region, offsets[index])
++                    }?;
++                }
++            }
++        }
++        Ok(())
++    }
++
+     fn append_direct_observation_rows(
+         &self,
+         buffer: &mut Vec<u8>,
+@@ -5252,12 +5371,16 @@
+         start: u64,
+         end: u64,
+     ) -> Result<bool, DtaWriteError> {
+-        if !self.has_direct_observations() {
+-            return Ok(false);
+-        }
+-        let available = std::thread::available_parallelism().map_or(1, usize::from);
+-        self.append_direct_observation_rows(buffer, start, end, available)?;
+-        Ok(true)
++        if self.has_direct_observations() {
++            let available = std::thread::available_parallelism().map_or(1, usize::from);
++            self.append_direct_observation_rows(buffer, start, end, available)?;
++            return Ok(true);
++        }
++        if self.has_mixed_fixed_observations() {
++            self.append_mixed_fixed_observation_rows(buffer, start, end)?;
++            return Ok(true);
++        }
++        Ok(false)
+     }
+ 
+     fn raw_numeric_value(
+@@ -5642,11 +5765,15 @@
+ #[cfg(test)]
+ mod tests {
+     use std::borrow::Cow;
++    use std::cell::Cell;
+     use std::ffi::{c_char, c_int, c_void};
+     use std::ptr;
+ 
+     use ahash::AHashMap;
+-    use dta_tools::{DtaType, DtaWriteColumn, DtaWriteColumnValues, DtaWriteData};
++    use dta_tools::{
++        DtaType, DtaWriteColumn, DtaWriteColumnValues, DtaWriteData, DtaWriteError,
++        DtaWriteObservationSource,
++    };
+ 
+     use super::{
+         direct_r_missing_code, dtatools_dictstring_free, observed_value, selected_row_count,
+@@ -5666,6 +5793,55 @@
+         _error_capacity: usize,
+     ) -> c_int {
+         0
++    }
++
++    struct TestWriteStrings {
++        values: Vec<Option<&'static [u8]>>,
++        calls: Cell<usize>,
++    }
++
++    #[no_mangle]
++    unsafe extern "C" fn dtatools_write_string_region(
++        source: *mut c_void,
++        start: usize,
++        length: usize,
++        _ids: *mut u64,
++        values: *mut *const c_char,
++        lengths: *mut usize,
++        _error_message: *mut c_char,
++        _error_capacity: usize,
++    ) -> c_int {
++        let source = &*source.cast::<TestWriteStrings>();
++        source.calls.set(source.calls.get() + 1);
++        let Some(region) = source.values.get(start..start + length) else {
++            return 0;
++        };
++        for (offset, value) in region.iter().enumerate() {
++            ptr::write(
++                values.add(offset),
++                value.map_or(ptr::null(), |x| x.as_ptr().cast()),
++            );
++            ptr::write(lengths.add(offset), value.map_or(0, <[u8]>::len));
++        }
++        1
++    }
++
++    thread_local! {
++        static WRITE_TEST_INTERRUPTED: Cell<bool> = const { Cell::new(false) };
++        static WRITE_TEST_POLLS: Cell<usize> = const { Cell::new(0) };
++        static WRITE_TEST_INTERRUPT_AT: Cell<usize> = const { Cell::new(0) };
++    }
++
++    #[no_mangle]
++    unsafe extern "C" fn dtatools_check_interrupt() -> c_int {
++        let poll = WRITE_TEST_POLLS.with(|polls| {
++            polls.set(polls.get() + 1);
++            polls.get()
++        });
++        c_int::from(
++            WRITE_TEST_INTERRUPTED.with(Cell::get)
++                || WRITE_TEST_INTERRUPT_AT.with(|at| at.get() != 0 && at.get() == poll),
++        )
+     }
+ 
+     fn direct_numeric_descriptor(
+@@ -5684,6 +5860,7 @@
+             string_values: ptr::null_mut(),
+             dta_metadata: ptr::null_mut(),
+             value_label_index: -1,
++            ordinary_strings: 0,
+             numeric_shift: shift,
+             numeric_scale: scale,
+             direct_numeric_values: values,
+@@ -5700,6 +5877,204 @@
+         let mut descriptor = direct_numeric_descriptor(width + 4, ptr::null(), 0, 0.0, 1.0);
+         descriptor.direct_string_data = data;
+         descriptor
++    }
++
++    fn with_test_observation_source<T>(
++        descriptors: &[RWriteColumnDescriptor],
++        dta_types: &[DtaType],
++        rows: usize,
++        test: impl FnOnce(&RWriteObservationSource<'_, '_>) -> T,
++    ) -> T {
++        let sources = descriptors
++            .iter()
++            .map(|descriptor| RWriteSource::new(descriptor, rows as u64, 2, 2).unwrap())
++            .collect::<Vec<_>>();
++        let data = DtaWriteData {
++            dataset_label: Cow::Borrowed(""),
++            notes: Vec::new(),
++            characteristics: Vec::new(),
++            columns: dta_types
++                .iter()
++                .enumerate()
++                .map(|(index, kind)| DtaWriteColumn {
++                    name: Cow::Owned(format!("x{index}")),
++                    dta_type: kind.clone(),
++                    format: Cow::Borrowed(""),
++                    label: Cow::Borrowed(""),
++                    has_value_labels: false,
++                    value_labels: Vec::new(),
++                    notes: Vec::new(),
++                    characteristics: Vec::new(),
++                    values: DtaWriteColumnValues::Source(&sources[index]),
++                })
++                .collect(),
++        };
++        test(&RWriteObservationSource {
++            data: &data,
++            sources: &sources,
++        })
++    }
++
++    #[test]
++    fn mixed_observations_use_bounded_plain_strings_and_keep_row_major_bytes() {
++        let mut first = TestWriteStrings {
++            values: vec![Some(b"a"), Some("é".as_bytes()), None],
++            calls: Cell::new(0),
++        };
++        let mut last = TestWriteStrings {
++            values: vec![Some(b"z"), Some(b""), Some(b"xy")],
++            calls: Cell::new(0),
++        };
++        let integers = [-2_i32, 0, 3];
++        let mut descriptors = vec![
++            direct_string_descriptor(3, ptr::null_mut()),
++            direct_numeric_descriptor(2, integers.as_ptr().cast(), 1, 0.0, 1.0),
++            direct_string_descriptor(2, ptr::null_mut()),
++        ];
++        descriptors[0].string_values = (&mut first as *mut TestWriteStrings).cast();
++        descriptors[2].string_values = (&mut last as *mut TestWriteStrings).cast();
++        descriptors[0].ordinary_strings = 1;
++        descriptors[2].ordinary_strings = 1;
++        let kinds = [
++            DtaType::FixedString(3),
++            DtaType::Long,
++            DtaType::FixedString(2),
++        ];
++        with_test_observation_source(&descriptors, &kinds, 3, |source| {
++            let mut bytes = vec![42];
++            assert!(source.append_observation_rows(&mut bytes, 0, 2).unwrap());
++            assert!(source.append_observation_rows(&mut bytes, 2, 3).unwrap());
++            assert_eq!(
++                bytes,
++                vec![
++                    42, b'a', 0, 0, 0xfe, 0xff, 0xff, 0xff, b'z', 0, 0xc3, 0xa9, 0, 0, 0, 0, 0, 0,
++                    0, 0, 0, 0, 3, 0, 0, 0, b'x', b'y',
++                ]
++            );
++            assert!(source
++                .sources
++                .iter()
++                .all(|x| x.numeric_replacements.get() == 0));
++        });
++        assert_eq!(first.calls.get(), 2);
++        assert_eq!(last.calls.get(), 2);
++        descriptors[0].dta_type = 7;
++        with_test_observation_source(&descriptors[..1], &[DtaType::FixedString(3)], 3, |source| {
++            assert!(!source.append_observation_rows(&mut vec![42], 0, 3).unwrap());
++        });
++        assert_eq!(first.calls.get(), 2);
++
++        descriptors[0].ordinary_strings = 0;
++        with_test_observation_source(&descriptors, &kinds, 3, |source| {
++            let mut bytes = vec![42];
++            assert!(!source.append_observation_rows(&mut bytes, 0, 3).unwrap());
++            assert_eq!(bytes, vec![42]);
++        });
++        assert_eq!(first.calls.get(), 2);
++        descriptors[0].ordinary_strings = 1;
++        descriptors[1].direct_numeric_values = ptr::null();
++        descriptors[1].direct_numeric_kind = 0;
++        with_test_observation_source(&descriptors, &kinds, 3, |source| {
++            assert!(!source.append_observation_rows(&mut vec![42], 0, 3).unwrap());
++        });
++        descriptors[1].direct_numeric_values = integers.as_ptr().cast();
++        descriptors[1].direct_numeric_kind = 1;
++        descriptors[0].dta_type = 2050;
++        with_test_observation_source(
++            &descriptors,
++            &[DtaType::StrL, DtaType::Long, DtaType::FixedString(2)],
++            3,
++            |source| {
++                assert!(!source.append_observation_rows(&mut vec![42], 0, 3).unwrap());
++            },
++        );
++        assert_eq!(first.calls.get(), 2);
++        assert_eq!(last.calls.get(), 2);
++    }
++
++    #[test]
++    fn mixed_observations_preserve_string_error_order_and_interrupt_before_capture() {
++        let mut first = TestWriteStrings {
++            values: vec![Some(b"ok"), Some(b"\xff")],
++            calls: Cell::new(0),
++        };
++        let mut last = TestWriteStrings {
++            values: vec![Some(b"\xff"), Some(b"ok")],
++            calls: Cell::new(0),
++        };
++        let values = [f64::INFINITY, 1.0];
++        let mut descriptors = vec![
++            direct_string_descriptor(2, ptr::null_mut()),
++            direct_numeric_descriptor(4, values.as_ptr().cast(), 2, 0.0, 1.0),
++            direct_string_descriptor(2, ptr::null_mut()),
++        ];
++        descriptors[0].string_values = (&mut first as *mut TestWriteStrings).cast();
++        descriptors[2].string_values = (&mut last as *mut TestWriteStrings).cast();
++        descriptors[0].ordinary_strings = 1;
++        descriptors[2].ordinary_strings = 1;
++        let kinds = [
++            DtaType::FixedString(2),
++            DtaType::Double,
++            DtaType::FixedString(2),
++        ];
++        with_test_observation_source(&descriptors, &kinds, 2, |source| {
++            let error = source
++                .append_observation_rows(&mut Vec::new(), 0, 2)
++                .unwrap_err();
++            assert!(
++                matches!(error, DtaWriteError::Source { column, row: 0, .. } if column == "x2")
++            );
++        });
++        let calls = (first.calls.get(), last.calls.get());
++        WRITE_TEST_INTERRUPTED.with(|interrupted| interrupted.set(true));
++        let result = with_test_observation_source(&descriptors, &kinds, 2, |source| {
++            source.append_observation_rows(&mut Vec::new(), 0, 2)
++        });
++        WRITE_TEST_INTERRUPTED.with(|interrupted| interrupted.set(false));
++        assert!(matches!(result, Err(DtaWriteError::Interrupted)));
++        assert_eq!((first.calls.get(), last.calls.get()), calls);
++    }
++
++    #[test]
++    fn mixed_numeric_spans_poll_and_a_fresh_retry_counts_replacements_once() {
++        let rows = 2 * super::INTERRUPT_STRIDE + 1;
++        let mut text = TestWriteStrings {
++            values: vec![None; rows],
++            calls: Cell::new(0),
++        };
++        let values = vec![f64::INFINITY; rows];
++        let mut descriptors = vec![
++            direct_string_descriptor(1, ptr::null_mut()),
++            direct_numeric_descriptor(4, values.as_ptr().cast(), 2, 0.0, 1.0),
++        ];
++        descriptors[0].string_values = (&mut text as *mut TestWriteStrings).cast();
++        descriptors[0].ordinary_strings = 1;
++        let kinds = [DtaType::FixedString(1), DtaType::Double];
++        WRITE_TEST_POLLS.with(|polls| polls.set(0));
++        // Three string-pass polls, then one per bounded numeric span.
++        WRITE_TEST_INTERRUPT_AT.with(|at| at.set(5));
++        let (result, replacements) =
++            with_test_observation_source(&descriptors, &kinds, rows, |source| {
++                (
++                    source.append_observation_rows(&mut Vec::new(), 0, rows as u64),
++                    source.sources[1].numeric_replacements.get(),
++                )
++            });
++        WRITE_TEST_INTERRUPT_AT.with(|at| at.set(0));
++        assert!(matches!(result, Err(DtaWriteError::Interrupted)));
++        assert_eq!(replacements, super::INTERRUPT_STRIDE as u64);
++        assert_eq!(WRITE_TEST_POLLS.with(Cell::get), 5);
++
++        WRITE_TEST_POLLS.with(|polls| polls.set(0));
++        with_test_observation_source(&descriptors, &kinds, rows, |source| {
++            let mut bytes = Vec::new();
++            assert!(source
++                .append_observation_rows(&mut bytes, 0, rows as u64)
++                .unwrap());
++            assert_eq!(bytes.len(), 9 * rows);
++            assert_eq!(source.sources[1].numeric_replacements.get(), rows as u64);
++        });
++        assert_eq!(WRITE_TEST_POLLS.with(Cell::get), 6);
+     }
+ 
+     fn encode_direct_test_rows(
+--- a/r-package/dtatools/tests/testthat/test-save-dta.R
++++ b/r-package/dtatools/tests/testthat/test-save-dta.R
+@@ -993,3 +993,89 @@
+     expect_identical(attr(actual, "format.stata", exact = TRUE), "%tmcY_m")
+     expect_false(inherits(actual, c("Date", "POSIXct")))
+ })
++
++test_that("mixed ordinary strings retain row order and numeric replacement warnings", {
++    rows <- 16385L
++    first_text <- rep_len(c("", "café", "row-three", NA_character_), rows)
++    second_text <- rep_len(c("last", "", "é", "first"), rows)
++    amount <- rep_len(c(1.25, Inf, NA_real_, tagged_missing("a")), rows)
++    other <- rep_len(c(-Inf, 2.5, NaN, 4.5), rows)
++    code <- rep_len(c(1, 100, NA_real_, tagged_missing("z")), rows)
++    data <- data.frame(
++        first_text = first_text, amount = amount, second_text = second_text,
++        other = other, code = dta_byte(code),
++        date = as.Date("2000-01-01") + rep_len(c(0, 1, NA_real_, 3), rows),
++        stringsAsFactors = FALSE
++    )
++    before <- datasig(data)
++    paths <- c(tempfile(fileext = ".dta"), tempfile(fileext = ".dta"))
++    on.exit(unlink(paths), add = TRUE)
++    warnings <- vector("list", 2L)
++    for (index in seq_along(paths)) {
++        observed <- list()
++        result <- withCallingHandlers(
++            save_dta(data, paths[[index]], strl_threshold = c(2045L, 1L)[[index]]),
++            warning = function(w) {
++                observed[[length(observed) + 1L]] <<- list(
++                    class = class(w)[[1L]], message = conditionMessage(w))
++                invokeRestart("muffleWarning")
++            }
++        )
++        warnings[[index]] <- observed
++        expect_identical(result, data)
++        actual <- read_dta(paths[[index]])
++        expected_first <- first_text
++        expected_first[is.na(expected_first)] <- ""
++        expected_amount <- amount
++        expected_amount[is.infinite(expected_amount)] <- NA_real_
++        expected_other <- other
++        expected_other[!is.finite(expected_other)] <- NA_real_
++        expect_identical(names(actual), names(data))
++        expect_identical(as.character(actual$first_text), expected_first)
++        expect_identical(as.character(actual$second_text), second_text)
++        expect_identical(as.double(actual$amount), expected_amount)
++        expect_identical(missing_tag(actual$amount), missing_tag(expected_amount))
++        expect_identical(as.double(actual$other), expected_other)
++        expect_identical(as.double(actual$code), code)
++        expect_identical(missing_tag(actual$code), missing_tag(code))
++        expect_identical(dta_storage_type(actual$code), "byte")
++        expect_identical(as.double(actual$date), as.double(data$date))
++        expect_s3_class(actual$date, "Date")
++    }
++    expect_identical(warnings[[1L]], warnings[[2L]])
++    expect_identical(vapply(warnings[[1L]], `[[`, "", "class"), c(
++        "dtatools_write_character_missing_warning",
++        "dtatools_write_numeric_replacement_warning"
++    ))
++    expect_match(warnings[[1L]][[2L]]$message,
++        "`amount` \\(4,096\\), `other` \\(8,193\\)")
++    expect_identical(datasig(data), before)
++})
++
++test_that("mixed fixed-string failures keep row-major error order and destination", {
++    invalid <- rawToChar(as.raw(0xff))
++    Encoding(invalid) <- "UTF-8"
++    data <- data.frame(
++        first_text = c("valid", invalid), amount = c(Inf, 1),
++        second_text = c(invalid, "valid"), stringsAsFactors = FALSE
++    )
++    path <- tempfile(fileext = ".dta")
++    on.exit(unlink(path), add = TRUE)
++    sentinel <- charToRaw("existing destination")
++    writeBin(sentinel, path)
++    warnings <- character()
++    error <- tryCatch(withCallingHandlers(
++        save_dta(data, path),
++        warning = function(w) {
++            warnings <<- c(warnings, conditionMessage(w))
++            invokeRestart("muffleWarning")
++        }
++    ), error = identity)
++    expect_s3_class(error, "dtatools_write_native_error")
++    expect_identical(conditionMessage(error), paste0(
++        'column source failed for variable "second_text" at row 0: ',
++        "R character value is not valid UTF-8"
++    ))
++    expect_identical(warnings, character())
++    expect_identical(readBin(path, "raw", n = length(sentinel)), sentinel)
++})

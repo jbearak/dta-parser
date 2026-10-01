@@ -1,0 +1,75 @@
+{
+  "base_commit": "78050a30eda33fde61399cf331ca7542da0e0e7d",
+  "build_bindings_sha256": "f8526df30cc72190b93c8cd83877f0c46ee04dda972315052d32847af368b47d",
+  "compiled_build_recipe": [
+    "Extract git archive 78050a30eda33fde61399cf331ca7542da0e0e7d r-package/dtatools into a new private source directory.",
+    "Apply the selected candidate patch at that archive root.",
+    "R CMD INSTALL --preclean --install-tests --library=<private-library> <snapshot>/r-package/dtatools",
+    "The package build invokes cargo build --manifest-path rust/Cargo.toml --config rust/cargo-config.toml --release --locked --offline with a private CARGO_TARGET_DIR."
+  ],
+  "compiled_build_recipe_scope": "Representative reconstruction recipe, not an assertion of identical historical flags for every build. Candidate build_recipe entries record confirmed flags where available. Combined-v1 historically omitted --install-tests.",
+  "patches": {
+    "arrow-reader": {
+      "changed_files_reconstructed": 2,
+      "exact_recorded_hashes_match": true,
+      "patch_sha256": "883d0b8e4ba990a335a48766c62a497ecde8b3d6155366ff0ea2c49cd1a02bb8"
+    },
+    "arrow-writer": {
+      "changed_files_reconstructed": 4,
+      "exact_recorded_hashes_match": true,
+      "patch_sha256": "c193c5155a47a21ad889725f2a6bcf0fa80204095920d2f4bba3a6fc976f069b"
+    },
+    "combined-v1": {
+      "changed_files_reconstructed": 15,
+      "exact_recorded_hashes_match": true,
+      "patch_sha256": "758935cf2e6cf164afe80f53c0014770698876b8064a79ce000cd5f12f9a09ef"
+    },
+    "combined-v2": {
+      "changed_files_reconstructed": 15,
+      "exact_recorded_hashes_match": true,
+      "patch_sha256": "08d7b34d28ef834a873536c5569bc338956bb48e623ef8dd8add70779b03f91f"
+    },
+    "dta-integer-writer": {
+      "changed_files_reconstructed": 2,
+      "exact_recorded_hashes_match": true,
+      "patch_sha256": "154e7000a399547681654838b379e0b2d61c139787fc28ec9c22cf6fa6d6de7a"
+    },
+    "dta-reader": {
+      "changed_files_reconstructed": 4,
+      "exact_recorded_hashes_match": true,
+      "patch_sha256": "618199efe942f15ae47796f8f537a8fc8024cda5f06113a958eb4ade5076a5df"
+    },
+    "dta-writer": {
+      "changed_files_reconstructed": 5,
+      "exact_recorded_hashes_match": true,
+      "patch_sha256": "50eb4c64831b88170ab33bcd17fa5849a685180f3740011aad8410d382545051"
+    },
+    "startup": {
+      "changed_files_reconstructed": 3,
+      "exact_recorded_hashes_match": true,
+      "patch_sha256": "83618d7abaf380e60d18c4a8158d8aac970ccdea51efdcb1cfb86bd0baee1a15"
+    }
+  },
+  "privacy": "Records and patches contain no private home, temporary or dataset-cache paths.",
+  "recorder_sha256": "f8781db4b8d43e825b405b748b0cd956338658fdfc73f1a16985773e574489f0",
+  "repeat_recording_byte_identical": true,
+  "repeated_capture": "Recorder verified unchanged source, installed files, build logs, prior record, private configuration and recorder hashes across its before/after captures.",
+  "schema_version": 1,
+  "snapshot_scope": "Bindings describe the exact frozen build snapshots, not later uncompiled NEWS, documentation or test-manifest edits.",
+  "startup_build_recipe": [
+    "From the base tree plus startup.patch, copy DESCRIPTION, NAMESPACE, R, inst, man, tests and tools into a new R-only package directory. Do not include src or configure.",
+    "Copy the retained baseline DLL into inst/libs/dtatools.so and verify its SHA256 against the baseline binding.",
+    "R CMD INSTALL --install-tests --library=<private-library> <R-only-package>"
+  ],
+  "startup_build_recipe_scope": "Reconstructed minimum recipe. No exact historical extra-flag spelling is asserted; the retained install log shows only R/inst/tests installation and byte-compilation.",
+  "startup_native_binding": "The R-only candidate reuses the exact retained baseline DLL. It is not represented as a newly compiled native library.",
+  "test_source_sha256": "17cb9c0245017ec3c9941c97fdda146bc251269e128e20e035d4feb5efe98dcc",
+  "tests": {
+    "command": "python3 benchmarks/io-optimization/test-record-builds.py -v",
+    "exit_code": 0,
+    "failures": 0,
+    "log_sha256": "304e2f4e228684c5c0d4ac1a0acfc7df6a42df6b5fa7cc0ee3557a50a997ecc4",
+    "passed": 9
+  },
+  "toolchain_scope": "Versions are observed when recording. They are not a claim that the current executable hashes identify the historical compiler. Historical build logs are separately hashed."
+}

@@ -1,0 +1,68 @@
+{
+  "R_CMD_check": {
+    "errors": 0,
+    "manual": false,
+    "notes": 2,
+    "warnings": 3
+  },
+  "R_dependency_note": "Tests used labelled 2.16.0 and haven 2.5.5 from the pinned interop library.",
+  "R_testthat": {
+    "failed": 0,
+    "passed": 27341,
+    "skipped": 0,
+    "warnings": 7
+  },
+  "Rust": {
+    "bridge_tests": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 33
+    },
+    "core_adapter_tests": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 146
+    },
+    "core_tests": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 295
+    }
+  },
+  "archive_sha256": "7ee940313256af4779f3d7ec485dba023440b6e39865abccb57961bb9358a66e",
+  "check_warning_note": "The three warnings and two notes also occurred on the reviewed baseline: macOS deployment-target linker warnings, vendored GNU Makefiles, compiled-code checks, vendored CITATION and generated C newline notes.",
+  "checks": [
+    "Rust format",
+    "core and bridge Clippy with -D warnings",
+    "Rustdoc with -D warnings",
+    "offline Cargo package verification",
+    "R source archive validation",
+    "R CMD check --no-manual"
+  ],
+  "conformance": {
+    "decoded_cell_comparisons": 32085,
+    "deterministic_gates": 10,
+    "fixture_oracle_gates": 1,
+    "immutable_fixtures": 22
+  },
+  "log_sha256": {
+    "R_CMD_check": "4f09dbe16714a54f05e15e9de3e5e6391a7d2db7c142bacfe2f10be0b249c201",
+    "R_testthat": "7358acdc5db2e95f7778babd25ba9609a3d09786e58167f9e40b9c6043155d67",
+    "archive_validation": "4c3587b6438c2471618364e967342b11f88e0d0484fb6f8f64e2ce8a0b3b1351",
+    "bridge_clippy": "64d0cbd4b7e4c6329fde55978dd3d261407b55f34c21add0feebf7e0575ee531",
+    "bridge_fmt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bridge_tests": "329f33cc28c6db9fc2cf6a3d6ddbdde3be716485489804d71e60c7da516999dd",
+    "build": "a9425c51b307414d2beaeb1544fdcc416c2fa4ccc6a8d9cac811f0febeeac43c",
+    "conformance_gates": "a1cc110040dd1c8d08e090e82c9c3f6b8927ad0f2d8ef189d58addf310da89a5",
+    "conformance_inventory": "68b6162d3647c8976e70c659f25eefb5b12910466d5febd0d140cf2569443794",
+    "core_adapter_clippy": "70df4e7499ddb27a4c87e2551153162d0bee51e30d8396bac126cf791297aedd",
+    "core_adapter_tests": "138d696a97971c0eb5a663a642b0e894eb1cb99627596f2cc69418a79b9fdb37",
+    "core_clippy": "a93fa0ed7e36cd5122d1410514acd19b3df20a075628639008449c52d962a263",
+    "core_doc": "fb94344d1874130c6f6fdb995939625f725f0cec6f2aeb46a309f852c3f971b6",
+    "core_fmt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "core_package": "500d7faaee50427eb9f37ca710a1743a231342d6f69a99f4eebb6f217d8b95e9",
+    "core_tests": "bcb9645323d7ba56e3c386fcf453c4cb8cf2572ff16e48986a1971dcaab24ff5",
+    "install": "66e74d305d855046fd149924d6a59582f3d9b5c497fe073968157245f5b0a847"
+  },
+  "source_revision": "ec967fdd080d841bb71ff73dac3720dd05a38bba"
+}

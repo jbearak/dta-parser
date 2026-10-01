@@ -1,0 +1,62 @@
+{
+  "primary-100mb-arrow-1": {
+    "baseline": {
+      "signature": "231956:40:bab4b8dee5b66170",
+      "log_sha256": "be35ab47a5762037f472cf66569bf8b34cda27f494b347b7d109af744b74eb10"
+    },
+    "candidate": {
+      "signature": "231956:40:bab4b8dee5b66170",
+      "log_sha256": "be35ab47a5762037f472cf66569bf8b34cda27f494b347b7d109af744b74eb10"
+    }
+  },
+  "primary-100mb-arrow-0": {
+    "baseline": {
+      "signature": "231956:40:bab4b8dee5b66170",
+      "log_sha256": "d5d95af0beaa7485ba69ae711764241dd4e152f6e9a4caa809bc5d7d4661f67c"
+    },
+    "candidate": {
+      "signature": "231956:40:bab4b8dee5b66170",
+      "log_sha256": "d5d95af0beaa7485ba69ae711764241dd4e152f6e9a4caa809bc5d7d4661f67c"
+    }
+  },
+  "primary-1gb-arrow-1": {
+    "baseline": {
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "log_sha256": "3caeace062e49a9516d5040af3bd1d92a30867628a04665bf6b71f0382135490"
+    },
+    "candidate": {
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "log_sha256": "3caeace062e49a9516d5040af3bd1d92a30867628a04665bf6b71f0382135490"
+    }
+  },
+  "primary-1gb-arrow-0": {
+    "baseline": {
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "log_sha256": "0c0fb412886837a0a14a03ac69e02dc91fb41a9c2762fb294fd68e07cc105c85"
+    },
+    "candidate": {
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "log_sha256": "0c0fb412886837a0a14a03ac69e02dc91fb41a9c2762fb294fd68e07cc105c85"
+    }
+  },
+  "india-arrow-1": {
+    "baseline": {
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "log_sha256": "aaba8d7349dec5eac7cdaf10bd8fea1992ee7f730faa536cc953f9288e7430c9"
+    },
+    "candidate": {
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "log_sha256": "aaba8d7349dec5eac7cdaf10bd8fea1992ee7f730faa536cc953f9288e7430c9"
+    }
+  },
+  "india-arrow-0": {
+    "baseline": {
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "log_sha256": "5184377c27ab9387e9a85b862914927363816991f298a74a611cb908d742e78e"
+    },
+    "candidate": {
+      "signature": "724115:5972:e404e6f1cf51f55a",
+      "log_sha256": "5184377c27ab9387e9a85b862914927363816991f298a74a611cb908d742e78e"
+    }
+  }
+}
