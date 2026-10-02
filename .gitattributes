@@ -18,3 +18,4 @@ benchmarks/r-file-readers/results-2026-10-02/** -text -whitespace linguist-gener
 benchmarks/reader-cpu-scaling/results-2026-10-02-decode/** -text -whitespace linguist-generated=true
 benchmarks/reader-cpu-scaling/results-2026-10-02-scalar/** -text -whitespace linguist-generated=true
 benchmarks/reader-cpu-scaling/results-2026-10-02-compact-kernels/** -text -whitespace linguist-generated=true
+benchmarks/native-operations/results-2026-10-02/** -text -whitespace linguist-generated=true

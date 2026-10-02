@@ -1,0 +1,5 @@
+{
+  "r-package/dtatools/src/numeric-arithmetic.h": "82721edf6d848b2f650ebeeecded41df4c9a9919cc823f83bfde79943984ee04",
+  "r-package/dtatools/src/numeric-payload.c": "c8900df49f2134c751dbade6ac19e8207345dca8f6b047c4562138e18d5ab484",
+  "r-package/dtatools/tests/testthat/test-native-arithmetic-kernels.R": "a91ded5274c4e983ed4402a23c5147d9f035e5879df51480f481c1dcffeae8ba"
+}

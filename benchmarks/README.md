@@ -51,6 +51,13 @@ compares public missing predicates and reductions with ordinary doubles.
 Typed compact masks and ordered sums meet the measured parity target across
 42 DTA/Arrow cases, while preserving compact storage and existing results.
 
+The [native-operation follow-up](native-operations/results-2026-10-02.md)
+compares tagged predicates, cached missing checks, totals, summaries, matching
+and arithmetic across four compact widths and both file formats. Six rounds
+include ordinary-double controls and separate typed-double arithmetic controls,
+with result, storage and source checks. Arithmetic improves substantially but
+still trails the double controls.
+
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
 reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
 ENADID and WFS survey datasets, with both tibble and dibble outputs. Its 3,762
