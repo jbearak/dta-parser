@@ -4,6 +4,10 @@ This comparison measures public operations on compact Stata columns and
 ordinary doubles. It covers tagged-missing inspection, `anyNA()`, totals,
 row totals, mean, range, `summ()`, matching, membership, multiplication,
 division and column addition. Reader calls are outside the measured interval.
+Arithmetic also includes `dta_double` controls, which apply the same missing
+and result-validation rules while retaining ordinary double storage.
+Compact results can additionally require narrower storage and promotion;
+the typed-double control does not impose an identical destination format.
 
 The four file-backed inputs are million-row byte, int, long and float columns
 from the deterministic DTA/Arrow fixtures in
@@ -47,8 +51,10 @@ source delta. An unchanged DLL beside edited sources is insufficient.
 
 ## Measurement and checks
 
-Each round uses a fresh R process per build. Build order and compact/ordinary
-order alternate between rounds; case order is fixed. Untimed qualification
+Each round uses a fresh R process per build and checks 248 unique observations.
+Build order alternates between rounds; case order is fixed. Two-representation
+order alternates. Arithmetic rotates and reverses its three representations
+across the six rounds. Untimed qualification
 warms dispatch. Untimed calibration runs for at least 20 ms and selects a fixed
 repetition count targeting 150 ms for the retained interval. Counts are
 recorded separately for each observation. Times include public dispatch,

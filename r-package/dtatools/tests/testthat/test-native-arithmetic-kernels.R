@@ -17,6 +17,12 @@
     withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior), envir = env)
 }
 
+.native_arithmetic_expect_entry <- function() {
+    count <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
+    if (.dtatools_numeric_entry_expected()) expect_gt(count, 0)
+    else expect_equal(count, 0)
+}
+
 test_that("compact arithmetic agrees with the ordinary public calculation", {
     .native_arithmetic_enable()
     constructors <- list(byte = dta_byte, int = dta_int, long = dta_long,
@@ -175,6 +181,8 @@ test_that("imported DTA and Arrow columns enter native arithmetic with display m
             actual <- operation()
             if (.dtatools_numeric_entry_expected()) {
                 expect_gt(.Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]], 0)
+            } else {
+                expect_equal(.Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]], 0)
             }
             expect_null(attr(actual, "format.stata"))
             expect_null(attr(actual, "label"))
@@ -277,6 +285,8 @@ test_that("specialized arithmetic keeps aliased inputs scalar directions and pro
                 actual <- operation(pair[[1]], pair[[2]])
                 if (.dtatools_numeric_entry_expected()) {
                     expect_gt(.Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]], 0)
+                } else {
+                    expect_equal(.Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]], 0)
                 }
                 .native_arithmetic_expect(actual,
                     .native_arithmetic_reference(op, pair[[1]], pair[[2]], kind))
@@ -288,5 +298,111 @@ test_that("specialized arithmetic keeps aliased inputs scalar directions and pro
             .native_arithmetic_expect(scalar * x,
                 .native_arithmetic_reference("*", scalar, x, kind))
         }
+    }
+})
+
+test_that("missing span arithmetic keeps all codes across scalar and column shapes", {
+    .native_arithmetic_enable()
+    values <- c(-3, -1, -0, 0, 1, 5, NA_real_, tagged_missing(letters))
+    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
+        x <- .Call(C_dtatools_owned_numeric_freeze, constructor(rep(values, 3)), 7L)
+        y <- .Call(C_dtatools_owned_numeric_freeze, constructor(rep(rev(values), 3)), 11L)
+        minimum <- dta_storage_type(x)
+        gc()
+        for (op in c("+", "-", "*", "/")) {
+            operation <- getExportedValue("base", op)
+            for (pair in list(list(x, y), list(y, x), list(x, x),
+                              list(x, constructor(2)), list(constructor(2), x))) {
+                .Call(C_dtatools_numeric_entry_stats, TRUE)
+                actual <- operation(pair[[1]], pair[[2]])
+                .native_arithmetic_expect_entry()
+                .native_arithmetic_expect(actual,
+                    .native_arithmetic_reference(op, pair[[1]], pair[[2]], minimum))
+            }
+        }
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
+    }
+})
+
+test_that("missing span arithmetic keeps each operand's legacy missing encoding", {
+    .native_arithmetic_enable()
+    legacy <- read_dta(fixture("synthetic_v111.dta"), output = "tibble")
+    constructors <- list(b = dta_byte, i = dta_int, l = dta_long, f = dta_float)
+    for (column in names(constructors)) {
+        source <- legacy[[column]]
+        kind <- dta_storage_type(source)
+        attributes(source) <- list(class = dtatools:::.dta_storage_class(kind),
+                                   stata.storage = kind)
+        modern <- constructors[[column]](c(2, NA_real_, tagged_missing("z"), 3))
+        for (retained in c(FALSE, TRUE)) {
+            x <- if (retained) .Call(C_dtatools_owned_numeric_freeze, source, 1L) else source
+            y <- if (retained) .Call(C_dtatools_owned_numeric_freeze, modern, 3L) else modern
+            for (op in c("+", "-", "*", "/")) {
+                for (pair in list(list(x, y), list(y, x))) {
+                    .Call(C_dtatools_numeric_entry_stats, TRUE)
+                    actual <- getExportedValue("base", op)(pair[[1]], pair[[2]])
+                    .native_arithmetic_expect_entry()
+                    .native_arithmetic_expect(actual,
+                        .native_arithmetic_reference(op, pair[[1]], pair[[2]],
+                                                     dta_storage_type(x)))
+                }
+            }
+        }
+    }
+})
+
+test_that("float span arithmetic matches eager IEEE and reserved-code decoding", {
+    .native_arithmetic_enable()
+    bits <- c(0, 0x80000000, 0x3f800000, 0xbf800000,
+              0x7effffff, 0x7f000000, 0x7f000001, 0x7f0007ff,
+              0x7f000800, 0x7f00d000, 0x7f00d001, 0x7f7fffff,
+              0x7f800000, 0xff800000, 0x7fc00001, 0xffc00001,
+              0x7f800001, 0xff800001, 0xffffffff, 0xff7fffff)
+    raw_bits <- function(value) as.raw(floor(value / 256^(0:3)) %% 256)
+    modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    legacy <- tempfile(fileext = ".dta")
+    withr::defer(unlink(c(modern, legacy)))
+    for (index in seq_along(bits)) {
+        patch_numeric_fixture_row(modern, index - 1L,
+                                  list(x_float = raw_bits(bits[[index]])))
+    }
+    compare <- function(path, column, count) {
+        compact <- read_dta(path, col_select = tidyselect::all_of(column), n_max = count)[[column]]
+        plain <- as.double(read_dta(path, col_select = tidyselect::all_of(column), n_max = count,
+                                   use_numeric_altrep = FALSE)[[column]])
+        for (x in list(compact, .Call(C_dtatools_owned_numeric_freeze, compact, 3L))) {
+            one <- dta_float(rep(1, count))
+            for (op in c("+", "-", "*", "/")) {
+                operation <- getExportedValue("base", op)
+                .Call(C_dtatools_numeric_entry_stats, TRUE)
+                actual <- operation(one, x)
+                .native_arithmetic_expect_entry()
+                .native_arithmetic_expect(actual,
+                    .native_arithmetic_reference(op, rep(1, count), plain, "float"))
+                .native_arithmetic_expect(operation(x, one),
+                    .native_arithmetic_reference(op, plain, rep(1, count), "float"))
+            }
+            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+        }
+    }
+    compare(modern, "x_float", length(bits))
+
+    original <- readBin(fixture("synthetic_v111.dta"), "raw",
+                        n = file.info(fixture("synthetic_v111.dta"))[["size"]])
+    prefix <- c(as.raw(1), writeBin(321L, raw(), size = 2L, endian = "little"),
+                writeBin(-123456L, raw(), size = 4L, endian = "little"),
+                writeBin(1.5, raw(), size = 4L, endian = "little"),
+                writeBin(-2.25, raw(), size = 8L, endian = "little"))
+    start <- grepRaw(prefix, original, fixed = TRUE, all = TRUE)
+    expect_length(start, 1L)
+    for (batch in split(bits, ceiling(seq_along(bits) / 4L))) {
+        bytes <- original
+        for (row in seq_along(batch)) {
+            location <- start + (row - 1L) * 25L + 7L
+            bytes[location + 0:3] <- raw_bits(batch[[row]])
+        }
+        writeBin(bytes, legacy)
+        compare(legacy, "f", length(batch))
     }
 })

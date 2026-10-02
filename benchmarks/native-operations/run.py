@@ -26,6 +26,11 @@ EXPECTED_CASES = {
     for operation in OPERATIONS
     for representation in ('compact', 'ordinary')
 } | {
+    (format, width, operation, 'typed_double')
+    for format in ('dta', 'arrow')
+    for width in ('byte', 'int', 'long', 'float')
+    for operation in ('multiply', 'divide', 'add')
+} | {
     (format, width, 'anyNA_late', representation)
     for format in ('constructed', 'retained')
     for width in ('byte', 'int', 'long', 'float')
@@ -111,11 +116,11 @@ def main():
         'baseline_commit': before['baseline']['receipt']['base_commit'],
         'candidate_commit': before['candidate']['receipt']['base_commit'],
         'interval': 'Preloaded public operation repetitions; explicit GC, reader calls, source construction, qualification and result hashing excluded; automatic GC and result allocation included.',
-        'order': 'Alternate build order each round; fixed case order, with compact/ordinary order alternated within each case and reversed in adjacent rounds.',
+        'order': 'Alternate build order each round; fixed case order. Two-representation order alternates; arithmetic rotates and reverses compact/typed-double/ordinary order across six rounds.',
         'repetitions': 'Untimed calibration runs for at least 20 ms and chooses a fixed count targeting at least 150 ms per retained interval; initial counts can exceed this target for slow operations.',
         'synthetic_control': 'anyNA_late uses one million ones with only the final row missing, constructed and retained in 8192-row chunks.',
         'source': 'Source delta and SHA256 inventories of source, installed R code, DLLs, fixtures and controllers retained.',
-        'limits': 'One host, deterministic million-row fixtures, warm repeated operations. Does not measure ingestion or promise ordinary-double parity for every operation.',
+        'limits': 'One host, deterministic million-row fixtures, warm repeated operations. Arithmetic adds dta_double controls to distinguish typed result policy from bare arithmetic. Does not measure ingestion or promise ordinary-double parity for every operation.',
     })
     rows = []
     for round_number in range(1, args.rounds + 1):
@@ -150,7 +155,7 @@ def main():
         if len({(r['result_sha256'], r['full_result_sha256'], r['result_storage']) for r in observations}) != 1:
             raise RuntimeError(f'result or storage differs across builds/rounds: {key}')
     for row in rows:
-        if (row['variant'] == 'candidate' and row['representation'] == 'compact'
+        if (row['variant'] == 'candidate' and row['representation'] in {'compact', 'typed_double'}
                 and row['operation'] in {'multiply', 'divide', 'add'}
                 and int(float(row['native_scalar_calls'])) != int(row['iterations'])):
             raise RuntimeError(f"arithmetic kernel was not used: {row['format']}/{row['width']}/{row['operation']}")

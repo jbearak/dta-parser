@@ -328,6 +328,157 @@ static int arithmetic_compact_run(
     return 1;
 }
 
+/* Arithmetic needs only a missing mask, not the missing letter. Hoist each
+   operand's encoding policy before intersecting its retained spans. The float
+   predicate is float_missing_offset() >= 0 plus IEEE NaNs: modern infinities
+   remain observed, while the legacy positive reserved range includes +Inf. */
+typedef struct {
+    double minimum;
+    uint32_t maximum;
+    uint32_t alignment;
+} arithmetic_missing_policy;
+
+static arithmetic_missing_policy arithmetic_missing_policy_for(const numeric_data *data) {
+    arithmetic_missing_policy policy = {0, 0, 0};
+    if (data == NULL) return policy;
+    int legacy = data->format_version <= 111;
+    switch (data->kind) {
+    case NUMERIC_BYTE: policy.minimum = legacy ? 127 : 101; break;
+    case NUMERIC_INT: policy.minimum = legacy ? 32767 : 32741; break;
+    case NUMERIC_LONG: policy.minimum = legacy ? 2147483647.0 : 2147483621.0; break;
+    case NUMERIC_FLOAT:
+        policy.maximum = legacy ? UINT32_C(0x7fffffff) : UINT32_C(0x7f00d000);
+        policy.alignment = legacy ? 0 : UINT32_C(0x000007ff);
+        break;
+    }
+    return policy;
+}
+
+#define ARITHMETIC_INTEGER_MISSING(TYPE)                                   \
+    static int arithmetic_##TYPE##_missing(                                \
+        TYPE value, const arithmetic_missing_policy *policy                \
+    ) { return (double) value >= policy->minimum; }
+ARITHMETIC_INTEGER_MISSING(int8_t)
+ARITHMETIC_INTEGER_MISSING(int16_t)
+ARITHMETIC_INTEGER_MISSING(int32_t)
+#undef ARITHMETIC_INTEGER_MISSING
+
+static int arithmetic_float_missing(float value, const arithmetic_missing_policy *policy) {
+    uint32_t bits;
+    memcpy(&bits, &value, sizeof(bits));
+    return ((bits >= UINT32_C(0x7f000000)) & (bits <= policy->maximum) &
+            ((bits & policy->alignment) == 0)) |
+        ((bits & UINT32_C(0x7fffffff)) > UINT32_C(0x7f800000));
+}
+
+/* Missing-bearing same-width operands use the observed producer's typed
+   arithmetic and destination policies without decoded value/code buffers. */
+static int arithmetic_compact_missing_run(
+    const arithmetic_operand *left, const arithmetic_operand *right,
+    R_xlen_t length, int operation, arithmetic_output *output
+) {
+    const numeric_data *x_data = left->reader.storage;
+    const numeric_data *y_data = right->reader.storage;
+    int x_scalar = left->length == 1, y_scalar = right->length == 1;
+    if ((!x_scalar && x_data == NULL) || (!y_scalar && y_data == NULL)) return 0;
+    if ((x_scalar || x_data->missing_count == 0) &&
+        (y_scalar || y_data->missing_count == 0)) return 0;
+    int kind = !x_scalar ? x_data->kind : !y_scalar ? y_data->kind :
+        x_data != NULL ? x_data->kind : y_data != NULL ? y_data->kind : -1;
+    if (kind < NUMERIC_BYTE || kind > NUMERIC_FLOAT ||
+        (!x_scalar && x_data->kind != kind) ||
+        (!y_scalar && y_data->kind != kind)) return 0;
+    double x_value = 0, y_value = 0;
+    int code;
+    if (x_scalar) {
+        numeric_reader_region(&left->reader, 0, 1, &x_value, &code);
+        if (code >= 0 || !R_FINITE(x_value)) return 0;
+    }
+    if (y_scalar) {
+        numeric_reader_region(&right->reader, 0, 1, &y_value, &code);
+        if (code >= 0 || !R_FINITE(y_value)) return 0;
+    }
+    arithmetic_missing_policy x_policy = arithmetic_missing_policy_for(x_data);
+    arithmetic_missing_policy y_policy = arithmetic_missing_policy_for(y_data);
+    unsigned char *destination = output->kind == NUMERIC_DOUBLE
+        ? (unsigned char *) output->real : output->raw;
+    const double float_limit = numeric_float_observed_limit();
+    const int result_kind = output->kind;
+    const int trusted = output->trusted;
+    const int integral_result = kind <= NUMERIC_LONG && operation != '/' &&
+        (!x_scalar || x_value == trunc(x_value)) &&
+        (!y_scalar || y_value == trunc(y_value));
+    unsigned fits = output->fits;
+    size_t missing_count = output->missing_count;
+    for (R_xlen_t start = 0; start < length;) {
+        R_CheckUserInterrupt();
+        size_t count = (size_t) (length - start > 16384 ? 16384 : length - start);
+        const unsigned char *x_raw = x_scalar ? NULL :
+            numeric_read_span(x_data, (size_t) start, count, &count);
+        const unsigned char *y_raw = y_scalar ? NULL :
+            numeric_read_span(y_data, (size_t) start, count, &count);
+#define ARITHMETIC_SPAN_SHAPE(SOURCE, OP, TYPE, FIT, MISSING, TRUSTED, XS, YS) \
+    {                                                                     \
+        TYPE *restrict target = (TYPE *) (void *) destination;             \
+        for (size_t offset = 0; offset < count; offset++) {                \
+            double xv = x_value, yv = y_value;                            \
+            int missing = 0;                                              \
+            if (!(XS)) {                                                  \
+                SOURCE source;                                            \
+                memcpy(&source, x_raw + offset * sizeof(SOURCE), sizeof(SOURCE)); \
+                xv = (double) source;                                     \
+                missing |= arithmetic_##SOURCE##_missing(source, &x_policy); \
+            }                                                             \
+            if (!(YS)) {                                                  \
+                SOURCE source;                                            \
+                memcpy(&source, y_raw + offset * sizeof(SOURCE), sizeof(SOURCE)); \
+                yv = (double) source;                                     \
+                missing |= arithmetic_##SOURCE##_missing(source, &y_policy); \
+            }                                                             \
+            double value = xv OP yv;                                      \
+            R_xlen_t index = start + (R_xlen_t) offset;                   \
+            ARITHMETIC_STORE_RESULT(TYPE, FIT, MISSING, TRUSTED)           \
+        }                                                                 \
+    }
+#define ARITHMETIC_SPAN_SHAPES(SOURCE, OP, TYPE, FIT, MISSING, TRUSTED)     \
+    if (x_scalar) {                                                       \
+        if (y_scalar) {                                                   \
+            ARITHMETIC_SPAN_SHAPE(SOURCE, OP, TYPE, FIT, MISSING, TRUSTED, 1, 1) \
+        } else {                                                          \
+            ARITHMETIC_SPAN_SHAPE(SOURCE, OP, TYPE, FIT, MISSING, TRUSTED, 1, 0) \
+        }                                                                 \
+    } else if (y_scalar) {                                                \
+        ARITHMETIC_SPAN_SHAPE(SOURCE, OP, TYPE, FIT, MISSING, TRUSTED, 0, 1) \
+    } else {                                                              \
+        ARITHMETIC_SPAN_SHAPE(SOURCE, OP, TYPE, FIT, MISSING, TRUSTED, 0, 0) \
+    }
+#define ARITHMETIC_SPAN_LOOP(SOURCE, OP, TYPE, FIT, MISSING)                \
+    if (trusted) {                                                        \
+        const int integral = 1;                                          \
+        ARITHMETIC_SPAN_SHAPES(SOURCE, OP, TYPE, FIT, MISSING, 1)          \
+    } else if (integral_result) {                                         \
+        const int integral = 1;                                          \
+        ARITHMETIC_SPAN_SHAPES(SOURCE, OP, TYPE, FIT, MISSING, 0)          \
+    } else {                                                              \
+        const int integral = 0;                                          \
+        ARITHMETIC_SPAN_SHAPES(SOURCE, OP, TYPE, FIT, MISSING, 0)          \
+    }
+        switch (kind) {
+        case NUMERIC_BYTE: ARITHMETIC_OPERATORS(ARITHMETIC_SPAN_LOOP, int8_t); break;
+        case NUMERIC_INT: ARITHMETIC_OPERATORS(ARITHMETIC_SPAN_LOOP, int16_t); break;
+        case NUMERIC_LONG: ARITHMETIC_OPERATORS(ARITHMETIC_SPAN_LOOP, int32_t); break;
+        case NUMERIC_FLOAT: ARITHMETIC_OPERATORS(ARITHMETIC_SPAN_LOOP, float); break;
+        }
+#undef ARITHMETIC_SPAN_LOOP
+#undef ARITHMETIC_SPAN_SHAPES
+#undef ARITHMETIC_SPAN_SHAPE
+        start += (R_xlen_t) count;
+    }
+    output->fits = fits;
+    output->missing_count = missing_count;
+    return 1;
+}
+
 static void arithmetic_run(
     const arithmetic_operand *left, const arithmetic_operand *right,
     R_xlen_t length, int operation, arithmetic_output *output
@@ -338,6 +489,7 @@ static void arithmetic_run(
         return;
     }
     if (arithmetic_compact_run(left, right, length, operation, output)) return;
+    if (arithmetic_compact_missing_run(left, right, length, operation, output)) return;
     double x[1024], y[1024];
     int x_codes[1024], y_codes[1024];
     int x_scalar = left->length == 1, y_scalar = right->length == 1;

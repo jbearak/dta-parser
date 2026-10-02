@@ -1779,7 +1779,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-kernels.R",
-          "sha256": "74e1b66e4fc31e527c60bc554ec48254a0ccad0ad871e75a58e9fe9ad809af68"
+          "sha256": "a91ded5274c4e983ed4402a23c5147d9f035e5879df51480f481c1dcffeae8ba"
         }
       ],
       "blocks": [
@@ -4283,9 +4283,12 @@
           "file": "test-native-arithmetic-kernels.R",
           "test": "public scalar and column arithmetic enter the native producer",
           "occurrence": 1,
-          "skip": "forbid",
+          "skip": "allow",
           "min_pass": 16,
-          "warnings": 0
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Bytecode scalar admission requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic suite.",
+          "skip_message": "Reason: .dtatools_numeric_entry_expected() is not TRUE"
         },
         {
           "file": "test-native-arithmetic-kernels.R",
@@ -4325,6 +4328,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 300,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "missing span arithmetic keeps all codes across scalar and column shapes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 328,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "missing span arithmetic keeps each operand's legacy missing encoding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 256,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "float span arithmetic matches eager IEEE and reserved-code decoding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 349,
           "warnings": 0
         }
       ],

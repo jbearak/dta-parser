@@ -119,6 +119,7 @@ for (index in seq_along(columns)) {
     name <- columns[[index]]
     width <- names(positions)[[index]]
     plain <- ordinary[[name]]
+    typed_double <- dta_double(plain)
     stopifnot(length(plain) == 1000000L, !any(is.nan(plain)),
               !any(is.infinite(plain)), !any(is_tagged_missing(plain)))
     expected_input <- values_hash(plain)
@@ -130,11 +131,16 @@ for (index in seq_along(columns)) {
                   isTRUE(source_state(compact)[['compact']]))
         for (operation in names(operations)) {
             case <- case + 1L
-            order <- if ((round + case) %% 2L) c('compact', 'ordinary')
+            if (operation %in% c('multiply', 'divide', 'add')) {
+                representations <- c('compact', 'typed_double', 'ordinary')
+                order <- representations[(seq_len(3L) + round + case - 1L) %% 3L + 1L]
+                if (round %% 2L == 0L) order <- rev(order)
+            } else order <- if ((round + case) %% 2L) c('compact', 'ordinary')
                      else c('ordinary', 'compact')
             call <- operations[[operation]]
             for (representation in order) {
-                x <- if (representation == 'compact') compact else plain
+                x <- switch(representation, compact = compact,
+                            typed_double = typed_double, ordinary = plain)
                 expected <- base_reference(operation, plain, x)
                 expected_hash <- fingerprint(expected)
                 # Qualification warms method dispatch before the measurement.
@@ -159,7 +165,7 @@ for (index in seq_along(columns)) {
                 rows[[length(rows) + 1L]] <- data.frame(
                     round = round, case = case, format = format, width = width,
                     column = name, operation = operation, representation = representation,
-                    order_in_pair = match(representation, order), rows = length(x),
+                    order_in_case = match(representation, order), rows = length(x),
                     iterations = reps,
                     elapsed_seconds = unname(elapsed[['elapsed']]),
                     cpu_seconds = unname(elapsed[['user.self']] + elapsed[['sys.self']]),
@@ -178,7 +184,8 @@ for (index in seq_along(columns)) {
             }
         }
         stopifnot(identical(values_hash(compact), expected_input),
-                  identical(values_hash(plain), expected_input))
+                  identical(values_hash(plain), expected_input),
+                  identical(values_hash(typed_double), expected_input))
     }
 }
 # A separate deterministic late-missing control exposes the cached-count
@@ -209,7 +216,7 @@ for (width in names(constructors)) for (format in c('constructed', 'retained')) 
         rows[[length(rows)+1L]] <- data.frame(
             round=round, case=case, format=format, width=width, column='synthetic_late_na',
             operation='anyNA_late', representation=representation,
-            order_in_pair=match(representation,order), rows=length(x), iterations=reps,
+            order_in_case=match(representation,order), rows=length(x), iterations=reps,
             elapsed_seconds=unname(elapsed[['elapsed']]),
             cpu_seconds=unname(elapsed[['user.self']]+elapsed[['sys.self']]),
             seconds_per_call=unname(elapsed[['elapsed']])/reps,
