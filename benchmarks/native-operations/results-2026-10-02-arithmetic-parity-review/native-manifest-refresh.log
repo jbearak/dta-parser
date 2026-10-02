@@ -1,0 +1,20 @@
+rehashed files: 3
+blocks added: 18, removed: 0, counts changed: 0
+  added:   test-native-arithmetic-parity.R :: a final or boundary value promotes every earlier scalar result
+  added:   test-native-arithmetic-parity.R :: column promotion crosses independently chunked operands
+  added:   test-native-arithmetic-parity.R :: missing codes and negative limits do not hide the final promotion
+  added:   test-native-arithmetic-parity.R :: fractional and large results choose storage for the complete column
+  added:   test-native-arithmetic-parity.R :: integer division by powers of two inspects the complete column
+  added:   test-native-arithmetic-parity.R :: float power-of-two scaling preserves subnormals and zero signs
+  added:   test-native-arithmetic-parity.R :: integer preflight preserves missing-only storage and bounded scalars
+  added:   test-native-arithmetic-parity.R :: integer products choose long or float without losing signed zero
+  added:   test-native-arithmetic-parity.R :: power-of-two arithmetic preserves legacy storage decoding
+  added:   test-native-arithmetic-parity.R :: float scaling promotes just beyond the binary32 cutoff
+  added:   test-native-arithmetic-parity.R :: early long promotion still counts missing rows in later chunks
+  added:   test-arithmetic-payload-lifetime.R :: arithmetic payloads survive collection and compact serialization
+  added:   test-arithmetic-payload-lifetime.R :: arithmetic payload aliases detach before writable access and patches
+  added:   test-arithmetic-payload-lifetime.R :: arithmetic payload adoption roots descriptor and bytes across allocations
+  added:   test-arithmetic-payload-lifetime.R :: arithmetic promotion proof survives a reentrant source patch
+  added:   test-arithmetic-payload-lifetime.R :: temporary arithmetic claims restore ordinary and owned write access
+  added:   test-arithmetic-payload-lifetime.R :: arithmetic cleanup preserves aliases created while the source is claimed
+  added:   test-arithmetic-payload-lifetime.R :: disarming an abandoned arithmetic checkpoint releases its token

@@ -1,0 +1,14 @@
+[1] 0 0 0 0 0
+[DEBUG-parity] op=* initial=int final=long calls=256 rows=1000000 capture_us=0.980 first_alloc_us=593.180 first_scan_us=428.180 promotion_alloc_us=0.000 second_scan_us=0.000 assembly_us=0.379
+[DEBUG-parity] op=* initial=double final=double calls=256 rows=1000000 capture_us=0.488 first_alloc_us=21.047 first_scan_us=154.656 promotion_alloc_us=0.000 second_scan_us=0.000 assembly_us=0.297
+[DEBUG-parity] op=* initial=double final=double calls=512 rows=1000000 capture_us=0.549 first_alloc_us=22.340 first_scan_us=148.025 promotion_alloc_us=0.000 second_scan_us=0.000 assembly_us=0.283
+[DEBUG-parity] op=* initial=double final=double calls=768 rows=1000000 capture_us=0.553 first_alloc_us=25.026 first_scan_us=145.802 promotion_alloc_us=0.000 second_scan_us=0.000 assembly_us=0.293
+[DEBUG-parity] op=* initial=int final=long calls=512 rows=1000000 capture_us=0.984 first_alloc_us=566.299 first_scan_us=422.312 promotion_alloc_us=0.000 second_scan_us=0.000 assembly_us=0.383
+[DEBUG-parity] op=* initial=int final=long calls=768 rows=1000000 capture_us=0.948 first_alloc_us=574.785 first_scan_us=420.378 promotion_alloc_us=0.000 second_scan_us=0.000 assembly_us=0.396
+[DEBUG-parity] op=* initial=int final=long calls=1024 rows=1000000 capture_us=0.935 first_alloc_us=528.862 first_scan_us=420.532 promotion_alloc_us=0.000 second_scan_us=0.000 assembly_us=0.390
+[DEBUG-parity] op=* initial=double final=double calls=1024 rows=1000000 capture_us=0.541 first_alloc_us=23.896 first_scan_us=148.513 promotion_alloc_us=0.000 second_scan_us=0.000 assembly_us=0.298
+arrow-int-multiply: compact 1.102 ms; typed_double 0.273 ms; ratio 4.03x; limit 1.10x
+Exact result values/storage, native route, and unmaterialized compact input verified.
+Observations: <work>/allocation-probe/forced-long-gc 
+Error: PARITY FAIL: compact/typed_double 4.03 exceeds 1.10
+Execution halted

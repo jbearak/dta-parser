@@ -1,0 +1,10 @@
+list(case = "arrow-int-multiply", expression = "x * 2", rows = 1000000L, 
+    rounds = 3L, repetitions = 384L, library = "<previous-work>/final-candidate-v2/library", 
+    dll_sha256 = "fa55d6edc07f8df43fb59f6c8d1460e3e553fc383584f3f165f778619b11c56d", 
+    measured_dll_sha256 = "fa55d6edc07f8df43fb59f6c8d1460e3e553fc383584f3f165f778619b11c56d", 
+    input_sha256 = "abc996276c43213a415c58f29e20b709ac8ad9ca2eb3e791be59513a9173f999", 
+    result_storage = c(compact = "long", typed_double = "double"
+    ), compact_cpu_ms = 2.19010416666667, typed_double_cpu_ms = 0.315104166666667, 
+    compact_over_typed_double = 6.9504132231405, diagnostic_limit = 1.1, 
+    values_equal = TRUE, native_route_verified = TRUE, compact_unmaterialized = TRUE, 
+    passed = FALSE)

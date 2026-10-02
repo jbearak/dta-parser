@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "observations.csv": "3aa1d9e382825ef4698c4e037608025cce887497aa56884cadbc0a2eef32175e",
+    "result.dput": "b653c4b60e66a148280672326fab121c6b9809ed2ff0305e01c23c5acb4275e5",
+    "run.log": "389a30413f9f92275cfa26bc012bd59a31dcb25cc22abaf0ef638fd09f27a552"
+  },
+  "benchmark_commit": "5f3ea2e20136cf68790d920e9d7d8073a62c50d2",
+  "benchmark_receipt_sha256": "889f739618a55f02d972131afe4e6fa8d450814b9919cc2cd12e816c94ab7677",
+  "compact_over_typed_double": 0.910569105691057,
+  "controller_sha256": "dff7ee6483538be73a0580d719f04a86b014a942134e8e5613fc88f0af254aa1",
+  "diagnostic_limit": 1.1,
+  "dll_sha256": "ec5a54ff53ed945a978318b1ffba5c7f5664722b4fe0beb6adde4af9065b3372"
+}

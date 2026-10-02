@@ -58,6 +58,12 @@ include ordinary-double controls and separate typed-double arithmetic controls,
 with result, storage and source checks. Arithmetic improves substantially but
 still trails the double controls.
 
+The [compact arithmetic follow-up](native-operations/results-2026-10-02-arithmetic-parity.md)
+removes native allocation and loop overhead left by that change. Six balanced
+rounds put the measured multiply, divide and self-add operations at 0.58–1.13×
+typed-double CPU, with full result and storage checks. Bare-double ratios and
+the remaining float overhead are reported separately.
+
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
 reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
 ENADID and WFS survey datasets, with both tibble and dibble outputs. Its 3,762

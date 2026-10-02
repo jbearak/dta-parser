@@ -1779,7 +1779,11 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-kernels.R",
-          "sha256": "a91ded5274c4e983ed4402a23c5147d9f035e5879df51480f481c1dcffeae8ba"
+          "sha256": "b310390e418ca6741eebd20263cacc13436557a3189d44e99a276c3017ea3ece"
+        },
+        {
+          "path": "tests/testthat/test-native-arithmetic-parity.R",
+          "sha256": "518fc24c4ba5dfc6c2739d150da4682af4237b8efd1448b67d32d96927642c54"
         }
       ],
       "blocks": [
@@ -4351,7 +4355,95 @@
           "test": "float span arithmetic matches eager IEEE and reserved-code decoding",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 349,
+          "min_pass": 2777,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "a final or boundary value promotes every earlier scalar result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 640,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "column promotion crosses independently chunked operands",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 360,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "missing codes and negative limits do not hide the final promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 248,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "fractional and large results choose storage for the complete column",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 225,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "integer division by powers of two inspects the complete column",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 740,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "float power-of-two scaling preserves subnormals and zero signs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 280,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "integer preflight preserves missing-only storage and bounded scalars",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 405,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "integer products choose long or float without losing signed zero",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 75,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "power-of-two arithmetic preserves legacy storage decoding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 480,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "float scaling promotes just beyond the binary32 cutoff",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 484,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "early long promotion still counts missing rows in later chunks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 58,
           "warnings": 0
         }
       ],
@@ -5882,6 +5974,10 @@
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
           "sha256": "bdad22bbd7d373ebdb1fe0d1d59b9c478f5a1d2057b51a4da81c044f88792b39"
+        },
+        {
+          "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
+          "sha256": "bcf7812944d90cc85d872b132b336324ef5d4c25b2b79965b125629be49b1575"
         }
       ],
       "blocks": [
@@ -7282,6 +7378,74 @@
           "skip": "forbid",
           "min_pass": 252,
           "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "arithmetic payloads survive collection and compact serialization",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "arithmetic payload aliases detach before writable access and patches",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "arithmetic payload adoption roots descriptor and bytes across allocations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "arithmetic promotion proof survives a reentrant source patch",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 24,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "temporary arithmetic claims restore ordinary and owned write access",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 14,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "arithmetic cleanup preserves aliases created while the source is claimed",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 10,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "disarming an abandoned arithmetic checkpoint releases its token",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 7,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
         }
       ],
       "children": [],

@@ -1,0 +1,40 @@
+{
+  "purpose": "Correctness diagnosis before temporary arithmetic ownership claims",
+  "default_R_scan": {
+    "script": "finalizer-fit-repro.R",
+    "library": "<work>/combined-v1/library",
+    "wait_positions": 160,
+    "result": "No malformed result; not an exact-window exclusion; ordinary R defers pending finalizers through native allocations."
+  },
+  "exact_window": {
+    "script": "finalizer-checkpoint.R",
+    "library": "<work>/finalizer-checkpoint/library",
+    "build_receipt": "<work>/finalizer-checkpoint/record.json",
+    "injection": "One R_gc() after integer preflight and before destination allocation. Simulates optional immediate-finalizer R build, not observed default Rscript behavior.",
+    "observed": {
+      "finalizer_fired": 1,
+      "native_entries": 1,
+      "input_first_after_patch": 100,
+      "output_first": -56,
+      "output_storage": "byte"
+    },
+    "exit_code": 1
+  },
+  "runtime_source": {
+    "R4.6.1_errors.c": "R_CheckUserInterrupt lines141-158 calls R_ProcessEvents, not pendingfinalizers.",
+    "R4.6.1_eval.c": "Lines1092-1096 and6243-6247 run pendingfinalizers at evaluator checkpoints when IMMEDIATE_FINALIZERS is undefined.",
+    "R4.6.1_memory.c": "R_gc_internal lines3277ff runs finalizers only when IMMEDIATE_FINALIZERS defined; R_gc lines3092ff explicitly runs them otherwise."
+  },
+  "files": {
+    "finalizer-fit-repro.R": "44c1a5d8a5a56ec678e332342daefc2415c0b315d7f1a83f8802efe7cb78e95c",
+    "finalizer-fit.log": "c6bebaeab310cce2d80956008516d4dbc3d225220b82b3190380a0ae05cbc615",
+    "finalizer-checkpoint.R": "494589178a44678a7439717eecab4bb0ab031893f20fd9d0da7ec1560961f299",
+    "finalizer-checkpoint.log": "b2253175f87755f508f7db2878190b240cc0d2204571f7d4cbd9b93e2957e553",
+    "build-checkpoint.py": "9bd8b98a314178e203f7b4939a6cfb76fc0854c9fb8da7bde5d81cdd668c1123",
+    "finalizer-fit-48027.csv": "c3c04d9235c2068038f7cebdbed6b47b4c5653868424e46a584968ada131fc5f",
+    "r-source/eval.c": "2f389fd4e94bbb934bc4d3e839b8b99d01a4023d4de135c4651ff5802ee15b4f",
+    "r-source/sys-unix.c": "66ca5803ebd6454227b0f3f3e82b89482c8aa005effc7aa70eb4dbe130935269",
+    "r-source/Defn.h": "f6f3b5ed350ec0ef231474c87433f43612710d5070be3998e9d788e5d767777f",
+    "r-source/errors.c": "c3ff0d0711e4a6457b74a464748f9e6c0803daff0ff2f282d4ef7aae066c0772"
+  }
+}

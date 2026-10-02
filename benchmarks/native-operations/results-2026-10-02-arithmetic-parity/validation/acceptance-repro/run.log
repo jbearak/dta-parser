@@ -1,0 +1,4 @@
+arrow-int-multiply: compact 0.292 ms; typed_double 0.320 ms; ratio 0.91x; limit 1.10x
+Exact result values/storage, native route, and unmaterialized compact input verified.
+Observations: <work>/acceptance-repro 
+PARITY PASS

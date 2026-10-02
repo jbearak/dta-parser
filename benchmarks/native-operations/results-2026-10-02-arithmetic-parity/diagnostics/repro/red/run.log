@@ -1,0 +1,5 @@
+arrow-int-multiply: compact 2.190 ms; typed_double 0.315 ms; ratio 6.95x; limit 1.10x
+Exact result values/storage, native route, and unmaterialized compact input verified.
+Observations: <work>/run-20261002T184219-40960 
+Error: PARITY FAIL: compact/typed_double 6.95 exceeds 1.10
+Execution halted

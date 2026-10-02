@@ -1,0 +1,1487 @@
+diff --git a/r-package/dtatools/src/dtatools-internal.h b/r-package/dtatools/src/dtatools-internal.h
+index 0c86f9fe..cefb30e1 100644
+--- a/r-package/dtatools/src/dtatools-internal.h
++++ b/r-package/dtatools/src/dtatools-internal.h
+@@ -383,6 +383,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_owned_missing_mask(SEXP value);
+ DTATOOLS_INTERNAL SEXP C_dtatools_owned_info(SEXP value);
+ DTATOOLS_INTERNAL SEXP C_dtatools_native_copy_stats(SEXP reset);
+ DTATOOLS_INTERNAL SEXP C_dtatools_numeric_entry_stats(SEXP reset);
++DTATOOLS_INTERNAL SEXP C_dtatools_test_arithmetic_checkpoint(SEXP mode, SEXP token);
+ DTATOOLS_INTERNAL void initialize_numeric_size_gate(void);
+ DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_size_minimum(SEXP value);
+ DTATOOLS_INTERNAL SEXP C_dtatools_numeric_size_stats(SEXP reset);
+diff --git a/r-package/dtatools/src/init.c b/r-package/dtatools/src/init.c
+index 6f55cd1d..07d9f111 100644
+--- a/r-package/dtatools/src/init.c
++++ b/r-package/dtatools/src/init.c
+@@ -256,6 +256,7 @@ static const R_CallMethodDef CallEntries[] = {
+     {"C_dtatools_owned_numeric_info", (DL_FUNC) &C_dtatools_owned_numeric_info, 1},
+     {"C_dtatools_native_copy_stats", (DL_FUNC) &C_dtatools_native_copy_stats, 1},
+     {"C_dtatools_numeric_entry_stats", (DL_FUNC) &C_dtatools_numeric_entry_stats, 1},
++    {"C_dtatools_test_arithmetic_checkpoint", (DL_FUNC) &C_dtatools_test_arithmetic_checkpoint, 2},
+     {"C_dtatools_test_numeric_size_minimum", (DL_FUNC) &C_dtatools_test_numeric_size_minimum, 1},
+     {"C_dtatools_numeric_size_stats", (DL_FUNC) &C_dtatools_numeric_size_stats, 1},
+     {"C_dtatools_test_numeric_size_gate", (DL_FUNC) &C_dtatools_test_numeric_size_gate, 1},
+diff --git a/r-package/dtatools/src/numeric-arithmetic-integer.h b/r-package/dtatools/src/numeric-arithmetic-integer.h
+new file mode 100644
+index 00000000..67aa624f
+--- /dev/null
++++ b/r-package/dtatools/src/numeric-arithmetic-integer.h
+@@ -0,0 +1,336 @@
++/* Integer-domain arithmetic after the ordinary admission and owner capture.
++   Preflight chooses the complete result's storage before allocating it. */
++#ifndef DTATOOLS_NUMERIC_ARITHMETIC_INTEGER_H
++#define DTATOOLS_NUMERIC_ARITHMETIC_INTEGER_H
++
++typedef struct {
++    int source_kind;
++    int operation;
++    int wide;
++    int x_scalar;
++    int y_scalar;
++    int32_t x_value;
++    int32_t y_value;
++    double x_double;
++    double y_double;
++    int32_t x_missing;
++    int32_t y_missing;
++    int64_t minimum;
++    int64_t maximum;
++    size_t missing_count;
++} arithmetic_integer_plan;
++
++static int32_t arithmetic_integer_missing(const numeric_data *data) {
++    if (data == NULL) return 0;
++    int legacy = data->format_version <= 111;
++    switch (data->kind) {
++    case NUMERIC_BYTE: return legacy ? INT8_MAX : 101;
++    case NUMERIC_INT: return legacy ? INT16_MAX : 32741;
++    default: return legacy ? INT32_MAX : INT32_C(2147483621);
++    }
++}
++
++static int arithmetic_integer_prepare(
++    const arithmetic_operand *left, const arithmetic_operand *right,
++    int operation, arithmetic_integer_plan *plan
++) {
++    if (operation != '+' && operation != '-' && operation != '*') return 0;
++    const numeric_data *x = left->reader.storage;
++    const numeric_data *y = right->reader.storage;
++    int x_scalar = left->length == 1, y_scalar = right->length == 1;
++    if ((x_scalar && y_scalar) ||
++        (!x_scalar && (x == NULL || x->kind > NUMERIC_LONG)) ||
++        (!y_scalar && (y == NULL || y->kind > NUMERIC_LONG))) return 0;
++    int kind = !x_scalar ? x->kind : y->kind;
++    if (kind < NUMERIC_BYTE || kind > NUMERIC_LONG ||
++        (!x_scalar && x->kind != kind) || (!y_scalar && y->kind != kind))
++        return 0;
++    if ((x_scalar || y_scalar) && operation != '*') return 0;
++
++    *plan = (arithmetic_integer_plan) {0};
++    plan->source_kind = kind;
++    plan->operation = operation;
++    plan->x_scalar = x_scalar;
++    plan->y_scalar = y_scalar;
++    plan->x_missing = arithmetic_integer_missing(x);
++    plan->y_missing = arithmetic_integer_missing(y);
++    plan->wide = kind == NUMERIC_LONG;
++    if (x_scalar || y_scalar) {
++        double value;
++        int code;
++        numeric_reader_region(x_scalar ? &left->reader : &right->reader,
++                              0, 1, &value, &code);
++        if (code >= 0 || !R_FINITE(value) || value != trunc(value) ||
++            value < (double) INT32_MIN || value > (double) INT32_MAX)
++            return 0;
++        int32_t scalar = (int32_t) value;
++        if (x_scalar) {
++            plan->x_value = scalar;
++            plan->x_double = value;
++        } else {
++            plan->y_value = scalar;
++            plan->y_double = value;
++        }
++        /* Use the entire signed source domain, including legacy observed
++           minima and missing encodings, to prove every multiply safe. */
++        int64_t magnitude = scalar < 0 ? -(int64_t) scalar : scalar;
++        int64_t bound = kind == NUMERIC_BYTE ? INT32_MAX / 128
++                                             : INT32_MAX / 32768;
++        if (magnitude > bound) plan->wide = 1;
++    }
++    if (!x_scalar && !y_scalar && operation == '+' &&
++        arithmetic_same_compact_storage(left, right, left->length)) {
++        /* Equal captured spans prove equal values even if allocation
++           callbacks changed either public object. Integer x + x is exactly
++           x * 2, including the later binary64 rounding on promotion. */
++        plan->y_scalar = 1;
++        plan->y_value = 2;
++        plan->y_double = 2;
++        plan->operation = '*';
++    }
++    if (plan->x_scalar || plan->y_scalar) {
++        /* The scalar is observed and every admitted result is valid. Only
++           the captured column's existing missing rows can be missing. */
++        plan->missing_count = (plan->x_scalar ? y : x)->missing_count;
++    }
++    /* Byte/int pairs fit int32 for all three operators. Long pairs and a
++       bounded int32 scalar fit int64: the largest product is 2^62. */
++    return 1;
++}
++
++/* An all-bits unsigned mask lets pair scans combine predicates without
++   packing booleans into byte lanes. Subtracting it adds one to the bounded
++   unsigned block count for each missing row. */
++#define ARITHMETIC_INTEGER_LOAD(SOURCE, ACC, XS, YS)                        \
++    ACC xv = (ACC) plan->x_value, yv = (ACC) plan->y_value;                 \
++    uint32_t missing = 0;                                                  \
++    if (!(XS)) {                                                           \
++        SOURCE raw;                                                        \
++        memcpy(&raw, x_raw + offset * sizeof(SOURCE), sizeof(raw));        \
++        xv = (ACC) raw;                                                    \
++        missing |= 0U - (uint32_t) (raw >= plan->x_missing);               \
++    }                                                                      \
++    if (!(YS)) {                                                           \
++        SOURCE raw;                                                        \
++        memcpy(&raw, y_raw + offset * sizeof(SOURCE), sizeof(raw));        \
++        yv = (ACC) raw;                                                    \
++        missing |= 0U - (uint32_t) (raw >= plan->y_missing);               \
++    }
++
++#define ARITHMETIC_INTEGER_SHAPES(LOOP, SOURCE, ACC, OP)                    \
++    if (plan->x_scalar) { LOOP(SOURCE, ACC, OP, 1, 0) }                    \
++    else if (plan->y_scalar) { LOOP(SOURCE, ACC, OP, 0, 1) }               \
++    else { LOOP(SOURCE, ACC, OP, 0, 0) }
++
++#define ARITHMETIC_INTEGER_OPERATORS(LOOP, SOURCE, ACC)                    \
++    switch (operation) {                                                   \
++    case '+': ARITHMETIC_INTEGER_SHAPES(LOOP, SOURCE, ACC, +); break;      \
++    case '-': ARITHMETIC_INTEGER_SHAPES(LOOP, SOURCE, ACC, -); break;      \
++    case '*': ARITHMETIC_INTEGER_SHAPES(LOOP, SOURCE, ACC, *); break;      \
++    }
++
++#define ARITHMETIC_INTEGER_SOURCES(LOOP)                                   \
++    switch (plan->source_kind) {                                           \
++    case NUMERIC_BYTE:                                                     \
++        if (plan->wide) { ARITHMETIC_INTEGER_OPERATORS(LOOP, int8_t, int64_t) } \
++        else { ARITHMETIC_INTEGER_OPERATORS(LOOP, int8_t, int32_t) }        \
++        break;                                                             \
++    case NUMERIC_INT:                                                      \
++        if (plan->wide) { ARITHMETIC_INTEGER_OPERATORS(LOOP, int16_t, int64_t) } \
++        else { ARITHMETIC_INTEGER_OPERATORS(LOOP, int16_t, int32_t) }       \
++        break;                                                             \
++    case NUMERIC_LONG:                                                     \
++        ARITHMETIC_INTEGER_OPERATORS(LOOP, int32_t, int64_t)                \
++        break;                                                             \
++    }
++
++static void arithmetic_integer_preflight(
++    const arithmetic_operand *left, const arithmetic_operand *right,
++    R_xlen_t length, int operation, int minimum_kind,
++    arithmetic_integer_plan *plan
++) {
++    for (R_xlen_t start = 0; start < length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) (length - start > 16384 ? 16384 : length - start);
++        const unsigned char *x_raw = plan->x_scalar ? NULL :
++            numeric_read_span(left->reader.storage, (size_t) start, count, &count);
++        const unsigned char *y_raw = plan->y_scalar ? NULL :
++            numeric_read_span(right->reader.storage, (size_t) start, count, &count);
++#define ARITHMETIC_INTEGER_PREFLIGHT(SOURCE, ACC, OP, XS, YS)               \
++        {                                                                  \
++            ACC minimum = (ACC) plan->minimum;                             \
++            ACC maximum = (ACC) plan->maximum;                             \
++            unsigned missing_count = 0;                                    \
++            for (size_t offset = 0; offset < count; offset++) {            \
++                ARITHMETIC_INTEGER_LOAD(SOURCE, ACC, XS, YS)               \
++                ACC value = xv OP yv;                                      \
++                value = missing ? 0 : value;                               \
++                minimum = value < minimum ? value : minimum;              \
++                maximum = value > maximum ? value : maximum;              \
++                if (!(XS) && !(YS)) missing_count -= missing;             \
++            }                                                              \
++            plan->minimum = minimum;                                      \
++            plan->maximum = maximum;                                      \
++            plan->missing_count += missing_count;                          \
++        }
++        ARITHMETIC_INTEGER_SOURCES(ARITHMETIC_INTEGER_PREFLIGHT)
++#undef ARITHMETIC_INTEGER_PREFLIGHT
++        /* Long can promote only to double, which holds every admitted
++           result. Floating output obtains its full missing count separately,
++           so no remaining preflight reduction is needed after promotion. */
++        if (minimum_kind == NUMERIC_LONG &&
++            (plan->minimum < -INT64_C(2147483647) ||
++             plan->maximum > INT64_C(2147483620))) return;
++        start += (R_xlen_t) count;
++    }
++}
++
++static int arithmetic_integer_destination(
++    const arithmetic_integer_plan *plan, int minimum
++) {
++    if (minimum == NUMERIC_BYTE && plan->minimum >= -127 &&
++        plan->maximum <= 100) return NUMERIC_BYTE;
++    if (minimum <= NUMERIC_INT && plan->minimum >= -32767 &&
++        plan->maximum <= 32740) return NUMERIC_INT;
++    if (minimum <= NUMERIC_LONG && plan->minimum >= -INT64_C(2147483647) &&
++        plan->maximum <= INT64_C(2147483620)) return NUMERIC_LONG;
++    /* Every admitted result is an integer of magnitude at most 2^62, well
++       within float's observed range. Long never narrows through float. */
++    return minimum == NUMERIC_LONG || minimum == NUMERIC_DOUBLE
++        ? NUMERIC_DOUBLE : NUMERIC_FLOAT;
++}
++
++static void arithmetic_integer_write(
++    const arithmetic_operand *left, const arithmetic_operand *right,
++    R_xlen_t length, int operation, const arithmetic_integer_plan *plan,
++    arithmetic_output *output
++) {
++    for (R_xlen_t start = 0; start < length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) (length - start > 16384 ? 16384 : length - start);
++        const unsigned char *x_raw = plan->x_scalar ? NULL :
++            numeric_read_span(left->reader.storage, (size_t) start, count, &count);
++        const unsigned char *y_raw = plan->y_scalar ? NULL :
++            numeric_read_span(right->reader.storage, (size_t) start, count, &count);
++#define ARITHMETIC_INTEGER_WRITE_AS(SOURCE, ACC, OP, XS, YS, TYPE, NA)      \
++        {                                                                  \
++            TYPE *restrict target = (TYPE *) (void *) output->raw + start; \
++            for (size_t offset = 0; offset < count; offset++) {            \
++                ARITHMETIC_INTEGER_LOAD(SOURCE, ACC, XS, YS)               \
++                ACC value = xv OP yv;                                      \
++                target[offset] = (TYPE) (missing ? (ACC) (NA) : value);    \
++            }                                                              \
++        }
++#define ARITHMETIC_INTEGER_WRITE(SOURCE, ACC, OP, XS, YS)                  \
++        switch (output->kind) {                                            \
++        case NUMERIC_BYTE:                                                 \
++            ARITHMETIC_INTEGER_WRITE_AS(SOURCE, ACC, OP, XS, YS, int8_t, 101) \
++            break;                                                         \
++        case NUMERIC_INT:                                                  \
++            ARITHMETIC_INTEGER_WRITE_AS(SOURCE, ACC, OP, XS, YS, int16_t, 32741) \
++            break;                                                         \
++        case NUMERIC_LONG:                                                 \
++            ARITHMETIC_INTEGER_WRITE_AS(SOURCE, ACC, OP, XS, YS, int32_t, INT32_C(2147483621)) \
++            break;                                                         \
++        }
++        ARITHMETIC_INTEGER_SOURCES(ARITHMETIC_INTEGER_WRITE)
++#undef ARITHMETIC_INTEGER_WRITE
++#undef ARITHMETIC_INTEGER_WRITE_AS
++        start += (R_xlen_t) count;
++    }
++}
++
++/* Integer-domain bounds also prove the binary64 result finite and inside
++   float's observed range. Keep the original double operation for its rounding
++   and signed zero, without repeating generic validity or destination checks. */
++static void arithmetic_integer_write_floating(
++    const arithmetic_operand *left, const arithmetic_operand *right,
++    R_xlen_t length, int operation, const arithmetic_integer_plan *plan,
++    arithmetic_output *output
++) {
++    size_t total_missing = plan->x_scalar || plan->y_scalar
++        ? plan->missing_count : 0;
++    void *destination = output->kind == NUMERIC_DOUBLE
++        ? (void *) output->real : (void *) output->raw;
++    for (R_xlen_t start = 0; start < length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) (length - start > 16384 ? 16384 : length - start);
++        const unsigned char *x_raw = plan->x_scalar ? NULL :
++            numeric_read_span(left->reader.storage, (size_t) start, count, &count);
++        const unsigned char *y_raw = plan->y_scalar ? NULL :
++            numeric_read_span(right->reader.storage, (size_t) start, count, &count);
++#define ARITHMETIC_INTEGER_FLOAT_AS(SOURCE, ACC, OP, XS, YS, TYPE, NA)      \
++        {                                                                  \
++            TYPE *restrict target = (TYPE *) destination + start;         \
++            unsigned missing_count = 0;                                    \
++            for (size_t offset = 0; offset < count; offset++) {            \
++                ARITHMETIC_INTEGER_LOAD(SOURCE, ACC, XS, YS)               \
++                double dx = (XS) ? plan->x_double : (double) xv;           \
++                double dy = (YS) ? plan->y_double : (double) yv;           \
++                double value = dx OP dy;                                  \
++                target[offset] = missing ? (TYPE) (NA) : (TYPE) value;     \
++                if (!(XS) && !(YS)) missing_count -= missing;             \
++            }                                                              \
++            total_missing += missing_count;                               \
++        }
++#define ARITHMETIC_INTEGER_FLOAT(SOURCE, ACC, OP, XS, YS)                  \
++        if (output->kind == NUMERIC_FLOAT) {                               \
++            ARITHMETIC_INTEGER_FLOAT_AS(SOURCE, ACC, OP, XS, YS, float, 0x1p127f) \
++        } else {                                                           \
++            ARITHMETIC_INTEGER_FLOAT_AS(SOURCE, ACC, OP, XS, YS, double, NA_REAL) \
++        }
++        switch (plan->source_kind) {
++        case NUMERIC_BYTE:
++            ARITHMETIC_INTEGER_OPERATORS(ARITHMETIC_INTEGER_FLOAT, int8_t, int64_t)
++            break;
++        case NUMERIC_INT:
++            ARITHMETIC_INTEGER_OPERATORS(ARITHMETIC_INTEGER_FLOAT, int16_t, int64_t)
++            break;
++        case NUMERIC_LONG:
++            ARITHMETIC_INTEGER_OPERATORS(ARITHMETIC_INTEGER_FLOAT, int32_t, int64_t)
++            break;
++        }
++#undef ARITHMETIC_INTEGER_FLOAT
++#undef ARITHMETIC_INTEGER_FLOAT_AS
++        start += (R_xlen_t) count;
++    }
++    output->missing_count = total_missing;
++}
++
++#undef ARITHMETIC_INTEGER_SOURCES
++#undef ARITHMETIC_INTEGER_OPERATORS
++#undef ARITHMETIC_INTEGER_SHAPES
++#undef ARITHMETIC_INTEGER_LOAD
++
++static SEXP arithmetic_integer_result(
++    const arithmetic_operand *left, const arithmetic_operand *right,
++    R_xlen_t length, int operation, int minimum, int *result_kind
++) {
++    arithmetic_integer_plan plan;
++    if (!arithmetic_integer_prepare(left, right, operation, &plan))
++        return NULL;
++    operation = plan.operation;
++    int kind = minimum;
++    if (minimum < NUMERIC_FLOAT) {
++        arithmetic_integer_preflight(left, right, length, operation,
++                                     minimum, &plan);
++        kind = arithmetic_integer_destination(&plan, minimum);
++    }
++    SEXP backing = PROTECT(arithmetic_backing(length, kind));
++    arithmetic_output output = arithmetic_output_create(backing, kind);
++    if (kind <= NUMERIC_LONG) {
++        arithmetic_integer_write(left, right, length, operation, &plan, &output);
++        output.missing_count = plan.missing_count;
++    } else {
++        arithmetic_integer_write_floating(left, right, length, operation,
++                                           &plan, &output);
++    }
++    SEXP result = PROTECT(arithmetic_adopt_backing(
++        backing, length, kind, output.missing_count
++    ));
++    *result_kind = kind;
++    UNPROTECT(2);
++    return result;
++}
++
++#endif
+diff --git a/r-package/dtatools/src/numeric-arithmetic-scale.h b/r-package/dtatools/src/numeric-arithmetic-scale.h
+new file mode 100644
+index 00000000..5ae8dd5a
+--- /dev/null
++++ b/r-package/dtatools/src/numeric-arithmetic-scale.h
+@@ -0,0 +1,277 @@
++/* Binary scaling preserves a float's significand until its final binary32
++   rounding. Integer division by a power of two needs only a divisibility
++   reduction to choose storage; float fit checks share the output scan. */
++#ifndef DTATOOLS_NUMERIC_ARITHMETIC_SCALE_H
++#define DTATOOLS_NUMERIC_ARITHMETIC_SCALE_H
++
++static int arithmetic_scale_fractional(const numeric_data *data,
++                                       R_xlen_t length, unsigned shift) {
++    uint32_t remainder = 0;
++    const uint32_t mask = (UINT32_C(1) << shift) - 1U;
++    const int32_t missing_minimum = (int32_t)
++        arithmetic_missing_policy_for(data).minimum;
++    for (R_xlen_t start = 0; start < length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) (length - start > 16384 ? 16384 : length - start);
++        const unsigned char *raw = numeric_read_span(data, (size_t) start, count, &count);
++#define SCALE_REMAINDER(TYPE)                                              \
++        for (size_t i = 0; i < count; i++) {                               \
++            TYPE value;                                                   \
++            memcpy(&value, raw + i * sizeof(TYPE), sizeof(TYPE));          \
++            remainder |= value >= missing_minimum ? 0U : (uint32_t) value; \
++        }
++        switch (data->kind) {
++        case NUMERIC_BYTE: SCALE_REMAINDER(int8_t); break;
++        case NUMERIC_INT: SCALE_REMAINDER(int16_t); break;
++        case NUMERIC_LONG: SCALE_REMAINDER(int32_t); break;
++        }
++#undef SCALE_REMAINDER
++        /* Contraction proves the range. One fractional result settles the
++           only remaining storage constraint for the entire column. */
++        if (remainder & mask) return 1;
++        start += (R_xlen_t) count;
++    }
++    return 0;
++}
++
++static int arithmetic_scale_float_invalid_modern(uint32_t bits) {
++    /* Rotating the offset admits exactly 0x7f000000 + tag * 0x800 for
++       tag 0..26. Unaligned bits rotate above that range, and unsigned
++       subtraction also excludes every encoding below the first code. */
++    uint32_t offset = bits - UINT32_C(0x7f000000);
++    uint32_t tag = (offset >> 11) | (offset << 21);
++    return (tag <= 26U) |
++        ((bits & UINT32_C(0x7fffffff)) >= UINT32_C(0x7f800000));
++}
++
++static int arithmetic_scale_float_invalid_legacy(uint32_t bits) {
++    return (bits - UINT32_C(0x7f000000) <= UINT32_C(0x00ffffff)) |
++        ((bits & UINT32_C(0x7fffffff)) >= UINT32_C(0x7f800000));
++}
++
++/* shift is at least one, so the unsigned magnitude after shifting fits in
++   int32 even for the legacy-observed INT32_MIN. No negative signed shift or
++   negation of INT32_MIN is used. */
++static int32_t arithmetic_scale_quotient(int32_t value, unsigned shift,
++                                        int negative) {
++    const uint32_t sign = 0U - (uint32_t) (value < 0);
++    uint32_t magnitude = (((uint32_t) value ^ sign) - sign) >> shift;
++    int32_t result = (int32_t) magnitude;
++    return ((value < 0) != negative) ? -result : result;
++}
++
++static void arithmetic_scale_integer_write(const numeric_data *data,
++                                            R_xlen_t length, unsigned shift,
++                                            double factor,
++                                            arithmetic_output *output) {
++    /* Here 2^-30 <= |factor| <= 1/2. Nonzero integer quotients therefore
++       remain normal binary32 values. Rounding the integer to float before
++       this exact exponent shift gives the same final float as binary64
++       scaling followed by conversion, with the zero sign preserved. */
++    const int32_t missing_minimum = (int32_t)
++        arithmetic_missing_policy_for(data).minimum;
++    const int negative = factor < 0;
++    unsigned char *destination = output->kind == NUMERIC_DOUBLE
++        ? (unsigned char *) output->real : output->raw;
++    for (R_xlen_t start = 0; start < length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) (length - start > 16384 ? 16384 : length - start);
++        const unsigned char *raw = numeric_read_span(data, (size_t) start, count, &count);
++#define SCALE_INTEGER_WRITE(SOURCE, TYPE, VALUE, MISSING)                  \
++        {                                                                 \
++            TYPE *restrict target = (TYPE *) (void *) destination + start; \
++            for (size_t i = 0; i < count; i++) {                           \
++                SOURCE source;                                            \
++                memcpy(&source, raw + i * sizeof(SOURCE), sizeof(SOURCE)); \
++                int missing = source >= missing_minimum;                  \
++                TYPE value = (TYPE) (VALUE);                               \
++                target[i] = missing ? (TYPE) (MISSING) : value;            \
++            }                                                             \
++        }
++#define SCALE_INTEGER_TARGETS(SOURCE)                                      \
++        switch (output->kind) {                                            \
++        case NUMERIC_BYTE:                                                \
++            SCALE_INTEGER_WRITE(SOURCE, int8_t,                            \
++                arithmetic_scale_quotient(source, shift, negative), 101); break; \
++        case NUMERIC_INT:                                                 \
++            SCALE_INTEGER_WRITE(SOURCE, int16_t,                           \
++                arithmetic_scale_quotient(source, shift, negative), 32741); break; \
++        case NUMERIC_LONG:                                                \
++            SCALE_INTEGER_WRITE(SOURCE, int32_t,                           \
++                arithmetic_scale_quotient(source, shift, negative), INT32_C(2147483621)); break; \
++        case NUMERIC_FLOAT:                                               \
++            SCALE_INTEGER_WRITE(SOURCE, float,                            \
++                (float) source * (float) factor, 0x1p127f); break;         \
++        case NUMERIC_DOUBLE:                                              \
++            SCALE_INTEGER_WRITE(SOURCE, double,                           \
++                (double) source * factor, NA_REAL); break;                \
++        }
++        switch (data->kind) {
++        case NUMERIC_BYTE: SCALE_INTEGER_TARGETS(int8_t); break;
++        case NUMERIC_INT: SCALE_INTEGER_TARGETS(int16_t); break;
++        case NUMERIC_LONG: SCALE_INTEGER_TARGETS(int32_t); break;
++        }
++#undef SCALE_INTEGER_TARGETS
++#undef SCALE_INTEGER_WRITE
++        start += (R_xlen_t) count;
++    }
++}
++
++/* A binary shift gives an exact binary32 input cutoff. Fit detection can
++   therefore share the narrow producer without converting each value to
++   double. Stop at the first chunk proving double is required; no further
++   storage decisions remain, and that writer recomputes every original value. */
++static int arithmetic_scale_float_write(const numeric_data *data,
++                                         R_xlen_t length, double factor,
++                                         arithmetic_output *output) {
++    const int legacy = data->format_version <= 111;
++    /* Cached missing counts include every reserved code and IEEE NaN.
++       Binary scaling invalidates only the remaining observed infinities.
++       Legacy +Inf is reserved already; legacy -Inf and modern +/-Inf are not. */
++    output->missing_count = data->missing_count;
++    double input_limit = numeric_float_observed_limit() / fabs(factor);
++    float limit = input_limit >= FLT_MAX ? FLT_MAX : (float) input_limit;
++    uint32_t cutoff;
++    memcpy(&cutoff, &limit, sizeof(cutoff));
++    for (R_xlen_t start = 0; start < length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) (length - start > 16384 ? 16384 : length - start);
++        const unsigned char *raw = numeric_read_span(data, (size_t) start, count, &count);
++        uint32_t maximum = 0;
++        unsigned missing_count = 0;
++#define SCALE_FLOAT_WRITE(TYPE, TARGET, FACTOR, MISSING, CHECK_FIT, INVALID, INF_MASK, INF_VALUE) \
++        {                                                                 \
++            TYPE *restrict target = (TARGET) + start;                     \
++            const TYPE multiplier = (TYPE) (FACTOR);                       \
++            for (size_t i = 0; i < count; i++) {                           \
++                uint32_t bits;                                            \
++                memcpy(&bits, raw + i * sizeof(bits), sizeof(bits));        \
++                int missing = INVALID(bits);                             \
++                uint32_t observed = missing ? 0 : bits;                    \
++                uint32_t magnitude = observed & UINT32_C(0x7fffffff);     \
++                if (CHECK_FIT)                                            \
++                    maximum = magnitude > maximum ? magnitude : maximum; \
++                float source;                                             \
++                memcpy(&source, &observed, sizeof(source));                \
++                TYPE value = (TYPE) source * multiplier;                   \
++                target[i] = missing ? (TYPE) (MISSING) : value;            \
++                missing_count +=                                          \
++                    (unsigned) ((bits & (INF_MASK)) == (INF_VALUE));       \
++            }                                                             \
++        }
++#define SCALE_FLOAT_TARGETS(INVALID, INF_MASK, INF_VALUE)                  \
++        if (output->kind == NUMERIC_FLOAT) {                               \
++            if (fabs(factor) <= 0.5) {                                    \
++                SCALE_FLOAT_WRITE(float, (float *) (void *) output->raw, factor, 0x1p127f, 0, INVALID, INF_MASK, INF_VALUE); \
++            } else {                                                      \
++                SCALE_FLOAT_WRITE(float, (float *) (void *) output->raw, factor, 0x1p127f, 1, INVALID, INF_MASK, INF_VALUE); \
++            }                                                             \
++        } else {                                                          \
++            SCALE_FLOAT_WRITE(double, output->real, factor, NA_REAL, 0, INVALID, INF_MASK, INF_VALUE); \
++        }
++        /* Half of the largest finite binary32 value is exactly the largest
++           observed Stata float. Contraction needs no fit scan. Encoding
++           dispatch stays outside the typed loop, including infinity counts. */
++        if (legacy) {
++            SCALE_FLOAT_TARGETS(arithmetic_scale_float_invalid_legacy,
++                                UINT32_MAX, UINT32_C(0xff800000));
++        } else {
++            SCALE_FLOAT_TARGETS(arithmetic_scale_float_invalid_modern,
++                                UINT32_C(0x7fffffff), UINT32_C(0x7f800000));
++        }
++#undef SCALE_FLOAT_TARGETS
++#undef SCALE_FLOAT_WRITE
++        output->missing_count += missing_count;
++        /* A too-large provisional product can be infinity. It is never
++           exposed or counted as missing: this backing is discarded and the
++           double writer starts again from the original captured values. */
++        if (maximum > cutoff) return 1;
++        start += (R_xlen_t) count;
++    }
++    return 0;
++}
++
++/* Public object identity is insufficient: either capture may allocate. Compare
++   the already captured byte spans instead, including both encoding policies. */
++static int arithmetic_same_compact_storage(const arithmetic_operand *left,
++                                           const arithmetic_operand *right,
++                                           R_xlen_t length) {
++    const numeric_data *x = left->reader.storage, *y = right->reader.storage;
++    if (x == NULL || y == NULL || x->kind != y->kind ||
++        x->kind < NUMERIC_BYTE || x->kind > NUMERIC_FLOAT ||
++        x->format_version != y->format_version ||
++        left->length != length || right->length != length) return 0;
++    for (R_xlen_t start = 0; start < length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) (length - start > 16384 ? 16384 : length - start);
++        const unsigned char *xp = numeric_read_span(x, (size_t) start, count, &count);
++        const unsigned char *yp = numeric_read_span(y, (size_t) start, count, &count);
++        if (xp != yp) return 0;
++        start += (R_xlen_t) count;
++    }
++    return 1;
++}
++
++static SEXP arithmetic_scale_result(const arithmetic_operand *left,
++                                     const arithmetic_operand *right,
++                                     R_xlen_t length, int operation,
++                                     int minimum, int *result_kind) {
++    if (length <= 1) return NULL;
++    const arithmetic_operand *column = NULL, *scalar = NULL;
++    int exponent = 1;
++    double factor = 2;
++    if (operation == '+') {
++        if (left->reader.storage == NULL ||
++            left->reader.storage->kind != NUMERIC_FLOAT ||
++            !arithmetic_same_compact_storage(left, right, length)) return NULL;
++        column = left;
++    } else {
++        if (operation != '*' && operation != '/') return NULL;
++        if (right->length == 1) {
++            column = left;
++            scalar = right;
++        } else if (left->length == 1 && operation == '*') {
++            column = right;
++            scalar = left;
++        } else return NULL;
++        double value;
++        int code;
++        numeric_reader_region(&scalar->reader, 0, 1, &value, &code);
++        if (code >= 0 || !R_FINITE(value) || value == 0 ||
++            frexp(fabs(value), &exponent) != 0.5) return NULL;
++        exponent--;
++        if (exponent < -30 || exponent > 30) return NULL;
++        factor = ldexp(value < 0 ? -1.0 : 1.0,
++                       operation == '*' ? exponent : -exponent);
++    }
++    const numeric_data *data = column->reader.storage;
++    if (data == NULL || data->kind > NUMERIC_FLOAT) return NULL;
++    if (data->kind <= NUMERIC_LONG &&
++        (operation != '/' || exponent < 1)) return NULL;
++    int kind = minimum;
++    size_t missing_count = data->missing_count;
++    if (data->kind < NUMERIC_FLOAT && kind < NUMERIC_FLOAT &&
++               arithmetic_scale_fractional(data, length, (unsigned) exponent)) {
++        kind = kind == NUMERIC_LONG ? NUMERIC_DOUBLE : NUMERIC_FLOAT;
++    }
++    PROTECT_INDEX backing_index;
++    SEXP backing;
++    PROTECT_WITH_INDEX(backing = arithmetic_backing(length, kind), &backing_index);
++    arithmetic_output output = arithmetic_output_create(backing, kind);
++    if (data->kind == NUMERIC_FLOAT) {
++        if (arithmetic_scale_float_write(data, length, factor, &output)) {
++            kind = NUMERIC_DOUBLE;
++            REPROTECT(backing = arithmetic_backing(length, kind), backing_index);
++            output = arithmetic_output_create(backing, kind);
++            arithmetic_scale_float_write(data, length, factor, &output);
++        }
++        missing_count = output.missing_count;
++    } else {
++        arithmetic_scale_integer_write(data, length, (unsigned) exponent, factor, &output);
++    }
++    SEXP result = PROTECT(arithmetic_adopt_backing(backing, length, kind, missing_count));
++    *result_kind = kind;
++    UNPROTECT(2);
++    return result;
++}
++#endif
+diff --git a/r-package/dtatools/src/numeric-arithmetic.h b/r-package/dtatools/src/numeric-arithmetic.h
+index 2df41206..05f0246a 100644
+--- a/r-package/dtatools/src/numeric-arithmetic.h
++++ b/r-package/dtatools/src/numeric-arithmetic.h
+@@ -102,10 +102,23 @@ typedef struct {
+ /* The caller protects each returned owner until both scan and encode finish.
+    A descriptor captured here survives a finalizer materializing its public
+    input during a subsequent output allocation. */
+-static SEXP arithmetic_capture(SEXP value, arithmetic_operand *operand) {
++static SEXP arithmetic_capture(SEXP value, arithmetic_operand *operand,
++                                SEXP claims, int slot) {
+     operand->length = XLENGTH(value);
+     SEXP root = PROTECT(numeric_missing_mask_capture(value, &operand->storage));
+     if (root != R_NilValue) {
++        if (!numeric_payload_retained(&operand->storage)) {
++            SEXP external = R_altrep_data1(numeric_base_source(value));
++            SEXP previous = R_ExternalPtrTag(external);
++            if (previous != claims) {
++                /* No allocation separates the plain snapshot from this
++                   claim. A reentrant patch must detach before changing the
++                   bytes on which promotion preflight will depend. */
++                SET_VECTOR_ELT(claims, slot, external);
++                SET_VECTOR_ELT(claims, slot + 1, previous);
++                compact_payload_claim(external, claims);
++            }
++        }
+         operand->reader = (numeric_reader) {
+             value, &operand->storage, NULL, NULL, REALSXP
+         };
+@@ -531,7 +544,39 @@ static void arithmetic_run(
+ #undef ARITHMETIC_TARGETS
+ #undef ARITHMETIC_OPERATORS
+ 
++/* Private, one-use correctness checkpoint. Ordinary R defers finalizers at
++   native allocations; the GC mode exercises immediate-finalizer builds and
++   the failure mode checks restoration when production exits nonlocally. */
++static int arithmetic_checkpoint = 0;
++static SEXP arithmetic_checkpoint_token = NULL;
++
++SEXP C_dtatools_test_arithmetic_checkpoint(SEXP mode, SEXP token) {
++    if (TYPEOF(mode) != INTSXP || ALTREP(mode) || ANY_ATTRIB(mode) ||
++        XLENGTH(mode) != 1 || INTEGER(mode)[0] < 0 || INTEGER(mode)[0] > 2)
++        Rf_error("arithmetic checkpoint mode must be 0, 1, or 2");
++    if ((token != R_NilValue && TYPEOF(token) != ENVSXP) ||
++        (INTEGER(mode)[0] == 0 && token != R_NilValue))
++        Rf_error("arithmetic checkpoint token must be an environment or NULL");
++    int previous = arithmetic_checkpoint;
++    if (token != R_NilValue) R_PreserveObject(token);
++    if (arithmetic_checkpoint_token != NULL)
++        R_ReleaseObject(arithmetic_checkpoint_token);
++    arithmetic_checkpoint_token = token == R_NilValue ? NULL : token;
++    arithmetic_checkpoint = INTEGER(mode)[0];
++    return Rf_ScalarInteger(previous);
++}
++
+ static SEXP arithmetic_backing(R_xlen_t length, int kind) {
++    if (arithmetic_checkpoint != 0) {
++        int mode = arithmetic_checkpoint;
++        arithmetic_checkpoint = 0;
++        if (arithmetic_checkpoint_token != NULL) {
++            R_ReleaseObject(arithmetic_checkpoint_token);
++            arithmetic_checkpoint_token = NULL;
++        }
++        R_gc();
++        if (mode == 2) Rf_error("injected arithmetic checkpoint failure");
++    }
+     if (kind == NUMERIC_DOUBLE) return Rf_allocVector(REALSXP, length);
+     size_t width = numeric_kind_width(kind);
+     if ((uint64_t) length > SIZE_MAX / width ||
+@@ -548,11 +593,64 @@ static arithmetic_output arithmetic_output_create(SEXP backing, int kind) {
+     };
+ }
+ 
+-static SEXP arithmetic_result(SEXP x, SEXP y, R_xlen_t length,
+-                              int operation, int minimum, int *result_kind) {
++static SEXP arithmetic_adopt_backing(SEXP backing, R_xlen_t length,
++                                     int kind, size_t missing_count) {
++    SEXP result = PROTECT(kind == NUMERIC_DOUBLE
++        ? owned_adopt_real(backing)
++        : numeric_from_backing_managed(backing, (size_t) length, kind, 0, 119,
++                                       missing_count));
++    if (kind == NUMERIC_DOUBLE) {
++        owned_flags(result)[OWNED_NO_NA] = missing_count == 0;
++        owned_flags(result)[OWNED_FINITE_DOUBLE] = missing_count == 0;
++    }
++    UNPROTECT(1);
++    return result;
++}
++
++#include "numeric-arithmetic-scale.h"
++#include "numeric-arithmetic-integer.h"
++
++typedef struct {
++    SEXP x;
++    SEXP y;
++    SEXP claims;
++    R_xlen_t length;
++    int operation;
++    int minimum;
++    int *result_kind;
++} arithmetic_result_context;
++
++static void arithmetic_release_claims(void *raw) {
++    arithmetic_result_context *context = raw;
++    for (int slot = 2; slot >= 0; slot -= 2) {
++        SEXP external = VECTOR_ELT(context->claims, slot);
++        if (external != R_NilValue &&
++            R_ExternalPtrTag(external) == context->claims) {
++            /* New aliases replace our claim with the shared marker. Never
++               erase their ownership change when restoring the entry tag. */
++            R_SetExternalPtrTag(external, VECTOR_ELT(context->claims, slot + 1));
++        }
++    }
++}
++
++static SEXP arithmetic_result_body(void *raw) {
++    arithmetic_result_context *context = raw;
++    SEXP x = context->x, y = context->y;
++    R_xlen_t length = context->length;
++    int operation = context->operation, minimum = context->minimum;
++    int *result_kind = context->result_kind;
+     arithmetic_operand left, right;
+-    PROTECT(arithmetic_capture(x, &left));
+-    PROTECT(arithmetic_capture(y, &right));
++    PROTECT(arithmetic_capture(x, &left, context->claims, 0));
++    PROTECT(arithmetic_capture(y, &right, context->claims, 2));
++    SEXP specialized = arithmetic_scale_result(
++        &left, &right, length, operation, minimum, result_kind);
++    if (specialized == NULL)
++        specialized = arithmetic_integer_result(
++            &left, &right, length, operation, minimum, result_kind);
++    if (specialized != NULL) {
++        UNPROTECT(2);
++        return specialized;
++    }
+     PROTECT_INDEX backing_index;
+     SEXP backing;
+     PROTECT_WITH_INDEX(backing = arithmetic_backing(length, minimum), &backing_index);
+@@ -569,19 +667,26 @@ static SEXP arithmetic_result(SEXP x, SEXP y, R_xlen_t length,
+         output.trusted = 1;
+         arithmetic_run(&left, &right, length, operation, &output);
+     }
+-    SEXP result = PROTECT(kind == NUMERIC_DOUBLE
+-        ? owned_adopt_real(backing)
+-        : numeric_from_backing(backing, (size_t) length, kind, 0, 119,
+-                               output.missing_count));
+-    if (kind == NUMERIC_DOUBLE) {
+-        owned_flags(result)[OWNED_NO_NA] = output.missing_count == 0;
+-        owned_flags(result)[OWNED_FINITE_DOUBLE] = output.missing_count == 0;
+-    }
++    SEXP result = PROTECT(arithmetic_adopt_backing(
++        backing, length, kind, output.missing_count));
+     *result_kind = kind;
+     UNPROTECT(4);
+     return result;
+ }
+ 
++static SEXP arithmetic_result(SEXP x, SEXP y, R_xlen_t length,
++                              int operation, int minimum, int *result_kind) {
++    SEXP claims = PROTECT(Rf_allocVector(VECSXP, 4));
++    arithmetic_result_context context = {
++        x, y, claims, length, operation, minimum, result_kind
++    };
++    SEXP result = R_ExecWithCleanup(
++        arithmetic_result_body, &context, arithmetic_release_claims, &context
++    );
++    UNPROTECT(1);
++    return result;
++}
++
+ /* NULL declines without forcing any original promise. A successful extension
+    returns the same committed status as the original scalar producer. */
+ static SEXP numeric_arithmetic_extension(
+diff --git a/r-package/dtatools/src/numeric-payload.c b/r-package/dtatools/src/numeric-payload.c
+index cfb9385c..0f2915c9 100644
+--- a/r-package/dtatools/src/numeric-payload.c
++++ b/r-package/dtatools/src/numeric-payload.c
+@@ -156,13 +156,35 @@ typedef struct {
+ } numeric_gather_column;
+ 
+ 
++/* Arithmetic can keep its plain descriptor on R's heap along with its raw
++   bytes. The private attribute is part of that record's ownership invariant;
++   the protected slot and tag retain their existing payload/alias meanings. */
++static SEXP numeric_managed_descriptor_symbol = NULL;
++
++static numeric_data *numeric_managed_descriptor_pointer(SEXP descriptor) {
++    const size_t alignment = _Alignof(numeric_data);
++    uintptr_t start = (uintptr_t) RAW(descriptor);
++    size_t padding = (alignment - start % alignment) % alignment;
++    return (numeric_data *) (void *) (RAW(descriptor) + padding);
++}
++
+ void numeric_finalize(SEXP external) {
+     void *data = R_ExternalPtrAddr(external);
++    SEXP descriptor = numeric_managed_descriptor_symbol == NULL
++        ? R_NilValue : Rf_getAttrib(external, numeric_managed_descriptor_symbol);
++    if (descriptor != R_NilValue &&
++        (TYPEOF(descriptor) != RAWSXP || ALTREP(descriptor) ||
++         XLENGTH(descriptor) != sizeof(numeric_data) + _Alignof(numeric_data) - 1 ||
++         (data != NULL && data != numeric_managed_descriptor_pointer(descriptor)))) {
++        Rf_error("invalid R-managed compact numeric descriptor");
++    }
+     if (data != NULL) {
+         R_ClearExternalPtr(external);
+-        dtatools_numeric_free(data);
++        if (descriptor == R_NilValue) dtatools_numeric_free(data);
+     }
+     R_SetExternalPtrProtected(external, R_NilValue);
++    if (descriptor != R_NilValue)
++        Rf_setAttrib(external, numeric_managed_descriptor_symbol, R_NilValue);
+ }
+ 
+ numeric_data *numeric_read_storage(SEXP value) {
+@@ -2135,6 +2157,39 @@ SEXP numeric_from_backing(
+     return result;
+ }
+ 
++/* Adopt only freshly produced plain bytes. A native-owner descriptor still
++   needs its Rust destructor. This descriptor and its payload are both R-owned,
++   so registering a finalizer would unnecessarily keep the payload alive for
++   an extra collection. Serialization continues to emit ordinary raw bytes. */
++static SEXP numeric_from_backing_managed(
++    SEXP backing, size_t length, int kind, int temporal,
++    int format_version, size_t missing_count
++) {
++    PROTECT(backing);
++    if (numeric_managed_descriptor_symbol == NULL)
++        numeric_managed_descriptor_symbol = Rf_install("dtatools.numeric_descriptor");
++    SEXP descriptor = PROTECT(Rf_allocVector(
++        RAWSXP, sizeof(numeric_data) + _Alignof(numeric_data) - 1
++    ));
++    numeric_data *data = numeric_managed_descriptor_pointer(descriptor);
++    numeric_data initial = {
++        .values = RAW(backing), .length = length, .kind = kind,
++        .temporal = temporal, .format_version = format_version,
++        .missing_count = missing_count, .native_owner = NULL,
++        .scalar_values = NULL, .scalar_start = 0, .scalar_end = 0
++    };
++    memcpy(data, &initial, sizeof(initial));
++    SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
++    Rf_setAttrib(external, numeric_managed_descriptor_symbol, descriptor);
++    R_SetExternalPtrAddr(external, data);
++    if (missing_count == SIZE_MAX) data->missing_count = numeric_count_missing(data);
++    SEXP result = PROTECT(R_new_altrep(
++        dtatools_numeric_class, external, R_NilValue
++    ));
++    UNPROTECT(4);
++    return result;
++}
++
+ SEXP numeric_compact_copy(const numeric_data *data) {
+     size_t width = numeric_kind_width(data->kind);
+     if (data->length > SIZE_MAX / width ||
+diff --git a/r-package/dtatools/tests/testthat/test-arithmetic-payload-lifetime.R b/r-package/dtatools/tests/testthat/test-arithmetic-payload-lifetime.R
+new file mode 100644
+index 00000000..89fb9713
+--- /dev/null
++++ b/r-package/dtatools/tests/testthat/test-arithmetic-payload-lifetime.R
+@@ -0,0 +1,191 @@
++.arithmetic_lifetime_native <- function(env = parent.frame()) {
++    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
++    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior), envir = env)
++    invisible(dta_double(c(1, 2)) + 1)
++}
++
++.arithmetic_lifetime_result <- function(source) {
++    before <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
++    result <- source * 2
++    after <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
++    expect_identical(after - before,
++                     if (.dtatools_numeric_entry_expected("scalar")) 1 else 0)
++    result
++}
++
++test_that("arithmetic payloads survive collection and compact serialization", {
++    .arithmetic_lifetime_native()
++    expected <- c(-6, 0, 6, NA_real_, NA_real_)
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        result <- local({
++            source <- constructor(c(-3, 0, 3, NA_real_, tagged_missing("z")))
++            .arithmetic_lifetime_result(source)
++        })
++        storage <- dta_storage_type(result)
++        gc()
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(result))
++        expect_identical(as.double(result), expected)
++        restored <- unserialize(serialize(result, NULL))
++        gc()
++        expect_identical(dta_storage_type(restored), storage)
++        expect_identical(as.double(restored), expected)
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(restored))
++
++        # Materialization explicitly releases the compact descriptor. A second
++        # request and a later GC must neither free it twice nor lose the values.
++        .force_altrep_materialization(result)
++        .force_altrep_materialization(result)
++        gc()
++        expect_identical(as.double(result), expected)
++        expect_identical(as.double(restored), expected)
++    }
++})
++
++test_that("arithmetic payload aliases detach before writable access and patches", {
++    .arithmetic_lifetime_native()
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        source <- constructor(c(1, NA_real_, 3, 4))
++        result <- .arithmetic_lifetime_result(source)
++        captured <- .Call(C_dtatools_metadata_copy, result)
++        .Call(C_dtatools_mutate_first_numeric_altrep, result, 9)
++        gc()
++        expect_identical(as.double(result), c(9, NA_real_, 6, 8))
++        expect_identical(as.double(captured), c(2, NA_real_, 6, 8))
++        .force_altrep_materialization(captured)
++        gc()
++        expect_identical(as.double(captured), c(2, NA_real_, 6, 8))
++
++        data <- dibble(x = .arithmetic_lifetime_result(source))
++        saved <- copy_data(data)
++        captured <- data$x
++        replace_values(data, x = 7, where = c(1L, 3L))
++        gc()
++        expect_identical(as.double(data$x), c(7, NA_real_, 7, 8))
++        expect_identical(as.double(saved$x), c(2, NA_real_, 6, 8))
++        expect_identical(as.double(captured), c(2, NA_real_, 6, 8))
++    }
++})
++
++test_that("arithmetic payload adoption roots descriptor and bytes across allocations", {
++    .arithmetic_lifetime_native()
++    source <- dta_int(c(3, NA_real_, 32740))
++    before <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
++    previous <- gctorture2(1L)
++    result <- tryCatch(source * 2, finally = gctorture2(previous))
++    after <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
++    expect_identical(after - before,
++                     if (.dtatools_numeric_entry_expected("scalar")) 1 else 0)
++    gc()
++    expect_identical(dta_storage_type(result), "long")
++    expect_identical(as.double(result), c(6, NA_real_, 65480))
++    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(result))
++    .force_altrep_materialization(result)
++    gc()
++    expect_identical(as.double(result), c(6, NA_real_, 65480))
++})
++
++.arithmetic_lifetime_arm <- function(finalizer) {
++    token <- new.env(parent = emptyenv())
++    reg.finalizer(token, finalizer, onexit = FALSE)
++    # Keep the key live until the one-use checkpoint releases it. An ordinary
++    # interpreter GC before native entry therefore cannot satisfy this test.
++    invisible(.Call(C_dtatools_test_arithmetic_checkpoint, 1L, token))
++}
++
++.arithmetic_lifetime_checkpoint_ready <- function(env = parent.frame()) {
++    if (!.dtatools_numeric_entry_expected("scalar"))
++        skip("arithmetic checkpoint requires an admitted native execution profile")
++    withr::defer(.Call(C_dtatools_test_arithmetic_checkpoint, 0L, NULL), envir = env)
++}
++
++test_that("arithmetic promotion proof survives a reentrant source patch", {
++    .arithmetic_lifetime_native()
++    .arithmetic_lifetime_checkpoint_ready()
++    for (replacement in list(100, NA_real_)) {
++        for (aliased in c(FALSE, TRUE)) {
++            x <- dta_byte(rep(1, 128L))
++            fired <- 0L
++            .arithmetic_lifetime_arm(function(key) {
++                fired <<- fired + 1L
++                .Call(C_dtatools_patch_vector, x, 1L, replacement)
++            })
++            before <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
++            result <- if (aliased) x * x else x * 2
++            after <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
++            expect_identical(after - before, 1)
++            expect_identical(fired, 1L)
++            expect_identical(as.double(x)[[1L]], replacement)
++            expect_identical(dta_storage_type(result), "byte")
++            expect_identical(as.double(result), rep(if (aliased) 1 else 2, 128L))
++            expect_false(anyNA(result))
++        }
++    }
++})
++
++test_that("temporary arithmetic claims restore ordinary and owned write access", {
++    .arithmetic_lifetime_native()
++    .arithmetic_lifetime_checkpoint_ready()
++    for (owned_proxy in c(FALSE, TRUE)) {
++        for (fail in c(FALSE, TRUE)) {
++            x <- dta_byte(rep(1, 128L))
++            if (owned_proxy) {
++                x <- .Call(C_dtatools_mutation_views, list(x = x))[[1L]]
++                .Call(C_dtatools_patch_vector, x, 1L, 2)
++            }
++            if (fail) {
++                .Call(C_dtatools_test_arithmetic_checkpoint, 2L, NULL)
++                expect_error(x * 2, "injected arithmetic checkpoint failure")
++            } else {
++                result <- .arithmetic_lifetime_result(x)
++                expect_identical(as.double(result)[[1L]], if (owned_proxy) 4 else 2)
++            }
++            before <- .Call(C_dtatools_native_copy_stats, FALSE)[["compact_copy"]]
++            .Call(C_dtatools_patch_vector, x, 1L, 9)
++            after <- .Call(C_dtatools_native_copy_stats, FALSE)[["compact_copy"]]
++            expect_identical(after - before, 0)
++            expect_identical(as.double(x)[[1L]], 9)
++        }
++    }
++})
++
++test_that("arithmetic cleanup preserves aliases created while the source is claimed", {
++    .arithmetic_lifetime_native()
++    .arithmetic_lifetime_checkpoint_ready()
++    for (during in c(FALSE, TRUE)) {
++        x <- dta_byte(rep(1, 128L))
++        captured <- NULL
++        fired <- 0L
++        if (during) {
++            .arithmetic_lifetime_arm(function(key) {
++                fired <<- fired + 1L
++                captured <<- .Call(C_dtatools_metadata_copy, x)
++            })
++        } else captured <- .Call(C_dtatools_metadata_copy, x)
++        result <- .arithmetic_lifetime_result(x)
++        expect_identical(fired, if (during) 1L else 0L)
++        expect_identical(as.double(result), rep(2, 128L))
++        .Call(C_dtatools_patch_vector, x, 1L, 100)
++        gc()
++        expect_identical(as.double(x)[[1L]], 100)
++        expect_identical(as.double(captured), rep(1, 128L))
++    }
++})
++
++test_that("disarming an abandoned arithmetic checkpoint releases its token", {
++    .arithmetic_lifetime_native()
++    .arithmetic_lifetime_checkpoint_ready()
++    x <- dta_byte(c(1, 2))
++    fired <- 0L
++    .arithmetic_lifetime_arm(function(key) fired <<- fired + 1L)
++
++    # Size validation fails before the backing-allocation checkpoint. The
++    # preserved finalizer token must stay live until the caller disarms it.
++    expect_error(x * c(1, 2, 3), class = "vctrs_error_incompatible_size")
++    gc()
++    expect_identical(fired, 0L)
++    expect_identical(.Call(C_dtatools_test_arithmetic_checkpoint, 0L, NULL), 1L)
++    gc()
++    expect_identical(fired, 1L)
++    expect_identical(.Call(C_dtatools_test_arithmetic_checkpoint, 0L, NULL), 0L)
++    expect_identical(as.double(.arithmetic_lifetime_result(x)), c(2, 4))
++})
+diff --git a/r-package/dtatools/tests/testthat/test-native-arithmetic-kernels.R b/r-package/dtatools/tests/testthat/test-native-arithmetic-kernels.R
+index 58cc64f0..7a7e6f81 100644
+--- a/r-package/dtatools/tests/testthat/test-native-arithmetic-kernels.R
++++ b/r-package/dtatools/tests/testthat/test-native-arithmetic-kernels.R
+@@ -363,15 +363,12 @@ test_that("float span arithmetic matches eager IEEE and reserved-code decoding",
+     modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+     legacy <- tempfile(fileext = ".dta")
+     withr::defer(unlink(c(modern, legacy)))
+-    for (index in seq_along(bits)) {
+-        patch_numeric_fixture_row(modern, index - 1L,
+-                                  list(x_float = raw_bits(bits[[index]])))
+-    }
+     compare <- function(path, column, count) {
+         compact <- read_dta(path, col_select = tidyselect::all_of(column), n_max = count)[[column]]
+         plain <- as.double(read_dta(path, col_select = tidyselect::all_of(column), n_max = count,
+                                    use_numeric_altrep = FALSE)[[column]])
+         for (x in list(compact, .Call(C_dtatools_owned_numeric_freeze, compact, 3L))) {
++            before <- writeBin(as.double(x), raw(), size = 8L)
+             one <- dta_float(rep(1, count))
+             for (op in c("+", "-", "*", "/")) {
+                 operation <- getExportedValue("base", op)
+@@ -383,10 +380,55 @@ test_that("float span arithmetic matches eager IEEE and reserved-code decoding",
+                 .native_arithmetic_expect(operation(x, one),
+                     .native_arithmetic_reference(op, plain, rep(1, count), "float"))
+             }
++            # A vector of ones declines the scalar scaling route. Exercise
++            # that route explicitly, including provisional float overflow
++            # that must be recomputed in double after whole-column promotion.
++            expect_scaled <- function(op, left, right, left_values, right_values) {
++                .Call(C_dtatools_numeric_entry_stats, TRUE)
++                actual <- getExportedValue("base", op)(left, right)
++                .native_arithmetic_expect_entry()
++                expected <- .native_arithmetic_reference(op, left_values, right_values, "float")
++                .native_arithmetic_expect(actual, expected)
++                expected_missing <- is.na(as.double(expected))
++                expect_identical(is.na(actual), expected_missing)
++                expect_identical(anyNA(actual), any(expected_missing))
++                if (any(expected_missing)) {
++                    # Clearing the actual missing rows must also clear its
++                    # cached count. An overcount can survive correct bytes.
++                    data <- dibble(x = actual)
++                    replace_values(data, x = 0, where = which(expected_missing))
++                    cleared <- as.double(expected)
++                    cleared[expected_missing] <- 0
++                    expect_false(anyNA(data$x))
++                    expect_identical(as.double(data$x), cleared)
++                }
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++                expect_false(.Call(C_dtatools_is_materialized_numeric_altrep, x))
++            }
++            for (scalar in c(-2, 2, -2^30, 2^30)) {
++                expect_scaled("*", x, scalar, plain, scalar)
++                expect_scaled("*", scalar, x, scalar, plain)
++                expect_scaled("/", x, scalar, plain, scalar)
++            }
++            expect_scaled("+", x, x, plain, plain)
++            expect_identical(writeBin(as.double(x), raw(), size = 8L), before)
+             expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+         }
+     }
+-    compare(modern, "x_float", length(bits))
++    # Every modern reserved code is missing, but its immediate bit neighbors
++    # are observed. The next aligned code after .z is also observed.
++    reserved <- 0x7f000000 + (0:26) * 0x800
++    modern_bits <- unique(c(bits, as.vector(outer(reserved, c(-1, 0, 1), "+")),
++                            0x7f00d800))
++    # Keep each patch within the fixture's 27 known rows, and qualify its
++    # partial final batch independently so no stale patched row is inspected.
++    for (batch in split(modern_bits, ceiling(seq_along(modern_bits) / 27L))) {
++        for (index in seq_along(batch)) {
++            patch_numeric_fixture_row(modern, index - 1L,
++                                      list(x_float = raw_bits(batch[[index]])))
++        }
++        compare(modern, "x_float", length(batch))
++    }
+ 
+     original <- readBin(fixture("synthetic_v111.dta"), "raw",
+                         n = file.info(fixture("synthetic_v111.dta"))[["size"]])
+diff --git a/r-package/dtatools/tests/testthat/test-native-arithmetic-parity.R b/r-package/dtatools/tests/testthat/test-native-arithmetic-parity.R
+new file mode 100644
+index 00000000..f4571eb7
+--- /dev/null
++++ b/r-package/dtatools/tests/testthat/test-native-arithmetic-parity.R
+@@ -0,0 +1,303 @@
++.arithmetic_parity_enable <- function(env = parent.frame()) {
++    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
++    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior), envir = env)
++    # Settle the one-time helper profile before checking producer counters.
++    invisible(dta_double(c(1, 2)) + 1)
++}
++
++.arithmetic_parity_bytes <- function(x) {
++    writeBin(as.double(x), raw(), size = 8L, endian = "little")
++}
++
++.arithmetic_parity_source <- function(kind, values, chunk_rows = NULL) {
++    source <- getExportedValue("dtatools", paste0("dta_", kind))(values)
++    if (!is.null(chunk_rows)) {
++        source <- .Call(C_dtatools_owned_numeric_freeze, source, chunk_rows)
++    }
++    source
++}
++
++.arithmetic_parity_expect <- function(op, x, y, minimum, storage, info) {
++    # Match the existing ordinary arithmetic oracle. In particular, let the
++    # established computed-result policy choose float rounding after the whole
++    # result is known; do not reproduce the new kernel's fit calculation here.
++    arguments <- vctrs::vec_recycle_common(as.double(x), as.double(y))
++    operation <- getExportedValue("base", op)
++    values <- suppressWarnings(operation(arguments[[1L]], arguments[[2L]]))
++    values[is.na(arguments[[1L]]) | is.na(arguments[[2L]])] <- NA_real_
++    expected <- dtatools:::.dta_computed(values, minimum)
++    if (is.null(storage)) storage <- dta_storage_type(expected)
++    expect_identical(dta_storage_type(expected), storage, info = info)
++
++    sources <- Filter(function(value) inherits(value, "dta_numeric"), list(x, y))
++    before <- lapply(sources, .arithmetic_parity_bytes)
++    for (source in sources) {
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(source), info = info)
++        expect_false(.Call(C_dtatools_is_materialized_numeric_altrep, source), info = info)
++    }
++    .Call(C_dtatools_numeric_entry_stats, TRUE)
++    actual <- operation(x, y)
++    count <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
++    expect_identical(count, if (.dtatools_numeric_entry_expected("scalar")) 1 else 0,
++                     info = info)
++    expect_identical(dta_storage_type(actual), storage, info = info)
++    expect_identical(names(actual), names(expected), info = info)
++    expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected),
++                     info = info)
++    for (index in seq_along(sources)) {
++        expect_identical(.arithmetic_parity_bytes(sources[[index]]), before[[index]], info = info)
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(sources[[index]]), info = info)
++        expect_false(.Call(C_dtatools_is_materialized_numeric_altrep, sources[[index]]),
++                     info = info)
++    }
++    invisible(actual)
++}
++
++test_that("a final or boundary value promotes every earlier scalar result", {
++    .arithmetic_parity_enable()
++    triggers <- c(byte = 51, int = 16371, long = 1073741811, float = 1e38)
++    destinations <- c(byte = "int", int = "long", long = "double", float = "double")
++    layouts <- list(
++        list(rows = 33L, chunk = NULL, trigger = 33L),
++        list(rows = 33L, chunk = 7L, trigger = 7L),
++        list(rows = 33L, chunk = 7L, trigger = 8L),
++        list(rows = 33L, chunk = 7L, trigger = 33L),
++        list(rows = 1025L, chunk = 1024L, trigger = 1024L),
++        list(rows = 1025L, chunk = 1024L, trigger = 1025L),
++        list(rows = 16385L, chunk = 16384L, trigger = 16384L),
++        list(rows = 16385L, chunk = 16384L, trigger = 16385L)
++    )
++    for (kind in names(triggers)) {
++        for (layout in layouts) {
++            values <- rep(c(-3, -1, -0, 0, 1, 3), length.out = layout$rows)
++            values[[layout$trigger]] <- triggers[[kind]]
++            x <- .arithmetic_parity_source(kind, values, layout$chunk)
++            info <- paste(kind, "rows", layout$rows, "trigger", layout$trigger,
++                          "chunk", layout$chunk)
++            .arithmetic_parity_expect("*", x, 2, kind, destinations[[kind]], info)
++            .arithmetic_parity_expect("*", 2, x, kind, destinations[[kind]], info)
++        }
++    }
++})
++
++test_that("column promotion crosses independently chunked operands", {
++    .arithmetic_parity_enable()
++    triggers <- c(byte = 51, int = 16371, long = 1073741811, float = 1e38)
++    destinations <- c(byte = "int", int = "long", long = "double", float = "double")
++    for (kind in names(triggers)) {
++        for (position in c(7L, 8L, 11L, 12L, 1025L)) {
++            left <- rep(c(-1, 0, 1), length.out = 1025L)
++            right <- -left
++            left[[position]] <- right[[position]] <- triggers[[kind]]
++            x <- .arithmetic_parity_source(kind, left, 7L)
++            y <- .arithmetic_parity_source(kind, right, 11L)
++            info <- paste(kind, "independent chunks, trigger", position)
++            .arithmetic_parity_expect("+", x, y, kind, destinations[[kind]], info)
++        }
++        .arithmetic_parity_expect("+", x, x, kind, destinations[[kind]],
++                                 paste(kind, "aliased operands, final trigger"))
++    }
++})
++
++test_that("missing codes and negative limits do not hide the final promotion", {
++    .arithmetic_parity_enable()
++    negative_triggers <- c(byte = -64, int = -16384, long = -1073741824, float = -1e38)
++    destinations <- c(byte = "int", int = "long", long = "double", float = "double")
++    prefix <- c(-3, -1, -0, 0, 1, 3, NA_real_, tagged_missing(letters))
++    for (kind in names(negative_triggers)) {
++        for (chunk in list(NULL, 7L)) {
++            info <- paste(kind, "all missing codes, chunk", chunk)
++            x <- .arithmetic_parity_source(kind, c(prefix, negative_triggers[[kind]]), chunk)
++            .arithmetic_parity_expect("*", x, 2, kind, destinations[[kind]], info)
++            # A missing tail has no observed value that should force widening.
++            missing_tail <- .arithmetic_parity_source(kind, c(prefix, tagged_missing("z")), chunk)
++            actual <- .arithmetic_parity_expect("*", missing_tail, 1, kind, kind, info)
++            expect_identical(dtatools:::.tab_missing_codes(as.double(actual)),
++                             c(rep(NA_integer_, 6L), rep(0L, 28L)), info = info)
++            reciprocal_storage <- if (kind == "long") "double" else "float"
++            .arithmetic_parity_expect("/", 2, missing_tail, kind, reciprocal_storage, info)
++        }
++    }
++})
++
++test_that("fractional and large results choose storage for the complete column", {
++    .arithmetic_parity_enable()
++    maxima <- c(byte = 100, int = 32739, long = 2147483619)
++    for (kind in names(maxima)) {
++        for (reverse in c(FALSE, TRUE)) {
++            values <- c(1, -1, maxima[[kind]], -0, 0, NA_real_, tagged_missing("z"))
++            if (reverse) values <- rev(values)
++            for (chunk in list(NULL, 3L)) {
++                x <- .arithmetic_parity_source(kind, values, chunk)
++                storage <- if (kind == "long") "double" else "float"
++                .arithmetic_parity_expect("/", x, 2, kind, storage,
++                                         paste(kind, "fraction and large integer", reverse, chunk))
++            }
++        }
++    }
++
++    # The early fractional result must not keep float rounding when a later
++    # result forces double storage, and the reverse ordering must agree.
++    for (position in c(1L, 1024L, 1025L)) {
++        values <- rep(c(0.1, -0.3, 1, -0, 0), length.out = 1025L)
++        values[[position]] <- 1e38
++        for (chunk in list(NULL, 1024L)) {
++            x <- .arithmetic_parity_source("float", values, chunk)
++            .arithmetic_parity_expect("*", x, 1.9, "float", "double",
++                                     paste("float fractional product, trigger", position, chunk))
++        }
++        multipliers <- rep(c(0.3, -0.1, 1, 2, 3), length.out = 1025L)
++        multipliers[[position]] <- 2
++        x <- .arithmetic_parity_source("float", values, 7L)
++        y <- .arithmetic_parity_source("float", multipliers, 11L)
++        .arithmetic_parity_expect("*", x, y, "float", "double",
++                                 paste("float fractional column product, trigger", position))
++    }
++})
++
++test_that("integer division by powers of two inspects the complete column", {
++    .arithmetic_parity_enable()
++    for (kind in c("byte", "int", "long")) {
++        for (odd_tail in c(FALSE, TRUE)) {
++            values <- rep(c(-12, -4, 0, 4, 12, NA_real_, tagged_missing("a")),
++                          length.out = 33L)
++            values[[33L]] <- if (odd_tail) 3 else 12
++            # Pair ordinary compact storage with retained storage; the sole odd
++            # tail can appear after the final complete retained chunk.
++            for (chunk in list(NULL, 7L)) {
++                x <- .arithmetic_parity_source(kind, values, chunk)
++                for (divisor in c(-2, 2, -4, 4, -2^30, 2^30)) {
++                    .arithmetic_parity_expect("/", x, divisor, kind, NULL,
++                        paste(kind, "power-of-two division", divisor, "odd tail", odd_tail, chunk))
++                }
++            }
++        }
++    }
++    divisible <- .arithmetic_parity_source("long", c(-2^30, 0, 2^30, NA_real_), 3L)
++    .arithmetic_parity_expect("/", divisible, 2^30, "long", "long", "large exact divisor")
++    .arithmetic_parity_expect("/", divisible, -2^30, "long", "long", "large negative exact divisor")
++})
++
++test_that("float power-of-two scaling preserves subnormals and zero signs", {
++    .arithmetic_parity_enable()
++    values <- c(-0, 0, -2^-149, 2^-149, -2^-126, 2^-126,
++                -0.1, 0.1, -1e38, 1e38, NA_real_, tagged_missing(c("a", "z")))
++    for (chunk in list(NULL, 7L)) {
++        x <- .arithmetic_parity_source("float", values, chunk)
++        for (scalar in c(-2^-30, 2^-30, -2^30, 2^30)) {
++            info <- paste("float power-of-two scale", scalar, chunk)
++            .arithmetic_parity_expect("*", x, scalar, "float", NULL, info)
++            .arithmetic_parity_expect("*", scalar, x, "float", NULL, info)
++            .arithmetic_parity_expect("/", x, scalar, "float", NULL, info)
++        }
++        # Without the large values forcing double storage, tiny results round
++        # into signed float zero. The byte comparison includes its sign bit.
++        tiny <- .arithmetic_parity_source("float", values[seq_len(8L)], chunk)
++        .arithmetic_parity_expect("*", tiny, 2^-30, "float", "float", "float underflow")
++        .arithmetic_parity_expect("/", tiny, -2^30, "float", "float", "negative float underflow")
++    }
++})
++
++test_that("integer preflight preserves missing-only storage and bounded scalars", {
++    .arithmetic_parity_enable()
++    missing <- c(NA_real_, tagged_missing(letters))
++    for (kind in c("byte", "int", "long")) {
++        x <- .arithmetic_parity_source(kind, missing, 7L)
++        y <- .arithmetic_parity_source(kind, rev(missing), 11L)
++        for (op in c("+", "-", "*")) {
++            .arithmetic_parity_expect(op, x, y, kind, kind, paste(kind, "missing-only", op))
++        }
++        .arithmetic_parity_expect("*", x, -2147483648, kind, kind,
++                                 paste(kind, "missing-only bounded scalar"))
++        observed <- .arithmetic_parity_source(kind, c(-1, 0, 1, 100, missing), 7L)
++        for (scalar in c(-2147483648, -2147483647, 2147483647, 2147483648)) {
++            info <- paste(kind, "scalar at or adjacent to int32 bound", scalar)
++            .arithmetic_parity_expect("*", observed, scalar, kind, NULL, info)
++            .arithmetic_parity_expect("*", scalar, observed, kind, NULL, info)
++        }
++    }
++})
++
++test_that("integer products choose long or float without losing signed zero", {
++    .arithmetic_parity_enable()
++    for (kind in c("byte", "int")) {
++        x <- .arithmetic_parity_source(kind, c(-1, 0, 1, 100), 3L)
++        .arithmetic_parity_expect("*", x, 21474836, kind, "long",
++                                 paste(kind, "last product fits long"))
++        .arithmetic_parity_expect("*", x, 21474837, kind, "float",
++                                 paste(kind, "last product exceeds long"))
++        .arithmetic_parity_expect("*", x, -21474837, kind, "float",
++                                 paste(kind, "negative widened zero"))
++    }
++    x <- .arithmetic_parity_source("long", c(2147483619, 2147483620, -2147483647, 0), 3L)
++    y <- .arithmetic_parity_source("long", c(2147483619, -2147483647, -2147483647, -2147483647), 2L)
++    .arithmetic_parity_expect("*", x, y, "long", "double", "long products beyond exact doubles")
++})
++
++test_that("power-of-two arithmetic preserves legacy storage decoding", {
++    .arithmetic_parity_enable()
++    legacy <- read_dta(fixture("synthetic_v111.dta"), output = "tibble")
++    for (column in c("b", "i", "l", "f")) {
++        source <- legacy[[column]]
++        kind <- dta_storage_type(source)
++        attributes(source) <- list(class = dtatools:::.dta_storage_class(kind),
++                                   stata.storage = kind)
++        for (x in list(source, .Call(C_dtatools_owned_numeric_freeze, source, 3L))) {
++            for (scalar in c(2, -4, 2^30)) {
++                info <- paste("legacy", kind, scalar)
++                .arithmetic_parity_expect("*", x, scalar, kind, NULL, info)
++                .arithmetic_parity_expect("/", x, scalar, kind, NULL, info)
++            }
++        }
++    }
++})
++
++test_that("float scaling promotes just beyond the binary32 cutoff", {
++    .arithmetic_parity_enable()
++    float_maximum <- 2^126 * (2 - 2^-23)
++    for (factor in c(-2, 2, -2^30, 2^30)) {
++        cutoff <- float_maximum / abs(factor)
++        cutoff_bits <- readBin(writeBin(cutoff, raw(), size = 4L, endian = "little"),
++                               integer(), n = 1L, size = 4L, endian = "little")
++        # Adjacent positive binary32 encodings give one ULP below and above
++        # the exact mathematical cutoff, including the exponent transition.
++        adjacent <- readBin(writeBin(cutoff_bits + c(-1L, 0L, 1L), raw(),
++                                     size = 4L, endian = "little"),
++                            numeric(), n = 3L, size = 4L, endian = "little")
++        expect_identical(adjacent[[2L]], cutoff)
++        for (position in seq_along(adjacent)) {
++            values <- rep(c(2^-149, -2^-149, -0, 0, 0.1, NA_real_), length.out = 16385L)
++            values[[16385L]] <- adjacent[[position]]
++            storage <- if (position == 3L) "double" else "float"
++            for (chunk in list(NULL, 16384L)) {
++                x <- .arithmetic_parity_source("float", values, chunk)
++                info <- paste("float cutoff", position - 2L, "ULP, factor", factor, chunk)
++                .arithmetic_parity_expect("*", x, factor, "float", storage, info)
++                # Division by the reciprocal selects the same scaling result.
++                .arithmetic_parity_expect("/", x, 1 / factor, "float", storage, info)
++            }
++        }
++    }
++})
++
++test_that("early long promotion still counts missing rows in later chunks", {
++    .arithmetic_parity_enable()
++    values <- rep(1, 32769L)
++    values[[1L]] <- 1073741811
++    missing_rows <- c(16385L, 32768L, 32769L)
++    values[missing_rows] <- c(NA_real_, tagged_missing(c("a", "z")))
++    missing_mask <- rep(FALSE, length(values))
++    missing_mask[missing_rows] <- TRUE
++    for (chunk in list(NULL, 16384L)) {
++        x <- .arithmetic_parity_source("long", values, chunk)
++        for (op in c("*", "+")) {
++            y <- if (op == "*") 2 else x
++            actual <- .arithmetic_parity_expect(op, x, y, "long", "double",
++                paste("early long promotion with later missing codes", op, chunk))
++            # These public predicates also exercise cached result facts, which
++            # a partial promotion scan must not mistake for complete counts.
++            expect_true(anyNA(actual))
++            expect_identical(is.na(actual), missing_mask)
++        }
++    }
++})

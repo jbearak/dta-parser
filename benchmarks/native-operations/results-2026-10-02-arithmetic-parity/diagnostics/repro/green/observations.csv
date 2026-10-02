@@ -1,0 +1,7 @@
+"round","representation","order","iterations","cpu_seconds","wall_seconds","cpu_per_call","wall_per_call","native_calls","result_storage","result_sha256","compact_before","compact_after","materialized_before","materialized_after"
+1,"compact",1,384,0.114,0.113,0.000296875,0.000294270833333334,384,"long","4c1d482dc86b09d844ec7851b8718e6857d9f7f212c5abca8eff95dfd51b161a",TRUE,TRUE,FALSE,FALSE
+1,"typed_double",2,384,0.134,0.135,0.000348958333333333,0.0003515625,384,"double","4c1d482dc86b09d844ec7851b8718e6857d9f7f212c5abca8eff95dfd51b161a",FALSE,FALSE,FALSE,FALSE
+2,"typed_double",1,384,0.13,0.13,0.000338541666666667,0.000338541666666667,384,"double","4c1d482dc86b09d844ec7851b8718e6857d9f7f212c5abca8eff95dfd51b161a",FALSE,FALSE,FALSE,FALSE
+2,"compact",2,384,0.129,0.129,0.0003359375,0.0003359375,384,"long","4c1d482dc86b09d844ec7851b8718e6857d9f7f212c5abca8eff95dfd51b161a",TRUE,TRUE,FALSE,FALSE
+3,"compact",1,384,0.117,0.116,0.0003046875,0.000302083333333334,384,"long","4c1d482dc86b09d844ec7851b8718e6857d9f7f212c5abca8eff95dfd51b161a",TRUE,TRUE,FALSE,FALSE
+3,"typed_double",2,384,0.132,0.132,0.00034375,0.00034375,384,"double","4c1d482dc86b09d844ec7851b8718e6857d9f7f212c5abca8eff95dfd51b161a",FALSE,FALSE,FALSE,FALSE

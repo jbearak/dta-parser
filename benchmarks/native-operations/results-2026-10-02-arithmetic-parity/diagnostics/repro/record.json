@@ -1,0 +1,19 @@
+{
+  "files": {
+    "diagnostics/repro/green/observations.csv": "6854682e732dda199df37e57a9f976ef753c1a895cc92136be918d6c2b072e3e",
+    "diagnostics/repro/green/result.dput": "38c1ae425bfbaafbb7d8ccd0e536296f1d57591c2bc2b439cd857efafff8c257",
+    "diagnostics/repro/green/run.log": "1cea32a5118b5e782e067c9aaf1783494c84a7114a8ec8f09b7228c0adc044ab",
+    "diagnostics/repro/red/observations.csv": "2134ddc4f86b3e7607a2ff45119e688879cf0c42a9014df58ec52d0dda34d059",
+    "diagnostics/repro/red/result.dput": "4215fe5706d8119eb272c52a91fac4307b4cfd0d53cc2f9fe9df85e8be01468a",
+    "diagnostics/repro/red/run.log": "6ca550ff197ed6ec55a22fc33791266f5180add2627b435b76283628bfe34133",
+    "diagnostics/repro/v5/observations.csv": "cd41664efc8f386c164b6fc1adbd5f33092b2445e21932232abcd14d3b4ce3c5",
+    "diagnostics/repro/v5/result.dput": "27f104b2180e733941b36c5aa8551420824689c47382d0b977f4ffdd4d384827",
+    "diagnostics/repro/v5/run.log": "c46d1eadd6fa3268e6460d521385a5fa0d9048dba880e84a599e4e3bce984846"
+  },
+  "green_build_record_sha256": "7b39960c6e3aab472c63b36057cfdce99c9fe81cc5735ea4f52ca0f7ce810195",
+  "limits": "Three paired sweeps of one qualified int * 2 case; the 1.10 ratio is a diagnostic gate, not a CI promise.",
+  "purpose": "Historical red/green diagnosis; not final acceptance evidence.",
+  "red_build_receipt_sha256": "8193a9bf33a70d764a8bb30f4972a2b826debc6009f77970f0384a93f650cc48",
+  "script_sha256": "dff7ee6483538be73a0580d719f04a86b014a942134e8e5613fc88f0af254aa1",
+  "v5_build_record_sha256": "7a35cfab113140d1bb30787925d31904a0c1f9ddb1f12180375c641f1de6088a"
+}

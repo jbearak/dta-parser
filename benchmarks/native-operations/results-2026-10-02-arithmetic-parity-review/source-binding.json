@@ -1,0 +1,30 @@
+{
+  "change": "Register the two new test files and their observed blocks, refresh the expanded test hash and assertion minimum, and record the existing conditional checkpoint skip policy. No runtime or test-source code changed after measurement.",
+  "full_suite_observations_sha256": "4c56c18540b0182ba2de0b9da7bf7b254ed723bc5b8cab6c3fc0ed323f061f3b",
+  "measured_build_receipt_sha256": "889f739618a55f02d972131afe4e6fa8d450814b9919cc2cd12e816c94ab7677",
+  "measured_commit": "5f3ea2e20136cf68790d920e9d7d8073a62c50d2",
+  "measured_source_inventory_sha256": "e045a1940feb832d926bdc0e965b84f5e77a5c33879274d920bd09b0d55275f7",
+  "only_changed_package_files": {
+    "tools/native-test-manifest.json": {
+      "measured_sha256": "78ab8008290e673144c1e418e6417d4cb72ddb226b75fe5d2e7364faccecf844",
+      "reviewed_sha256": "0348c3f50b87beae0130bf478ba51cc6e20ee6047ecbcabef0de277e6cb5b59c"
+    }
+  },
+  "package_file_set_unchanged": true,
+  "reviewed_source_inventory_sha256": "5ea0009ebb28801584d0503fd8ed37bac7d7481651036d75a757a8b37ec6c87c",
+  "runtime_file_count": 186,
+  "runtime_files_unchanged": true,
+  "runtime_inventory_sha256": "3ad98dab837c9efebd10246d76d4b4a3c558c0a9f1c607541a90936843654087",
+  "schema_version": 1,
+  "test_source_files_unchanged": true,
+  "validation": {
+    "benchmark_controller_tests": 6,
+    "failures": 0,
+    "log_sha256": {
+      "native-manifest-benchmark-controller-tests.log": "d7a6e7598ebf7c0461cc6afa5d7cc1e47e7eacc86689d57967243a8fbebbaba3",
+      "native-manifest-python-tests.log": "32773d2807927b8decf3838e03b6fe772635ed31796461a75030df3c34e3ff73",
+      "native-manifest-refresh.log": "05856d04cfdfcf7a510054ca1a42490ba92955b061b37443c8898aee33ce546c"
+    },
+    "repository_python_tests": 42
+  }
+}

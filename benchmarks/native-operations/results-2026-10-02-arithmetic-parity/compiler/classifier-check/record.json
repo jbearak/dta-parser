@@ -1,0 +1,26 @@
+{
+  "purpose": "Standalone differential classifier check; no public test hook or timing benchmark",
+  "old_header": "<work>/combined-v4/src/numeric-arithmetic-scale.h",
+  "old_header_sha256": "4a6981334e075b2437f58f7a722292b0f321245b9c2af50c44f4282d8636402d",
+  "new_header": "<work>/combined-v5/src/numeric-arithmetic-scale.h",
+  "new_header_sha256": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+  "generated_source_sha256": "19834abbe1d7289ac210298ac16cf2eb792d2b4a3e01632be9ee580bee1fe63a",
+  "compile_arguments": [
+    "clang",
+    "-std=gnu23",
+    "-O0",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "classifier-check.c",
+    "-o",
+    "classifier-check"
+  ],
+  "run_arguments": [
+    "./classifier-check"
+  ],
+  "compile_returncode": 0,
+  "run_returncode": 0,
+  "binary_sha256": "8bbc0fb33d60b5d90fef626c74a4ab88ca2b2ae26bfceb522c672abf154fbfbb",
+  "result_sha256": "cafc94bc5ac0f790bb44a8888bf98f367c632aa0253145a45a1534a5e13bdc9c"
+}
