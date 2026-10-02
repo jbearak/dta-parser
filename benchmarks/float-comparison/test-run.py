@@ -67,6 +67,12 @@ class Protocol(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             run.validate_all(self.rows, 6)
 
+    def test_round_positions_unique_even_when_globally_balanced(self):
+        for row in self.rows:
+            row['position'] = str(int(row['round']) % 3 + 1)
+        with self.assertRaises(RuntimeError):
+            run.validate_all(self.rows, 6)
+
     def test_result_difference(self):
         self.rows[0]['result_hash'] = 'f' * 64
         with self.assertRaises(RuntimeError):

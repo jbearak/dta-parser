@@ -33,6 +33,10 @@ def digest(path):
 def validate_round(rows, round_number):
     if Counter(tuple(row[key] for key in FIELDS) for row in rows) != Counter({key: 1 for key in CASES}):
         raise RuntimeError('Incomplete or repeated comparison case matrix')
+    for case in {tuple(row[key] for key in FIELDS[:-1]) for row in rows}:
+        positions = [int(row['position']) for row in rows if tuple(row[key] for key in FIELDS[:-1]) == case]
+        if sorted(positions) != [1, 2, 3]:
+            raise RuntimeError('Repeated representation position within one case')
     for row in rows:
         if int(row['round']) != round_number or int(row['rows']) != 1000000 or int(row['repetitions']) <= 0:
             raise RuntimeError('Invalid round, row count or repetition count')
