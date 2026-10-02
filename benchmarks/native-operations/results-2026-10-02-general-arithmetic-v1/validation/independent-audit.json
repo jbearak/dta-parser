@@ -1,0 +1,40 @@
+{
+  "artifacts_sha256": {
+    "completion.json": "42dc385d76c2aeb127703aab2f03df4a488e17b16e52199125f67ccf1cb18663",
+    "protocol.json": "4ed81f4e3c48089df97b1544e2c11c925630fbed1c8bcfdada8aa80fadb08eb4",
+    "provenance-after.json": "49efb584bc655e8c2a87074d1164a89a96f26969358f8b3607c85d20ce696ea1",
+    "provenance-before.json": "f3405cfedea6cf14eef1bdee10fd06fc16e05cbac67ddd6c2906b9c364d00796",
+    "raw.csv": "c6b0dbec816ea5fd4aca19f65be5ea5571983f5342e1817c89509f6fc44f89fd",
+    "summary.csv": "748c82f81fb2f316c448dda551a2972e112f6fd09fb9f917a07940a8c0822af0"
+  },
+  "controllers_sha256": {
+    "general-run.py": "5dfecc31ace82a9101175c247a4cc2ca5c81689a40fe00c5ae000fd255339f19",
+    "general-worker.R": "d628f94931ca845102fc27aa431a387c43d6344361ffa080e22b81c245a6329e",
+    "run.py": "4952593f71dcdfe25c428e9ad62efe980e56f6fa8d7cb6e55b9280fee8fb282d"
+  },
+  "created_utc": "2026-10-02T23:05:53.118630+00:00",
+  "declared_gate_cases": 8,
+  "declared_gate_failures": 5,
+  "gate_max_ratio": 1.5,
+  "limits": [
+    "Did not rebuild packages or repeat measurements",
+    "1.5x diagnostic gate is not a claim of exact parity"
+  ],
+  "method": "Independent recomputation from raw worker observations, completed before publication. No timing or build was run by the reviewer.",
+  "observations": 1224,
+  "retained_cpu_seconds_range": [
+    0.0439999999999969,
+    0.186999999999999
+  ],
+  "reviewer": "execution_architecture",
+  "summary_rows": 68,
+  "verified_checks": [
+    "Complete 102-case matrix for each of six rounds and two builds",
+    "All twelve worker CSVs match combined raw observations",
+    "Representation positions balanced twice per position",
+    "Complete result/missing/source hashes equal across builds and rounds",
+    "Before/after build receipts and controller identities equal",
+    "Current controller file hashes match measured identities",
+    "All CPU medians, compact/typed ratios, compact/ordinary ratios, paired-round median ratios and compact speedups recomputed"
+  ]
+}
