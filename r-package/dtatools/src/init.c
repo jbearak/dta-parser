@@ -257,6 +257,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_native_copy_stats", (DL_FUNC) &C_dtatools_native_copy_stats, 1},
     {"C_dtatools_numeric_entry_stats", (DL_FUNC) &C_dtatools_numeric_entry_stats, 1},
     {"C_dtatools_test_arithmetic_checkpoint", (DL_FUNC) &C_dtatools_test_arithmetic_checkpoint, 2},
+    {"C_dtatools_test_materialization_checkpoint", (DL_FUNC) &C_dtatools_test_materialization_checkpoint, 2},
     {"C_dtatools_test_numeric_size_minimum", (DL_FUNC) &C_dtatools_test_numeric_size_minimum, 1},
     {"C_dtatools_numeric_size_stats", (DL_FUNC) &C_dtatools_numeric_size_stats, 1},
     {"C_dtatools_test_numeric_size_gate", (DL_FUNC) &C_dtatools_test_numeric_size_gate, 1},

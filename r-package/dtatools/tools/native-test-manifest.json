@@ -5978,6 +5978,10 @@
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
           "sha256": "bcf7812944d90cc85d872b132b336324ef5d4c25b2b79965b125629be49b1575"
+        },
+        {
+          "path": "tests/testthat/test-numeric-materialization.R",
+          "sha256": "cacb79602d61407aa61b62f07021456cd7cf5291eeb5bdcce55ac46d01e08332"
         }
       ],
       "blocks": [
@@ -7446,6 +7450,62 @@
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
           "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-numeric-materialization.R",
+          "test": "shared compact materialization decodes without copying compact bytes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 320,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-materialization.R",
+          "test": "allocation finalizers can alias materialize or patch compact inputs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 96,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-materialization.R",
+          "test": "ordinary writable pointer dispatch also avoids a compact detour",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-materialization.R",
+          "test": "private materialization does not consume stale missing-count proofs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-materialization.R",
+          "test": "failed materialization preserves compact state and finalizer aliases",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-materialization.R",
+          "test": "unwinding materialization restores a private compact write claim",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-materialization.R",
+          "test": "materialization roots survive collection at every allocation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
         }
       ],
       "children": [],
