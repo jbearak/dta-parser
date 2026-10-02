@@ -103,8 +103,6 @@
     "set_var_labels",
     "slice_dta_rows",
     "summ",
-    "summarise",
-    "summarize",
     "tab",
     "tab1",
     "tab2",
@@ -6963,7 +6961,7 @@
         },
         {
           "path": "tests/testthat/test-raven-nse.R",
-          "sha256": "2e0349cd66a19355c857ac157cc2642874b7a70f65522cb1596dc21d61c9c18c"
+          "sha256": "b63cf6a8b84a138a3c021a43b46d8034531a3c19f598e8a7bc0902e1927b7aff"
         },
         {
           "path": "tests/testthat/test-auto-grow.R",
@@ -9709,7 +9707,7 @@
         },
         {
           "path": "tests/testthat/test-dplyr-optional.R",
-          "sha256": "06e8b84faa849723d64ae9d9673408bb0b00672ed0d0437a400eb0d893670f60"
+          "sha256": "57df0537a1a0c0be9ef245d59a0f44fc936e30a69fff24691f7225a7924b8d09"
         },
         {
           "path": "tests/testthat/test-reader-dibble.R",
@@ -15199,19 +15197,19 @@
       "files": [
         {
           "path": "tests/testthat/test-print-summarize.R",
-          "sha256": "e2e649eeb13d1c1641f625e62960f978e0d129e2331bf311085b69c75a9ad552"
+          "sha256": "c529676e018ba04860243ae02e4520b033638abaeb7e7c0a2a9da3da5bf8b2fc"
         },
         {
           "path": "tests/testthat/test-summarize-stata.R",
-          "sha256": "256c53fce358a2c1a781c1326292639b4c091de46a427e1a2461ab54e0cfb63b"
+          "sha256": "c6e471923bd5eeb1dcfbc9218c45172367977afac5b19878c1f9a4f5109c1740"
         },
         {
           "path": "tests/testthat/test-summarize-varlist.R",
-          "sha256": "a1490630faa31ebfc4d99516a6fa1ccffb5b0592cc4f7824f7d8a8e49a00c496"
+          "sha256": "061260cc2a97c98992055cc99a1ca547982f4c23c08a0c19918e47408a498541"
         },
         {
           "path": "tests/testthat/test-summarize.R",
-          "sha256": "504c7dcdd6b2e81eab9448846f0c44fced6344a1da8c388779e1cc2268fedeb0"
+          "sha256": "f17ad226b254cfd2e6f60af3f86413fecdb638a3a647c49ba385037ffb9b8fec"
         }
       ],
       "blocks": [
@@ -15521,14 +15519,6 @@
         },
         {
           "file": "test-summarize.R",
-          "test": "summary aliases and vector/data-frame calls share one interface",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 16,
-          "warnings": 0
-        },
-        {
-          "file": "test-summarize.R",
           "test": "where and rows select each group's calculation sample",
           "occurrence": 1,
           "skip": "forbid",
@@ -15576,6 +15566,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize.R",
+          "test": "summ is exported without masking dplyr summary functions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize.R",
+          "test": "summ accepts vector and data-frame calls",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
           "warnings": 0
         }
       ],

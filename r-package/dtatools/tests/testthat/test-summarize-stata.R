@@ -22,10 +22,10 @@ summarize_stata_call <- function(sample, weight, mode) {
     detail <- identical(mode, "detail")
     meanonly <- identical(mode, "meanonly")
     if (identical(weight, "none")) {
-        summarize(data, x, where = selected == 1,
+        summ(data, x, where = selected == 1,
             detail = detail, meanonly = meanonly)
     } else {
-        summarize(data, x, where = selected == 1, weights = w,
+        summ(data, x, where = selected == 1, weights = w,
             weight = weight, detail = detail, meanonly = meanonly)
     }
 }
@@ -77,7 +77,7 @@ test_that("detail extremes use original rows with frequency weights", {
     # Native Stata displays 1, 2, 10, . as Smallest and ., 1, 2, 10
     # as Largest, even though fweights represent six observations.
     data <- dibble(x = c(1, 2, 10), w = c(1, 2, 3))
-    result <- summarize(data, x, weights = w, weight = "fweight",
+    result <- summ(data, x, weights = w, weight = "fweight",
         detail = TRUE)
     expect_equal(result$smallest[[1L]], c(1, 2, 10, NA_real_))
     expect_equal(result$largest[[1L]], c(NA_real_, 1, 2, 10))
@@ -88,29 +88,29 @@ test_that("detail extremes use original rows with frequency weights", {
 test_that("native percentile boundary tolerance preserves weight intervals", {
     # Native Stata 18 returns 2.5 despite the different binary roundings of
     # cumulative .2 + .1 and total .4 * .75.
-    expect_equal(summarize(1:3, weights = c(.2, .1, .1),
+    expect_equal(summ(1:3, weights = c(.2, .1, .1),
         detail = TRUE)$r$p75, 2.5)
     for (scale in c(1, 1e-100, 1e100)) {
         for (shift in c(-5e-8, 5e-8)) {
-            result <- summarize(1:2,
+            result <- summ(1:2,
                 weights = c(.5 + shift, .5 - shift) * scale, detail = TRUE)
             expect_equal(result$r$p50, 1.5)
         }
-        expect_equal(summarize(1:2,
+        expect_equal(summ(1:2,
             weights = c(.5 + 2e-7, .5 - 2e-7) * scale,
             detail = TRUE)$r$p50, 1)
-        expect_equal(summarize(1:2,
+        expect_equal(summ(1:2,
             weights = c(.5 - 2e-7, .5 + 2e-7) * scale,
             detail = TRUE)$r$p50, 2)
     }
     # The tolerance also applies to frequency weights. A small observation
     # containing the target must still be retained when both edges are near.
     for (weight in c("aweight", "fweight")) {
-        expect_equal(summarize(1:2, weights = c(50000001, 49999999),
+        expect_equal(summ(1:2, weights = c(50000001, 49999999),
             weight = weight, detail = TRUE)$r$p50, 1.5)
-        expect_equal(summarize(1:3, weights = c(1e16, 3, 1e16),
+        expect_equal(summ(1:3, weights = c(1e16, 3, 1e16),
             weight = weight, detail = TRUE)$r$p50, 2)
-        expect_equal(summarize(1:3, weights = c(1e16, 1, 1e16),
+        expect_equal(summ(1:3, weights = c(1e16, 1, 1e16),
             weight = weight, detail = TRUE)$r$p50, 1.5)
     }
 })
@@ -118,7 +118,7 @@ test_that("native percentile boundary tolerance preserves weight intervals", {
 test_that("overflowing weight totals preserve native unavailable statistics", {
     for (weight in c("aweight", "fweight")) {
         for (mode in c("default", "detail", "meanonly")) {
-            result <- summarize(1:100, weights = rep(1e307, 100),
+            result <- summ(1:100, weights = rep(1e307, 100),
                 weight = weight, detail = mode == "detail",
                 meanonly = mode == "meanonly")
             expect_equal(result$r$N,
@@ -144,11 +144,11 @@ test_that("empty and string summaries preserve native last-variable r()", {
     for (mode in c("default", "detail", "meanonly")) {
         detail <- identical(mode, "detail")
         meanonly <- identical(mode, "meanonly")
-        result <- summarize(data, x, s, detail = detail, meanonly = meanonly)
+        result <- summ(data, x, s, detail = detail, meanonly = meanonly)
         expect_identical(result$statistics$variable, c("x", "s"))
         expect_equal(result$statistics$N, c(3, 0))
         expect_equal(result$r, list(N = 0, sum_w = 0, sum = 0))
-        empty <- summarize(data, x, where = FALSE,
+        empty <- summ(data, x, where = FALSE,
             detail = detail, meanonly = meanonly)
         expect_equal(empty$r, list(N = 0, sum_w = 0, sum = 0))
     }

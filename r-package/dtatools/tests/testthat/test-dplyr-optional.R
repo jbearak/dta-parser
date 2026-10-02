@@ -56,7 +56,7 @@ test_that("native namespace loading and recoding leave dplyr unloaded", {
     expect_identical(observed$rows, c(2, 1))
     expect_false(observed$dplyr_loaded)
     expect_identical(observed$exports, sort(getNamespaceExports("dtatools")))
-    expect_length(observed$exports, 115L)
+    expect_length(observed$exports, 113L)
     expect_identical(observed$base_counts, c(1L, 0L, 2L, 0L))
     expect_identical(normalizePath(observed$namespace_path),
         normalizePath(getNamespaceInfo(asNamespace("dtatools"), "path")))
@@ -199,8 +199,16 @@ test_that("optional method hooks and registry ownership survive real reloads", {
                 ns <- load_owned()
             }
             counts <- verify(ns, generic_ns)
-            suppressPackageStartupMessages(library("dtatools", character.only = TRUE))
-            suppressPackageStartupMessages(library("dplyr", character.only = TRUE))
+            packages <- if (order == "dtatools-first") c("dtatools", "dplyr") else
+                c("dplyr", "dtatools")
+            for (package in packages)
+                suppressPackageStartupMessages(library(package, character.only = TRUE))
+            stopifnot(identical(summarize, dplyr::summarize),
+                identical(summarise, dplyr::summarise),
+                identical(summ, dtatools::summ),
+                identical(summarize(data.frame(x = 1:3), total = sum(x))$total, 6L),
+                identical(summarise(data.frame(x = 1:3), total = sum(x))$total, 6L),
+                identical(summ(1:3)$r$mean, 2))
             stopifnot(verify(ns, generic_ns) == 47L)
             detach("package:dtatools", unload = FALSE)
             detach("package:dplyr", unload = FALSE)

@@ -1,5 +1,10 @@
 # dtatools (development version)
 
+* Breaking: dtatools no longer exports `summarize()` or `summarise()` to avoid
+  conflicts with `dplyr::summarise()` and its alias `dplyr::summarize()`.
+  Use `summ()` for Stata's `summarize` command, with the same arguments and
+  return value.
+
 * Validated native paths speed up supported `repl()`/`replace_values()`,
   `gen()`, dibble `:=`, and `mutate()` expressions. Public dependency changes
   retain ordinary evaluation. Bracket fallback preserves an already evaluated
