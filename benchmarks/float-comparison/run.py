@@ -11,6 +11,7 @@ import math
 import os
 from pathlib import Path
 import platform
+import shutil
 import statistics
 import subprocess
 
@@ -133,13 +134,23 @@ def main():
     out.mkdir(parents=True, exist_ok=False)
     builds = {'baseline': args.baseline.resolve(), 'candidate': args.candidate.resolve()}
     worker = HERE / 'worker.R'
+    rscript = Path(shutil.which('Rscript')).resolve(strict=True)
+
+    def execution_runtime():
+        home = Path(subprocess.check_output(['R', 'RHOME'], text=True).strip())
+        runtime = home / 'bin' / 'exec' / 'R'
+        return {'R_runtime_sha256': digest(runtime), 'Rscript_sha256': digest(rscript)}
+
     controllers = [Path(__file__).resolve(), worker, HERE.parent / 'native-operations' / 'run.py', HERE.parent / 'r-file-readers' / 'record-builds.py']
 
     def binding():
         return {'builds': {variant: inventory(build, variant) for variant, build in builds.items()},
+                'execution': execution_runtime(),
                 'controllers': {str(path.relative_to(HERE.parent)): digest(path) for path in controllers}}
 
     before = binding()
+    if any(before['builds'][variant]['receipt']['toolchain']['R_runtime_sha256'] != before['execution']['R_runtime_sha256'] for variant in builds):
+        raise RuntimeError('Build and execution R runtimes differ')
     write_json(out / 'provenance-before.json', before)
     patch = []
     for name in sorted(set(before['builds']['baseline']['source']) | set(before['builds']['candidate']['source'])):
@@ -164,7 +175,7 @@ def main():
         for variant in (('baseline', 'candidate') if number % 2 else ('candidate', 'baseline')):
             result = out / f'{number:02}-{variant}.csv'
             with (out / f'{number:02}-{variant}.log').open('w') as stream:
-                subprocess.run(['Rscript', '--vanilla', str(worker), str(builds[variant] / 'library'), str(number), str(result)], stdout=stream, stderr=subprocess.STDOUT, check=True)
+                subprocess.run([str(rscript), '--vanilla', str(worker), str(builds[variant] / 'library'), str(number), str(result)], stdout=stream, stderr=subprocess.STDOUT, check=True)
             with result.open(newline='') as stream:
                 batch = list(csv.DictReader(stream))
             validate_round(batch, number)
