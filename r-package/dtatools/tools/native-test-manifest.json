@@ -5678,7 +5678,7 @@
         },
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
-          "sha256": "5a1ef86b318a6356dd7d16c4e0cd5b476d74792434c02a7c3f2aa736e61c9b9c"
+          "sha256": "bdad22bbd7d373ebdb1fe0d1d59b9c478f5a1d2057b51a4da81c044f88792b39"
         }
       ],
       "blocks": [
@@ -6926,6 +6926,158 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact sums preserve cancellation across interrupt blocks and chunks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 60,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "scalar retained reads cross chunks and survive independent handle writes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 176,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "scalar Arrow reads retain native batches after source materialization and GC",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 50,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "metadata scalar forwarding preserves isolated compact captures",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 72,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "metadata scalar forwarding respects both materialized states",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "three-slot scalar views track live compact values and missing counts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 36,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "native scalar forwarding does not inspect foreign class metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact missing masks cover all tags tails and retained chunk boundaries",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1632,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact missing predicates merge columns without changing recycling or names",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 44,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact missing masks preserve shape class and materialized fallbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact missing masks agree with eager decoding for legacy and modern floats",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 37,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact missing masks keep legacy integer missing domains",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 96,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact missing predicates preserve foreign callbacks and short circuits",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact missing masks retain sources and live view facts across GC",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact missing predicates survive reentrant materialization finalizers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact temporal missing predicates preserve converted values and all tags",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact sums match ordered ordinary sums across types and missing permutations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 640,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact sums retain legacy integer domains and non-Stata float payloads",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 216,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "compact sums apply date and datetime conversion before ordered accumulation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 252,
           "warnings": 0
         }
       ],
