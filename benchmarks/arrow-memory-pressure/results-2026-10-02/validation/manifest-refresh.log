@@ -1,0 +1,4 @@
+rehashed files: 1
+blocks added: 2, removed: 0, counts changed: 0
+  added:   test-owned-numeric-buffers.R :: live Arrow storage does not force collection on each small read
+  added:   test-owned-numeric-buffers.R :: R-backed owners and retained handle forks add no native allocation debt

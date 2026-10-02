@@ -1,0 +1,2 @@
+Forced-collection reproduction: 0 collections across 5 tiny reads
+PASS: retained live storage does not force repeated collection

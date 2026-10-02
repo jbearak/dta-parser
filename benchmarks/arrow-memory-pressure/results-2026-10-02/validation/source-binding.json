@@ -1,0 +1,14 @@
+{
+  "baseline": "fd72c3448412b477dfb11e0cf4d26425d5c7a428",
+  "initial_red": "The first red reproduction used the accepted PR285 build 5f3ea2e20136cf68790d920e9d7d8073a62c50d2, whose runtime/test sources match merged fd72. Acceptance timings use a clean fd72 baseline. The diagnostic tiny.arrow fixture is equivalent to the tiny-double.arrow acceptance fixture; binary diagnostic fixtures are not published.",
+  "measured_candidate": "ab64f0e4982e0cef0e6b2e1bbda1aa08f11ada74",
+  "package_delta_since_measurement": {
+    "tools/native-test-manifest.json": {
+      "measured_sha256": "0348c3f50b87beae0130bf478ba51cc6e20ee6047ecbcabef0de277e6cb5b59c",
+      "review_sha256": "6dcb81da956feed3403aa9b345627928e5f9db4cea895c74f83131874f167ada"
+    }
+  },
+  "review_reproduction": "Published reproduction fixture names now match prepare.R. Re-executed on clean fd72 baseline (red, five collections) and ab64 candidate-v1 (green, zero collections), using acceptance fixtures. Logs retained as review-red.log and review-green.log. No runtime or test-source changes.",
+  "runtime_and_test_source_unchanged": true,
+  "validation": "Full R suite and Rust bridge use candidate-v1. Conformance rebuilds the same runtime/test source with refreshed native-test inventory. Full source and installed inventories are retained in timing provenance."
+}

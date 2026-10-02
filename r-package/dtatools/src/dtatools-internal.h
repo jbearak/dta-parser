@@ -229,6 +229,8 @@ extern int dtatools_owned_numeric_scalar_span(
 );
 extern size_t dtatools_owned_numeric_live_bytes(void);
 extern size_t dtatools_owned_numeric_live_owners(void);
+extern size_t dtatools_owned_numeric_gc_attempts(void);
+extern size_t dtatools_owned_numeric_allocation_debt(void);
 extern size_t dtatools_owned_numeric_chunks(const void *);
 extern int dtatools_numeric_compare(
     int, const dtatools_compare_operand *, const dtatools_compare_operand *,

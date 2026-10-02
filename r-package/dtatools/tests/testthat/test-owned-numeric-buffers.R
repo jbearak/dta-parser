@@ -343,6 +343,49 @@ test_that("repeated owned reads collect unreachable native allocations", {
     expect_equal(owned_numeric_info(actual$x)[["native_bytes"]] - before, 20000000)
 })
 
+test_that("live Arrow storage does not force collection on each small read", {
+    paths <- vapply(seq_len(3L), function(i) tempfile(fileext = ".arrow"), character(1))
+    on.exit(unlink(paths), add = TRUE)
+    n <- 65L * 1024L^2L / 4L
+    save_arrow(dibble(x = dta_long(rep.int(7L, n))), paths[[1L]])
+    expected <- c(1, NA_real_, tagged_missing("a"), tagged_missing("z"), 3)
+    save_arrow(dibble(x = dta_double(expected)), paths[[2L]])
+    save_arrow(dibble(x = dta_byte(expected)), paths[[3L]])
+    gc()
+    held <- read_arrow(paths[[1L]], threads = 1L)
+    expect_gte(owned_numeric_info(held$x)[["native_bytes"]], 65 * 1024^2)
+    expect_equal(owned_numeric_info(held$x)[["owned"]], 1)
+    # Permit the first pressure check to collect older unreachable storage.
+    # Subsequent small reads add far less than the next allocation budget.
+    warm <- read_arrow(paths[[2L]], threads = 1L)
+    expect_identical(as.double(warm$x), expected)
+    gc()
+    before <- owned_numeric_info(NULL)[["gc_attempts"]]
+    for (path in paths[2:3]) {
+        for (iteration in seq_len(8L)) {
+            actual <- read_arrow(path, threads = 1L)
+            expect_identical(as.double(actual$x), expected)
+        }
+    }
+    expect_equal(owned_numeric_info(NULL)[["gc_attempts"]], before)
+    expect_equal(as.double(sum(held$x)), 7 * n)
+    expect_false(anyNA(held$x))
+    expect_equal(owned_numeric_info(held$x)[["owned"]], 1)
+})
+
+test_that("R-backed owners and retained handle forks add no native allocation debt", {
+    source <- dta_int(c(1, NA_real_, tagged_missing("a"), 4))
+    before <- owned_numeric_info(NULL)[["allocation_debt"]]
+    retained <- freeze_numeric(source, 2)
+    view <- as.double(retained)
+    copied_attributes <- retained
+    attr(copied_attributes, "label") <- "independent attributes"
+    expect_identical(as.double(source), as.double(retained))
+    expect_identical(as.double(view), as.double(retained))
+    expect_identical(as.double(copied_attributes), as.double(retained))
+    expect_equal(owned_numeric_info(NULL)[["allocation_debt"]], before)
+})
+
 test_that("comparisons and gathers read retained regions without compatibility copies", {
     values <- rep(c(-1, 0, 1, NA_real_, tagged_missing("a"), tagged_missing("z")), 17)
     rows <- c(102L, 2L, NA_integer_, 8L, 1L, 101L)
