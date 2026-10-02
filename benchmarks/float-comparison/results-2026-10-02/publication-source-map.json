@@ -29,6 +29,21 @@
     "published_sha256": "f55ceaccfc1b95cbab77f881102fe1f1e03f9e63aebf6861147613a542f6f172",
     "source": "builds/candidate/input-record.json"
   },
+  "builds/integration/build-receipt.json": {
+    "original_sha256": "ff2d5bd11ce551c1ff74712281b45521d71a1abc9ddc7f3b04abf88b57485589",
+    "published_sha256": "ff2d5bd11ce551c1ff74712281b45521d71a1abc9ddc7f3b04abf88b57485589",
+    "source": "candidate-integration/build-receipt.json"
+  },
+  "builds/integration/build.log": {
+    "original_sha256": "348a8528be9b37a8574e3aaf0d1bb16f34b656885c9a78222f3ddd6bbc963e70",
+    "published_sha256": "125ae3bed3bc25da24968ade3d125084a5bc0ca2def66ed6435a16f7ed6adcd4",
+    "source": "candidate-integration/build.log"
+  },
+  "builds/integration/input-record.json": {
+    "original_sha256": "36cb9394fca81cfa330eae20ccc793b7fe802f67272022a62bc70999dd66f18b",
+    "published_sha256": "36cb9394fca81cfa330eae20ccc793b7fe802f67272022a62bc70999dd66f18b",
+    "source": "candidate-integration/input-record.json"
+  },
   "builds/prototype/build-receipt.json": {
     "original_sha256": "6226ca2f3303d9d925541f3521b5845102042460f95335f40594b37358c21177",
     "published_sha256": "6226ca2f3303d9d925541f3521b5845102042460f95335f40594b37358c21177",
@@ -209,6 +224,21 @@
     "published_sha256": "9cae5331ce5b712a1ab85d69a0db2bbe57978d637d1cb6a4563f228a092560c7",
     "source": "controller-tests.log"
   },
+  "validation/focused-integration.R": {
+    "original_sha256": "b6e9dd7e0ce79d54b9d137c46d0fa02af20f646b7994bdb5457a25487d67096d",
+    "published_sha256": "5d9ae56cf496cae31b0bb8afb1d8141136ff4115cad3193832f3de18805f0ffd",
+    "source": "focused-integration.R"
+  },
+  "validation/focused-integration.csv": {
+    "original_sha256": "76d7e133d6ea846ca557a23eb9a91d66492a1252d6d395ceb67accbc121f618e",
+    "published_sha256": "76d7e133d6ea846ca557a23eb9a91d66492a1252d6d395ceb67accbc121f618e",
+    "source": "focused-integration.csv"
+  },
+  "validation/focused-integration.log": {
+    "original_sha256": "c649faa10a84ff6202cf8d5f285161aa789cb6b2eb2c2b0ad35593a1702f3f21",
+    "published_sha256": "c649faa10a84ff6202cf8d5f285161aa789cb6b2eb2c2b0ad35593a1702f3f21",
+    "source": "focused-integration.log"
+  },
   "validation/focused-v1.csv": {
     "original_sha256": "191642c5c2788cc44379cd62aa360afc2db8bce72954caeb21b9f1acffad370f",
     "published_sha256": "191642c5c2788cc44379cd62aa360afc2db8bce72954caeb21b9f1acffad370f",
@@ -238,6 +268,16 @@
     "original_sha256": "e21197858f5144081b55422111425b7402e77664d07acd94e95db0cf732984f8",
     "published_sha256": "e21197858f5144081b55422111425b7402e77664d07acd94e95db0cf732984f8",
     "source": "independent-paired-audit.json"
+  },
+  "validation/integration-binding.json": {
+    "original_sha256": "7b134f77e1ceafeafe7cd397859e5703f44c606b70cb3fd4f1e391a8ab1e5dbe",
+    "published_sha256": "7b134f77e1ceafeafe7cd397859e5703f44c606b70cb3fd4f1e391a8ab1e5dbe",
+    "source": "integration-binding.json"
+  },
+  "validation/integration-package.patch": {
+    "original_sha256": "51a39cd66ce7b33efb9f3f81ebc434cafa2f922dead52a59c7295dfa3df44206",
+    "published_sha256": "51a39cd66ce7b33efb9f3f81ebc434cafa2f922dead52a59c7295dfa3df44206",
+    "source": "integration-package.patch"
   },
   "validation/manifest-refresh.log": {
     "original_sha256": "3b02d9c1bff68a94e94078b51284080eeb8408973e3b8257c25492feb27580da",

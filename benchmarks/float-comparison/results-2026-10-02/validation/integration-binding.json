@@ -1,0 +1,12 @@
+{
+  "assertions": 7435,
+  "comparison_module_and_R_tests_identical": true,
+  "errors": 0,
+  "failures": 0,
+  "integration_commit": "c17ef21e47c11326e9fd0ed51d9581edd51c5326",
+  "main_integrated": "895dd204d1e90b058461063ba37573214aeda0fa",
+  "measured_commit": "69422ba58fc5c21a6b0ab1d390550432d479f25f",
+  "scope": "Clean integration library, focused comparison and owned-buffer suites. Adds the already-merged Arrow GC policy. Rust module declarations and CI check registrations retain both changes; no comparison loop changed. These timings remain bound to the earlier measured package.",
+  "skips": 0,
+  "warnings": 0
+}
