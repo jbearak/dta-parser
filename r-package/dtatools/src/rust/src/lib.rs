@@ -26,6 +26,7 @@ use dta_tools::{
 };
 
 mod arrow_ffi;
+mod native_pressure;
 mod owned_numeric;
 
 type Sexp = *mut c_void;

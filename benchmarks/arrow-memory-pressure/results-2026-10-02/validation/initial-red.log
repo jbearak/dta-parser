@@ -1,0 +1,3 @@
+Forced-collection reproduction: 5 collections across 5 tiny reads
+Error: Repeated collections despite unchanged live native storage
+Execution halted

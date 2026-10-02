@@ -1,0 +1,375 @@
+diff --git a/r-package/dtatools/src/dtatools-internal.h b/r-package/dtatools/src/dtatools-internal.h
+index cefb30e1..13c6a315 100644
+--- a/r-package/dtatools/src/dtatools-internal.h
++++ b/r-package/dtatools/src/dtatools-internal.h
+@@ -229,6 +229,8 @@ extern int dtatools_owned_numeric_scalar_span(
+ );
+ extern size_t dtatools_owned_numeric_live_bytes(void);
+ extern size_t dtatools_owned_numeric_live_owners(void);
++extern size_t dtatools_owned_numeric_gc_attempts(void);
++extern size_t dtatools_owned_numeric_allocation_debt(void);
+ extern size_t dtatools_owned_numeric_chunks(const void *);
+ extern int dtatools_numeric_compare(
+     int, const dtatools_compare_operand *, const dtatools_compare_operand *,
+diff --git a/r-package/dtatools/src/mutation-transactions.c b/r-package/dtatools/src/mutation-transactions.c
+index df313965..b5213a9a 100644
+--- a/r-package/dtatools/src/mutation-transactions.c
++++ b/r-package/dtatools/src/mutation-transactions.c
+@@ -2671,16 +2671,19 @@ SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
+ SEXP C_dtatools_owned_numeric_info(SEXP value) {
+     numeric_data *data = unmaterialized_numeric_read_storage(value);
+     int retained = data != NULL && numeric_payload_retained(data);
+-    const char *labels[] = {"owned", "rows", "chunks", "native_bytes", "live_owners", "compatibility_bytes"};
+-    SEXP result = PROTECT(Rf_allocVector(REALSXP, 6));
+-    SEXP names = PROTECT(Rf_allocVector(STRSXP, 6));
++    const char *labels[] = {"owned", "rows", "chunks", "native_bytes", "live_owners", "compatibility_bytes",
++                           "gc_attempts", "allocation_debt"};
++    SEXP result = PROTECT(Rf_allocVector(REALSXP, 8));
++    SEXP names = PROTECT(Rf_allocVector(STRSXP, 8));
+     REAL(result)[0] = retained;
+     REAL(result)[1] = data == NULL ? 0 : (double) data->length;
+     REAL(result)[2] = retained ? (double) dtatools_owned_numeric_chunks(data) : 0;
+     REAL(result)[3] = (double) dtatools_owned_numeric_live_bytes();
+     REAL(result)[4] = (double) dtatools_owned_numeric_live_owners();
+     REAL(result)[5] = owned_numeric_compatibility_bytes;
+-    for (int i = 0; i < 6; i++) SET_STRING_ELT(names, i, Rf_mkChar(labels[i]));
++    REAL(result)[6] = (double) dtatools_owned_numeric_gc_attempts();
++    REAL(result)[7] = (double) dtatools_owned_numeric_allocation_debt();
++    for (int i = 0; i < 8; i++) SET_STRING_ELT(names, i, Rf_mkChar(labels[i]));
+     Rf_setAttrib(result, R_NamesSymbol, names);
+     UNPROTECT(2);
+     return result;
+diff --git a/r-package/dtatools/src/rust/src/arrow_ffi.rs b/r-package/dtatools/src/rust/src/arrow_ffi.rs
+index e22c12d6..6ba24e3b 100644
+--- a/r-package/dtatools/src/rust/src/arrow_ffi.rs
++++ b/r-package/dtatools/src/rust/src/arrow_ffi.rs
+@@ -3567,13 +3567,13 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
+     error: *mut *mut c_char,
+ ) -> Sexp {
+     arrow_boundary(interrupted, error, ptr::null_mut(), || {
+-        let charged = crate::owned_numeric::dtatools_owned_numeric_live_bytes();
+-        if charged > 64 * 1024 * 1024 {
++        crate::owned_numeric::collect_native_pressure(|| {
+             check_interrupt()?;
+             if crate::dtatools_owned_numeric_gc() == 0 {
+                 return Err("R could not collect unused owned numeric buffers".to_owned());
+             }
+-        }
++            Ok(())
++        })?;
+         let snapshot = required_arrow_snapshot(snapshot)?;
+         let projection = if all_columns != 0 {
+             None
+diff --git a/r-package/dtatools/src/rust/src/lib.rs b/r-package/dtatools/src/rust/src/lib.rs
+index ce4a0bbd..7d16f167 100644
+--- a/r-package/dtatools/src/rust/src/lib.rs
++++ b/r-package/dtatools/src/rust/src/lib.rs
+@@ -26,6 +26,7 @@ use dta_tools::{
+ };
+ 
+ mod arrow_ffi;
++mod native_pressure;
+ mod owned_numeric;
+ 
+ type Sexp = *mut c_void;
+diff --git a/r-package/dtatools/src/rust/src/native_pressure.rs b/r-package/dtatools/src/rust/src/native_pressure.rs
+new file mode 100644
+index 00000000..6359a285
+--- /dev/null
++++ b/r-package/dtatools/src/rust/src/native_pressure.rs
+@@ -0,0 +1,197 @@
++//! Amortize R collections requested for allocations outside R's heap.
++
++use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
++
++const LIVE_BYTE_LIMIT: usize = 64 * 1024 * 1024;
++// Require substantial new allocation before another attempt even when the
++// previously collected buffers remain reachable. Half the pressure limit
++// retains headroom for the existing repeated-large-read memory bound.
++const ALLOCATION_BUDGET: usize = LIVE_BYTE_LIMIT / 2;
++
++pub(crate) struct NativeMemoryPressure {
++    debt: AtomicUsize,
++    collecting: AtomicBool,
++    attempts: AtomicUsize,
++}
++
++fn saturating_add(counter: &AtomicUsize, amount: usize) {
++    if amount != 0 {
++        let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
++            Some(value.saturating_add(amount))
++        });
++    }
++}
++
++impl NativeMemoryPressure {
++    pub(crate) const fn new() -> Self {
++        Self {
++            debt: AtomicUsize::new(0),
++            collecting: AtomicBool::new(false),
++            attempts: AtomicUsize::new(0),
++        }
++    }
++
++    pub(crate) fn allocated(&self, bytes: usize) {
++        saturating_add(&self.debt, bytes);
++    }
++
++    pub(crate) fn debt(&self) -> usize {
++        self.debt.load(Ordering::Relaxed)
++    }
++
++    pub(crate) fn attempts(&self) -> usize {
++        self.attempts.load(Ordering::Relaxed)
++    }
++
++    /// `collect` runs on the R thread through the C boundary that contains R
++    /// nonlocal exits. No lock or Rust borrow guard is held across callbacks.
++    /// Allocations made by finalizers stay in the new debt counter. A failed
++    /// attempt or Rust unwind restores the claimed debt before admitting retry.
++    pub(crate) fn collect_if_needed<E>(
++        &self,
++        live_bytes: usize,
++        collect: impl FnOnce() -> Result<(), E>,
++    ) -> Result<bool, E> {
++        if live_bytes <= LIVE_BYTE_LIMIT
++            || self.debt() <= ALLOCATION_BUDGET
++            || self
++                .collecting
++                .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
++                .is_err()
++        {
++            return Ok(false);
++        }
++        let mut attempt = CollectionAttempt {
++            pressure: self,
++            claimed: self.debt.swap(0, Ordering::Relaxed),
++            succeeded: false,
++        };
++        // A preceding caller may have consumed the debt between our first
++        // inspection and claiming the flag. Return partial new debt unchanged.
++        if attempt.claimed <= ALLOCATION_BUDGET {
++            return Ok(false);
++        }
++        saturating_add(&self.attempts, 1);
++        collect()?;
++        attempt.succeeded = true;
++        Ok(true)
++    }
++}
++
++struct CollectionAttempt<'a> {
++    pressure: &'a NativeMemoryPressure,
++    claimed: usize,
++    succeeded: bool,
++}
++
++impl Drop for CollectionAttempt<'_> {
++    fn drop(&mut self) {
++        if !self.succeeded {
++            self.pressure.allocated(self.claimed);
++        }
++        self.pressure.collecting.store(false, Ordering::Release);
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    fn collect(pressure: &NativeMemoryPressure, live: usize) -> bool {
++        pressure
++            .collect_if_needed(live, || Ok::<(), ()>(()))
++            .unwrap()
++    }
++
++    #[test]
++    fn live_buffers_do_not_force_repeated_collection() {
++        let pressure = NativeMemoryPressure::new();
++        pressure.allocated(LIVE_BYTE_LIMIT + 1);
++        assert!(collect(&pressure, LIVE_BYTE_LIMIT + 1));
++        for _ in 0..100 {
++            pressure.allocated(8);
++            assert!(!collect(&pressure, LIVE_BYTE_LIMIT + 801));
++        }
++        assert_eq!(pressure.attempts(), 1);
++        assert_eq!(pressure.debt(), 800);
++        pressure.allocated(ALLOCATION_BUDGET);
++        assert!(collect(&pressure, LIVE_BYTE_LIMIT + ALLOCATION_BUDGET));
++        assert_eq!(pressure.attempts(), 2);
++    }
++
++    #[test]
++    fn both_live_storage_and_new_allocation_are_required() {
++        let pressure = NativeMemoryPressure::new();
++        pressure.allocated(ALLOCATION_BUDGET);
++        assert!(!collect(&pressure, LIVE_BYTE_LIMIT + 1));
++        pressure.allocated(1);
++        assert!(!collect(&pressure, LIVE_BYTE_LIMIT));
++        assert_eq!(pressure.debt(), ALLOCATION_BUDGET + 1);
++        assert_eq!(pressure.attempts(), 0);
++        assert!(collect(&pressure, LIVE_BYTE_LIMIT + 1));
++        pressure.allocated(0);
++        assert_eq!(pressure.debt(), 0);
++    }
++
++    #[test]
++    fn finalizer_allocations_survive_success_and_nested_reads_do_not_collect() {
++        let pressure = NativeMemoryPressure::new();
++        pressure.allocated(LIVE_BYTE_LIMIT);
++        assert!(pressure
++            .collect_if_needed(LIVE_BYTE_LIMIT + 1, || {
++                pressure.allocated(ALLOCATION_BUDGET + 1);
++                assert!(!collect(&pressure, LIVE_BYTE_LIMIT * 2));
++                Ok::<(), ()>(())
++            })
++            .unwrap());
++        assert_eq!(pressure.debt(), ALLOCATION_BUDGET + 1);
++        assert!(collect(&pressure, LIVE_BYTE_LIMIT + 1));
++    }
++
++    #[test]
++    fn failed_collections_restore_old_and_reentrant_allocation_debt() {
++        let pressure = NativeMemoryPressure::new();
++        pressure.allocated(LIVE_BYTE_LIMIT);
++        let result = pressure.collect_if_needed(LIVE_BYTE_LIMIT + 1, || {
++            pressure.allocated(17);
++            Err("collection failed")
++        });
++        assert_eq!(result, Err("collection failed"));
++        assert_eq!(pressure.debt(), LIVE_BYTE_LIMIT + 17);
++        assert!(collect(&pressure, LIVE_BYTE_LIMIT + 1));
++    }
++
++    #[test]
++    fn unwinding_releases_the_attempt_and_restores_debt() {
++        let pressure = NativeMemoryPressure::new();
++        pressure.allocated(LIVE_BYTE_LIMIT);
++        let result = std::panic::catch_unwind(|| {
++            let _: Result<bool, ()> =
++                pressure.collect_if_needed(LIVE_BYTE_LIMIT + 1, || panic!("collector panic"));
++        });
++        assert!(result.is_err());
++        assert_eq!(pressure.debt(), LIVE_BYTE_LIMIT);
++        assert!(collect(&pressure, LIVE_BYTE_LIMIT + 1));
++    }
++
++    #[test]
++    fn allocation_debt_saturates_without_losing_retry_or_new_allocations() {
++        let pressure = NativeMemoryPressure::new();
++        pressure.allocated(usize::MAX);
++        pressure.allocated(1);
++        assert_eq!(pressure.debt(), usize::MAX);
++        let result = pressure.collect_if_needed(LIVE_BYTE_LIMIT + 1, || {
++            pressure.allocated(10);
++            Err(())
++        });
++        assert_eq!(result, Err(()));
++        assert_eq!(pressure.debt(), usize::MAX);
++        assert!(pressure
++            .collect_if_needed(LIVE_BYTE_LIMIT + 1, || {
++                pressure.allocated(11);
++                Ok::<(), ()>(())
++            })
++            .unwrap());
++        assert_eq!(pressure.debt(), 11);
++    }
++}
+diff --git a/r-package/dtatools/src/rust/src/owned_numeric.rs b/r-package/dtatools/src/rust/src/owned_numeric.rs
+index 70742202..b820551d 100644
+--- a/r-package/dtatools/src/rust/src/owned_numeric.rs
++++ b/r-package/dtatools/src/rust/src/owned_numeric.rs
+@@ -18,6 +18,8 @@ use crate::{FormatVersion, NumericData, NumericKind, TemporalKind};
+ 
+ static LIVE_NATIVE_BYTES: AtomicUsize = AtomicUsize::new(0);
+ static LIVE_OWNERS: AtomicUsize = AtomicUsize::new(0);
++static MEMORY_PRESSURE: crate::native_pressure::NativeMemoryPressure =
++    crate::native_pressure::NativeMemoryPressure::new();
+ 
+ enum Storage {
+     Arrow(Buffer),
+@@ -261,6 +263,7 @@ impl PreparedOwnedNumeric {
+         missing_count: usize,
+     ) -> Self {
+         LIVE_NATIVE_BYTES.fetch_add(owner.native_bytes, Ordering::Relaxed);
++        MEMORY_PRESSURE.allocated(owner.native_bytes);
+         LIVE_OWNERS.fetch_add(1, Ordering::Relaxed);
+         Self {
+             owner: Arc::new(owner),
+@@ -584,6 +587,22 @@ pub extern "C" fn dtatools_owned_numeric_live_owners() -> usize {
+     LIVE_OWNERS.load(Ordering::Relaxed)
+ }
+ 
++pub(crate) fn collect_native_pressure<E>(
++    collect: impl FnOnce() -> Result<(), E>,
++) -> Result<bool, E> {
++    MEMORY_PRESSURE.collect_if_needed(dtatools_owned_numeric_live_bytes(), collect)
++}
++
++#[no_mangle]
++pub extern "C" fn dtatools_owned_numeric_gc_attempts() -> usize {
++    MEMORY_PRESSURE.attempts()
++}
++
++#[no_mangle]
++pub extern "C" fn dtatools_owned_numeric_allocation_debt() -> usize {
++    MEMORY_PRESSURE.debt()
++}
++
+ #[no_mangle]
+ pub unsafe extern "C" fn dtatools_owned_numeric_chunks(data: *const c_void) -> usize {
+     let source = &*data.cast::<NumericData>();
+diff --git a/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R b/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
+index 092b73d9..c6b7aed7 100644
+--- a/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
++++ b/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
+@@ -343,6 +343,49 @@ test_that("repeated owned reads collect unreachable native allocations", {
+     expect_equal(owned_numeric_info(actual$x)[["native_bytes"]] - before, 20000000)
+ })
+ 
++test_that("live Arrow storage does not force collection on each small read", {
++    paths <- vapply(seq_len(3L), function(i) tempfile(fileext = ".arrow"), character(1))
++    on.exit(unlink(paths), add = TRUE)
++    n <- 65L * 1024L^2L / 4L
++    save_arrow(dibble(x = dta_long(rep.int(7L, n))), paths[[1L]])
++    expected <- c(1, NA_real_, tagged_missing("a"), tagged_missing("z"), 3)
++    save_arrow(dibble(x = dta_double(expected)), paths[[2L]])
++    save_arrow(dibble(x = dta_byte(expected)), paths[[3L]])
++    gc()
++    held <- read_arrow(paths[[1L]], threads = 1L)
++    expect_gte(owned_numeric_info(held$x)[["native_bytes"]], 65 * 1024^2)
++    expect_equal(owned_numeric_info(held$x)[["owned"]], 1)
++    # Permit the first pressure check to collect older unreachable storage.
++    # Subsequent small reads add far less than the next allocation budget.
++    warm <- read_arrow(paths[[2L]], threads = 1L)
++    expect_identical(as.double(warm$x), expected)
++    gc()
++    before <- owned_numeric_info(NULL)[["gc_attempts"]]
++    for (path in paths[2:3]) {
++        for (iteration in seq_len(8L)) {
++            actual <- read_arrow(path, threads = 1L)
++            expect_identical(as.double(actual$x), expected)
++        }
++    }
++    expect_equal(owned_numeric_info(NULL)[["gc_attempts"]], before)
++    expect_equal(as.double(sum(held$x)), 7 * n)
++    expect_false(anyNA(held$x))
++    expect_equal(owned_numeric_info(held$x)[["owned"]], 1)
++})
++
++test_that("R-backed owners and retained handle forks add no native allocation debt", {
++    source <- dta_int(c(1, NA_real_, tagged_missing("a"), 4))
++    before <- owned_numeric_info(NULL)[["allocation_debt"]]
++    retained <- freeze_numeric(source, 2)
++    view <- as.double(retained)
++    copied_attributes <- retained
++    attr(copied_attributes, "label") <- "independent attributes"
++    expect_identical(as.double(source), as.double(retained))
++    expect_identical(as.double(view), as.double(retained))
++    expect_identical(as.double(copied_attributes), as.double(retained))
++    expect_equal(owned_numeric_info(NULL)[["allocation_debt"]], before)
++})
++
+ test_that("comparisons and gathers read retained regions without compatibility copies", {
+     values <- rep(c(-1, 0, 1, NA_real_, tagged_missing("a"), tagged_missing("z")), 17)
+     rows <- c(102L, 2L, NA_integer_, 8L, 1L, 101L)
