@@ -293,6 +293,27 @@ Adapted from R 4.6.1, released 2026-06-24 (SVN revision 90187):
     file is incorporated; its argument/class dispatch behavior informs the
     public getS3method lookup and selected fallback boundary.
 
+Compact mean policy adapted from R Core, inspected 2026-10-02:
+  Source: https://github.com/r-devel/r-svn/blob/18f218645422f554f706ee2afa46e6d4ba92cfa3/src/main/summary.c
+  Revision: SVN trunk r89242, mirrored by Git commit
+    18f218645422f554f706ee2afa46e6d4ba92cfa3.
+  Function: real_mean, lines 482-521.
+  File SHA-256:
+    61bb7974d6b11219b1119e4743c3830a3e7c3a784792f6166ab5d407c1e6bf49
+  Verification: this fixed-revision file matches the cited trunk file byte for
+    byte as inspected on 2026-10-02.
+  File attribution (lines 3-4): Copyright (C) 1997--2025 The R Core Team;
+    Copyright (C) 1995, 1996 Robert Gentleman and Ross Ihaka.
+  License: GPL version 2 or, at your option, any later version. These adapted
+    portions are incorporated under this package's GPL-3 license. The upstream
+    COPYING text is reproduced below, including its warranty disclaimer.
+  Destination: src/summarize.c, C_dtatools_numeric_mean.
+  Changes: package-owned block readers retain compact backing and fuse missing
+    removal into R's ordered extended-precision accumulation, overflow rescaling
+    and correction passes. Unknown providers retain the R fallback.
+  Tests: package-specific differential cases against public base mean;
+    no upstream tests were copied.
+
 Additional R 4.6.1 source study for Stage 3, with no implementation or tests
 copied or adapted from these files:
   https://svn.r-project.org/R/tags/R-4-6-1/src/main/memory.c

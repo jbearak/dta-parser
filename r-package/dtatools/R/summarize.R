@@ -256,28 +256,32 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
     out[c("N", "sum_w", "sum")] <- 0
     smallest <- largest <- rep(NA_real_, 4L)
     if (is.character(value)) value <- rep(NA_real_, length(value))
-    else value <- .summarize_numeric(value)
-    if (any(is.infinite(value)))
-        stop("summary inputs must be finite or missing", call. = FALSE)
-    keep <- !is.na(value) & !is.na(weights) & weights != 0
-    x <- value[keep]
-    w <- weights[keep]
-    n <- length(x)
+    else {
+        .dta_egen_numeric(value)
+        if (inherits(value, c("Date", "POSIXct")))
+            value <- .summarize_numeric(value)
+    }
+    moments <- .Call(C_dtatools_summarize_moments, value, weights, detail, meanonly)
+    fallback <- NULL
+    if (is.null(moments)) {
+        fallback <- .summarize_moments_fallback(value, weights, detail, meanonly)
+        moments <- fallback$moments
+    }
+    n <- moments[[1L]]
     r <- as.list(out[c("N", "sum_w", "sum")])
     if (n) {
-        total <- .summarize_sum(w)
+        total <- moments[[2L]]
         out["N"] <- if (identical(weight, "fweight")) total else n
         out["sum_w"] <- total
-        out["sum"] <- .summarize_sum(w * x)
-        out["min"] <- min(x)
-        out["max"] <- max(x)
+        out["sum"] <- moments[[3L]]
+        out["min"] <- moments[[4L]]
+        out["max"] <- moments[[5L]]
         if (total != 0 && is.finite(out[["sum"]] / total)) {
             # Center the moments on the rounded mean, as Stata does.
             mu <- out[["sum"]] / total
             out["mean"] <- mu
             if (!meanonly) {
-                centered <- x - mu
-                m2 <- .summarize_sum(w * centered^2) / total
+                m2 <- moments[[6L]] / total
                 variance <- if (identical(weight, "aweight")) {
                     if (n > 1L) m2 * n / (n - 1) else NA_real_
                 } else if (total != 1 && (n > 1L || identical(weight, "fweight"))) {
@@ -288,11 +292,20 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
                     sqrt(variance) else NA_real_
             }
             if (detail && is.finite(m2) && m2 > 0) {
-                out["skewness"] <- (.summarize_sum(w * centered^3) / total) / sqrt(m2^3)
-                out["kurtosis"] <- (.summarize_sum(w * centered^4) / total) / m2^2
+                out["skewness"] <- (moments[[7L]] / total) / sqrt(m2^3)
+                out["kurtosis"] <- (moments[[8L]] / total) / m2^2
             }
         }
         if (detail) {
+            if (is.null(fallback)) {
+                value <- .summarize_numeric(value)
+                keep <- !is.na(value) & !is.na(weights) & weights != 0
+                x <- value[keep]
+                w <- weights[keep]
+            } else {
+                x <- fallback$x
+                w <- fallback$w
+            }
             order <- order(x)
             ordered <- x[order]
             smallest[seq_len(min(n, 4L))] <- utils::head(ordered, 4L)
@@ -305,6 +318,33 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
         r <- as.list(out)
     }
     list(statistics = out, r = r, smallest = smallest, largest = largest)
+}
+
+.summarize_moments_fallback <- function(value, weights, detail, meanonly) {
+    # Foreign ALTREP providers retain the previous conversion, validation,
+    # mask and subset order before their selected values are reduced.
+    value <- .summarize_numeric(value)
+    if (any(is.infinite(value)))
+        stop("summary inputs must be finite or missing", call. = FALSE)
+    keep <- !is.na(value) & !is.na(weights) & weights != 0
+    x <- value[keep]
+    w <- weights[keep]
+    n <- length(x)
+    if (!n) return(list(moments = c(0, 0, 0, Inf, -Inf, 0, 0, 0), x = x, w = w))
+    total <- .summarize_sum(w)
+    sum <- .summarize_sum(w * x)
+    minimum <- min(x)
+    maximum <- max(x)
+    m2 <- m3 <- m4 <- 0
+    if (total != 0 && is.finite(sum / total) && !meanonly) {
+        centered <- x - sum / total
+        m2 <- .summarize_sum(w * centered^2)
+        if (detail && is.finite(m2 / total) && m2 / total > 0) {
+            m3 <- .summarize_sum(w * centered^3)
+            m4 <- .summarize_sum(w * centered^4)
+        }
+    }
+    list(moments = c(n, total, sum, minimum, maximum, m2, m3, m4), x = x, w = w)
 }
 
 .summarize_percentiles <- function(ordered, weights, total, ps) {

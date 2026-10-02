@@ -192,6 +192,9 @@
     .computed_storage_getter
     .computed_numeric_dependencies
     .scalar_arith_dependencies
+    .numeric_binary_dependencies
+    .numeric_mean_dependencies
+    .numeric_range_dependencies
     complete <- FALSE
     on.exit({
         if (!complete) {

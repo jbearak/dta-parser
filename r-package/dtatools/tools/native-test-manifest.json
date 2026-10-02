@@ -1772,6 +1772,14 @@
         {
           "path": "tests/testthat/test-owned-finite-double.R",
           "sha256": "df59fa43230d7b0290f1de18e316cadc89b401e99fe575a6b94244004a8e4726"
+        },
+        {
+          "path": "tests/testthat/test-native-missing-kernels.R",
+          "sha256": "9fd7ae33a46beb97afb8d599915bbbd65bc722810a44afb69def4e4ede22c884"
+        },
+        {
+          "path": "tests/testthat/test-native-arithmetic-kernels.R",
+          "sha256": "a91ded5274c4e983ed4402a23c5147d9f035e5879df51480f481c1dcffeae8ba"
         }
       ],
       "blocks": [
@@ -4150,6 +4158,201 @@
           "reason": "Finite certificates are enabled only for the supported R, vctrs and rlang execution profile; public fallback behavior is covered separately.",
           "min_pass_before_skip": 0,
           "skip_message": "Reason: .dtatools_numeric_entry_expected() is not TRUE"
+        },
+        {
+          "file": "test-native-missing-kernels.R",
+          "test": "native missing kernels preserve all codes across compact spans",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 144,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-missing-kernels.R",
+          "test": "anyNA uses live values after compact materialization and mutation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 70,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-missing-kernels.R",
+          "test": "anyNA respects a replacement primitive in its fallback binding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-missing-kernels.R",
+          "test": "anyNA fallback does not force recursive before its replacement",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-missing-kernels.R",
+          "test": "missing kernels retain ordinary NA and noncanonical NaN policy",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-missing-kernels.R",
+          "test": "compact tag inspectors preserve names and dimensions without labels",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-missing-kernels.R",
+          "test": "compact missing kernels preserve legacy observed and missing domains",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 160,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-missing-kernels.R",
+          "test": "compact float IEEE NaNs are missing without becoming tagged values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-missing-kernels.R",
+          "test": "tag-selection callbacks may materialize the compact source",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-missing-kernels.R",
+          "test": "anyNA compact counts follow live mutation views",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "compact arithmetic agrees with the ordinary public calculation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1500,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "compact arithmetic promotes the complete result and collapses invalid values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 31,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "arithmetic keeps recycling names and unsupported input behavior",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 38,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "arithmetic crosses retained chunks without changing source storage",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 180,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "extended arithmetic keeps primitive and recycling callbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "public scalar and column arithmetic enter the native producer",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 16,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Bytecode scalar admission requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic suite.",
+          "skip_message": "Reason: .dtatools_numeric_entry_expected() is not TRUE"
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "imported DTA and Arrow columns enter native arithmetic with display metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 78,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "extended arithmetic retains storage-specific names methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "observed compact span arithmetic crosses distinct chunk boundaries",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 72,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "legacy observed integer codes promote into modern arithmetic storage",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "specialized arithmetic keeps aliased inputs scalar directions and promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 300,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "missing span arithmetic keeps all codes across scalar and column shapes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 328,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "missing span arithmetic keeps each operand's legacy missing encoding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 256,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "float span arithmetic matches eager IEEE and reserved-code decoding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 349,
+          "warnings": 0
         }
       ],
       "children": [
@@ -4345,7 +4548,7 @@
         },
         {
           "path": "tests/testthat/test-label-metadata.R",
-          "sha256": "32b02b7433478505f2cc79a0ed0eb5112ce60b5aa544fab1a71bb921491468ed"
+          "sha256": "11e54dcbdab0b1015db46962e3600b9355ad2f17d66e0e4becaf2d2a73c17a64"
         },
         {
           "path": "tests/testthat/test-value-label-table-names.R",
@@ -13256,6 +13459,10 @@
         {
           "path": "tests/testthat/test-dibble-bindings.R",
           "sha256": "de70f00e6804a7ec25232efa505bd12197d1fe1099c853a7b065aaa145bbef99"
+        },
+        {
+          "path": "tests/testthat/test-native-numeric-match.R",
+          "sha256": "aa47fb6aedbacceb8a792f4df660e6a9c4a6799e6d4185970be1c5386e39dda0"
         }
       ],
       "blocks": [
@@ -14317,6 +14524,78 @@
           "skip": "forbid",
           "min_pass": 4,
           "warnings": 0
+        },
+        {
+          "file": "test-native-numeric-match.R",
+          "test": "numeric matching preserves cross-width first matches and missing codes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 112,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-numeric-match.R",
+          "test": "numeric matching preserves scalar nomatch conversion and errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-numeric-match.R",
+          "test": "numeric matching preserves temporal identity domains",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-numeric-match.R",
+          "test": "numeric matching traverses retained chunks without materializing sources",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 48,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-numeric-match.R",
+          "test": "later matching callbacks cannot change prepared earlier identities",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-numeric-match.R",
+          "test": "numeric matching retains foreign conversion dispatch",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-numeric-match.R",
+          "test": "matching rejects invalid numeric conversion results and keeps error calls",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-numeric-match.R",
+          "test": "numeric matching keeps exact finite double identities",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-numeric-match.R",
+          "test": "numeric identity and sets share matching identity and stable order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
         }
       ],
       "children": [],
@@ -14384,6 +14663,10 @@
         {
           "path": "tests/testthat/test-tab-summary.R",
           "sha256": "1e593727b4003cdc399ac7e40abcc60563b48eb4e55aecca427f5f1fbe2c7a40"
+        },
+        {
+          "path": "tests/testthat/test-egen-block-kernels.R",
+          "sha256": "46c9ce8b7182a72b314a55d54d7d6d00f358717df55782c3a39f2578846f7cd6"
         }
       ],
       "blocks": [
@@ -15339,6 +15622,86 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-egen-block-kernels.R",
+          "test": "egen block summaries agree with ordinary values across compact chunks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 672,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-block-kernels.R",
+          "test": "egen row blocks preserve column order and all-missing policy",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 31,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-block-kernels.R",
+          "test": "egen blocks keep one ordered double accumulator across boundaries",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-block-kernels.R",
+          "test": "egen block extrema preserve all missing ranks and signed-zero ties",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 28,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-block-kernels.R",
+          "test": "egen block calculations keep legacy numeric missing domains",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 128,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-block-kernels.R",
+          "test": "egen blocks preserve Stata temporal conversion order and strip metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-block-kernels.R",
+          "test": "egen block admission preserves foreign row-major callback order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-block-kernels.R",
+          "test": "egen block validation retains NaN policy and unsupported-tag rejection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-block-kernels.R",
+          "test": "egen blocks normalize compact IEEE NaNs only in calculation scope",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-block-kernels.R",
+          "test": "egen scalar fallback retains foreign class callbacks and captured storage",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
         }
       ],
       "children": [],
@@ -15362,6 +15725,10 @@
         {
           "path": "tests/testthat/test-summarize.R",
           "sha256": "f17ad226b254cfd2e6f60af3f86413fecdb638a3a647c49ba385037ffb9b8fec"
+        },
+        {
+          "path": "tests/testthat/test-native-summary-kernels.R",
+          "sha256": "daad660c3c0f5a8f1139d7ea02959ce9f95d0a48d1b2ac69db44a97146e6059c"
         }
       ],
       "blocks": [
@@ -15734,6 +16101,118 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "mean and range preserve compact storage and base precision",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 52,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "mean and range keep fallback arguments and empty policies",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "range preserves NULL operands and nonempty all-missing silence",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "fused summary moments match the previous weighted calculation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 96,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "fused scans cross retained chunks and retain the input backing",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "foreign summary providers retain the previous read path",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "summary na.rm promises retain input capture order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "unchanged base summary dispatch admits native scans",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "summary admission leaves executable na.rm promises untouched",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "classed na.rm cannot change the already selected mean method",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "registered bare mean methods precede na.rm evaluation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "mean declines active and delayed S3 bindings without reading them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "mean honors replaced and traced generic and default bindings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "range honors replaced and traced default implementations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         }
       ],

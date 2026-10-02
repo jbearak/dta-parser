@@ -895,23 +895,135 @@ static double numeric_real_value(double value, int *missing_code) {
     return 0.0;
 }
 
+typedef struct {
+    double *values;
+    int *codes;
+} numeric_reader_region_context;
+
+/* Dispatch storage, historical missing encoding, and temporal conversion
+   outside the loop. The same contiguous loop serves plain and retained
+   backing; retained owners are consulted once per span, never per row. */
+#define NUMERIC_READER_ROWS(TYPE, MISSING, VALUE, STORE)                      \
+    do {                                                                    \
+        for (size_t begin = 0; begin < span->length; ) {                     \
+            size_t count = span->length - begin;                            \
+            if (count > 65536) count = 65536;                               \
+            if (span->length >= 16384) R_CheckUserInterrupt();              \
+            for (size_t i = begin; i < begin + count; i++) {                \
+                TYPE raw;                                                   \
+                memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));        \
+                int missing = (MISSING);                                   \
+                int code = missing >= 0                                   \
+                    ? (missing == 0 ? 0 : 'a' + missing - 1)               \
+                    : (ISNAN((double) raw) ? 256 : -1);                    \
+                codes[i] = code;                                           \
+                STORE                                                       \
+            }                                                               \
+            begin += count;                                                 \
+        }                                                                   \
+    } while (0)
+
+/* VALUE is substituted at this macro level before entering the row macro. */
+#define NUMERIC_READER_VALUES(TYPE, MISSING, VALUE)                          \
+    NUMERIC_READER_ROWS(TYPE, MISSING, VALUE,                                \
+                       values[i] = code < 0 ? (VALUE) : 0.0;)
+
+#define NUMERIC_READER_TEMPORAL(TYPE, MISSING)                               \
+    do {                                                                    \
+        if (values == NULL) {                                               \
+            NUMERIC_READER_ROWS(TYPE, MISSING, 0, (void) 0;);               \
+        } else if (span->temporal == 1) {                                   \
+            NUMERIC_READER_VALUES(TYPE, MISSING, (double) raw - 3653.0);   \
+        } else if (span->temporal == 2) {                                   \
+            NUMERIC_READER_VALUES(TYPE, MISSING,                            \
+                (double) raw / 1000.0 - 315619200.0);                       \
+        } else {                                                            \
+            NUMERIC_READER_VALUES(TYPE, MISSING, (double) raw);            \
+        }                                                                   \
+    } while (0)
+
+static void numeric_reader_decode_span(
+    const numeric_data *span, size_t offset, void *raw_context
+) {
+    numeric_reader_region_context *context = raw_context;
+    double *values = context->values == NULL ? NULL : context->values + offset;
+    int *codes = context->codes + offset;
+    const unsigned char *bytes = span->values;
+    int legacy = span->format_version <= 111;
+    switch (span->kind) {
+    case NUMERIC_BYTE:
+        if (legacy) NUMERIC_READER_TEMPORAL(int8_t, byte_missing_offset(raw, 111));
+        else NUMERIC_READER_TEMPORAL(int8_t, byte_missing_offset(raw, 119));
+        break;
+    case NUMERIC_INT:
+        if (legacy) NUMERIC_READER_TEMPORAL(int16_t, int_missing_offset(raw, 111));
+        else NUMERIC_READER_TEMPORAL(int16_t, int_missing_offset(raw, 119));
+        break;
+    case NUMERIC_LONG:
+        if (legacy) NUMERIC_READER_TEMPORAL(int32_t, long_missing_offset(raw, 111));
+        else NUMERIC_READER_TEMPORAL(int32_t, long_missing_offset(raw, 119));
+        break;
+    case NUMERIC_FLOAT:
+        if (legacy) NUMERIC_READER_TEMPORAL(float, float_missing_offset(raw, 111));
+        else NUMERIC_READER_TEMPORAL(float, float_missing_offset(raw, 119));
+        break;
+    default:
+        Rf_error("invalid dtatools numeric storage kind");
+    }
+}
+#undef NUMERIC_READER_TEMPORAL
+#undef NUMERIC_READER_VALUES
+#undef NUMERIC_READER_ROWS
+
+void numeric_reader_region(
+    const numeric_reader *reader, R_xlen_t start, R_xlen_t length,
+    double *values, int *missing_codes
+) {
+    R_xlen_t total = reader->storage != NULL
+        ? (R_xlen_t) reader->storage->length : XLENGTH(reader->value);
+    if (start < 0 || length < 0 || start > total || length > total - start)
+        Rf_error("invalid numeric reader region");
+    if (reader->storage != NULL) {
+        numeric_reader_region_context context = {values, missing_codes};
+        numeric_for_each_span(reader->storage, (size_t) start, (size_t) length,
+                              numeric_reader_decode_span, &context);
+        return;
+    }
+    if (reader->real_values != NULL) {
+        const double *input = reader->real_values + start;
+        for (R_xlen_t i = 0; i < length; i++) {
+            if ((i & 16383) == 0 && length >= 16384) R_CheckUserInterrupt();
+            double value = numeric_real_value(input[i], missing_codes + i);
+            if (values != NULL) values[i] = value;
+        }
+        return;
+    }
+    if (reader->integer_values != NULL) {
+        const int *input = reader->integer_values + start;
+        for (R_xlen_t i = 0; i < length; i++) {
+            if ((i & 16383) == 0 && length >= 16384) R_CheckUserInterrupt();
+            double value = numeric_integer_value(input[i], missing_codes + i);
+            if (values != NULL) values[i] = value;
+        }
+        return;
+    }
+    /* Unknown ALTREP providers keep their scalar callback order. */
+    for (R_xlen_t i = 0; i < length; i++) {
+        if ((i & 16383) == 0 && length >= 16384) R_CheckUserInterrupt();
+        double value = numeric_reader_at(reader, start + i, missing_codes + i);
+        if (values != NULL) values[i] = value;
+    }
+}
+
 double numeric_reader_at(
     const numeric_reader *reader, R_xlen_t index, int *missing_code
 ) {
     if (reader->storage != NULL) {
-        numeric_data *data = reader->storage;
-        int offset = numeric_missing_offset_at(data, (size_t) index);
-        if (offset >= 0) {
-            *missing_code = offset == 0 ? 0 : 'a' + offset - 1;
-            return 0.0;
-        }
-        double value = numeric_value_at(data, (size_t) index);
-        if (ISNAN(value)) {
-            *missing_code = 256;
-            return 0.0;
-        }
-        *missing_code = -1;
-        return value;
+        /* Decode once. Separate missing/value probes would each find and
+           fetch the same retained span for every observed scalar. */
+        return numeric_real_value(
+            numeric_value_at(reader->storage, (size_t) index), missing_code
+        );
     }
 
     if (reader->type == INTSXP || reader->type == LGLSXP) {
@@ -4438,6 +4550,8 @@ static SEXP C_dtatools_scalar_arithmetic_impl(
     return result;
 }
 
+#include "numeric-arithmetic.h"
+
 SEXP C_dtatools_scalar_arithmetic(SEXP left, SEXP right, SEXP frame, SEXP storage_getter, SEXP dependencies) {
     /* Explicit-frame diagnostics retain their settled left/right contract. */
     if (frame != R_NilValue)
@@ -4449,6 +4563,14 @@ SEXP C_dtatools_scalar_arithmetic(SEXP left, SEXP right, SEXP frame, SEXP storag
     SEXP x = PROTECT(computed_peek(Rf_install("x"), frame, 16));
     SEXP y = PROTECT(computed_peek(Rf_install("y"), frame, 16));
     SEXP op = PROTECT(computed_peek(Rf_install("op"), frame, 16));
+    SEXP extended = PROTECT(numeric_arithmetic_extension(
+        frame, x, y, op, storage_getter, dependencies
+    ));
+    if (extended != R_NilValue) {
+        UNPROTECT(4);
+        return extended;
+    }
+    UNPROTECT(1);
     SEXP vector = R_NilValue;
     int compact_kind = -1;
     double scalar = 0;
@@ -4473,6 +4595,7 @@ SEXP C_dtatools_scalar_arithmetic(SEXP left, SEXP right, SEXP frame, SEXP storag
         (compact != NULL && minimum != compact_kind) ||
         (ALTREP(vector) && !owned_real(vector) && compact == NULL) ||
         !scalar_dependencies_unchanged(frame, dependencies) ||
+        !arithmetic_storage_names_unchanged(frame, dependencies) ||
         !scalar_is_na_primitive(frame) ||
         !dtatools_numeric_helpers_admitted(frame, DTATOOLS_NUMERIC_SCALAR) ||
         !dtatools_numeric_decoration_admitted(frame, DTATOOLS_NUMERIC_SCALAR, R_NilValue)) {

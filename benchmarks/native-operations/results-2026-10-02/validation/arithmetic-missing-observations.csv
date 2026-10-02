@@ -1,0 +1,15 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-native-arithmetic-kernels.R","compact arithmetic agrees with the ordinary public calculation",1500,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","compact arithmetic promotes the complete result and collapses invalid values",31,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","arithmetic keeps recycling names and unsupported input behavior",38,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","arithmetic crosses retained chunks without changing source storage",180,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","extended arithmetic keeps primitive and recycling callbacks",10,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","public scalar and column arithmetic enter the native producer",16,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","imported DTA and Arrow columns enter native arithmetic with display metadata",78,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","extended arithmetic retains storage-specific names methods",12,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","observed compact span arithmetic crosses distinct chunk boundaries",72,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","legacy observed integer codes promote into modern arithmetic storage",14,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","specialized arithmetic keeps aliased inputs scalar directions and promotion",300,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","missing span arithmetic keeps all codes across scalar and column shapes",328,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","missing span arithmetic keeps each operand's legacy missing encoding",256,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","float span arithmetic matches eager IEEE and reserved-code decoding",349,0,FALSE,FALSE,0

@@ -463,6 +463,13 @@ DTATOOLS_INTERNAL numeric_reader numeric_reader_create(
 DTATOOLS_INTERNAL double numeric_reader_at(
     const numeric_reader *reader, R_xlen_t index, int *missing_code
 );
+/* Decode one bounded region without scalar ALTREP dispatch. Values may be
+   NULL when only missing codes are needed; codes must have length slots.
+   Callers retain a captured compact owner across allocations and callbacks. */
+DTATOOLS_INTERNAL void numeric_reader_region(
+    const numeric_reader *reader, R_xlen_t start, R_xlen_t length,
+    double *values, int *missing_codes
+);
 DTATOOLS_INTERNAL void record_reference_row_read(void);
 DTATOOLS_INTERNAL SEXP C_dtatools_reference_row_reads(SEXP enabled);
 DTATOOLS_INTERNAL SEXP C_dtatools_inject_reference_write_interrupt(SEXP enabled);

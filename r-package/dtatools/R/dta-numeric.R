@@ -1440,10 +1440,30 @@ Summary.dta_numeric <- function(..., na.rm = FALSE) {
     storage <- vapply(declared, .declared_dta_storage, character(1))
     minimum <- Reduce(.dta_promote, storage)
     operation <- getExportedValue("base", .Generic)
-    ordinary <- .Generic == "range"
-    arguments <- c(lapply(inputs, function(value) {
-        if (inherits(value, "dta_numeric")) .dta_data(value, ordinary = ordinary) else value
-    }), list(na.rm = na.rm))
+    # Capture values before na.rm is forced: its expression may write to an
+    # input. Owned ordinary views detach on a later write, as the old plain
+    # range snapshot did; compact views retain their existing read policy.
+    arguments <- lapply(inputs, function(value) {
+        if (inherits(value, "dta_numeric")) .dta_data(value) else value
+    })
+    if (.Generic == "range" && .Call(C_dtatools_range_admitted, environment()) &&
+        !"finite" %in% names(inputs) && is.logical(na.rm) &&
+        length(na.rm) == 1L && !is.na(na.rm) &&
+        all(vapply(inputs, function(value) {
+            is.null(value) || (typeof(value) %in% c("double", "integer", "logical") &&
+                (!is.object(value) || inherits(value, "dta_numeric")))
+        }, logical(1)))) {
+        result <- .Call(C_dtatools_numeric_range, arguments, na.rm)
+        if (!is.null(result))
+            return(.dta_computed(.collapse_missing(result), minimum))
+    }
+    if (.Generic == "range") {
+        for (i in seq_along(inputs)) if (inherits(inputs[[i]], "dta_numeric")) {
+            ordinary <- .Call(C_dtatools_owned_plain_snapshot, arguments[[i]])
+            if (!is.null(ordinary)) arguments[[i]] <- ordinary
+        }
+    }
+    arguments <- c(arguments, list(na.rm = na.rm))
     empty_extreme <- sum(lengths(inputs)) == 0L &&
         .Generic %in% c("min", "max", "range")
     result <- if (empty_extreme) {
@@ -1464,9 +1484,33 @@ summary.dta_numeric <- function(object, ...) {
 
 #' @export
 mean.dta_numeric <- function(x, ..., na.rm = FALSE) {
-    result <- suppressWarnings(mean(.dta_data(x), ..., na.rm = na.rm))
+    if (...length() == 0L && .Call(C_dtatools_mean_admitted, environment())) {
+        value <- .dta_data(x)
+        # Capture can invoke a foreign provider. Recheck dispatch before
+        # touching na.rm, which a custom method may deliberately leave lazy.
+        result <- if (.Call(C_dtatools_mean_admitted, environment()) &&
+            is.logical(na.rm) && length(na.rm) == 1L && !is.na(na.rm)) {
+            .Call(C_dtatools_numeric_mean, value, na.rm)
+        } else NULL
+        if (is.null(result))
+            result <- suppressWarnings(mean(value, na.rm = na.rm))
+    } else result <- suppressWarnings(mean(.dta_data(x), ..., na.rm = na.rm))
     .dta_computed(.collapse_missing(result), .declared_dta_storage(x))
 }
+
+# Freeze the base implementation when the package is built. Runtime admission
+# never captures a replacement as its expected generic or default method.
+.numeric_mean_dependencies <- list(
+    base::mean, base::mean.default, base::isTRUE,
+    base::is.numeric, base::is.complex, base::is.logical, base::is.na,
+    base::length, base::`!`, base::`[`, base::`&&`, base::`||`,
+    base::`if`, base::`{`, base::`<-`, base::`>`, base::`!=`, base::`==`,
+    base::`.Internal`, base::UseMethod)
+
+.numeric_range_dependencies <- list(
+    base::range, base::range.default, base::.rangeNum, base::is.numeric,
+    base::is.finite, base::is.na, base::c, base::min, base::max, base::`!`,
+    base::`[`, base::`if`, base::`{`, base::`<-`)
 
 #' @export
 median.dta_numeric <- function(x, na.rm = FALSE, ...) {
@@ -1490,7 +1534,13 @@ quantile.dta_numeric <- function(
 
 #' @export
 anyNA.dta_numeric <- function(x, recursive = FALSE) {
-    anyNA(.dta_data(x), recursive = recursive)
+    values <- .dta_data(x)
+    if (!identical(anyNA, .Primitive("anyNA"))) {
+        return(anyNA(values, recursive = recursive))
+    }
+    cached <- .Call(C_dtatools_numeric_any_na, values, recursive)
+    if (!is.null(cached)) return(cached)
+    anyNA(values, recursive = recursive)
 }
 
 #' @export

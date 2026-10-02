@@ -13,9 +13,17 @@ upstream GPL version 2 or later license; this package uses GPL-3. R 4.6.1 native
 attribute and resizing code was also studied for the append journal; that
 implementation uses public APIs and incorporates no source from those files.
 R's read, coercion and concatenation code informed owned read paths. Range
-receives an independent ordinary snapshot, and integer/logical exports call
+uses a combined compact scan for admitted numeric inputs and an independent
+ordinary snapshot for its fallback. Integer/logical exports call
 R's native coercion API. No R implementation or tests were copied for these
 paths; the notice lists the studied files.
+The compact mean kernel adapts R Core's ordered accumulation, overflow
+rescaling and correction policy from
+[`real_mean` in `src/main/summary.c`](https://github.com/r-devel/r-svn/blob/18f218645422f554f706ee2afa46e6d4ba92cfa3/src/main/summary.c#L482-L521),
+SVN trunk r89242 (Git mirror commit `18f218645422f554f706ee2afa46e6d4ba92cfa3`).
+This fixed snapshot matches the cited trunk file byte for byte as inspected on
+2026-10-02. Its file hash, R Core/Robert Gentleman/Ross Ihaka copyright lines,
+GPL attribution and local adaptations are recorded in the installed notice.
 R's interrupt implementation was studied for portable native fault injection;
 tests call its documented interrupt entry and retain transaction rollback checks.
 
