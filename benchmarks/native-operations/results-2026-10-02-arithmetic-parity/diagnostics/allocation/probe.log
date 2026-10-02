@@ -1,0 +1,35 @@
+[1] 0 0 0 0 0
+   raw bytes finalizer  fill allocation_us overwrite_us total_us   gc_us
+ FALSE 4e+06     FALSE FALSE         3.945       0.1979    5.208   2.604
+  TRUE 4e+06     FALSE FALSE         8.159       0.1979    7.813   7.813
+ FALSE 8e+06     FALSE FALSE         5.430       0.1901    7.812   5.208
+  TRUE 8e+06     FALSE FALSE         4.122       0.2083    5.208   5.208
+ FALSE 4e+06      TRUE FALSE        47.807       0.2057   46.875  41.667
+  TRUE 4e+06      TRUE FALSE       103.060       0.2344  104.167  98.958
+ FALSE 8e+06      TRUE FALSE        70.487       0.2031   70.313  67.708
+  TRUE 8e+06      TRUE FALSE        98.943       0.2083   98.958  93.750
+ FALSE 4e+06     FALSE  TRUE        25.440      14.8359   41.667  23.437
+  TRUE 4e+06     FALSE  TRUE         7.331      14.6641   20.833   2.604
+ FALSE 8e+06     FALSE  TRUE        85.469      28.6016  127.604  83.333
+  TRUE 8e+06     FALSE  TRUE        97.130      29.0729  125.000  93.750
+ FALSE 4e+06      TRUE  TRUE       103.615      67.8385  171.875  98.958
+  TRUE 4e+06      TRUE  TRUE       154.276      76.5130  210.937 151.042
+ FALSE 8e+06      TRUE  TRUE        99.857     162.0807  273.438 101.563
+  TRUE 8e+06      TRUE  TRUE       130.737     171.3464  304.687 125.000
+ finalizers
+          0
+          0
+          0
+          0
+        209
+        182
+        206
+        354
+          0
+          0
+          0
+          0
+        345
+        296
+        231
+        269

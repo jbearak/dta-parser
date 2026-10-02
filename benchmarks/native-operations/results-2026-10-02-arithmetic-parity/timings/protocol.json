@@ -1,0 +1,17 @@
+{
+  "baseline": "Git commit 0a9c7090c100d68d4fa3005d707049e1b3d9c9a9",
+  "baseline_commit": "0a9c7090c100d68d4fa3005d707049e1b3d9c9a9",
+  "candidate_commit": "5f3ea2e20136cf68790d920e9d7d8073a62c50d2",
+  "interval": "Preloaded public operation repetitions; explicit GC, reader calls, source construction, qualification and result hashing excluded; automatic GC and result allocation included.",
+  "limits": "One host, deterministic million-row fixtures, warm repeated operations. Arithmetic adds dta_double controls to distinguish typed result policy from bare arithmetic. Does not measure ingestion or promise ordinary-double parity for every operation.",
+  "operations": [
+    "multiply",
+    "divide",
+    "add"
+  ],
+  "order": "Alternate build order each round; fixed case order. Two-representation order alternates; arithmetic rotates and reverses compact/typed-double/ordinary order in balanced six-round cycles.",
+  "repetitions": "Untimed calibration runs for at least 20 ms and chooses a fixed count targeting at least 150 ms per retained interval; initial counts can exceed this target for slow operations.",
+  "rounds": 6,
+  "source": "Source delta and SHA256 inventories of source, installed R code, DLLs, fixtures and controllers retained.",
+  "synthetic_control": null
+}

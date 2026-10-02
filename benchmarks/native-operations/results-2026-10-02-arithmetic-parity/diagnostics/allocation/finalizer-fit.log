@@ -1,0 +1,20 @@
+ wait fired_during entries first storage malformed
+    6            1       1   200     int     FALSE
+    9            1       1     2    byte     FALSE
+   23            1       1   200     int     FALSE
+   26            1       1     2    byte     FALSE
+   40            1       1   200     int     FALSE
+   43            1       1     2    byte     FALSE
+   57            1       1   200     int     FALSE
+   60            1       1     2    byte     FALSE
+   74            1       1   200     int     FALSE
+   77            1       1     2    byte     FALSE
+   91            1       1   200     int     FALSE
+   94            1       1     2    byte     FALSE
+  108            1       1   200     int     FALSE
+  111            1       1     2    byte     FALSE
+  125            1       1   200     int     FALSE
+  128            1       1     2    byte     FALSE
+  142            1       1   200     int     FALSE
+  159            1       1   200     int     FALSE
+No malformed result in sampled GC positions; this is not an exact-window exclusion.

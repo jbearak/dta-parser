@@ -1,0 +1,27 @@
+{
+  "purpose": "Private diagnostic only: distinguish raw allocation initialization from finalizer/GC effects. No production timing claims.",
+  "build": "R CMD SHLIB allocation.c; public Rf_allocVector, R_MakeExternalPtr, R_RegisterCFinalizerEx APIs; clang GNU23 -O2",
+  "run": [
+    "Rscript --vanilla probe.R > probe.log 2>&1",
+    "Rscript --vanilla repro-gc.R <work>/forced-long/library <work>/allocation-probe/forced-long-gc > forced-long-gc.log 2>&1"
+  ],
+  "source_evidence": {
+    "path": "<work>/R-4.6.1-memory.c",
+    "archive": "<runtime-source-work>/lazy64-clean-production-cost-root-qualification/next-source-classification-scope-root-intake/authorized-archive-recovery-20260928/R-4.6.1.tar.xz.download",
+    "upstream_archive": "https://cran.r-project.org/src/base/R-4/R-4.6.1.tar.xz",
+    "raw_uninitialized_lines": "2683-2686;2749;2892-2894;2956-2990",
+    "weak_reference_retention_lines": "1867-1873",
+    "sha256": "a4e709acb428a6c59634cc812932f5fe34347a46513055854db0b3d4969a6bd9"
+  },
+  "limitations": "Three alternating sweeps in one process. Heap growth and malloc reuse differ between cases. GC timer is millisecond resolution. Forced-long DLL is an invalid general-purpose diagnostic, restricted to qualified int*2 fixture. All tests here are private diagnostic comparisons, not acceptance evidence.",
+  "files": {
+    "allocation.c": "99549ef79dc1a8922eec875fb8213836b9057b93afd5ed64c96881c47fff9577",
+    "allocation.so": "1a8210b273d687b5de65299b75fe9436ebdb84b4c6fcbffdc1c2ab22608298c5",
+    "probe.R": "27cece8f8a0bb7c6db0921391234e4c733cc45025d7ff6f6d55183c84e0bd574",
+    "observations.csv": "0462b4a1ab07b4d89074542fd33adb2455936e7326cc746aae319d11acc51212",
+    "probe.log": "abf0ecb8b29669b78fd92ee4e5f342cd24312c2e59c1c5de382b06cf650fa39e",
+    "repro-gc.R": "60aafd113a000aee9fbe4553d7df1262ad24d322ffc6a16c572496e0b3ce479e",
+    "forced-long-gc/observations.csv": "04db6bd6cf16eed6b27672b51f858833378bb196106dda4c3e72b70bf800051c",
+    "forced-long-gc.log": "ae95ec406ccc62b22b3db37744226837d08905245862f4af4871e556e29ba7f0"
+  }
+}

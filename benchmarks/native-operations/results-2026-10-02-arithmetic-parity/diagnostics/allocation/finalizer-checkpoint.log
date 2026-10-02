@@ -1,0 +1,14 @@
+[1] 2048
+          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
+Ncells  713612 38.2    1603404 85.7         NA  1081928 57.8
+Vcells 1103431  8.5    8388608 64.0     131072  2013065 15.4
+          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
+Ncells  713530 38.2    1603404 85.7         NA  1081928 57.8
+Vcells 1103305  8.5    8388608 64.0     131072  2013065 15.4
+NULL
+construct  computed    scalar     holds 
+        0         0         0         0 
+list(fired = 1L, native_entries = 1, input_first = 100, output_first = -56, 
+    storage = "byte")
+Error: record$output_first %in% c(2, 200) is not TRUE
+Execution halted
