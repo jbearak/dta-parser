@@ -621,7 +621,8 @@ test_that("aggregate operations keep metadata proxies unmaterialized", {
             ),
             storage = c(sum = "long", min = "int", max = "int"),
             any_na = FALSE,
-            aggregate_mask = 15L,
+            # Cached anyNA bypasses the No_NA proxy callback (bit 1).
+            aggregate_mask = 14L,
             unmaterialized = TRUE
         )
     )

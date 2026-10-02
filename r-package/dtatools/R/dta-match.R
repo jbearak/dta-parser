@@ -55,8 +55,8 @@ dta_identical <- function(x, y) {
         return(FALSE)
     }
 
-    x_key <- unname(.dta_identity_key(x, x_kind, "x"))
-    y_key <- unname(.dta_identity_key(y, y_kind, "y"))
+    x_key <- unname(.dta_identity_key(x, x_kind, "x", native = TRUE))
+    y_key <- unname(.dta_identity_key(y, y_kind, "y", native = TRUE))
     identical(x_key, y_key)
 }
 
@@ -64,8 +64,8 @@ dta_identical <- function(x, y) {
 #' @export
 dta_match <- function(x, table, nomatch = NA_integer_, incomparables = NULL) {
     kind <- .dta_common_identity_kind(x, table, "x", "table")
-    x_key <- .dta_identity_key(x, kind, "x")
-    table_key <- .dta_identity_key(table, kind, "table")
+    x_key <- .dta_identity_key(x, kind, "x", native = TRUE)
+    table_key <- .dta_identity_key(table, kind, "table", native = TRUE)
     incomparable_key <- if (is.null(incomparables)) {
         NULL
     } else {
@@ -76,9 +76,9 @@ dta_match <- function(x, table, nomatch = NA_integer_, incomparables = NULL) {
             stop("`incomparables` must have the same kind as `x` and `table`",
                  call. = FALSE)
         }
-        .dta_identity_key(incomparables, kind, "incomparables")
+        .dta_identity_key(incomparables, kind, "incomparables", native = TRUE)
     }
-    result <- base::match(
+    result <- .dta_identity_match_keys(
         x_key, table_key, nomatch = nomatch, incomparables = incomparable_key
     )
     names(result) <- names(x)
@@ -99,10 +99,11 @@ dta_union <- function(x, y) {
     if (is.null(x)) return(.dta_unique_result(y))
     if (is.null(y)) return(.dta_unique_result(x))
     kind <- .dta_common_identity_kind(x, y, "x", "y")
-    x_key <- .dta_identity_key(x, kind, "x")
-    y_key <- .dta_identity_key(y, kind, "y")
-    x_keep <- !duplicated(x_key)
-    y_keep <- !duplicated(y_key) & !(y_key %in% x_key)
+    x_key <- .dta_identity_key(x, kind, "x", native = TRUE)
+    y_key <- .dta_identity_key(y, kind, "y", native = TRUE)
+    x_keep <- !.dta_identity_duplicated_keys(x_key)
+    y_keep <- !.dta_identity_duplicated_keys(y_key) &
+        .dta_identity_match_keys(y_key, x_key, nomatch = 0L) == 0L
     result <- .dta_union_values(
         x, y, which(x_keep), which(y_keep), kind
     )
@@ -288,9 +289,10 @@ dta_union <- function(x, y) {
 dta_intersect <- function(x, y) {
     if (is.null(x) || is.null(y)) return(NULL)
     kind <- .dta_common_identity_kind(x, y, "x", "y")
-    x_key <- .dta_identity_key(x, kind, "x")
-    y_key <- .dta_identity_key(y, kind, "y")
-    keep <- !duplicated(x_key) & x_key %in% y_key
+    x_key <- .dta_identity_key(x, kind, "x", native = TRUE)
+    y_key <- .dta_identity_key(y, kind, "y", native = TRUE)
+    keep <- !.dta_identity_duplicated_keys(x_key) &
+        .dta_identity_match_keys(x_key, y_key, nomatch = 0L) > 0L
     .dta_slice_set_result(x, which(keep))
 }
 
@@ -300,9 +302,10 @@ dta_setdiff <- function(x, y) {
     if (is.null(x)) return(NULL)
     if (is.null(y)) return(.dta_unique_result(x))
     kind <- .dta_common_identity_kind(x, y, "x", "y")
-    x_key <- .dta_identity_key(x, kind, "x")
-    y_key <- .dta_identity_key(y, kind, "y")
-    keep <- !duplicated(x_key) & !(x_key %in% y_key)
+    x_key <- .dta_identity_key(x, kind, "x", native = TRUE)
+    y_key <- .dta_identity_key(y, kind, "y", native = TRUE)
+    keep <- !.dta_identity_duplicated_keys(x_key) &
+        .dta_identity_match_keys(x_key, y_key, nomatch = 0L) == 0L
     .dta_slice_set_result(x, which(keep))
 }
 
@@ -311,9 +314,12 @@ dta_setdiff <- function(x, y) {
 dta_setequal <- function(x, y) {
     if (is.null(x) || is.null(y)) return(length(x) == 0L && length(y) == 0L)
     kind <- .dta_common_identity_kind(x, y, "x", "y")
-    x_key <- unique(.dta_identity_key(x, kind, "x"))
-    y_key <- unique(.dta_identity_key(y, kind, "y"))
-    length(x_key) == length(y_key) && all(x_key %in% y_key)
+    x_key <- .dta_identity_key(x, kind, "x", native = TRUE)
+    y_key <- .dta_identity_key(y, kind, "y", native = TRUE)
+    x_count <- sum(!.dta_identity_duplicated_keys(x_key))
+    y_count <- sum(!.dta_identity_duplicated_keys(y_key))
+    x_count == y_count &&
+        all(.dta_identity_match_keys(x_key, y_key, nomatch = 0L) > 0L)
 }
 
 # R 4.5 and later use mtfrm() when matching classed vectors. Keep ordinary
@@ -350,8 +356,8 @@ mtfrm.dta_temporal <- function(x) {
 .dta_unique_result <- function(x) {
     if (is.null(x)) return(NULL)
     kind <- .dta_identity_kind(x, "x")
-    key <- .dta_identity_key(x, kind, "x")
-    .dta_slice_set_result(x, which(!duplicated(key)))
+    key <- .dta_identity_key(x, kind, "x", native = TRUE)
+    .dta_slice_set_result(x, which(!.dta_identity_duplicated_keys(key)))
 }
 
 .dta_slice_set_result <- function(x, locations) {
@@ -384,7 +390,30 @@ mtfrm.dta_temporal <- function(x) {
     ), call. = FALSE)
 }
 
-.dta_identity_key <- function(x, kind, arg) {
+.dta_identity_match_keys <- function(x, table, nomatch = NA_integer_,
+                                     incomparables = NULL) {
+    if (is.raw(x)) {
+        return(.Call(C_dtatools_numeric_match_keys,
+                     x, table, nomatch, incomparables))
+    }
+    base::match(x, table, nomatch = nomatch, incomparables = incomparables)
+}
+
+.dta_identity_duplicated_keys <- function(x) {
+    if (is.raw(x)) return(.Call(C_dtatools_numeric_duplicated_keys, x))
+    duplicated(x)
+}
+
+.dta_identity_native_class <- function(x) {
+    !isS4(x) && all(class(x) %in% c(
+        "NULL", "logical", "integer", "numeric", "double", "dta_numeric",
+        "dta_byte", "dta_int", "dta_long", "dta_float", "dta_double",
+        "haven_labelled", "vctrs_vctr", "dta_temporal", "dta_date",
+        "dta_datetime", "Date", "POSIXct", "POSIXt"
+    ))
+}
+
+.dta_identity_key <- function(x, kind, arg, native = FALSE) {
     if (identical(kind, "string")) {
         if (anyNA(x)) {
             stop(sprintf(
@@ -395,6 +424,11 @@ mtfrm.dta_temporal <- function(x) {
         return(paste0("s:", enc2utf8(as.character(x))))
     }
     values <- as.double(x)
+    if (native && typeof(values) %in% c("double", "integer") &&
+        .dta_identity_native_class(x)) {
+        native_key <- .Call(C_dtatools_numeric_identity_key, values, arg)
+        if (!is.null(native_key)) return(native_key)
+    }
     codes <- .tab_missing_codes(values)
     valid_missing <- !is.na(codes) &
         (codes == 0L | (codes >= utf8ToInt("a") & codes <= utf8ToInt("z")))
@@ -418,5 +452,6 @@ mtfrm.dta_temporal <- function(x) {
     values[observed & values == 0] <- 0
     key[observed] <- paste0("n:", sprintf("%a", values[observed]))
     key[!observed] <- paste0("m:", codes[!observed])
+    if (native) return(.Call(C_dtatools_numeric_identity_key, key, arg))
     key
 }

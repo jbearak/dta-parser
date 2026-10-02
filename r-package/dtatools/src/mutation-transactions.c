@@ -2752,13 +2752,44 @@ SEXP C_dtatools_metadata_proxy_aggregate_mask(SEXP enabled) {
 SEXP C_dtatools_has_tagged_na(SEXP value) {
     if (TYPEOF(value) != REALSXP) return Rf_ScalarLogical(0);
     R_xlen_t length = XLENGTH(value);
+    numeric_data captured;
+    SEXP root = PROTECT(numeric_missing_mask_capture(value, &captured));
+    if (root != R_NilValue) {
+        numeric_reader reader = {value, &captured, NULL, NULL, REALSXP};
+        int codes[4096];
+        int found = 0;
+        for (R_xlen_t start = 0; start < length && !found; ) {
+            R_CheckUserInterrupt();
+            R_xlen_t count = length - start < 4096 ? length - start : 4096;
+            numeric_reader_region(&reader, start, count, NULL, codes);
+            for (R_xlen_t i = 0; i < count; i++) found |= codes[i] >= 'a' && codes[i] <= 'z';
+            start += count;
+        }
+        UNPROTECT(1);
+        return Rf_ScalarLogical(found);
+    }
+    const double *plain = !ALTREP(value) ? REAL(value) : NULL;
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
-        if (is_tagged_na_value(REAL_ELT(value, index))) {
+        if (is_tagged_na_value(plain == NULL ? REAL_ELT(value, index) : plain[index])) {
+            UNPROTECT(1);
             return Rf_ScalarLogical(1);
         }
     }
+    UNPROTECT(1);
     return Rf_ScalarLogical(0);
+}
+
+SEXP C_dtatools_numeric_any_na(SEXP value, SEXP recursive) {
+    /* Preserve base's coercion/error behavior for unusual recursive values.
+       Only immutable, unmaterialized compact payloads have an exact count. */
+    if (TYPEOF(recursive) != LGLSXP || ALTREP(recursive) ||
+        XLENGTH(recursive) != 1 || LOGICAL(recursive)[0] == NA_LOGICAL)
+        return R_NilValue;
+    numeric_data *storage = unmaterialized_numeric_read_storage(value);
+    if (storage == NULL) return R_NilValue;
+    int missing = storage->missing_count != 0;
+    return Rf_ScalarLogical(missing);
 }
 
 SEXP C_dtatools_tagged_missing(SEXP tag) {
@@ -2804,10 +2835,13 @@ SEXP C_dtatools_is_tagged_missing(SEXP value, SEXP tag) {
     }
 
     R_xlen_t length = XLENGTH(value);
+    numeric_data captured;
+    SEXP root = PROTECT(TYPEOF(value) == REALSXP
+        ? numeric_missing_mask_capture(value, &captured) : R_NilValue);
     SEXP result = PROTECT(Rf_allocVector(LGLSXP, length));
     int *output = LOGICAL(result);
     if (TYPEOF(value) == REALSXP) {
-        numeric_data *storage = unmaterialized_numeric_read_storage(value);
+        numeric_data *storage = root == R_NilValue ? NULL : &captured;
         const double *input = storage == NULL
             ? (const double *) DATAPTR_OR_NULL(value) : NULL;
         if (storage != NULL) {
@@ -2816,13 +2850,13 @@ SEXP C_dtatools_is_tagged_missing(SEXP value, SEXP tag) {
                     "dtatools numeric storage length does not match vector length"
                 );
             }
+            numeric_reader reader = {value, storage, NULL, NULL, REALSXP};
+            numeric_reader_region(&reader, 0, length, NULL, output);
             for (R_xlen_t index = 0; index < length; index++) {
                 if ((index & 16383) == 0) R_CheckUserInterrupt();
-                int offset = numeric_missing_offset_at(
-                    storage, (size_t) index
-                );
-                output[index] = offset >= 1 && offset <= 26 &&
-                    (match_any || selected[offset - 1]);
+                int tag_code = output[index];
+                output[index] = tag_code >= 'a' && tag_code <= 'z' &&
+                    (match_any || selected[tag_code - 'a']);
             }
         } else if (input != NULL) {
             for (R_xlen_t index = 0; index < length; index++) {
@@ -2846,7 +2880,7 @@ SEXP C_dtatools_is_tagged_missing(SEXP value, SEXP tag) {
         }
     }
     copy_shape_attributes(result, value);
-    UNPROTECT(1);
+    UNPROTECT(2);
     return result;
 }
 
@@ -3065,6 +3099,9 @@ SEXP C_dtatools_missing_tag(SEXP value) {
     }
 
     R_xlen_t length = XLENGTH(value);
+    numeric_data captured;
+    SEXP root = PROTECT(TYPEOF(value) == REALSXP
+        ? numeric_missing_mask_capture(value, &captured) : R_NilValue);
     SEXP result = PROTECT(Rf_allocVector(STRSXP, length));
     if (TYPEOF(value) == REALSXP) {
         SEXP tag_names = PROTECT(Rf_allocVector(STRSXP, 26));
@@ -3073,7 +3110,7 @@ SEXP C_dtatools_missing_tag(SEXP value) {
             SET_STRING_ELT(tag_names, index, Rf_mkCharLen(&text, 1));
         }
 
-        numeric_data *storage = unmaterialized_numeric_read_storage(value);
+        numeric_data *storage = root == R_NilValue ? NULL : &captured;
         const double *input = storage == NULL
             ? (const double *) DATAPTR_OR_NULL(value) : NULL;
         if (storage != NULL) {
@@ -3082,16 +3119,18 @@ SEXP C_dtatools_missing_tag(SEXP value) {
                     "dtatools numeric storage length does not match vector length"
                 );
             }
-            for (R_xlen_t index = 0; index < length; index++) {
-                if ((index & 16383) == 0) R_CheckUserInterrupt();
-                int offset = numeric_missing_offset_at(
-                    storage, (size_t) index
-                );
-                SET_STRING_ELT(
-                    result, index,
-                    offset >= 1 && offset <= 26
-                        ? STRING_ELT(tag_names, offset - 1) : NA_STRING
-                );
+            numeric_reader reader = {value, storage, NULL, NULL, REALSXP};
+            int codes[4096];
+            for (R_xlen_t start = 0; start < length; ) {
+                R_CheckUserInterrupt();
+                R_xlen_t count = length - start < 4096 ? length - start : 4096;
+                numeric_reader_region(&reader, start, count, NULL, codes);
+                for (R_xlen_t i = 0; i < count; i++) {
+                    int code = codes[i];
+                    SET_STRING_ELT(result, start + i, code >= 'a' && code <= 'z'
+                        ? STRING_ELT(tag_names, code - 'a') : NA_STRING);
+                }
+                start += count;
             }
         } else if (input != NULL) {
             for (R_xlen_t index = 0; index < length; index++) {
@@ -3120,7 +3159,7 @@ SEXP C_dtatools_missing_tag(SEXP value) {
         }
     }
     copy_shape_attributes(result, value);
-    UNPROTECT(1);
+    UNPROTECT(2);
     return result;
 }
 
@@ -3511,13 +3550,24 @@ SEXP C_dtatools_dta_compare(
 SEXP C_dtatools_missing_codes(SEXP value) {
     /* NA means observed, zero is system missing, 1--255 is the tagged-NA
        payload byte, and 256 is an ordinary R NaN. */
+    numeric_data captured;
+    SEXP compact_root = PROTECT(TYPEOF(value) == REALSXP
+        ? numeric_missing_mask_capture(value, &captured) : R_NilValue);
     SEXP payload = PROTECT(owned_real(value) ? owned_values(value) : value);
     R_xlen_t length = XLENGTH(payload);
     SEXP result = PROTECT(Rf_allocVector(INTSXP, length));
     int *output = INTEGER(result);
 
-    if (TYPEOF(value) == REALSXP) {
-        const double *values = owned_real(value) ? (const double *) DATAPTR_RO(payload) : NULL;
+    if (compact_root != R_NilValue) {
+        numeric_reader reader = {value, &captured, NULL, NULL, REALSXP};
+        numeric_reader_region(&reader, 0, length, NULL, output);
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            if (output[index] < 0) output[index] = NA_INTEGER;
+        }
+    } else if (TYPEOF(value) == REALSXP) {
+        const double *values = owned_real(value) ? (const double *) DATAPTR_RO(payload)
+            : (!ALTREP(value) ? REAL(value) : NULL);
         for (R_xlen_t index = 0; index < length; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             double element = values != NULL ? values[index] : REAL_ELT(value, index);
@@ -3542,7 +3592,7 @@ SEXP C_dtatools_missing_codes(SEXP value) {
         Rf_error("missing-code classification requires a numeric vector");
     }
 
-    UNPROTECT(2);
+    UNPROTECT(3);
     return result;
 }
 
