@@ -3,6 +3,7 @@
 import argparse
 from collections import Counter
 import csv
+from decimal import Decimal, InvalidOperation
 import difflib
 import importlib.util
 import itertools
@@ -28,6 +29,17 @@ EXPECTED = {
 }
 
 
+def exact_nonnegative_integer(text):
+    try:
+        value = Decimal(text)
+    except InvalidOperation as error:
+        raise RuntimeError('invalid integer field') from error
+    if (not value.is_finite() or value < 0 or value > 2**63 - 1 or
+            value != value.to_integral_value()):
+        raise RuntimeError('integer field must be finite, nonnegative and exact')
+    return int(value)
+
+
 def validate_round(rows, round_number, variant):
     observed = Counter(tuple(row[k] for k in FIELDS) for row in rows)
     if observed != Counter({key: 1 for key in EXPECTED}):
@@ -39,11 +51,11 @@ def validate_round(rows, round_number, variant):
                for k in ('cpu_seconds', 'elapsed_seconds')):
             raise RuntimeError('invalid retained interval')
         key_bytes = 8 * int(row['n']) * int(row['key_count'])
-        if int(row['key_cache_bytes']) != key_bytes:
+        if exact_nonnegative_integer(row['key_cache_bytes']) != key_bytes:
             raise RuntimeError('incorrect key-cache accounting')
-        if variant == 'candidate' and (float(row['scalar_values']) != 0 or
-                float(row['prepared_values']) != key_bytes / 8 or
-                float(row['prepared_bytes']) != key_bytes):
+        if variant == 'candidate' and (exact_nonnegative_integer(row['scalar_values']) != 0 or
+                exact_nonnegative_integer(row['prepared_values']) != key_bytes // 8 or
+                exact_nonnegative_integer(row['prepared_bytes']) != key_bytes):
             raise RuntimeError('candidate did not prepare exactly one value per row and key')
     for case in {tuple(row[k] for k in FIELDS[:-1]) for row in rows}:
         orders = [int(row['order']) for row in rows if tuple(row[k] for k in FIELDS[:-1]) == case]
@@ -146,7 +158,7 @@ def main():
                 row[variant + '_' + metric] = statistics.median(float(r[metric]) / int(r['iterations']) for r in selected)
             row[variant + '_peak_vcell_bytes'] = statistics.median(float(r['peak_vcell_bytes']) for r in selected)
         row['cpu_speedup'] = row['baseline_cpu_seconds'] / row['candidate_cpu_seconds']
-        row['key_cache_bytes'] = int(observed[0]['key_cache_bytes'])
+        row['key_cache_bytes'] = exact_nonnegative_integer(observed[0]['key_cache_bytes'])
         summary.append(row)
     NATIVE.write_csv(out / 'summary.csv', summary)
     NATIVE.write_json(out / 'completion.json', dict(observations=len(rows), exact_results=True,

@@ -28,6 +28,19 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(len(rows), 60)
         RUN.validate_round(rows, 1, 'candidate')
 
+    def test_r_scientific_notation_preserves_exact_byte_counts(self):
+        rows = observations()
+        for row in rows:
+            row['key_cache_bytes'] = format(float(row['key_cache_bytes']), '.12e')
+        RUN.validate_round(rows, 1, 'candidate')
+
+    def test_integer_parser_rejects_inexact_and_nonfinite_values(self):
+        for text in ('800000.00000000000000000001', '-1', '-0.1', 'NaN',
+                     'Infinity', '-Infinity', '1e1000000', 'not a number'):
+            with self.assertRaises(RuntimeError):
+                RUN.exact_nonnegative_integer(text)
+        self.assertEqual(RUN.exact_nonnegative_integer('8e+05'), 800000)
+
     def test_missing_and_duplicate_cases_are_rejected(self):
         rows = observations()
         for broken in (rows[:-1], rows[:-1] + [rows[0]]):
