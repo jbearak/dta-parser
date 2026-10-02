@@ -363,15 +363,12 @@ test_that("float span arithmetic matches eager IEEE and reserved-code decoding",
     modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
     legacy <- tempfile(fileext = ".dta")
     withr::defer(unlink(c(modern, legacy)))
-    for (index in seq_along(bits)) {
-        patch_numeric_fixture_row(modern, index - 1L,
-                                  list(x_float = raw_bits(bits[[index]])))
-    }
     compare <- function(path, column, count) {
         compact <- read_dta(path, col_select = tidyselect::all_of(column), n_max = count)[[column]]
         plain <- as.double(read_dta(path, col_select = tidyselect::all_of(column), n_max = count,
                                    use_numeric_altrep = FALSE)[[column]])
         for (x in list(compact, .Call(C_dtatools_owned_numeric_freeze, compact, 3L))) {
+            before <- writeBin(as.double(x), raw(), size = 8L)
             one <- dta_float(rep(1, count))
             for (op in c("+", "-", "*", "/")) {
                 operation <- getExportedValue("base", op)
@@ -383,10 +380,55 @@ test_that("float span arithmetic matches eager IEEE and reserved-code decoding",
                 .native_arithmetic_expect(operation(x, one),
                     .native_arithmetic_reference(op, plain, rep(1, count), "float"))
             }
+            # A vector of ones declines the scalar scaling route. Exercise
+            # that route explicitly, including provisional float overflow
+            # that must be recomputed in double after whole-column promotion.
+            expect_scaled <- function(op, left, right, left_values, right_values) {
+                .Call(C_dtatools_numeric_entry_stats, TRUE)
+                actual <- getExportedValue("base", op)(left, right)
+                .native_arithmetic_expect_entry()
+                expected <- .native_arithmetic_reference(op, left_values, right_values, "float")
+                .native_arithmetic_expect(actual, expected)
+                expected_missing <- is.na(as.double(expected))
+                expect_identical(is.na(actual), expected_missing)
+                expect_identical(anyNA(actual), any(expected_missing))
+                if (any(expected_missing)) {
+                    # Clearing the actual missing rows must also clear its
+                    # cached count. An overcount can survive correct bytes.
+                    data <- dibble(x = actual)
+                    replace_values(data, x = 0, where = which(expected_missing))
+                    cleared <- as.double(expected)
+                    cleared[expected_missing] <- 0
+                    expect_false(anyNA(data$x))
+                    expect_identical(as.double(data$x), cleared)
+                }
+                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+                expect_false(.Call(C_dtatools_is_materialized_numeric_altrep, x))
+            }
+            for (scalar in c(-2, 2, -2^30, 2^30)) {
+                expect_scaled("*", x, scalar, plain, scalar)
+                expect_scaled("*", scalar, x, scalar, plain)
+                expect_scaled("/", x, scalar, plain, scalar)
+            }
+            expect_scaled("+", x, x, plain, plain)
+            expect_identical(writeBin(as.double(x), raw(), size = 8L), before)
             expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
         }
     }
-    compare(modern, "x_float", length(bits))
+    # Every modern reserved code is missing, but its immediate bit neighbors
+    # are observed. The next aligned code after .z is also observed.
+    reserved <- 0x7f000000 + (0:26) * 0x800
+    modern_bits <- unique(c(bits, as.vector(outer(reserved, c(-1, 0, 1), "+")),
+                            0x7f00d800))
+    # Keep each patch within the fixture's 27 known rows, and qualify its
+    # partial final batch independently so no stale patched row is inspected.
+    for (batch in split(modern_bits, ceiling(seq_along(modern_bits) / 27L))) {
+        for (index in seq_along(batch)) {
+            patch_numeric_fixture_row(modern, index - 1L,
+                                      list(x_float = raw_bits(batch[[index]])))
+        }
+        compare(modern, "x_float", length(batch))
+    }
 
     original <- readBin(fixture("synthetic_v111.dta"), "raw",
                         n = file.info(fixture("synthetic_v111.dta"))[["size"]])

@@ -49,9 +49,14 @@ log, installed package inventory, and built/installed DLL equality before
 and after timing. It also records fixture and controller hashes and the exact
 source delta. An unchanged DLL beside edited sources is insufficient.
 
+Add `--arithmetic-only` to measure just `x * 2`, `x / 2` and `x + x` across
+the same four widths, two file formats and three representations. This mode
+checks 72 observations per build per round and omits the late-missing control.
+
 ## Measurement and checks
 
-Each round uses a fresh R process per build and checks 248 unique observations.
+Each round uses a fresh R process per build and checks 248 unique observations
+in the full comparison, or 72 in arithmetic-only mode.
 The round count must be a positive multiple of six, so build and arithmetic
 orders are balanced. The protocol identifies the baseline by its receipt's
 Git commit.

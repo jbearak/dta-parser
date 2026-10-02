@@ -1,6 +1,7 @@
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 4L)
-    stop('usage: worker.R LIBRARY FIXTURES ROUND OUTPUT.csv')
+if (!length(args) %in% c(4L, 5L) || (length(args) == 5L && args[[5L]] != 'arithmetic'))
+    stop('usage: worker.R LIBRARY FIXTURES ROUND OUTPUT.csv [arithmetic]')
+arithmetic_only <- length(args) == 5L
 library_path <- normalizePath(args[[1L]], mustWork = TRUE)
 fixtures <- normalizePath(args[[2L]], mustWork = TRUE)
 round <- as.integer(args[[3L]])
@@ -71,6 +72,7 @@ operations <- list(
     divide = function(x) x / 2,
     add = function(x) x + x
 )
+if (arithmetic_only) operations <- operations[c('multiply', 'divide', 'add')]
 iterations <- c(is_tagged_missing = 10L, missing_tag = 10L, anyNA = 10000L,
                 dta_total = 10L, dta_row_total = 5L, mean = 10L, range = 10L,
                 summ = 3L, dta_match = 2L, dta_in = 2L,
@@ -191,6 +193,7 @@ for (index in seq_along(columns)) {
 # A separate deterministic late-missing control exposes the cached-count
 # benefit; the file fixture above has an early missing value. These sources
 # are constructed here, and the retained variant uses the package chunk owner.
+if (!arithmetic_only) {
 late <- rep(1, 1000000L)
 late[length(late)] <- NA_real_
 constructors <- list(byte=dta_byte, int=dta_int, long=dta_long, float=dta_float)
@@ -228,6 +231,7 @@ for (width in names(constructors)) for (format in c('constructed', 'retained')) 
     }
     stopifnot(identical(values_hash(compact), expected_input),
               identical(values_hash(late), expected_input))
+}
 }
 result <- do.call(rbind, rows)
 dir.create(dirname(args[[4L]]), recursive = TRUE, showWarnings = FALSE)

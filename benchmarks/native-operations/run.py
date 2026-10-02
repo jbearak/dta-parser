@@ -38,10 +38,10 @@ EXPECTED_CASES = {
 }
 
 
-def validate_round(rows, round_number):
+def validate_round(rows, round_number, expected_cases=EXPECTED_CASES):
     fields = ('format', 'width', 'operation', 'representation')
     counts = Counter(tuple(row[key] for key in fields) for row in rows)
-    if counts != Counter({key: 1 for key in EXPECTED_CASES}):
+    if counts != Counter({key: 1 for key in expected_cases}):
         raise RuntimeError('worker results do not contain the complete unique case matrix')
     if any(int(row['round']) != round_number or int(row['iterations']) <= 0
            or int(row['rows']) != 1000000 for row in rows):
@@ -84,6 +84,8 @@ def main():
     parser.add_argument('--fixtures', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--rounds', type=int, default=6)
+    parser.add_argument('--arithmetic-only', action='store_true',
+                        help='Measure only multiply, divide and column addition')
     args = parser.parse_args()
     if args.rounds < 6 or args.rounds % 6:
         parser.error('rounds must be a positive multiple of six to balance build and arithmetic order')
@@ -92,6 +94,8 @@ def main():
     builds = {'baseline': args.baseline.resolve(), 'candidate': args.candidate.resolve()}
     fixtures = args.fixtures.resolve()
     worker = HERE / 'worker.R'
+    expected_cases = {case for case in EXPECTED_CASES
+                      if not args.arithmetic_only or case[2] in ('multiply', 'divide', 'add')}
     before = {name: inventory(build, name) for name, build in builds.items()}
     inputs = {name: digest(fixtures / ('compact.' + name)) for name in ('dta', 'arrow', 'rds')}
     controllers = {p.name: digest(p) for p in (Path(__file__).resolve(), worker)}
@@ -112,13 +116,14 @@ def main():
     (out / 'source.patch').write_text(''.join(patch))
     write_json(out / 'protocol.json', {
         'rounds': args.rounds,
+        'operations': ['multiply', 'divide', 'add'] if args.arithmetic_only else list(OPERATIONS) + ['anyNA_late'],
         'baseline': 'Git commit ' + before['baseline']['receipt']['base_commit'],
         'baseline_commit': before['baseline']['receipt']['base_commit'],
         'candidate_commit': before['candidate']['receipt']['base_commit'],
         'interval': 'Preloaded public operation repetitions; explicit GC, reader calls, source construction, qualification and result hashing excluded; automatic GC and result allocation included.',
         'order': 'Alternate build order each round; fixed case order. Two-representation order alternates; arithmetic rotates and reverses compact/typed-double/ordinary order in balanced six-round cycles.',
         'repetitions': 'Untimed calibration runs for at least 20 ms and chooses a fixed count targeting at least 150 ms per retained interval; initial counts can exceed this target for slow operations.',
-        'synthetic_control': 'anyNA_late uses one million ones with only the final row missing, constructed and retained in 8192-row chunks.',
+        'synthetic_control': None if args.arithmetic_only else 'anyNA_late uses one million ones with only the final row missing, constructed and retained in 8192-row chunks.',
         'source': 'Source delta and SHA256 inventories of source, installed R code, DLLs, fixtures and controllers retained.',
         'limits': 'One host, deterministic million-row fixtures, warm repeated operations. Arithmetic adds dta_double controls to distinguish typed result policy from bare arithmetic. Does not measure ingestion or promise ordinary-double parity for every operation.',
     })
@@ -130,11 +135,13 @@ def main():
             log = out / f'{round_number:02}-{variant}.log'
             command = ['Rscript', '--vanilla', str(worker), str(builds[variant] / 'library'),
                        str(fixtures), str(round_number), str(result)]
+            if args.arithmetic_only:
+                command.append('arithmetic')
             with log.open('w') as stream:
                 subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, check=True)
             with result.open(newline='') as stream:
                 observations = list(csv.DictReader(stream))
-            validate_round(observations, round_number)
+            validate_round(observations, round_number, expected_cases)
             rows.extend(dict(variant=variant, **row) for row in observations)
             print(f'Completed round {round_number}: {variant}', flush=True)
     after = {name: inventory(build, name) for name, build in builds.items()}

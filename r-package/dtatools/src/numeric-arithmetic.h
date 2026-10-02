@@ -102,10 +102,23 @@ typedef struct {
 /* The caller protects each returned owner until both scan and encode finish.
    A descriptor captured here survives a finalizer materializing its public
    input during a subsequent output allocation. */
-static SEXP arithmetic_capture(SEXP value, arithmetic_operand *operand) {
+static SEXP arithmetic_capture(SEXP value, arithmetic_operand *operand,
+                                SEXP claims, int slot) {
     operand->length = XLENGTH(value);
     SEXP root = PROTECT(numeric_missing_mask_capture(value, &operand->storage));
     if (root != R_NilValue) {
+        if (!numeric_payload_retained(&operand->storage)) {
+            SEXP external = R_altrep_data1(numeric_base_source(value));
+            SEXP previous = R_ExternalPtrTag(external);
+            if (previous != claims) {
+                /* No allocation separates the plain snapshot from this
+                   claim. A reentrant patch must detach before changing the
+                   bytes on which promotion preflight will depend. */
+                SET_VECTOR_ELT(claims, slot, external);
+                SET_VECTOR_ELT(claims, slot + 1, previous);
+                compact_payload_claim(external, claims);
+            }
+        }
         operand->reader = (numeric_reader) {
             value, &operand->storage, NULL, NULL, REALSXP
         };
@@ -531,7 +544,39 @@ static void arithmetic_run(
 #undef ARITHMETIC_TARGETS
 #undef ARITHMETIC_OPERATORS
 
+/* Private, one-use correctness checkpoint. Ordinary R defers finalizers at
+   native allocations; the GC mode exercises immediate-finalizer builds and
+   the failure mode checks restoration when production exits nonlocally. */
+static int arithmetic_checkpoint = 0;
+static SEXP arithmetic_checkpoint_token = NULL;
+
+SEXP C_dtatools_test_arithmetic_checkpoint(SEXP mode, SEXP token) {
+    if (TYPEOF(mode) != INTSXP || ALTREP(mode) || ANY_ATTRIB(mode) ||
+        XLENGTH(mode) != 1 || INTEGER(mode)[0] < 0 || INTEGER(mode)[0] > 2)
+        Rf_error("arithmetic checkpoint mode must be 0, 1, or 2");
+    if ((token != R_NilValue && TYPEOF(token) != ENVSXP) ||
+        (INTEGER(mode)[0] == 0 && token != R_NilValue))
+        Rf_error("arithmetic checkpoint token must be an environment or NULL");
+    int previous = arithmetic_checkpoint;
+    if (token != R_NilValue) R_PreserveObject(token);
+    if (arithmetic_checkpoint_token != NULL)
+        R_ReleaseObject(arithmetic_checkpoint_token);
+    arithmetic_checkpoint_token = token == R_NilValue ? NULL : token;
+    arithmetic_checkpoint = INTEGER(mode)[0];
+    return Rf_ScalarInteger(previous);
+}
+
 static SEXP arithmetic_backing(R_xlen_t length, int kind) {
+    if (arithmetic_checkpoint != 0) {
+        int mode = arithmetic_checkpoint;
+        arithmetic_checkpoint = 0;
+        if (arithmetic_checkpoint_token != NULL) {
+            R_ReleaseObject(arithmetic_checkpoint_token);
+            arithmetic_checkpoint_token = NULL;
+        }
+        R_gc();
+        if (mode == 2) Rf_error("injected arithmetic checkpoint failure");
+    }
     if (kind == NUMERIC_DOUBLE) return Rf_allocVector(REALSXP, length);
     size_t width = numeric_kind_width(kind);
     if ((uint64_t) length > SIZE_MAX / width ||
@@ -548,11 +593,64 @@ static arithmetic_output arithmetic_output_create(SEXP backing, int kind) {
     };
 }
 
-static SEXP arithmetic_result(SEXP x, SEXP y, R_xlen_t length,
-                              int operation, int minimum, int *result_kind) {
+static SEXP arithmetic_adopt_backing(SEXP backing, R_xlen_t length,
+                                     int kind, size_t missing_count) {
+    SEXP result = PROTECT(kind == NUMERIC_DOUBLE
+        ? owned_adopt_real(backing)
+        : numeric_from_backing_managed(backing, (size_t) length, kind, 0, 119,
+                                       missing_count));
+    if (kind == NUMERIC_DOUBLE) {
+        owned_flags(result)[OWNED_NO_NA] = missing_count == 0;
+        owned_flags(result)[OWNED_FINITE_DOUBLE] = missing_count == 0;
+    }
+    UNPROTECT(1);
+    return result;
+}
+
+#include "numeric-arithmetic-scale.h"
+#include "numeric-arithmetic-integer.h"
+
+typedef struct {
+    SEXP x;
+    SEXP y;
+    SEXP claims;
+    R_xlen_t length;
+    int operation;
+    int minimum;
+    int *result_kind;
+} arithmetic_result_context;
+
+static void arithmetic_release_claims(void *raw) {
+    arithmetic_result_context *context = raw;
+    for (int slot = 2; slot >= 0; slot -= 2) {
+        SEXP external = VECTOR_ELT(context->claims, slot);
+        if (external != R_NilValue &&
+            R_ExternalPtrTag(external) == context->claims) {
+            /* New aliases replace our claim with the shared marker. Never
+               erase their ownership change when restoring the entry tag. */
+            R_SetExternalPtrTag(external, VECTOR_ELT(context->claims, slot + 1));
+        }
+    }
+}
+
+static SEXP arithmetic_result_body(void *raw) {
+    arithmetic_result_context *context = raw;
+    SEXP x = context->x, y = context->y;
+    R_xlen_t length = context->length;
+    int operation = context->operation, minimum = context->minimum;
+    int *result_kind = context->result_kind;
     arithmetic_operand left, right;
-    PROTECT(arithmetic_capture(x, &left));
-    PROTECT(arithmetic_capture(y, &right));
+    PROTECT(arithmetic_capture(x, &left, context->claims, 0));
+    PROTECT(arithmetic_capture(y, &right, context->claims, 2));
+    SEXP specialized = arithmetic_scale_result(
+        &left, &right, length, operation, minimum, result_kind);
+    if (specialized == NULL)
+        specialized = arithmetic_integer_result(
+            &left, &right, length, operation, minimum, result_kind);
+    if (specialized != NULL) {
+        UNPROTECT(2);
+        return specialized;
+    }
     PROTECT_INDEX backing_index;
     SEXP backing;
     PROTECT_WITH_INDEX(backing = arithmetic_backing(length, minimum), &backing_index);
@@ -569,16 +667,23 @@ static SEXP arithmetic_result(SEXP x, SEXP y, R_xlen_t length,
         output.trusted = 1;
         arithmetic_run(&left, &right, length, operation, &output);
     }
-    SEXP result = PROTECT(kind == NUMERIC_DOUBLE
-        ? owned_adopt_real(backing)
-        : numeric_from_backing(backing, (size_t) length, kind, 0, 119,
-                               output.missing_count));
-    if (kind == NUMERIC_DOUBLE) {
-        owned_flags(result)[OWNED_NO_NA] = output.missing_count == 0;
-        owned_flags(result)[OWNED_FINITE_DOUBLE] = output.missing_count == 0;
-    }
+    SEXP result = PROTECT(arithmetic_adopt_backing(
+        backing, length, kind, output.missing_count));
     *result_kind = kind;
     UNPROTECT(4);
+    return result;
+}
+
+static SEXP arithmetic_result(SEXP x, SEXP y, R_xlen_t length,
+                              int operation, int minimum, int *result_kind) {
+    SEXP claims = PROTECT(Rf_allocVector(VECSXP, 4));
+    arithmetic_result_context context = {
+        x, y, claims, length, operation, minimum, result_kind
+    };
+    SEXP result = R_ExecWithCleanup(
+        arithmetic_result_body, &context, arithmetic_release_claims, &context
+    );
+    UNPROTECT(1);
     return result;
 }
 

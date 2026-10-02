@@ -156,13 +156,35 @@ typedef struct {
 } numeric_gather_column;
 
 
+/* Arithmetic can keep its plain descriptor on R's heap along with its raw
+   bytes. The private attribute is part of that record's ownership invariant;
+   the protected slot and tag retain their existing payload/alias meanings. */
+static SEXP numeric_managed_descriptor_symbol = NULL;
+
+static numeric_data *numeric_managed_descriptor_pointer(SEXP descriptor) {
+    const size_t alignment = _Alignof(numeric_data);
+    uintptr_t start = (uintptr_t) RAW(descriptor);
+    size_t padding = (alignment - start % alignment) % alignment;
+    return (numeric_data *) (void *) (RAW(descriptor) + padding);
+}
+
 void numeric_finalize(SEXP external) {
     void *data = R_ExternalPtrAddr(external);
+    SEXP descriptor = numeric_managed_descriptor_symbol == NULL
+        ? R_NilValue : Rf_getAttrib(external, numeric_managed_descriptor_symbol);
+    if (descriptor != R_NilValue &&
+        (TYPEOF(descriptor) != RAWSXP || ALTREP(descriptor) ||
+         XLENGTH(descriptor) != sizeof(numeric_data) + _Alignof(numeric_data) - 1 ||
+         (data != NULL && data != numeric_managed_descriptor_pointer(descriptor)))) {
+        Rf_error("invalid R-managed compact numeric descriptor");
+    }
     if (data != NULL) {
         R_ClearExternalPtr(external);
-        dtatools_numeric_free(data);
+        if (descriptor == R_NilValue) dtatools_numeric_free(data);
     }
     R_SetExternalPtrProtected(external, R_NilValue);
+    if (descriptor != R_NilValue)
+        Rf_setAttrib(external, numeric_managed_descriptor_symbol, R_NilValue);
 }
 
 numeric_data *numeric_read_storage(SEXP value) {
@@ -2132,6 +2154,39 @@ SEXP numeric_from_backing(
         dtatools_numeric_class, external, R_NilValue
     ));
     UNPROTECT(3);
+    return result;
+}
+
+/* Adopt only freshly produced plain bytes. A native-owner descriptor still
+   needs its Rust destructor. This descriptor and its payload are both R-owned,
+   so registering a finalizer would unnecessarily keep the payload alive for
+   an extra collection. Serialization continues to emit ordinary raw bytes. */
+static SEXP numeric_from_backing_managed(
+    SEXP backing, size_t length, int kind, int temporal,
+    int format_version, size_t missing_count
+) {
+    PROTECT(backing);
+    if (numeric_managed_descriptor_symbol == NULL)
+        numeric_managed_descriptor_symbol = Rf_install("dtatools.numeric_descriptor");
+    SEXP descriptor = PROTECT(Rf_allocVector(
+        RAWSXP, sizeof(numeric_data) + _Alignof(numeric_data) - 1
+    ));
+    numeric_data *data = numeric_managed_descriptor_pointer(descriptor);
+    numeric_data initial = {
+        .values = RAW(backing), .length = length, .kind = kind,
+        .temporal = temporal, .format_version = format_version,
+        .missing_count = missing_count, .native_owner = NULL,
+        .scalar_values = NULL, .scalar_start = 0, .scalar_end = 0
+    };
+    memcpy(data, &initial, sizeof(initial));
+    SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
+    Rf_setAttrib(external, numeric_managed_descriptor_symbol, descriptor);
+    R_SetExternalPtrAddr(external, data);
+    if (missing_count == SIZE_MAX) data->missing_count = numeric_count_missing(data);
+    SEXP result = PROTECT(R_new_altrep(
+        dtatools_numeric_class, external, R_NilValue
+    ));
+    UNPROTECT(4);
     return result;
 }
 
