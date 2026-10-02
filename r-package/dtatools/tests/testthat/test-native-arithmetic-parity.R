@@ -301,3 +301,81 @@ test_that("early long promotion still counts missing rows in later chunks", {
         }
     }
 })
+
+test_that("general arithmetic keeps mixed physical sources and scalar directions exact", {
+    .arithmetic_parity_enable()
+    check <- function(op, x, y, minimum, info) {
+        operation <- getExportedValue("base", op)
+        arguments <- vctrs::vec_recycle_common(as.double(x), as.double(y))
+        values <- suppressWarnings(operation(arguments[[1L]], arguments[[2L]]))
+        values[is.na(arguments[[1L]]) | is.na(arguments[[2L]])] <- NA_real_
+        expected <- dtatools:::.dta_computed(values, minimum)
+        before <- lapply(list(x, y), .arithmetic_parity_bytes)
+        .Call(C_dtatools_numeric_entry_stats, TRUE)
+        actual <- operation(x, y)
+        expect_identical(.Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]],
+            if (.dtatools_numeric_entry_expected("scalar")) 1 else 0, info = info)
+        expect_identical(dta_storage_type(actual), dta_storage_type(expected), info = info)
+        expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected), info = info)
+        expect_identical(is.na(actual), is.na(as.double(expected)), info = info)
+        expect_identical(anyNA(actual), anyNA(as.double(expected)), info = info)
+        for (i in 1:2) {
+            source <- list(x, y)[[i]]
+            expect_identical(.arithmetic_parity_bytes(source), before[[i]], info = info)
+            if (isTRUE(dta_storage_type(source) %in% c("byte", "int", "long", "float"))) {
+                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(source), info = info)
+                expect_false(.Call(C_dtatools_is_materialized_numeric_altrep, source), info = info)
+            }
+        }
+    }
+    values <- rep(c(-3, -1, -0, 0, 1, 7, NA_real_, tagged_missing(c("a", "z"))), length.out = 35L)
+    for (kind in c("byte", "int", "long", "float")) {
+        for (chunk in list(NULL, 7L)) {
+            x <- .arithmetic_parity_source(kind, values, chunk)
+            for (other in c("byte", "int", "long", "float", "double", "bare", "integer", "logical")) {
+                y <- switch(other,
+                    bare = rev(values) / 3,
+                    integer = rep(c(NA_integer_, -2L, 0L, 1L, 3L), length.out = length(values)),
+                    logical = rep(c(NA, FALSE, TRUE), length.out = length(values)),
+                    double = dta_double(rev(values) / 3),
+                    .arithmetic_parity_source(other, rev(values), 11L))
+                minimum <- if (other %in% c("bare", "integer", "logical")) kind else
+                    dta_storage_type(vctrs::vec_ptype2(x, y))
+                for (op in c("+", "-", "*", "/")) {
+                    info <- paste(kind, other, op, "chunk", chunk)
+                    check(op, x, y, minimum, info)
+                    check(op, y, x, minimum, paste(info, "reverse"))
+                }
+            }
+            for (scalar in c(1.01, -3.25, 1 / 3, 1e30, -0, Inf, -Inf, NA_real_, tagged_missing("z"))) {
+                for (op in c("+", "-", "*", "/")) {
+                    info <- paste(kind, "general scalar", scalar, op, chunk)
+                    check(op, x, scalar, kind, info)
+                    check(op, scalar, x, kind, paste(info, "reverse"))
+                }
+            }
+        }
+    }
+})
+
+test_that("general preflight and float promotion retain later missing rows and earlier precision", {
+    .arithmetic_parity_enable()
+    for (kind in c("byte", "int", "long", "float")) {
+        values <- rep(c(-3, -1, -0, 0, 1, 3), length.out = 32769L)
+        values[c(16384L, 16385L, 32769L)] <- c(NA_real_, tagged_missing(c("a", "z")))
+        x <- .arithmetic_parity_source(kind, values, 16384L)
+        for (scalar in c(1.01, -3.25, 1 / 3)) {
+            actual <- .arithmetic_parity_expect("*", x, scalar, kind, NULL,
+                paste("general preflight missing tail", kind, scalar))
+            expect_identical(is.na(actual), is.na(values))
+            expect_true(anyNA(actual))
+        }
+    }
+    for (position in c(1L, 16384L, 16385L, 32769L)) {
+        values <- rep(c(0.1, -0.3, 1, -0, 0), length.out = 32769L)
+        values[[position]] <- 1e38
+        x <- .arithmetic_parity_source("float", values, 16384L)
+        .arithmetic_parity_expect("*", x, 1.9, "float", "double",
+            paste("general float promotion discards rounded prefix", position))
+    }
+})
