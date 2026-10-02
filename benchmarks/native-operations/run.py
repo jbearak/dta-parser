@@ -85,8 +85,8 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--rounds', type=int, default=6)
     args = parser.parse_args()
-    if args.rounds < 2:
-        parser.error('at least two rounds are required')
+    if args.rounds < 6 or args.rounds % 6:
+        parser.error('rounds must be a positive multiple of six to balance build and arithmetic order')
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
     builds = {'baseline': args.baseline.resolve(), 'candidate': args.candidate.resolve()}
@@ -112,11 +112,11 @@ def main():
     (out / 'source.patch').write_text(''.join(patch))
     write_json(out / 'protocol.json', {
         'rounds': args.rounds,
-        'baseline': 'main after PR #283',
+        'baseline': 'Git commit ' + before['baseline']['receipt']['base_commit'],
         'baseline_commit': before['baseline']['receipt']['base_commit'],
         'candidate_commit': before['candidate']['receipt']['base_commit'],
         'interval': 'Preloaded public operation repetitions; explicit GC, reader calls, source construction, qualification and result hashing excluded; automatic GC and result allocation included.',
-        'order': 'Alternate build order each round; fixed case order. Two-representation order alternates; arithmetic rotates and reverses compact/typed-double/ordinary order across six rounds.',
+        'order': 'Alternate build order each round; fixed case order. Two-representation order alternates; arithmetic rotates and reverses compact/typed-double/ordinary order in balanced six-round cycles.',
         'repetitions': 'Untimed calibration runs for at least 20 ms and chooses a fixed count targeting at least 150 ms per retained interval; initial counts can exceed this target for slow operations.',
         'synthetic_control': 'anyNA_late uses one million ones with only the final row missing, constructed and retained in 8192-row chunks.',
         'source': 'Source delta and SHA256 inventories of source, installed R code, DLLs, fixtures and controllers retained.',

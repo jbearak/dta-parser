@@ -15728,7 +15728,7 @@
         },
         {
           "path": "tests/testthat/test-native-summary-kernels.R",
-          "sha256": "95b6b368ff289a98f604a4cdabe8747e58db94c65bc4c62c874711718681322f"
+          "sha256": "daad660c3c0f5a8f1139d7ea02959ce9f95d0a48d1b2ac69db44a97146e6059c"
         }
       ],
       "blocks": [
@@ -16117,6 +16117,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "range preserves NULL operands and nonempty all-missing silence",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
           "warnings": 0
         },
         {

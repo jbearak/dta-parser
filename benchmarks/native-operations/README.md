@@ -52,6 +52,9 @@ source delta. An unchanged DLL beside edited sources is insufficient.
 ## Measurement and checks
 
 Each round uses a fresh R process per build and checks 248 unique observations.
+The round count must be a positive multiple of six, so build and arithmetic
+orders are balanced. The protocol identifies the baseline by its receipt's
+Git commit.
 Build order alternates between rounds; case order is fixed. Two-representation
 order alternates. Arithmetic rotates and reverses its three representations
 across the six rounds. Untimed qualification

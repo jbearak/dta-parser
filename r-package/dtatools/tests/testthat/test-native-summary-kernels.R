@@ -116,6 +116,39 @@ test_that("mean and range keep fallback arguments and empty policies", {
     expect_identical(as.double(mean(dta_int(numeric()))), NA_real_)
 })
 
+test_that("range preserves NULL operands and nonempty all-missing silence", {
+    cases <- list(
+        list(function() range(dta_int(c(NA, NA)), na.rm = TRUE),
+             c(NA_real_, NA_real_), "int"),
+        list(function() range(dta_byte(NA), c(NA_real_, NaN), NULL, na.rm = TRUE),
+             c(NA_real_, NA_real_), "byte"),
+        list(function() range(dta_float(c(2.5, 3.5)), NULL, NULL, na.rm = TRUE),
+             c(2.5, 3.5), "float"),
+        list(function() range(dta_long(tagged_missing(c("a", "z"))), NULL,
+                              na.rm = TRUE),
+             c(NA_real_, NA_real_), "long")
+    )
+    for (case in cases) {
+        warnings <- character()
+        actual <- withCallingHandlers(case[[1]](), warning = function(w) {
+            warnings <<- c(warnings, conditionMessage(w))
+            invokeRestart("muffleWarning")
+        })
+        expect_identical(warnings, character())
+        expect_identical(as.double(actual), case[[2]])
+        expect_identical(dta_storage_type(actual), case[[3]])
+    }
+    warnings <- character()
+    empty <- withCallingHandlers(range(dta_int(numeric()), NULL, na.rm = TRUE),
+        warning = function(w) {
+            warnings <<- c(warnings, conditionMessage(w))
+            invokeRestart("muffleWarning")
+        })
+    expect_length(warnings, 2L)
+    expect_true(all(grepl("no non-missing", warnings)))
+    expect_identical(empty, c(Inf, -Inf))
+})
+
 test_that("fused summary moments match the previous weighted calculation", {
     samples <- list(
         list(x = c(1e16, 1, -1e16), w = c(1, 1, 1)),

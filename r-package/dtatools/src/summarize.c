@@ -249,8 +249,10 @@ SEXP C_dtatools_numeric_range(SEXP inputs, SEXP na_rm) {
         if (!summary_scan_supported(VECTOR_ELT(inputs, i))) return R_NilValue;
     }
     int nonempty = 0;
-    for (R_xlen_t i = 0; i < count; i++)
-        nonempty |= XLENGTH(VECTOR_ELT(inputs, i)) != 0;
+    for (R_xlen_t i = 0; i < count; i++) {
+        SEXP input = VECTOR_ELT(inputs, i);
+        if (input != R_NilValue) nonempty |= XLENGTH(input) != 0;
+    }
     if (!nonempty) return R_NilValue;
     SEXP roots = PROTECT(Rf_allocVector(VECSXP, count));
     numeric_reader *readers = (numeric_reader *) R_alloc(count, sizeof(numeric_reader));
@@ -266,6 +268,7 @@ SEXP C_dtatools_numeric_range(SEXP inputs, SEXP na_rm) {
     double values[SUMMARY_BLOCK];
     int codes[SUMMARY_BLOCK];
     for (R_xlen_t input = 0; input < count; input++) {
+        if (VECTOR_ELT(inputs, input) == R_NilValue) continue;
         R_xlen_t length = XLENGTH(VECTOR_ELT(inputs, input));
         for (R_xlen_t start = 0; start < length; ) {
             R_CheckUserInterrupt();
