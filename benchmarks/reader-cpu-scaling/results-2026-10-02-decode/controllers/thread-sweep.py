@@ -6,7 +6,11 @@ from pathlib import Path
 import shutil
 import statistics
 import subprocess
+import sys
 import time
+
+if sys.platform not in ('darwin', 'linux'):
+    raise RuntimeError('Unsupported wait4 RSS units')
 
 ROOT = Path(os.environ['DTATOOLS_DECODE_WORK'])
 OLD = Path(os.environ['DTATOOLS_PREVIOUS_READER_WORK'])
@@ -49,7 +53,7 @@ def invoke(kind,threads,mode,key):
     assert len(fields)==1
     if mode.startswith('qualify'):return fields[0][1]
     row=bench.validate_record(fields[0],fixture)
-    row.update(read_user=float(fields[0][2]),read_system=float(fields[0][3]),process_cpu=usage.ru_utime+usage.ru_stime,process_wall=time.monotonic()-started,maxrss_bytes=usage.ru_maxrss,log_sha256=bench.sha(log))
+    row.update(read_user=float(fields[0][2]),read_system=float(fields[0][3]),process_cpu=usage.ru_utime+usage.ru_stime,process_wall=time.monotonic()-started,maxrss_bytes=usage.ru_maxrss * (1 if sys.platform == "darwin" else 1024),log_sha256=bench.sha(log))
     return row
 
 signature=None

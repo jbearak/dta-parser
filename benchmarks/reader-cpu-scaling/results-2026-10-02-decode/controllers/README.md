@@ -1,8 +1,10 @@
 # Rerun controller templates
 
-These templates were not executed as published. Only the three local root
-assignments changed; the source map records both hashes and the measured
-provenance. A rerun records the modified controller's own hash.
+These templates were not executed as published. The three local root
+assignments changed, and the thread-sweep template now normalizes Linux peak
+RSS from KiB to bytes. The original measurements ran on macOS, where the
+value was already in bytes. The source map records both hashes and these
+changes. A rerun records the modified controller's own hash.
 
 Set these environment variables to absolute paths:
 
