@@ -56,3 +56,13 @@ with `python3 benchmarks/arrow-memory-pressure/test-run.py`.
 These are warm-cache measurements on one host. They do not establish read
 throughput for large files, cold-storage behavior, or memory bounds for every
 workload. The benchmark contains no CI timing threshold.
+
+The short [collection reproduction](results-2026-10-02/validation/repro.R)
+uses the same prepared inputs. Run it with an installed package library and
+fixture directory. It fails on the baseline with five collections and passes
+on the candidate with zero:
+
+```sh
+Rscript --vanilla benchmarks/arrow-memory-pressure/results-2026-10-02/validation/repro.R \
+  /private/tmp/pressure-candidate/library /private/tmp/pressure-inputs
+```

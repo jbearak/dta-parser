@@ -8,6 +8,7 @@
       "review_sha256": "6dcb81da956feed3403aa9b345627928e5f9db4cea895c74f83131874f167ada"
     }
   },
+  "review_reproduction": "Published reproduction fixture names now match prepare.R. Re-executed on clean fd72 baseline (red, five collections) and ab64 candidate-v1 (green, zero collections), using acceptance fixtures. Logs retained as review-red.log and review-green.log. No runtime or test-source changes.",
   "runtime_and_test_source_unchanged": true,
   "validation": "Full R suite and Rust bridge use candidate-v1. Conformance rebuilds the same runtime/test source with refreshed native-test inventory. Full source and installed inventories are retained in timing provenance."
 }

@@ -86,8 +86,19 @@
   },
   "validation/repro.R": {
     "original_sha256": "630fbae9e177f5bccbe938ac46bbb7d8cb5bc1e128252ac8086fdccbeec952ff",
-    "published_sha256": "630fbae9e177f5bccbe938ac46bbb7d8cb5bc1e128252ac8086fdccbeec952ff",
+    "publication_change": "Use tiny-double.arrow from prepare.R in place of the private diagnostic tiny.arrow filename; executable behavior otherwise unchanged.",
+    "published_sha256": "3c7158443343c86b07c107cac6a40573d191f5b4d4866d3f11c5cd368ddd6e6c",
     "source": "repro.R"
+  },
+  "validation/review-green.log": {
+    "original_sha256": "ef4684914ddbc044df10c53e1f58154f73b59419f005fc57398858e6a37caaaf",
+    "published_sha256": "ef4684914ddbc044df10c53e1f58154f73b59419f005fc57398858e6a37caaaf",
+    "source": "review-green.log"
+  },
+  "validation/review-red.log": {
+    "original_sha256": "965c23165a40608349030d5fdc806f1bce31b86fd4219cf9d16288800e7c403a",
+    "published_sha256": "965c23165a40608349030d5fdc806f1bce31b86fd4219cf9d16288800e7c403a",
+    "source": "review-red.log"
   },
   "validation/rust-tests.log": {
     "original_sha256": "7f39b52778c012c230941c9e1f3ea69e8dc2c844f617f7ed57ce708cfbdf6893",
