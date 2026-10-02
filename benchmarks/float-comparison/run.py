@@ -6,6 +6,7 @@ import csv
 import difflib
 import hashlib
 import importlib.util
+import itertools
 import json
 import math
 import os
@@ -68,6 +69,16 @@ def validate_all(rows, rounds):
             validate_round([row for row in rows if row['variant'] == variant and int(row['round']) == number], number)
     if len(rows) != 2 * rounds * len(CASES):
         raise RuntimeError('Unexpected observations outside the requested matrix')
+    expected_orders = Counter({order: rounds // 6 for order in itertools.permutations(REPRESENTATIONS)})
+    for variant in ('baseline', 'candidate'):
+        for case in {key[:-1] for key in CASES}:
+            orders = []
+            for number in range(1, rounds + 1):
+                selected = sorted((row for row in rows if row['variant'] == variant and int(row['round']) == number
+                                   and tuple(row[key] for key in FIELDS[:-1]) == case), key=lambda row: int(row['position']))
+                orders.append(tuple(row['representation'] for row in selected))
+            if Counter(orders) != expected_orders:
+                raise RuntimeError('Representation permutations are unbalanced')
     for case in CASES:
         selected = [row for row in rows if tuple(row[key] for key in FIELDS) == case]
         if len({tuple(row[key] for key in RESULT_FIELDS) for row in selected}) != 1:

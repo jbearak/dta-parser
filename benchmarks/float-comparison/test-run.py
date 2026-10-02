@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import copy
 import importlib.util
+import itertools
 from pathlib import Path
 import unittest
 
@@ -13,11 +14,12 @@ def observations():
     rows = []
     for variant in ('baseline', 'candidate'):
         for number in range(1, 7):
+            order = tuple(itertools.permutations(run.REPRESENTATIONS))[number - 1]
             for threads, missing, operation, representation in sorted(run.CASES):
                 compact = str(representation == 'compact').upper()
                 rows.append(dict(variant=variant, round=str(number), threads=threads,
                     missing=missing, operation=operation, representation=representation,
-                    position=str((number + run.REPRESENTATIONS.index(representation)) % 3 + 1),
+                    position=str(order.index(representation) + 1),
                     rows='1000000', repetitions='10', cpu='.3', wall='.3',
                     result_hash='a' * 64, input_hash='b' * 64, y_hash='c' * 64,
                     metadata_x='d' * 64, metadata_y='e' * 64,
@@ -70,6 +72,12 @@ class Protocol(unittest.TestCase):
     def test_round_positions_unique_even_when_globally_balanced(self):
         for row in self.rows:
             row['position'] = str(int(row['round']) % 3 + 1)
+        with self.assertRaises(RuntimeError):
+            run.validate_all(self.rows, 6)
+
+    def test_all_six_permutations_required(self):
+        for row in self.rows:
+            row['position'] = str((int(row['round']) + run.REPRESENTATIONS.index(row['representation'])) % 3 + 1)
         with self.assertRaises(RuntimeError):
             run.validate_all(self.rows, 6)
 
