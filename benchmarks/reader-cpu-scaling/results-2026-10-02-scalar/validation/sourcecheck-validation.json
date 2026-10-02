@@ -1,0 +1,21 @@
+{
+  "assembly_record_sha256": "3eadd4fa3a9a49f4ec0da3677bd65790ee89e92034ae75c301dd694659dac1b8",
+  "benchmarks_run": false,
+  "build_exit_code": 0,
+  "changed_files": [
+    "src/metadata-proxies.c"
+  ],
+  "incremental_patch_sha256": "155a19daa430eba16deda7d033ecfc8702cb983571a17dba973e8890817b3f45",
+  "library_sha256": "e5f0fa612da2181d2ef815020c90a03ee26bc891cbe3dbd651cfd8063205fe2c",
+  "receipt_reverified_after_tests": true,
+  "regression_csv_sha256": "7c889f7a7cc0675d14a2151f68b38fdb62c7fc011fd6ecc9b4e874c5f8882491",
+  "regression_log_sha256": "cdc3741c8547bf028d0dbf63039749e0e7d42ecd4f26a6f22d4deeac02000c13",
+  "scalar_regressions": {
+    "errors": 0,
+    "failed": 0,
+    "passed": 132,
+    "skipped": 0,
+    "tests": 4,
+    "warnings": 0
+  }
+}

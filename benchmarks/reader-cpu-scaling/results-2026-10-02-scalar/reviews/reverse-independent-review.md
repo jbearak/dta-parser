@@ -1,0 +1,13 @@
+# Independent reverse scalar cache review
+
+No correctness blocker found in reverse-incremental.patch. The change returns the complete immutable chunk containing a scalar index, then stores its base pointer and half-open bounds in the existing per-descriptor cache. It leaves the bulk region API unchanged.
+
+The Rust entry point rejects null arguments, absent owners and indices outside both descriptor and owner length. Chunk ends are validated and increasing at owner construction; empty chunks are excluded. The selected pointer already includes any Arrow slice offset. Construction checks bound byte lengths and pointer arithmetic. C checks that the result is non-null and contains the requested index before publishing the three cache fields. The scalar getter checks descriptor length before consulting the cache.
+
+The descriptor continues to retain the immutable owner and any R raw allocation. The miss path does not allocate or invoke R, so no callback can invalidate the borrowed pointer before the scalar load. Clones initialize an empty cache. Materialized handles read data2 first, and replacement of compact backing installs a new descriptor. Worker and bulk readers do not update this cache. These existing invariants avoid new invalidation or concurrency requirements.
+
+Descending reads within one chunk should now incur one chunk lookup instead of one lookup per row. Forward reads still incur one lookup per visited chunk. A single-entry cache cannot help alternating accesses to different chunks; those accesses pay the new miss path on each row. The new miss path validates and returns three outputs, and the inspected numeric_value frame grows from 48 to 64 bytes. The plain DTA path adds no call but shares that larger frame. Actual overhead or benefit must come from the paired screen; source inspection alone does not establish a speedup.
+
+Coverage reviewed: three new native tests exercise sliced Arrow chunks after original arrays are dropped, all raw storage widths, bounds and empty input, and unchanged bulk suffix semantics. Extended R tests add permuted reads and materialization/GC. Independently, scalar-regression-tests.R passed against both candidate-dispatch and candidate-reverse: four tests and 132 assertions per library, zero failures/errors/warnings/skips. Commands and measured library/test hashes are recorded in scalar-regression-validation.json.
+
+One low-impact documentation detail: the FFI safety comment requires writable output slots disjoint from the descriptor but does not explicitly state that the three slots should be mutually disjoint. The sole C caller passes distinct local variables; this is not a defect in current use.

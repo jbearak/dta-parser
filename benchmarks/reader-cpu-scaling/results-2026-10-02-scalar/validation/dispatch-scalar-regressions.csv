@@ -1,0 +1,5 @@
+"file","context","test","nb","failed","skipped","error","warning","user","system","real","passed"
+"scalar-regression-tests.R","scalar-regression-tests","metadata scalar forwarding preserves isolated compact captures",72,0,FALSE,FALSE,0,0.22,0.011,0.23,72
+"scalar-regression-tests.R","scalar-regression-tests","metadata scalar forwarding respects both materialized states",20,0,FALSE,FALSE,0,0.01,0.002,0.012,20
+"scalar-regression-tests.R","scalar-regression-tests","three-slot scalar views track live compact values and missing counts",36,0,FALSE,FALSE,0,0.107,0.005,0.113,36
+"scalar-regression-tests.R","scalar-regression-tests","native scalar forwarding does not inspect foreign class metadata",4,0,FALSE,FALSE,0,0.004,0.001,0.004,4

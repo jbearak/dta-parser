@@ -1,0 +1,8 @@
+{
+  "bindings_matched": true,
+  "exact_validation": true,
+  "observations": 84,
+  "parity_failures": [],
+  "parity_gate": 1.25,
+  "processes": 1
+}

@@ -1,0 +1,52 @@
+{
+  "clippy": {
+    "command": [
+      "cargo",
+      "clippy",
+      "--manifest-path",
+      "<private-path>",
+      "--config",
+      "<private-path>",
+      "--config",
+      "source.vendored-sources.directory=\"<private-path>\"",
+      "--lib",
+      "--tests",
+      "--locked",
+      "--offline",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit_code": 0,
+    "log_sha256": "fee384ca3ea56b6e1ec8b6e03d495ad08bfeaeafa6a43b09a9a07fdf5a54d47a"
+  },
+  "fmt": {
+    "command": [
+      "cargo",
+      "fmt",
+      "--manifest-path",
+      "<private-path>",
+      "--",
+      "--check"
+    ],
+    "exit_code": 0,
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "native-tests": {
+    "command": [
+      "cargo",
+      "test",
+      "--manifest-path",
+      "<private-path>",
+      "--config",
+      "<private-path>",
+      "--config",
+      "source.vendored-sources.directory=\"<private-path>\"",
+      "--lib",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "log_sha256": "471f36672e2adada11307e655bc2fd6e7f3a07802f27d6499506ffe99af4dcc5"
+  }
+}

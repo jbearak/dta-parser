@@ -1,0 +1,162 @@
+{
+  "cache": "warm filesystem; fresh R process for every observation; one exact validation operation precedes the timer and may populate a scalar span cache",
+  "cases": [
+    {
+      "format": "dta",
+      "id": "dta-byte-proxy-mask",
+      "kind": "byte",
+      "operation": "mask",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "dta",
+      "id": "dta-byte-proxy-sequential",
+      "kind": "byte",
+      "operation": "sequential",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "dta",
+      "id": "dta-byte-proxy-reverse",
+      "kind": "byte",
+      "operation": "reverse",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "dta",
+      "id": "dta-byte-proxy-permuted",
+      "kind": "byte",
+      "operation": "permuted",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "dta",
+      "id": "dta-float-proxy-mask",
+      "kind": "float",
+      "operation": "mask",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "dta",
+      "id": "dta-float-proxy-sequential",
+      "kind": "float",
+      "operation": "sequential",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "dta",
+      "id": "dta-float-proxy-reverse",
+      "kind": "float",
+      "operation": "reverse",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "dta",
+      "id": "dta-float-proxy-permuted",
+      "kind": "float",
+      "operation": "permuted",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "arrow",
+      "id": "arrow-byte-proxy-mask",
+      "kind": "byte",
+      "operation": "mask",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "arrow",
+      "id": "arrow-byte-proxy-sequential",
+      "kind": "byte",
+      "operation": "sequential",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "arrow",
+      "id": "arrow-byte-proxy-reverse",
+      "kind": "byte",
+      "operation": "reverse",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "arrow",
+      "id": "arrow-byte-proxy-permuted",
+      "kind": "byte",
+      "operation": "permuted",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "arrow",
+      "id": "arrow-float-proxy-mask",
+      "kind": "float",
+      "operation": "mask",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "arrow",
+      "id": "arrow-float-proxy-sequential",
+      "kind": "float",
+      "operation": "sequential",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "arrow",
+      "id": "arrow-float-proxy-reverse",
+      "kind": "float",
+      "operation": "reverse",
+      "representation": "proxy",
+      "screen": true
+    },
+    {
+      "format": "arrow",
+      "id": "arrow-float-proxy-permuted",
+      "kind": "float",
+      "operation": "permuted",
+      "representation": "proxy",
+      "screen": true
+    }
+  ],
+  "cleared_environment": [],
+  "command": [
+    "<private-path>",
+    "--work",
+    "<private-path>",
+    "--variants",
+    "current,sourcecheck,dispatch,reverse",
+    "--cases",
+    "screen",
+    "--rounds",
+    "4",
+    "--reps",
+    "4"
+  ],
+  "comparison_boundary": "all builds are source-bound candidate receipts; current is previous gather4-v2 candidate",
+  "internal_reps": 4,
+  "interpretation": "operation metrics total all repetitions; whole-process metrics include both input reads and exact qualification",
+  "interval": "configured repetitions retaining only the latest result, with plain-control minima; load/GC/reference/exact pre/post validation outside; automatic GC and operation outputs inside",
+  "order": "case and variant rotations, each followed by exact reversed setting order; balanced pairwise precedence",
+  "permutation": "deterministic coprime stride; all positions once; no index-vector allocation",
+  "plain_reps": "max(configured reps, 128) for masks; max(configured reps, 16) for scalar scans",
+  "reference": "current",
+  "rounds": 4,
+  "variants": [
+    "current",
+    "sourcecheck",
+    "dispatch",
+    "reverse"
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "bootstrap": {
+    "direction": "below one favors setting",
+    "interval": "empirical 2.5 and 97.5 percentiles; order statistics 250 and 9750",
+    "references": [
+      "diagnostic_16_16",
+      "stock_16"
+    ],
+    "replicates": 10000,
+    "rounds": 6,
+    "seed": 20261002,
+    "statistic": "median paired ratio",
+    "unit": "round-paired setting/reference ratios"
+  },
+  "boundaries": "read user/system/wall in the same R proc.time interval; pre-read full GC outside that interval; process metrics cover the entire fresh worker",
+  "cache": "warm filesystem; no cold-cache claim",
+  "cleared_inherited_diagnostic_variable_names": [],
+  "dimensions": {
+    "columns": 5972,
+    "rows": 724115
+  },
+  "effective_workers": "caps only; actual worker counts not instrumented",
+  "exclusive_execution": "controller does not prevent unrelated host work; caller supplies the exclusive window",
+  "filtering": "no outlier removal; nonpositive metric pairs marked unresolved, not silently excluded from intervals",
+  "input": "existing full India Arrow fixture",
+  "observations_planned": 42,
+  "order": "rotations 0,2,4, each immediately followed by its reverse; balanced pairwise precedence, not exact positions",
+  "output": "dibble",
+  "public_threads": 16,
+  "qualification": "one separate fresh process per configuration; complete datasig traversal, no timed qualification work",
+  "rounds": 6,
+  "settings": [
+    {
+      "decode_cap": 16,
+      "fill_cap": 16,
+      "id": "diagnostic_16_16",
+      "library": "diagnostic"
+    },
+    {
+      "decode_cap": 16,
+      "fill_cap": 4,
+      "id": "diagnostic_16_4",
+      "library": "diagnostic"
+    },
+    {
+      "decode_cap": 4,
+      "fill_cap": 16,
+      "id": "diagnostic_4_16",
+      "library": "diagnostic"
+    },
+    {
+      "decode_cap": 4,
+      "fill_cap": 4,
+      "id": "diagnostic_4_4",
+      "library": "diagnostic"
+    },
+    {
+      "decode_cap": 12,
+      "fill_cap": 8,
+      "id": "diagnostic_12_8",
+      "library": "diagnostic"
+    },
+    {
+      "decode_cap": 12,
+      "fill_cap": 12,
+      "id": "diagnostic_12_12",
+      "library": "diagnostic"
+    },
+    {
+      "decode_cap": null,
+      "fill_cap": null,
+      "id": "stock_16",
+      "library": "stock"
+    }
+  ],
+  "verification": true
+}

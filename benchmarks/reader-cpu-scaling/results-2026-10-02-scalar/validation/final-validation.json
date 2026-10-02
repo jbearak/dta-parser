@@ -1,0 +1,88 @@
+{
+  "accepted_build_receipt_sha256": "63ff19d3cb30b327d707e6232fdd044300657617229da52f98478c4bc68cdb67",
+  "accepted_library_sha256": "33afe5b3b2659f88c5a3b8d79316783a528c0c575c615dcd9693075ec8a67ed3",
+  "benchmarks": {
+    "acceptance": {
+      "bindings_matched": true,
+      "observations": 240,
+      "paired_summary_sha256": "5ae4f0ab29f570e4b24a1d63771eeef1fca843f1c25e0359dd6f14699ab4ddad",
+      "raw_sha256": "94d2775195dd16cb9958dbeeae9cbad1447396f6529be62c3f9d900f2f3646e5",
+      "verified_binding_fields": [
+        "builds",
+        "files",
+        "host",
+        "inputs",
+        "installed",
+        "rscript",
+        "runtime",
+        "thread_environment"
+      ]
+    },
+    "reader-controls": {
+      "bindings_matched": true,
+      "observations": 192,
+      "paired_summary_sha256": "a7686a192320838881fd719e077d2d2ef5e65e19f779cf8fefea491e7f483e6b",
+      "raw_sha256": "f81a4e8f44e973a40a392a5102459e8d0e0d4039e4723ec436eb0cdaf8b17213",
+      "verified_binding_fields": [
+        "build_record_sha256",
+        "inputs",
+        "libraries",
+        "rscript_sha256",
+        "runtimes",
+        "workers"
+      ]
+    },
+    "screen": {
+      "bindings_matched": true,
+      "observations": 256,
+      "paired_summary_sha256": "3a7172551823c52fc53b0706e741493e9671b52d8bb696f36026045fab2956b8",
+      "raw_sha256": "3d6991ea9d0e89565f797ba1b8a9b166ddb4d615fda7edec889f2e231ef588ab",
+      "verified_binding_fields": [
+        "builds",
+        "files",
+        "host",
+        "inputs",
+        "installed",
+        "rscript",
+        "runtime",
+        "thread_environment"
+      ]
+    }
+  },
+  "build_or_test_work_overlapped_timing": false,
+  "full_r_suite": {
+    "assertions": {
+      "error": 0,
+      "failed": 0,
+      "passed": 36830,
+      "skipped": 0,
+      "warning": 7
+    },
+    "exit_code": 0,
+    "log_sha256": "4506b5f6b2639fd64f15b82d2562f898bdc5746e5a3bda99868a2e2b18899142",
+    "results_sha256": "969785e3a7230872214e6e44e4e0fd37edf9f03921da0da4b1984231d880f621",
+    "tests": 1671,
+    "warnings_match_previous_candidate": true
+  },
+  "git_diff_check_exit_code": 0,
+  "native": {
+    "clippy_exit_code": 0,
+    "details_sha256": "098ad7501405c17195a622279bc6ba4c65592f08c802c5592de1598ef741d8c8",
+    "format_exit_code": 0,
+    "rust_lib_tests_passed": 41
+  },
+  "not_rerun": [
+    "R CMD check",
+    "full cross-language conformance"
+  ],
+  "performance_checks": {
+    "all_20_scalar_cpu_and_wall_upper_intervals_below_current": true,
+    "peak_rss_positive_intervals_disclosed_in_report": true,
+    "reader_cpu_or_wall_intervals_entirely_above_current": []
+  },
+  "production_source_files": 449,
+  "production_source_matches_accepted_build": true,
+  "reader_qualifications": 16,
+  "reference": "previous gather4-v2 candidate, not release HEAD",
+  "validated_utc": "2026-10-02T10:24:29.322758+00:00"
+}

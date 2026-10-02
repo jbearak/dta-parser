@@ -241,6 +241,39 @@ machine, but the measurement command repeats qualification; it has no resume
 or skip-qualification mode. Do not treat qualification resource use as a
 timing result.
 
+## Separate native Stata controls
+
+`stata-control.py` measures both Stata `use` and `save` on the prepared
+synthetic DTA fixtures. `use` is the read comparator; `save` is a separate
+persistence control. Supply the clock plugin built by `reader-cpu-scaling`,
+including its adjacent JSON build record, and an installed dtatools library:
+
+```sh
+python3 benchmarks/r-file-readers/stata-control.py \
+  --fixtures /private/tmp/reader-inputs/fixtures.json \
+  --plugin /private/tmp/reader-clock/cpuclock.plugin \
+  --stata /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp \
+  --library /private/tmp/reader-build-candidate/library \
+  --work /private/tmp/stata-reader-controls --pairs 6
+```
+
+`--cases` limits the fixture IDs. Each operation runs once in a fresh Stata/MP
+process with one permitted processor. Case order rotates and use/save order
+reverses between repetitions. The plugin measures wall, user and system CPU
+over the same command interval. For `save`, setup `use` is outside that
+interval but remains in process CPU and peak RSS. Each save uses a new path;
+the timer includes the command's normal file writes without an added `fsync`.
+
+Before timing, the runner records input hashes and source `datasig()` values.
+It qualifies every saved output against its source signature in a separate R
+process after timing, then removes that generated DTA. Before/after bindings
+cover the inputs, Stata binary, clock plugin and build record, R runtime,
+installed dtatools files and worker sources. `raw.jsonl`, `summary.csv`,
+qualification and provenance records use fixture IDs and hashes. Generated
+scripts and logs containing paths stay in `private-jobs` under the private
+work directory. These controls use warm filesystem cache and do not measure
+durable-storage latency. Run them sequentially with the R comparison.
+
 ## Measurement boundaries and records
 
 Every observation uses a fresh R process. Package loading, reader setup,
@@ -323,3 +356,13 @@ qualification, signature qualification with consumption, and value
 qualification in read-only mode. Complete signatures must match across all
 48 fresh processes; consumption hashes must match wherever required and be
 absent only for signature-only read qualification. It collects no timings.
+
+The [scalar-access follow-up](../reader-cpu-scaling/results-2026-10-02-scalar.md)
+uses this reader controller for end-to-end controls after a separate scalar
+screen and confirmation. Its baseline is the previous gather4-v2 candidate;
+its build bindings do not reuse the release comparison's baseline role.
+
+The [compact-kernel follow-up](../reader-cpu-scaling/results-2026-10-02-compact-kernels.md)
+uses these generated compact fixtures to compare public predicates and
+reductions against ordinary doubles. It targets preloaded column operations
+and does not rerun this reader controller or claim new read-time gains.

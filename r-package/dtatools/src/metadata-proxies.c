@@ -96,10 +96,10 @@ SEXP metadata_proxy_state(SEXP value) {
 }
 
 SEXP metadata_proxy_source(SEXP value) {
-    SEXP state = metadata_proxy_state(value);
-    SEXP source = state == R_NilValue
-        ? R_altrep_data1(value) : VECTOR_ELT(state, 0);
-    if (state != R_NilValue && XLENGTH(state) == 3 &&
+    SEXP state = R_altrep_data1(value);
+    R_xlen_t slots = TYPEOF(state) == VECSXP ? XLENGTH(state) : 0;
+    SEXP source = slots == 2 || slots == 3 ? VECTOR_ELT(state, 0) : state;
+    if (slots == 3 &&
         ALTREP(source) && R_altrep_inherits(source, dtatools_numeric_class) &&
         R_altrep_data2(source) == R_NilValue) {
         numeric_data *origin = (numeric_data *) R_ExternalPtrAddr(VECTOR_ELT(state, 2));
@@ -135,10 +135,14 @@ R_xlen_t metadata_proxy_length(SEXP value) {
 
 double metadata_real_value(SEXP value, R_xlen_t index) {
     SEXP materialized = R_altrep_data2(value);
-    return REAL_ELT(
-        materialized == R_NilValue ? metadata_proxy_source(value) : materialized,
-        index
-    );
+    if (materialized != R_NilValue) return REAL_ELT(materialized, index);
+    SEXP source = metadata_proxy_source(value);
+    /* Known compact sources already validate their index and materialized
+       state. Call that getter directly instead of dispatching through R again. */
+    if (R_altrep_inherits(source, dtatools_numeric_class)) {
+        return numeric_value(source, index);
+    }
+    return REAL_ELT(source, index);
 }
 
 R_xlen_t metadata_real_region(

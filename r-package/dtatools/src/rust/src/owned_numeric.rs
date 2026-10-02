@@ -280,6 +280,9 @@ impl PreparedOwnedNumeric {
             format_version: c_int::from(self.version.as_u16()),
             missing_count: self.missing_count,
             native_owner: Arc::into_raw(self.owner).cast(),
+            scalar_values: ptr::null(),
+            scalar_start: 0,
+            scalar_end: 0,
         }
     }
 }
@@ -476,6 +479,9 @@ pub unsafe extern "C" fn dtatools_owned_numeric_clone(data: *const c_void) -> *m
             format_version: source.format_version,
             missing_count: source.missing_count,
             native_owner: ptr::null(),
+            scalar_values: ptr::null(),
+            scalar_start: 0,
+            scalar_end: 0,
         });
         Arc::increment_strong_count(source.native_owner.cast::<Owner>());
         result.native_owner = source.native_owner;
@@ -521,6 +527,50 @@ pub unsafe extern "C" fn dtatools_owned_numeric_region(
     };
     *values = chunk.pointer().add((start - first) * owner.width).cast();
     *count = requested.min(chunk.end - start);
+    1
+}
+
+/// Return the complete owning chunk containing a scalar index. The base
+/// pointer and half-open row bounds stay valid while the owner is rooted.
+/// This function does not allocate, invoke R, or mutate any owner or buffer.
+///
+/// # Safety
+///
+/// `data` must be null or a live NumericData descriptor. Non-null output
+/// pointers must be valid writable slots disjoint from the descriptor.
+#[no_mangle]
+pub unsafe extern "C" fn dtatools_owned_numeric_scalar_span(
+    data: *const c_void,
+    index: usize,
+    values: *mut *const c_void,
+    start: *mut usize,
+    end: *mut usize,
+) -> c_int {
+    if data.is_null() || values.is_null() || start.is_null() || end.is_null() {
+        return 0;
+    }
+    *values = ptr::null();
+    *start = 0;
+    *end = 0;
+    let source = &*data.cast::<NumericData>();
+    if source.native_owner.is_null() || index >= source.length {
+        return 0;
+    }
+    let owner = &*source.native_owner.cast::<Owner>();
+    if index >= owner.length {
+        return 0;
+    }
+    let chunk_index = owner.chunks.partition_point(|chunk| chunk.end <= index);
+    let Some(chunk) = owner.chunks.get(chunk_index) else {
+        return 0;
+    };
+    *values = chunk.pointer().cast();
+    *start = if chunk_index == 0 {
+        0
+    } else {
+        owner.chunks[chunk_index - 1].end
+    };
+    *end = chunk.end;
     1
 }
 
@@ -581,6 +631,195 @@ mod tests {
             row += count;
         }
         assert_eq!(observed, expected_bytes);
+    }
+
+    unsafe fn scalar_span(data: &NumericData, index: usize) -> Option<(*const u8, usize, usize)> {
+        let mut values = ptr::null();
+        let mut start = usize::MAX;
+        let mut end = usize::MAX;
+        let status = dtatools_owned_numeric_scalar_span(
+            (data as *const NumericData).cast(),
+            index,
+            &mut values,
+            &mut start,
+            &mut end,
+        );
+        if status == 0 {
+            assert!(values.is_null());
+            assert_eq!((start, end), (0, 0));
+            None
+        } else {
+            assert_eq!(status, 1);
+            Some((values.cast(), start, end))
+        }
+    }
+
+    #[test]
+    fn scalar_spans_return_whole_sliced_arrow_chunks_in_any_order() {
+        let whole = Int16Array::from(vec![99_i16, 10, 11, 12, 20, 21, 99]);
+        let arrays: Vec<ArrayRef> = vec![
+            Arc::new(Int16Array::from(Vec::<i16>::new())),
+            Arc::new(whole.slice(1, 3)),
+            Arc::new(Int16Array::from(Vec::<i16>::new())),
+            Arc::new(whole.slice(4, 2)),
+            Arc::new(Int16Array::from(Vec::<i16>::new())),
+        ];
+        let first_pointer = whole.values().as_ptr().wrapping_add(1).cast::<u8>();
+        let second_pointer = whole.values().as_ptr().wrapping_add(4).cast::<u8>();
+        let data = prepare_from_arrow(
+            &arrays,
+            NumericKind::Int,
+            TemporalKind::None,
+            FormatVersion::V118,
+            5,
+            || false,
+        )
+        .unwrap()
+        .into_descriptor();
+        drop(arrays);
+        drop(whole);
+        for index in [4, 3, 2, 1, 0, 2, 4, 0, 3, 1] {
+            let (values, start, end) = unsafe { scalar_span(&data, index).unwrap() };
+            let (expected_pointer, expected_start, expected_end, expected_values) = if index < 3 {
+                (first_pointer, 0, 3, &[10_i16, 11, 12][..])
+            } else {
+                (second_pointer, 3, 5, &[20_i16, 21][..])
+            };
+            assert_eq!(values, expected_pointer);
+            assert_eq!((start, end), (expected_start, expected_end));
+            assert_eq!(
+                unsafe { std::slice::from_raw_parts(values.cast::<i16>(), end - start) },
+                expected_values
+            );
+            assert!(start <= index && index < end);
+            // The existing bulk API still starts at the requested row.
+            let mut region_values = ptr::null();
+            let mut count = 0;
+            assert_eq!(
+                unsafe {
+                    dtatools_owned_numeric_region(
+                        (&data as *const NumericData).cast(),
+                        index,
+                        usize::MAX,
+                        &mut region_values,
+                        &mut count,
+                    )
+                },
+                1
+            );
+            assert_eq!(
+                region_values.cast::<u8>(),
+                values.wrapping_add((index - start) * 2)
+            );
+            assert_eq!(count, end - index);
+        }
+        for index in [5, 6, usize::MAX] {
+            assert!(unsafe { scalar_span(&data, index) }.is_none());
+        }
+    }
+
+    #[test]
+    fn scalar_spans_cover_raw_chunk_edges_for_every_storage_width() {
+        for kind in [
+            NumericKind::Byte,
+            NumericKind::Int,
+            NumericKind::Long,
+            NumericKind::Float,
+        ] {
+            let bytes: Vec<u8> = (0..7 * width(kind)).map(|index| index as u8).collect();
+            let descriptor = unsafe {
+                dtatools_owned_numeric_from_raw(
+                    bytes.as_ptr(),
+                    7,
+                    3,
+                    kind as c_int,
+                    TemporalKind::None as c_int,
+                    118,
+                    0,
+                )
+            };
+            assert!(!descriptor.is_null());
+            let data = unsafe { Box::from_raw(descriptor.cast::<NumericData>()) };
+            for index in [6, 5, 4, 3, 2, 1, 0, 4, 1, 6, 0] {
+                let (values, start, end) = unsafe { scalar_span(&data, index).unwrap() };
+                let expected_start = index / 3 * 3;
+                let expected_end = (expected_start + 3).min(7);
+                assert_eq!((start, end), (expected_start, expected_end));
+                assert_eq!(values, bytes.as_ptr().wrapping_add(start * width(kind)));
+                assert_eq!(
+                    unsafe { std::slice::from_raw_parts(values, (end - start) * width(kind)) },
+                    &bytes[start * width(kind)..end * width(kind)]
+                );
+            }
+            assert!(unsafe { scalar_span(&data, 7) }.is_none());
+        }
+    }
+
+    #[test]
+    fn scalar_spans_reject_empty_plain_and_invalid_arguments() {
+        let empty = prepare_from_arrow(
+            &[],
+            NumericKind::Byte,
+            TemporalKind::None,
+            FormatVersion::V118,
+            0,
+            || false,
+        )
+        .unwrap()
+        .into_descriptor();
+        for index in [0, 1, usize::MAX] {
+            assert!(unsafe { scalar_span(&empty, index) }.is_none());
+        }
+        let plain = NumericData::new(crate::RNumericData {
+            backing: ptr::null_mut(),
+            values: ptr::null_mut(),
+            length: 0,
+            kind: NumericKind::Byte,
+            temporal: TemporalKind::None,
+            format_version: FormatVersion::V118,
+            missing_count: 0,
+        });
+        assert!(unsafe { scalar_span(&plain, 0) }.is_none());
+        let data = (&empty as *const NumericData).cast();
+        let mut values = ptr::null();
+        let mut start = 0;
+        let mut end = 0;
+        assert_eq!(
+            unsafe {
+                dtatools_owned_numeric_scalar_span(
+                    ptr::null(),
+                    0,
+                    &mut values,
+                    &mut start,
+                    &mut end,
+                )
+            },
+            0
+        );
+        assert_eq!(
+            unsafe {
+                dtatools_owned_numeric_scalar_span(data, 0, ptr::null_mut(), &mut start, &mut end)
+            },
+            0
+        );
+        assert_eq!(
+            unsafe {
+                dtatools_owned_numeric_scalar_span(data, 0, &mut values, ptr::null_mut(), &mut end)
+            },
+            0
+        );
+        assert_eq!(
+            unsafe {
+                dtatools_owned_numeric_scalar_span(
+                    data,
+                    0,
+                    &mut values,
+                    &mut start,
+                    ptr::null_mut(),
+                )
+            },
+            0
+        );
     }
 
     #[test]

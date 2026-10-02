@@ -399,9 +399,31 @@ SEXP C_dtatools_owned_coerce(SEXP value, SEXP logical) {
     return result;
 }
 
-/* Only bare handles qualify. Named, shaped and classed values keep base R's
-   attribute and method dispatch behavior in the R fallback. */
+static SEXP compact_missing_mask_attribute(SEXP tag, SEXP value, void *context) {
+    (void) value;
+    (void) context;
+    return tag == R_NamesSymbol ? NULL : R_NilValue;
+}
+
+/* A compact read view may carry names, which is.na preserves. Other
+   attributes and classes retain base R's existing fallback. Owned doubles
+   keep their established bare-handle admission. */
 SEXP C_dtatools_owned_missing_mask(SEXP value) {
+    if (TYPEOF(value) == REALSXP && !Rf_isObject(value) && !Rf_isS4(value)) {
+        if (R_mapAttrib(value, compact_missing_mask_attribute, NULL) == NULL) {
+            SEXP names = PROTECT(Rf_getAttrib(value, R_NamesSymbol));
+            numeric_data storage;
+            SEXP root = PROTECT(numeric_missing_mask_capture(value, &storage));
+            if (root != R_NilValue) {
+                SEXP result = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t) storage.length));
+                numeric_missing_mask(&storage, LOGICAL(result), 0);
+                if (names != R_NilValue) Rf_setAttrib(result, R_NamesSymbol, names);
+                UNPROTECT(3);
+                return result;
+            }
+            UNPROTECT(2);
+        }
+    }
     if (!owned_bare_real(value)) return R_NilValue;
     SEXP payload = PROTECT(owned_values(value));
     R_xlen_t length = XLENGTH(payload);

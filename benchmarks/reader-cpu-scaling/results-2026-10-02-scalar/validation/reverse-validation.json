@@ -1,0 +1,42 @@
+{
+  "artifacts_sha256": {
+    "reverse-assembly.json": "8a19f8cfe2eac387ba643fe0123cc9065b7e5f640092b8c3565367a512401450",
+    "reverse-clippy.log": "cb85eb87d1dab39f5203cd785e1cab2bd2c8214e4b1ded2186496dce32225086",
+    "reverse-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reverse-native-tests.log": "cb82c2e7635be062d144b2b3321989aff1b8a4fe885abe56fea6cee405f23f4c",
+    "reverse-r-tests.csv": "0cceb34c5920bd4e28d2ecbd859c455bb10c0101698ae00207d06efc62c6fe99",
+    "reverse-r-tests.log": "9e7eb3cd97ea00230cc6e56cb52bde1ffae8fdae58a778c41bbdaa1059137a03"
+  },
+  "benchmarks_run": false,
+  "build_exit_code": 0,
+  "changed_files": [
+    "src/dtatools-internal.h",
+    "src/numeric-payload.c",
+    "src/rust/src/owned_numeric.rs",
+    "tests/testthat/test-owned-numeric-buffers.R"
+  ],
+  "clippy": {
+    "errors": 0,
+    "exit_code": 0,
+    "warnings": 0
+  },
+  "corrected_r_validation_exit_code": 0,
+  "format_check_exit_code": 0,
+  "incremental_patch_sha256": "696e8d4cfbddcc6c7befd5709d43e811b83c3c99489192002bf420b4c9133e48",
+  "initial_r_report_export_failed_after_successful_tests": true,
+  "installed_library_sha256": "4342f06890e1791574e14ef79d363d17ed3a4cde12aa992d841f9aa7471aa99b",
+  "native_scalar_span_tests": {
+    "failed": 0,
+    "passed": 3
+  },
+  "r_owned_numeric_buffers": {
+    "assertions_passed": 1267,
+    "errors": 0,
+    "failed": 0,
+    "skipped": 0,
+    "tests": 29,
+    "warnings": 0
+  },
+  "receipt_reverified_after_r_tests": true,
+  "source_pre_post_equal": true
+}

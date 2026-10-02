@@ -1,0 +1,42 @@
+{
+  "primary-100mb-arrow-1": {
+    "baseline": {
+      "signature": "231956:40:bab4b8dee5b66170",
+      "log_sha256": "641023c4a66f37b025e0b86f41556203e55f95612d3a8715be8db83b973c60e7"
+    },
+    "candidate": {
+      "signature": "231956:40:bab4b8dee5b66170",
+      "log_sha256": "641023c4a66f37b025e0b86f41556203e55f95612d3a8715be8db83b973c60e7"
+    }
+  },
+  "primary-100mb-arrow-0": {
+    "baseline": {
+      "signature": "231956:40:bab4b8dee5b66170",
+      "log_sha256": "ade2a52b009282cecfb8d96d9de5fb03a233582659018b0fe99ba9e9ed61a970"
+    },
+    "candidate": {
+      "signature": "231956:40:bab4b8dee5b66170",
+      "log_sha256": "ade2a52b009282cecfb8d96d9de5fb03a233582659018b0fe99ba9e9ed61a970"
+    }
+  },
+  "primary-1gb-arrow-1": {
+    "baseline": {
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "log_sha256": "0eb0869995021d3e8349bec1be0281fa2727e12fbc67883dd6a3d80f9fc90c44"
+    },
+    "candidate": {
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "log_sha256": "0eb0869995021d3e8349bec1be0281fa2727e12fbc67883dd6a3d80f9fc90c44"
+    }
+  },
+  "primary-1gb-arrow-0": {
+    "baseline": {
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "log_sha256": "4fa34fc5705bb1090044bbfdae2290cf1aafd823cb20526122fd780fae61a6bb"
+    },
+    "candidate": {
+      "signature": "2320123:40:7cb9bebf47711cf7",
+      "log_sha256": "4fa34fc5705bb1090044bbfdae2290cf1aafd823cb20526122fd780fae61a6bb"
+    }
+  }
+}

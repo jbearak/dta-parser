@@ -1,0 +1,26 @@
+{
+  "sdk": {
+    "stplugin.c": {
+      "sha256": "ab694f53e30a404bbfbe59d301a81b8bc59eeecf84bc5427eb65cbf0c5020d6d",
+      "url": "https://www.stata.com/plugins/stplugin.c"
+    },
+    "stplugin.h": {
+      "sha256": "0d32086bfb7a621e30ed7fefa41b351b6733bb4561da28a4c581580d62c64e8b",
+      "url": "https://www.stata.com/plugins/stplugin.h"
+    }
+  },
+  "wrapper_sha256": "20f68e372630f7f15c357c5737a89722ed583cfacdb4e1db48c8fb3c01c7f7b7",
+  "builder_sha256": "fbd20ce123be0d6be5f431544cbd480f607796412641a54375f85c2e3199e48c",
+  "plugin_sha256": "166d10d91a7f1c6a9e58e1bc120b72782cf4df6f5c5293045ae8936d304868e5",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+  "flags": [
+    "-O2",
+    "-std=c11",
+    "-D_POSIX_C_SOURCE=200809L",
+    "-bundle",
+    "-DSYSTEM=APPLEMAC",
+    "-target",
+    "arm64-apple-macos11"
+  ],
+  "host": "macOS-26.7-arm64-arm-64bit-Mach-O"
+}

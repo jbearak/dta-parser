@@ -1,0 +1,173 @@
+{
+  "observations": [
+    {
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "dta",
+        "byte",
+        "proxy",
+        "mask",
+        "1"
+      ],
+      "exit_code": 0,
+      "format": "dta",
+      "kind": "byte",
+      "log_sha256": "4b01abf385680c53f357dace124b6553da254f9081130bd425b0d80038e63ce6",
+      "operation": "mask",
+      "variant": "current"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "arrow",
+        "float",
+        "proxy",
+        "permuted",
+        "1"
+      ],
+      "exit_code": 0,
+      "format": "arrow",
+      "kind": "float",
+      "log_sha256": "5de727c7e1bb0a84f03dfe331d59cd1c99dae018277f020a6c40580c4f3f20c1",
+      "operation": "permuted",
+      "variant": "current"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "dta",
+        "byte",
+        "proxy",
+        "mask",
+        "1"
+      ],
+      "exit_code": 0,
+      "format": "dta",
+      "kind": "byte",
+      "log_sha256": "7b4cf88ca7cdd21b14574e7a2807a781bcf6db8bf2464d739531a436a7a94641",
+      "operation": "mask",
+      "variant": "sourcecheck"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "arrow",
+        "float",
+        "proxy",
+        "permuted",
+        "1"
+      ],
+      "exit_code": 0,
+      "format": "arrow",
+      "kind": "float",
+      "log_sha256": "3db9daf5f53f059dbb2bd5b98e96ed92cb9d38bdac13c3dc7755547efb757dbb",
+      "operation": "permuted",
+      "variant": "sourcecheck"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "dta",
+        "byte",
+        "proxy",
+        "mask",
+        "1"
+      ],
+      "exit_code": 0,
+      "format": "dta",
+      "kind": "byte",
+      "log_sha256": "5cdf2dd0d979e6b94fe6c351c0ba56a222a9490a221779f6b4deb371eb9bb648",
+      "operation": "mask",
+      "variant": "dispatch"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "arrow",
+        "float",
+        "proxy",
+        "permuted",
+        "1"
+      ],
+      "exit_code": 0,
+      "format": "arrow",
+      "kind": "float",
+      "log_sha256": "16fc273e0a7fc1f42ae4c7f5c34794e2bf2b425242026caa2835add1bb7e2529",
+      "operation": "permuted",
+      "variant": "dispatch"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "dta",
+        "byte",
+        "proxy",
+        "mask",
+        "1"
+      ],
+      "exit_code": 0,
+      "format": "dta",
+      "kind": "byte",
+      "log_sha256": "4b01abf385680c53f357dace124b6553da254f9081130bd425b0d80038e63ce6",
+      "operation": "mask",
+      "variant": "reverse"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>",
+        "arrow",
+        "float",
+        "proxy",
+        "permuted",
+        "1"
+      ],
+      "exit_code": 0,
+      "format": "arrow",
+      "kind": "float",
+      "log_sha256": "5bcfbc6659bd88a72878ae86970284c316fd6c72c1ec63ed57eeb9f0de51f0d2",
+      "operation": "permuted",
+      "variant": "reverse"
+    }
+  ],
+  "purpose": "worker execution and exact validation smoke, not comparative performance evidence"
+}

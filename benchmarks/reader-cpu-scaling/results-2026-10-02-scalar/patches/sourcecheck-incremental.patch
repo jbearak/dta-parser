@@ -1,0 +1,17 @@
+--- a/r-package/dtatools/src/metadata-proxies.c
++++ b/r-package/dtatools/src/metadata-proxies.c
+@@ -96,10 +96,10 @@
+ }
+ 
+ SEXP metadata_proxy_source(SEXP value) {
+-    SEXP state = metadata_proxy_state(value);
+-    SEXP source = state == R_NilValue
+-        ? R_altrep_data1(value) : VECTOR_ELT(state, 0);
+-    if (state != R_NilValue && XLENGTH(state) == 3 &&
++    SEXP state = R_altrep_data1(value);
++    R_xlen_t slots = TYPEOF(state) == VECSXP ? XLENGTH(state) : 0;
++    SEXP source = slots == 2 || slots == 3 ? VECTOR_ELT(state, 0) : state;
++    if (slots == 3 &&
+         ALTREP(source) && R_altrep_inherits(source, dtatools_numeric_class) &&
+         R_altrep_data2(source) == R_NilValue) {
+         numeric_data *origin = (numeric_data *) R_ExternalPtrAddr(VECTOR_ELT(state, 2));

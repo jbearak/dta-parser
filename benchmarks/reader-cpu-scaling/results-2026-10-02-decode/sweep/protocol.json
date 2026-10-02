@@ -1,0 +1,71 @@
+{
+  "observations": 84,
+  "settings": [
+    [
+      "dta",
+      1
+    ],
+    [
+      "dta",
+      2
+    ],
+    [
+      "dta",
+      4
+    ],
+    [
+      "dta",
+      8
+    ],
+    [
+      "dta",
+      12
+    ],
+    [
+      "dta",
+      16
+    ],
+    [
+      "dta",
+      0
+    ],
+    [
+      "arrow",
+      1
+    ],
+    [
+      "arrow",
+      2
+    ],
+    [
+      "arrow",
+      4
+    ],
+    [
+      "arrow",
+      8
+    ],
+    [
+      "arrow",
+      12
+    ],
+    [
+      "arrow",
+      16
+    ],
+    [
+      "arrow",
+      0
+    ]
+  ],
+  "rounds": 6,
+  "cache": "warm filesystem",
+  "output": "dibble",
+  "dimensions": {
+    "rows": 724115,
+    "columns": 5972
+  },
+  "order": "three rotations each followed by its reverse; settings have balanced precedence",
+  "boundaries": "read user/system/wall within identical R proc.time interval; qualification occurs only in separate processes",
+  "bindings_matched": true
+}

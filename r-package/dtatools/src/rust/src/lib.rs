@@ -239,6 +239,10 @@ struct NumericData {
     missing_count: usize,
     // Opaque immutable owner, or null for the legacy R-rooted writable bytes.
     native_owner: *const c_void,
+    // Per-descriptor borrowed span, updated only by R's scalar ALTREP getter.
+    scalar_values: *const c_void,
+    scalar_start: usize,
+    scalar_end: usize,
 }
 
 impl Drop for NumericData {
@@ -257,6 +261,9 @@ impl NumericData {
             format_version: c_int::from(data.format_version.as_u16()),
             missing_count: data.missing_count,
             native_owner: ptr::null(),
+            scalar_values: ptr::null(),
+            scalar_start: 0,
+            scalar_end: 0,
         }
     }
 }
@@ -346,6 +353,9 @@ pub unsafe extern "C" fn dtatools_numeric_alloc(
         format_version: 119,
         missing_count,
         native_owner: ptr::null(),
+        scalar_values: ptr::null(),
+        scalar_start: 0,
+        scalar_end: 0,
     }))
     .cast::<c_void>()
 }
@@ -3361,11 +3371,75 @@ impl DtaColumnSink for RColumn {
         let output =
             unsafe { std::slice::from_raw_parts_mut(data.values.add(output_start), row_count) };
         let mut missing_count = 0;
-        for (row, target) in output.iter_mut().enumerate() {
-            let value = unsafe { *source.get_unchecked(row * stride) };
-            *target = value;
-            missing_count +=
-                usize::from(classify_byte_missing_for_version(value as i8, version).is_some());
+        if stride == 1 {
+            for (row, target) in output.iter_mut().enumerate() {
+                let value = unsafe { *source.get_unchecked(row) };
+                *target = value;
+                missing_count +=
+                    usize::from(classify_byte_missing_for_version(value as i8, version).is_some());
+            }
+        } else {
+            macro_rules! gather_strided {
+                ($format:expr) => {{
+                    // Independent counts shorten the dependency chain for strided input.
+                    let mut missing0 = 0;
+                    let mut missing1 = 0;
+                    let mut missing2 = 0;
+                    let mut missing3 = 0;
+                    let mut groups = output.chunks_exact_mut(4);
+                    for (group, target) in groups.by_ref().enumerate() {
+                        let row = group * 4;
+                        // SAFETY: each row is below row_count, so the complete range
+                        // validation above also covers all four strided loads.
+                        let value0 = unsafe { *source.get_unchecked(row * stride) };
+                        let value1 = unsafe { *source.get_unchecked((row + 1) * stride) };
+                        let value2 = unsafe { *source.get_unchecked((row + 2) * stride) };
+                        let value3 = unsafe { *source.get_unchecked((row + 3) * stride) };
+                        target[0] = value0;
+                        target[1] = value1;
+                        target[2] = value2;
+                        target[3] = value3;
+                        missing0 += usize::from(
+                            classify_byte_missing_for_version(value0 as i8, $format).is_some(),
+                        );
+                        missing1 += usize::from(
+                            classify_byte_missing_for_version(value1 as i8, $format).is_some(),
+                        );
+                        missing2 += usize::from(
+                            classify_byte_missing_for_version(value2 as i8, $format).is_some(),
+                        );
+                        missing3 += usize::from(
+                            classify_byte_missing_for_version(value3 as i8, $format).is_some(),
+                        );
+                    }
+                    let mut missing_count = missing0 + missing1 + missing2 + missing3;
+                    let tail_start = row_count - row_count % 4;
+                    for (offset, target) in groups.into_remainder().iter_mut().enumerate() {
+                        let value =
+                            unsafe { *source.get_unchecked((tail_start + offset) * stride) };
+                        *target = value;
+                        missing_count += usize::from(
+                            classify_byte_missing_for_version(value as i8, $format).is_some(),
+                        );
+                    }
+                    missing_count
+                }};
+            }
+            // These are exactly the two families in the version-aware byte
+            // classifier. Constant representatives keep that dispatch out of
+            // every lane while still using the shared classification logic.
+            missing_count = match version {
+                FormatVersion::V105
+                | FormatVersion::V108
+                | FormatVersion::V110
+                | FormatVersion::V111 => gather_strided!(FormatVersion::V111),
+                FormatVersion::V113
+                | FormatVersion::V114
+                | FormatVersion::V115
+                | FormatVersion::V117
+                | FormatVersion::V118
+                | FormatVersion::V119 => gather_strided!(FormatVersion::V118),
+            };
         }
         data.missing_count += missing_count;
         Ok(true)
@@ -6094,13 +6168,66 @@ mod tests {
     }
 
     #[test]
+    fn compact_byte_batch_preserves_every_byte_in_each_gather_lane() {
+        use crate::{
+            classify_byte_missing_for_version, DtaColumnSink, FormatVersion, NumericKind, RColumn,
+            RNumericData,
+        };
+        for release in [105, 108, 110, 111, 113, 114, 115, 117, 118, 119] {
+            let version = FormatVersion::try_from(release).unwrap();
+            for stride in [1, 3, 17, 7176] {
+                for phase in 0..4 {
+                    // Cycling the phase puts every raw byte in every lane;
+                    // three extra rows also exercise the scalar remainder.
+                    let values: Vec<u8> = (0..259).map(|row| (row + phase) as u8).collect();
+                    let mut source = vec![42_u8; (values.len() - 1) * stride + 1];
+                    for (row, &value) in values.iter().enumerate() {
+                        source[row * stride] = value;
+                    }
+                    let mut output = vec![42_u8; values.len() + 2];
+                    let mut column = RColumn::NumericAltRep {
+                        vector: ptr::null_mut(),
+                        data: RNumericData {
+                            backing: ptr::null_mut(),
+                            values: output.as_mut_ptr(),
+                            length: output.len(),
+                            kind: NumericKind::Byte,
+                            temporal: TemporalKind::None,
+                            format_version: version,
+                            missing_count: 7,
+                        },
+                    };
+                    assert!(column
+                        .try_push_byte_rows(1, values.len(), &source, stride, version)
+                        .unwrap());
+                    assert_eq!(output[0], 42);
+                    assert_eq!(output[values.len() + 1], 42);
+                    assert_eq!(&output[1..values.len() + 1], values.as_slice());
+                    let expected = values
+                        .iter()
+                        .filter(|&&value| {
+                            classify_byte_missing_for_version(value as i8, version).is_some()
+                        })
+                        .count();
+                    let RColumn::NumericAltRep { data, .. } = column else {
+                        unreachable!()
+                    };
+                    assert_eq!(data.missing_count, 7 + expected);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn compact_byte_batch_preserves_short_tails_and_accumulated_counts() {
         use crate::{
             classify_byte_missing_for_version, DtaColumnSink, FormatVersion, NumericKind, RColumn,
             RNumericData,
         };
         for version in [FormatVersion::V111, FormatVersion::V118] {
-            for count in [0, 1, 15, 16, 17, 31, 32, 33, 255, 256, 257] {
+            for count in [
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 255, 256, 257,
+            ] {
                 for stride in [1, 3, 17] {
                     let values: Vec<u8> = (0..count).map(|row| (row + 99) as u8).collect();
                     let mut source = vec![42_u8; count * stride];

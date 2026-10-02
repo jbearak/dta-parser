@@ -1,0 +1,26 @@
+{
+  "command": [
+    "/opt/homebrew/bin/R",
+    "CMD",
+    "SHLIB",
+    "scalar-access-probe.c",
+    "-o",
+    "scalar_access_probe.so"
+  ],
+  "cwd": "<scalar-work>",
+  "started_utc": "2026-10-02T09:39:02.820384+00:00",
+  "environment_override": {
+    "PKG_CFLAGS": "-Wall -Wextra -Werror -Wno-cast-function-type-mismatch"
+  },
+  "warning_note": "R native routine registration requires DL_FUNC casts; only their Clang mismatch warning is suppressed.",
+  "returncode": 0,
+  "completed_utc": "2026-10-02T09:39:02.973393+00:00",
+  "r_home": "/opt/homebrew/Cellar/r/4.6.1/lib/R",
+  "files": {
+    "<scalar-work>/scalar-access-probe.c": "28e960f8f1e860a0e2cec1ede4706a6d4336fb126a15ee8e4ac8ba7cd14b27d3",
+    "<scalar-work>/scalar_access_probe.so": "1f88f7b429a44d0696ae399b4eaaa87bf1d80eca3287f76d716141cbeca17445",
+    "/opt/homebrew/Cellar/r/4.6.1/lib/R/include/Rinternals.h": "6075da78d762507f235b3c654ba9434dd05193bd17dea13714204416f0a4757c",
+    "/opt/homebrew/Cellar/r/4.6.1/lib/R/include/R_ext/Altrep.h": "299bbc137d14e3fd83daf1b9c1eb46f4f2f34dc1c9ee048d1ccd762f5e933a3a",
+    "/opt/homebrew/Cellar/r/4.6.1/lib/R/bin/exec/R": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34"
+  }
+}

@@ -1,0 +1,30 @@
+"file","context","test","nb","failed","skipped","error","warning","user","system","real","passed"
+"test-owned-numeric-buffers.R","owned-numeric-buffers","scalar retained reads cross chunks and survive independent handle writes",176,0,FALSE,FALSE,0,0.753,0.048,0.801,176
+"test-owned-numeric-buffers.R","owned-numeric-buffers","scalar Arrow reads retain native batches after source materialization and GC",50,0,FALSE,FALSE,0,0.0999999999999999,0.012,0.123,50
+"test-owned-numeric-buffers.R","owned-numeric-buffers","immutable compact regions preserve all missing codes and chunk edges",236,0,FALSE,FALSE,0,0.154,0.045,0.2,236
+"test-owned-numeric-buffers.R","owned-numeric-buffers","immutable compact dates preserve conversion and serialization",10,0,FALSE,FALSE,0,0.0110000000000001,0.003,0.014,10
+"test-owned-numeric-buffers.R","owned-numeric-buffers","immutable captures isolate writable pointers and explicit mutations",32,0,FALSE,FALSE,0,0.024,0.006,0.03,32
+"test-owned-numeric-buffers.R","owned-numeric-buffers","failed and interrupted owned-column mutations leave captured values intact",7,0,FALSE,FALSE,0,0.012,0.00199999999999997,0.0129999999999999,7
+"test-owned-numeric-buffers.R","owned-numeric-buffers","direct owned compact patches commit only after successful completion",16,0,FALSE,FALSE,0,0.012,0.003,0.014,16
+"test-owned-numeric-buffers.R","owned-numeric-buffers","patch alias checks preserve owned row selector backing",8,0,FALSE,FALSE,0,0.00499999999999989,0.001,0.00700000000000012,8
+"test-owned-numeric-buffers.R","owned-numeric-buffers","compact self-selection and independent selector copies patch correctly",7,0,FALSE,FALSE,0,0.00500000000000012,0.001,0.006,7
+"test-owned-numeric-buffers.R","owned-numeric-buffers","owned row selectors survive replacement callbacks and collection",3,0,FALSE,FALSE,0,0.0269999999999999,0.001,0.0289999999999999,3
+"test-owned-numeric-buffers.R","owned-numeric-buffers","Arrow reads retain owned buffers independently of their source",48,0,FALSE,FALSE,0,0.115,0.013,0.145,48
+"test-owned-numeric-buffers.R","owned-numeric-buffers","owned allocation charges are released after final handles disappear",4,0,FALSE,FALSE,0,0.0780000000000001,0.002,0.085,4
+"test-owned-numeric-buffers.R","owned-numeric-buffers","parallel owned fills finish exact counts before publishing chunked columns",24,0,FALSE,FALSE,0,0.0369999999999999,0.00700000000000001,0.0529999999999999,24
+"test-owned-numeric-buffers.R","owned-numeric-buffers","repeated owned reads collect unreachable native allocations",3,0,FALSE,FALSE,0,0.255,0.017,0.277,3
+"test-owned-numeric-buffers.R","owned-numeric-buffers","comparisons and gathers read retained regions without compatibility copies",120,0,FALSE,FALSE,0,0.077,0.024,0.101,120
+"test-owned-numeric-buffers.R","owned-numeric-buffers","read roots survive foreign operand and gather callbacks",9,0,FALSE,FALSE,0,0.0819999999999999,0.003,0.085,9
+"test-owned-numeric-buffers.R","owned-numeric-buffers","row calculations retain owned inputs across foreign element callbacks",3,0,FALSE,FALSE,0,0.0270000000000001,0.001,0.028,3
+"test-owned-numeric-buffers.R","owned-numeric-buffers","row calculations and groups retain compact and proxy backing",192,0,FALSE,FALSE,0,1.627,0.059,1.685,192
+"test-owned-numeric-buffers.R","owned-numeric-buffers","calculation read roots are released after callback errors and interrupts",20,0,FALSE,FALSE,0,0.291,0.006,0.297,20
+"test-owned-numeric-buffers.R","owned-numeric-buffers","calculation callbacks cannot change captured immutable input values",2,0,FALSE,FALSE,0,0.0250000000000004,0.001,0.0259999999999998,2
+"test-owned-numeric-buffers.R","owned-numeric-buffers","parallel comparison workers split mismatched owned chunk boundaries",3,0,FALSE,FALSE,0,0.0189999999999992,0.001,0.0190000000000001,3
+"test-owned-numeric-buffers.R","owned-numeric-buffers","writers and signatures retain modern and legacy compact sources",42,0,FALSE,FALSE,0,0.0500000000000007,0.00999999999999995,0.0749999999999993,42
+"test-owned-numeric-buffers.R","owned-numeric-buffers","DTA writer pins owned sources while later callbacks materialize them",3,0,FALSE,FALSE,0,0.0309999999999997,0.002,0.032,3
+"test-owned-numeric-buffers.R","owned-numeric-buffers","Arrow writer and signature pins survive later operand callbacks",10,0,FALSE,FALSE,0,0.0670000000000002,0.003,0.0800000000000001,10
+"test-owned-numeric-buffers.R","owned-numeric-buffers","legacy writer layout considers an observed conflict in a later chunk",7,0,FALSE,FALSE,0,0.00800000000000001,0.002,0.0150000000000006,7
+"test-owned-numeric-buffers.R","owned-numeric-buffers","owned sums keep one accumulator across cancelling float regions",61,0,FALSE,FALSE,0,0.048,0.013,0.0609999999999999,61
+"test-owned-numeric-buffers.R","owned-numeric-buffers","owned extrema preserve signed zero and missing payload order across regions",108,0,FALSE,FALSE,0,0.085,0.022,0.109,108
+"test-owned-numeric-buffers.R","owned-numeric-buffers","retained captures and mutation views survive allocation GC",56,0,FALSE,FALSE,0,0.439,0.014,0.454,56
+"test-owned-numeric-buffers.R","owned-numeric-buffers","public copying and replacement preserve retained aliases under GC",7,0,FALSE,FALSE,0,5.581,0.00900000000000001,5.59,7

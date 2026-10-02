@@ -83,3 +83,20 @@ Only sanitized function names and collapsed leaf-stack counts are published.
 Raw stacks remain private. Sampling includes all threads, including idle waits,
 and repeated reads include collection and loop overhead. These counts are not
 CPU-time percentages, attribution of elapsed time, or energy measurements.
+
+The [2026-10-02 decoding follow-up](results-2026-10-02-decode.md) separates
+user and system CPU across seven R thread settings, tests Arrow phase caps,
+and records the retained DTA byte-loop improvement against the previous
+final-v2 candidate. Its source bindings and observations are separate from
+the October 1 study.
+
+The [2026-10-02 scalar-access follow-up](results-2026-10-02-scalar.md)
+compares three isolated scalar changes and their combination. It records
+the repeated native length lookup behind `REAL_ELT()`, validates compact
+representation and missing tags, and measures read-plus-consume controls.
+
+The [compact-kernel follow-up](results-2026-10-02-compact-kernels.md) replaces
+public compact missing-value scalar traversal with typed block scans and
+removes repeated work from ordered sums. It compares public operations on
+preloaded compact columns and ordinary doubles in 504 observations; these
+are consumption measurements, not new reader timings.

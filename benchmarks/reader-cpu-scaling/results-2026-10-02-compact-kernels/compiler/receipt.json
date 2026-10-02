@@ -1,0 +1,31 @@
+{
+  "command": [
+    "clang",
+    "-std=gnu23",
+    "-I/opt/homebrew/Cellar/r/4.6.1/lib/R/include",
+    "-DNDEBUG",
+    "-I/opt/homebrew/opt/gettext/include",
+    "-I/opt/homebrew/opt/readline/include",
+    "-I/opt/homebrew/opt/xz/include",
+    "-I/opt/homebrew/include",
+    "-I/opt/homebrew/include",
+    "-DTBB_INTERFACE_NEW=1",
+    "-fPIC",
+    "-g",
+    "-O2",
+    "-S",
+    "numeric-payload.c",
+    "-o",
+    "<compact-work>/vectorization-accepted/numeric-payload.s",
+    "-Rpass=loop-vectorize",
+    "-Rpass-missed=loop-vectorize",
+    "-Rpass-analysis=loop-vectorize",
+    "-fsave-optimization-record",
+    "-foptimization-record-file=<compact-work>/vectorization-accepted/numeric-payload.opt.yaml"
+  ],
+  "working_directory": "<compact-work>/candidate-kernel-float/build/src",
+  "exit_code": 0,
+  "source_sha256": "01ea68e63007b1f32030c29403fd7a690ff7726fa99f53424206c5bb8205dec9",
+  "compiled_source_sha256": "01ea68e63007b1f32030c29403fd7a690ff7726fa99f53424206c5bb8205dec9",
+  "build_receipt_sha256": "da16bf7beaa6294584f3e73a4758b3a740de0eb586e42517fdf80593b772508c"
+}

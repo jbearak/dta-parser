@@ -1,0 +1,1530 @@
+--- a/r-package/dtatools/NEWS.md
++++ b/r-package/dtatools/NEWS.md
+@@ -1,4 +1,19 @@
+ # dtatools (development version)
++
++* `is.na()` and `is_missing()` scan compact numeric storage directly in typed
++  blocks, including retained Arrow chunks and compact dates. Missing tags and
++  IEEE NaNs keep their existing meanings, and scans leave inputs compact.
++  Compact sums use direct typed blocks while preserving accumulation order
++  across blocks and chunks.
++
++* Compact numeric scalar reads forward directly to the native getter and
++  resolve wrapper state once. Retained readers cache the entire current chunk
++  for forward, reverse, and permuted access.
++
++* `read_dta()` and `read_arrow()` use direct object-identity checks while
++  constructing dibbles, reducing setup work for wide tables. Scalar access
++  to retained compact Arrow numerics reuses the current immutable chunk,
++  reducing repeated native lookups during traversal.
+ 
+ * Validated native paths speed up supported `repl()`/`replace_values()`,
+   `gen()`, dibble `:=`, and `mutate()` expressions. Public dependency changes
+--- a/r-package/dtatools/R/dibble.R
++++ b/r-package/dtatools/R/dibble.R
+@@ -229,7 +229,7 @@
+     for (index in seq_along(column_names)) {
+         column <- .subset2(x, index)
+         typed <- .typed_column(column, row_count, "as_dibble()")
+-        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
++        if (!rlang::is_reference(typed, column)) {
+             captured <- .Call(C_dtatools_capture_column, typed)
+             .Call(C_dtatools_set_data_column, x, as.integer(index), captured)
+         }
+--- a/r-package/dtatools/R/dta-numeric.R
++++ b/r-package/dtatools/R/dta-numeric.R
+@@ -1574,7 +1574,7 @@
+ 
+ #' @export
+ is.na.dta_temporal <- function(x) {
+-    is.na(as.double(.base_dta_temporal(x)))
++    .dta_read_is_na(as.double(.base_dta_temporal(x)))
+ }
+ 
+ #' @export
+--- a/r-package/dtatools/src/dtatools-internal.h
++++ b/r-package/dtatools/src/dtatools-internal.h
+@@ -224,6 +224,9 @@
+ extern int dtatools_owned_numeric_region(
+     const void *, size_t, size_t, const void **, size_t *
+ );
++extern int dtatools_owned_numeric_scalar_span(
++    const void *, size_t, const void **, size_t *, size_t *
++);
+ extern size_t dtatools_owned_numeric_live_bytes(void);
+ extern size_t dtatools_owned_numeric_live_owners(void);
+ extern size_t dtatools_owned_numeric_chunks(const void *);
+@@ -278,6 +281,11 @@
+     size_t missing_count;
+     /* Opaque immutable Rust owner. values is NULL when this is non-NULL. */
+     const void *native_owner;
++    /* Only R's scalar ALTREP getter updates this borrowed immutable span.
++       Each handle owns its descriptor; native workers never use this cache. */
++    const void *scalar_values;
++    size_t scalar_start;
++    size_t scalar_end;
+ } numeric_data;
+ 
+ /* A retained payload keeps its bytes behind the immutable Rust owner and is
+@@ -442,6 +450,12 @@
+ DTATOOLS_INTERNAL int numeric_value_is_missing_at(
+     const numeric_data *data, size_t index
+ );
++DTATOOLS_INTERNAL size_t numeric_missing_mask(
++    const numeric_data *data, int *output, int combine
++);
++DTATOOLS_INTERNAL SEXP numeric_missing_mask_capture(
++    SEXP value, numeric_data *storage
++);
+ DTATOOLS_INTERNAL SEXP numeric_payload_root(SEXP value);
+ DTATOOLS_INTERNAL numeric_reader numeric_reader_create(
+     SEXP value, R_xlen_t expected_length
+--- a/r-package/dtatools/src/metadata-proxies.c
++++ b/r-package/dtatools/src/metadata-proxies.c
+@@ -96,10 +96,10 @@
+ }
+ 
+ SEXP metadata_proxy_source(SEXP value) {
+-    SEXP state = metadata_proxy_state(value);
+-    SEXP source = state == R_NilValue
+-        ? R_altrep_data1(value) : VECTOR_ELT(state, 0);
+-    if (state != R_NilValue && XLENGTH(state) == 3 &&
++    SEXP state = R_altrep_data1(value);
++    R_xlen_t slots = TYPEOF(state) == VECSXP ? XLENGTH(state) : 0;
++    SEXP source = slots == 2 || slots == 3 ? VECTOR_ELT(state, 0) : state;
++    if (slots == 3 &&
+         ALTREP(source) && R_altrep_inherits(source, dtatools_numeric_class) &&
+         R_altrep_data2(source) == R_NilValue) {
+         numeric_data *origin = (numeric_data *) R_ExternalPtrAddr(VECTOR_ELT(state, 2));
+@@ -135,10 +135,14 @@
+ 
+ double metadata_real_value(SEXP value, R_xlen_t index) {
+     SEXP materialized = R_altrep_data2(value);
+-    return REAL_ELT(
+-        materialized == R_NilValue ? metadata_proxy_source(value) : materialized,
+-        index
+-    );
++    if (materialized != R_NilValue) return REAL_ELT(materialized, index);
++    SEXP source = metadata_proxy_source(value);
++    /* Known compact sources already validate their index and materialized
++       state. Call that getter directly instead of dispatching through R again. */
++    if (R_altrep_inherits(source, dtatools_numeric_class)) {
++        return numeric_value(source, index);
++    }
++    return REAL_ELT(source, index);
+ }
+ 
+ R_xlen_t metadata_real_region(
+--- a/r-package/dtatools/src/mutation-transactions.c
++++ b/r-package/dtatools/src/mutation-transactions.c
+@@ -3016,6 +3016,17 @@
+             string_reader = reference_string_reader_create(value, R_NilValue);
+             string_reader_pointer = &string_reader;
+         } else {
++            numeric_data storage;
++            SEXP root = PROTECT(numeric_missing_mask_capture(value, &storage));
++            if (root != R_NilValue) {
++                if ((R_xlen_t) storage.length != size) {
++                    Rf_error("dtatools numeric storage length does not match vector length");
++                }
++                unresolved -= (R_xlen_t) numeric_missing_mask(&storage, output, 1);
++                UNPROTECT(1);
++                continue;
++            }
++            UNPROTECT(1);
+             reader = numeric_reader_create(value, size);
+             reader_pointer = &reader;
+         }
+--- a/r-package/dtatools/src/numeric-payload.c
++++ b/r-package/dtatools/src/numeric-payload.c
+@@ -425,6 +425,28 @@
+     if (temporal == 1) return value - 3653.0;
+     if (temporal == 2) return value / 1000.0 - 315619200.0;
+     return value;
++}
++
++/* Only the scalar ALTREP getter calls this cache. Its descriptor roots the
++   immutable owner, and this helper neither allocates nor invokes R callbacks.
++   Cache the complete chunk so reverse reads reuse it as well as forward reads.
++   Region and native reader kernels keep their existing read-only paths. */
++static const void *numeric_scalar_span(
++    numeric_data *data, size_t index, size_t width
++) {
++    if (index < data->scalar_start || index >= data->scalar_end) {
++        const void *values = NULL;
++        size_t start = 0, end = 0;
++        if (!dtatools_owned_numeric_scalar_span(data, index, &values, &start, &end) ||
++            values == NULL || index < start || index >= end) {
++            Rf_error("invalid owned compact scalar span");
++        }
++        data->scalar_values = values;
++        data->scalar_start = start;
++        data->scalar_end = end;
++    }
++    return (const unsigned char *) data->scalar_values +
++        (index - data->scalar_start) * width;
+ }
+ 
+ #define DEFINE_NUMERIC_KERNELS(NAME, TYPE, MISSING_OFFSET)                    \
+@@ -444,16 +466,39 @@
+         return raw;                                                           \
+     }                                                                         \
+                                                                               \
+-    static double numeric_##NAME##_value_at(                                  \
+-        const numeric_data *data, size_t index                                \
+-    ) {                                                                       \
+-        TYPE raw = numeric_##NAME##_raw_at(data, index);                      \
+-        int missing = MISSING_OFFSET(raw, data->format_version);              \
+-        return missing >= 0                                                   \
+-            ? numeric_missing_value(missing)                                  \
+-            : numeric_observed_value((double) raw, data->temporal);           \
+-    }                                                                         \
+-                                                                              \
++    static double numeric_##NAME##_decode(                                   \
++        TYPE raw, const numeric_data *data                                   \
++    ) {                                                                      \
++        int missing = MISSING_OFFSET(raw, data->format_version);             \
++        return missing >= 0                                                  \
++            ? numeric_missing_value(missing)                                 \
++            : numeric_observed_value((double) raw, data->temporal);          \
++    }                                                                        \
++                                                                             \
++    static double numeric_##NAME##_value_at(                                 \
++        const numeric_data *data, size_t index                               \
++    ) {                                                                      \
++        return numeric_##NAME##_decode(                                      \
++            numeric_##NAME##_raw_at(data, index), data                       \
++        );                                                                   \
++    }                                                                        \
++                                                                             \
++    static double numeric_##NAME##_scalar_value_at(                          \
++        numeric_data *data, size_t index                                     \
++    ) {                                                                      \
++        TYPE raw;                                                            \
++        if (!numeric_payload_retained(data)) {                               \
++            memcpy(&raw, (const char *) data->values + index * sizeof(raw),  \
++                   sizeof(raw));                                             \
++        } else {                                                             \
++            const void *source = numeric_scalar_span(                        \
++                data, index, sizeof(raw)                                     \
++            );                                                               \
++            memcpy(&raw, source, sizeof(raw));                               \
++        }                                                                    \
++        return numeric_##NAME##_decode(raw, data);                           \
++    }                                                                        \
++                                                                             \
+     static void numeric_##NAME##_region(                                      \
+         const numeric_data *data, size_t index, size_t length, double *output \
+     ) {                                                                       \
+@@ -473,34 +518,6 @@
+                 );                                                            \
+             }                                                                 \
+         }                                                                     \
+-    }                                                                         \
+-                                                                              \
+-    static void numeric_##NAME##_sum_accumulate(                              \
+-        const numeric_data *data, Rboolean na_rm, long double *accumulator    \
+-    ) {                                                                       \
+-        long double sum = *accumulator;                                       \
+-        if (data->missing_count == 0) {                                       \
+-            for (size_t index = 0; index < data->length; index++) {           \
+-                if ((index & 16383) == 0) R_CheckUserInterrupt();             \
+-                TYPE raw = numeric_##NAME##_raw_at(data, index);              \
+-                sum += numeric_observed_value((double) raw, data->temporal);  \
+-            }                                                                 \
+-        } else {                                                              \
+-            for (size_t index = 0; index < data->length; index++) {           \
+-                if ((index & 16383) == 0) R_CheckUserInterrupt();             \
+-                double element = numeric_##NAME##_value_at(data, index);      \
+-                if (!na_rm || !ISNAN(element)) sum += element;                \
+-            }                                                                 \
+-        }                                                                     \
+-        *accumulator = sum;                                                   \
+-    }                                                                         \
+-                                                                              \
+-    static long double numeric_##NAME##_sum(                                  \
+-        const numeric_data *data, Rboolean na_rm                              \
+-    ) {                                                                       \
+-        long double sum = 0.0;                                                \
+-        numeric_##NAME##_sum_accumulate(data, na_rm, &sum);                   \
+-        return sum;                                                           \
+     }                                                                         \
+                                                                               \
+     static void numeric_##NAME##_extreme_accumulate(                          \
+@@ -564,6 +581,86 @@
+ 
+ #undef DEFINE_NUMERIC_KERNELS
+ 
++
++/* A sum keeps one ordered accumulator across every block and span. Direct
++   typed loads avoid scalar decode dispatch; invariant missingness and temporal
++   policies select the loop before it starts. Independent partial sums would
++   change rounding, so these loops deliberately do not reassociate addition. */
++#define NUMERIC_SUM_ROWS(TYPE, PREPARE, VALUE)                               \
++    do {                                                                    \
++        for (size_t start = 0; start < data->length; ) {                      \
++            size_t count = data->length - start;                             \
++            if (count > 65536) count = 65536;                                \
++            if (data->length >= 16384) R_CheckUserInterrupt();               \
++            for (size_t i = start; i < start + count; i++) {                 \
++                TYPE raw;                                                   \
++                memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));         \
++                PREPARE                                                     \
++                double element = (VALUE);                                   \
++                sum += element;                                             \
++            }                                                               \
++            start += count;                                                 \
++        }                                                                   \
++    } while (0)
++
++#define NUMERIC_SUM_OBSERVED(VALUE) (VALUE)
++#define NUMERIC_SUM_DECODED(VALUE)                                           \
++    (missing >= 0 ? numeric_missing_value(missing) : (VALUE))
++
++#define NUMERIC_SUM_TEMPORAL(TYPE, PREPARE, DECODE)                           \
++    do {                                                                    \
++        if (temporal == 1) {                                                 \
++            NUMERIC_SUM_ROWS(TYPE, PREPARE, DECODE((double) raw - 3653.0));   \
++        } else if (temporal == 2) {                                          \
++            NUMERIC_SUM_ROWS(TYPE, PREPARE,                                  \
++                             DECODE((double) raw / 1000.0 - 315619200.0));   \
++        } else {                                                            \
++            NUMERIC_SUM_ROWS(TYPE, PREPARE, DECODE((double) raw));           \
++        }                                                                   \
++    } while (0)
++
++#define DEFINE_NUMERIC_SUM(NAME, TYPE, MISSING_OFFSET)                       \
++    static void numeric_##NAME##_sum_accumulate(                             \
++        const numeric_data *data, Rboolean na_rm, long double *accumulator   \
++    ) {                                                                     \
++        const unsigned char *bytes = data->values;                           \
++        int temporal = data->temporal;                                      \
++        long double sum = *accumulator;                                      \
++        if (data->missing_count == 0) {                                      \
++            NUMERIC_SUM_TEMPORAL(TYPE, (void) 0;, NUMERIC_SUM_OBSERVED);     \
++        } else if (na_rm) {                                                 \
++            if (data->format_version <= 111) {                               \
++                NUMERIC_SUM_TEMPORAL(TYPE,                                  \
++                    if (MISSING_OFFSET(raw, 111) >= 0 ||                    \
++                        isnan((double) raw)) continue;,                     \
++                    NUMERIC_SUM_OBSERVED);                                  \
++            } else {                                                        \
++                NUMERIC_SUM_TEMPORAL(TYPE,                                  \
++                    if (MISSING_OFFSET(raw, 119) >= 0 ||                    \
++                        isnan((double) raw)) continue;,                     \
++                    NUMERIC_SUM_OBSERVED);                                  \
++            }                                                               \
++        } else if (data->format_version <= 111) {                            \
++            NUMERIC_SUM_TEMPORAL(TYPE,                                      \
++                int missing = MISSING_OFFSET(raw, 111);, NUMERIC_SUM_DECODED);\
++        } else {                                                            \
++            NUMERIC_SUM_TEMPORAL(TYPE,                                      \
++                int missing = MISSING_OFFSET(raw, 119);, NUMERIC_SUM_DECODED);\
++        }                                                                   \
++        *accumulator = sum;                                                  \
++    }
++
++DEFINE_NUMERIC_SUM(byte, int8_t, byte_missing_offset)
++DEFINE_NUMERIC_SUM(int, int16_t, int_missing_offset)
++DEFINE_NUMERIC_SUM(long, int32_t, long_missing_offset)
++DEFINE_NUMERIC_SUM(float, float, float_missing_offset)
++
++#undef DEFINE_NUMERIC_SUM
++#undef NUMERIC_SUM_TEMPORAL
++#undef NUMERIC_SUM_DECODED
++#undef NUMERIC_SUM_OBSERVED
++#undef NUMERIC_SUM_ROWS
++
+ static double numeric_value_at(const numeric_data *data, size_t index) {
+     switch (data->kind) {
+     case NUMERIC_BYTE:
+@@ -612,6 +709,90 @@
+         isnan(numeric_float_raw_at(data, index));
+ }
+ 
++/* Missingness needs only storage codes, never decoded doubles. Select the
++   representation once per contiguous span; keep R dispatch and interrupt
++   checks outside the vectorizable byte loops. The caller roots a descriptor
++   snapshot and its backing before allocating the output. */
++typedef struct {
++    int *output;
++    int combine;
++    size_t added;
++} numeric_missing_mask_context;
++
++#define NUMERIC_MISSING_MASK_LOOP(TYPE, MISSING)                             \
++    do {                                                                    \
++        const unsigned char *restrict bytes = span->values;                 \
++        int *restrict output = context->output + offset;                    \
++        for (size_t start = 0; start < span->length; ) {                      \
++            size_t count = span->length - start;                             \
++            if (count > 65536) count = 65536;                                \
++            if (span->length >= 16384) R_CheckUserInterrupt();               \
++            if (context->combine) {                                         \
++                size_t added = 0;                                           \
++                for (size_t i = start; i < start + count; i++) {             \
++                    TYPE raw;                                               \
++                    memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));     \
++                    int missing = (MISSING);                                \
++                    int previous = output[i];                               \
++                    output[i] = previous | missing;                         \
++                    added += (size_t) (missing & !previous);                \
++                }                                                           \
++                context->added += added;                                    \
++            } else {                                                        \
++                for (size_t i = start; i < start + count; i++) {             \
++                    TYPE raw;                                               \
++                    memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));     \
++                    output[i] = (MISSING);                                  \
++                }                                                           \
++            }                                                               \
++            start += count;                                                 \
++        }                                                                   \
++    } while (0)
++
++static void numeric_missing_mask_span(
++    const numeric_data *span, size_t offset, void *raw_context
++) {
++    numeric_missing_mask_context *context = raw_context;
++    int legacy = span->format_version <= 111;
++    switch (span->kind) {
++    case NUMERIC_BYTE:
++        if (legacy) NUMERIC_MISSING_MASK_LOOP(int8_t, raw == INT8_C(127));
++        else NUMERIC_MISSING_MASK_LOOP(int8_t, raw >= INT8_C(101));
++        break;
++    case NUMERIC_INT:
++        if (legacy) NUMERIC_MISSING_MASK_LOOP(int16_t, raw == INT16_C(32767));
++        else NUMERIC_MISSING_MASK_LOOP(int16_t, raw >= INT16_C(32741));
++        break;
++    case NUMERIC_LONG:
++        if (legacy) NUMERIC_MISSING_MASK_LOOP(int32_t, raw == INT32_MAX);
++        else NUMERIC_MISSING_MASK_LOOP(int32_t, raw >= INT32_C(2147483621));
++        break;
++    case NUMERIC_FLOAT:
++        if (legacy) {
++            NUMERIC_MISSING_MASK_LOOP(uint32_t,
++                (raw >= UINT32_C(0x7f000000) && raw < UINT32_C(0x80000000)) |
++                ((raw & UINT32_C(0x7fffffff)) > UINT32_C(0x7f800000)));
++        } else {
++            NUMERIC_MISSING_MASK_LOOP(uint32_t,
++                (raw >= UINT32_C(0x7f000000) && raw <= UINT32_C(0x7f00d000) &&
++                 (raw & UINT32_C(0x000007ff)) == 0) |
++                ((raw & UINT32_C(0x7fffffff)) > UINT32_C(0x7f800000)));
++        }
++        break;
++    default:
++        Rf_error("invalid dtatools numeric storage kind");
++    }
++}
++#undef NUMERIC_MISSING_MASK_LOOP
++
++/* combine=0 writes a fresh mask; combine=1 ORs into an existing 0/1 mask and
++   returns the number of newly missing rows for argument-level short circuit. */
++size_t numeric_missing_mask(const numeric_data *data, int *output, int combine) {
++    numeric_missing_mask_context context = {output, combine, 0};
++    numeric_for_each_span(data, 0, data->length, numeric_missing_mask_span, &context);
++    return context.added;
++}
++
+ static size_t numeric_count_missing(const numeric_data *data) {
+     size_t count = 0;
+     for (size_t index = 0; index < data->length; index++) {
+@@ -638,6 +819,20 @@
+     }
+     if (ALTREP(value) && R_altrep_data2(value) != R_NilValue) return R_altrep_data2(value);
+     return value;
++}
++
++/* Retaining an immutable owner's bytes creates a distinct native owner.
++   Derive its descriptor only after the private handle has captured it: an
++   allocation callback may materialize the public handle during capture. For
++   plain backing, the raw allocation root keeps the entry descriptor valid. */
++SEXP numeric_missing_mask_capture(SEXP value, numeric_data *storage) {
++    SEXP source = numeric_base_source(value);
++    if (source == R_NilValue) return R_NilValue;
++    numeric_data entry = *numeric_read_storage(source);
++    SEXP root = numeric_payload_root(source);
++    *storage = numeric_payload_retained(&entry)
++        ? *numeric_read_storage(root) : entry;
++    return root;
+ }
+ 
+ numeric_reader numeric_reader_create(
+@@ -859,7 +1054,10 @@
+ DTATOOLS_LAYOUT_ASSERT(gather_x_length, offsetof(numeric_gather_column, x_length) == 80);
+ DTATOOLS_LAYOUT_ASSERT(gather_size, sizeof(numeric_gather_column) == 96);
+ DTATOOLS_LAYOUT_ASSERT(numeric_owner, offsetof(numeric_data, native_owner) == 40);
+-DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 48);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_values, offsetof(numeric_data, scalar_values) == 48);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_start, offsetof(numeric_data, scalar_start) == 56);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_end, offsetof(numeric_data, scalar_end) == 64);
++DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 72);
+ DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
+ DTATOOLS_LAYOUT_ASSERT(write_column_dta_type, offsetof(dtatools_write_column, dta_type) == 8);
+ DTATOOLS_LAYOUT_ASSERT(write_column_format, offsetof(dtatools_write_column, format) == 16);
+@@ -1675,7 +1873,18 @@
+     if (index < 0 || (size_t) index >= data->length) {
+         Rf_error("invalid dtatools numeric-vector index");
+     }
+-    return numeric_value_at(data, (size_t) index);
++    switch (data->kind) {
++    case NUMERIC_BYTE:
++        return numeric_byte_scalar_value_at(data, (size_t) index);
++    case NUMERIC_INT:
++        return numeric_int_scalar_value_at(data, (size_t) index);
++    case NUMERIC_LONG:
++        return numeric_long_scalar_value_at(data, (size_t) index);
++    case NUMERIC_FLOAT:
++        return numeric_float_scalar_value_at(data, (size_t) index);
++    default:
++        Rf_error("invalid dtatools numeric storage kind");
++    }
+ }
+ 
+ R_xlen_t numeric_region(
+--- a/r-package/dtatools/src/owned-columns.h
++++ b/r-package/dtatools/src/owned-columns.h
+@@ -399,9 +399,31 @@
+     return result;
+ }
+ 
+-/* Only bare handles qualify. Named, shaped and classed values keep base R's
+-   attribute and method dispatch behavior in the R fallback. */
++static SEXP compact_missing_mask_attribute(SEXP tag, SEXP value, void *context) {
++    (void) value;
++    (void) context;
++    return tag == R_NamesSymbol ? NULL : R_NilValue;
++}
++
++/* A compact read view may carry names, which is.na preserves. Other
++   attributes and classes retain base R's existing fallback. Owned doubles
++   keep their established bare-handle admission. */
+ SEXP C_dtatools_owned_missing_mask(SEXP value) {
++    if (TYPEOF(value) == REALSXP && !Rf_isObject(value) && !Rf_isS4(value)) {
++        if (R_mapAttrib(value, compact_missing_mask_attribute, NULL) == NULL) {
++            SEXP names = PROTECT(Rf_getAttrib(value, R_NamesSymbol));
++            numeric_data storage;
++            SEXP root = PROTECT(numeric_missing_mask_capture(value, &storage));
++            if (root != R_NilValue) {
++                SEXP result = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t) storage.length));
++                numeric_missing_mask(&storage, LOGICAL(result), 0);
++                if (names != R_NilValue) Rf_setAttrib(result, R_NamesSymbol, names);
++                UNPROTECT(3);
++                return result;
++            }
++            UNPROTECT(2);
++        }
++    }
+     if (!owned_bare_real(value)) return R_NilValue;
+     SEXP payload = PROTECT(owned_values(value));
+     R_xlen_t length = XLENGTH(payload);
+--- a/r-package/dtatools/src/rust/src/lib.rs
++++ b/r-package/dtatools/src/rust/src/lib.rs
+@@ -239,6 +239,10 @@
+     missing_count: usize,
+     // Opaque immutable owner, or null for the legacy R-rooted writable bytes.
+     native_owner: *const c_void,
++    // Per-descriptor borrowed span, updated only by R's scalar ALTREP getter.
++    scalar_values: *const c_void,
++    scalar_start: usize,
++    scalar_end: usize,
+ }
+ 
+ impl Drop for NumericData {
+@@ -257,6 +261,9 @@
+             format_version: c_int::from(data.format_version.as_u16()),
+             missing_count: data.missing_count,
+             native_owner: ptr::null(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         }
+     }
+ }
+@@ -346,6 +353,9 @@
+         format_version: 119,
+         missing_count,
+         native_owner: ptr::null(),
++        scalar_values: ptr::null(),
++        scalar_start: 0,
++        scalar_end: 0,
+     }))
+     .cast::<c_void>()
+ }
+@@ -3361,11 +3371,75 @@
+         let output =
+             unsafe { std::slice::from_raw_parts_mut(data.values.add(output_start), row_count) };
+         let mut missing_count = 0;
+-        for (row, target) in output.iter_mut().enumerate() {
+-            let value = unsafe { *source.get_unchecked(row * stride) };
+-            *target = value;
+-            missing_count +=
+-                usize::from(classify_byte_missing_for_version(value as i8, version).is_some());
++        if stride == 1 {
++            for (row, target) in output.iter_mut().enumerate() {
++                let value = unsafe { *source.get_unchecked(row) };
++                *target = value;
++                missing_count +=
++                    usize::from(classify_byte_missing_for_version(value as i8, version).is_some());
++            }
++        } else {
++            macro_rules! gather_strided {
++                ($format:expr) => {{
++                    // Independent counts shorten the dependency chain for strided input.
++                    let mut missing0 = 0;
++                    let mut missing1 = 0;
++                    let mut missing2 = 0;
++                    let mut missing3 = 0;
++                    let mut groups = output.chunks_exact_mut(4);
++                    for (group, target) in groups.by_ref().enumerate() {
++                        let row = group * 4;
++                        // SAFETY: each row is below row_count, so the complete range
++                        // validation above also covers all four strided loads.
++                        let value0 = unsafe { *source.get_unchecked(row * stride) };
++                        let value1 = unsafe { *source.get_unchecked((row + 1) * stride) };
++                        let value2 = unsafe { *source.get_unchecked((row + 2) * stride) };
++                        let value3 = unsafe { *source.get_unchecked((row + 3) * stride) };
++                        target[0] = value0;
++                        target[1] = value1;
++                        target[2] = value2;
++                        target[3] = value3;
++                        missing0 += usize::from(
++                            classify_byte_missing_for_version(value0 as i8, $format).is_some(),
++                        );
++                        missing1 += usize::from(
++                            classify_byte_missing_for_version(value1 as i8, $format).is_some(),
++                        );
++                        missing2 += usize::from(
++                            classify_byte_missing_for_version(value2 as i8, $format).is_some(),
++                        );
++                        missing3 += usize::from(
++                            classify_byte_missing_for_version(value3 as i8, $format).is_some(),
++                        );
++                    }
++                    let mut missing_count = missing0 + missing1 + missing2 + missing3;
++                    let tail_start = row_count - row_count % 4;
++                    for (offset, target) in groups.into_remainder().iter_mut().enumerate() {
++                        let value =
++                            unsafe { *source.get_unchecked((tail_start + offset) * stride) };
++                        *target = value;
++                        missing_count += usize::from(
++                            classify_byte_missing_for_version(value as i8, $format).is_some(),
++                        );
++                    }
++                    missing_count
++                }};
++            }
++            // These are exactly the two families in the version-aware byte
++            // classifier. Constant representatives keep that dispatch out of
++            // every lane while still using the shared classification logic.
++            missing_count = match version {
++                FormatVersion::V105
++                | FormatVersion::V108
++                | FormatVersion::V110
++                | FormatVersion::V111 => gather_strided!(FormatVersion::V111),
++                FormatVersion::V113
++                | FormatVersion::V114
++                | FormatVersion::V115
++                | FormatVersion::V117
++                | FormatVersion::V118
++                | FormatVersion::V119 => gather_strided!(FormatVersion::V118),
++            };
+         }
+         data.missing_count += missing_count;
+         Ok(true)
+@@ -6094,13 +6168,66 @@
+     }
+ 
+     #[test]
++    fn compact_byte_batch_preserves_every_byte_in_each_gather_lane() {
++        use crate::{
++            classify_byte_missing_for_version, DtaColumnSink, FormatVersion, NumericKind, RColumn,
++            RNumericData,
++        };
++        for release in [105, 108, 110, 111, 113, 114, 115, 117, 118, 119] {
++            let version = FormatVersion::try_from(release).unwrap();
++            for stride in [1, 3, 17, 7176] {
++                for phase in 0..4 {
++                    // Cycling the phase puts every raw byte in every lane;
++                    // three extra rows also exercise the scalar remainder.
++                    let values: Vec<u8> = (0..259).map(|row| (row + phase) as u8).collect();
++                    let mut source = vec![42_u8; (values.len() - 1) * stride + 1];
++                    for (row, &value) in values.iter().enumerate() {
++                        source[row * stride] = value;
++                    }
++                    let mut output = vec![42_u8; values.len() + 2];
++                    let mut column = RColumn::NumericAltRep {
++                        vector: ptr::null_mut(),
++                        data: RNumericData {
++                            backing: ptr::null_mut(),
++                            values: output.as_mut_ptr(),
++                            length: output.len(),
++                            kind: NumericKind::Byte,
++                            temporal: TemporalKind::None,
++                            format_version: version,
++                            missing_count: 7,
++                        },
++                    };
++                    assert!(column
++                        .try_push_byte_rows(1, values.len(), &source, stride, version)
++                        .unwrap());
++                    assert_eq!(output[0], 42);
++                    assert_eq!(output[values.len() + 1], 42);
++                    assert_eq!(&output[1..values.len() + 1], values.as_slice());
++                    let expected = values
++                        .iter()
++                        .filter(|&&value| {
++                            classify_byte_missing_for_version(value as i8, version).is_some()
++                        })
++                        .count();
++                    let RColumn::NumericAltRep { data, .. } = column else {
++                        unreachable!()
++                    };
++                    assert_eq!(data.missing_count, 7 + expected);
++                }
++            }
++        }
++    }
++
++    #[test]
+     fn compact_byte_batch_preserves_short_tails_and_accumulated_counts() {
+         use crate::{
+             classify_byte_missing_for_version, DtaColumnSink, FormatVersion, NumericKind, RColumn,
+             RNumericData,
+         };
+         for version in [FormatVersion::V111, FormatVersion::V118] {
+-            for count in [0, 1, 15, 16, 17, 31, 32, 33, 255, 256, 257] {
++            for count in [
++                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 255, 256, 257,
++            ] {
+                 for stride in [1, 3, 17] {
+                     let values: Vec<u8> = (0..count).map(|row| (row + 99) as u8).collect();
+                     let mut source = vec![42_u8; count * stride];
+--- a/r-package/dtatools/src/rust/src/owned_numeric.rs
++++ b/r-package/dtatools/src/rust/src/owned_numeric.rs
+@@ -280,6 +280,9 @@
+             format_version: c_int::from(self.version.as_u16()),
+             missing_count: self.missing_count,
+             native_owner: Arc::into_raw(self.owner).cast(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         }
+     }
+ }
+@@ -476,6 +479,9 @@
+             format_version: source.format_version,
+             missing_count: source.missing_count,
+             native_owner: ptr::null(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         });
+         Arc::increment_strong_count(source.native_owner.cast::<Owner>());
+         result.native_owner = source.native_owner;
+@@ -521,6 +527,50 @@
+     };
+     *values = chunk.pointer().add((start - first) * owner.width).cast();
+     *count = requested.min(chunk.end - start);
++    1
++}
++
++/// Return the complete owning chunk containing a scalar index. The base
++/// pointer and half-open row bounds stay valid while the owner is rooted.
++/// This function does not allocate, invoke R, or mutate any owner or buffer.
++///
++/// # Safety
++///
++/// `data` must be null or a live NumericData descriptor. Non-null output
++/// pointers must be valid writable slots disjoint from the descriptor.
++#[no_mangle]
++pub unsafe extern "C" fn dtatools_owned_numeric_scalar_span(
++    data: *const c_void,
++    index: usize,
++    values: *mut *const c_void,
++    start: *mut usize,
++    end: *mut usize,
++) -> c_int {
++    if data.is_null() || values.is_null() || start.is_null() || end.is_null() {
++        return 0;
++    }
++    *values = ptr::null();
++    *start = 0;
++    *end = 0;
++    let source = &*data.cast::<NumericData>();
++    if source.native_owner.is_null() || index >= source.length {
++        return 0;
++    }
++    let owner = &*source.native_owner.cast::<Owner>();
++    if index >= owner.length {
++        return 0;
++    }
++    let chunk_index = owner.chunks.partition_point(|chunk| chunk.end <= index);
++    let Some(chunk) = owner.chunks.get(chunk_index) else {
++        return 0;
++    };
++    *values = chunk.pointer().cast();
++    *start = if chunk_index == 0 {
++        0
++    } else {
++        owner.chunks[chunk_index - 1].end
++    };
++    *end = chunk.end;
+     1
+ }
+ 
+@@ -581,6 +631,195 @@
+             row += count;
+         }
+         assert_eq!(observed, expected_bytes);
++    }
++
++    unsafe fn scalar_span(data: &NumericData, index: usize) -> Option<(*const u8, usize, usize)> {
++        let mut values = ptr::null();
++        let mut start = usize::MAX;
++        let mut end = usize::MAX;
++        let status = dtatools_owned_numeric_scalar_span(
++            (data as *const NumericData).cast(),
++            index,
++            &mut values,
++            &mut start,
++            &mut end,
++        );
++        if status == 0 {
++            assert!(values.is_null());
++            assert_eq!((start, end), (0, 0));
++            None
++        } else {
++            assert_eq!(status, 1);
++            Some((values.cast(), start, end))
++        }
++    }
++
++    #[test]
++    fn scalar_spans_return_whole_sliced_arrow_chunks_in_any_order() {
++        let whole = Int16Array::from(vec![99_i16, 10, 11, 12, 20, 21, 99]);
++        let arrays: Vec<ArrayRef> = vec![
++            Arc::new(Int16Array::from(Vec::<i16>::new())),
++            Arc::new(whole.slice(1, 3)),
++            Arc::new(Int16Array::from(Vec::<i16>::new())),
++            Arc::new(whole.slice(4, 2)),
++            Arc::new(Int16Array::from(Vec::<i16>::new())),
++        ];
++        let first_pointer = whole.values().as_ptr().wrapping_add(1).cast::<u8>();
++        let second_pointer = whole.values().as_ptr().wrapping_add(4).cast::<u8>();
++        let data = prepare_from_arrow(
++            &arrays,
++            NumericKind::Int,
++            TemporalKind::None,
++            FormatVersion::V118,
++            5,
++            || false,
++        )
++        .unwrap()
++        .into_descriptor();
++        drop(arrays);
++        drop(whole);
++        for index in [4, 3, 2, 1, 0, 2, 4, 0, 3, 1] {
++            let (values, start, end) = unsafe { scalar_span(&data, index).unwrap() };
++            let (expected_pointer, expected_start, expected_end, expected_values) = if index < 3 {
++                (first_pointer, 0, 3, &[10_i16, 11, 12][..])
++            } else {
++                (second_pointer, 3, 5, &[20_i16, 21][..])
++            };
++            assert_eq!(values, expected_pointer);
++            assert_eq!((start, end), (expected_start, expected_end));
++            assert_eq!(
++                unsafe { std::slice::from_raw_parts(values.cast::<i16>(), end - start) },
++                expected_values
++            );
++            assert!(start <= index && index < end);
++            // The existing bulk API still starts at the requested row.
++            let mut region_values = ptr::null();
++            let mut count = 0;
++            assert_eq!(
++                unsafe {
++                    dtatools_owned_numeric_region(
++                        (&data as *const NumericData).cast(),
++                        index,
++                        usize::MAX,
++                        &mut region_values,
++                        &mut count,
++                    )
++                },
++                1
++            );
++            assert_eq!(
++                region_values.cast::<u8>(),
++                values.wrapping_add((index - start) * 2)
++            );
++            assert_eq!(count, end - index);
++        }
++        for index in [5, 6, usize::MAX] {
++            assert!(unsafe { scalar_span(&data, index) }.is_none());
++        }
++    }
++
++    #[test]
++    fn scalar_spans_cover_raw_chunk_edges_for_every_storage_width() {
++        for kind in [
++            NumericKind::Byte,
++            NumericKind::Int,
++            NumericKind::Long,
++            NumericKind::Float,
++        ] {
++            let bytes: Vec<u8> = (0..7 * width(kind)).map(|index| index as u8).collect();
++            let descriptor = unsafe {
++                dtatools_owned_numeric_from_raw(
++                    bytes.as_ptr(),
++                    7,
++                    3,
++                    kind as c_int,
++                    TemporalKind::None as c_int,
++                    118,
++                    0,
++                )
++            };
++            assert!(!descriptor.is_null());
++            let data = unsafe { Box::from_raw(descriptor.cast::<NumericData>()) };
++            for index in [6, 5, 4, 3, 2, 1, 0, 4, 1, 6, 0] {
++                let (values, start, end) = unsafe { scalar_span(&data, index).unwrap() };
++                let expected_start = index / 3 * 3;
++                let expected_end = (expected_start + 3).min(7);
++                assert_eq!((start, end), (expected_start, expected_end));
++                assert_eq!(values, bytes.as_ptr().wrapping_add(start * width(kind)));
++                assert_eq!(
++                    unsafe { std::slice::from_raw_parts(values, (end - start) * width(kind)) },
++                    &bytes[start * width(kind)..end * width(kind)]
++                );
++            }
++            assert!(unsafe { scalar_span(&data, 7) }.is_none());
++        }
++    }
++
++    #[test]
++    fn scalar_spans_reject_empty_plain_and_invalid_arguments() {
++        let empty = prepare_from_arrow(
++            &[],
++            NumericKind::Byte,
++            TemporalKind::None,
++            FormatVersion::V118,
++            0,
++            || false,
++        )
++        .unwrap()
++        .into_descriptor();
++        for index in [0, 1, usize::MAX] {
++            assert!(unsafe { scalar_span(&empty, index) }.is_none());
++        }
++        let plain = NumericData::new(crate::RNumericData {
++            backing: ptr::null_mut(),
++            values: ptr::null_mut(),
++            length: 0,
++            kind: NumericKind::Byte,
++            temporal: TemporalKind::None,
++            format_version: FormatVersion::V118,
++            missing_count: 0,
++        });
++        assert!(unsafe { scalar_span(&plain, 0) }.is_none());
++        let data = (&empty as *const NumericData).cast();
++        let mut values = ptr::null();
++        let mut start = 0;
++        let mut end = 0;
++        assert_eq!(
++            unsafe {
++                dtatools_owned_numeric_scalar_span(
++                    ptr::null(),
++                    0,
++                    &mut values,
++                    &mut start,
++                    &mut end,
++                )
++            },
++            0
++        );
++        assert_eq!(
++            unsafe {
++                dtatools_owned_numeric_scalar_span(data, 0, ptr::null_mut(), &mut start, &mut end)
++            },
++            0
++        );
++        assert_eq!(
++            unsafe {
++                dtatools_owned_numeric_scalar_span(data, 0, &mut values, ptr::null_mut(), &mut end)
++            },
++            0
++        );
++        assert_eq!(
++            unsafe {
++                dtatools_owned_numeric_scalar_span(
++                    data,
++                    0,
++                    &mut values,
++                    &mut start,
++                    ptr::null_mut(),
++                )
++            },
++            0
++        );
+     }
+ 
+     #[test]
+--- a/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
++++ b/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
+@@ -2,6 +2,89 @@
+ freeze_numeric <- function(x, chunk_rows = 2) {
+     .Call(C_dtatools_owned_numeric_freeze, x, chunk_rows)
+ }
++
++test_that("scalar retained reads cross chunks and survive independent handle writes", {
++    values <- c(-1, 0, 1, NA_real_, tagged_missing(letters), 5)
++    permutation <- c(seq.int(2L, length(values), by = 2L),
++                     seq.int(1L, length(values), by = 2L))
++    positions <- c(seq_along(values), rev(seq_along(values)), permutation, 1L, 31L, 2L)
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        for (chunk_rows in c(1, 2, 7, 100)) {
++            frozen <- freeze_numeric(constructor(values), chunk_rows)
++            snapshot <- as.double(frozen)
++            # Base is.na and scalar extraction read through the bare ALTREP
++            # handles. The reverse pass revisits chunks after a forward scan.
++            expect_identical(is.na(snapshot), is.na(values))
++            actual <- vapply(positions, function(i) snapshot[[i]], double(1))
++            expect_identical(actual, values[positions])
++            expect_identical(missing_tag(actual), missing_tag(values[positions]))
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
++            before <- owned_numeric_info(snapshot)
++
++            .Call(C_dtatools_mutate_first_numeric_altrep, frozen, 8)
++            gc()
++            actual <- vapply(positions, function(i) snapshot[[i]], double(1))
++            expect_identical(actual, values[positions])
++            expect_identical(missing_tag(actual), missing_tag(values[positions]))
++            expect_identical(is.na(snapshot), is.na(values))
++            expect_equal(owned_numeric_info(snapshot)[["compatibility_bytes"]],
++                         before[["compatibility_bytes"]])
++
++            .force_altrep_materialization(snapshot)
++            gc()
++            actual <- vapply(rev(positions), function(i) snapshot[[i]], double(1))
++            expect_identical(actual, values[rev(positions)])
++            expect_identical(missing_tag(actual), missing_tag(values[rev(positions)]))
++            expect_identical(is.na(snapshot), is.na(values))
++        }
++    }
++})
++
++test_that("scalar Arrow reads retain native batches after source materialization and GC", {
++    rows <- 2L * 65536L + 7L
++    values <- rep_len(c(-1, 0, 1, NA_real_, tagged_missing(letters)), rows)
++    days <- values - 3653
++    # Preserve tagged missing payloads rather than relying on arithmetic NaNs.
++    days[is.na(values)] <- values[is.na(values)]
++    date <- dtatools:::.construct_dta_numeric(days, NULL, "int", temporal = 1L)
++    date <- dtatools:::.attach_dta_temporal(
++        date,
++        structure(double(), format.stata = "%td",
++                  class = c("dta_temporal", "dta_date", "Date")),
++        "int"
++    )
++    source <- tibble::tibble(b = dta_byte(values), i = dta_int(values),
++                             l = dta_long(values), f = dta_float(values), day = date)
++    expected <- list(b = values, i = values, l = values, f = values, day = days)
++    path <- tempfile(fileext = ".arrow")
++    on.exit(unlink(path), add = TRUE)
++    save_arrow(source, path, threads = 1L)
++    imported <- read_arrow(path, output = "tibble", threads = 1L)
++    positions <- c(1L, 65535:65538, 131071:131074, rows, 2L, 65536L)
++    snapshots <- lapply(imported, as.double)
++    for (name in names(snapshots)) {
++        snapshot <- snapshots[[name]]
++        expect_gt(owned_numeric_info(snapshot)[["chunks"]], 1)
++        expect_identical(is.na(snapshot), is.na(expected[[name]]))
++        actual <- vapply(positions, function(i) snapshot[[i]], double(1))
++        expect_identical(actual, expected[[name]][positions])
++        expect_identical(missing_tag(actual), missing_tag(expected[[name]][positions]))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
++        .force_altrep_materialization(imported[[name]])
++    }
++    rm(imported, source, date)
++    unlink(path)
++    gc()
++    for (name in names(snapshots)) {
++        snapshot <- snapshots[[name]]
++        expect_equal(owned_numeric_info(snapshot)[["owned"]], 1)
++        actual <- vapply(rev(positions), function(i) snapshot[[i]], double(1))
++        expect_identical(actual, expected[[name]][rev(positions)])
++        expect_identical(missing_tag(actual), missing_tag(expected[[name]][rev(positions)]))
++        expect_identical(is.na(snapshot), is.na(expected[[name]]))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
++    }
++})
+ 
+ test_that("immutable compact regions preserve all missing codes and chunk edges", {
+     values <- c(-1, 0, 1, NA_real_, tagged_missing(letters), 5)
+@@ -617,3 +700,466 @@
+     expect_identical(attributes(saved$x), attributes(captured))
+     expect_identical(dta_storage_type(data$x), "int")
+ })
++
++# Use a native REAL_ELT traversal of the original proxy, since public casts
++# can create another handle and miss the exact forwarding path.
++local({
++    owned_scalar_call <- function(name, ...) {
++        .Call(get(name, envir = asNamespace("dtatools"), inherits = FALSE), ...)
++    }
++    owned_scalar_sum <- function(x) owned_scalar_call("C_dtatools_summarize_sum", x)
++    owned_scalar_compact <- function(x) {
++        get(".is_unmaterialized_numeric_altrep", asNamespace("dtatools"))(x)
++    }
++    owned_scalar_constructors <- list(
++        dtatools::dta_byte, dtatools::dta_int,
++        dtatools::dta_long, dtatools::dta_float
++    )
++
++    testthat::test_that("metadata scalar forwarding preserves isolated compact captures", {
++        for (constructor in owned_scalar_constructors) {
++            for (retained in c(FALSE, TRUE)) {
++                source <- constructor(c(1, 3, 5))
++                if (retained) {
++                    source <- owned_scalar_call("C_dtatools_owned_numeric_freeze", source, 2)
++                }
++                proxy <- owned_scalar_call("C_dtatools_metadata_copy", source)
++                attributes_before <- attributes(proxy)
++                testthat::expect_identical(
++                    owned_scalar_call("C_dtatools_metadata_proxy_depth", proxy), 1L)
++                testthat::expect_identical(owned_scalar_sum(proxy), 9)
++                testthat::expect_true(owned_scalar_compact(proxy))
++                owned_scalar_call("C_dtatools_mutate_first_numeric_altrep", source, 7)
++                gc()
++                testthat::expect_identical(owned_scalar_sum(source), 15)
++                testthat::expect_identical(owned_scalar_sum(proxy), 9)
++                testthat::expect_identical(attributes(proxy), attributes_before)
++                testthat::expect_true(owned_scalar_compact(proxy))
++
++                tagged <- constructor(c(1, dtatools::tagged_missing("z"), 5))
++                if (retained) {
++                    tagged <- owned_scalar_call("C_dtatools_owned_numeric_freeze", tagged, 1)
++                }
++                tagged_proxy <- owned_scalar_call("C_dtatools_metadata_copy", tagged)
++                testthat::expect_true(
++                    owned_scalar_call("C_dtatools_has_tagged_na", tagged_proxy))
++                testthat::expect_true(owned_scalar_compact(tagged_proxy))
++            }
++        }
++    })
++
++    testthat::test_that("metadata scalar forwarding respects both materialized states", {
++        for (constructor in owned_scalar_constructors) {
++            source <- constructor(c(1, 3, 5))
++            # The two-slot view intentionally follows this physical source handle.
++            proxy <- owned_scalar_call("C_dtatools_metadata_view", source)
++            testthat::expect_identical(owned_scalar_sum(proxy), 9)
++            owned_scalar_call("C_dtatools_mutate_first_numeric_altrep", source, 7)
++            testthat::expect_identical(owned_scalar_sum(proxy), 15)
++
++            # Once the proxy has its own data2, it must take priority over source.
++            owned_scalar_call("C_dtatools_force_altrep_materialization", proxy)
++            owned_scalar_call("C_dtatools_mutate_first_numeric_altrep", proxy, 11)
++            testthat::expect_identical(owned_scalar_sum(proxy), 19)
++            testthat::expect_identical(owned_scalar_sum(source), 15)
++            testthat::expect_false(owned_scalar_compact(proxy))
++        }
++    })
++
++    testthat::test_that("three-slot scalar views track live compact values and missing counts", {
++        for (constructor in owned_scalar_constructors) {
++            source <- constructor(c(1, 2, 3))
++            views <- owned_scalar_call("C_dtatools_mutation_views", list(x = source))
++            proxy <- views[[1L]]
++            testthat::expect_identical(owned_scalar_sum(proxy), 6)
++            testthat::expect_false(anyNA(proxy))
++
++            # No public capture occurs before these writes: the private descriptor
++            # shares the original compact bytes and synchronizes missing_count.
++            owned_scalar_call("C_dtatools_patch_vector", source, 2L, NA_real_)
++            testthat::expect_true(is.na(owned_scalar_sum(proxy)))
++            testthat::expect_true(anyNA(proxy))
++            owned_scalar_call("C_dtatools_patch_vector", source, 2L, 4)
++            testthat::expect_identical(owned_scalar_sum(proxy), 8)
++            testthat::expect_false(anyNA(proxy))
++
++            # Physical source materialization must not invalidate the descriptor's
++            # retained raw allocation or redirect it to the new writable doubles.
++            owned_scalar_call("C_dtatools_mutate_first_numeric_altrep", source, 9)
++            gc()
++            testthat::expect_identical(owned_scalar_sum(source), 16)
++            testthat::expect_identical(owned_scalar_sum(proxy), 8)
++            testthat::expect_true(owned_scalar_compact(proxy))
++        }
++    })
++
++    testthat::test_that("native scalar forwarding does not inspect foreign class metadata", {
++        calls <- 0L
++        source <- dtatools::dta_int(c(1, 3, 5))
++        classes <- owned_scalar_call(
++            "C_dtatools_callback_character", class(source), function() NULL)
++        attr(source, "class") <- classes
++        proxy <- owned_scalar_call("C_dtatools_metadata_view", source)
++        owned_scalar_call("C_dtatools_arm_callback_character", classes, function() {
++            calls <<- calls + 1L
++            stop("foreign scalar class metadata callback")
++        })
++        testthat::expect_identical(owned_scalar_sum(proxy), 9)
++        testthat::expect_identical(calls, 0L)
++        testthat::expect_error(classes[[1L]], "foreign scalar class metadata callback")
++        testthat::expect_identical(calls, 1L)
++    })
++})
++
++
++# Public missing predicates and the guarded native mask producer must agree.
++# The native assertion catches a return to generic scalar fallback independently
++# of machine speed; the public assertions keep the semantic contract primary.
++test_that("compact missing masks cover all tags tails and retained chunk boundaries", {
++    constructors <- list(dta_byte, dta_int, dta_long, dta_float)
++    pattern <- c(-1, 0, 1, NA_real_, tagged_missing(letters), 5)
++    for (constructor in constructors) {
++        for (length in c(0:9, 15:17, 31:33, 65)) {
++            expected <- rep_len(pattern, length)
++            for (chunk_rows in c(0, 1, 7, 32)) {
++                value <- constructor(expected)
++                if (chunk_rows > 0) value <- freeze_numeric(value, chunk_rows)
++                before <- owned_numeric_info(value)[["compatibility_bytes"]]
++                expect_identical(is.na(value), is.na(expected))
++                expect_identical(is_missing(value), is.na(expected))
++                bare <- dtatools:::.dta_data(value)
++                expect_identical(.Call(C_dtatools_owned_missing_mask, bare),
++                                 is.na(expected))
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(bare))
++                expect_equal(owned_numeric_info(value)[["compatibility_bytes"]], before)
++            }
++        }
++    }
++})
++
++test_that("compact missing predicates merge columns without changing recycling or names", {
++    left_plain <- rep_len(c(1, NA_real_, tagged_missing("a"), 4), 35L)
++    right_plain <- rep_len(c(tagged_missing("z"), 2, 3, NA_real_, 5), 35L)
++    expected <- is.na(left_plain) | is.na(right_plain)
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        left <- freeze_numeric(constructor(left_plain), 7)
++        right <- freeze_numeric(constructor(right_plain), 3)
++        expect_identical(is_missing(left, right), expected)
++        expect_identical(is_missing(right, left), expected)
++        expect_identical(is_missing(left, right, "seen"), expected)
++        expect_identical(is_missing(left, right, ""), rep(TRUE, length(expected)))
++        names(left) <- paste0("left", seq_along(left))
++        names(right) <- paste0("right", seq_along(right))
++        expect_identical(is_missing(left, right), setNames(expected, names(left)))
++        expect_identical(is_missing(right, left), setNames(expected, names(right)))
++        expect_identical(is.na(left), setNames(is.na(left_plain), names(left)))
++        expect_identical(.Call(C_dtatools_owned_missing_mask, dtatools:::.dta_data(left)),
++                         setNames(is.na(left_plain), names(left)))
++        expect_error(is_missing(left, right[-1L]), "size-one recycling")
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(left))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(right))
++    }
++})
++
++test_that("compact missing masks preserve shape class and materialized fallbacks", {
++    plain <- c(1, NA_real_, tagged_missing("b"), 4)
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        value <- freeze_numeric(constructor(plain), 3)
++        names(value) <- letters[1:4]
++        expect_identical(is.na(value), setNames(is.na(plain), letters[1:4]))
++        bare <- as.double(value)
++        dim(bare) <- c(2L, 2L)
++        dimnames(bare) <- list(c("a", "b"), c("x", "y"))
++        ordinary <- matrix(plain, 2L, dimnames = dimnames(bare))
++        expect_identical(dtatools:::.dta_read_is_na(bare), is.na(ordinary))
++        expect_error(is_missing(bare), "matrix or array")
++        class(bare) <- "compact_missing_dispatch"
++        rlang::local_bindings(
++            is.na.compact_missing_dispatch = function(x) "custom missing dispatch",
++            .env = globalenv())
++        expect_identical(dtatools:::.dta_read_is_na(bare), "custom missing dispatch")
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++
++        materialized <- as.double(value)
++        names(materialized) <- letters[1:4]
++        .force_altrep_materialization(materialized)
++        .Call(C_dtatools_mutate_first_numeric_altrep, materialized, NA_real_)
++        expected <- setNames(c(TRUE, TRUE, TRUE, FALSE), letters[1:4])
++        expect_identical(dtatools:::.dta_read_is_na(materialized), expected)
++        expect_identical(is_missing(materialized), expected)
++        expect_identical(is.na(value), setNames(is.na(plain), letters[1:4]))
++    }
++})
++
++test_that("compact missing masks agree with eager decoding for legacy and modern floats", {
++    # Include both IEEE NaN signs, infinities, finite values adjacent to Stata's
++    # missing ladder, and entries just outside its modern upper endpoint.
++    bits <- c(0, 0x80000000, 0x3f800000, 0xbf800000,
++              0x7effffff, 0x7f000000, 0x7f000001, 0x7f0007ff,
++              0x7f000800, 0x7f00d000, 0x7f00d001, 0x7f7fffff,
++              0x7f800000, 0xff800000, 0x7fc00001, 0xffc00001,
++              0x7f800001, 0xff800001, 0xffffffff, 0xff7fffff)
++    raw_bits <- function(value) as.raw(floor(value / 256^(0:3)) %% 256)
++    paths <- character()
++    on.exit(unlink(paths), add = TRUE)
++    modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    paths <- c(paths, modern)
++    for (index in seq_along(bits)) {
++        patch_numeric_fixture_row(modern, index - 1L,
++                                  list(x_float = raw_bits(bits[[index]])))
++    }
++    modern_compact <- read_dta(modern, col_select = "x_float", n_max = length(bits))$x_float
++    modern_plain <- as.double(read_dta(modern, col_select = "x_float",
++                                      n_max = length(bits), use_numeric_altrep = FALSE)$x_float)
++    for (value in list(modern_compact, freeze_numeric(modern_compact, 3))) {
++        expect_identical(is.na(value), is.na(modern_plain))
++        expect_identical(is_missing(value), is.na(modern_plain))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++    }
++
++    # The first row's complete numeric prefix identifies the data block in the
++    # redistributable release-111 fixture without assuming header byte offsets.
++    original <- readBin(fixture("synthetic_v111.dta"), "raw",
++                        n = file.info(fixture("synthetic_v111.dta"))[["size"]])
++    prefix <- c(as.raw(1), writeBin(321L, raw(), size = 2L, endian = "little"),
++                writeBin(-123456L, raw(), size = 4L, endian = "little"),
++                writeBin(1.5, raw(), size = 4L, endian = "little"),
++                writeBin(-2.25, raw(), size = 8L, endian = "little"))
++    start <- grepRaw(prefix, original, fixed = TRUE, all = TRUE)
++    expect_length(start, 1L)
++    legacy <- tempfile(fileext = ".dta")
++    paths <- c(paths, legacy)
++    for (batch in split(bits, ceiling(seq_along(bits) / 4L))) {
++        bytes <- original
++        for (row in seq_along(batch)) {
++            location <- start + (row - 1L) * 25L + 7L
++            bytes[location + 0:3] <- raw_bits(batch[[row]])
++        }
++        writeBin(bytes, legacy)
++        compact <- read_dta(legacy, col_select = "f", n_max = length(batch))$f
++        plain <- as.double(read_dta(legacy, col_select = "f", n_max = length(batch),
++                                    use_numeric_altrep = FALSE)$f)
++        for (value in list(compact, freeze_numeric(compact, 1))) {
++            expect_identical(is.na(value), is.na(plain))
++            expect_identical(is_missing(value), is.na(plain))
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++        }
++    }
++})
++
++test_that("compact missing masks keep legacy integer missing domains", {
++    for (version in c(105L, 108L, 110L, 111L)) {
++        path <- fixture(paste0("synthetic_v", version, ".dta"))
++        compact <- read_dta(path, output = "tibble")
++        eager <- read_dta(path, output = "tibble", use_numeric_altrep = FALSE)
++        for (name in names(compact)) {
++            source <- compact[[name]]
++            if (!dtatools:::.is_unmaterialized_numeric_altrep(source)) next
++            expected <- is.na(as.double(eager[[name]]))
++            for (value in list(source, freeze_numeric(source, 1))) {
++                expect_identical(is.na(value), expected)
++                expect_identical(is_missing(value), expected)
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++            }
++        }
++    }
++})
++
++test_that("compact missing predicates preserve foreign callbacks and short circuits", {
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        calls <- 0L
++        source <- freeze_numeric(constructor(c(1, NA_real_, 3, 4)), 2)
++        later <- .Call(C_dtatools_callback_double, c(NA_real_, 2, NA_real_, 4),
++                       function() {
++                           calls <<- calls + 1L
++                           .force_altrep_materialization(source)
++                           gc()
++                       }, TRUE)
++        expect_identical(is_missing(source, later), c(TRUE, TRUE, TRUE, FALSE))
++        expect_gt(calls, 0L)
++        calls <- 0L
++        all_missing <- freeze_numeric(constructor(rep(NA_real_, 4L)), 3)
++        untouched <- .Call(C_dtatools_callback_double, rep(1, 4L),
++                           function() calls <<- calls + 1L, TRUE)
++        expect_identical(is_missing(all_missing, untouched), rep(TRUE, 4L))
++        expect_identical(calls, 0L)
++        expect_identical(is_missing(source, untouched, NA_real_), rep(TRUE, 4L))
++        expect_identical(calls, 0L)
++    }
++})
++
++test_that("compact missing masks retain sources and live view facts across GC", {
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        source <- freeze_numeric(constructor(c(1, NA_real_, tagged_missing("z"), 4)), 2)
++        expected <- c(FALSE, TRUE, TRUE, FALSE)
++        expect_identical(with_numeric_gc_stress(is.na(source)), expected)
++        expect_identical(with_numeric_gc_stress(is_missing(source)), expected)
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(source))
++
++        live <- constructor(c(1, 2, 3, 4))
++        views <- .Call(C_dtatools_mutation_views, list(x = live))
++        proxy <- views[[1L]]
++        expect_identical(is.na(proxy), rep(FALSE, 4L))
++        .Call(C_dtatools_patch_vector, live, 2L, NA_real_)
++        expect_identical(is.na(proxy), c(FALSE, TRUE, FALSE, FALSE))
++        expect_identical(is_missing(proxy), c(FALSE, TRUE, FALSE, FALSE))
++        .Call(C_dtatools_patch_vector, live, 2L, 8)
++        expect_identical(is.na(proxy), rep(FALSE, 4L))
++        expect_identical(is_missing(proxy), rep(FALSE, 4L))
++    }
++})
++
++
++test_that("compact missing predicates survive reentrant materialization finalizers", {
++    arm_finalizer <- function(finalizer) {
++        token <- new.env(parent = emptyenv())
++        reg.finalizer(token, finalizer, onexit = FALSE)
++        invisible(NULL)
++    }
++    # The finalizer may run before, during, or after the scan. Explicit GC
++    # makes collection deterministic without claiming a private allocation window.
++    for (predicate in list(is.na, is_missing)) {
++        for (retained in c(FALSE, TRUE)) {
++            source <- dta_int(c(1, NA_real_, tagged_missing("z"), 4))
++            if (retained) source <- freeze_numeric(source, 2)
++            fired <- 0L
++            prior <- gctorture2(1L)
++            tryCatch({
++                arm_finalizer(function(key) {
++                    fired <<- fired + 1L
++                    .force_altrep_materialization(source)
++                })
++                result <- predicate(source)
++                invisible(gc())
++            }, finally = gctorture2(prior))
++            expect_identical(fired, 1L)
++            expect_identical(result, c(FALSE, TRUE, TRUE, FALSE))
++            expect_identical(as.double(source), c(1, NA_real_, tagged_missing("z"), 4))
++        }
++    }
++})
++
++
++test_that("compact temporal missing predicates preserve converted values and all tags", {
++    specifications <- list(
++        list(kind = 1L, storage = "int", origin = -3653,
++             prototype = structure(double(), format.stata = "%td",
++                                   class = c("dta_temporal", "dta_date", "Date"))),
++        list(kind = 2L, storage = "long", origin = -315619200,
++             prototype = structure(double(), format.stata = "%tc", tzone = "UTC",
++                                   class = c("dta_temporal", "dta_datetime", "POSIXct", "POSIXt")))
++    )
++    for (spec in specifications) {
++        values <- c(spec$origin + c(-1, 0, 1), NA_real_, tagged_missing(letters))
++        source <- dtatools:::.construct_dta_numeric(
++            values, NULL, spec$storage, temporal = spec$kind)
++        source <- dtatools:::.attach_dta_temporal(source, spec$prototype, spec$storage)
++        for (value in list(source, freeze_numeric(source, 2))) {
++            names(value) <- paste0("time", seq_along(value))
++            before <- attributes(value)
++            expect_identical(is.na(value), is.na(values))
++            expect_identical(is_missing(value), setNames(is.na(values), names(value)))
++            expect_identical(attributes(value), before)
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++            expect_identical(as.double(value), values)
++        }
++    }
++})
++
++
++test_that("compact sums match ordered ordinary sums across types and missing permutations", {
++    sum_bytes <- function(x, remove) {
++        writeBin(sum(as.double(x), na.rm = remove), raw(), size = 8L, endian = "little")
++    }
++    fixtures <- list(numeric(), -0, c(-0, 0), c(0, -0), c(-1, 0, 1),
++                     c(NA_real_, tagged_missing("a"), tagged_missing("z")),
++                     c(tagged_missing("a"), NA_real_, tagged_missing("z")),
++                     c(tagged_missing("z"), tagged_missing("a"), NA_real_),
++                     c(1, tagged_missing("a"), -1, NA_real_, tagged_missing("z")),
++                     rep_len(c(7, -3, 1, 0, -1), 65L))
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        for (values in fixtures) {
++            source <- constructor(values)
++            for (chunk_rows in c(0, 1, 3, 16)) {
++                value <- if (chunk_rows == 0) source else freeze_numeric(source, chunk_rows)
++                before <- owned_numeric_info(value)[["compatibility_bytes"]]
++                for (remove in c(FALSE, TRUE)) {
++                    expect_identical(sum_bytes(value, remove), sum_bytes(values, remove))
++                }
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++                expect_equal(owned_numeric_info(value)[["compatibility_bytes"]], before)
++            }
++        }
++    }
++})
++
++test_that("compact sums retain legacy integer domains and non-Stata float payloads", {
++    sum_bytes <- function(x, remove) {
++        writeBin(sum(as.double(x), na.rm = remove), raw(), size = 8L, endian = "little")
++    }
++    ordinary <- function(x) {
++        readBin(writeBin(as.double(x), raw(), size = 8L), "double", n = length(x))
++    }
++    for (version in c(105L, 108L, 110L, 111L)) {
++        columns <- read_dta(fixture(paste0("synthetic_v", version, ".dta")), output = "tibble")
++        for (source in columns) {
++            if (!dtatools:::.is_unmaterialized_numeric_altrep(source)) next
++            plain <- ordinary(source)
++            for (value in list(source, freeze_numeric(source, 1), freeze_numeric(source, 3))) {
++                for (remove in c(FALSE, TRUE)) {
++                    expect_identical(sum_bytes(value, remove), sum_bytes(plain, remove))
++                }
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++            }
++        }
++    }
++
++    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    on.exit(unlink(path), add = TRUE)
++    bits <- c(0x7fc00001, 0xffc00001, 0x3f800000, 0x7f000000,
++              0x7f000800, 0x7f00d000, 0x7f800000, 0xff800000, 0x80000000)
++    for (index in seq_along(bits)) {
++        raw <- as.raw(floor(bits[[index]] / 256^(0:3)) %% 256)
++        patch_numeric_fixture_row(path, index - 1L, list(x_float = raw))
++    }
++    source <- read_dta(path, col_select = "x_float", n_max = length(bits))$x_float
++    for (rows in list(1:9, 9:1, c(4L, 1L, 5L, 2L, 6L),
++                      c(5L, 1L, 4L, 2L, 6L), c(6L, 2L, 1L, 5L, 4L),
++                      c(7L, 8L, 3L), c(8L, 7L, 3L), c(9L, 3L))) {
++        selected <- source[rows]
++        plain <- ordinary(selected)
++        for (value in list(selected, freeze_numeric(selected, 1), freeze_numeric(selected, 4))) {
++            for (remove in c(FALSE, TRUE)) {
++                expect_identical(sum_bytes(value, remove), sum_bytes(plain, remove))
++            }
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++        }
++    }
++})
++
++test_that("compact sums apply date and datetime conversion before ordered accumulation", {
++    sum_bytes <- function(x, remove) {
++        writeBin(sum(as.double(x), na.rm = remove), raw(), size = 8L, endian = "little")
++    }
++    specifications <- list(
++        list(kind = 1L, origin = -3653, storages = c("byte", "int", "long", "float")),
++        list(kind = 2L, origin = -315619200, storages = c("int", "long", "float"))
++    )
++    for (spec in specifications) {
++        fixtures <- list(numeric(), spec$origin + c(-1, 0, 1),
++                         c(NA_real_, tagged_missing("a"), tagged_missing("z")),
++                         c(spec$origin - 1, tagged_missing("z"), spec$origin + 1, NA_real_))
++        for (storage in spec$storages) {
++            for (values in fixtures) {
++                source <- dtatools:::.construct_dta_numeric(values, NULL, storage, temporal = spec$kind)
++                for (value in list(source, freeze_numeric(source, 1), freeze_numeric(source, 3))) {
++                    for (remove in c(FALSE, TRUE)) {
++                        expect_identical(sum_bytes(value, remove), sum_bytes(values, remove))
++                    }
++                    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++                }
++            }
++        }
++    }
++})

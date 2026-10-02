@@ -1,0 +1,1126 @@
+numeric-payload.c:70:9: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   70 |         REAL(result)[i] = numeric_size_counts[i / 3][i % 3];
+      |         ^
+numeric-payload.c:69:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   69 |     for (int i = 0; i < 12; i++) {
+      |     ^
+numeric-payload.c:69:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:300:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  300 |     while (ALTREP(value) &&
+      |     ^
+numeric-payload.c:300:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:300:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:300:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:314:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  314 |     while (ALTREP(value) &&
+      |     ^
+numeric-payload.c:314:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:314:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:314:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:368:30: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  368 |         if (length >= 16384) R_CheckUserInterrupt();
+      |                              ^
+numeric-payload.c:367:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  367 |     while (visited < length) {
+      |     ^
+numeric-payload.c:367:5: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:367:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:367:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:781:13: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+  781 |             NUMERIC_MISSING_MASK_LOOP(uint32_t,
+      |             ^
+numeric-payload.c:781:13: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:777:13: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+  777 |             NUMERIC_MISSING_MASK_LOOP(uint32_t,
+      |             ^
+numeric-payload.c:777:13: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:773:14: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+  773 |         else NUMERIC_MISSING_MASK_LOOP(int32_t, raw >= INT32_C(2147483621));
+      |              ^
+numeric-payload.c:773:14: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:772:21: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+  772 |         if (legacy) NUMERIC_MISSING_MASK_LOOP(int32_t, raw == INT32_MAX);
+      |                     ^
+numeric-payload.c:772:21: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:769:14: remark: vectorized loop (vectorization width: 8, interleaved count: 4) [-Rpass=loop-vectorize]
+  769 |         else NUMERIC_MISSING_MASK_LOOP(int16_t, raw >= INT16_C(32741));
+      |              ^
+numeric-payload.c:769:14: remark: vectorized loop (vectorization width: 8, interleaved count: 2) [-Rpass=loop-vectorize]
+numeric-payload.c:768:21: remark: vectorized loop (vectorization width: 8, interleaved count: 4) [-Rpass=loop-vectorize]
+  768 |         if (legacy) NUMERIC_MISSING_MASK_LOOP(int16_t, raw == INT16_C(32767));
+      |                     ^
+numeric-payload.c:768:21: remark: vectorized loop (vectorization width: 8, interleaved count: 2) [-Rpass=loop-vectorize]
+numeric-payload.c:765:14: remark: vectorized loop (vectorization width: 16, interleaved count: 4) [-Rpass=loop-vectorize]
+  765 |         else NUMERIC_MISSING_MASK_LOOP(int8_t, raw >= INT8_C(101));
+      |              ^
+numeric-payload.c:765:14: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:765:14: remark: vectorized loop (vectorization width: 16, interleaved count: 1) [-Rpass=loop-vectorize]
+numeric-payload.c:764:21: remark: vectorized loop (vectorization width: 16, interleaved count: 4) [-Rpass=loop-vectorize]
+  764 |         if (legacy) NUMERIC_MISSING_MASK_LOOP(int8_t, raw == INT8_C(127));
+      |                     ^
+numeric-payload.c:764:21: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:764:21: remark: vectorized loop (vectorization width: 16, interleaved count: 1) [-Rpass=loop-vectorize]
+numeric-payload.c:1034:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1034 |         if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:1034:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1033:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 1033 |     for (R_xlen_t index = 0; index < length; index++) {
+      |     ^
+numeric-payload.c:1033:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1033:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1018:39: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1018 |             if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                       ^
+numeric-payload.c:1018:39: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1017:9: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
+ 1017 |         for (R_xlen_t index = 0; index < length; index++) {
+      |         ^
+numeric-payload.c:1017:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1017:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:996:39: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  996 |             if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                       ^
+numeric-payload.c:996:39: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:995:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  995 |         for (R_xlen_t index = 0; index < length; index++) {
+      |         ^
+numeric-payload.c:995:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1004:39: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1004 |             if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                       ^
+numeric-payload.c:1003:9: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 1003 |         for (R_xlen_t index = 0; index < length; index++) {
+      |         ^
+numeric-payload.c:1003:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1003:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1123:5: remark: loop not vectorized: Cannot vectorize early exit loop with reductions or recurrences [-Rpass-analysis=loop-vectorize]
+ 1123 |     for (int index = 0; index < length; index++) {
+      |     ^
+numeric-payload.c:1123:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1229:39: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 1229 |             context->values[offset] = numeric_reader_at(
+      |                                       ^
+numeric-payload.c:1228:9: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+ 1228 |         for (size_t offset = 0; offset < context->length; offset++) {
+      |         ^
+numeric-payload.c:1228:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1228:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1257:9: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1257 |         } else {
+      |         ^
+numeric-payload.c:1239:12: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 1239 |     size_t total = 0;
+      |            ^
+numeric-payload.c:1240:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 1240 |     while (total < context->length) {
+      |     ^
+numeric-payload.c:1240:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1240:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1270:9: remark: vectorized loop (vectorization width: 4, interleaved count: 2) [-Rpass=loop-vectorize]
+ 1270 |         for (size_t offset = 0; offset < context->length; offset++) {
+      |         ^
+numeric-payload.c:894:18: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  894 |         ? tag : (payload_tag != 0 ? 256 : (ISNA(value) ? 0 : 256));
+      |                  ^
+numeric-payload.c:1276:9: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 1276 |         for (size_t offset = 0; offset < context->length; offset++) {
+      |         ^
+numeric-payload.c:1276:9: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1276:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1276:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1321:5: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1321 |     for (size_t offset = 0; offset < context->length; offset++) {
+      |     ^
+numeric-payload.c:1322:24: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 1322 |         SEXP element = STRING_ELT(
+      |                        ^
+numeric-payload.c:1321:5: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+ 1321 |     for (size_t offset = 0; offset < context->length; offset++) {
+      |     ^
+numeric-payload.c:1321:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1321:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1420:36: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1420 |             if ((id & 16383) == 0) R_CheckUserInterrupt();
+      |                                    ^
+numeric-payload.c:1420:36: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1419:9: remark: loop not vectorized: Cannot vectorize early exit loop with reductions or recurrences [-Rpass-analysis=loop-vectorize]
+ 1419 |         for (R_xlen_t id = 0; id < value_count; id++) {
+      |         ^
+numeric-payload.c:1419:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1419:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1473:55: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 1473 |                     SET_STRING_ELT(normalized, prior, STRING_ELT(source, prior));
+      |                                                       ^
+numeric-payload.c:1472:17: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 1472 |                 for (R_xlen_t prior = 0; prior < index; prior++) {
+      |                 ^
+numeric-payload.c:1472:17: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1123:5: remark: loop not vectorized: Cannot vectorize early exit loop with reductions or recurrences [-Rpass-analysis=loop-vectorize]
+ 1123 |     for (int index = 0; index < length; index++) {
+      |     ^
+numeric-payload.c:1123:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1665:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1665 |         if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:1665:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1664:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 1664 |     for (R_xlen_t index = 0; index < length; index++) {
+      |     ^
+numeric-payload.c:1664:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1684:39: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1684 |             if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                       ^
+numeric-payload.c:1684:39: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1683:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 1683 |         for (R_xlen_t index = 0; index < seed_count; index++) {
+      |         ^
+numeric-payload.c:1683:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1713:39: remark: loop not vectorized: unsafe dependent memory operations in loop. Use #pragma clang loop distribute(enable) to allow loop distribution to attempt to isolate the offending operations into a separate loop
+Unknown data dependence. Memory location is the same as accessed at numeric-payload.c:1712:9 [-Rpass-analysis=loop-vectorize]
+ 1713 |         context->levels[index].old_id = (int) index;
+      |                                       ^
+numeric-payload.c:1709:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+ 1709 |     for (size_t index = 0; index < level_count; index++) {
+      |     ^
+numeric-payload.c:1622:31: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 1622 |         if (child + 1 < count &&
+      |                               ^
+numeric-payload.c:1622:31: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1622:31: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1622:31: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1620:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 1620 |     while (root <= (count - 2) / 2) {
+      |     ^
+numeric-payload.c:1620:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1620:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1620:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1721:40: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 1721 |         REAL(values)[index] = context->levels[index].value;
+      |                                        ^
+numeric-payload.c:1720:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 1720 |     for (size_t index = 0; index < level_count; index++) {
+      |     ^
+numeric-payload.c:1720:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1727:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 1727 |     for (int code = 0; code <= 256; code++) {
+      |     ^
+numeric-payload.c:1727:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1737:9: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1737 |         }
+      |         ^
+numeric-payload.c:1736:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 1736 |             INTEGER(missing_codes)[missing_positions[code] - 1] = code;
+      |             ^
+numeric-payload.c:1734:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 1734 |     for (int code = 0; code <= 256; code++) {
+      |     ^
+numeric-payload.c:1734:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1741:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1741 |         if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:1741:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1740:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 1740 |     for (R_xlen_t index = 0; index < length; index++) {
+      |     ^
+numeric-payload.c:1740:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1960:39: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 1960 |             if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                       ^
+numeric-payload.c:1960:39: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1959:9: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
+ 1959 |         for (R_xlen_t index = 0; index < length; index++) {
+      |         ^
+numeric-payload.c:1959:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1959:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:804:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  804 |         if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:804:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:803:5: remark: loop not vectorized: Cannot vectorize early exit loop with reductions or recurrences [-Rpass-analysis=loop-vectorize]
+  803 |     for (size_t index = 0; index < data->length; index++) {
+      |     ^
+numeric-payload.c:803:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:803:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:2236:31: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 2236 |         if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                               ^
+numeric-payload.c:2236:31: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2235:5: remark: loop not vectorized: Cannot vectorize early exit loop with reductions or recurrences [-Rpass-analysis=loop-vectorize]
+ 2235 |     for (R_xlen_t i = 0; i < length; i++) {
+      |     ^
+numeric-payload.c:2235:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2235:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:2406:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 2406 |         if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:2406:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2405:5: remark: loop not vectorized: Cannot vectorize early exit loop with reductions or recurrences [-Rpass-analysis=loop-vectorize]
+ 2405 |     for (R_xlen_t index = 0; index < length; index++) {
+      |     ^
+numeric-payload.c:2405:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2405:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:2529:13: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 2529 |             SET_VECTOR_ELT(read_roots, 2 * index + 1, numeric_payload_root(VECTOR_ELT(y, index)));
+      |             ^
+numeric-payload.c:2527:68: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 2527 |         SET_VECTOR_ELT(read_roots, 2 * index, numeric_payload_root(VECTOR_ELT(x, index)));
+      |                                                                    ^
+numeric-payload.c:2526:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 2526 |     for (R_xlen_t index = 0; index < column_count; index++) {
+      |     ^
+numeric-payload.c:2526:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:2565:24: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 2565 |         SEXP y_value = y == R_NilValue
+      |                        ^
+numeric-payload.c:2563:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 2563 |     for (R_xlen_t index = 0; index < column_count; index++) {
+      |     ^
+numeric-payload.c:2563:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2563:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2563:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:2675:41: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 2675 |         if (TYPEOF(gathered) == REALSXP && !ALTREP(gathered)) {
+      |                                         ^
+numeric-payload.c:2674:25: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 2674 |         SEXP gathered = VECTOR_ELT(result, index);
+      |                         ^
+numeric-payload.c:2673:5: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+ 2673 |     for (R_xlen_t index = 0; index < XLENGTH(result); index++) {
+      |     ^
+numeric-payload.c:2673:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2673:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:2467:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 2467 |         if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:2467:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2466:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 2466 |     for (R_xlen_t index = 0; index < length; index++) {
+      |     ^
+numeric-payload.c:2466:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3370:49: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 3370 |             if (TYPEOF(R_ClosureBody(expected)) != BCODESXP) return R_NilValue;
+      |                                                 ^
+numeric-payload.c:3367:25: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3367 |         SEXP expected = VECTOR_ELT(profile, i);
+      |                         ^
+numeric-payload.c:3366:5: remark: loop not vectorized: Cannot vectorize early exit loop with reductions or recurrences [-Rpass-analysis=loop-vectorize]
+ 3366 |     for (int i = 0; i < count; i++) {
+      |     ^
+numeric-payload.c:3366:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3366:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3405:29: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 3405 |         if (function->nodes == NULL) {
+      |                             ^
+numeric-payload.c:3395:25: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3395 |         SEXP expected = VECTOR_ELT(profile, i);
+      |                         ^
+numeric-payload.c:3394:5: remark: loop not vectorized: Cannot vectorize early exit loop [-Rpass-analysis=loop-vectorize]
+ 3394 |     for (int i = 0; i < count; i++) {
+      |     ^
+numeric-payload.c:3394:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3394:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3332:34: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 3332 |     if (TYPEOF(value) != LANGSXP && TYPEOF(value) != LISTSXP) return 1;
+      |                                  ^
+numeric-payload.c:3332:34: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3332:34: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3332:34: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3332:34: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3318:46: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3318 |     for (int i = 0; i < profile->count; i++) free(profile->functions[i].nodes);
+      |                                              ^
+numeric-payload.c:3318:5: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+ 3318 |     for (int i = 0; i < profile->count; i++) free(profile->functions[i].nodes);
+      |     ^
+numeric-payload.c:3318:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3318:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3863:49: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3863 |         SEXP actual = computed_dependency_value(Rf_install(names[i]), frame, 16);
+      |                                                 ^
+numeric-payload.c:3862:5: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
+ 3862 |     for (int i = 0; i < 7; i++) {
+      |     ^
+numeric-payload.c:3862:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3862:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3027:40: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+ 3027 |         if (type == R_BindingTypeValue || type == R_BindingTypeForced) {
+      |                                        ^
+numeric-payload.c:3023:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 3023 |     for (; depth > 0; depth--) {
+      |     ^
+numeric-payload.c:3023:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3023:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3023:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3080:33: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 3080 |         if (symbols[i] == NULL) symbols[i] = Rf_install(names[i]);
+      |                                 ^
+numeric-payload.c:3080:46: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3080 |         if (symbols[i] == NULL) symbols[i] = Rf_install(names[i]);
+      |                                              ^
+numeric-payload.c:3079:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 3079 |     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+      |     ^
+numeric-payload.c:3079:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3079:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:2901:40: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+ 2901 |         if (type == R_BindingTypeValue || type == R_BindingTypeForced) {
+      |                                        ^
+numeric-payload.c:2888:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 2888 |     while (depth > 0) {
+      |     ^
+numeric-payload.c:2888:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2888:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2888:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3176:44: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+ 3176 |             if (type == R_BindingTypeValue || type == R_BindingTypeForced) {
+      |                                            ^
+numeric-payload.c:3171:32: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 3171 |         if (TYPEOF(expression) == SYMSXP) {
+      |                                ^
+numeric-payload.c:3171:32: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3171:32: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3171:32: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5616:23: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5616 |         SEXP symbol = Rf_install(methods[i]);
+      |                       ^
+numeric-payload.c:5615:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 5615 |     for (size_t i = 0; i < count; i++) {
+      |     ^
+numeric-payload.c:5615:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5615:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5656:80: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5656 |         if ((TYPEOF(function) != BUILTINSXP && TYPEOF(function) != SPECIALSXP) ||
+      |                                                                                ^
+numeric-payload.c:5655:23: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5655 |         SEXP symbol = Rf_install(names[i]), function = VECTOR_ELT(primitive, indices[i]);
+      |                       ^
+numeric-payload.c:5654:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 5654 |     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+      |     ^
+numeric-payload.c:5654:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5654:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4308:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 4308 |     for (kind = minimum + 1; kind < NUMERIC_DOUBLE; kind++) {
+      |     ^
+numeric-payload.c:4308:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4361:9: remark: vectorized loop (vectorization width: 2, interleaved count: 4) [-Rpass=loop-vectorize]
+ 4361 |         for (R_xlen_t i = start; i < end; i++) {
+      |         ^
+numeric-payload.c:4558:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4558 |             if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:4558:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4557:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4557 |         for (R_xlen_t i = 0; i < length; i++) {
+      |         ^
+numeric-payload.c:4557:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4565:9: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 4565 |         for (; kind < NUMERIC_DOUBLE; kind++) {
+      |         ^
+numeric-payload.c:4565:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4585:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4585 |             if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:4585:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4584:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4584 |         for (R_xlen_t i = 0; i < length; i++) {
+      |         ^
+numeric-payload.c:4584:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4547:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4547 |             if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:4547:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4546:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4546 |         for (R_xlen_t i = 0; i < length; i++) {
+      |         ^
+numeric-payload.c:4546:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4678:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4678 |         if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:4677:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 4677 |     for (R_xlen_t index = 0; index < length; index++) {
+      |     ^
+numeric-payload.c:4677:5: remark: loop not vectorized: Incorrect number of successors from early exiting block [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4677:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4677:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4756:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4756 |         if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:4756:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4755:5: remark: loop not vectorized: Cannot vectorize early exit loop with reductions or recurrences [-Rpass-analysis=loop-vectorize]
+ 4755 |     for (R_xlen_t index = 0; index < length; index++) {
+      |     ^
+numeric-payload.c:4755:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4755:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4916:22: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4916 |                 env, Rf_install(names[i]), VECTOR_ELT(dependencies, i))) return 0;
+      |                      ^
+numeric-payload.c:4909:5: remark: loop not vectorized: Early exit loop contains operations that cannot be speculatively executed [-Rpass-analysis=loop-vectorize]
+ 4909 |     for (size_t i = 0; i < count; i++) {
+      |     ^
+numeric-payload.c:4909:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4909:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4982:31: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4982 |         if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                               ^
+numeric-payload.c:4982:31: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4981:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 4981 |     for (R_xlen_t i = 0; i < width; i++) {
+      |     ^
+numeric-payload.c:4981:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4981:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5005:31: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5005 |         if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                               ^
+numeric-payload.c:5044:6: note: could not determine the original source location for numeric-payload.c:0:0
+ 5044 | SEXP C_dtatools_try_mask_bindings(
+      |      ^
+numeric-payload.c:5044:6: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 5044 | SEXP C_dtatools_try_mask_bindings(
+      |      ^
+numeric-payload.c:5044:6: note: could not determine the original source location for numeric-payload.c:0:0
+numeric-payload.c:5004:5: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
+ 5004 |     for (R_xlen_t i = 0; i < width; i++) {
+      |     ^
+numeric-payload.c:5004:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5004:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4837:5: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+ 4837 |     switch (R_GetBindingType(symbol, env)) {
+      |     ^
+numeric-payload.c:5187:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 5187 |     for (int depth = 0; depth < 16 && env != R_EmptyEnv; depth++) {
+      |     ^
+numeric-payload.c:5187:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5187:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5187:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5247:15: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5247 |         if (i < 50) {
+      |               ^
+numeric-payload.c:5242:22: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5242 |         SEXP label = STRING_ELT(labels, i);
+      |                      ^
+numeric-payload.c:5241:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 5241 |     for (R_xlen_t i = 0; i < count; i++) {
+      |     ^
+numeric-payload.c:5241:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5241:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4863:31: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4863 |         if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                               ^
+numeric-payload.c:4863:31: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4862:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 4862 |     for (int i = 0; i < LENGTH(name); i++) {
+      |     ^
+numeric-payload.c:4862:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4862:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3724:40: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+ 3724 |         if (type == R_BindingTypeValue || type == R_BindingTypeForced) {
+      |                                        ^
+numeric-payload.c:3721:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 3721 |     for (int depth = 0; depth < 16 && env != R_EmptyEnv; depth++) {
+      |     ^
+numeric-payload.c:3721:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3721:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3721:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5420:81: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5420 |             (!dtatools_execution_lexical_function_same(frame, symbol, expected) ||
+      |                                                                                 ^
+numeric-payload.c:5414:21: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5414 |         SEXP name = STRING_ELT(names, i);
+      |                     ^
+numeric-payload.c:5413:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 5413 |     for (R_xlen_t i = 0; i < count; i++) {
+      |     ^
+numeric-payload.c:5413:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5413:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5130:15: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5130 |         env = env == R_GlobalEnv ? R_BaseEnv : R_ParentEnv(env);
+      |               ^
+numeric-payload.c:5127:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 5127 |     for (int depth = 0; depth < 16; depth++) {
+      |     ^
+numeric-payload.c:5127:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5127:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5127:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5897:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5897 |         if ((group & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:5896:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 5896 |     for (R_xlen_t group = 0; group < count; group++) {
+      |     ^
+numeric-payload.c:5896:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5896:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5896:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5922:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5922 |         if ((group & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:5921:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 5921 |     for (R_xlen_t group = 0; group < count; group++) {
+      |     ^
+numeric-payload.c:5921:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5921:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5921:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5952:9: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 5952 |         for (size_t start = 0; start < bit_bytes; ) {
+      |         ^
+numeric-payload.c:5952:9: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5952:9: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5952:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5964:39: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5964 |                 if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                                       ^
+numeric-payload.c:5964:39: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5963:13: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 5963 |             for (R_xlen_t i = 0; i < length; i++) {
+      |             ^
+numeric-payload.c:5963:13: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5963:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5998:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5998 |             if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:5997:9: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 5997 |         for (R_xlen_t i = 0; i < length; i++) {
+      |         ^
+numeric-payload.c:5997:9: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5997:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5997:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:6024:21: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 6024 |                     memcpy(output + destination, values + i, sizeof(double));
+      |                     ^
+numeric-payload.c:6022:17: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 6022 |                 for (R_xlen_t i = start; i < start + amount; i++) {
+      |                 ^
+numeric-payload.c:6022:17: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5790:21: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5790 |                     methods[row][col] = Rf_install(class_methods[row][col]);
+      |                     ^
+numeric-payload.c:5790:41: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5790 |                     methods[row][col] = Rf_install(class_methods[row][col]);
+      |                                         ^
+numeric-payload.c:5787:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5787 |         for (int row = 0; row < 5; row++)
+      |         ^
+numeric-payload.c:5787:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5715:17: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5715 |                 Rf_install(package_names[i]), VECTOR_ELT(package, i))) return 0;
+      |                 ^
+numeric-payload.c:5713:5: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
+ 5713 |     for (int i = 0; i < 12; i++)
+      |     ^
+numeric-payload.c:5713:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5713:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5727:23: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5727 |         SEXP symbol = Rf_install(base_names[i]), expected = VECTOR_ELT(base, i);
+      |                       ^
+numeric-payload.c:5726:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 5726 |     for (int i = 0; i < 8; i++) {
+      |     ^
+numeric-payload.c:5726:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5726:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5753:80: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 5753 |         if ((TYPEOF(expected) != BUILTINSXP && TYPEOF(expected) != SPECIALSXP) ||
+      |                                                                                ^
+numeric-payload.c:5752:23: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5752 |         SEXP symbol = Rf_install(primitive_names[i]), expected = VECTOR_ELT(primitive, i);
+      |                       ^
+numeric-payload.c:5751:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 5751 |     for (int i = 0; i < 18; i++) {
+      |     ^
+numeric-payload.c:5751:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5751:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4837:5: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+ 4837 |     switch (R_GetBindingType(symbol, env)) {
+      |     ^
+numeric-payload.c:4829:12: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4829 |     return TYPEOF(value) == ENVSXP && !Rf_isObject(value) && !Rf_isS4(value);
+      |            ^
+numeric-payload.c:5804:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 5804 |     for (int i = 1; i <= 3; i++) {
+      |     ^
+numeric-payload.c:5804:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5804:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4829:12: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4829 |     return TYPEOF(value) == ENVSXP && !Rf_isObject(value) && !Rf_isS4(value);
+      |            ^
+numeric-payload.c:5816:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 5816 |     for (int i = 0; i < 4; i++) {
+      |     ^
+numeric-payload.c:5816:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5816:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5823:14: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5823 |         if (!combine_chain_absent(dtatools, methods[2][i]) ||
+      |              ^
+numeric-payload.c:5822:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 5822 |     for (int i = 0; i < 5; i++) {
+      |     ^
+numeric-payload.c:5822:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5822:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:5853:17: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 5853 |                 Rf_install(strict_double_predicate_names[i]), VECTOR_ELT(strict, i))) return 0;
+      |                 ^
+numeric-payload.c:5850:5: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
+ 5850 |     for (size_t i = 0; i < sizeof(strict_double_predicate_names) /
+      |     ^
+numeric-payload.c:5850:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5850:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:6062:31: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 6062 |         if (name != NA_STRING && strcmp(CHAR(name), "rows") == 0)
+      |                               ^
+numeric-payload.c:6061:21: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 6061 |         SEXP name = STRING_ELT(names, i);
+      |                     ^
+numeric-payload.c:6060:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 6060 |     for (R_xlen_t i = 0; i < XLENGTH(mask); i++) {
+      |     ^
+numeric-payload.c:6060:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:6060:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:6212:31: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 6212 |         if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                               ^
+numeric-payload.c:6211:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 6211 |     for (R_xlen_t i = 0; i < length; i++) {
+      |     ^
+numeric-payload.c:6211:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:6211:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:6211:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:6287:31: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 6287 |         if ((i & 16383) == 0) R_CheckUserInterrupt();
+      |                               ^
+numeric-payload.c:6287:31: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:6286:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 6286 |     for (R_xlen_t i = 0; i < length; i++) {
+      |     ^
+numeric-payload.c:6286:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:6286:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:6350:35: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 6350 |         if ((index & 16383) == 0) R_CheckUserInterrupt();
+      |                                   ^
+numeric-payload.c:6350:35: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:6349:5: remark: loop not vectorized: Cannot vectorize early exit loop with reductions or recurrences [-Rpass-analysis=loop-vectorize]
+ 6349 |     for (R_xlen_t index = 0; index < length; index++) {
+      |     ^
+numeric-payload.c:6349:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:6349:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from numeric-payload.c:6384:
+./initial-capture.inc:28:9: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   28 |         REAL(out)[i] = initial_capture_counts[i];
+      |         ^
+./initial-capture.inc:27:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   27 |     for (int i = 0; i < 13; i++) {
+      |     ^
+./initial-capture.inc:27:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+./initial-capture.inc:136:69: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  136 |     for (R_xlen_t i = 0; i < width; i++) SET_VECTOR_ELT(columns, i, VECTOR_ELT(data, i));
+      |                                                                     ^
+./initial-capture.inc:136:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  136 |     for (R_xlen_t i = 0; i < width; i++) SET_VECTOR_ELT(columns, i, VECTOR_ELT(data, i));
+      |     ^
+./initial-capture.inc:136:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+./initial-capture.inc:78:40: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+   78 |         if (type == R_BindingTypeValue || type == R_BindingTypeForced) {
+      |                                        ^
+./initial-capture.inc:70:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+   70 |     for (int remaining = 16; remaining > 0; remaining--) {
+      |     ^
+./initial-capture.inc:70:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+./initial-capture.inc:70:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+./initial-capture.inc:70:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+./initial-capture.inc:208:80: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  208 |         if (!dtatools_execution_lexical_function_same(frame, symbol, expected) ||
+      |                                                                                ^
+./initial-capture.inc:207:23: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  207 |         SEXP symbol = Rf_install(primitive_names[i]), expected = VECTOR_ELT(primitives, i);
+      |                       ^
+./initial-capture.inc:202:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  202 |     for (int i = 4; i < 28; i++) {
+      |     ^
+./initial-capture.inc:202:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+./initial-capture.inc:202:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+./initial-capture.inc:313:34: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  313 |             if (name == previous ||
+      |                                  ^
+./initial-capture.inc:312:29: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  312 |             SEXP previous = STRING_ELT(names, j);
+      |                             ^
+./initial-capture.inc:311:9: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  311 |         for (R_xlen_t j = 0; j < i; j++) {
+      |         ^
+./initial-capture.inc:311:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+./initial-capture.inc:311:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+./initial-capture.inc:335:9: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  335 |         R_CheckUserInterrupt();
+      |         ^
+./initial-capture.inc:334:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  334 |     for (R_xlen_t i = 0; i < width; i++) {
+      |     ^
+./initial-capture.inc:334:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1590:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 1590 |     while (context->entries[slot].id_plus_one != 0) {
+      |     ^
+numeric-payload.c:1590:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1590:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1590:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:1550:9: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 1550 |         while (context->entries[slot].id_plus_one != 0) {
+      |         ^
+numeric-payload.c:1550:9: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1550:9: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:1550:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  580 | DEFINE_NUMERIC_KERNELS(float, float, float_missing_offset)
+      | ^
+numeric-payload.c:580:1: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: Cannot vectorize early exit loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  579 | DEFINE_NUMERIC_KERNELS(long, int32_t, long_missing_offset)
+      | ^
+numeric-payload.c:579:1: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: Cannot vectorize early exit loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  578 | DEFINE_NUMERIC_KERNELS(int, int16_t, int_missing_offset)
+      | ^
+numeric-payload.c:578:1: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: Cannot vectorize early exit loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  577 | DEFINE_NUMERIC_KERNELS(byte, int8_t, byte_missing_offset)
+      | ^
+numeric-payload.c:577:1: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: Cannot vectorize early exit loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+  661 | DEFINE_NUMERIC_SUM(float, float, float_missing_offset, raw < 0x1p127f)
+      | ^
+numeric-payload.c:661:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:661:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:661:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:661:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:661:1: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:661:1: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:661:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:661:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:661:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:661:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:661:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:661:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+  657 | DEFINE_NUMERIC_SUM(long, int32_t, long_missing_offset, 0)
+      | ^
+numeric-payload.c:657:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:657:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:657:1: remark: vectorized loop (vectorization width: 2, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:657:1: remark: vectorized loop (vectorization width: 2, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:657:1: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:657:1: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:657:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:657:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:657:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:657:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:657:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:657:1: remark: vectorized loop (vectorization width: 4, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+  656 | DEFINE_NUMERIC_SUM(int, int16_t, int_missing_offset, 0)
+      | ^
+numeric-payload.c:656:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:656:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:656:1: remark: vectorized loop (vectorization width: 8, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:656:1: remark: vectorized loop (vectorization width: 8, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:656:1: remark: vectorized loop (vectorization width: 8, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:656:1: remark: vectorized loop (vectorization width: 8, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:656:1: remark: vectorized loop (vectorization width: 8, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+  655 | DEFINE_NUMERIC_SUM(byte, int8_t, byte_missing_offset, 0)
+      | ^
+numeric-payload.c:655:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized: cannot prove it is safe to reorder floating-point operations; allow reordering by specifying '#pragma clang loop vectorize(enable)' before the loop or by providing the compiler option '-ffast-math' [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:655:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+numeric-payload.c:655:1: remark: vectorized loop (vectorization width: 16, interleaved count: 2) [-Rpass=loop-vectorize]
+numeric-payload.c:655:1: remark: vectorized loop (vectorization width: 16, interleaved count: 2) [-Rpass=loop-vectorize]
+numeric-payload.c:655:1: remark: vectorized loop (vectorization width: 16, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:655:1: remark: vectorized loop (vectorization width: 16, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:655:1: remark: vectorized loop (vectorization width: 16, interleaved count: 4) [-Rpass=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  580 | DEFINE_NUMERIC_KERNELS(float, float, float_missing_offset)
+      | ^
+numeric-payload.c:580:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:580:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  579 | DEFINE_NUMERIC_KERNELS(long, int32_t, long_missing_offset)
+      | ^
+numeric-payload.c:579:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:579:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  578 | DEFINE_NUMERIC_KERNELS(int, int16_t, int_missing_offset)
+      | ^
+numeric-payload.c:578:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:578:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  577 | DEFINE_NUMERIC_KERNELS(byte, int8_t, byte_missing_offset)
+      | ^
+numeric-payload.c:577:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:577:1: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:2940:40: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+ 2940 |         if (type == R_BindingTypeValue || type == R_BindingTypeForced) {
+      |                                        ^
+numeric-payload.c:2930:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 2930 |     for (int visits = 0; visits < 64; visits++) {
+      |     ^
+numeric-payload.c:2930:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2930:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:2930:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3629:17: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3629 |             if (STRING_ELT(left, i) != STRING_ELT(right, i)) return 0;
+      |                 ^
+numeric-payload.c:3628:9: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 3628 |         for (R_xlen_t i = 0; i < XLENGTH(left); i++)
+      |         ^
+numeric-payload.c:3628:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3628:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3638:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 3638 |     for (size_t n = 0; n < 2048; n++, slot = (slot + 1) & 2047U) {
+      |     ^
+numeric-payload.c:3638:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3638:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3665:42: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3665 |                 if (!scalar_strict_equal(VECTOR_ELT(left, i), VECTOR_ELT(right, i),
+      |                                          ^
+numeric-payload.c:3664:13: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
+ 3664 |             for (R_xlen_t i = 0; i < n; i++)
+      |             ^
+numeric-payload.c:3664:13: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3664:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3672:9: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 3672 |         for (size_t n = 0; n < 2048; n++, slot = (slot + 1) & 2047U) {
+      |         ^
+numeric-payload.c:3672:9: remark: loop not vectorized: Cannot vectorize potentially faulting early exit loop [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3672:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3554:47: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3554 |             if (!numeric_bytecode_equal_plain(VECTOR_ELT(left, i), VECTOR_ELT(right, i),
+      |                                               ^
+numeric-payload.c:3553:9: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
+ 3553 |         for (R_xlen_t i = 0; i < n; i++)
+      |         ^
+numeric-payload.c:3553:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3553:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3588:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3588 |             TYPEOF(a.values[i]) == CLOSXP || TYPEOF(b.values[i]) == CLOSXP ||
+      |             ^
+numeric-payload.c:3586:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 3586 |     for (int i = 0; i < a.count; i++) {
+      |     ^
+numeric-payload.c:3586:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3586:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3502:41: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3502 |             if (!numeric_bytecode_plain(VECTOR_ELT(value, i), remaining, depth + 1))
+      |                                         ^
+numeric-payload.c:3501:9: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
+ 3501 |         for (R_xlen_t i = 0; i < n; i++)
+      |         ^
+numeric-payload.c:3501:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3501:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3060:31: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 3060 |         if (name == NA_STRING || strcmp(CHAR(name), "double.xmax") != 0) continue;
+      |                               ^
+numeric-payload.c:3059:21: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3059 |         SEXP name = STRING_ELT(names, i);
+      |                     ^
+numeric-payload.c:3058:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 3058 |     for (R_xlen_t i = 0; i < XLENGTH(machine); i++) {
+      |     ^
+numeric-payload.c:3058:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3058:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:3943:17: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 3943 |             if (STRING_ELT(value, i) == NA_STRING) return R_NilValue;
+      |                 ^
+numeric-payload.c:3942:9: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+ 3942 |         for (int i = 0; i < 4; i++) {
+      |         ^
+numeric-payload.c:3942:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:3942:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4130:9: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4130 |         SCALAR_COMPACT_INTEGER_LOOP(int32_t, -2147483647LL, 2147483620LL); break;
+      |         ^
+numeric-payload.c:4130:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4130:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4127:9: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4127 |         SCALAR_COMPACT_INTEGER_LOOP(int16_t, -32767, 32740); break;
+      |         ^
+numeric-payload.c:4127:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4127:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4124:9: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4124 |         SCALAR_COMPACT_INTEGER_LOOP(int8_t, -127, 100); break;
+      |         ^
+numeric-payload.c:4124:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4124:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4159:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4159 |             memcpy(state->raw + (offset + i) * sizeof(float), &encoded,
+      |             ^
+numeric-payload.c:4149:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4149 |         for (size_t i = start; i < end; i++) {
+      |         ^
+numeric-payload.c:4149:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4210:13: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4210 |             SCALAR_COMPACT_SAME_LOOP(float, 0.0, float_limit, 1); break;
+      |             ^
+numeric-payload.c:4210:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4210:13: remark: loop not vectorized: Incorrect number of successors from early exiting block [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4210:13: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4210:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4208:13: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4208 |             SCALAR_COMPACT_SAME_LOOP(int32_t, -2147483647.0, 2147483620.0, 0); break;
+      |             ^
+numeric-payload.c:4208:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4208:13: remark: loop not vectorized: Incorrect number of successors from early exiting block [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4208:13: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4208:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4206:13: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4206 |             SCALAR_COMPACT_SAME_LOOP(int16_t, -32767, 32740, 0); break;
+      |             ^
+numeric-payload.c:4206:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4206:13: remark: loop not vectorized: Incorrect number of successors from early exiting block [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4206:13: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4206:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4204:13: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+ 4204 |             SCALAR_COMPACT_SAME_LOOP(int8_t, -127, 100, 0); break;
+      |             ^
+numeric-payload.c:4204:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4204:13: remark: loop not vectorized: Incorrect number of successors from early exiting block [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4204:13: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4204:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:2850:5: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+ 2850 |     switch (kind) {
+      |     ^
+numeric-payload.c:2871:9: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 2871 |         memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+      |         ^
+numeric-payload.c:4221:9: remark: loop not vectorized: Incorrect number of successors from early exiting block [-Rpass-analysis=loop-vectorize]
+ 4221 |         for (size_t i = 0; i < count; i++) {
+      |         ^
+numeric-payload.c:4221:9: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4221:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4070:37: remark: loop not vectorized: unsafe dependent memory operations in loop. Use #pragma clang loop distribute(enable) to allow loop distribution to attempt to isolate the offending operations into a separate loop
+Unknown data dependence. [-Rpass-analysis=loop-vectorize]
+ 4070 |                 state->missing_count++;
+      |                                     ^
+numeric-payload.c:4064:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+ 4064 |         for (size_t i = 0; i < count; i++) {
+      |         ^
+numeric-payload.c:4837:5: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+ 4837 |     switch (R_GetBindingType(symbol, env)) {
+      |     ^
+numeric-payload.c:5136:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+ 5136 |     for (int depth = 0; depth < 16 && env != R_EmptyEnv; depth++) {
+      |     ^
+numeric-payload.c:5136:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5136:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:5136:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+numeric-payload.c:4808:49: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+ 4808 |         SEXP actual = computed_dependency_value(Rf_install(strict_double_predicate_names[i]), frame, 16);
+      |                                                 ^
+numeric-payload.c:4806:5: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
+ 4806 |     for (size_t i = 0; i < sizeof(strict_double_predicate_names) /
+      |     ^
+numeric-payload.c:4806:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+numeric-payload.c:4806:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]

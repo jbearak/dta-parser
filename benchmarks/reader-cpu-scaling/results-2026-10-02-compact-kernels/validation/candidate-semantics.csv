@@ -1,0 +1,10 @@
+"file","context","test","nb","failed","skipped","error","warning","user","system","real","passed"
+"compact-semantic-tests.R","compact-semantic-tests","compact missing masks cover all tags tails and retained chunk boundaries",1632,0,FALSE,FALSE,0,0.693,0.121,0.815,1632
+"compact-semantic-tests.R","compact-semantic-tests","compact missing predicates merge columns without changing recycling or names",44,0,FALSE,FALSE,0,0.024,0.003,0.026,44
+"compact-semantic-tests.R","compact-semantic-tests","compact missing masks preserve shape class and materialized fallbacks",32,0,FALSE,FALSE,0,0.016,0.001,0.0170000000000001,32
+"compact-semantic-tests.R","compact-semantic-tests","compact missing masks agree with eager decoding for legacy and modern floats",37,0,FALSE,FALSE,0,0.0299999999999998,0.00700000000000001,0.0389999999999999,37
+"compact-semantic-tests.R","compact-semantic-tests","compact missing masks keep legacy integer missing domains",96,0,FALSE,FALSE,0,0.04,0.00800000000000001,0.0489999999999999,96
+"compact-semantic-tests.R","compact-semantic-tests","compact missing predicates preserve foreign callbacks and short circuits",24,0,FALSE,FALSE,0,0.108,0.002,0.109,24
+"compact-semantic-tests.R","compact-semantic-tests","compact missing masks retain sources and live view facts across GC",32,0,FALSE,FALSE,0,0.248,0.002,0.25,32
+"compact-semantic-tests.R","compact-semantic-tests","compact missing predicates survive reentrant materialization finalizers",12,0,FALSE,FALSE,0,0.51,0.00199999999999997,0.512,12
+"compact-semantic-tests.R","compact-semantic-tests","compact temporal missing predicates preserve converted values and all tags",20,0,FALSE,FALSE,0,0.00700000000000012,0.002,0.0089999999999999,20

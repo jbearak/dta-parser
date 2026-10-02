@@ -1,0 +1,113 @@
+{
+  "mask_vectorized_loops": 16,
+  "mask_remarks": [
+    {
+      "line": 781,
+      "width": 4,
+      "interleaved": 4
+    },
+    {
+      "line": 781,
+      "width": 4,
+      "interleaved": 4
+    },
+    {
+      "line": 777,
+      "width": 4,
+      "interleaved": 4
+    },
+    {
+      "line": 777,
+      "width": 4,
+      "interleaved": 4
+    },
+    {
+      "line": 773,
+      "width": 4,
+      "interleaved": 4
+    },
+    {
+      "line": 773,
+      "width": 4,
+      "interleaved": 4
+    },
+    {
+      "line": 772,
+      "width": 4,
+      "interleaved": 4
+    },
+    {
+      "line": 772,
+      "width": 4,
+      "interleaved": 4
+    },
+    {
+      "line": 769,
+      "width": 8,
+      "interleaved": 4
+    },
+    {
+      "line": 769,
+      "width": 8,
+      "interleaved": 2
+    },
+    {
+      "line": 768,
+      "width": 8,
+      "interleaved": 4
+    },
+    {
+      "line": 768,
+      "width": 8,
+      "interleaved": 2
+    },
+    {
+      "line": 765,
+      "width": 16,
+      "interleaved": 4
+    },
+    {
+      "line": 765,
+      "width": 16,
+      "interleaved": 1
+    },
+    {
+      "line": 764,
+      "width": 16,
+      "interleaved": 4
+    },
+    {
+      "line": 764,
+      "width": 16,
+      "interleaved": 1
+    }
+  ],
+  "sum_ordered_reduction_remarks": 12,
+  "functions": {
+    "numeric_missing_mask_span": {
+      "calls": [
+        "_R_CheckUserInterrupt",
+        "_Rf_error"
+      ],
+      "lines": 5885
+    },
+    "sum_span": {
+      "calls": [
+        "_R_CheckUserInterrupt",
+        "_Rf_error"
+      ],
+      "lines": 23002
+    }
+  },
+  "assembly_sha256": "1abc2889a0d6f3f24f6131795b4c3e1dee2212f55d5c7e83e323bf573fc8480a",
+  "source_bounds": {
+    "mask": [
+      757,
+      791
+    ],
+    "sum": [
+      589,
+      667
+    ]
+  }
+}

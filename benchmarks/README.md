@@ -33,6 +33,24 @@ paired uncertainty intervals, CPU time and peak RSS. The
 [reader survey](../docs/research/r-file-reader-performance-2026-10-01.md)
 describes the formats and metadata contracts behind those comparisons.
 
+The [October 2 reader follow-up](r-file-readers/results-2026-10-02.md)
+compares further dibble construction and retained Arrow scalar-access changes
+against release 0.11.0. It includes fresh cross-format measurements, large
+controls, and separate native Stata `use` and `save` timings. The
+[representation analysis](../docs/research/r-reader-performance-limits.md)
+explains which costs come from R's result representation and which can be
+removed from the readers.
+
+The [scalar-access follow-up](reader-cpu-scaling/results-2026-10-02-scalar.md)
+measures direct native forwarding, repeated wrapper checks, and whole-chunk
+caching. It reports incremental scalar and read-plus-consume gains against
+the subsequent gather4-v2 candidate, with separate source bindings.
+
+The [compact-kernel follow-up](reader-cpu-scaling/results-2026-10-02-compact-kernels.md)
+compares public missing predicates and reductions with ordinary doubles.
+Typed compact masks and ordered sums meet the measured parity target across
+42 DTA/Arrow cases, while preserving compact storage and existing results.
+
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
 reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
 ENADID and WFS survey datasets, with both tibble and dibble outputs. Its 3,762

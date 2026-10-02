@@ -224,6 +224,9 @@ extern void *dtatools_owned_numeric_clone(const void *);
 extern int dtatools_owned_numeric_region(
     const void *, size_t, size_t, const void **, size_t *
 );
+extern int dtatools_owned_numeric_scalar_span(
+    const void *, size_t, const void **, size_t *, size_t *
+);
 extern size_t dtatools_owned_numeric_live_bytes(void);
 extern size_t dtatools_owned_numeric_live_owners(void);
 extern size_t dtatools_owned_numeric_chunks(const void *);
@@ -278,6 +281,11 @@ typedef struct {
     size_t missing_count;
     /* Opaque immutable Rust owner. values is NULL when this is non-NULL. */
     const void *native_owner;
+    /* Only R's scalar ALTREP getter updates this borrowed immutable span.
+       Each handle owns its descriptor; native workers never use this cache. */
+    const void *scalar_values;
+    size_t scalar_start;
+    size_t scalar_end;
 } numeric_data;
 
 /* A retained payload keeps its bytes behind the immutable Rust owner and is
@@ -441,6 +449,12 @@ DTATOOLS_INTERNAL int numeric_missing_offset_at(
 );
 DTATOOLS_INTERNAL int numeric_value_is_missing_at(
     const numeric_data *data, size_t index
+);
+DTATOOLS_INTERNAL size_t numeric_missing_mask(
+    const numeric_data *data, int *output, int combine
+);
+DTATOOLS_INTERNAL SEXP numeric_missing_mask_capture(
+    SEXP value, numeric_data *storage
 );
 DTATOOLS_INTERNAL SEXP numeric_payload_root(SEXP value);
 DTATOOLS_INTERNAL numeric_reader numeric_reader_create(

@@ -5,6 +5,21 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `is.na()` and `is_missing()` scan compact numeric storage directly in typed
+  blocks, including retained Arrow chunks and compact dates. Missing tags and
+  IEEE NaNs keep their existing meanings, and scans leave inputs compact.
+  Compact sums use direct typed blocks while preserving accumulation order
+  across blocks and chunks.
+
+* Compact numeric scalar reads forward directly to the native getter and
+  resolve wrapper state once. Retained readers cache the entire current chunk
+  for forward, reverse, and permuted access.
+
+* `read_dta()` and `read_arrow()` use direct object-identity checks while
+  constructing dibbles, reducing setup work for wide tables. Scalar access
+  to retained compact Arrow numerics reuses the current immutable chunk,
+  reducing repeated native lookups during traversal.
+
 * Validated native paths speed up supported `repl()`/`replace_values()`,
   `gen()`, dibble `:=`, and `mutate()` expressions. Public dependency changes
   retain ordinary evaluation. Bracket fallback preserves an already evaluated

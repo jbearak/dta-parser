@@ -1,0 +1,262 @@
+--- a/r-package/dtatools/R/dibble.R
++++ b/r-package/dtatools/R/dibble.R
+@@ -229,7 +229,7 @@
+     for (index in seq_along(column_names)) {
+         column <- .subset2(x, index)
+         typed <- .typed_column(column, row_count, "as_dibble()")
+-        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
++        if (!rlang::is_reference(typed, column)) {
+             captured <- .Call(C_dtatools_capture_column, typed)
+             .Call(C_dtatools_set_data_column, x, as.integer(index), captured)
+         }
+--- a/r-package/dtatools/src/dta-tools/src/arrow/read.rs
++++ b/r-package/dtatools/src/dta-tools/src/arrow/read.rs
+@@ -948,8 +948,18 @@
+             bytes
+                 .try_reserve_exact(expected_length)
+                 .map_err(|_| invalid("could not allocate an Arrow buffer"))?;
+-            bytes.resize(expected_length, 0);
+-            read_exact_at(reader, read_start, &mut bytes)?;
++            reader.seek(SeekFrom::Start(read_start))?;
++            // Let Read initialize the Vec's spare capacity. File-backed
++            // readers can fill it directly without a separate zeroing pass.
++            // Take also bounds read_to_end's final EOF probe to this buffer.
++            reader.by_ref().take(length).read_to_end(&mut bytes)?;
++            if bytes.len() != expected_length {
++                return Err(io::Error::new(
++                    io::ErrorKind::UnexpectedEof,
++                    "failed to fill whole buffer",
++                )
++                .into());
++            }
+             Ok(buffer_from_bytes(bytes))
+         }
+         Some(codec) => {
+@@ -4090,6 +4100,83 @@
+     }
+ 
+     #[test]
++    fn uncompressed_buffer_reads_stop_at_the_declared_extent() {
++        struct ShortReader {
++            source: Cursor<Vec<u8>>,
++            interrupted: bool,
++        }
++
++        impl Read for ShortReader {
++            fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
++                if !self.interrupted {
++                    self.interrupted = true;
++                    return Err(io::ErrorKind::Interrupted.into());
++                }
++                let count = buffer.len().min(7);
++                self.source.read(&mut buffer[..count])
++            }
++        }
++
++        impl Seek for ShortReader {
++            fn seek(&mut self, position: SeekFrom) -> io::Result<u64> {
++                self.source.seek(position)
++            }
++        }
++
++        for length in [0, 1, 31, 32, 4096, 65_536] {
++            let payload: Vec<u8> = (0..length).map(|index| index as u8).collect();
++            let mut bytes = vec![0x9f; 5];
++            bytes.extend_from_slice(&payload);
++            bytes.extend_from_slice(&[0xcd; 16]);
++            let mut reader = ShortReader {
++                source: Cursor::new(bytes),
++                interrupted: false,
++            };
++            let buffer = read_ipc_buffer(
++                &mut reader,
++                2,
++                length as u64 + 19,
++                (3, length as u64),
++                None,
++                length,
++            )
++            .expect("short reads and Interrupted preserve the exact buffer");
++            assert_eq!(buffer.as_slice(), payload);
++            assert_eq!(reader.source.position(), length as u64 + 5);
++            assert_eq!(reader.interrupted, length != 0);
++        }
++    }
++
++    #[test]
++    fn uncompressed_buffer_preserves_truncation_and_other_io_errors() {
++        let mut truncated = Cursor::new([1_u8, 2, 3]);
++        let error = read_ipc_buffer(&mut truncated, 0, 4, (0, 4), None, 4)
++            .expect_err("a short buffer cannot be published");
++        assert!(matches!(error, ArrowProfileError::Io(error)
++            if error.kind() == io::ErrorKind::UnexpectedEof));
++
++        struct FailedReader(Cursor<Vec<u8>>);
++
++        impl Read for FailedReader {
++            fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
++                Err(io::Error::other("buffer read failed"))
++            }
++        }
++
++        impl Seek for FailedReader {
++            fn seek(&mut self, position: SeekFrom) -> io::Result<u64> {
++                self.0.seek(position)
++            }
++        }
++
++        let mut failed = FailedReader(Cursor::new(Vec::new()));
++        let error = read_ipc_buffer(&mut failed, 0, 4, (0, 4), None, 4)
++            .expect_err("the underlying read error must propagate");
++        assert!(matches!(error, ArrowProfileError::Io(error)
++            if error.kind() == io::ErrorKind::Other && error.to_string() == "buffer read failed"));
++    }
++
++    #[test]
+     fn compression_framed_uncompressed_buffer_reuses_the_input_allocation() {
+         let payload = b"incompressible payload";
+         let mut raw = (-1_i64).to_le_bytes().to_vec();
+--- a/r-package/dtatools/src/dtatools-internal.h
++++ b/r-package/dtatools/src/dtatools-internal.h
+@@ -278,6 +278,11 @@
+     size_t missing_count;
+     /* Opaque immutable Rust owner. values is NULL when this is non-NULL. */
+     const void *native_owner;
++    /* Only R's scalar ALTREP getter updates this borrowed immutable span.
++       Each handle owns its descriptor; native workers never use this cache. */
++    const void *scalar_values;
++    size_t scalar_start;
++    size_t scalar_end;
+ } numeric_data;
+ 
+ /* A retained payload keeps its bytes behind the immutable Rust owner and is
+--- a/r-package/dtatools/src/numeric-payload.c
++++ b/r-package/dtatools/src/numeric-payload.c
+@@ -859,7 +859,10 @@
+ DTATOOLS_LAYOUT_ASSERT(gather_x_length, offsetof(numeric_gather_column, x_length) == 80);
+ DTATOOLS_LAYOUT_ASSERT(gather_size, sizeof(numeric_gather_column) == 96);
+ DTATOOLS_LAYOUT_ASSERT(numeric_owner, offsetof(numeric_data, native_owner) == 40);
+-DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 48);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_values, offsetof(numeric_data, scalar_values) == 48);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_start, offsetof(numeric_data, scalar_start) == 56);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_end, offsetof(numeric_data, scalar_end) == 64);
++DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 72);
+ DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
+ DTATOOLS_LAYOUT_ASSERT(write_column_dta_type, offsetof(dtatools_write_column, dta_type) == 8);
+ DTATOOLS_LAYOUT_ASSERT(write_column_format, offsetof(dtatools_write_column, format) == 16);
+@@ -1674,6 +1677,25 @@
+     numeric_data *data = numeric_read_storage(value);
+     if (index < 0 || (size_t) index >= data->length) {
+         Rf_error("invalid dtatools numeric-vector index");
++    }
++    if (numeric_payload_retained(data)) {
++        size_t row = (size_t) index;
++        if (row < data->scalar_start || row >= data->scalar_end) {
++            size_t count = 0;
++            const void *values = numeric_read_span(
++                data, row, data->length - row, &count
++            );
++            data->scalar_values = values;
++            data->scalar_start = row;
++            data->scalar_end = row + count;
++        }
++        /* The descriptor roots the immutable owner for the cached span's
++           complete lifetime. Decode with the existing plain-byte kernels;
++           no R allocation or callback occurs while this local view is live. */
++        numeric_data span = *data;
++        span.values = (void *) data->scalar_values;
++        span.native_owner = NULL;
++        return numeric_value_at(&span, row - data->scalar_start);
+     }
+     return numeric_value_at(data, (size_t) index);
+ }
+--- a/r-package/dtatools/src/rust/src/lib.rs
++++ b/r-package/dtatools/src/rust/src/lib.rs
+@@ -239,6 +239,10 @@
+     missing_count: usize,
+     // Opaque immutable owner, or null for the legacy R-rooted writable bytes.
+     native_owner: *const c_void,
++    // Per-descriptor borrowed span, updated only by R's scalar ALTREP getter.
++    scalar_values: *const c_void,
++    scalar_start: usize,
++    scalar_end: usize,
+ }
+ 
+ impl Drop for NumericData {
+@@ -257,6 +261,9 @@
+             format_version: c_int::from(data.format_version.as_u16()),
+             missing_count: data.missing_count,
+             native_owner: ptr::null(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         }
+     }
+ }
+@@ -346,6 +353,9 @@
+         format_version: 119,
+         missing_count,
+         native_owner: ptr::null(),
++        scalar_values: ptr::null(),
++        scalar_start: 0,
++        scalar_end: 0,
+     }))
+     .cast::<c_void>()
+ }
+--- a/r-package/dtatools/src/rust/src/owned_numeric.rs
++++ b/r-package/dtatools/src/rust/src/owned_numeric.rs
+@@ -280,6 +280,9 @@
+             format_version: c_int::from(self.version.as_u16()),
+             missing_count: self.missing_count,
+             native_owner: Arc::into_raw(self.owner).cast(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         }
+     }
+ }
+@@ -476,6 +479,9 @@
+             format_version: source.format_version,
+             missing_count: source.missing_count,
+             native_owner: ptr::null(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         });
+         Arc::increment_strong_count(source.native_owner.cast::<Owner>());
+         result.native_owner = source.native_owner;
+--- a/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
++++ b/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
+@@ -2,6 +2,32 @@
+ freeze_numeric <- function(x, chunk_rows = 2) {
+     .Call(C_dtatools_owned_numeric_freeze, x, chunk_rows)
+ }
++
++test_that("scalar retained reads cross chunks and survive independent handle writes", {
++    values <- c(-1, 0, 1, NA_real_, tagged_missing(letters), 5)
++    positions <- c(seq_along(values), rev(seq_along(values)), 1L, 31L, 2L)
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        for (chunk_rows in c(1, 2, 7, 100)) {
++            frozen <- freeze_numeric(constructor(values), chunk_rows)
++            snapshot <- as.double(frozen)
++            # Base is.na and scalar extraction read through the bare ALTREP
++            # handles. The reverse pass revisits chunks after a forward scan.
++            expect_identical(is.na(snapshot), is.na(values))
++            actual <- vapply(positions, function(i) snapshot[[i]], double(1))
++            expect_identical(actual, values[positions])
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
++            before <- owned_numeric_info(snapshot)
++
++            .Call(C_dtatools_mutate_first_numeric_altrep, frozen, 8)
++            gc()
++            expect_identical(vapply(positions, function(i) snapshot[[i]], double(1)),
++                             values[positions])
++            expect_identical(is.na(snapshot), is.na(values))
++            expect_equal(owned_numeric_info(snapshot)[["compatibility_bytes"]],
++                         before[["compatibility_bytes"]])
++        }
++    }
++})
+ 
+ test_that("immutable compact regions preserve all missing codes and chunk edges", {
+     values <- c(-1, 0, 1, NA_real_, tagged_missing(letters), 5)

@@ -1,0 +1,11 @@
+args <- commandArgs(TRUE)
+.libPaths(c(args[[1L]], '<reader-work>/comparator-lib', .libPaths()))
+library(dtatools)
+stopifnot(normalizePath(find.package('dtatools')) == normalizePath(file.path(args[[1L]], 'dtatools')))
+env <- new.env(parent = asNamespace('dtatools'))
+sys.source('<compact-work>/candidate-source/tests/testthat/helper-fixtures.R', envir=env)
+r <- testthat::test_file(args[[2L]], env=env, reporter='summary', stop_on_failure=FALSE)
+s <- as.data.frame(r); s$result <- NULL
+write.csv(s, args[[3L]], row.names=FALSE)
+print(colSums(s[c('passed','failed','error','warning','skipped')]))
+stopifnot(sum(s$failed)==0L, sum(s$error)==0L)

@@ -1,0 +1,25 @@
+{
+  "library_sha256": "bee56dcf1e51cce520ebed497d529eee597597099c4720c9401e4e370b68792d",
+  "assembly_sha256": "9239d394ad0ef4a87251cf0bc444112a0e9e1e262443992088278840c2b8c4c4",
+  "assembly_lines": 500,
+  "validation": {
+    "before_bridge_unit_tests": 38,
+    "after_bridge_unit_tests": 38,
+    "before_rustfmt_check_exit": 0,
+    "after_rustfmt_check_exit": 0,
+    "recorded_build_exit": 0,
+    "source_pre_post_equal": true
+  },
+  "assembly_gate": {
+    "passed": true,
+    "independent_accumulators": 4,
+    "runtime_format_checks_inside_group_loop": 0,
+    "hot_loop_stack_spills": 0,
+    "hot_loop_calls": 0,
+    "instructions_per_full_group": 20,
+    "bytes_per_full_group": 4,
+    "baseline_instructions_per_byte": 7,
+    "baseline_frame_bytes": 128,
+    "candidate_frame_bytes": 176
+  }
+}

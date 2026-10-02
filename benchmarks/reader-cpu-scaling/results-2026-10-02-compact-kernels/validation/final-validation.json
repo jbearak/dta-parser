@@ -1,0 +1,48 @@
+{
+  "acceptance": {
+    "bindings_matched": true,
+    "exact_validation": true,
+    "observations": 504,
+    "parity_failures": [],
+    "parity_gate": 1.25,
+    "processes": 252
+  },
+  "accepted_build_receipt_sha256": "da16bf7beaa6294584f3e73a4758b3a740de0eb586e42517fdf80593b772508c",
+  "accepted_library_sha256": "183fd2d7ee27fd875e4d99aae8b272eb1a2bafc83cddf2f5b0b17d4c73ec1a18",
+  "benchmark_qualification": "Native reductions exact against ordinary doubles; public results follow existing Stata storage policy, including float scalar rounding.",
+  "block_boundary_cases": 20,
+  "build_test_or_profile_overlapped_timing": false,
+  "full_r_suite": {
+    "error": 0,
+    "failed": 0,
+    "log_sha256": "e76bcd3115efc19bc4bd74caf2b1064a0e52e3ad401e466c52a65edfd29cd9f9",
+    "passed": 39867,
+    "results_sha256": "908eb54ffb0b1c0d7f8431ef85789c358a3428b248419615b866039341e855c3",
+    "skipped": 0,
+    "tests": 1683,
+    "warning": 7,
+    "warnings_match_previous_by_test_and_count": true
+  },
+  "git_diff_check_exit_code": 0,
+  "not_rerun": [
+    "R CMD check",
+    "full cross-language conformance",
+    "Rust tests/Clippy/format: sources unchanged from preceding accepted build"
+  ],
+  "original_parity_repro": "GREEN",
+  "parity": {
+    "cpu": {
+      "largest_paired_ratio": 1.0190587389976649,
+      "largest_upper95": 1.0293347113397107
+    },
+    "wall": {
+      "largest_paired_ratio": 1.0193661971830985,
+      "largest_upper95": 1.0310952747199924
+    }
+  },
+  "production_source_files": 449,
+  "production_source_matches_accepted_build": true,
+  "rust_source_files_compared": 51,
+  "rust_sources_unchanged_from_previously_validated_candidate": true,
+  "validated_utc": "2026-10-02T12:11:05.693295+00:00"
+}

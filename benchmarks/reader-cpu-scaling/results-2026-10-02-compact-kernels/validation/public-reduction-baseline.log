@@ -1,0 +1,12 @@
+1 sum double dta_numeric dta_long vctrs_vctr double actual 49949822 expected 49949822 identical TRUE 
+1 min double dta_numeric dta_byte vctrs_vctr double actual 0 expected 0 identical TRUE 
+1 max double dta_numeric dta_byte vctrs_vctr double actual 100 expected 100 identical TRUE 
+9 sum double dta_numeric dta_long vctrs_vctr double actual -13109941 expected -13109941 identical TRUE 
+9 min double dta_numeric dta_int vctrs_vctr double actual -30000 expected -30000 identical TRUE 
+9 max double dta_numeric dta_int vctrs_vctr double actual 30000 expected 30000 identical TRUE 
+17 sum double dta_numeric dta_double vctrs_vctr double actual 984552059628391 expected 984552059628391 identical TRUE 
+17 min double dta_numeric dta_long vctrs_vctr double actual 607 expected 607 identical TRUE 
+17 max double dta_numeric dta_long vctrs_vctr double actual 1999996685 expected 1999996685 identical TRUE 
+25 sum double dta_numeric dta_float vctrs_vctr double actual 62438580224 expected 62438580647 identical FALSE 
+25 min double dta_numeric dta_float vctrs_vctr double actual 0 expected 0 identical TRUE 
+25 max double dta_numeric dta_float vctrs_vctr double actual 125000.25 expected 125000.25 identical TRUE 
